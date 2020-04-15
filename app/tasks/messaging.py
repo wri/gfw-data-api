@@ -1,5 +1,5 @@
 from ..application import db
-from ..models.pydantic.user import User
+from ..models.pydantic.dataset import User
 from ..models.orm.metadata import User as ORMUser
 
 
