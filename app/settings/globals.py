@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from starlette.config import Config
-from starlette.datastructures import Secret, CommaSeparatedStrings
+from starlette.datastructures import Secret
 
 from ..models.pydantic.database import DatabaseURL
 
@@ -31,13 +31,4 @@ ALEMBIC_CONFIG: DatabaseURL = DatabaseURL(
     host=DB_HOST,
     port=DB_PORT,
     database=DATABASE,
-)
-
-REDIS_IP: str = config("REDIS_IP", cast=str, default="127.0.0.1")
-REDIS_PORT: int = config("REDIS_PORT", cast=int, default=6379)
-
-SENTRY_DSN: Optional[Secret] = config("SENTRY_DSN", cast=Secret, default=None)
-
-ARQ_BACKGROUND_FUNCTIONS: Optional[CommaSeparatedStrings] = config(
-    "ARQ_BACKGROUND_FUNCTIONS", cast=CommaSeparatedStrings, default=None
 )

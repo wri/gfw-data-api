@@ -1,14 +1,5 @@
-from pydantic.utils import import_string
-
 from .application import db
-from .settings.arq import settings
-from .settings.globals import DATABASE_CONFIG, ARQ_BACKGROUND_FUNCTIONS
-
-
-FUNCTIONS: list = [
-    import_string(background_function)
-    for background_function in list(ARQ_BACKGROUND_FUNCTIONS)
-] if ARQ_BACKGROUND_FUNCTIONS is not None else list()
+from .settings.globals import DATABASE_CONFIG
 
 
 async def startup(ctx):
@@ -32,5 +23,4 @@ class WorkerSettings:
 
     on_startup = startup
     on_shutdown = shutdown
-    redis_settings = settings
-    functions: list = FUNCTIONS
+

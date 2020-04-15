@@ -4,9 +4,13 @@ sys.path.extend(['./'])
 
 ######################## --- MODELS FOR MIGRATIONS --- ########################
 from app.application import db
-from app.models.orm.user import User
 
 # To include a model in migrations, add a line here.
+from app.models.orm.dataset import Dataset
+from app.models.orm.version import Version
+from app.models.orm.asset import Asset
+from app.models.orm.geostore import Geostore
+
 
 ###############################################################################
 
@@ -23,6 +27,24 @@ fileConfig(config.config_file_name)
 target_metadata = db
 
 
+def exclude_tables_from_config(config_):
+    tables = None
+    tables_ = config_.get("tables", None)
+    if tables_ is not None:
+        tables = tables_.split(",")
+    return tables
+
+
+exclude_tables = exclude_tables_from_config(config.get_section('alembic:exclude'))
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table" and name in exclude_tables:
+        return False
+    else:
+        return True
+
+
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
 
@@ -36,7 +58,7 @@ def run_migrations_offline():
 
     """
     context.configure(
-        url=ALEMBIC_CONFIG.url.__to_string__(hide_password=False), target_metadata=target_metadata, literal_binds=True
+        url=ALEMBIC_CONFIG.url.__to_string__(hide_password=False), target_metadata=target_metadata, literal_binds=True, include_object=include_object
     )
 
     with context.begin_transaction():
@@ -57,7 +79,7 @@ def run_migrations_online():
     )
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata, include_object=include_object
         )
 
         with context.begin_transaction():

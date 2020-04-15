@@ -1,6 +1,6 @@
 from ..application import db
 from ..models.pydantic.user import User
-from ..models.orm.user import User as ORMUser
+from ..models.orm.metadata import User as ORMUser
 
 
 async def send_message(ctx: dict, user_id: int, message: str):

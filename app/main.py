@@ -2,20 +2,14 @@ import sys
 
 sys.path.extend(["./"])
 
-from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
-
 from app.application import app
-from app.routes.users import router as user_router
-from app.settings.globals import SENTRY_DSN
+from app.routes import datasets, features, fields, geostore, query, sources, versions
 
 
-ROUTERS = (user_router,)
+ROUTERS = (datasets.router, versions.router, sources.router, fields.router, query.router, features.router, geostore.router)
 
 for r in ROUTERS:
     app.include_router(r)
-
-if SENTRY_DSN not in (None, "", " "):
-    app.add_middleware(SentryAsgiMiddleware)
 
 
 if __name__ == "__main__":
