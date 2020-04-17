@@ -6,12 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
+
 from . import dataset_dependency
 
 from ..models.orm.dataset import Dataset as ORMDataset
+from ..models.orm.version import Version as ORMVersion
 from ..models.pydantic.dataset import Dataset, DatasetCreateIn, DatasetUpdateIn
 from ..application import db
-from ..settings.globals import USERNAME
+from ..settings.globals import READER_USERNAME
 
 router = APIRouter()
 
@@ -21,19 +23,25 @@ async def get_datasets():
     """
     Get list of all datasets
     """
-    pass
+    rows: List[ORMDataset] = await ORMDataset.query.gino.all()
+    return rows
 
 
-@router.get("/{dataset}", response_class=ORJSONResponse, tags=["Dataset"], response_model=Dataset)
+@router.get("/{dataset}", response_class=ORJSONResponse, tags=["Dataset"]) #, response_model=Dataset)
 async def get_dataset(*, dataset: str = Depends(dataset_dependency)):
     """
     Get basic metadata and available versions for a given dataset
     """
     row: ORMDataset = await ORMDataset.get(dataset)
-    return Dataset.from_orm(row)
+    versions: List[ORMVersion] = await ORMVersion.query.where("dataset" == dataset).gino.all()
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"Dataset with name {dataset} does not exist")
+    response = Dataset.from_orm(row).dict()
+    response["versions"] = versions
+    return response
 
 
-@router.put("/{dataset}", response_class=ORJSONResponse, tags=["Dataset"], response_model=Dataset)
+@router.put("/{dataset}/metadata", response_class=ORJSONResponse, tags=["Dataset"], response_model=Dataset)
 async def put_dataset(*, dataset: str = Depends(dataset_dependency), request: DatasetCreateIn):
     """
     Create or update a dataset
@@ -44,7 +52,7 @@ async def put_dataset(*, dataset: str = Depends(dataset_dependency), request: Da
         raise HTTPException(status_code=403, detail=f"Dataset with name {dataset} already exists")
 
     await db.status(CreateSchema(dataset))
-    await db.status(f"ALTER DEFAULT PRIVILEGES IN SCHEMA {dataset} GRANT SELECT ON TABLES TO {USERNAME};")
+    await db.status(f"ALTER DEFAULT PRIVILEGES IN SCHEMA {dataset} GRANT SELECT ON TABLES TO {READER_USERNAME};")
 
     return Dataset.from_orm(new_dataset)
 
@@ -52,23 +60,28 @@ async def put_dataset(*, dataset: str = Depends(dataset_dependency), request: Da
 @router.patch("/{dataset}", response_class=ORJSONResponse, tags=["Dataset"], response_model=Dataset)
 async def patch_dataset(*, dataset: str = Depends(dataset_dependency), request: DatasetUpdateIn):
     """
-    Partially update a dataset
+    Partially update a dataset. Only metadata field can be updated. All other fields will be ignored.
     """
-    logging.info(request)
+
     row: ORMDataset = await ORMDataset.get(dataset)
+
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"Dataset with name {dataset} does not exists")
 
     updated_fields = request.dict(skip_defaults=True)
 
     # Make sure, existing metadata not mentioned in request remain untouched
-    metadata = row.metadata
-    metadata.update(updated_fields["metadata"])
-    updated_fields["metadata"] = metadata
+    if "metadata" in updated_fields.keys():
+        metadata = row.metadata
+        metadata.update(updated_fields["metadata"])
+        updated_fields["metadata"] = metadata
+        logging.info("write")
+        new_row: Dataset = Dataset.from_orm(row)
+        new_row.metadata = metadata
+        logging.info(f"NEW ROW: {new_row}")
 
-    # TODO make sure we validate data before updating database. Otherwise data are update but final check throws and error
-    # updated_fields: Dataset = Dataset.from_orm(request)
-    await row.update(**updated_fields).apply()
+        await row.update(**new_row.dict(skip_defaults=True)).apply()
     return Dataset.from_orm(row)
-
 
 
 @router.delete("/{dataset}", response_class=ORJSONResponse, tags=["Dataset"])

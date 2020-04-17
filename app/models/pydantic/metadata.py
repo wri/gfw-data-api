@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import date
 
 
 class Metadata(BaseModel):
@@ -18,7 +18,7 @@ class Metadata(BaseModel):
     overview: Optional[str]
     citation: Optional[str]
     tags: Optional[List[str]]
-    last_update: Optional[datetime]
+    last_update: Optional[date]
     data_language: Optional[str]
     key_restrictions: Optional[str]
     download: Optional[str]

@@ -2,9 +2,8 @@ import sys
 
 sys.path.extend(["./"])
 
-from app.application import app
-from app.routes import datasets, features, fields, geostore, query, sources, versions
-
+from .application import app
+from .routes import datasets, features, fields, geostore, query, sources, versions
 
 ROUTERS = (datasets.router, versions.router, sources.router, fields.router, query.router, features.router, geostore.router)
 
