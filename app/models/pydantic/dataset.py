@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 from .base import Base
@@ -7,6 +7,7 @@ from ..orm.version import Version
 
 
 class Dataset(Base):
+    type: str = "dataset"
     dataset: str
     metadata: Metadata
 
