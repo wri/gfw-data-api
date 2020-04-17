@@ -9,12 +9,11 @@ from app.routes import dataset_dependency, version_dependency, update_metadata
 from ..models.orm.asset import Asset as ORMAsset
 from ..models.orm.version import Version as ORMVersion
 from ..models.pydantic.version import Version, VersionCreateIn, VersionUpdateIn
-from ..responses import JSONAPIResponse
 
 router = APIRouter()
 
 
-@router.get("/{dataset}/{version}", response_class=JSONAPIResponse, tags=["Version"])
+@router.get("/{dataset}/{version}", response_class=ORJSONResponse, tags=["Version"])
 async def get_version(
     *,
     dataset: str = Depends(dataset_dependency),
@@ -24,7 +23,7 @@ async def get_version(
     Get basic metadata for a given version
     """
     row: ORMVersion = await ORMVersion.get([dataset, version])
-    assets: List[ORMAsset] = await ORMAsset.query.where("dataset" == dataset).where("version" == version).gino.all()
+    assets: List[ORMAsset] = await ORMAsset.query.where(ORMAsset.dataset == dataset).where(ORMAsset.version == version).gino.all()
     if row is None:
         raise HTTPException(status_code=404, detail=f"Version with name {dataset}/{version} does not exist")
     response = Version.from_orm(row).dict(by_alias=True)

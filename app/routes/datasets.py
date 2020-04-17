@@ -12,7 +12,6 @@ from ..models.orm.dataset import Dataset as ORMDataset
 from ..models.orm.version import Version as ORMVersion
 from ..models.pydantic.dataset import Dataset, DatasetCreateIn, DatasetUpdateIn
 from ..application import db
-from ..responses import JSONAPIResponse
 from ..settings.globals import READER_USERNAME
 
 router = APIRouter()
@@ -23,19 +22,28 @@ async def get_datasets():
     """
     Get list of all datasets
     """
-    rows: List[ORMDataset] = await ORMDataset.query.gino.all()
-    return rows
+    sql = """
+    select datasets.created_on, datasets.updated_on, datasets.dataset, datasets.metadata , version_array as versions
+from
+datasets left join (
+select dataset, json_agg(row_to_json(versions)) as version_array
+from versions group by dataset) t using (dataset);"""
+    rows = await db.status(db.text(sql))
+    # rows: List[ORMDataset] = await ORMDataset.query.gino.all()
+    return rows[1]
 
 
-@router.get("/{dataset}", response_class=JSONAPIResponse, tags=["Dataset"], response_model=Dataset)
+@router.get("/{dataset}", response_class=ORJSONResponse, tags=["Dataset"], response_model=Dataset)
 async def get_dataset(*, dataset: str = Depends(dataset_dependency)):
     """
     Get basic metadata and available versions for a given dataset
     """
     row: ORMDataset = await ORMDataset.get(dataset)
-    versions: List[ORMVersion] = await ORMVersion.query.where("dataset" == dataset).gino.all()
     if row is None:
         raise HTTPException(status_code=404, detail=f"Dataset with name {dataset} does not exist")
+
+    versions: List[ORMVersion] = await ORMVersion.query.where(ORMVersion.dataset == dataset).gino.all()
+    # logging.debug(f"VERSIONS: {versions}")
     response = Dataset.from_orm(row).dict(by_alias=True)
     response["versions"] = versions
     return response

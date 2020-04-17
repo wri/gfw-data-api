@@ -1,8 +1,9 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
+from .asset import Asset
 from .base import Base
 from .metadata import Metadata
 
@@ -13,7 +14,6 @@ class SourceType(str, Enum):
 
 
 class Version(Base):
-    type: str = "version"
     dataset: str
     version: str
     is_latest: bool = False
@@ -26,6 +26,7 @@ class Version(Base):
     has_90_27008_tiles: bool = False
     has_90_9876_tiles: bool = False
     metadata: Metadata
+    assets: List[Asset] = list()
 
 
 class VersionCreateIn(BaseModel):

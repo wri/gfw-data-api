@@ -31,7 +31,6 @@ class Status(str, Enum):
 
 
 class Asset(Base):
-    type: str = "version"
     dataset: str
     version: str
     asset_type: bool

@@ -1,15 +1,15 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from pydantic import BaseModel
+from typing import List, Optional
 
 from .base import Base
 from .metadata import Metadata
-from ..orm.version import Version
+from .version import Version
 
 
 class Dataset(Base):
-    type: str = "dataset"
     dataset: str
     metadata: Metadata
+    versions: Optional[List[Version]]
 
 
 class DatasetCreateIn(BaseModel):
