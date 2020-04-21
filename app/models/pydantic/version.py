@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 from pydantic import BaseModel
 
@@ -26,7 +26,7 @@ class Version(Base):
     has_90_27008_tiles: bool = False
     has_90_9876_tiles: bool = False
     metadata: Metadata
-    assets: List[Asset] = list()
+    assets: List[Tuple[str]] = list()
 
 
 class VersionCreateIn(BaseModel):

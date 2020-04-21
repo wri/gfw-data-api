@@ -23,13 +23,15 @@ async def get_datasets():
     Get list of all datasets
     """
     sql = """
-    select datasets.created_on, datasets.updated_on, datasets.dataset, datasets.metadata , version_array as versions
+    select datasets.* , version_array as versions
 from
 datasets left join (
-select dataset, json_agg(row_to_json(versions)) as version_array
+select dataset, array_agg(version) as version_array
 from versions group by dataset) t using (dataset);"""
     rows = await db.status(db.text(sql))
-    # rows: List[ORMDataset] = await ORMDataset.query.gino.all()
+
+#    rows = await db.select([ORMDataset.created_on, ORMDataset.updated_on, ORMDataset.dataset, ORMDataset.metadata , ORMVersion.version]).select_from(ORMDataset.join(ORMVersion)).gino.all()
+
     return rows[1]
 
 
@@ -42,10 +44,9 @@ async def get_dataset(*, dataset: str = Depends(dataset_dependency)):
     if row is None:
         raise HTTPException(status_code=404, detail=f"Dataset with name {dataset} does not exist")
 
-    versions: List[ORMVersion] = await ORMVersion.query.where(ORMVersion.dataset == dataset).gino.all()
-    # logging.debug(f"VERSIONS: {versions}")
+    versions: List[ORMVersion] = await ORMVersion.select("version").where(ORMVersion.dataset == dataset).gino.all()
     response = Dataset.from_orm(row).dict(by_alias=True)
-    response["versions"] = versions
+    response["versions"] = [version[0] for version in versions]
     return response
 
 

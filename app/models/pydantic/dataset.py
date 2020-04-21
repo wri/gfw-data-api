@@ -9,7 +9,7 @@ from .version import Version
 class Dataset(Base):
     dataset: str
     metadata: Metadata
-    versions: Optional[List[Version]]
+    versions: Optional[List[str]] = list()
 
 
 class DatasetCreateIn(BaseModel):

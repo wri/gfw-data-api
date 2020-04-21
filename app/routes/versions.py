@@ -23,11 +23,15 @@ async def get_version(
     Get basic metadata for a given version
     """
     row: ORMVersion = await ORMVersion.get([dataset, version])
-    assets: List[ORMAsset] = await ORMAsset.query.where(ORMAsset.dataset == dataset).where(ORMAsset.version == version).gino.all()
     if row is None:
         raise HTTPException(status_code=404, detail=f"Version with name {dataset}/{version} does not exist")
+
     response = Version.from_orm(row).dict(by_alias=True)
-    response["assets"] = assets
+
+    assets: List[ORMAsset] = await ORMAsset.select("asset_type", "asset_uri").where(ORMAsset.dataset == dataset).where(
+        ORMAsset.version == version).gino.all()
+    response["assets"] = [(asset[0], asset[1]) for asset in assets]
+
     return response
 
 
