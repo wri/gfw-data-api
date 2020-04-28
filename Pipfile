@@ -22,6 +22,7 @@ email_validator = "*"
 sentry-sdk = "*"
 geoalchemy2 = "*"
 boto3 = "*"
+gino_starlette = "*"
 
 [requires]
 python_version = "3.7"

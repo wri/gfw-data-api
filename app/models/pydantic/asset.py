@@ -1,10 +1,15 @@
 from enum import Enum
+from typing import List, Dict, Any, Optional
+from uuid import UUID
+
+from pydantic import BaseModel
 
 from .base import Base
-from .metadata import Metadata
+from .metadata import AssetMetadata
 
 
 class AssetType(str, Enum):
+    source = "Source"
     vector_tile_cache = "Vector tile cache"
     raster_tile_cache = "Raster tile cache"
     raster_tile_set = "Raster tile set (COG/ GeoTIFF)"
@@ -27,13 +32,24 @@ class Status(str, Enum):
     failed = "failed"
     pending = "pending"
     success = "success"
-    external = "external"
 
 
 class Asset(Base):
+    asset_id: UUID
     dataset: str
     version: str
-    asset_type: bool
+    asset_type: AssetType
     asset_uri: str
-    # status: str
-    metadata: Metadata
+    status: Status
+    is_managed: bool
+    creation_options: Dict[str, Any]
+    history: List[Dict[str, Any]]
+    metadata: AssetMetadata
+
+
+class AssetCreateIn(BaseModel):
+    asset_type: AssetType
+    asset_uri: Optional[str]
+    is_managed: bool
+    creation_options: Dict[str, Any]
+    metadata: Optional[AssetMetadata]

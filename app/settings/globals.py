@@ -1,5 +1,4 @@
 import json
-import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
 
@@ -20,6 +19,7 @@ def get_secret(name: str) -> Dict[str, Any]:
 
 
 ENV = config("ENV", cast=str, default="dev")
+BUCKET = config("BUCKET", cast=str, default=None)
 
 if ENV == "docker" or ENV == "test":
 

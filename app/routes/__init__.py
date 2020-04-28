@@ -1,6 +1,6 @@
-from typing import Type
+from typing import Type, Optional, Union, Dict, Any
 
-from fastapi import Path
+from fastapi import Path, Query
 from ..application import db
 from pydantic import BaseModel
 
@@ -23,19 +23,22 @@ async def version_dependency(
     return version
 
 
-async def update_metadata(row: db.Model, request: BaseModel, model: Type[BaseModel]):
+async def update_data(row: db.Model, input_data: Union[BaseModel, Dict[str, Any]]) -> db.Model:  # , model: Type[BaseModel]):
     """
     Merge updated metadata filed with existing fields
     """
-    updated_fields = request.dict(skip_defaults=True)
+    if isinstance(input_data, BaseModel):
+        input_data = input_data.dict(skip_defaults=True)
 
     # Make sure, existing metadata not mentioned in request remain untouched
-    if "metadata" in updated_fields.keys():
+    if "metadata" in input_data.keys():
         metadata = row.metadata
-        metadata.update(updated_fields["metadata"])
-        updated_fields["metadata"] = metadata
-        new_row = model.from_orm(row)
-        new_row.metadata = metadata
-        await row.update(**new_row.dict(skip_defaults=True)).apply()
+        metadata.update(input_data["metadata"])
+        input_data["metadata"] = metadata
+
+    # new_row = model.from_orm(row)
+    # new_row.metadata = metadata
+
+    await row.update(**input_data).apply()
 
     return row

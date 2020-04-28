@@ -2,20 +2,18 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from .base import Base
-from .metadata import Metadata
-from .version import Version
+from .metadata import DatasetMetadata
 
 
 class Dataset(Base):
     dataset: str
-    metadata: Metadata
+    metadata: DatasetMetadata
     versions: Optional[List[str]] = list()
 
 
 class DatasetCreateIn(BaseModel):
-    metadata: Metadata
+    metadata: DatasetMetadata
 
 
 class DatasetUpdateIn(BaseModel):
-    # dataset: Optional[str]
-    metadata: Metadata
+    metadata: DatasetMetadata

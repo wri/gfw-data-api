@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 @router.get("/{dataset}/{version}/query", response_class=ORJSONResponse, tags=["Query"])
-async def get_query(
+async def query_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),

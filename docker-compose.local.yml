@@ -2,44 +2,23 @@ version: "3"
 
 services:
   app:
-    container_name: fastapi-gino-postgres
-    image: fastapi-gino-postgres
+    container_name: gfw-data-api
+    image: gfw-data-api
+    volumes:
+      - $HOME/.aws:/root/.aws:ro
     environment:
-      - REDIS_IP=cache
-      - REDIS_PORT=6379
       - DB_HOST=database
       - DATABASE=postgres
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_PORT=5432
+      - AWS_DEFAULT_PROFILE=gfw-dev
+      - ENV=docker
     depends_on:
       - database
-      - redis
-
-  worker:
-    container_name: fastapi-gino-postgres-worker
-    image: fastapi-gino-postgres-worker
-    depends_on:
-      - database
-      - redis
-    environment:
-      - REDIS_IP=cache
-      - REDIS_PORT=6379
-      - DB_HOST=database
-      - DATABASE=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_PORT=5432
-    env_file: .env
-
-  redis:
-    image: redis
-    container_name: cache
-    expose:
-      - 6379
 
   database:
-    image: "postgres:latest"
+    image: "gfw/postgres"
     container_name: database
     restart: always
     ports:

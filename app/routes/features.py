@@ -10,7 +10,7 @@ VERSION_REGEX = r"^v\d{1,8}\.?\d{1,3}\.?\d{1,3}$|^latest$"
 @router.get(
     "/{dataset}/{version}/features", response_class=ORJSONResponse, tags=["Features"],
 )
-async def features(
+async def get_features(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
