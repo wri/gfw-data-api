@@ -5,8 +5,9 @@ from pydantic import BaseModel
 
 
 class SourceType(str, Enum):
-    vector = "vector"
     raster = "raster"
+    table = "table"
+    vector = "vector"
 
 
 class Source(BaseModel):

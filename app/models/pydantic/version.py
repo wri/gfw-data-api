@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 
 from pydantic import BaseModel
 
@@ -14,7 +14,8 @@ class Version(Base):
     is_latest: bool = False
     is_mutable: bool = False
     source_type: SourceType
-    source_uri: Optional[List[str]]
+    source_uri: Optional[List[str]] = None
+    copy_source: bool = False
     has_vector_tile_cache: bool = False
     has_raster_tile_cache: bool = False
     has_geostore: bool = False
@@ -22,6 +23,7 @@ class Version(Base):
     has_sql_query: bool = False
     metadata: VersionMetadata
     assets: List[Tuple[str, str]] = list()
+    history: List[Dict[str, Any]]
 
 
 class VersionCreateIn(BaseModel):

@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional, Iterator, Tuple, Union
-from typing.io import BinaryIO, IO
+from typing.io import IO
 
 from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, BackgroundTasks
@@ -11,7 +11,9 @@ from ..models.orm.asset import Asset as ORMAsset
 from ..models.orm.version import Version as ORMVersion
 from ..models.pydantic.version import Version, VersionCreateIn, VersionUpdateIn
 from ..settings.globals import BUCKET
-from ..tasks.datalake import inject_file
+from ..tasks.assets import seed_source_assets
+from ..tasks.data_lake import inject_file
+
 
 router = APIRouter()
 
@@ -74,6 +76,11 @@ async def add_new_version(
     for file_obj, uri in file_uris:
         if file_obj is not None:
             background_tasks.add_task(inject_file, file_obj, uri)
+
+    # Seed source assets based on input type
+    # For vector and tabular data, import data into postgreSQL
+    # For raster data, create geojson with tile extent(s) and raster stats
+    background_tasks.add_task(seed_source_assets, input_data["source_type"], input_data["source_uri"])
 
     return await _version_response(dataset, version, new_version)
 
@@ -179,7 +186,6 @@ def _prepare_sources(
                 detail="Either source_uri must be set, or files need to be attached",
             )
         input_data: Dict[str, Any] = request.dict()
-
 
     file_uris: Iterator[Tuple[Optional[IO], str]] = zip()
 
