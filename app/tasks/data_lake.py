@@ -34,12 +34,8 @@ def get_csv_dialect(s3_uri) -> csv.Dialect:
 
     try:
         dialect: Type[csv.Dialect] = csv.Sniffer().sniff(data)
-        # TODO: Perform various checks on the dialect (e.g., lineseparator,
-        #  delimiter) to make sure it's sane
-
     except csv.Error:
-        # TODO: handle error correctly
-        raise
+        raise TypeError("Not a valid CSV file")
     else:
         return dialect()
 

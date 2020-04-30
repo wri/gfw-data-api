@@ -4,6 +4,7 @@ from typing import Optional, List, Tuple, Dict, Any
 from pydantic import BaseModel
 
 from .base import Base
+from .change_log import ChangeLog
 from .metadata import VersionMetadata
 from .source import SourceType
 
@@ -23,7 +24,7 @@ class Version(Base):
     has_sql_query: bool = False
     metadata: VersionMetadata
     assets: List[Tuple[str, str]] = list()
-    history: List[Dict[str, Any]]
+    change_log: List[ChangeLog]
 
 
 class VersionCreateIn(BaseModel):

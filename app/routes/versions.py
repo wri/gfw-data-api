@@ -9,6 +9,7 @@ from app.routes import dataset_dependency, version_dependency, update_data
 
 from ..models.orm.asset import Asset as ORMAsset
 from ..models.orm.version import Version as ORMVersion
+from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.version import Version, VersionCreateIn, VersionUpdateIn
 from ..settings.globals import BUCKET
 from ..tasks.assets import seed_source_assets
@@ -143,6 +144,25 @@ async def delete_version(
 
     # TODO:
     #  Delete all managed assets and raw data
+
+    return await _version_response(dataset, version, row)
+
+
+@router.post("/{dataset}/{version}/change_log")
+async def version_history(
+        *,
+        dataset: str = Depends(dataset_dependency),
+        version: str = Depends(version_dependency),
+        request: ChangeLog
+):
+    """
+    Log changes for given dataset version
+    """
+    row = await _get_version(dataset, version)
+    change_log = row.change_log
+    change_log.append(request.dict())
+
+    row = await row.update(change_log=change_log).apply()
 
     return await _version_response(dataset, version, row)
 

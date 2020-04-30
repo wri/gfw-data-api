@@ -1,10 +1,12 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, Path, HTTPException
 from fastapi.responses import ORJSONResponse
 
+from app.models.orm.asset import Asset as ORMAsset
 from app.models.pydantic.asset import Asset, AssetCreateIn
+from app.models.pydantic.change_log import ChangeLog
 from app.routes import dataset_dependency, version_dependency
 
 router = APIRouter()
@@ -81,3 +83,46 @@ async def delete_asset(*,
     For managed assets, all resources will be deleted. For non-managed assets, only the link will be deleted.
     """
     pass
+
+
+@router.post("/{dataset}/{version}/{asset_id}/change_log")
+async def asset_history(
+        *,
+        dataset: str = Depends(dataset_dependency),
+        version: str = Depends(version_dependency),
+        asset_id: UUID = Path(...),
+        request: ChangeLog
+):
+    """
+    Log changes for given asset
+    """
+    row = await _get_asset(asset_id)
+    change_log = row.change_log
+    change_log.append(request.dict())
+
+    row = await row.update(change_log=change_log).apply()
+
+    return await _asset_response(row)
+
+
+async def _get_asset(asset_id: UUID) -> ORMAsset:
+    """
+    Fetch asset data, if exists
+    """
+    row: ORMAsset = await ORMAsset.get([asset_id])
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Asset with id {asset_id} does not exists",
+        )
+    return row
+
+
+async def _asset_response(
+     data: ORMAsset
+) -> Dict[str, Any]:
+    """
+    Serialize ORM response
+    """
+    response = Asset.from_orm(data).dict(by_alias=True)
+    return response

@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from .base import Base
+from .change_log import ChangeLog
 from .metadata import AssetMetadata
 
 
@@ -45,6 +46,8 @@ class Asset(Base):
     creation_options: Dict[str, Any]
     history: List[Dict[str, Any]]
     metadata: AssetMetadata
+    change_log: List[ChangeLog]
+
 
 
 class AssetCreateIn(BaseModel):

@@ -13,5 +13,6 @@ class Asset(Base):
     creation_options = db.Column(db.JSONB)
     history = db.Column(db.ARRAY(db.JSONB))
     metadata = db.Column(db.JSONB)
+    change_log = db.Column(db.ARRAY(db.JSONB), default=list())
 
     fk = db.ForeignKeyConstraint(["dataset", "version"], ["versions.dataset", "versions.version"], name="fk")

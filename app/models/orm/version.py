@@ -14,5 +14,6 @@ class Version(Base):
     has_geostore = db.Column(db.Boolean, default=False)
     has_feature_info = db.Column(db.Boolean, default=False)
     metadata = db.Column(db.JSONB)
+    change_log = db.Column(db.ARRAY(db.JSONB), default=list())
 
     fk = db.ForeignKeyConstraint(["dataset"], ["datasets.dataset"], name="fk")
