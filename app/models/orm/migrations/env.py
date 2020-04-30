@@ -1,6 +1,7 @@
 # Native libraries
 import sys
-sys.path.extend(['./'])
+
+sys.path.extend(["./"])
 
 ######################## --- MODELS FOR MIGRATIONS --- ########################
 from app.application import db
@@ -35,7 +36,7 @@ def exclude_tables_from_config(config_):
     return tables
 
 
-exclude_tables = exclude_tables_from_config(config.get_section('alembic:exclude'))
+exclude_tables = exclude_tables_from_config(config.get_section("alembic:exclude"))
 
 
 def include_object(object, name, type_, reflected, compare_to):
@@ -58,7 +59,10 @@ def run_migrations_offline():
 
     """
     context.configure(
-        url=ALEMBIC_CONFIG.url.__to_string__(hide_password=False), target_metadata=target_metadata, literal_binds=True, include_object=include_object
+        url=ALEMBIC_CONFIG.url.__to_string__(hide_password=False),
+        target_metadata=target_metadata,
+        literal_binds=True,
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -79,7 +83,9 @@ def run_migrations_online():
     )
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata, include_object=include_object
+            connection=connection,
+            target_metadata=target_metadata,
+            include_object=include_object,
         )
 
         with context.begin_transaction():

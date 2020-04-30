@@ -12,7 +12,7 @@ from .settings.globals import DATABASE_CONFIG, WRITE_DATABASE_CONFIG
 
 # Set the current engine using a ContextVar to assure
 # that the correct connection is used during concurrent requests
-CURRENT_ENGINE: ContextVar = ContextVar('engine')
+CURRENT_ENGINE: ContextVar = ContextVar("engine")
 
 WRITE_ENGINE: Optional[GinoEngine] = None
 READ_ENGINE: Optional[GinoEngine] = None
@@ -89,10 +89,16 @@ async def startup_event():
     global WRITE_ENGINE
     global READ_ENGINE
 
-    WRITE_ENGINE = await create_engine(WRITE_DATABASE_CONFIG.url, max_size=5, min_size=1)
-    logging.info(f"Database connection pool for write operation created: {WRITE_ENGINE.repr(color=True)}")
+    WRITE_ENGINE = await create_engine(
+        WRITE_DATABASE_CONFIG.url, max_size=5, min_size=1
+    )
+    logging.info(
+        f"Database connection pool for write operation created: {WRITE_ENGINE.repr(color=True)}"
+    )
     READ_ENGINE = await create_engine(DATABASE_CONFIG.url, max_size=10, min_size=5)
-    logging.info(f"Database connection pool for read operation created: {READ_ENGINE.repr(color=True)}")
+    logging.info(
+        f"Database connection pool for read operation created: {READ_ENGINE.repr(color=True)}"
+    )
 
 
 @app.on_event("shutdown")
@@ -104,10 +110,18 @@ async def shutdown_event():
     global READ_ENGINE
 
     if WRITE_ENGINE:
-        logging.info(f"Closing database connection for write operations {WRITE_ENGINE.repr(color=True)}")
+        logging.info(
+            f"Closing database connection for write operations {WRITE_ENGINE.repr(color=True)}"
+        )
         await WRITE_ENGINE.close()
-        logging.info(f"Closed database connection for write operations {WRITE_ENGINE.repr(color=True)}")
+        logging.info(
+            f"Closed database connection for write operations {WRITE_ENGINE.repr(color=True)}"
+        )
     if READ_ENGINE:
-        logging.info(f"Closing database connection for read operations {READ_ENGINE.repr(color=True)}")
+        logging.info(
+            f"Closing database connection for read operations {READ_ENGINE.repr(color=True)}"
+        )
         await READ_ENGINE.close()
-        logging.info(f"Closed database connection for read operations {READ_ENGINE.repr(color=True)}")
+        logging.info(
+            f"Closed database connection for read operations {READ_ENGINE.repr(color=True)}"
+        )

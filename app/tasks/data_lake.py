@@ -12,7 +12,7 @@ import rasterio
 
 from app.settings.globals import BUCKET
 
-S3 = boto3.client("s3", region_name='us-east-1')
+S3 = boto3.client("s3", region_name="us-east-1")
 
 
 def inject_file(file_obj: BinaryIO, path: str):
@@ -26,11 +26,11 @@ def get_csv_dialect(s3_uri) -> csv.Dialect:
 
     o = urlparse(s3_uri, allow_fragments=False)
     bucket = o.netloc
-    key = o.path.lstrip('/')
+    key = o.path.lstrip("/")
 
-    Bytes_range = 'bytes=0-4096'
+    Bytes_range = "bytes=0-4096"
     response = S3.get_object(Bucket=bucket, Key=key, Range=Bytes_range)
-    data = response['Body'].read()
+    data = response["Body"].read()
 
     try:
         dialect: Type[csv.Dialect] = csv.Sniffer().sniff(data)

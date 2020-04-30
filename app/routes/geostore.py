@@ -22,7 +22,7 @@ async def add_new_geostore():
 @router.get(
     "/geostore/{geostore_id}", response_class=ORJSONResponse, tags=["Geostore"],
 )
-async def get_geostore(*, geostore_id: UUID = Path(..., title="geostore_id")):
+async def get_geostore_root(*, geostore_id: UUID = Path(..., title="geostore_id")):
     """
     Retrieve GeoJSON representation for a given geostore ID of any dataset
     """

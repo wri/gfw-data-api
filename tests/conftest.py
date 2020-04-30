@@ -5,6 +5,7 @@ from starlette.testclient import TestClient
 
 environ["TESTING"] = "TRUE"
 
+
 @pytest.fixture
 def client():
     from app.main import app

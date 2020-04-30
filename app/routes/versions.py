@@ -14,6 +14,7 @@ from ..models.pydantic.version import Version, VersionCreateIn, VersionUpdateIn
 from ..settings.globals import BUCKET
 from ..tasks.assets import seed_source_assets
 from ..tasks.data_lake import inject_file
+from ..utils.security import is_authorized
 
 
 router = APIRouter()
@@ -56,6 +57,7 @@ async def add_new_version(
     request: VersionCreateIn,
     files: Optional[List[UploadFile]] = File(None),
     background_tasks: BackgroundTasks,
+    is_authorized: bool = Depends(is_authorized),
 ):
     """
     Create or update a version for a given dataset
@@ -81,7 +83,9 @@ async def add_new_version(
     # Seed source assets based on input type
     # For vector and tabular data, import data into postgreSQL
     # For raster data, create geojson with tile extent(s) and raster stats
-    background_tasks.add_task(seed_source_assets, input_data["source_type"], input_data["source_uri"])
+    background_tasks.add_task(
+        seed_source_assets, input_data["source_type"], input_data["source_uri"]
+    )
 
     return await _version_response(dataset, version, new_version)
 
@@ -99,6 +103,7 @@ async def update_version(
     request: Optional[VersionUpdateIn],
     files: Optional[List[UploadFile]] = File(None),
     background_tasks: BackgroundTasks,
+    is_authorized: bool = Depends(is_authorized),
 ):
     """
     Partially update a version of a given dataset.
@@ -133,6 +138,7 @@ async def delete_version(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
+    is_authorized: bool = Depends(is_authorized),
 ):
     """
     Delete a version
@@ -148,12 +154,13 @@ async def delete_version(
     return await _version_response(dataset, version, row)
 
 
-@router.post("/{dataset}/{version}/change_log")
+@router.post("/{dataset}/{version}/change_log", tags=["Version"])
 async def version_history(
-        *,
-        dataset: str = Depends(dataset_dependency),
-        version: str = Depends(version_dependency),
-        request: ChangeLog
+    *,
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+    request: ChangeLog,
+    is_authorized: bool = Depends(is_authorized),
 ):
     """
     Log changes for given dataset version
@@ -197,7 +204,7 @@ def _prepare_sources(
 ) -> Tuple[Dict[str, Any], Iterator[Tuple[Optional[IO], str]]]:
 
     if request is None:
-        input_data = {}
+        input_data: Dict[str, Any] = {}
     else:
         # Check if either files or source_uri are set, but not both
         if not _true_xor(bool(files), bool(request.source_uri)):
@@ -205,9 +212,9 @@ def _prepare_sources(
                 status_code=400,
                 detail="Either source_uri must be set, or files need to be attached",
             )
-        input_data: Dict[str, Any] = request.dict()
+        input_data = request.dict()
 
-    file_uris: Iterator[Tuple[Optional[IO], str]] = zip()
+    file_uris: Iterator[Tuple[Optional[IO], str]] = zip()  # type: ignore
 
     # If files were uploaded, override source_uri and prepare data lake injection
     if files is not None:

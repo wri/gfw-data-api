@@ -1,4 +1,3 @@
-import logging
 from typing import List, Dict, Any
 
 from asyncpg.exceptions import UniqueViolationError
@@ -14,11 +13,14 @@ from ..models.orm.queries.datasets import all_datasets
 from ..models.pydantic.dataset import Dataset, DatasetCreateIn, DatasetUpdateIn
 from ..application import db
 from ..settings.globals import READER_USERNAME
+from ..utils.security import is_authorized
 
 router = APIRouter()
 
 
-@router.get("/", response_class=ORJSONResponse, tags=["Dataset"], response_model=List[Dataset])
+@router.get(
+    "/", response_class=ORJSONResponse, tags=["Dataset"], response_model=List[Dataset]
+)
 async def get_datasets():
     """
     Get list of all datasets
@@ -27,36 +29,69 @@ async def get_datasets():
     return rows[1]
 
 
-@router.get("/{dataset}", response_class=ORJSONResponse, tags=["Dataset"], response_model=Dataset)
+@router.get(
+    "/{dataset}",
+    response_class=ORJSONResponse,
+    tags=["Dataset"],
+    response_model=Dataset,
+)
 async def get_dataset(*, dataset: str = Depends(dataset_dependency)):
     """
     Get basic metadata and available versions for a given dataset
     """
     row: ORMDataset = await ORMDataset.get(dataset)
     if row is None:
-        raise HTTPException(status_code=404, detail=f"Dataset with name {dataset} does not exist")
+        raise HTTPException(
+            status_code=404, detail=f"Dataset with name {dataset} does not exist"
+        )
 
     return await _dataset_response(dataset, row)
 
 
-@router.put("/{dataset}", response_class=ORJSONResponse, tags=["Dataset"], response_model=Dataset)
-async def create_dataset(*, dataset: str = Depends(dataset_dependency), request: DatasetCreateIn):
+@router.put(
+    "/{dataset}",
+    response_class=ORJSONResponse,
+    tags=["Dataset"],
+    response_model=Dataset,
+)
+async def create_dataset(
+    *,
+    dataset: str = Depends(dataset_dependency),
+    request: DatasetCreateIn,
+    is_authorized: bool = Depends(is_authorized),
+):
     """
     Create or update a dataset
     """
     try:
-        new_dataset: ORMDataset = await ORMDataset.create(dataset=dataset, **request.dict())
+        new_dataset: ORMDataset = await ORMDataset.create(
+            dataset=dataset, **request.dict()
+        )
     except UniqueViolationError:
-        raise HTTPException(status_code=400, detail=f"Dataset with name {dataset} already exists")
+        raise HTTPException(
+            status_code=400, detail=f"Dataset with name {dataset} already exists"
+        )
 
     await db.status(CreateSchema(dataset))
-    await db.status(f"ALTER DEFAULT PRIVILEGES IN SCHEMA {dataset} GRANT SELECT ON TABLES TO {READER_USERNAME};")
+    await db.status(
+        f"ALTER DEFAULT PRIVILEGES IN SCHEMA {dataset} GRANT SELECT ON TABLES TO {READER_USERNAME};"
+    )
 
     return await _dataset_response(dataset, new_dataset)
 
 
-@router.patch("/{dataset}", response_class=ORJSONResponse, tags=["Dataset"], response_model=Dataset)
-async def update_dataset_metadata(*, dataset: str = Depends(dataset_dependency), request: DatasetUpdateIn):
+@router.patch(
+    "/{dataset}",
+    response_class=ORJSONResponse,
+    tags=["Dataset"],
+    response_model=Dataset,
+)
+async def update_dataset_metadata(
+    *,
+    dataset: str = Depends(dataset_dependency),
+    request: DatasetUpdateIn,
+    is_authorized: bool = Depends(is_authorized),
+):
     """
     Partially update a dataset. Only metadata field can be updated. All other fields will be ignored.
     """
@@ -64,15 +99,26 @@ async def update_dataset_metadata(*, dataset: str = Depends(dataset_dependency),
     row: ORMDataset = await ORMDataset.get(dataset)
 
     if row is None:
-        raise HTTPException(status_code=404, detail=f"Dataset with name {dataset} does not exists")
+        raise HTTPException(
+            status_code=404, detail=f"Dataset with name {dataset} does not exists"
+        )
 
     row = await update_data(row, request)
 
     return await _dataset_response(dataset, row)
 
 
-@router.delete("/{dataset}", response_class=ORJSONResponse, tags=["Dataset"], response_model=Dataset)
-async def delete_dataset(*, dataset: str = Depends(dataset_dependency)):
+@router.delete(
+    "/{dataset}",
+    response_class=ORJSONResponse,
+    tags=["Dataset"],
+    response_model=Dataset,
+)
+async def delete_dataset(
+    *,
+    dataset: str = Depends(dataset_dependency),
+    is_authorized: bool = Depends(is_authorized),
+):
     """
     Delete a dataset
     """
@@ -86,7 +132,9 @@ async def delete_dataset(*, dataset: str = Depends(dataset_dependency)):
 
 async def _dataset_response(dataset: str, data: ORMDataset) -> Dict[str, Any]:
 
-    versions: List[ORMVersion] = await ORMVersion.select("version").where(ORMVersion.dataset == dataset).gino.all()
+    versions: List[ORMVersion] = await ORMVersion.select("version").where(
+        ORMVersion.dataset == dataset
+    ).gino.all()
     response = Dataset.from_orm(data).dict(by_alias=True)
     response["versions"] = [version[0] for version in versions]
 

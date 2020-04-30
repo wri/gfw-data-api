@@ -30,7 +30,7 @@ if ENV == "docker" or ENV == "test":
     if ENV == "test":
         READER_DBNAME: str = config("TEST_DATABASE", cast=str)
     else:
-        READER_DBNAME: str = config("DATABASE", cast=str)
+        READER_DBNAME = config("DATABASE", cast=str)
 
     WRITER_USERNAME = READER_USERNAME
     WRITER_PASSWORD = READER_PASSWORD

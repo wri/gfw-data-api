@@ -49,7 +49,6 @@ class Asset(Base):
     change_log: List[ChangeLog]
 
 
-
 class AssetCreateIn(BaseModel):
     asset_type: AssetType
     asset_uri: Optional[str]

@@ -2,7 +2,7 @@ from .base import Base, db
 
 
 class Version(Base):
-    __tablename__ = 'versions'
+    __tablename__ = "versions"
     dataset = db.Column(db.String, primary_key=True)
     version = db.Column(db.String, primary_key=True)
     is_latest = db.Column(db.Boolean, default=False)

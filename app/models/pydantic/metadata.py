@@ -65,7 +65,3 @@ class AssetMetadata(VersionMetadata):
     data_type: Optional[str]
     compression: Optional[str]
     no_data_value: Optional[str]
-
-
-
-

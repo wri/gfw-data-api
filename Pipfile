@@ -9,6 +9,8 @@ bandit = "*"
 flake8 = "*"
 rope = "*"
 watchgod = "*"
+pre-commit = "*"
+detect-secrets = "*"
 
 [packages]
 fastapi = "*"
@@ -23,6 +25,7 @@ sentry-sdk = "*"
 geoalchemy2 = "*"
 boto3 = "*"
 gino_starlette = "*"
+requests = "*"
 
 [requires]
 python_version = "3.7"

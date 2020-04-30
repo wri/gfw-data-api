@@ -23,7 +23,9 @@ async def version_dependency(
     return version
 
 
-async def update_data(row: db.Model, input_data: Union[BaseModel, Dict[str, Any]]) -> db.Model:  # , model: Type[BaseModel]):
+async def update_data(
+    row: db.Model, input_data: Union[BaseModel, Dict[str, Any]]  # type: ignore
+) -> db.Model:  # type: ignore
     """
     Merge updated metadata filed with existing fields
     """

@@ -3,14 +3,18 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.responses import ORJSONResponse
 
-from app.models.pydantic.source import Source
-from app.routes import dataset_dependency, version_dependency
+from ..models.pydantic.source import Source
+from ..routes import dataset_dependency, version_dependency
+from ..utils.security import is_authorized
 
 router = APIRouter()
 
 
 @router.get(
-    "/{dataset}/{version}/sources", response_class=ORJSONResponse, tags=["Sources"], response_model=Source
+    "/{dataset}/{version}/sources",
+    response_class=ORJSONResponse,
+    tags=["Sources"],
+    response_model=Source,
 )
 async def get_sources(
     *,
@@ -24,13 +28,17 @@ async def get_sources(
 
 
 @router.post(
-    "/{dataset}/{version}/sources", response_class=ORJSONResponse, tags=["Sources"], response_model=Source
+    "/{dataset}/{version}/sources",
+    response_class=ORJSONResponse,
+    tags=["Sources"],
+    response_model=Source,
 )
 async def add_new_sources(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
-    files: Optional[List[UploadFile]] = File(None)
+    files: Optional[List[UploadFile]] = File(None),
+    is_authorized: bool = Depends(is_authorized)
 ):
     """
     Add (appends) a new source to the dataset version
@@ -40,17 +48,20 @@ async def add_new_sources(
     #  Copy files to data lake (raw subfolder)
     #  Update all existing assets (append/ partially update if possible, otherwise recreate)
 
-
     pass
 
 
 @router.patch(
-    "/{dataset}/{version}/sources", response_class=ORJSONResponse, tags=["Sources"], response_model=Source
+    "/{dataset}/{version}/sources",
+    response_class=ORJSONResponse,
+    tags=["Sources"],
+    response_model=Source,
 )
 async def update_sources(
     *,
     dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency)
+    version: str = Depends(version_dependency),
+    is_authorized: bool = Depends(is_authorized)
 ):
     """
     Overwrites existing data with data from new source
@@ -59,12 +70,16 @@ async def update_sources(
 
 
 @router.delete(
-    "/{dataset}/{version}/sources", response_class=ORJSONResponse, tags=["Sources"],  response_model=Source
+    "/{dataset}/{version}/sources",
+    response_class=ORJSONResponse,
+    tags=["Sources"],
+    response_model=Source,
 )
 async def delete_sources(
     *,
     dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency)
+    version: str = Depends(version_dependency),
+    is_authorized: bool = Depends(is_authorized)
 ):
     """
     Deletes existing data

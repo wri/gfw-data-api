@@ -2,7 +2,7 @@ from .base import Base, db
 
 
 class Asset(Base):
-    __tablename__ = 'assets'
+    __tablename__ = "assets"
     asset_id = db.Column(db.UUID, primary_key=True)
     dataset = db.Column(db.String, nullable=False)
     version = db.Column(db.String, nullable=False)
@@ -15,4 +15,6 @@ class Asset(Base):
     metadata = db.Column(db.JSONB)
     change_log = db.Column(db.ARRAY(db.JSONB), default=list())
 
-    fk = db.ForeignKeyConstraint(["dataset", "version"], ["versions.dataset", "versions.version"], name="fk")
+    fk = db.ForeignKeyConstraint(
+        ["dataset", "version"], ["versions.dataset", "versions.version"], name="fk"
+    )

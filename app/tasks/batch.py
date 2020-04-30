@@ -8,7 +8,7 @@ client = boto3.client("batch")
 
 
 def submit_batch_jobs(
-    independent_jobs: List[Job], dependent_jobs: Optional[Job] = None
+    independent_jobs: List[Job], dependent_jobs: Optional[List[Job]] = None
 ) -> None:
     """
     Submit multiple batch jobs at once. Submitted batch jobs can depend on each other.
@@ -25,15 +25,17 @@ def submit_batch_jobs(
     # then retry to schedule all dependent jobs
     # until all parent job are scheduled or max retry is reached
     i = 0
+
     while dependent_jobs:
-        _jobs = dependent_jobs
+
+        _jobs: List[Job] = dependent_jobs
         dependent_jobs = list()
 
         for job in _jobs:
             try:
                 depends_on = [
                     {"jobId": scheduled_jobs[parent], "type": "SEQUENTIAL"}
-                    for parent in job.parents
+                    for parent in job.parents  # type: ignore
                 ]
                 scheduled_jobs[job.job_name] = submit_batch_job(job, depends_on)
             except KeyError:
@@ -44,7 +46,7 @@ def submit_batch_jobs(
 
 
 def submit_batch_job(
-    job: Job, depends_on: Optional[List[Dict, str]] = None
+    job: Job, depends_on: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
     """
     Submit job to AWS Batch

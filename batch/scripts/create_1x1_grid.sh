@@ -17,7 +17,7 @@ CREATE MATERIALIZED VIEW $DATASET.{$VERSION}__1x1
 			SELECT $FID_NAME
 				,gfw_grid_1x1_id
 				,gfw_grid_10x10_id
-				,CASE 
+				,CASE
 					WHEN st_geometrytype($GEOMETRY_NAME) = 'ST_GeometryCollection'::TEXT
 						THEN st_collectionextract($GEOMETRY_NAME, 3)
 					ELSE $GEOMETRY_NAME

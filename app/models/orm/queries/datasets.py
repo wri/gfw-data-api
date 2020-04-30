@@ -3,16 +3,16 @@ from ....application import db
 dataset_sql = """
 SELECT
   datasets.*,
-  version_array AS versions 
+  version_array AS versions
 FROM
-  datasets 
+  datasets
   LEFT JOIN
     (
       SELECT
         dataset,
-        ARRAY_AGG(version) AS version_array 
+        ARRAY_AGG(version) AS version_array
       FROM
-        versions 
+        versions
       GROUP BY
         dataset
     )

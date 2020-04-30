@@ -39,6 +39,3 @@ class VersionUpdateIn(BaseModel):
     source_type: Optional[SourceType]
     source_uri: Optional[List[str]]
     metadata: Optional[VersionMetadata]
-
-
-
