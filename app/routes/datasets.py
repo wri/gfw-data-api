@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 
 from asyncpg.exceptions import UniqueViolationError
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
@@ -13,7 +13,7 @@ from ..models.orm.queries.datasets import all_datasets
 from ..models.pydantic.dataset import Dataset, DatasetCreateIn, DatasetUpdateIn
 from ..application import db
 from ..settings.globals import READER_USERNAME
-from ..utils.security import is_authorized
+from ..routes import is_admin
 
 router = APIRouter()
 
@@ -53,12 +53,14 @@ async def get_dataset(*, dataset: str = Depends(dataset_dependency)):
     response_class=ORJSONResponse,
     tags=["Dataset"],
     response_model=Dataset,
+    status_code=201,
 )
 async def create_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
     request: DatasetCreateIn,
-    is_authorized: bool = Depends(is_authorized),
+    is_authorized: bool = Depends(is_admin),
+    response: Response,
 ):
     """
     Create or update a dataset
@@ -76,7 +78,7 @@ async def create_dataset(
     await db.status(
         f"ALTER DEFAULT PRIVILEGES IN SCHEMA {dataset} GRANT SELECT ON TABLES TO {READER_USERNAME};"
     )
-
+    response.headers["Location"] = f"/{dataset}"
     return await _dataset_response(dataset, new_dataset)
 
 
@@ -90,7 +92,7 @@ async def update_dataset_metadata(
     *,
     dataset: str = Depends(dataset_dependency),
     request: DatasetUpdateIn,
-    is_authorized: bool = Depends(is_authorized),
+    is_authorized: bool = Depends(is_admin),
 ):
     """
     Partially update a dataset. Only metadata field can be updated. All other fields will be ignored.
@@ -117,7 +119,7 @@ async def update_dataset_metadata(
 async def delete_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
-    is_authorized: bool = Depends(is_authorized),
+    is_authorized: bool = Depends(is_admin),
 ):
     """
     Delete a dataset

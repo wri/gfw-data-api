@@ -1,6 +1,6 @@
 import csv
-import os
-from typing import Type
+from datetime import datetime
+from typing import Type, Callable, Awaitable, Dict, Any
 
 from typing.io import BinaryIO
 from urllib.parse import urlparse
@@ -15,14 +15,33 @@ from app.settings.globals import BUCKET
 S3 = boto3.client("s3", region_name="us-east-1")
 
 
-def inject_file(file_obj: BinaryIO, path: str):
+async def inject_file(
+    file_obj: BinaryIO, path: str, callback: Callable[[Dict[str, Any]], Awaitable[None]]
+):
     """
     Upload a file-like object to S3 data lake
     """
-    S3.upload_fileobj(file_obj, BUCKET, path)
+    try:
+        S3.upload_fileobj(file_obj, BUCKET, path)
+        status = "success"
+        message = f"Injected file {path} into data lake"
+        detail = None
+    except Exception as e:
+        status = "failed"
+        message = f"Failed to injected file {path} into data lake"
+        detail = str(e)
+
+    await callback(
+        {
+            "datetime": datetime.now(),
+            "status": status,
+            "message": message,
+            "detail": detail,
+        }
+    )
 
 
-def get_csv_dialect(s3_uri) -> csv.Dialect:
+async def get_csv_dialect(s3_uri) -> csv.Dialect:
 
     o = urlparse(s3_uri, allow_fragments=False)
     bucket = o.netloc
@@ -40,7 +59,7 @@ def get_csv_dialect(s3_uri) -> csv.Dialect:
         return dialect()
 
 
-def get_vector_source_driver(s3_uri, zipped=True) -> str:
+async def get_vector_source_driver(s3_uri, zipped=True) -> str:
     if zipped:
         s3_uri = f"zip+{s3_uri}"
 
@@ -54,7 +73,7 @@ def get_vector_source_driver(s3_uri, zipped=True) -> str:
         return driver
 
 
-def get_raster_source_driver(s3_uri) -> str:
+async def get_raster_source_driver(s3_uri) -> str:
     try:
         with rasterio.open(s3_uri) as src:
             driver = src.driver

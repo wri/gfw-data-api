@@ -2,20 +2,25 @@ from typing import List, Dict, Any, Optional, Iterator, Tuple, Union
 from typing.io import IO
 
 from asyncpg.exceptions import UniqueViolationError
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    File,
+    UploadFile,
+    BackgroundTasks,
+    Response,
+)
 from fastapi.responses import ORJSONResponse
-
-from app.routes import dataset_dependency, version_dependency, update_data
 
 from ..models.orm.asset import Asset as ORMAsset
 from ..models.orm.version import Version as ORMVersion
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.version import Version, VersionCreateIn, VersionUpdateIn
+from ..routes import dataset_dependency, is_admin, update_data, version_dependency
 from ..settings.globals import BUCKET
 from ..tasks.assets import seed_source_assets
 from ..tasks.data_lake import inject_file
-from ..utils.security import is_authorized
-
 
 router = APIRouter()
 
@@ -49,6 +54,7 @@ async def get_version(
     response_class=ORJSONResponse,
     tags=["Version"],
     response_model=Version,
+    status_code=201,
 )
 async def add_new_version(
     *,
@@ -57,11 +63,15 @@ async def add_new_version(
     request: VersionCreateIn,
     files: Optional[List[UploadFile]] = File(None),
     background_tasks: BackgroundTasks,
-    is_authorized: bool = Depends(is_authorized),
+    is_authorized: bool = Depends(is_admin),
+    response: Response,
 ):
     """
     Create or update a version for a given dataset
     """
+
+    async def callback(message: Dict[str, Any]) -> None:
+        await _version_history(message, dataset, version)
 
     input_data, file_uris = _prepare_sources(dataset, version, request, files)
 
@@ -78,7 +88,7 @@ async def add_new_version(
     # Inject appended files, if any
     for file_obj, uri in file_uris:
         if file_obj is not None:
-            background_tasks.add_task(inject_file, file_obj, uri)
+            background_tasks.add_task(inject_file, file_obj, uri, callback)
 
     # Seed source assets based on input type
     # For vector and tabular data, import data into postgreSQL
@@ -87,6 +97,7 @@ async def add_new_version(
         seed_source_assets, input_data["source_type"], input_data["source_uri"]
     )
 
+    response.headers["Location"] = f"/{dataset}/{version}"
     return await _version_response(dataset, version, new_version)
 
 
@@ -103,7 +114,7 @@ async def update_version(
     request: Optional[VersionUpdateIn],
     files: Optional[List[UploadFile]] = File(None),
     background_tasks: BackgroundTasks,
-    is_authorized: bool = Depends(is_authorized),
+    is_authorized: bool = Depends(is_admin),
 ):
     """
     Partially update a version of a given dataset.
@@ -138,7 +149,7 @@ async def delete_version(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
-    is_authorized: bool = Depends(is_authorized),
+    is_authorized: bool = Depends(is_admin),
 ):
     """
     Delete a version
@@ -160,14 +171,22 @@ async def version_history(
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
     request: ChangeLog,
-    is_authorized: bool = Depends(is_authorized),
+    is_authorized: bool = Depends(is_admin),
 ):
     """
     Log changes for given dataset version
     """
+    message = request.dict()
+    return await _version_history(message, dataset, version)
+
+
+async def _version_history(message: Dict[str, Any], dataset: str, version: str):
+    """
+    Update version history in database and return updated values
+    """
     row = await _get_version(dataset, version)
     change_log = row.change_log
-    change_log.append(request.dict())
+    change_log.append(message)
 
     row = await row.update(change_log=change_log).apply()
 
@@ -175,6 +194,9 @@ async def version_history(
 
 
 async def _get_version(dataset: str, version: str) -> ORMVersion:
+    """
+    Returns version, if exists or raises an Exception
+    """
     row: ORMVersion = await ORMVersion.get([dataset, version])
     if row is None:
         raise HTTPException(
@@ -187,6 +209,10 @@ async def _get_version(dataset: str, version: str) -> ORMVersion:
 async def _version_response(
     dataset: str, version: str, data: ORMVersion
 ) -> Dict[str, Any]:
+    """
+    Assure that version responses are parsed correctly and include associated assets
+    """
+
     assets: List[ORMAsset] = await ORMAsset.select("asset_type", "asset_uri").where(
         ORMAsset.dataset == dataset
     ).where(ORMAsset.version == version).gino.all()
@@ -202,7 +228,6 @@ def _prepare_sources(
     request: Union[VersionCreateIn, Optional[VersionUpdateIn]],
     files: Optional[List[UploadFile]],
 ) -> Tuple[Dict[str, Any], Iterator[Tuple[Optional[IO], str]]]:
-
     if request is None:
         input_data: Dict[str, Any] = {}
     else:

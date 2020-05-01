@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.responses import ORJSONResponse
 
 from ..models.pydantic.source import Source
-from ..routes import dataset_dependency, version_dependency
-from ..utils.security import is_authorized
+from ..routes import dataset_dependency, is_admin, version_dependency
+
 
 router = APIRouter()
 
@@ -38,7 +38,7 @@ async def add_new_sources(
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
     files: Optional[List[UploadFile]] = File(None),
-    is_authorized: bool = Depends(is_authorized)
+    is_authorized: bool = Depends(is_admin)
 ):
     """
     Add (appends) a new source to the dataset version
@@ -61,7 +61,7 @@ async def update_sources(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
-    is_authorized: bool = Depends(is_authorized)
+    is_authorized: bool = Depends(is_admin)
 ):
     """
     Overwrites existing data with data from new source
@@ -79,7 +79,7 @@ async def delete_sources(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
-    is_authorized: bool = Depends(is_authorized)
+    is_authorized: bool = Depends(is_admin)
 ):
     """
     Deletes existing data
