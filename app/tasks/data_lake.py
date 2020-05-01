@@ -40,6 +40,23 @@ async def inject_file(
         }
     )
 
+    # create default asset for version (in database)
+    # Version status = pending
+    #
+    # Schedule batch job queues depending on source type
+    # -> Vector
+    # -> Tabular
+    # -> Raster
+    # Batch job would log to asset history
+
+    # Monitor job queue to make sure all job terminate and once done, set version status to saved and register newly created asset with version
+    # if job failed, set version status to failed with message "Default asset failed"
+
+
+#########
+
+# TODO: the following fucntions should be moved to a Batch job
+
 
 async def get_csv_dialect(s3_uri) -> csv.Dialect:
 
@@ -53,6 +70,7 @@ async def get_csv_dialect(s3_uri) -> csv.Dialect:
 
     try:
         dialect: Type[csv.Dialect] = csv.Sniffer().sniff(data)
+        # TODO: verify if dialect is correct (delimiter etc)
     except csv.Error:
         raise TypeError("Not a valid CSV file")
     else:

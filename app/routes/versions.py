@@ -61,7 +61,7 @@ async def add_new_version(
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
     request: VersionCreateIn,
-    files: Optional[List[UploadFile]] = File(None),
+    files: Optional[UploadFile] = File(None),
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
     response: Response,
@@ -73,7 +73,7 @@ async def add_new_version(
     async def callback(message: Dict[str, Any]) -> None:
         await _version_history(message, dataset, version)
 
-    input_data, file_uris = _prepare_sources(dataset, version, request, files)
+    input_data, file_obj, uri = _prepare_sources(dataset, version, request, files)
 
     # Register version with DB
     try:
@@ -86,12 +86,11 @@ async def add_new_version(
         )
 
     # Inject appended files, if any
-    for file_obj, uri in file_uris:
-        if file_obj is not None:
-            background_tasks.add_task(inject_file, file_obj, uri, callback)
+    if file_obj is not None:
+        background_tasks.add_task(inject_file, file_obj, uri, callback)
 
     # Seed source assets based on input type
-    # For vector and tabular data, import data into postgreSQL
+    # For vector and tabular data, import data into PostgreSQL
     # For raster data, create geojson with tile extent(s) and raster stats
     background_tasks.add_task(
         seed_source_assets, input_data["source_type"], input_data["source_uri"]
@@ -123,16 +122,14 @@ async def update_version(
     """
     row: ORMVersion = await _get_version(dataset, version)
 
-    input_data, file_uris = _prepare_sources(dataset, version, request, files)
+    input_data, file_obj, uri = _prepare_sources(dataset, version, request, files)
 
     row = await update_data(row, input_data)
 
     # TODO: If files is not None, delete all files in RAW folder
 
-    # Inject appended files, if any
-    for file_obj, uri in file_uris:
-        if file_obj is not None:
-            background_tasks.add_task(inject_file, file_obj, uri)
+    if file_obj is not None:
+        background_tasks.add_task(inject_file, file_obj, uri)
 
     # TODO: If files is not None, delete and recreate all Assets based on new input files
 
@@ -226,42 +223,30 @@ def _prepare_sources(
     dataset: str,
     version: str,
     request: Union[VersionCreateIn, Optional[VersionUpdateIn]],
-    files: Optional[List[UploadFile]],
-) -> Tuple[Dict[str, Any], Iterator[Tuple[Optional[IO], str]]]:
+    uploaded_file: Optional[UploadFile],
+) -> Tuple[Dict[str, Any], Optional[IO], Optional[str]]:
+
     if request is None:
         input_data: Dict[str, Any] = {}
     else:
         # Check if either files or source_uri are set, but not both
-        if not _true_xor(bool(files), bool(request.source_uri)):
+        if not _true_xor(bool(uploaded_file), bool(request.source_uri)):
             raise HTTPException(
                 status_code=400,
-                detail="Either source_uri must be set, or files need to be attached",
+                detail="Either source_uri must be set, or a file need to be attached",
             )
         input_data = request.dict()
 
-    file_uris: Iterator[Tuple[Optional[IO], str]] = zip()  # type: ignore
+    if uploaded_file:
+        file_obj = uploaded_file.file
+        uri: Optional[str] = f"{dataset}/{version}/raw/{uploaded_file.filename}"
+        input_data["source_uri"] = [f"s3://{BUCKET}/{uri}"]
 
-    # If files were uploaded, override source_uri and prepare data lake injection
-    if files is not None:
-        uris = list()
-        file_objs = list()
-        input_data["source_uri"] = list()
-        for f in files:
-            uri = f"{dataset}/{version}/raw/{f.filename}"
-            input_data["source_uri"].append(f"s3://{BUCKET}/{uri}")
-            uris.append(uri)
-            file_objs.append(f.file)
-        file_uris = zip(file_objs, uris)
+    else:
+        file_obj = None
+        uri = None
 
-    # TODO: verify content itself
-    #  This may be an asynchronous task. But in that case we would need to have a status field for version
-    #  which updates once source files are validated.
-    #  - Raster sources should be either geotiffs
-    #  (alternatively readable by `gdalinfo` but need to verify if this works with rasterio),
-    #  or a geojson which features describe remote geotiffs
-    #  - Vector data should a source readable by `orginfo`
-
-    return input_data, file_uris
+    return input_data, file_obj, uri
 
 
 def _true_xor(*args):

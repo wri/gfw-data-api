@@ -7,7 +7,7 @@ from app.models.pydantic.jobs import Job
 client = boto3.client("batch")
 
 
-def submit_batch_jobs(
+def scheduler(
     independent_jobs: List[Job], dependent_jobs: Optional[List[Job]] = None
 ) -> None:
     """
