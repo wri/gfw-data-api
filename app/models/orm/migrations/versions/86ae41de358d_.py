@@ -37,7 +37,7 @@ else:
 
 def upgrade():
 
-    op.execute(f"""CREATE EXTENSION postgis;""")
+    op.execute(f"""CREATE EXTENSION IF NOT EXISTS postgis;""")
 
     #### Create read only user
     op.execute(

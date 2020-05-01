@@ -41,7 +41,14 @@ class ContextualGino(Gino):
 
 
 app = FastAPI()
-db = ContextualGino(app)
+db = ContextualGino(
+    app,
+    host=DATABASE_CONFIG.host,
+    port=DATABASE_CONFIG.port,
+    user=DATABASE_CONFIG.username,
+    password=DATABASE_CONFIG.password,
+    database=DATABASE_CONFIG.database,
+)
 
 
 async def get_engine(method: str) -> GinoEngine:
@@ -88,6 +95,9 @@ async def startup_event():
 
     global WRITE_ENGINE
     global READ_ENGINE
+
+    logging.warning(f"write: {WRITE_ENGINE}")
+    logging.warning(f"read: {READ_ENGINE}")
 
     WRITE_ENGINE = await create_engine(
         WRITE_DATABASE_CONFIG.url, max_size=5, min_size=1

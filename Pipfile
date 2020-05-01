@@ -26,6 +26,7 @@ geoalchemy2 = "*"
 boto3 = "*"
 gino_starlette = "*"
 requests = "*"
+orjson = "*"
 
 [requires]
 python_version = "3.7"

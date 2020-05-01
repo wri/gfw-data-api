@@ -2,28 +2,31 @@ version: "3"
 
 services:
   app:
-    container_name: gfw-data-api
-    image: gfw-data-api
+    build: .
     volumes:
       - $HOME/.aws:/root/.aws:ro
     environment:
       - DB_HOST=database
-      - DATABASE=postgres
-      - DB_USER=postgres
+      - DATABASE=geostore
+      - DB_USER=gfw
       - DB_PASSWORD=postgres
       - DB_PORT=5432
       - AWS_DEFAULT_PROFILE=gfw-dev
       - ENV=docker
+    ports:
+      - 8008:80
     depends_on:
       - database
 
   database:
-    image: "gfw/postgres"
-    container_name: database
+    container_name: gfw-data-api-database
+    image: postgis/postgis:11-3.0-alpine
     restart: always
     ports:
       - 54320:5432
     environment:
+      - POSTGRES_DB=geostore
+      - POSTGRES_USER=gfw
       - POSTGRES_PASSWORD=postgres
     volumes:
       - database_data:/var/lib/postgresql/data

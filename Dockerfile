@@ -1,11 +1,12 @@
 FROM tiangolo/uvicorn-gunicorn:python3.7-alpine3.8
 
-RUN apk update && apk add gcc libffi-dev g++ postgresql-dev make
+RUN apk update && apk add gcc libffi-dev g++ postgresql-dev make rust cargo
 
-RUN pip install pipenv
+RUN pip install --upgrade pip && pip install pipenv
 
 COPY Pipfile Pipfile
 COPY Pipfile.lock Pipfile.lock
+
 
 RUN pipenv install --system --deploy --ignore-pipfile
 
@@ -13,6 +14,6 @@ RUN apk del libffi-dev g++ make
 
 COPY ./app /app/app
 
-COPY ./alembic.ini /app/alembic.ini
+COPY alembic.ini /app/alembic.ini
 
-COPY ./app/settings/prestart.sh /app/prestart.sh
+COPY app/settings/prestart.sh /app/prestart.sh
