@@ -3,5 +3,8 @@
 *__pycache__*
 *.idea*
 
+# MyPy
+.mypy_cache
+
 # Environment Files
 /.env

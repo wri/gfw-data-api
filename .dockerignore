@@ -4,7 +4,8 @@
 *.idea*
 
 # Docker Files
-docker-compose.yml
+docker-compose.dev.yml
+docker-compose.test.yml
 
 # Ignore Files
 .gitignore
