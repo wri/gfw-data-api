@@ -1,7 +1,10 @@
+import logging
+
 import pytest
 from alembic.config import main
 from starlette.config import environ
-from starlette.testclient import TestClient
+from fastapi.testclient import TestClient
+
 
 environ["TESTING"] = "TRUE"
 

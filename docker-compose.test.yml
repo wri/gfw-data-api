@@ -6,12 +6,12 @@ services:
     volumes:
       - $HOME/.aws:/root/.aws:ro
     environment:
-      - DB_HOST=database
+      - DB_HOST=test_database
       - DATABASE=_test
       - DB_USER=gfw
       - DB_PASSWORD=postgres  # pragma: allowlist secret
       - DB_PORT=5432
-      - DB_HOST_RO=database
+      - DB_HOST_RO=test_database
       - DATABASE_RO=_test
       - DB_USER_RO=gfw
       - DB_PASSWORD_RO=postgres  # pragma: allowlist secret
@@ -22,20 +22,20 @@ services:
     ports:
       - 8008:80
     depends_on:
-      - database
+      - test_database
 
-  database:
-    container_name: gfw-data-api-database
+  test_database:
+    container_name: gfw-data-api-test-database
     image: postgis/postgis:11-3.0-alpine
-    restart: always
     ports:
       - 54320:5432
     environment:
+      - POSTGRES_PORT=5432
       - POSTGRES_DB=_test
       - POSTGRES_USER=gfw
       - POSTGRES_PASSWORD=postgres  # pragma: allowlist secret
     volumes:
-      - database_data:/var/lib/postgresql/data
+      - test_database_data:/var/lib/postgresql/data
 
 volumes:
-  database_data:
+  test_database_data:
