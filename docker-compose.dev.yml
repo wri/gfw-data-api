@@ -9,10 +9,15 @@ services:
       - DB_HOST=database
       - DATABASE=geostore
       - DB_USER=gfw
-      - DB_PASSWORD=postgres
+      - DB_PASSWORD=postgres  # pragma: allowlist secret
       - DB_PORT=5432
+      - DB_HOST_RO=database
+      - DATABASE_RO=geostore
+      - DB_USER_RO=gfw
+      - DB_PASSWORD_RO=postgres  # pragma: allowlist secret
+      - DB_PORT_RO=5432
       - AWS_DEFAULT_PROFILE=gfw-dev
-      - ENV=docker
+      - LOG_LEVEL=debug
     ports:
       - 8008:80
     depends_on:
@@ -27,7 +32,7 @@ services:
     environment:
       - POSTGRES_DB=geostore
       - POSTGRES_USER=gfw
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=postgres  # pragma: allowlist secret
     volumes:
       - database_data:/var/lib/postgresql/data
 

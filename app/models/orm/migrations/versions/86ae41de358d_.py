@@ -21,18 +21,10 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
-if os.environ["ENV"] == "docker":
-    USERNAME = os.environ["DB_USER"]
-    PASSWORD = os.environ["DB_PASSWORD"]
-    DBNAME = os.environ["DATABASE"]
-else:
-    client = boto3.client("secretsmanager")
-    response = client.get_secret_value(SecretId=os.environ["SECRET_NAME"])
-    secrets = json.loads(response["SecretString"])
 
-    USERNAME = secrets["username"]
-    PASSWORD = secrets["password"]
-    DBNAME = secrets["dbname"]
+USERNAME = os.environ["DB_USER"]
+PASSWORD = os.environ["DB_PASSWORD"]
+DBNAME = os.environ["DATABASE"]
 
 
 def upgrade():

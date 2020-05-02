@@ -41,6 +41,11 @@ class ContextualGino(Gino):
 
 
 app = FastAPI()
+
+# Create Contextual Database, using default connection and pool size = 0
+# We will bind actual connection pools based on path operation using middleware
+# This allows us to query load-balanced Aurora read replicas for read-only operations
+# and Aurora Write Node for write operations
 db = ContextualGino(
     app,
     host=DATABASE_CONFIG.host,
@@ -48,6 +53,7 @@ db = ContextualGino(
     user=DATABASE_CONFIG.username,
     password=DATABASE_CONFIG.password,
     database=DATABASE_CONFIG.database,
+    pool_min_size=0,
 )
 
 
@@ -95,9 +101,6 @@ async def startup_event():
 
     global WRITE_ENGINE
     global READ_ENGINE
-
-    logging.warning(f"write: {WRITE_ENGINE}")
-    logging.warning(f"read: {READ_ENGINE}")
 
     WRITE_ENGINE = await create_engine(
         WRITE_DATABASE_CONFIG.url, max_size=5, min_size=1

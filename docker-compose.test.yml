@@ -1,0 +1,41 @@
+version: "3"
+
+services:
+  app:
+    build: .
+    volumes:
+      - $HOME/.aws:/root/.aws:ro
+    environment:
+      - DB_HOST=database
+      - DATABASE=_test
+      - DB_USER=gfw
+      - DB_PASSWORD=postgres  # pragma: allowlist secret
+      - DB_PORT=5432
+      - DB_HOST_RO=database
+      - DATABASE_RO=_test
+      - DB_USER_RO=gfw
+      - DB_PASSWORD_RO=postgres  # pragma: allowlist secret
+      - DB_PORT_RO=5432
+      - AWS_DEFAULT_PROFILE=gfw-dev
+      - LOG_LEVEL=debug
+    entrypoint: pytest
+    ports:
+      - 8008:80
+    depends_on:
+      - database
+
+  database:
+    container_name: gfw-data-api-database
+    image: postgis/postgis:11-3.0-alpine
+    restart: always
+    ports:
+      - 54320:5432
+    environment:
+      - POSTGRES_DB=_test
+      - POSTGRES_USER=gfw
+      - POSTGRES_PASSWORD=postgres  # pragma: allowlist secret
+    volumes:
+      - database_data:/var/lib/postgresql/data
+
+volumes:
+  database_data:
