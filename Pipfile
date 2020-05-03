@@ -11,6 +11,7 @@ rope = "*"
 watchgod = "*"
 pre-commit = "*"
 detect-secrets = "*"
+pytest = "*"
 
 [packages]
 fastapi = "*"

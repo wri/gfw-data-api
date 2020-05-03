@@ -2,9 +2,15 @@ version: "3"
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        - ENV=test
+    container_name: app_test
     volumes:
       - $HOME/.aws:/root/.aws:ro
+      - ./app:/app/app:ro
+      - ./tests:/app/tests:ro
     environment:
       - DB_HOST=test_database
       - DATABASE=_test
@@ -19,8 +25,6 @@ services:
       - AWS_DEFAULT_PROFILE=gfw-dev
       - LOG_LEVEL=debug
     entrypoint: pytest
-    ports:
-      - 8008:80
     depends_on:
       - test_database
 
