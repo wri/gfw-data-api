@@ -1,8 +1,24 @@
 from typing import List
-
+from app.models.pydantic.source import SourceType
 
 def seed_source_assets(source_type: str, source_uri: List[str]) -> None:
-    pass
+    # create default asset for version (in database)
+    # Version status = pending
+
+    # Schedule batch job queues depending on source type
+    if source_type == SourceType.vector:
+        _vector_source_asset(source_type, source_uri)
+    elif source_type == SourceType.tabular:
+        _table_source_asset(source_type, source_uri)
+    elif source_type == SourceType.raster:
+        _raster_source_asset(source_type, source_uri)
+    else:
+        raise ValueError(f"Unsupported asset source type {source_type})")
+
+    # Batch job would log to asset history
+
+    # Monitor job queue to make sure all job terminate and once done, set version status to saved and register newly created asset with version
+    # if job failed, set version status to failed with message "Default asset failed"
 
 
 def _vector_source_asset():
