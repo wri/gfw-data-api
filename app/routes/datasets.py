@@ -18,6 +18,10 @@ from ..routes import is_admin
 router = APIRouter()
 
 
+# TODO:
+#  - set default asset type for a dataset (can be overriden by versions)
+
+
 @router.get(
     "/", response_class=ORJSONResponse, tags=["Dataset"], response_model=List[Dataset]
 )

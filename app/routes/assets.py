@@ -12,6 +12,10 @@ from ..routes import dataset_dependency, is_admin, version_dependency
 
 router = APIRouter()
 
+# TODO:
+#  - Assets should have config parameters to allow specifying creation options
+#  -- might be good to have different endpoints for different asset types to be able to validate config params?
+
 
 @router.get(
     "/{dataset}/{version}/assets",

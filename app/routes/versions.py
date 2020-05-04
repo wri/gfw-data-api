@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, Iterator, Tuple, Union
+from typing import List, Dict, Any, Optional, Tuple, Union
 from typing.io import IO
 
 from asyncpg.exceptions import UniqueViolationError
@@ -23,6 +23,10 @@ from ..tasks.assets import seed_source_assets
 from ..tasks.data_lake import inject_file
 
 router = APIRouter()
+
+
+# TODO:
+#  - inherit/ override default asset type for new versions
 
 
 @router.get(

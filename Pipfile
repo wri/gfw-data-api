@@ -28,6 +28,8 @@ boto3 = "*"
 gino_starlette = "*"
 requests = "*"
 orjson = "*"
+pytest-cov = "*"
+python-multipart = "*"
 
 [requires]
 python_version = "3.7"
