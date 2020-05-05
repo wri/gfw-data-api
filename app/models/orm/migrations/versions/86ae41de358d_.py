@@ -234,4 +234,8 @@ def downgrade():
     op.execute("""DROP TYPE IF EXISTS public.gfw_grid_type;""")
     op.execute("""DROP MATERIALIZED VIEW IF EXISTS public.gfw_grid_1x1;""")
     op.execute("""DROP FUNCTION IF EXISTS public.gfw_create_fishnet;""")
+    op.execute(
+        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE SELECT ON TABLES FROM {DB_USER_RO};"
+    )
+    op.execute(f"REVOKE CONNECT ON DATABASE {DATABASE_RO} FROM {DB_USER_RO};")
     op.execute(f"""DROP USER IF EXISTS {DB_USER_RO}""")

@@ -3,7 +3,7 @@ FROM tiangolo/uvicorn-gunicorn:python3.7-alpine3.8
 # Optional build argument for different environments
 ARG ENV
 
-RUN apk update && apk add gcc libffi-dev g++ postgresql-dev make
+RUN apk update && apk add gcc libffi-dev g++ postgresql-dev make postgresql-client
 
 RUN pip install --upgrade pip && pip install pipenv
 
@@ -40,9 +40,12 @@ COPY alembic.ini /app/alembic.ini
 
 COPY app/settings/prestart.sh /app/prestart.sh
 
+COPY wait_for_postgres.sh /usr/local/bin/wait_for_postgres.sh
+RUN chmod +x /usr/local/bin/wait_for_postgres.sh
+
 # Set CMD depending on environment
 CMD if [ "$ENV" = "test" ]; then \
-	    pytest; \
+	    wait_for_postgres.sh pytest; \
     elif [ "$ENV" = "dev" ]; then \
 	    /start-reload.sh; \
 	else \
