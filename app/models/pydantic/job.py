@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from pydantic import BaseModel
 
@@ -8,6 +8,7 @@ class Job(BaseModel):
     job_queue: str
     job_definition: str
     command: List[str]
+    environment: Dict[str, str] = {}
     vcpus: int = 1
     memory: int = 500
     attempts: int = 2

@@ -6,12 +6,11 @@ import boto3
 
 from app.models.pydantic.job import Job
 
-client = boto3.client("batch")
 
-async def execute(jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]) -> None:
+def execute(jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]) -> None:
     scheduled_jobs = schedule(jobs)
 
-    await poll_jobs(scheduled_jobs.values(), callback)
+    return poll_jobs(scheduled_jobs.values(), callback)
 
 
 def schedule(
@@ -37,7 +36,7 @@ def schedule(
     # until all parent job are scheduled or max retry is reached
     i = 0
 
-    while len(jobs) != scheduled_jobs:
+    while len(jobs) != len(scheduled_jobs):
         for job in jobs:
             if job.job_name not in scheduled_jobs and all([parent in scheduled_jobs for parent in job.parents]):
                 depends_on = [
@@ -45,8 +44,6 @@ def schedule(
                     for parent in job.parents  # type: ignore
                 ]
                 scheduled_jobs[job.job_name] = submit_batch_job(job, depends_on)
-
-                scheduled_jobs[job.job_name] = submit_batch_job(job)
 
         i += 1
         if i > 7:
@@ -56,15 +53,16 @@ def schedule(
 
 
 def poll_jobs(job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable[None]]) -> bool:
+    client = boto3.client("batch")
     failed_jobs = set()
     completed_jobs = set()
     pending_jobs = set(job_ids)
 
     while True:
-        response = client.describe_jobs(jobs=pending_jobs.difference(completed_jobs))
+        response = client.describe_jobs(jobs=list(pending_jobs.difference(completed_jobs)))
 
         for job in response['jobs']:
-            if job['status'] == 'COMPLETED':
+            if job['status'] == 'SUCCEEDED':
                 callback({
                     "datetime": datetime.now(),
                     "status": "success",
@@ -77,7 +75,7 @@ def poll_jobs(job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable
                     "datetime": datetime.now(),
                     "status": "failed",
                     "message": f"Job {job['jobName']} failed during asset creation",
-                    "detail": job['statusReason'],
+                    "detail": job.get('statusReason', None),
                 })
                 failed_jobs.add(job['jobId'])
 
@@ -107,6 +105,7 @@ def submit_batch_job(
     """
     Submit job to AWS Batch
     """
+    client = boto3.client("batch")
 
     if depends_on is None:
         depends_on = list()
