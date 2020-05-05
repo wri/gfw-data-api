@@ -26,6 +26,7 @@ services:
       - LOG_LEVEL=debug
     ports:
       - 8008:80
+    entrypoint: wait_for_postgres.sh /start-reload.sh
     depends_on:
       - database
 

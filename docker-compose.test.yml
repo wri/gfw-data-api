@@ -38,11 +38,6 @@ services:
       - POSTGRES_PASSWORD=postgres  # pragma: allowlist secret
     volumes:
       - test_database_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gfw"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
 volumes:
   test_database_data:

@@ -28,12 +28,3 @@ COPY app/settings/prestart.sh /app/prestart.sh
 
 COPY wait_for_postgres.sh /usr/local/bin/wait_for_postgres.sh
 RUN chmod +x /usr/local/bin/wait_for_postgres.sh
-
-# Set CMD depending on environment
-CMD if [ "$ENV" = "test" ]; then \
-	    wait_for_postgres.sh pytest; \
-    elif [ "$ENV" = "dev" ]; then \
-	    wait_for_postgres.sh /start-reload.sh; \
-	else \
-	    /start.sh; \
-	fi
