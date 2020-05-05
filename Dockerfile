@@ -33,7 +33,7 @@ RUN chmod +x /usr/local/bin/wait_for_postgres.sh
 CMD if [ "$ENV" = "test" ]; then \
 	    wait_for_postgres.sh pytest; \
     elif [ "$ENV" = "dev" ]; then \
-	    /start-reload.sh; \
+	    wait_for_postgres.sh /start-reload.sh; \
 	else \
 	    /start.sh; \
 	fi
