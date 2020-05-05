@@ -8,7 +8,6 @@ services:
         - ENV=test
     container_name: app_test
     volumes:
-      - $HOME/.aws:/root/.aws:ro
       - ./app:/app/app:ro
       - ./tests:/app/tests:ro
     environment:
@@ -22,10 +21,6 @@ services:
       - DB_USER_RO=gfw_readonly
       - DB_PASSWORD_RO=readonly  # pragma: allowlist secret
       - DB_PORT_RO=5432
-      - AWS_DEFAULT_PROFILE=gfw-dev
-      - AWS_ACCESS_KEY_ID
-      - AWS_SECRET_ACCESS_KEY
-      - AWS_DEFAULT_REGION
       - LOG_LEVEL=debug
     entrypoint: pytest
     depends_on:

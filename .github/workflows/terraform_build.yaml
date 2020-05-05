@@ -11,11 +11,6 @@ jobs:
     - uses: actions/checkout@v1
 
     - name: Test with pytest
-      env:
-        ENV: dev
-        AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_dev }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_dev }}
-        AWS_DEFAULT_REGION: ${{ secrets.aws_region_dev }}
       run: |
         ./scripts/test -b ${{github.ref}} -k ${{ secrets.aws_key_dev }} -s ${{ secrets.aws_secret_dev }}
 
