@@ -19,8 +19,8 @@ services:
       - DB_PORT=5432
       - DB_HOST_RO=test_database
       - DATABASE_RO=_test
-      - DB_USER_RO=gfw
-      - DB_PASSWORD_RO=postgres  # pragma: allowlist secret
+      - DB_USER_RO=gfw_readonly
+      - DB_PASSWORD_RO=readonly  # pragma: allowlist secret
       - DB_PORT_RO=5432
       - AWS_DEFAULT_PROFILE=gfw-dev
       - LOG_LEVEL=debug

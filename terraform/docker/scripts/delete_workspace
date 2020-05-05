@@ -1,0 +1,37 @@
+#!/bin/bash
+
+set -e
+
+if [ "${ENV}" != "dev" ]
+then
+  echo "Environment not set to 'dev'"
+  exit 1
+fi
+
+if [ -f "/root/.aws/credentials" ]; then
+    export AWS_PROFILE=gfw-${ENV}
+    unset AWS_ACCESS_KEY_ID
+    unset AWS_SECRET_ACCESS_KEY
+    unset AWS_DEFAULT_REGION
+
+    echo "Using environment ${ENV} and AWS_PROFILE ${AWS_PROFILE}"
+else
+  echo "Using environment ${ENV} and AWS_ACCESS_KEY_ID"
+fi
+
+prefix="refs/heads/"
+cur_branch=$(echo "${1#"$prefix"}" | tr "/" "-")
+
+TERRAFORM_DIR="/usr/local/src/terraform"
+pushd "${TERRAFORM_DIR}"
+
+terraform workspace select "${cur_branch}"
+terraform destroy \
+        -var-file="vars/terraform-${ENV}.tfvars" \
+        -auto-approve
+terraform workspace select default
+terraform workspace delete "${cur_branch}"
+
+
+
+

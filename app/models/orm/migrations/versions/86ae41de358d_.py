@@ -22,9 +22,9 @@ branch_labels = None
 depends_on = None
 
 
-USERNAME = os.environ["DB_USER"]
-PASSWORD = os.environ["DB_PASSWORD"]
-DBNAME = os.environ["DATABASE"]
+DB_USER_RO = os.environ["DB_USER_RO"]
+DB_PASSWORD_RO = os.environ["DB_PASSWORD_RO"]
+DATABASE_RO = os.environ["DATABASE_RO"]
 
 
 def upgrade():
@@ -40,16 +40,16 @@ def upgrade():
                    IF NOT EXISTS (
                       SELECT                       -- SELECT list can stay empty for this
                       FROM   pg_catalog.pg_roles
-                      WHERE  rolname = '{USERNAME}') THEN
-                      CREATE ROLE {USERNAME} LOGIN PASSWORD '{PASSWORD}';
+                      WHERE  rolname = '{DB_USER_RO}') THEN
+                      CREATE ROLE {DB_USER_RO} LOGIN PASSWORD '{DB_PASSWORD_RO}';
                    END IF;
                 END
                 $do$;
                 """
     )
-    op.execute(f"GRANT CONNECT ON DATABASE {DBNAME} TO {USERNAME};")
+    op.execute(f"GRANT CONNECT ON DATABASE {DATABASE_RO} TO {DB_USER_RO};")
     op.execute(
-        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {USERNAME};"
+        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {DB_USER_RO};"
     )
 
     #### Create Fishnet Function
@@ -234,4 +234,4 @@ def downgrade():
     op.execute("""DROP TYPE IF EXISTS public.gfw_grid_type;""")
     op.execute("""DROP MATERIALIZED VIEW IF EXISTS public.gfw_grid_1x1;""")
     op.execute("""DROP FUNCTION IF EXISTS public.gfw_create_fishnet;""")
-    # op.execute(f"""DROP USER IF EXISTS {USERNAME}""")
+    op.execute(f"""DROP USER IF EXISTS {DB_USER_RO}""")
