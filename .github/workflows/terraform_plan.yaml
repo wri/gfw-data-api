@@ -8,8 +8,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - name: Build Lambda layers
-      run: ./scripts/cibuild
     - name: Plan production
       if: success() && contains(github.base_ref, 'master')
       env:
