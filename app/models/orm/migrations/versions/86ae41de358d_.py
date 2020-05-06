@@ -15,16 +15,13 @@ import geoalchemy2
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
+from app.settings.globals import READER_USERNAME, READER_PASSWORD, READER_DBNAME
+
 # revision identifiers, used by Alembic.
 revision = "e47ec2fc3c51"
 down_revision = None
 branch_labels = None
 depends_on = None
-
-
-DB_USER_RO = os.environ["DB_USER_RO"]
-DB_PASSWORD_RO = os.environ["DB_PASSWORD_RO"]
-DATABASE_RO = os.environ["DATABASE_RO"]
 
 
 def upgrade():
@@ -40,16 +37,16 @@ def upgrade():
                    IF NOT EXISTS (
                       SELECT                       -- SELECT list can stay empty for this
                       FROM   pg_catalog.pg_roles
-                      WHERE  rolname = '{DB_USER_RO}') THEN
-                      CREATE ROLE {DB_USER_RO} LOGIN PASSWORD '{DB_PASSWORD_RO}';
+                      WHERE  rolname = '{READER_USERNAME}') THEN
+                      CREATE ROLE {READER_USERNAME} LOGIN PASSWORD '{READER_PASSWORD}';
                    END IF;
                 END
                 $do$;
                 """
     )
-    op.execute(f"GRANT CONNECT ON DATABASE {DATABASE_RO} TO {DB_USER_RO};")
+    op.execute(f"GRANT CONNECT ON DATABASE {READER_DBNAME} TO {READER_USERNAME};")
     op.execute(
-        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {DB_USER_RO};"
+        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {READER_USERNAME};"
     )
 
     #### Create Fishnet Function
@@ -86,6 +83,7 @@ def upgrade():
     #### Create 1x1 degree grid as materialized view
     op.execute(
         """
+        DROP MATERIALIZED VIEW IF EXISTS public.gfw_grid_1x1 CASCADE;
         CREATE MATERIALIZED VIEW public.gfw_grid_1x1
         TABLESPACE pg_default
         AS
@@ -133,6 +131,7 @@ def upgrade():
     #### Create custom data type gfw_grid_type
     op.execute(
         """
+    DROP TYPE IF EXISTS public.gfw_grid_type CASCADE;
     CREATE TYPE public.gfw_grid_type AS (gfw_grid_1x1 text, gfw_grid_10x10 text, geom geometry);
     """
     )
@@ -235,7 +234,7 @@ def downgrade():
     op.execute("""DROP MATERIALIZED VIEW IF EXISTS public.gfw_grid_1x1;""")
     op.execute("""DROP FUNCTION IF EXISTS public.gfw_create_fishnet;""")
     op.execute(
-        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE SELECT ON TABLES FROM {DB_USER_RO};"
+        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE SELECT ON TABLES FROM {READER_USERNAME};"
     )
-    op.execute(f"REVOKE CONNECT ON DATABASE {DATABASE_RO} FROM {DB_USER_RO};")
-    op.execute(f"""DROP USER IF EXISTS {DB_USER_RO}""")
+    op.execute(f"REVOKE CONNECT ON DATABASE {READER_DBNAME} FROM {READER_USERNAME};")
+    op.execute(f"""DROP USER IF EXISTS {READER_USERNAME}""")

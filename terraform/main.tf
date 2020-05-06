@@ -52,7 +52,8 @@ module "fargate_autoscaling" {
   auto_scaling_max_cpu_util    = 75
   auto_scaling_min_capacity    = 0
   security_group_ids           = [data.terraform_remote_state.core.outputs.postgresql_security_group_id, data.terraform_remote_state.core.outputs.data_api_load_balancer_security_group_id]
-  task_role_policy_arn         = aws_iam_policy.postgresql-secrets_policy.arn
+  custom_task_role_policy_arn  = aws_iam_policy.postgresql-secrets_policy.arn
+  custom_task_execution_role_policy_arn  = aws_iam_policy.postgresql-secrets_policy.arn
   container_definition         = data.template_file.container_definition.rendered
 
 }

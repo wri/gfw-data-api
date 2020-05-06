@@ -14,44 +14,12 @@
     ],
   "secrets": [
       {
-        "name": "DB_HOST",
-        "valueFrom": "${writer_secret_arn}/host"
+        "name": "DB_WRITER_SECRET",
+        "valueFrom": "${writer_secret_arn}"
       },
        {
-        "name": "DATABASE",
-        "valueFrom": "${writer_secret_arn}/dbname"
-      },
-       {
-        "name": "DB_USER",
-        "valueFrom": "${writer_secret_arn}/username"
-      },
-       {
-        "name": "DB_PASSWORD",
-        "valueFrom": "${writer_secret_arn}/password"
-      },
-       {
-        "name": "DB_PORT",
-        "valueFrom": "${writer_secret_arn}/port"
-      },
-      {
-        "name": "DB_HOST_RO",
-        "valueFrom": "${reader_secret_arn}/host"
-      },
-       {
-        "name": "DATABASE_RO",
-        "valueFrom": "${reader_secret_arn}/dbname"
-      },
-       {
-        "name": "DB_USER_RO",
-        "valueFrom": "${reader_secret_arn}/username"
-      },
-       {
-        "name": "DB_PASSWORD_RO",
-        "valueFrom": "${reader_secret_arn}/password"
-      },
-       {
-        "name": "DB_PORT_RO",
-        "valueFrom": "${reader_secret_arn}/port"
+        "name": "DB_READER_SECRET",
+        "valueFrom": "${writer_secret_arn}"
       }
     ],
   "portMappings": [
