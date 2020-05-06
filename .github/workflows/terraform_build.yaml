@@ -22,7 +22,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_production }}
         AWS_DEFAULT_REGION: ${{ secrets.aws_region_production }}
       run: |
-        ./scripts/infra plan
+        ./scripts/infra plan -w ${{ github.ref }}
         ./scripts/infra apply
 
     - name: Deploy staging
@@ -33,7 +33,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_staging }}
         AWS_DEFAULT_REGION: ${{ secrets.aws_region_staging }}
       run: |
-        ./scripts/infra plan
+        ./scripts/infra plan -w ${{ github.ref }}
         ./scripts/infra apply
 
     - name: Deploy dev
@@ -44,5 +44,5 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_dev }}
         AWS_DEFAULT_REGION: ${{ secrets.aws_region_dev }}
       run: |
-        ./scripts/infra plan
+        ./scripts/infra plan -w ${{ github.ref }}
         ./scripts/infra apply

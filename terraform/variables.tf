@@ -12,3 +12,5 @@ variable "container_name" { default = "gfw-data-api" }
 variable "container_port" { default = 80 }
 
 variable "log_level" {}
+
+variable "log_retention" {default = 30 }

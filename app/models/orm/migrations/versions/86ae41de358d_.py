@@ -83,7 +83,6 @@ def upgrade():
     #### Create 1x1 degree grid as materialized view
     op.execute(
         """
-        DROP MATERIALIZED VIEW IF EXISTS public.gfw_grid_1x1 CASCADE;
         CREATE MATERIALIZED VIEW public.gfw_grid_1x1
         TABLESPACE pg_default
         AS
@@ -131,7 +130,6 @@ def upgrade():
     #### Create custom data type gfw_grid_type
     op.execute(
         """
-    DROP TYPE IF EXISTS public.gfw_grid_type CASCADE;
     CREATE TYPE public.gfw_grid_type AS (gfw_grid_1x1 text, gfw_grid_10x10 text, geom geometry);
     """
     )

@@ -39,35 +39,21 @@ module "fargate_autoscaling" {
   vpc_id                       = data.terraform_remote_state.core.outputs.vpc_id
   private_subnet_ids           = data.terraform_remote_state.core.outputs.private_subnet_ids
   public_subnet_ids            = data.terraform_remote_state.core.outputs.public_subnet_ids
-  load_balancer_arn            = data.terraform_remote_state.core.outputs.load_balancer_arn
-  load_balancer_security_group = data.terraform_remote_state.core.outputs.load_balancer_security_group_id
+//  load_balancer_arn            = data.terraform_remote_state.core.outputs.load_balancer_arn
+//  load_balancer_security_group = data.terraform_remote_state.core.outputs.load_balancer_security_group_id
   container_name               = var.container_name
   container_port               = var.container_port
-  listener_port                = data.terraform_remote_state.core.outputs.data_api_listener_port
-  desired_count                = 0
+  listener_port                = 80 #data.terraform_remote_state.core.outputs.data_api_listener_port
+  desired_count                = 1
   fargate_cpu                  = 256
   fargate_memory               = 2048
   auto_scaling_cooldown        = 300
   auto_scaling_max_capacity    = 15
   auto_scaling_max_cpu_util    = 75
-  auto_scaling_min_capacity    = 0
+  auto_scaling_min_capacity    = 1
   security_group_ids           = [data.terraform_remote_state.core.outputs.postgresql_security_group_id, data.terraform_remote_state.core.outputs.data_api_load_balancer_security_group_id]
-  custom_task_role_policy_arn  = aws_iam_policy.postgresql-secrets_policy.arn
-  custom_task_execution_role_policy_arn  = aws_iam_policy.postgresql-secrets_policy.arn
+  task_role_policies  = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn]
+  task_execution_role_policies  = [data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn, data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn]
   container_definition         = data.template_file.container_definition.rendered
 
-}
-
-
-module "postgresql-secrets_policy" {
-  source = "git::https://github.com/cloudposse/terraform-aws-iam-policy-document-aggregator.git?ref=0.2.0"
-  source_documents = [
-    data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy
-  ]
-}
-
-resource "aws_iam_policy" "postgresql-secrets_policy" {
-  name   = "${local.project}-postgresql-secrets_policy"
-  policy = module.postgresql-secrets_policy.result_document
 }
