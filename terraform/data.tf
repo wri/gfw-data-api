@@ -19,11 +19,11 @@ data "template_file" "container_definition" {
 
     log_group = aws_cloudwatch_log_group.default.name
 
-   reader_secret_arn =  data.terraform_remote_state.core.outputs.secrets_postgresql-reader_arn
-    writer_secret_arn  =  data.terraform_remote_state.core.outputs.secrets_postgresql-writer_arn
-    log_level   = var.log_level
-    project     = local.project
-    environment = var.environment
-    aws_region  = var.region
+    reader_secret_arn = data.terraform_remote_state.core.outputs.secrets_postgresql-reader_arn
+    writer_secret_arn = data.terraform_remote_state.core.outputs.secrets_postgresql-writer_arn
+    log_level         = var.log_level
+    project           = local.project
+    environment       = var.environment
+    aws_region        = var.region
   }
 }
