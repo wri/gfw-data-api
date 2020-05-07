@@ -81,8 +81,7 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
       # select or create the current workspace
       echo "Terraform plan - Running pre-plan init"
       terraform init \
-        -backend-config=vars/backend-${ENV}.tfvars \
-        "$@"
+        -backend-config=vars/backend-${ENV}.tfvars
       select_workspace "${WORKSPACE}"
       echo "Terraform plan - Running plan"
       terraform plan \
