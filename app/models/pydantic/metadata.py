@@ -40,8 +40,8 @@ class FieldMetadata(BaseModel):
     field_alias: Optional[str]
     field_description: Optional[str]
     field_type: str
-    is_feature_info: Optional[bool]
-    is_filter: Optional[bool]
+    is_feature_info: bool = False if "geom" in field_name_ else True
+    is_filter: bool = False if "geom" in field_name_ else True
 
 
 class RasterTable(BaseModel):

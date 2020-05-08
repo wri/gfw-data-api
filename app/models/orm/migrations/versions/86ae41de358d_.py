@@ -225,9 +225,16 @@ def downgrade():
     op.drop_table("versions")
     op.drop_index("geostore_gfw_geostore_id_idx", table_name="geostore")
     op.drop_table("geostore")
+
+    conn = op.get_bind()
+    res = conn.execute("SELECT dataset FROM public.datasets")
+    rows = res.fetchall()
+
     op.drop_table("datasets")
     # ### end Alembic commands ###
 
+    for row in rows:
+        op.execute(f"""DROP SCHEMA IF EXISTS {row.dataset} CASCADE;""")
     op.execute("""DROP TYPE IF EXISTS public.gfw_grid_type;""")
     op.execute("""DROP MATERIALIZED VIEW IF EXISTS public.gfw_grid_1x1;""")
     op.execute("""DROP FUNCTION IF EXISTS public.gfw_create_fishnet;""")
