@@ -1,7 +1,16 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 
 from pydantic import BaseModel, Field
 from datetime import date
+
+
+class FieldMetadata(BaseModel):
+    field_name_: str = Field(..., alias="field_name")
+    field_alias: Optional[str]
+    field_description: Optional[str]
+    field_type: str
+    is_feature_info: bool = True
+    is_filter: bool = True
 
 
 class DatasetMetadata(BaseModel):
@@ -35,29 +44,12 @@ class VersionMetadata(DatasetMetadata):
     data_updates: Optional[str]
 
 
-class FieldMetadata(BaseModel):
-    field_name_: str = Field(..., alias="field_name")
-    field_alias: Optional[str]
-    field_description: Optional[str]
-    field_type: str
-    is_feature_info: bool = True
-    is_filter: bool = True
-
-
 class RasterTable(BaseModel):
     value: int
     description: str
 
 
-class AssetMetadata(VersionMetadata):
-    asset_type: Optional[Dict[str, Any]]
-    url: Optional[str]
-
-    # Tablular/ Vector data
-    fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
-    has_geostore: Optional[bool]
-    has_feature_info: Optional[bool]
-
+class RasterTileSetMetadata(BaseModel):
     # Raster Files/ Raster Tilesets
     raster_statistics: Optional[Dict[str, Any]]
     raster_table: Optional[List[RasterTable]]
@@ -65,3 +57,14 @@ class AssetMetadata(VersionMetadata):
     data_type: Optional[str]
     compression: Optional[str]
     no_data_value: Optional[str]
+
+
+class VectorTileCacheMetadata(BaseModel):
+    min_zoom: int
+    max_zoom: int
+
+
+class AssetMetadata(VersionMetadata):
+    asset_type: Optional[Dict[str, Any]]
+    url: Optional[str]
+    advanced: Optional[Union[RasterTileSetMetadata, VectorTileCacheMetadata]]

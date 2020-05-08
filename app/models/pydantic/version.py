@@ -1,11 +1,11 @@
 from enum import Enum
 from typing import Optional, List, Tuple, Dict, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .base import Base
 from .change_log import ChangeLog
-from .metadata import VersionMetadata
+from .metadata import VersionMetadata, FieldMetadata
 from .source import SourceType
 
 
@@ -16,13 +16,12 @@ class Version(Base):
     is_mutable: bool = False
     source_type: SourceType
     source_uri: Optional[List[str]] = None
-    copy_source: bool = False
-    has_vector_tile_cache: bool = False
-    has_raster_tile_cache: bool = False
-    has_geostore: bool = False
-    has_feature_info: bool = False
-    has_sql_query: bool = False
     metadata: VersionMetadata
+
+    # Tablular/ Vector data only
+    fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
+    has_geostore: Optional[bool]
+
     assets: List[Tuple[str, str]] = list()
     change_log: List[ChangeLog]
 

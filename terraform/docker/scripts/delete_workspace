@@ -8,6 +8,35 @@ then
   exit 1
 fi
 
+
+function select_workspace {
+
+  # get current terraform workspaces
+  mapfile -t workspaces < <(terraform workspace list)
+
+  # Check if there is already a workspace called after the current git branch and select it
+  # Create workspace if it does not yet exist
+  found=false
+  for workspace in "${workspaces[@]}"
+  do
+      w=$(echo "$workspace" | tr -d " \"" | tr -d "*\"")
+      if [ "$w" == "$1" ]
+      then
+        found=true
+        break
+      fi
+  done
+
+  echo "Setting workspace to '$1'"
+  if $found
+  then
+    terraform workspace select "$1"
+  else
+    terraform workspace new "$1"
+  fi
+}
+
+
 if [ -f "/root/.aws/credentials" ]; then
     export AWS_PROFILE=gfw-${ENV}
     unset AWS_ACCESS_KEY_ID
@@ -19,13 +48,33 @@ else
   echo "Using environment ${ENV} and AWS_ACCESS_KEY_ID"
 fi
 
-prefix="refs/heads/"
-cur_branch=$(echo "${1#"$prefix"}" | tr "/" "-")
 
 TERRAFORM_DIR="/usr/local/src/terraform"
 pushd "${TERRAFORM_DIR}"
 
-terraform workspace select "${cur_branch}"
+terraform init \
+  -backend-config=vars/backend-${ENV}.tfvars
+
+
+# get current git branch and replace / with -
+if [ -z "${1}" ]; then
+  echo "No target branch set. Using current branch"
+  read -r cur_branch < <(git rev-parse --abbrev-ref HEAD | tr "/" "-")
+else
+  echo "Target branch set to ${1}"
+  prefix="refs/heads/"
+  cur_branch=$(echo "${1#"$prefix"}" | tr "/" "-")
+fi
+
+# select workspace
+if [ "$cur_branch" == "master" ] || [ "$cur_branch" == "develop" ] || [ "$cur_branch" == "default" ]
+then
+  echo "Cannot delete default branch"
+  exit 1
+else
+  select_workspace "$cur_branch"
+fi
+
 terraform destroy \
         -var-file="vars/terraform-${ENV}.tfvars" \
         -auto-approve
