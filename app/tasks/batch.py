@@ -1,11 +1,13 @@
 from typing import Any, Dict, List, Optional, Callable, Awaitable, Set
 from time import sleep
 from datetime import datetime
+import os
 
 from app.models.pydantic.job import Job
 
 POLL_WAIT_TIME = 30
 BATCH_CLIENT = None
+REGION = os.environ.get("REGION", "us-east-1")
 
 
 def execute(jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]) -> None:
@@ -19,7 +21,7 @@ def get_batch_client():
 
     global BATCH_CLIENT
     if BATCH_CLIENT is None:
-        BATCH_CLIENT = boto3.client("batch")
+        BATCH_CLIENT = boto3.client("batch", region_name=REGION)
     return BATCH_CLIENT
 
 
