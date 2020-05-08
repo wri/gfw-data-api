@@ -1,7 +1,6 @@
 import json
-import os
 from pathlib import Path
-from typing import Optional, Mapping
+from typing import Optional
 
 from starlette.config import Config
 from starlette.datastructures import Secret

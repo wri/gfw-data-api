@@ -30,7 +30,7 @@ services:
     container_name: gfw-data-api-test-database
     image: postgis/postgis:11-3.0-alpine
     ports:
-      - 54320:5432
+      - 54321:5432
     environment:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=_test

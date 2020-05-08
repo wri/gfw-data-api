@@ -9,10 +9,8 @@ class Version(Base):
     is_mutable = db.Column(db.Boolean, default=False)
     source_type = db.Column(db.String, nullable=False)
     source_uri = db.Column(db.ARRAY(db.String))
-    has_vector_tile_cache = db.Column(db.Boolean, default=False)
-    has_raster_tile_cache = db.Column(db.Boolean, default=False)
+    fields = db.Column(db.JSONB)
     has_geostore = db.Column(db.Boolean, default=False)
-    has_feature_info = db.Column(db.Boolean, default=False)
     metadata = db.Column(db.JSONB)
     change_log = db.Column(db.ARRAY(db.JSONB), default=list())
 
