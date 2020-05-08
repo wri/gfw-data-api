@@ -11,6 +11,7 @@ services:
     volumes:
       - $HOME/.aws:/root/.aws:ro
       - ./app:/app/app
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - DB_HOST=database
       - DATABASE=geostore

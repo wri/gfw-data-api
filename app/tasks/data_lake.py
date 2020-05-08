@@ -5,8 +5,6 @@ from typing.io import BinaryIO
 
 import boto3
 
-S3 = boto3.client("s3")
-
 from app.settings.globals import BUCKET
 
 
@@ -16,8 +14,10 @@ async def inject_file(
     """
     Upload a file-like object to S3 data lake
     """
+    s3 = boto3.client("s3")
+
     try:
-        S3.upload_fileobj(file_obj, BUCKET, path)
+        s3.upload_fileobj(file_obj, BUCKET, path)
         status = "success"
         message = f"Injected file {path} into data lake"
         detail = None

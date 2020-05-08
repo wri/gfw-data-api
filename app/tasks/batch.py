@@ -6,6 +6,8 @@ import boto3
 
 from app.models.pydantic.job import Job
 
+POLL_WAIT_TIME = 30
+
 
 def execute(jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]) -> None:
     scheduled_jobs = schedule(jobs)
@@ -53,13 +55,14 @@ def schedule(
 
 
 def poll_jobs(job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable[None]]) -> bool:
-    client = boto3.client("batch")
+    client = boto3.client("batch", region_name="us-east-1")
     failed_jobs = set()
     completed_jobs = set()
     pending_jobs = set(job_ids)
 
     while True:
         response = client.describe_jobs(jobs=list(pending_jobs.difference(completed_jobs)))
+        print(response)
 
         for job in response['jobs']:
             if job['status'] == 'SUCCEEDED':
@@ -96,7 +99,7 @@ def poll_jobs(job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable
             })
             return False
 
-        sleep(30)
+        sleep(POLL_WAIT_TIME)
 
 
 def submit_batch_job(
@@ -105,7 +108,7 @@ def submit_batch_job(
     """
     Submit job to AWS Batch
     """
-    client = boto3.client("batch")
+    client = boto3.client("batch", region_name="us-east-1")
 
     if depends_on is None:
         depends_on = list()

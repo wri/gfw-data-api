@@ -11,6 +11,7 @@ services:
       - $HOME/.aws:/root/.aws:ro
       - ./app:/app/app:ro
       - ./tests:/app/tests:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - DB_HOST=test_database
       - DATABASE=_test
