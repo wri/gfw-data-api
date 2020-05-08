@@ -34,4 +34,3 @@ async def inject_file(
             "detail": detail,
         }
     )
-

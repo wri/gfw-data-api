@@ -1,9 +1,9 @@
-import logging
 from asyncio import Future
 from contextvars import ContextVar
 from typing import Optional
 
 from fastapi import FastAPI, Request
+from fastapi.logger import logger
 from gino import create_engine
 from gino_starlette import Gino, GinoEngine
 
@@ -28,11 +28,11 @@ class ContextualGino(Gino):
         try:
             e = CURRENT_ENGINE.get()
             bind = e.result()
-            logging.warning(f"Set bind to {bind.repr(color=True)}")
+            logger.info(f"Set bind to {bind.repr(color=True)}")
             return bind
         except LookupError:
             # not in a request
-            logging.warning("Not in a request, using default bind")
+            logger.info("Not in a request, using default bind")
             return self._bind
 
     @bind.setter
@@ -63,10 +63,10 @@ async def get_engine(method: str) -> GinoEngine:
     """
     write_methods = ["PUT", "PATCH", "POST", "DELETE"]
     if method in write_methods:
-        logging.warning("Use write engine")
+        logger.info("Use write engine")
         engine: GinoEngine = WRITE_ENGINE
     else:
-        logging.warning("Use read engine")
+        logger.info("Use read engine")
         engine = READ_ENGINE
     return engine
 
@@ -105,11 +105,11 @@ async def startup_event():
     WRITE_ENGINE = await create_engine(
         WRITE_DATABASE_CONFIG.url, max_size=5, min_size=1
     )
-    logging.warning(
+    logger.debug(
         f"Database connection pool for write operation created: {WRITE_ENGINE.repr(color=True)}"
     )
     READ_ENGINE = await create_engine(DATABASE_CONFIG.url, max_size=10, min_size=5)
-    logging.warning(
+    logger.debug(
         f"Database connection pool for read operation created: {READ_ENGINE.repr(color=True)}"
     )
 
@@ -123,18 +123,18 @@ async def shutdown_event():
     global READ_ENGINE
 
     if WRITE_ENGINE:
-        logging.warning(
+        logger.info(
             f"Closing database connection for write operations {WRITE_ENGINE.repr(color=True)}"
         )
         await WRITE_ENGINE.close()
-        logging.warning(
+        logger.info(
             f"Closed database connection for write operations {WRITE_ENGINE.repr(color=True)}"
         )
     if READ_ENGINE:
-        logging.warning(
+        logger.info(
             f"Closing database connection for read operations {READ_ENGINE.repr(color=True)}"
         )
         await READ_ENGINE.close()
-        logging.warning(
+        logger.info(
             f"Closed database connection for read operations {READ_ENGINE.repr(color=True)}"
         )

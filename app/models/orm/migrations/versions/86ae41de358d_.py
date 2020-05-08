@@ -15,16 +15,13 @@ import geoalchemy2
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
+from app.settings.globals import READER_USERNAME, READER_PASSWORD, READER_DBNAME
+
 # revision identifiers, used by Alembic.
 revision = "e47ec2fc3c51"
 down_revision = None
 branch_labels = None
 depends_on = None
-
-
-USERNAME = os.environ["DB_USER"]
-PASSWORD = os.environ["DB_PASSWORD"]
-DBNAME = os.environ["DATABASE"]
 
 
 def upgrade():
@@ -40,16 +37,16 @@ def upgrade():
                    IF NOT EXISTS (
                       SELECT                       -- SELECT list can stay empty for this
                       FROM   pg_catalog.pg_roles
-                      WHERE  rolname = '{USERNAME}') THEN
-                      CREATE ROLE {USERNAME} LOGIN PASSWORD '{PASSWORD}';
+                      WHERE  rolname = '{READER_USERNAME}') THEN
+                      CREATE ROLE {READER_USERNAME} LOGIN PASSWORD '{READER_PASSWORD}';
                    END IF;
                 END
                 $do$;
                 """
     )
-    op.execute(f"GRANT CONNECT ON DATABASE {DBNAME} TO {USERNAME};")
+    op.execute(f"GRANT CONNECT ON DATABASE {READER_DBNAME} TO {READER_USERNAME};")
     op.execute(
-        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {USERNAME};"
+        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {READER_USERNAME};"
     )
 
     #### Create Fishnet Function
@@ -234,4 +231,8 @@ def downgrade():
     op.execute("""DROP TYPE IF EXISTS public.gfw_grid_type;""")
     op.execute("""DROP MATERIALIZED VIEW IF EXISTS public.gfw_grid_1x1;""")
     op.execute("""DROP FUNCTION IF EXISTS public.gfw_create_fishnet;""")
-    # op.execute(f"""DROP USER IF EXISTS {USERNAME}""")
+    op.execute(
+        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE SELECT ON TABLES FROM {READER_USERNAME};"
+    )
+    op.execute(f"REVOKE CONNECT ON DATABASE {READER_DBNAME} FROM {READER_USERNAME};")
+    op.execute(f"""DROP USER IF EXISTS {READER_USERNAME}""")

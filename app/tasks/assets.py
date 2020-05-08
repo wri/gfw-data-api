@@ -1,6 +1,7 @@
 from typing import List
 from app.models.pydantic.source import SourceType
 
+
 def seed_source_assets(source_type: str, source_uri: List[str]) -> None:
     # create default asset for version (in database)
     # Version status = pending
@@ -8,7 +9,7 @@ def seed_source_assets(source_type: str, source_uri: List[str]) -> None:
     # Schedule batch job queues depending on source type
     if source_type == SourceType.vector:
         _vector_source_asset(source_type, source_uri)
-    elif source_type == SourceType.tabular:
+    elif source_type == SourceType.table:
         _table_source_asset(source_type, source_uri)
     elif source_type == SourceType.raster:
         _raster_source_asset(source_type, source_uri)
@@ -21,7 +22,7 @@ def seed_source_assets(source_type: str, source_uri: List[str]) -> None:
     # if job failed, set version status to failed with message "Default asset failed"
 
 
-def _vector_source_asset():
+def _vector_source_asset(source_type: str, source_uri: List[str]):
     # check if input data are in a readable format (using ogrinfo)
     # import data using ogr2ogr
 
@@ -34,7 +35,7 @@ def _vector_source_asset():
     pass
 
 
-def _table_source_asset():
+def _table_source_asset(source_type: str, source_uri: List[str]):
     # check if input data are in a readable format (must be csv or tsv file)
     # Create table
     #   either use provided schema or guess schema using csvkit
@@ -44,5 +45,5 @@ def _table_source_asset():
     pass
 
 
-def _raster_source_asset():
+def _raster_source_asset(source_type: str, source_uri: List[str]):
     pass

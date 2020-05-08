@@ -1,0 +1,41 @@
+# Distribution / packaging
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+*.pyc
+node_modules/
+
+# Serverless directories
+.serverless
+
+# pycharm
+.idea/
+.DS_Store
+
+# environment files
+.env
+.envrc
+
+# any calculated raster stats
+*.tif.aux.xml
+
+lambda.zip
+.mypy_cache/
+.pytest_cache/
+.terraform/
+venv/
+venvpy/
+test/test_data/*

@@ -1,1 +1,2 @@
-environment                 = "dev"
+environment = "dev"
+log_level   = "debug"

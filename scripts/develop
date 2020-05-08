@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -e
+
+docker-compose -f docker-compose.dev.yml build app
+docker-compose -f docker-compose.dev.yml up --abort-on-container-exit --remove-orphans --build
