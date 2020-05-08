@@ -32,7 +32,7 @@ module "container_registry" {
 }
 
 module "fargate_autoscaling" {
-  source                       = "git::https://github.com/wri/gfw-terraform-modules.git//modules/fargate_autoscaling?ref=v0.1.0"
+  source                       = "git::https://github.com/wri/gfw-terraform-modules.git//modules/fargate_autoscaling?ref=v0.1.1"
   project                      = local.project
   name_suffix                  = local.name_suffix
   tags                         = local.tags
