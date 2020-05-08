@@ -1,0 +1,2 @@
+CREATE TABLE {schema}.{table}_y{year}w{week} PARTITION OF {schema}.{table}
+    FOR VALUES FROM ('{start}') TO ('{end}');

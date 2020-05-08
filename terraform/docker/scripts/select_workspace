@@ -1,0 +1,66 @@
+#!/bin/bash
+
+function select_workspace {
+
+  # get current terraform workspaces
+  mapfile -t workspaces < <(terraform workspace list)
+
+  # Check if there is already a workspace called after the current git branch and select it
+  # Create workspace if it does not yet exist
+  found=false
+  for workspace in "${workspaces[@]}"
+  do
+      w=$(echo "$workspace" | tr -d " \"" | tr -d "*\"")
+      if [ "$w" == "$1" ]
+      then
+        found=true
+        break
+      fi
+  done
+
+  echo "Setting workspace to '$1'"
+  if $found
+  then
+    terraform workspace select "$1"
+  else
+    terraform workspace new "$1"
+  fi
+}
+
+
+if [ -z "${ENV}" ]; then
+  ENV=dev
+fi
+
+if [ -f "/root/.aws/credentials" ]; then
+    export AWS_PROFILE=gfw-${ENV}
+    unset AWS_ACCESS_KEY_ID
+    unset AWS_SECRET_ACCESS_KEY
+    unset AWS_DEFAULT_REGION
+
+    echo "Using environment ${ENV} and AWS_PROFILE ${AWS_PROFILE}"
+else
+  echo "Using environment ${ENV} and AWS_ACCESS_KEY_ID"
+fi
+
+
+# get current git branch and replace / with -
+if [ -z "${1}" ]; then
+  echo "No target branch set. Using current branch"
+  read -r cur_branch < <(git rev-parse --abbrev-ref HEAD | tr "/" "-")
+else
+  echo "Target branch set to ${1}"
+  prefix="refs/heads/"
+  cur_branch=$(echo "${1#"$prefix"}" | tr "/" "-")
+fi
+
+if [ "$cur_branch" == "master" ] || [ "$cur_branch" == "develop" ]
+then
+  echo "Setting workspace to 'default'"
+  terraform workspace select default
+else
+  select_workspace "$cur_branch"
+fi
+
+
+

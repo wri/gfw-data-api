@@ -1,6 +1,6 @@
 from ....application import db
 
-dataset_sql = """
+_dataset_sql = """
 SELECT
   datasets.*,
   version_array AS versions
@@ -18,4 +18,4 @@ FROM
     )
     t USING (dataset);"""
 
-all_datasets = db.text(dataset_sql)
+all_datasets = db.text(_dataset_sql)

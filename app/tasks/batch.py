@@ -1,12 +1,11 @@
-from typing import Any, Dict, List, Optional, Callable, Awaitable
+from typing import Any, Dict, List, Optional, Callable, Awaitable, Set
 from time import sleep
 from datetime import datetime
-
-import boto3
 
 from app.models.pydantic.job import Job
 
 POLL_WAIT_TIME = 30
+BATCH_CLIENT = None
 
 
 def execute(jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]) -> None:
@@ -15,9 +14,16 @@ def execute(jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None
     return poll_jobs(scheduled_jobs.values(), callback)
 
 
-def schedule(
-    jobs: List[Job]
-) -> Dict[str, str]:
+def get_batch_client():
+    import boto3
+
+    global BATCH_CLIENT
+    if BATCH_CLIENT is None:
+        BATCH_CLIENT = boto3.client("batch")
+    return BATCH_CLIENT
+
+
+def schedule(jobs: List[Job]) -> Dict[str, str]:
     """
     Submit multiple batch jobs at once. Submitted batch jobs can depend on each other.
     Dependent jobs need to be listed in `dependent_jobs`
@@ -32,7 +38,9 @@ def schedule(
             scheduled_jobs[job.job_name] = submit_batch_job(job)
 
     if not scheduled_jobs:
-        raise ValueError("No independent jobs in list, can't start scheduling process due to missing dependencies")
+        raise ValueError(
+            "No independent jobs in list, can't start scheduling process due to missing dependencies"
+        )
 
     # then retry to schedule all dependent jobs
     # until all parent job are scheduled or max retry is reached
@@ -40,7 +48,11 @@ def schedule(
 
     while len(jobs) != len(scheduled_jobs):
         for job in jobs:
-            if job.job_name not in scheduled_jobs and all([parent in scheduled_jobs for parent in job.parents]):
+            if (
+                job.job_name not in scheduled_jobs
+                and job.parents is not None
+                and all([parent in scheduled_jobs for parent in job.parents])
+            ):
                 depends_on = [
                     {"jobId": scheduled_jobs[parent], "type": "SEQUENTIAL"}
                     for parent in job.parents  # type: ignore
@@ -54,11 +66,14 @@ def schedule(
     return scheduled_jobs
 
 
-def poll_jobs(job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable[None]]) -> bool:
-    client = boto3.client("batch", region_name="us-east-1")
-    failed_jobs = set()
-    completed_jobs = set()
-    pending_jobs = set(job_ids)
+def poll_jobs(
+    job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable[None]]
+) -> bool:
+
+    client = get_batch_client()
+    failed_jobs: Set[str] = set()
+    completed_jobs: Set[str] = set()
+    pending_jobs: Set[str] = set(job_ids)
 
     while True:
         response = client.describe_jobs(jobs=list(pending_jobs.difference(completed_jobs)))
@@ -66,21 +81,25 @@ def poll_jobs(job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable
 
         for job in response['jobs']:
             if job['status'] == 'SUCCEEDED':
-                callback({
-                    "datetime": datetime.now(),
-                    "status": "success",
-                    "message": f"Successfully completed job {job['jobName']}",
-                    "detail": None,
-                })
-                completed_jobs.add(job['jobId'])
-            if job['status'] == 'FAILED':
-                callback({
-                    "datetime": datetime.now(),
-                    "status": "failed",
-                    "message": f"Job {job['jobName']} failed during asset creation",
-                    "detail": job.get('statusReason', None),
-                })
-                failed_jobs.add(job['jobId'])
+                callback(
+                    {
+                        "datetime": datetime.now(),
+                        "status": "success",
+                        "message": f"Successfully completed job {job['jobName']}",
+                        "detail": None,
+                    }
+                )
+                completed_jobs.add(job["jobId"])
+            if job["status"] == "FAILED":
+                callback(
+                    {
+                        "datetime": datetime.now(),
+                        "status": "failed",
+                        "message": f"Job {job['jobName']} failed during asset creation",
+                        "detail": job["statusReason"],
+                    }
+                )
+                failed_jobs.add(job["jobId"])
 
         if completed_jobs == set(job_ids):
             callback({
@@ -91,12 +110,14 @@ def poll_jobs(job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable
             })
             return True
         elif failed_jobs:
-            callback({
-                "datetime": datetime.now(),
-                "status": "failed",
-                "message": f"Job failures occurred during asset creation",
-                "detail": None,
-            })
+            callback(
+                {
+                    "datetime": datetime.now(),
+                    "status": "failed",
+                    "message": f"Job failures occurred during asset creation",
+                    "detail": None,
+                }
+            )
             return False
 
         sleep(POLL_WAIT_TIME)
@@ -104,11 +125,11 @@ def poll_jobs(job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable
 
 def submit_batch_job(
     job: Job, depends_on: Optional[List[Dict[str, Any]]] = None
-) -> Dict[str, Any]:
+) -> str:
     """
     Submit job to AWS Batch
     """
-    client = boto3.client("batch", region_name="us-east-1")
+    client = get_batch_client()
 
     if depends_on is None:
         depends_on = list()

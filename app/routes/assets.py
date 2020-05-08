@@ -1,12 +1,15 @@
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, HTTPException, Response
+from fastapi import APIRouter, Depends, Path, HTTPException, Response, Query
 from fastapi.responses import ORJSONResponse
 
+from ..application import db
 from ..models.orm.asset import Asset as ORMAsset
-from ..models.pydantic.asset import Asset, AssetCreateIn
+from ..models.orm.queries.fields import fields
+from ..models.pydantic.asset import Asset, AssetCreateIn, AssetType
 from ..models.pydantic.change_log import ChangeLog
+from ..models.pydantic.metadata import FieldMetadata
 from ..routes import dataset_dependency, is_admin, version_dependency
 
 
@@ -27,11 +30,30 @@ async def get_assets(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
+    asset_type: Optional[AssetType] = Query(None, title="Filter by Asset Type"),
 ):
     """
     Get all assets for a given dataset version
     """
-    pass
+    rows: List[ORMAsset] = await ORMAsset.select().where(
+        ORMAsset.dataset == dataset
+    ).where(ORMAsset.version == version).gino.status()
+    if not rows:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Version with name {dataset}/{version} does not exist",
+        )
+
+    # Filter rows by asset type
+    result = list()
+    if asset_type:
+        for row in rows:
+            if row.asset_type == asset_type:
+                result.append(row)
+    else:
+        result = rows
+
+    return result
 
 
 @router.get(
@@ -49,7 +71,13 @@ async def get_asset(
     """
     Get a specific asset
     """
-    pass
+    row: ORMAsset = await ORMAsset.get([dataset, version, asset_id])
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Could not find requested asset {dataset}/{version}/{asset_id}",
+        )
+    return row
 
 
 @router.get(
@@ -58,11 +86,20 @@ async def get_asset(
     tags=["Assets"],
     response_model=List[Asset],
 )
-async def get_assets_root(*, asset_id: UUID = Path(...)):
+async def get_assets_root(
+    *, asset_type: Optional[AssetType] = Query(None, title="Filter by Asset Type")
+):
     """
-    Get a specific asset
+    Get all assets
     """
-    pass
+    if asset_type:
+        rows: List[ORMAsset] = await ORMAsset.select().where(
+            ORMAsset.asset_type == asset_type
+        ).gino.status()
+    else:
+        rows = await ORMAsset.select().gino.status()
+
+    return rows
 
 
 @router.get(
@@ -75,7 +112,12 @@ async def get_asset_root(*, asset_id: UUID = Path(...)):
     """
     Get a specific asset
     """
-    pass
+    row: ORMAsset = await ORMAsset.get([asset_id])
+    if row is None:
+        raise HTTPException(
+            status_code=404, detail=f"Could not find requested asset {asset_id}",
+        )
+    return row
 
 
 @router.post(
@@ -164,3 +206,158 @@ async def _asset_response(data: ORMAsset) -> Dict[str, Any]:
     """
     response = Asset.from_orm(data).dict(by_alias=True)
     return response
+
+
+async def _get_field_metadata(dataset: str, version: str):
+    rows = await db.status(fields, dataset=dataset, version=version)
+    field_metadata = list()
+    for row in rows[1]:
+        metadata = FieldMetadata.from_orm(row)
+        if "geom" in metadata.field_name_:
+            metadata.is_filter = False
+            metadata.is_feature_info = False
+        field_metadata.append(metadata)
+    return field_metadata
+
+
+async def _create_database_table():
+
+    # supported input types
+    #  - table
+    #  - vector
+
+    # steps
+    #  - create table and upload data into database
+    #  - inherit from geostore (vector/ polygon only)
+
+    # creation options:
+    #  - indicies (which fields get an index, what kind of index?)
+    #  - partitioning (how to partition table, on what field?)
+    #  - cluster (how to cluster table, based on which index?)
+    #  - force field types (don't let loader guess field types, but provide list of field types instead)
+
+    # custom metadata
+    #  - fields (field name, field alias, field description, field type, is filter, is feature info)
+
+    raise NotImplementedError
+
+
+async def _create_dynamic_vector_tile_cache():
+
+    # supported input types
+    #  - vector
+
+    # steps
+    #  - wait until database table is created
+    #  - create dynamic vector tile asset entry to enable service
+
+    # creation options:
+    #  - default symbology/ legend
+
+    # custom metadata
+    #  - default symbology/ legend
+
+    raise NotImplementedError
+
+
+async def _create_static_vector_tile_cache():
+
+    # supported input types
+    #  - vector
+
+    # steps
+    #  - wait until database table is created
+    #  - export ndjson file
+    #  - generate static vector tiles using tippecanoe and upload to S3
+    #  - create static vector tile asset entry to enable service
+
+    # creation options:
+    #  - default symbology/ legend
+    #  - tiling strategy
+    #  - min/max zoom level
+    #  - caching strategy
+
+    # custom metadata
+    #  - default symbology/ legend
+    #  - rendered zoom levels
+
+    raise NotImplementedError
+
+
+async def _create_static_raster_tile_cache():
+
+    # supported input types
+    #  - raster
+    #  - vector ?
+
+    # steps
+    # create raster tile cache using mapnik and upload to S3
+    # register static raster tile cache asset entry to enable service
+
+    # creation options:
+    #  - symbology/ legend
+    #  - tiling strategy
+    #  - min/max zoom level
+    #  - caching strategy
+
+    # custom metadata
+    #  - symbology/ legend
+    #  - rendered zoom levels
+
+    raise NotImplementedError
+
+
+async def _create_dynamic_raster_tile_cache():
+    # supported input types
+    #  - raster
+    #  - vector ?
+
+    # steps
+    # create raster set (pixETL) using WebMercator grid
+    # register dynamic raster tile cache asset entry to enable service
+
+    # creation options:
+    #  - symbology/ legend
+    #  - tiling strategy
+    #  - min/max zoom level
+    #  - caching strategy
+
+    # custom metadata
+    #  - symbology/ legend
+
+    raise NotImplementedError
+
+
+async def _create_tile_set():
+
+    # supported input types
+    #  - vector
+    #  - raster
+
+    # steps
+    #  - wait until database table is created (vector only)
+    #  - create 1x1 materialized view (vector only)
+    #  - create raster tiles using pixETL and upload to S3
+    #  - create tile set asset entry
+
+    # creation options
+    #  - set tile set value name
+    #  - select field value or expression to use for rasterization (vector only)
+    #  - select order direction (asc/desc) of field values for rasterization (vector only)
+    #  - override input raster, must be another raster tile set of the same version (raster only)
+    #  - define numpy calc expression (raster only)
+    #  - select resampling method (raster only)
+    #  - select out raster datatype
+    #  - select out raster nbit value
+    #  - select out raster no data value
+    #  - select out raster grid type
+
+    # custom metadata
+    #  - raster statistics
+    #  - raster table (pixel value look up)
+    #  - list of raster files
+    #  - raster data type
+    #  - compression
+    #  - no data value
+
+    raise NotImplementedError

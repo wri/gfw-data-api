@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -e
+
+docker-compose -f terraform/docker/docker-compose.yml run --rm --entrypoint /bin/bash terraform

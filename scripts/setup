@@ -2,5 +2,8 @@
 
 set -e
 
+pip install pipenv
+pipenv install --dev
+
 detect-secrets scan > .secrets.baseline
 pre-commit install
