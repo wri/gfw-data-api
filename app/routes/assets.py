@@ -213,6 +213,9 @@ async def _get_field_metadata(dataset: str, version: str):
     field_metadata = list()
     for row in rows[1]:
         metadata = FieldMetadata.from_orm(row)
+        if "geom" in metadata.field_name_:
+            metadata.is_filter = False
+            metadata.is_feature_info = False
         field_metadata.append(metadata)
     return field_metadata
 
