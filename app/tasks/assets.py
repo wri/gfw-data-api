@@ -16,16 +16,10 @@ def seed_source_assets(source_type: str, source_uri: List[str]) -> None:
     else:
         raise ValueError(f"Unsupported asset source type {source_type})")
 
-    # Batch job would log to asset history
-
-    # Monitor job queue to make sure all job terminate and once done, set version status to saved and register newly created asset with version
-    # if job failed, set version status to failed with message "Default asset failed"
-
 
 def _vector_source_asset(source_type: str, source_uri: List[str]):
     # check if input data are in a readable format (using ogrinfo)
     # import data using ogr2ogr
-
     # update geometry storage format
     # repair geometries
     # reproject geometries

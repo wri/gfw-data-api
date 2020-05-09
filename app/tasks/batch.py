@@ -1,10 +1,19 @@
 from typing import Any, Dict, List, Optional, Callable, Awaitable, Set
 from time import sleep
 from datetime import datetime
+import os
 
 from app.models.pydantic.job import Job
 
+POLL_WAIT_TIME = 30
 BATCH_CLIENT = None
+REGION = os.environ.get("REGION", "us-east-1")
+
+
+def execute(jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]) -> None:
+    scheduled_jobs = schedule(jobs)
+
+    return poll_jobs(scheduled_jobs.values(), callback)
 
 
 def get_batch_client():
@@ -12,16 +21,8 @@ def get_batch_client():
 
     global BATCH_CLIENT
     if BATCH_CLIENT is None:
-        BATCH_CLIENT = boto3.client("batch")
+        BATCH_CLIENT = boto3.client("batch", region_name=REGION)
     return BATCH_CLIENT
-
-
-async def execute(
-    jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]
-) -> None:
-    scheduled_jobs = schedule(jobs)
-
-    await poll_jobs(list(scheduled_jobs.values()), callback)
 
 
 def schedule(jobs: List[Job]) -> Dict[str, str]:
@@ -47,7 +48,7 @@ def schedule(jobs: List[Job]) -> Dict[str, str]:
     # until all parent job are scheduled or max retry is reached
     i = 0
 
-    while len(jobs) != scheduled_jobs:
+    while len(jobs) != len(scheduled_jobs):
         for job in jobs:
             if (
                 job.job_name not in scheduled_jobs
@@ -60,8 +61,6 @@ def schedule(jobs: List[Job]) -> Dict[str, str]:
                 ]
                 scheduled_jobs[job.job_name] = submit_batch_job(job, depends_on)
 
-                scheduled_jobs[job.job_name] = submit_batch_job(job)
-
         i += 1
         if i > 7:
             raise RecursionError("Too many retries while scheduling jobs. Aboard.")
@@ -69,7 +68,7 @@ def schedule(jobs: List[Job]) -> Dict[str, str]:
     return scheduled_jobs
 
 
-async def poll_jobs(
+def poll_jobs(
     job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable[None]]
 ) -> bool:
 
@@ -79,10 +78,11 @@ async def poll_jobs(
     pending_jobs: Set[str] = set(job_ids)
 
     while True:
-        response = client.describe_jobs(jobs=pending_jobs.difference(completed_jobs))
+        response = client.describe_jobs(jobs=list(pending_jobs.difference(completed_jobs)))
+        print(response)
 
-        for job in response["jobs"]:
-            if job["status"] == "COMPLETED":
+        for job in response['jobs']:
+            if job['status'] == 'SUCCEEDED':
                 callback(
                     {
                         "datetime": datetime.now(),
@@ -104,14 +104,12 @@ async def poll_jobs(
                 failed_jobs.add(job["jobId"])
 
         if completed_jobs == set(job_ids):
-            callback(
-                {
-                    "datetime": datetime.now(),
-                    "status": "success",
-                    "message": f"Successfully completed all scheduled batch jobs for asset creation",
-                    "detail": None,
-                }
-            )
+            callback({
+                "datetime": datetime.now(),
+                "status": "success",
+                "message": f"Successfully completed all scheduled batch jobs for asset creation",
+                "detail": None,
+            })
             return True
         elif failed_jobs:
             callback(
@@ -124,7 +122,7 @@ async def poll_jobs(
             )
             return False
 
-        sleep(30)
+        sleep(POLL_WAIT_TIME)
 
 
 def submit_batch_job(
@@ -133,7 +131,6 @@ def submit_batch_job(
     """
     Submit job to AWS Batch
     """
-
     client = get_batch_client()
 
     if depends_on is None:

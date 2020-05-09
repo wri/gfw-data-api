@@ -12,6 +12,8 @@ watchgod = "*"
 pre-commit = "*"
 detect-secrets = "*"
 pytest = "*"
+pytest-asyncio = "*"
+moto = "*"
 
 [packages]
 fastapi = "*"
