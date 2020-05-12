@@ -5,7 +5,7 @@ resource "aws_batch_job_definition" "aurora" {
 }
 
 resource "aws_batch_job_queue" "aurora" {
-  name                 = "${var.project}-job-queue${var.name_suffix}"
+  name                 = "${var.project}-aurora-job-queue${var.name_suffix}"
   state                = "ENABLED"
   priority             = 1
   compute_environments = [var.aurora_compute_environment_arn]
@@ -20,7 +20,7 @@ resource "aws_batch_job_definition" "data_lake" {
 }
 
 resource "aws_batch_job_queue" "data_lake" {
-  name                 = "${var.project}-job-queue${var.name_suffix}"
+  name                 = "${var.project}-data-lake-job-queue${var.name_suffix}"
   state                = "ENABLED"
   priority             = 1
   compute_environments = [var.data_lake_compute_environment_arn]
@@ -35,7 +35,7 @@ resource "aws_batch_job_definition" "tile_cache" {
 }
 
 resource "aws_batch_job_queue" "tile_cache" {
-  name                 = "${var.project}-tile_cache${var.name_suffix}"
+  name                 = "${var.project}-tile_cache-job-queue${var.name_suffix}"
   state                = "ENABLED"
   priority             = 1
   compute_environments = [var.tile_cache_compute_environment_arn]
