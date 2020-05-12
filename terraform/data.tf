@@ -12,7 +12,7 @@ data "terraform_remote_state" "core" {
 data "template_file" "container_definition" {
   template = file("${path.root}/templates/container_definition.json.tmpl")
   vars = {
-    image = "${module.container_registry.repository_url}:latest"
+    image = "${module.app_docker_image.repository_url}:latest"
 
     container_name = var.container_name
     container_port = var.container_port

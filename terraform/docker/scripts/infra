@@ -73,6 +73,19 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
         -backend-config=vars/backend-${ENV}.tfvars
       select_workspace "${WORKSPACE}"
       ;;
+    doc)
+      echo "Starting terraform documentation..."
+      shift
+      # Clear stale modules, then re-initialize
+      rm -rf .terraform
+      # select or create the current workspace
+      echo "Terraform documentation - Running pre-doc init"
+      terraform init \
+        -backend-config=vars/backend-${ENV}.tfvars
+      select_workspace "${WORKSPACE}"
+      echo "Terraform documentation - Running terraform-docs"
+      terraform-docs markdown table . > ../terraform.md
+      ;;
     plan)
       echo "Starting terraform plan..."
       shift

@@ -12,6 +12,6 @@ set -e
 #  https://www.postgresql.org/docs/11/libpq-envars.html
 psql -f create_table.sql
 
-DELIMITER = `python3 ../python/check_csv.py "$S3URI"`
+DELIMITER=$(python3 ../python/check_csv.py "$S3URI")
 aws s3 cp "$S3URI" - | psql -c "COPY $TABLE FROM STDIN WITH DELIMITER $DELIMITER CSV HEADER"
 
