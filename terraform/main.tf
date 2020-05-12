@@ -70,7 +70,7 @@ module "fargate_autoscaling" {
 module "batch_aurora_writer" {
   source                   = "git::https://github.com/wri/gfw-terraform-modules.git//modules/compute_environment?ref=master"
   ecs_role_policy_arns     = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn, data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn, data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn]
-  instance_types           = ["t2.nano", "t2.micro", "t2.small", "a1.medium", "m6g.medium"]
+  instance_types           = ["a1.medium"] # currently not supported but want to have "m6g.medium", "t2.nano", "t2.micro", "t2.small"
   key_pair                 = var.key_pair
   max_vcpus                = local.aurora_max_vcpus
   project                  = local.project
