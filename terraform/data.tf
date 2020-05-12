@@ -9,6 +9,16 @@ data "terraform_remote_state" "core" {
 }
 
 
+# import pixetl state
+data "terraform_remote_state" "pixetl" {
+  backend = "s3"
+  config = {
+    bucket = local.tf_state_bucket
+    region = "us-east-1"
+    key    = "wri__gfw_pixetl.tfstate"
+  }
+}
+
 data "template_file" "container_definition" {
   template = file("${path.root}/templates/container_definition.json.tmpl")
   vars = {
@@ -25,5 +35,15 @@ data "template_file" "container_definition" {
     project           = local.project
     environment       = var.environment
     aws_region        = var.region
+
+    aurora_job_definition     = module.batch_job_queues.aurora_job_definition
+    aurora_job_queue          = module.batch_job_queues.aurora_job_queue
+    data_lake_job_definition  = module.batch_job_queues.data_lake_job_definition
+    data_lake_job_queue       = module.batch_job_queues.data_lake_job_queue
+    tile_cache_job_definition = module.batch_job_queues.tile_cache_job_definition
+    tile_cache_job_queue      = module.batch_job_queues.tile_cache_job_queue
+    pixetl_job_definition     = data.terraform_remote_state.pixetl.outputs.job_definition_arn
+    pixetl_job_queue          = data.terraform_remote_state.pixetl.outputs.job_queue_arn
+
   }
 }

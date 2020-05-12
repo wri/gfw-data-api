@@ -12,6 +12,7 @@ resource "aws_batch_job_queue" "aurora" {
   depends_on           = [var.aurora_compute_environment_arn]
 }
 
+# TODO: Define container properties for data lake jobs
 resource "aws_batch_job_definition" "data_lake" {
   name                 = "${var.project}-data-lake${var.name_suffix}"
   type                 = "container"
@@ -26,6 +27,20 @@ resource "aws_batch_job_queue" "data_lake" {
   depends_on           = [var.data_lake_compute_environment_arn]
 }
 
+# TODO: Define container properties for tile cache jobs
+resource "aws_batch_job_definition" "tile_cache" {
+  name                 = "${var.project}-tile_cache${var.name_suffix}"
+  type                 = "container"
+  container_properties = data.template_file.container_properties.rendered
+}
+
+resource "aws_batch_job_queue" "tile_cache" {
+  name                 = "${var.project}-tile_cache${var.name_suffix}"
+  state                = "ENABLED"
+  priority             = 1
+  compute_environments = [var.tile_cache_compute_environment_arn]
+  depends_on           = [var.tile_cache_compute_environment_arn]
+}
 
 data "template_file" "container_properties" {
   template = file("${path.root}/templates/container_properties.json.tmpl")
@@ -98,7 +113,7 @@ data "template_file" "iam_assume_role" {
 }
 
 data "template_file" "ecs-task_assume" {
-template = file("${path.root}/templates/role-trust-policy.json.tmpl")
+  template = file("${path.root}/templates/role-trust-policy.json.tmpl")
   vars = {
     service = "ecs-tasks"
   }

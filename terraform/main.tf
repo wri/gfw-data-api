@@ -97,12 +97,13 @@ module "batch_data_lake_writer" {
 }
 
 module "batch_job_queues" {
-  source = "./modules/batch"
-  aurora_compute_environment_arn = module.batch_aurora_writer.arn
-  data_lake_compute_environment_arn = module.batch_data_lake_writer.arn
-  environment = var.environment
-  name_suffix = local.name_suffix
-  project = local.project
-  repository_url = "${module.batch_docker_image.repository_url}:latest"
-  s3_write_data-lake_arn = data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn
+  source                             = "./modules/batch"
+  aurora_compute_environment_arn     = module.batch_aurora_writer.arn
+  data_lake_compute_environment_arn  = module.batch_data_lake_writer.arn
+  tile_cache_compute_environment_arn = module.batch_data_lake_writer.arn
+  environment                        = var.environment
+  name_suffix                        = local.name_suffix
+  project                            = local.project
+  repository_url                     = "${module.batch_docker_image.repository_url}:latest"
+  s3_write_data-lake_arn             = data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn
 }
