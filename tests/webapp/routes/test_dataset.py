@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 payload = {
     "metadata": {
         "title": "string",
@@ -25,15 +27,19 @@ payload = {
 }
 
 
-def test_datasets(client):
+# @pytest.mark.asyncio
+def test_datasets(client, db):
     """
     Basic test to check if empty data api response as expected
     """
+
+    dataset = "test"
+
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == []
 
-    response = client.put("/test", data=json.dumps(payload))
+    response = client.put(f"/{dataset}", data=json.dumps(payload))
     print(response.json())
     assert response.status_code == 201
     assert response.json()["metadata"] == payload["metadata"]
@@ -43,6 +49,13 @@ def test_datasets(client):
     assert len(response.json()) == 1
     assert response.json()[0]["metadata"] == payload["metadata"]
 
-    response = client.get("/test")
+    response = client.get(f"/{dataset}")
     assert response.status_code == 200
     assert response.json()["metadata"] == payload["metadata"]
+
+    cursor = db.execute(
+        f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = :dataset;",
+        {"dataset": dataset},
+    )
+    rows = cursor.fetchall()
+    assert len(rows) == 1

@@ -20,7 +20,7 @@ from ..models.pydantic.version import Version, VersionCreateIn, VersionUpdateIn
 from ..routes import dataset_dependency, is_admin, update_data, version_dependency
 from ..settings.globals import BUCKET
 from ..tasks.assets import create_default_asset
-from ..tasks.data_lake import inject_file
+
 
 router = APIRouter()
 
@@ -123,8 +123,8 @@ async def update_version(
 
     # TODO: If files is not None, delete all files in RAW folder
 
-    if file_obj is not None:
-        background_tasks.add_task(inject_file, file_obj, uri)
+    # if file_obj is not None:
+    #     background_tasks.add_task(inject_file, file_obj, uri)
 
     # TODO: If files is not None, delete and recreate all Assets based on new input files
 

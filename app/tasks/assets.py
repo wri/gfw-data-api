@@ -69,7 +69,6 @@ def _vector_source_asset(
             "-l",
             layers[0],
         ],
-        environment={},
     )
 
     load_vector_data_jobs: List[Job] = list()
@@ -88,7 +87,6 @@ def _vector_source_asset(
                     "-l",
                     layer,
                 ],
-                environment={},
                 parents=[create_vector_schema_job.job_name],
             )
         )
@@ -96,7 +94,6 @@ def _vector_source_asset(
     gfw_attribute_job = PostgresqlClientJob(
         job_name="enrich gfw attributes",
         command=["add_gfw_fields.sh", "-d", dataset, "-v", version],
-        environment={},
         parents=[job.job_name for job in load_vector_data_jobs],
     )
 
@@ -117,7 +114,6 @@ def _vector_source_asset(
                     "-x",
                     index.index_type,
                 ],
-                environment={},
                 parents=[gfw_attribute_job.job_name],
             )
         )
@@ -125,7 +121,6 @@ def _vector_source_asset(
     inherit_geostore_job = PostgresqlClientJob(
         job_name="inherit from geostore",
         command=["inherit_geostore.sh", "-d", dataset, "-v", version],
-        environment={},
         parents=[job.job_name for job in index_jobs],
     )
 

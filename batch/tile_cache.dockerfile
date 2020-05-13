@@ -13,12 +13,6 @@ RUN make && make install
 # Install tileputty
 RUN pip install tileputty
 
-# Copy pipeline script
-WORKDIR /usr/local/bin
-COPY scripts/vector_tile_cache.sh .
-RUN chmod +x vector_tile_cache.sh
+COPY scripts /usr/local/bin
 
-RUN mkdir -p /usr/local/data
-WORKDIR /usr/local/data
-
-ENTRYPOINT ["vector_tile_cache.sh"]
+ENTRYPOINT ["/bin/bash"]
