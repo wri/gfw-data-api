@@ -19,7 +19,7 @@ from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.version import Version, VersionCreateIn, VersionUpdateIn
 from ..routes import dataset_dependency, is_admin, update_data, version_dependency
 from ..settings.globals import BUCKET
-from ..tasks.assets import seed_source_assets
+from ..tasks.assets import create_default_asset
 from ..tasks.data_lake import inject_file
 
 router = APIRouter()
@@ -89,16 +89,7 @@ async def add_new_version(
             status_code=400, detail=f"Dataset with name {dataset} already exists"
         )
 
-    # Inject appended files, if any
-    if file_obj is not None:
-        background_tasks.add_task(inject_file, file_obj, uri, callback)
-
-    # Seed source assets based on input type
-    # For vector and tabular data, import data into PostgreSQL
-    # For raster data, create geojson with tile extent(s) and raster stats
-    background_tasks.add_task(
-        seed_source_assets, input_data["source_type"], input_data["source_uri"]
-    )
+    background_tasks.add_task(create_default_asset, input_data, file_obj, callback)
 
     response.headers["Location"] = f"/{dataset}/{version}"
     return await _version_response(dataset, version, new_version)
@@ -242,7 +233,7 @@ def _prepare_sources(
         input_data = request.dict()
 
     if uploaded_file:
-        file_obj = uploaded_file.file
+        file_obj: Optional[IO] = uploaded_file.file
         uri: Optional[str] = f"{dataset}/{version}/raw/{uploaded_file.filename}"
         input_data["source_uri"] = [f"s3://{BUCKET}/{uri}"]
 

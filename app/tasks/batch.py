@@ -1,28 +1,18 @@
 from typing import Any, Dict, List, Optional, Callable, Awaitable, Set
 from time import sleep
 from datetime import datetime
-import os
 
-from app.models.pydantic.job import Job
-
-POLL_WAIT_TIME = 30
-BATCH_CLIENT = None
-REGION = os.environ.get("REGION", "us-east-1")
+from ..models.pydantic.job import Job
+from ..settings.globals import POLL_WAIT_TIME
+from ..utils.aws import get_batch_client
 
 
-def execute(jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]) -> None:
+async def execute(
+    jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]
+) -> bool:
     scheduled_jobs = schedule(jobs)
 
-    return poll_jobs(scheduled_jobs.values(), callback)
-
-
-def get_batch_client():
-    import boto3
-
-    global BATCH_CLIENT
-    if BATCH_CLIENT is None:
-        BATCH_CLIENT = boto3.client("batch", region_name=REGION)
-    return BATCH_CLIENT
+    return await poll_jobs(list(scheduled_jobs.values()), callback)
 
 
 def schedule(jobs: List[Job]) -> Dict[str, str]:
@@ -68,7 +58,7 @@ def schedule(jobs: List[Job]) -> Dict[str, str]:
     return scheduled_jobs
 
 
-def poll_jobs(
+async def poll_jobs(
     job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable[None]]
 ) -> bool:
 
@@ -78,11 +68,13 @@ def poll_jobs(
     pending_jobs: Set[str] = set(job_ids)
 
     while True:
-        response = client.describe_jobs(jobs=list(pending_jobs.difference(completed_jobs)))
+        response = client.describe_jobs(
+            jobs=list(pending_jobs.difference(completed_jobs))
+        )
         print(response)
 
-        for job in response['jobs']:
-            if job['status'] == 'SUCCEEDED':
+        for job in response["jobs"]:
+            if job["status"] == "SUCCEEDED":
                 callback(
                     {
                         "datetime": datetime.now(),
@@ -104,12 +96,14 @@ def poll_jobs(
                 failed_jobs.add(job["jobId"])
 
         if completed_jobs == set(job_ids):
-            callback({
-                "datetime": datetime.now(),
-                "status": "success",
-                "message": f"Successfully completed all scheduled batch jobs for asset creation",
-                "detail": None,
-            })
+            callback(
+                {
+                    "datetime": datetime.now(),
+                    "status": "success",
+                    "message": f"Successfully completed all scheduled batch jobs for asset creation",
+                    "detail": None,
+                }
+            )
             return True
         elif failed_jobs:
             callback(

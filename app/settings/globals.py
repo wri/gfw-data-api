@@ -82,12 +82,17 @@ ALEMBIC_CONFIG: DatabaseURL = DatabaseURL(
     database=WRITER_DBNAME,
 )
 
+AWS_REGION = config("AWS_REGION", cast=str, default="us-east-1")
 
-AURORA_JOB_DEFINITION = config("AURORA_JOB_DEFINITION", cast=str, default="")
+POSTGRESQL_CLIENT_JOB_DEFINITION = config(
+    "POSTGRESQL_JOB_DEFINITION", cast=str, default=""
+)
+GDAL_PYTHON_JOB_DEFINITION = config("GDAL_PYTHON_JOB_DEFINITION", cast=str, default="")
 AURORA_JOB_QUEUE = config("AURORA_JOB_QUEUE", cast=str, default="")
-DATA_LAKE_JOB_DEFINITION = config("DATA_LAKE_JOB_DEFINITION", cast=str, default="")
 DATA_LAKE_JOB_QUEUE = config("DATA_LAKE_JOB_QUEUE", cast=str, default="")
 TILE_CACHE_JOB_DEFINITION = config("TILE_CACHE_JOB_DEFINITION", cast=str, default="")
 TILE_CACHE_JOB_QUEUE = config("TILE_CACHE_JOB_QUEUE", cast=str, default="")
 PIXETL_JOB_DEFINITION = config("PIXETL_JOB_DEFINITION", cast=str, default="")
 PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str, default="")
+
+POLL_WAIT_TIME = config("PIXETL_JOB_QUEUE", cast=int, default=30)

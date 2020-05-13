@@ -131,7 +131,7 @@ async def delete_dataset(
 
     row: ORMDataset = await ORMDataset.get(dataset)
     await ORMDataset.delete.where(ORMDataset.dataset == dataset).gino.status()
-    await db.status(DropSchema(dataset))
+    await db.gino.status(DropSchema(dataset))
 
     return await _dataset_response(dataset, row)
 

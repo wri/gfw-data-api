@@ -13,4 +13,3 @@ if zipped:
 with fiona.open(s3_uri) as src:
     driver = src.driver
     print(driver)
-
