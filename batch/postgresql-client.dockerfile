@@ -2,7 +2,7 @@ FROM python:3.8-slim
 
 # Update repos and install dependencies
 RUN apt-get update \
-  && apt-get -y install postgresql-client-11
+  && apt-get -y install postgresql-client-11 jq
 
 RUN pip install csvkit awscli boto3
 

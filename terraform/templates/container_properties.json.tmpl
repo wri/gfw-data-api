@@ -29,8 +29,22 @@
     {
       "name": "LANG",
       "value": "C.UTF-8"
+    },
+    {
+      "name": "TILE_CACHE",
+      "value": "${tile_cache}"
     }
   ],
+  "secrets": [
+      {
+        "name": "DB_WRITER_SECRET",
+        "valueFrom": "${writer_secret_arn}"
+      },
+       {
+        "name": "DB_READER_SECRET",
+        "valueFrom": "${writer_secret_arn}"
+      }
+    ]
   "jobRoleArn": "${job_role_arn}",
   "volumes": [
     {

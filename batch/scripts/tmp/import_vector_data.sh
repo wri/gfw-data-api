@@ -7,7 +7,8 @@ ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbnam
      "$SRC" "$SRC_LAYER" \
      -nlt PROMOTE_TO_MULTI -nln "$VERSION" \
      -lco SCHEMA="$DATASET" -lco GEOMETRY_NAME="$GEOMETRY_NAME" -lco SPATIAL_INDEX=NONE -lco FID="$FID_NAME" \
-     --config PG_USE_COPY YES
+     -t_srs EPSG:4326 -limit 0
+#     --config PG_USE_COPY YES -makevalid
 
 
 echo "PSQL: Add GFW specific layers"

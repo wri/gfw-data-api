@@ -38,7 +38,7 @@ module "app_docker_image" {
 module "batch_docker_image" {
   source     = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.2"
   image_name = lower("${local.project}${local.name_suffix}")
-  root_dir   = "${path.root}/../batch"
+  root_dir   = "${path.root}/../batch/gdal-python.dockerfile"
 }
 
 module "fargate_autoscaling" {
@@ -106,4 +106,6 @@ module "batch_job_queues" {
   project                            = local.project
   repository_url                     = "${module.batch_docker_image.repository_url}:latest"
   s3_write_data-lake_arn             = data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn
+  reader_secret_arn                  = data.terraform_remote_state.core.outputs.secrets_postgresql-reader_arn
+  writer_secret_arn                  = data.terraform_remote_state.core.outputs.secrets_postgresql-writer_arn
 }

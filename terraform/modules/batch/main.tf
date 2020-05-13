@@ -1,3 +1,7 @@
+locals{
+  bucket_suffix = var.environment == "production" ? "" : "-${var.environment}"
+}
+
 resource "aws_batch_job_definition" "aurora" {
   name                 = "${var.project}-aurora${var.name_suffix}"
   type                 = "container"
@@ -53,6 +57,9 @@ data "template_file" "container_properties" {
     memory         = 480
     hardULimit     = 1024
     softULimit     = 1024
+    tile_cache     = "gfw-tiles${local.bucket_suffix}"
+    writer_secret_arn = var.writer_secret_arn
+    reader_secret_arn = var.reader_secret_arn
   }
 }
 
