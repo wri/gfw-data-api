@@ -137,14 +137,17 @@ def batch_client():
     resp = aws_mock.mocked_services["logs"]["client"].describe_log_streams(
         logGroupName="/aws/batch/job"
     )
-    ls_name = resp["logStreams"][0]["logStreamName"]
 
-    resp = aws_mock.mocked_services["logs"]["client"].get_log_events(
-        logGroupName="/aws/batch/job", logStreamName=ls_name
-    )
+    for stream in resp["logStreams"]:
+        ls_name = stream["logStreamName"]
 
-    for event in resp["events"]:
-        print(event["message"])
+        stream_resp = aws_mock.mocked_services["logs"]["client"].get_log_events(
+            logGroupName="/aws/batch/job", logStreamName=ls_name
+        )
+
+        print(f"-------- LOGS FROM {ls_name} --------")
+        for event in stream_resp["events"]:
+            print(event["message"])
 
     aws_mock.stop_services()
 

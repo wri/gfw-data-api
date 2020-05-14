@@ -72,7 +72,6 @@ async def poll_jobs(
         response = client.describe_jobs(
             jobs=list(pending_jobs.difference(completed_jobs))
         )
-        print(response)
 
         for job in response["jobs"]:
             if job["status"] == "SUCCEEDED":
@@ -91,7 +90,7 @@ async def poll_jobs(
                         "datetime": datetime.now(),
                         "status": "failed",
                         "message": f"Job {job['jobName']} failed during asset creation",
-                        "detail": job["statusReason"],
+                        "detail": job.get("statusReason", None),
                     }
                 )
                 failed_jobs.add(job["jobId"])
