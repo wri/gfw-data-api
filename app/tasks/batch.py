@@ -9,7 +9,7 @@ from ..utils.aws import get_batch_client
 
 async def execute(
     jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]
-) -> bool:
+) -> str:
     scheduled_jobs = schedule(jobs)
 
     return await poll_jobs(list(scheduled_jobs.values()), callback)
@@ -61,7 +61,7 @@ def schedule(jobs: List[Job]) -> Dict[str, str]:
 
 async def poll_jobs(
     job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable[None]]
-) -> bool:
+) -> str:
 
     client = get_batch_client()
     failed_jobs: Set[str] = set()
@@ -105,7 +105,7 @@ async def poll_jobs(
                     "detail": None,
                 }
             )
-            return True
+            return "saved"
         elif failed_jobs:
             callback(
                 {
@@ -115,7 +115,7 @@ async def poll_jobs(
                     "detail": None,
                 }
             )
-            return False
+            return "failed"
 
         sleep(POLL_WAIT_TIME)
 

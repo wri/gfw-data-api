@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional, Callable, Awaitable
 from typing.io import IO
 
 from .batch import execute
+from ..models.orm.version import Version as ORMVersion
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.config_options import VectorSourceConfigOptions
 from ..models.pydantic.job import Job, PostgresqlClientJob, GdalPythonImportJob
@@ -32,16 +33,25 @@ async def create_default_asset(
 
             # Schedule batch job queues depending on source type
     if source_type == SourceType.vector:
-        _vector_source_asset(dataset, version, source_uri, config_options, callback)
+        status = await _vector_source_asset(
+            dataset, version, source_uri, config_options, callback
+        )
     elif source_type == SourceType.table:
-        _table_source_asset(dataset, version, source_uri, config_options, callback)
+        status = await _table_source_asset(
+            dataset, version, source_uri, config_options, callback
+        )
     elif source_type == SourceType.raster:
-        _raster_source_asset(dataset, version, source_uri, config_options, callback)
+        status = await _raster_source_asset(
+            dataset, version, source_uri, config_options, callback
+        )
     else:
         raise ValueError(f"Unsupported asset source type {source_type})")
 
+    row: ORMVersion = await ORMVersion.get([dataset, version])
+    await row.update(status=status).apply()
 
-def _vector_source_asset(
+
+async def _vector_source_asset(
     dataset,
     version,
     source_uri: str,
@@ -124,7 +134,7 @@ def _vector_source_asset(
         parents=[job.job_name for job in index_jobs],
     )
 
-    success = execute(
+    status = execute(
         [
             create_vector_schema_job,
             *load_vector_data_jobs,
@@ -135,11 +145,11 @@ def _vector_source_asset(
         callback,
     )
 
-    # TODO: evaluate success, set to saved if succeeded, set to failed if not
-    print(success)
+    row: ORMVersion = await ORMVersion.get([dataset, version])
+    await row.update(status=status).apply()
 
 
-def _table_source_asset(
+async def _table_source_asset(
     dataset, version, source_uri: List[str], config_options, callback
 ):
     create_table_job = PostgresqlClientJob(
@@ -204,7 +214,7 @@ def _table_source_asset(
     print(success)
 
 
-def _raster_source_asset(
+async def _raster_source_asset(
     dataset, version, source_type: str, source_uri: List[str], callback
 ):
     pass
