@@ -5,7 +5,7 @@ set -e
 # requires arguments
 # -d | --dataset
 # -v | --version
-. ./get_arguments.sh "@"
+. get_arguments.sh "@"
 
 # Inherit from geostore
 echo "PSQL: ALTER TABLE. Inherit from geostore"

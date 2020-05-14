@@ -1,9 +1,11 @@
+import contextlib
 from typing import Optional
 
 import pytest
 from alembic.config import main
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
 
 from app.routes import is_admin
 from app.settings.globals import (
@@ -14,7 +16,6 @@ from app.settings.globals import (
     WRITER_PORT,
 )
 
-from sqlalchemy.orm import sessionmaker, Session
 
 SessionLocal: Optional[Session] = None
 
@@ -41,12 +42,8 @@ def client():
     main(["--raiseerr", "downgrade", "base"])
 
 
-@pytest.fixture
-def db():
-    """
-    Set up a clean database before running a test
-    Run all migrations before test and downgrade afterwards
-    """
+@contextlib.contextmanager
+def session():
 
     global SessionLocal
 
@@ -62,3 +59,13 @@ def db():
     finally:
         if db is not None:
             db.close()
+
+
+@pytest.fixture
+def db():
+    """
+    Aquire a database session for a test and make sure the connection gets
+    properly closed, even if test fails
+    """
+    with contextlib.ExitStack() as stack:
+        yield stack.enter_context(session())

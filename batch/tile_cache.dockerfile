@@ -13,6 +13,6 @@ RUN make && make install
 # Install tileputty
 RUN pip install tileputty
 
-COPY scripts /usr/local/bin
+COPY ./batch/scripts/ /usr/local/bin/
 
 ENTRYPOINT ["/bin/bash"]

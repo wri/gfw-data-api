@@ -7,7 +7,7 @@ set -e
 # -v | --version
 # -s | --source
 # -l | --source_layer
-. ./get_arguments.sh "@"
+. get_arguments.sh "@"
 
 echo "OGR2OGR: Import ${DATASET}.${VERSION} from ${SRC} ${SRC_LAYER}"
 # Create schema only, using ogr2ogr

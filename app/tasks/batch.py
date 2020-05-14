@@ -52,7 +52,8 @@ def schedule(jobs: List[Job]) -> Dict[str, str]:
                 scheduled_jobs[job.job_name] = submit_batch_job(job, depends_on)
 
         i += 1
-        if i > 7:
+        if i > 10:
+            print("SCHEDULED JOBS", scheduled_jobs)
             raise RecursionError("Too many retries while scheduling jobs. Aboard.")
 
     return scheduled_jobs

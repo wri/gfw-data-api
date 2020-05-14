@@ -5,6 +5,6 @@ RUN apt-get update -y && \
 
 RUN pip3 install csvkit awscli fiona rasterio boto3
 
-COPY scripts /usr/local/bin
+COPY ./batch/scripts/ /usr/local/bin/
 
 ENTRYPOINT ["/bin/bash"]

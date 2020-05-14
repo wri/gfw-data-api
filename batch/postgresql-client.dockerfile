@@ -7,6 +7,6 @@ RUN apt-get update \
 RUN pip install csvkit awscli boto3
 
 # Copy scripts
-COPY scripts /usr/local/bin
+COPY ./batch/scripts/ /usr/local/bin/
 
 ENTRYPOINT ["/bin/bash"]

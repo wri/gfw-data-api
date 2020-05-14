@@ -33,6 +33,7 @@ orjson = "*"
 pytest-cov = "*"
 python-multipart = "*"
 boto3-type-annotations = "*"
+moto = "*"
 
 [requires]
 python_version = "3.8"
