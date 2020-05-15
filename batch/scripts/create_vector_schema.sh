@@ -7,7 +7,7 @@ set -e
 # -v | --version
 # -s | --source
 # -l | --source_layer
-. get_arguments.sh "@"
+. get_arguments.sh "$@"
 
 echo "OGR2OGR: Import ${DATASET}.${VERSION} from ${SRC} ${SRC_LAYER}"
 # Create schema only, using ogr2ogr
@@ -20,6 +20,6 @@ ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbnam
 # Set storage to external for faster querying
 # http://blog.cleverelephant.ca/2018/09/postgis-external-storage.html
 echo "PSQL: ALTER TABLE. Set storage external"
-psql -c "ALTER TABLE $DATASET.$VERSION ALTER COLUMN $GEOMETRY_NAME SET STORAGE EXTERNAL;"
+psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ALTER COLUMN $GEOMETRY_NAME SET STORAGE EXTERNAL;"
 
 echo "DONE"

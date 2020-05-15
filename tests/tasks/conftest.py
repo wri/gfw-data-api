@@ -118,7 +118,7 @@ def batch_client():
     original_run = ContainerCollection.run
 
     def patch_run(self, *k, **kwargs):
-        kwargs["network"] = "host"
+        kwargs["network"] = "gfw-data-api_test_default"
         return original_run(self, *k, **kwargs)
 
     ContainerCollection.run = patch_run

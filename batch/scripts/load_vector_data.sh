@@ -7,7 +7,7 @@ set -e
 # -v | --version
 # -s | --source
 # -l | --source_layer
-. get_arguments.sh "@"
+. get_arguments.sh "$@"
 
 echo "OGR2OGR: Load data for ${DATASET}.${VERSION} from ${SRC} ${SRC_LAYER}"
 ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=$PGDATABASE user=$PGUSER" \

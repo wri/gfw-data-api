@@ -17,8 +17,8 @@ from app.settings.globals import (
 
 writer_secrets = [
     {"name": "PGPASSWORD", "value": str(WRITER_PASSWORD)},
-    {"name": "PGHOST", "value": "localhost"},
-    {"name": "PGPORT", "value": 5432},
+    {"name": "PGHOST", "value": WRITER_HOST},
+    {"name": "PGPORT", "value": WRITER_PORT},
     {"name": "PGDATABASE", "value": WRITER_DBNAME},
     {"name": "PGUSER", "value": WRITER_USERNAME},
 ]

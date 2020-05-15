@@ -2,6 +2,8 @@
 
 set -e
 
+echo "$@"
+
 # Default values
 POSITIONAL=()
 GEOMETRY_NAME="geom"
