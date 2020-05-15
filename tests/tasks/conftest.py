@@ -84,6 +84,22 @@ class AWSMock(object):
             },
         )
 
+    def print_logs(self):
+        resp = self.mocked_services["logs"]["client"].describe_log_streams(
+            logGroupName="/aws/batch/job"
+        )
+
+        for stream in resp["logStreams"]:
+            ls_name = stream["logStreamName"]
+
+            stream_resp = self.mocked_services["logs"]["client"].get_log_events(
+                logGroupName="/aws/batch/job", logStreamName=ls_name
+            )
+
+            print(f"-------- LOGS FROM {ls_name} --------")
+            for event in stream_resp["events"]:
+                print(event["message"])
+
 
 @pytest.fixture(scope="function")
 def aws_credentials():
@@ -132,23 +148,11 @@ def batch_client():
     aws_mock.add_job_definition(TILE_CACHE_JOB_DEFINITION, "batch_tile_cache_test")
     aws_mock.add_job_definition(PIXETL_JOB_DEFINITION, "pixetl_test")
 
-    yield aws_mock.mocked_services["batch"]["client"]
+    yield aws_mock.mocked_services["batch"]["client"], aws_mock.mocked_services["logs"][
+        "client"
+    ]
 
-    resp = aws_mock.mocked_services["logs"]["client"].describe_log_streams(
-        logGroupName="/aws/batch/job"
-    )
-
-    for stream in resp["logStreams"]:
-        ls_name = stream["logStreamName"]
-
-        stream_resp = aws_mock.mocked_services["logs"]["client"].get_log_events(
-            logGroupName="/aws/batch/job", logStreamName=ls_name
-        )
-
-        print(f"-------- LOGS FROM {ls_name} --------")
-        for event in stream_resp["events"]:
-            print(event["message"])
-
+    aws_mock.print_logs()
     aws_mock.stop_services()
 
 

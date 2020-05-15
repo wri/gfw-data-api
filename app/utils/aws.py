@@ -8,11 +8,6 @@ S3_CLIENT = None
 BATCH_CLIENT = None
 
 
-def split_s3_path(s3_path: str) -> Tuple[str, str]:
-    o = urlparse(s3_path, allow_fragments=False)
-    return o.netloc, o.path.lstrip("/")
-
-
 def get_s3_client():
     import boto3
 

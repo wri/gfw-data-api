@@ -1,12 +1,20 @@
 from enum import Enum
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel
 
 from .base import Base
 from .change_log import ChangeLog
-from .metadata import AssetMetadata
+from .metadata import (
+    DatabaseTableMetadata,
+    VectorTileCacheMetadata,
+    RasterTileSetMetadata,
+)
+
+AssetMetadata = Union[
+    DatabaseTableMetadata, VectorTileCacheMetadata, RasterTileSetMetadata
+]
 
 
 class AssetType(str, Enum):
@@ -51,6 +59,16 @@ class Asset(Base):
 
 class AssetCreateIn(BaseModel):
     asset_type: AssetType
+    asset_uri: Optional[str]
+    is_managed: bool
+    creation_options: Dict[str, Any]
+    metadata: Optional[AssetMetadata]
+
+
+class AssetTaskCreate(BaseModel):
+    asset_type: AssetType
+    dataset: str
+    version: str
     asset_uri: Optional[str]
     is_managed: bool
     creation_options: Dict[str, Any]

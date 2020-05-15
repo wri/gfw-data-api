@@ -76,10 +76,10 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-
-# Extract aurora secrets
-PGPASSWORD=$(jq '.password' <<< "$DB_WRITER_SECRET")
-PGHOST=$(jq '.host' <<< "$DB_WRITER_SECRET")
-PGPORT=$(jq '.port' <<< "$DB_WRITER_SECRET")
-PGDATABASE=$(jq '.dbname' <<< "$DB_WRITER_SECRET")
-PGUSER=$(jq '.username' <<< "$DB_WRITER_SECRET")
+#
+## Extract aurora secrets
+#PGPASSWORD=$(jq '.password' <<< "$DB_WRITER_SECRET")
+#PGHOST=$(jq '.host' <<< "$DB_WRITER_SECRET")
+#PGPORT=$(jq '.port' <<< "$DB_WRITER_SECRET")
+#PGDATABASE=$(jq '.dbname' <<< "$DB_WRITER_SECRET")
+#PGUSER=$(jq '.username' <<< "$DB_WRITER_SECRET")

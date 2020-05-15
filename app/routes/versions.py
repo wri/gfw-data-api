@@ -13,14 +13,15 @@ from fastapi import (
 )
 from fastapi.responses import ORJSONResponse
 
+from ..crud import update_data, versions
 from ..models.orm.asset import Asset as ORMAsset
 from ..models.orm.version import Version as ORMVersion
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.version import Version, VersionCreateIn, VersionUpdateIn
-from ..routes import dataset_dependency, is_admin, update_data, version_dependency
+from ..routes import dataset_dependency, is_admin, version_dependency
 from ..settings.globals import BUCKET
-from ..tasks.assets import create_default_asset
-
+from ..tasks.default_assets import create_default_asset
+from ..utils import true_xor
 
 router = APIRouter()
 
@@ -43,12 +44,7 @@ async def get_version(
     """
     Get basic metadata for a given version
     """
-    row: ORMVersion = await ORMVersion.get([dataset, version])
-    if row is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Version with name {dataset}/{version} does not exist",
-        )
+    row: ORMVersion = await versions.get_version(dataset, version)
 
     return await _version_response(dataset, version, row)
 
@@ -75,20 +71,17 @@ async def add_new_version(
     """
 
     async def callback(message: Dict[str, Any]) -> None:
-        await _version_history(message, dataset, version)
+        pass
+        # await _version_history(message, dataset, version)
 
     input_data, file_obj, uri = _prepare_sources(dataset, version, request, files)
 
     # Register version with DB
-    try:
-        new_version: ORMVersion = await ORMVersion.create(
-            dataset=dataset, version=version, **input_data
-        )
-    except UniqueViolationError:
-        raise HTTPException(
-            status_code=400, detail=f"Dataset with name {dataset} already exists"
-        )
+    new_version: ORMVersion = await versions.create_version(
+        dataset, version, **input_data
+    )
 
+    # Everything else happens in the background task asynchronously
     background_tasks.add_task(create_default_asset, input_data, file_obj, callback)
 
     response.headers["Location"] = f"/{dataset}/{version}"
@@ -115,10 +108,10 @@ async def update_version(
     When using PATCH and uploading files,
     this will overwrite the existing source(s) and trigger a complete update of all managed assets
     """
-    row: ORMVersion = await _get_version(dataset, version)
 
     input_data, file_obj, uri = _prepare_sources(dataset, version, request, files)
 
+    row: ORMVersion = await versions.get_version(dataset, version)
     row = await update_data(row, input_data)
 
     # TODO: If files is not None, delete all files in RAW folder
@@ -146,10 +139,7 @@ async def delete_version(
     """
     Delete a version
     """
-    row: ORMVersion = await _get_version(dataset, version)
-    await ORMVersion.delete.where(ORMVersion.dataset == dataset).where(
-        ORMVersion.version == version
-    ).gino.status()
+    row: ORMVersion = await versions.delete_version(dataset, version)
 
     # TODO:
     #  Delete all managed assets and raw data
@@ -168,34 +158,9 @@ async def version_history(
     """
     Log changes for given dataset version
     """
-    message = request.dict()
-    return await _version_history(message, dataset, version)
+    message = [request.dict()]
 
-
-async def _version_history(message: Dict[str, Any], dataset: str, version: str):
-    """
-    Update version history in database and return updated values
-    """
-    row = await _get_version(dataset, version)
-    change_log = row.change_log
-    change_log.append(message)
-
-    row = await row.update(change_log=change_log).apply()
-
-    return await _version_response(dataset, version, row)
-
-
-async def _get_version(dataset: str, version: str) -> ORMVersion:
-    """
-    Returns version, if exists or raises an Exception
-    """
-    row: ORMVersion = await ORMVersion.get([dataset, version])
-    if row is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Version with name {dataset}/{version} does not exists",
-        )
-    return row
+    return await versions.update_version(dataset, version, change_log=message)
 
 
 async def _version_response(
@@ -225,7 +190,7 @@ def _prepare_sources(
         input_data: Dict[str, Any] = {}
     else:
         # Check if either files or source_uri are set, but not both
-        if not _true_xor(bool(uploaded_file), bool(request.source_uri)):
+        if not true_xor(bool(uploaded_file), bool(request.source_uri)):
             raise HTTPException(
                 status_code=400,
                 detail="Either source_uri must be set, or a file need to be attached",
@@ -242,7 +207,3 @@ def _prepare_sources(
         uri = None
 
     return input_data, file_obj, uri
-
-
-def _true_xor(*args):
-    return sum(args) == 1

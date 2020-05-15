@@ -17,9 +17,10 @@ class Version(Base):
     source_type: SourceType
     source_uri: Optional[List[str]] = None
     metadata: VersionMetadata
+    status: str
 
     # Tablular/ Vector data only
-    fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
+
     has_geostore: Optional[bool]
 
     assets: List[Tuple[str, str]] = list()

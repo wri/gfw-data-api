@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional, Callable, Awaitable, Set
 from time import sleep
 from datetime import datetime
 
+from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.job import Job
 from ..settings.globals import POLL_WAIT_TIME
 from ..utils.aws import get_batch_client
@@ -9,13 +10,25 @@ from ..utils.aws import get_batch_client
 
 async def execute(
     jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]
-) -> str:
-    scheduled_jobs = schedule(jobs)
+) -> ChangeLog:
 
-    return await poll_jobs(list(scheduled_jobs.values()), callback)
+    try:
+        scheduled_jobs = schedule(jobs, callback)
+    except RecursionError:
+        status = "failed"
+        message = "Failed to schedule batch jobs"
+    else:
+        status = await poll_jobs(list(scheduled_jobs.values()), callback)
+        if status == "failed":
+            message = "Error while running batch jobs"
+        else:
+            message = "Successfully ran all batch jobs"
+    return ChangeLog(datetime=datetime.now(), status=status, message=message)
 
 
-def schedule(jobs: List[Job]) -> Dict[str, str]:
+def schedule(
+    jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]
+) -> Dict[str, str]:
     """
     Submit multiple batch jobs at once. Submitted batch jobs can depend on each other.
     Dependent jobs need to be listed in `dependent_jobs`
@@ -28,6 +41,14 @@ def schedule(jobs: List[Job]) -> Dict[str, str]:
     for job in jobs:
         if not job.parents:
             scheduled_jobs[job.job_name] = submit_batch_job(job)
+            callback(
+                {
+                    "datetime": datetime.now(),
+                    "status": "pending",
+                    "message": f"Scheduled job {job.job_name}",
+                    "detail": f"Job ID: {scheduled_jobs[job.job_name]}",
+                }
+            )
 
     if not scheduled_jobs:
         raise ValueError(
@@ -50,10 +71,25 @@ def schedule(jobs: List[Job]) -> Dict[str, str]:
                     for parent in job.parents  # type: ignore
                 ]
                 scheduled_jobs[job.job_name] = submit_batch_job(job, depends_on)
+                callback(
+                    {
+                        "datetime": datetime.now(),
+                        "status": "pending",
+                        "message": f"Scheduled job {job.job_name}",
+                        "detail": f"Job ID: {scheduled_jobs[job.job_name]}, parents: {depends_on}",
+                    }
+                )
 
         i += 1
         if i > 10:
-            print("SCHEDULED JOBS", scheduled_jobs)
+            callback(
+                {
+                    "datetime": datetime.now(),
+                    "status": "failed",
+                    "message": f"Too many retries while scheduling jobs. Aboard.",
+                    "detail": f"Failed to schedule jobs {[job.job_name for job in jobs if job.job_name not in scheduled_jobs]}",
+                }
+            )
             raise RecursionError("Too many retries while scheduling jobs. Aboard.")
 
     return scheduled_jobs
@@ -62,7 +98,6 @@ def schedule(jobs: List[Job]) -> Dict[str, str]:
 async def poll_jobs(
     job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable[None]]
 ) -> str:
-
     client = get_batch_client()
     failed_jobs: Set[str] = set()
     completed_jobs: Set[str] = set()
@@ -139,6 +174,7 @@ def submit_batch_job(
             "command": job.command,
             "vcpus": job.vcpus,
             "memory": job.memory,
+            "environment": job.environment,
         },
         retryStrategy={"attempts": job.attempts},
         timeout={"attemptDurationSeconds": job.attempt_duration_seconds},

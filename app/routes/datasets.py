@@ -1,15 +1,14 @@
 from typing import List, Dict, Any
 
-from asyncpg.exceptions import UniqueViolationError
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Response
 from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 
-from . import dataset_dependency, update_data
+from . import dataset_dependency
+from ..crud import update_data, datasets, versions
 from ..models.orm.dataset import Dataset as ORMDataset
 from ..models.orm.version import Version as ORMVersion
-from ..models.orm.queries.datasets import all_datasets
 from ..models.pydantic.dataset import Dataset, DatasetCreateIn, DatasetUpdateIn
 from ..application import db
 from ..settings.globals import READER_USERNAME
@@ -29,8 +28,7 @@ async def get_datasets():
     """
     Get list of all datasets
     """
-    rows = await db.status(all_datasets)
-    return rows[1]
+    return datasets.get_datasets
 
 
 @router.get(
@@ -43,12 +41,7 @@ async def get_dataset(*, dataset: str = Depends(dataset_dependency)):
     """
     Get basic metadata and available versions for a given dataset
     """
-    row: ORMDataset = await ORMDataset.get(dataset)
-    if row is None:
-        raise HTTPException(
-            status_code=404, detail=f"Dataset with name {dataset} does not exist"
-        )
-
+    row: ORMDataset = await datasets.get_dataset(dataset)
     return await _dataset_response(dataset, row)
 
 
@@ -69,14 +62,7 @@ async def create_dataset(
     """
     Create or update a dataset
     """
-    try:
-        new_dataset: ORMDataset = await ORMDataset.create(
-            dataset=dataset, **request.dict()
-        )
-    except UniqueViolationError:
-        raise HTTPException(
-            status_code=400, detail=f"Dataset with name {dataset} already exists"
-        )
+    new_dataset: ORMDataset = await datasets.create_dataset(dataset, **request.dict())
 
     await db.status(CreateSchema(dataset))
     await db.status(
@@ -102,14 +88,7 @@ async def update_dataset_metadata(
     Partially update a dataset. Only metadata field can be updated. All other fields will be ignored.
     """
 
-    row: ORMDataset = await ORMDataset.get(dataset)
-
-    if row is None:
-        raise HTTPException(
-            status_code=404, detail=f"Dataset with name {dataset} does not exists"
-        )
-
-    row = await update_data(row, request)
+    row: ORMDataset = await datasets.update_dataset(dataset, request)
 
     return await _dataset_response(dataset, row)
 
@@ -129,19 +108,16 @@ async def delete_dataset(
     Delete a dataset
     """
 
-    row: ORMDataset = await ORMDataset.get(dataset)
-    await ORMDataset.delete.where(ORMDataset.dataset == dataset).gino.status()
+    row: ORMDataset = await datasets.delete_dataset(dataset)
     await db.gino.status(DropSchema(dataset))
 
     return await _dataset_response(dataset, row)
 
 
-async def _dataset_response(dataset: str, data: ORMDataset) -> Dict[str, Any]:
+async def _dataset_response(dataset: str, orm: ORMDataset) -> Dict[str, Any]:
 
-    versions: List[ORMVersion] = await ORMVersion.select("version").where(
-        ORMVersion.dataset == dataset
-    ).gino.all()
-    response = Dataset.from_orm(data).dict(by_alias=True)
-    response["versions"] = [version[0] for version in versions]
+    _versions: List[ORMVersion] = await versions.get_versions(dataset)
+    response = Dataset.from_orm(orm).dict(by_alias=True)
+    response["versions"] = [version[0] for version in _versions]
 
     return response

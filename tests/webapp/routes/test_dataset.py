@@ -1,7 +1,5 @@
 import json
 
-import pytest
-
 payload = {
     "metadata": {
         "title": "string",

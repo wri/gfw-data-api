@@ -8,6 +8,8 @@ set -e
 . get_arguments.sh "@"
 
 
+printenv
+
 # Add GFW specific layers
 echo "PSQL: ALTER TABLE $DATASET.$VERSION. Add GFW columns"
 psql -c "ALTER TABLE $DATASET.$VERSION ADD COLUMN ${GEOMETRY_NAME}_wm geometry(MultiPolygon,3857);

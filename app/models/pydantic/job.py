@@ -19,7 +19,7 @@ class Job(BaseModel):
     job_queue: str
     job_definition: str
     command: List[str]
-    environment: Dict[str, str] = {}
+    environment: List[Dict[str, str]] = []
     vcpus: int
     memory: int
     attempts: int
