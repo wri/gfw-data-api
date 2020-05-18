@@ -62,8 +62,8 @@ async def test_batch_scheduler(batch_client):
         environment=writer_secrets,
     )
 
-    status = await batch.execute([job1, job2, job3, job4], lambda x: x)
-    assert status == "saved"
+    log = await batch.execute([job1, job2, job3, job4], lambda x: x)
+    assert log.status == "saved"
     #
     # resp = logs.describe_log_streams(
     #     logGroupName="/aws/batch/job"

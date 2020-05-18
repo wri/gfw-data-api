@@ -27,6 +27,7 @@ services:
     entrypoint: wait_for_postgres.sh pytest
     depends_on:
       - test_database
+      - moto_server
 
   test_database:
     container_name: gfw-data-api-test-database
@@ -40,6 +41,13 @@ services:
       - POSTGRES_PASSWORD=postgres  # pragma: allowlist secret
     volumes:
       - test_database_data:/var/lib/postgresql/data
+
+  moto_server:
+    container_name: moto_server
+    image: motoserver/moto:latest
+    ports:
+      - 5000:5000
+    entrypoint: moto_server s3 -H 0.0.0.0
 
 volumes:
   test_database_data:

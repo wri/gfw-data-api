@@ -72,5 +72,5 @@ async def _inject_file(file_obj: IO, s3_uri: str) -> ChangeLog:
         detail = str(e)
 
     return ChangeLog(
-        datetime=datetime.now(), status=status, message=message, detail=detail
+        date_time=datetime.now(), status=status, message=message, detail=detail
     )

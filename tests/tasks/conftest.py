@@ -31,9 +31,9 @@ class AWSMock(object):
         for service in services:
             mocked_service = self.mocks[service]()
             mocked_service.start()
-            client = (boto3.client(service, region_name=AWS_REGION),)
+            client = boto3.client(service, region_name=AWS_REGION)
             self.mocked_services[service] = {
-                "client": client[0],
+                "client": client,
                 "mock": mocked_service,
             }
 

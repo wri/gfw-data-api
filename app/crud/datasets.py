@@ -14,8 +14,8 @@ async def get_datasets() -> List[ORMDataset]:
     """
     Get list of all datasets
     """
-    rows = await db.status(all_datasets)
-    return rows[1]
+    rows = await db.all(all_datasets)
+    return rows
 
 
 async def get_dataset(dataset: str) -> ORMDataset:

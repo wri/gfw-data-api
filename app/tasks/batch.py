@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, List, Optional, Callable, Awaitable, Set
 from time import sleep
 from datetime import datetime
@@ -14,16 +15,18 @@ async def execute(
 
     try:
         scheduled_jobs = schedule(jobs, callback)
+        print(f"SCHEDULED JOBS: {scheduled_jobs}")
     except RecursionError:
         status = "failed"
         message = "Failed to schedule batch jobs"
     else:
         status = await poll_jobs(list(scheduled_jobs.values()), callback)
+        print(f"FINAL STATUS: {status}")
         if status == "failed":
             message = "Error while running batch jobs"
         else:
             message = "Successfully ran all batch jobs"
-    return ChangeLog(datetime=datetime.now(), status=status, message=message)
+    return ChangeLog(date_time=datetime.now(), status=status, message=message)
 
 
 def schedule(
@@ -43,7 +46,7 @@ def schedule(
             scheduled_jobs[job.job_name] = submit_batch_job(job)
             callback(
                 {
-                    "datetime": datetime.now(),
+                    "date_time": datetime.now(),
                     "status": "pending",
                     "message": f"Scheduled job {job.job_name}",
                     "detail": f"Job ID: {scheduled_jobs[job.job_name]}",
@@ -73,7 +76,7 @@ def schedule(
                 scheduled_jobs[job.job_name] = submit_batch_job(job, depends_on)
                 callback(
                     {
-                        "datetime": datetime.now(),
+                        "date_time": datetime.now(),
                         "status": "pending",
                         "message": f"Scheduled job {job.job_name}",
                         "detail": f"Job ID: {scheduled_jobs[job.job_name]}, parents: {depends_on}",
@@ -84,9 +87,9 @@ def schedule(
         if i > 10:
             callback(
                 {
-                    "datetime": datetime.now(),
+                    "date_time": datetime.now(),
                     "status": "failed",
-                    "message": f"Too many retries while scheduling jobs. Aboard.",
+                    "message": "Too many retries while scheduling jobs. Aboard.",
                     "detail": f"Failed to schedule jobs {[job.job_name for job in jobs if job.job_name not in scheduled_jobs]}",
                 }
             )
@@ -109,10 +112,14 @@ async def poll_jobs(
         )
 
         for job in response["jobs"]:
+            print(
+                f"Container for job {job['jobId']} exited with status {job['status']}"
+            )
             if job["status"] == "SUCCEEDED":
+                print(f"Container for job {job['jobId']} succeeded")
                 callback(
                     {
-                        "datetime": datetime.now(),
+                        "date_time": datetime.now(),
                         "status": "success",
                         "message": f"Successfully completed job {job['jobName']}",
                         "detail": None,
@@ -120,9 +127,10 @@ async def poll_jobs(
                 )
                 completed_jobs.add(job["jobId"])
             if job["status"] == "FAILED":
+                print(f"Container for job {job['jobId']} failed")
                 callback(
                     {
-                        "datetime": datetime.now(),
+                        "date_time": datetime.now(),
                         "status": "failed",
                         "message": f"Job {job['jobName']} failed during asset creation",
                         "detail": job.get("statusReason", None),
@@ -133,9 +141,9 @@ async def poll_jobs(
         if completed_jobs == set(job_ids):
             callback(
                 {
-                    "datetime": datetime.now(),
+                    "date_time": datetime.now(),
                     "status": "success",
-                    "message": f"Successfully completed all scheduled batch jobs for asset creation",
+                    "message": "Successfully completed all scheduled batch jobs for asset creation",
                     "detail": None,
                 }
             )
@@ -143,9 +151,9 @@ async def poll_jobs(
         elif failed_jobs:
             callback(
                 {
-                    "datetime": datetime.now(),
+                    "date_time": datetime.now(),
                     "status": "failed",
-                    "message": f"Job failures occurred during asset creation",
+                    "message": "Job failures occurred during asset creation",
                     "detail": None,
                 }
             )

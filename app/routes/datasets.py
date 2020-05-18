@@ -28,7 +28,7 @@ async def get_datasets():
     """
     Get list of all datasets
     """
-    return datasets.get_datasets
+    return await datasets.get_datasets()
 
 
 @router.get(
