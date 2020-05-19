@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -6,11 +6,11 @@ from ...settings.globals import (
     AURORA_JOB_QUEUE,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
-    POSTGRESQL_CLIENT_JOB_DEFINITION,
-    TILE_CACHE_JOB_QUEUE,
-    TILE_CACHE_JOB_DEFINITION,
-    PIXETL_JOB_QUEUE,
     PIXETL_JOB_DEFINITION,
+    PIXETL_JOB_QUEUE,
+    POSTGRESQL_CLIENT_JOB_DEFINITION,
+    TILE_CACHE_JOB_DEFINITION,
+    TILE_CACHE_JOB_QUEUE,
 )
 
 

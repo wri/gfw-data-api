@@ -52,7 +52,7 @@ def test_datasets(client, db):
     assert response.json()["metadata"] == payload["metadata"]
 
     cursor = db.execute(
-        f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = :dataset;",
+        "SELECT schema_name FROM information_schema.schemata WHERE schema_name = :dataset;",
         {"dataset": dataset},
     )
     rows = cursor.fetchall()

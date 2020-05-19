@@ -4,8 +4,8 @@ from uuid import UUID
 from asyncpg import UniqueViolationError
 from fastapi import HTTPException
 
-from . import update_data
 from ..models.orm.asset import Asset as ORMAsset
+from . import update_data
 
 
 async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
@@ -15,7 +15,7 @@ async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
     if not rows:
         raise HTTPException(
             status_code=404,
-            detail=f"Version with name {dataset}/{version} does not exist",
+            detail=f"Version with name {dataset}.{version} does not exist",
         )
 
     return rows

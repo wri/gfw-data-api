@@ -3,11 +3,11 @@ from typing import List
 from asyncpg import UniqueViolationError
 from fastapi import HTTPException
 
-from . import update_data
 from ..application import db
-from ..models.orm.queries.datasets import all_datasets
 from ..models.orm.dataset import Dataset as ORMDataset
+from ..models.orm.queries.datasets import all_datasets
 from ..models.pydantic.dataset import DatasetUpdateIn
+from . import update_data
 
 
 async def get_datasets() -> List[ORMDataset]:

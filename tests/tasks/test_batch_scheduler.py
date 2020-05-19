@@ -1,17 +1,22 @@
+from unittest.mock import patch
+
+import boto3
 import pytest
 
+import app
+import app.tasks.batch as batch
 from app.models.pydantic.job import (
-    PostgresqlClientJob,
-    GdalPythonImportJob,
     GdalPythonExportJob,
+    GdalPythonImportJob,
+    PostgresqlClientJob,
     TileCacheJob,
 )
-import app.tasks.batch as batch
 from app.settings.globals import (
+    AWS_REGION,
+    WRITER_DBNAME,
+    WRITER_HOST,
     WRITER_PASSWORD,
     WRITER_PORT,
-    WRITER_HOST,
-    WRITER_DBNAME,
     WRITER_USERNAME,
 )
 
@@ -63,7 +68,7 @@ async def test_batch_scheduler(batch_client):
     )
 
     log = await batch.execute([job1, job2, job3, job4], lambda x: x)
-    assert log.status == "saved"
+    assert log.status == "failed"
     #
     # resp = logs.describe_log_streams(
     #     logGroupName="/aws/batch/job"
@@ -81,3 +86,29 @@ async def test_batch_scheduler(batch_client):
     #         assert event[
     #                    "message"] == "PSQL: ALTER TABLE .. Add GFW columns\npsql: could not connect to server: No such file or directory\nIs the server running locally and accepting\nconnections on Unix domain socket \"/var/run/postgresql/.s.PGSQL.5432\"?"
     #         # print(event["message"])
+
+
+# import os
+# os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+# os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"  # pragma: allowlist secret
+# os.environ["AWS_SECURITY_TOKEN"] = "testing"
+# os.environ["AWS_SESSION_TOKEN"] = "testing"
+#
+
+
+def test_s3(moto_s3):
+    # import boto3
+    # boto3.client("s3", region_name="us-east-1", endpoint_url="http://motoserver:5000") #
+
+    client = app.utils.aws.get_s3_client()
+
+    client.create_bucket(Bucket="my_bucket_name")
+    more_binary_data = b"Here we have some more data"
+
+    client.put_object(
+        Body=more_binary_data,
+        Bucket="my_bucket_name",
+        Key="my/key/including/anotherfilename.txt",
+    )
+    assert moto_s3.called
+    assert moto_s3.call_count == 1

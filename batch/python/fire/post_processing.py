@@ -1,13 +1,12 @@
+import concurrent.futures
 import os
 from typing import List, Tuple
 
-import concurrent.futures
-
-import psycopg2
-from psycopg2.pool import ThreadedConnectionPool
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 import pendulum
+import psycopg2
 from pendulum.parsing.exceptions import ParserError
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from psycopg2.pool import ThreadedConnectionPool
 
 A_POOL = None
 YEARS = range(2011, 2022)

@@ -1,7 +1,7 @@
 import os
 
-import psycopg2
 import pendulum
+import psycopg2
 from pendulum.parsing.exceptions import ParserError
 
 
@@ -26,7 +26,7 @@ def cli():
     table = "v202003"
 
     cursor = connection.cursor()
-    print(f"Create table")
+    print("Create table")
 
     cursor.execute(get_sql("sql/create_table.sql.tmpl", schema=schema, table=table))
 

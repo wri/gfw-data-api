@@ -1,16 +1,16 @@
 import os
 from datetime import datetime
-from typing import List, Dict, Any, Optional, Callable, Awaitable
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 from typing.io import IO
 
-from .raster_source_assets import raster_source_asset
-from .table_source_assets import table_source_asset
-from .vector_source_assets import vector_source_asset
 from ..crud import versions
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.source import SourceType
 from ..utils.aws import get_s3_client
 from ..utils.path import split_s3_path
+from .raster_source_assets import raster_source_asset
+from .table_source_assets import table_source_asset
+from .vector_source_assets import vector_source_asset
 
 default_asset = {
     SourceType.vector: vector_source_asset,

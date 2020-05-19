@@ -1,13 +1,13 @@
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 from ..application import db
 from ..models.orm.queries.fields import fields
 from ..models.pydantic.metadata import FieldMetadata
 from ..settings.globals import (
-    WRITER_PASSWORD,
-    WRITER_HOST,
-    WRITER_PORT,
     WRITER_DBNAME,
+    WRITER_HOST,
+    WRITER_PASSWORD,
+    WRITER_PORT,
     WRITER_USERNAME,
 )
 

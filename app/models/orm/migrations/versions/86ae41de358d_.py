@@ -9,13 +9,12 @@ import json
 import os
 
 import boto3
-import sqlalchemy as sa
 import geoalchemy2
-
+import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-from app.settings.globals import READER_USERNAME, READER_PASSWORD, READER_DBNAME
+from app.settings.globals import READER_DBNAME, READER_PASSWORD, READER_USERNAME
 
 # revision identifiers, used by Alembic.
 revision = "e47ec2fc3c51"
@@ -26,7 +25,7 @@ depends_on = None
 
 def upgrade():
 
-    op.execute(f"""CREATE EXTENSION IF NOT EXISTS postgis;""")
+    op.execute("""CREATE EXTENSION IF NOT EXISTS postgis;""")
 
     #### Create read only user
     op.execute(

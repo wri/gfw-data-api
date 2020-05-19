@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Path, Query, Depends
+from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
 
 from app.routes import dataset_dependency, version_dependency

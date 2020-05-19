@@ -1,20 +1,36 @@
-from moto import mock_batch, mock_iam, mock_ecs, mock_ec2, mock_logs
+from moto import mock_batch, mock_iam, mock_ecs, mock_ec2, mock_logs  # isort:skip
+
+import contextlib
+from typing import Optional
+from unittest.mock import patch
+
 import boto3
 import pytest
-import os
+from alembic.config import main
 from docker.models.containers import ContainerCollection
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
+from app.routes import is_admin
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
+    AWS_REGION,
     DATA_LAKE_JOB_QUEUE,
-    TILE_CACHE_JOB_QUEUE,
-    PIXETL_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
     PIXETL_JOB_DEFINITION,
-    TILE_CACHE_JOB_DEFINITION,
+    PIXETL_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
-    AWS_REGION,
+    TILE_CACHE_JOB_DEFINITION,
+    TILE_CACHE_JOB_QUEUE,
+    WRITER_DBNAME,
+    WRITER_HOST,
+    WRITER_PASSWORD,
+    WRITER_PORT,
+    WRITER_USERNAME,
 )
+
+SessionLocal: Optional[Session] = None
 
 
 class AWSMock(object):
@@ -101,16 +117,18 @@ class AWSMock(object):
                 print(event["message"])
 
 
-@pytest.fixture(scope="function")
-def aws_credentials():
-    """Mocked AWS Credentials for moto."""
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"  # pragma: allowlist secret
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-
-
 @pytest.fixture(autouse=True)
+def moto_s3():
+    with patch(
+        "app.utils.aws.get_s3_client",
+        return_value=boto3.client(
+            "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+        ),
+    ) as moto_s3:
+        yield moto_s3
+
+
+@pytest.fixture(scope="session", autouse=True)
 def batch_client():
     services = ["ec2", "ecs", "logs", "iam", "batch"]
     aws_mock = AWSMock(*services)
@@ -183,3 +201,54 @@ def _setup(ec2_client, iam_client):
     )
 
     return vpc_id, subnet_id, sg_id, iam_arn
+
+
+@contextlib.contextmanager
+def session():
+
+    global SessionLocal
+
+    if SessionLocal is None:
+        db_conn = f"postgresql://{WRITER_USERNAME}:{WRITER_PASSWORD}@{WRITER_HOST}:{WRITER_PORT}/{WRITER_DBNAME}"  # pragma: allowlist secret
+        engine = create_engine(db_conn, pool_size=1, max_overflow=0)
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    db: Optional[Session] = None
+    try:
+        db = SessionLocal()
+        yield db
+    finally:
+        if db is not None:
+            db.close()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def db():
+    """
+    Aquire a database session for a test and make sure the connection gets
+    properly closed, even if test fails
+    """
+    with contextlib.ExitStack() as stack:
+        yield stack.enter_context(session())
+
+
+async def is_admin_mocked():
+    return True
+
+
+@pytest.fixture(autouse=True)
+def client():
+    """
+    Set up a clean database before running a test
+    Run all migrations before test and downgrade afterwards
+    """
+    from app.main import app
+
+    main(["--raiseerr", "upgrade", "head"])
+    app.dependency_overrides[is_admin] = is_admin_mocked
+
+    with TestClient(app) as client:
+        yield client
+
+    app.dependency_overrides = {}
+    main(["--raiseerr", "downgrade", "base"])

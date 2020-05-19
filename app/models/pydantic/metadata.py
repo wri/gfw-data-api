@@ -1,7 +1,7 @@
-from typing import List, Optional, Dict, Any, Union
+from datetime import date
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
-from datetime import date
 
 
 class FieldMetadata(BaseModel):

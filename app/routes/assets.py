@@ -1,16 +1,14 @@
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, HTTPException, Response, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from fastapi.responses import ORJSONResponse
 
 from ..crud import assets
 from ..models.orm.asset import Asset as ORMAsset
-
 from ..models.pydantic.asset import Asset, AssetCreateIn, AssetType
 from ..models.pydantic.change_log import ChangeLog
 from ..routes import dataset_dependency, is_admin, version_dependency
-
 
 router = APIRouter()
 

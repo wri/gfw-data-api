@@ -1,18 +1,17 @@
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
-
-from . import dataset_dependency
-from ..crud import update_data, datasets, versions
+from ..application import db
+from ..crud import datasets, update_data, versions
 from ..models.orm.dataset import Dataset as ORMDataset
 from ..models.orm.version import Version as ORMVersion
 from ..models.pydantic.dataset import Dataset, DatasetCreateIn, DatasetUpdateIn
-from ..application import db
-from ..settings.globals import READER_USERNAME
 from ..routes import is_admin
+from ..settings.globals import READER_USERNAME
+from . import dataset_dependency
 
 router = APIRouter()
 

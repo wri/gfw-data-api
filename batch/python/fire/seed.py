@@ -1,6 +1,6 @@
 import os
-import boto3
 
+import boto3
 from create_table import cli as create_table
 from load import load
 from post_processing import cli as post_processing

@@ -1,7 +1,7 @@
 import logging
-from typing import Any, Dict, List, Optional, Callable, Awaitable, Set
-from time import sleep
 from datetime import datetime
+from time import sleep
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Set
 
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.job import Job

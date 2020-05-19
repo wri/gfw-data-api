@@ -7,7 +7,6 @@ from starlette.datastructures import Secret
 
 from ..models.pydantic.database import DatabaseURL
 
-
 # Read .env file, if exists
 p: Path = Path(__file__).parents[2] / ".env"
 config: Config = Config(p if p.exists() else None)

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Dict, Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -8,8 +8,8 @@ from .base import Base
 from .change_log import ChangeLog
 from .metadata import (
     DatabaseTableMetadata,
-    VectorTileCacheMetadata,
     RasterTileSetMetadata,
+    VectorTileCacheMetadata,
 )
 
 AssetMetadata = Union[
@@ -52,7 +52,6 @@ class Asset(Base):
     status: Status
     is_managed: bool
     creation_options: Dict[str, Any]
-    history: List[Dict[str, Any]]
     metadata: AssetMetadata
     change_log: List[ChangeLog]
 

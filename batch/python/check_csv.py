@@ -1,10 +1,9 @@
 import csv
+import sys
 from typing import Type
 from urllib.parse import urlparse
-import sys
 
 import boto3
-
 
 s3_uri = sys.argv[1]
 s3 = boto3.client("s3", region_name="us-east-1")

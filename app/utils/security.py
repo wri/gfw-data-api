@@ -1,5 +1,4 @@
 import requests
-
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 
@@ -12,7 +11,7 @@ async def is_authorized(token: str = Depends(oauth2_scheme)) -> bool:
     """
 
     headers = {"Authorization": f"Bearer {token}"}
-    url = f"https://production-api.globalforestwatch.org/auth/check-logged"
+    url = "https://production-api.globalforestwatch.org/auth/check-logged"
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200 and response.status_code != 401:

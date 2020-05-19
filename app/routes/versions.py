@@ -1,15 +1,15 @@
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from typing.io import IO
 
 from asyncpg.exceptions import UniqueViolationError
 from fastapi import (
     APIRouter,
-    Depends,
-    HTTPException,
-    File,
-    UploadFile,
     BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
     Response,
+    UploadFile,
 )
 from fastapi.responses import ORJSONResponse
 

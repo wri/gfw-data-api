@@ -3,7 +3,6 @@ from urllib.parse import urlparse
 
 from app.settings.globals import AWS_REGION
 
-
 S3_CLIENT = None
 BATCH_CLIENT = None
 
@@ -13,7 +12,7 @@ def get_s3_client():
 
     global S3_CLIENT
     if S3_CLIENT is None:
-        S3_CLIENT = boto3.client("batch", region_name=AWS_REGION)
+        S3_CLIENT = boto3.client("s3", region_name=AWS_REGION)
     return S3_CLIENT
 
 

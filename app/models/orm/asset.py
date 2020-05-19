@@ -13,7 +13,6 @@ class Asset(Base):
     status = db.Column(db.String, nullable=False, default="pending")
     is_managed = db.Column(db.Boolean, nullable=False, default=True)
     creation_options = db.Column(db.JSONB, default=dict())
-    history = db.Column(db.ARRAY(db.JSONB), default=list())
     metadata = db.Column(db.JSONB, default=dict())
     change_log = db.Column(db.ARRAY(db.JSONB), default=list())
 

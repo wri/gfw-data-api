@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from sqlalchemy.dialects.postgresql import JSONB, UUID, ARRAY
-from sqlalchemy_utils import EmailType, generic_repr
 from geoalchemy2 import Geometry
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy_utils import EmailType, generic_repr
 
 from ...application import db
 

@@ -1,11 +1,11 @@
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from app.crud import assets
 from app.models.pydantic.asset import AssetTaskCreate
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.job import Job, PostgresqlClientJob
 from app.models.pydantic.metadata import DatabaseTableMetadata
-from app.tasks import writer_secrets, get_field_metadata
+from app.tasks import get_field_metadata, writer_secrets
 from app.tasks.batch import execute
 
 

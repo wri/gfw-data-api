@@ -1,14 +1,22 @@
-from typing import List, Dict, Any
+from typing import Any, List
 
 from asyncpg import UniqueViolationError
 from fastapi import HTTPException
 
-from . import update_data
 from ..models.orm.version import Version as ORMVersion
+from . import update_data
 
 
 async def get_versions(dataset: str) -> List[ORMVersion]:
-    versions: List[ORMVersion] = await ORMVersion.select("version").where(
+    versions: List[ORMVersion] = await ORMVersion.query.where(
+        ORMVersion.dataset == dataset
+    ).gino.all()
+
+    return versions
+
+
+async def get_version_names(dataset: str) -> List[Any]:
+    versions: List[Any] = await ORMVersion.select("version").where(
         ORMVersion.dataset == dataset
     ).gino.all()
 
@@ -20,7 +28,7 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
     if row is None:
         raise HTTPException(
             status_code=404,
-            detail=f"Version with name {dataset}/{version} does not exist",
+            detail=f"Version with name {dataset}.{version} does not exist",
         )
     return row
 
@@ -32,7 +40,8 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
         )
     except UniqueViolationError:
         raise HTTPException(
-            status_code=400, detail=f"Dataset with name {dataset} already exists"
+            status_code=400,
+            detail=f"Version with name {dataset}.{version} already exists",
         )
 
     return new_version

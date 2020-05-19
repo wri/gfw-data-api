@@ -2,19 +2,20 @@ import sys
 
 from fastapi.openapi.utils import get_openapi
 
-sys.path.extend(["./"])
-
 from .application import app
 from .routes import (
+    assets,
     datasets,
     features,
     geostore,
     query,
+    security,
     sources,
     versions,
-    assets,
-    security,
 )
+
+sys.path.extend(["./"])
+
 
 ROUTERS = (
     datasets.router,

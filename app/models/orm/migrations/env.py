@@ -1,3 +1,9 @@
+""" env.py
+    Alembic ENV module
+
+    isort:skip_file
+"""
+
 # Native libraries
 import sys
 
@@ -7,21 +13,22 @@ sys.path.extend(["./"])
 from app.application import db
 
 # To include a model in migrations, add a line here.
-from app.models.orm.dataset import Dataset
-from app.models.orm.version import Version
 from app.models.orm.asset import Asset
+from app.models.orm.dataset import Dataset
 from app.models.orm.geostore import Geostore
-
+from app.models.orm.version import Version
 
 ###############################################################################
 
 # Third party packages
-from sqlalchemy import engine_from_config, pool
 from alembic import context
 from logging.config import fileConfig
+from sqlalchemy import engine_from_config, pool
+
 
 # App imports
 from app.settings.globals import ALEMBIC_CONFIG
+
 
 config = context.config
 fileConfig(config.config_file_name)

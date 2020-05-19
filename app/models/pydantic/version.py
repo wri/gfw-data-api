@@ -1,11 +1,11 @@
 from enum import Enum
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
 from .base import Base
 from .change_log import ChangeLog
-from .metadata import VersionMetadata, FieldMetadata
+from .metadata import FieldMetadata, VersionMetadata
 from .source import SourceType
 
 
