@@ -5,7 +5,7 @@ from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 from ..application import db
-from ..crud import datasets, update_data, versions
+from ..crud import datasets, versions
 from ..models.orm.dataset import Dataset as ORMDataset
 from ..models.orm.version import Version as ORMVersion
 from ..models.pydantic.dataset import Dataset, DatasetCreateIn, DatasetUpdateIn
@@ -108,7 +108,7 @@ async def delete_dataset(
     """
 
     row: ORMDataset = await datasets.delete_dataset(dataset)
-    await db.gino.status(DropSchema(dataset))
+    await db.status(DropSchema(dataset))
 
     return await _dataset_response(dataset, row)
 

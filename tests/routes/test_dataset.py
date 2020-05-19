@@ -38,7 +38,6 @@ def test_datasets(client, db):
     assert response.json() == []
 
     response = client.put(f"/{dataset}", data=json.dumps(payload))
-    print(response.json())
     assert response.status_code == 201
     assert response.json()["metadata"] == payload["metadata"]
 
@@ -57,3 +56,25 @@ def test_datasets(client, db):
     )
     rows = cursor.fetchall()
     assert len(rows) == 1
+
+    new_payload = {"metadata": {"title": "New Title"}}
+    response = client.patch(f"/{dataset}", data=json.dumps(new_payload))
+    assert response.status_code == 200
+    assert response.json()["metadata"] != payload["metadata"]
+    assert response.json()["metadata"]["title"] == "New Title"
+    assert response.json()["metadata"]["subtitle"] == "string"
+
+    response = client.delete(f"/{dataset}")
+    assert response.status_code == 200
+    assert response.json()["dataset"] == "test"
+
+    cursor = db.execute(
+        "SELECT schema_name FROM information_schema.schemata WHERE schema_name = :dataset;",
+        {"dataset": dataset},
+    )
+    rows = cursor.fetchall()
+    assert len(rows) == 0
+
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == []
