@@ -4,7 +4,7 @@ from uuid import UUID
 from asyncpg import UniqueViolationError
 from fastapi import HTTPException
 
-from ..models.orm.asset import Asset as ORMAsset
+from ..models.orm.assets import Asset as ORMAsset
 from . import update_data
 
 

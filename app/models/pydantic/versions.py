@@ -1,12 +1,13 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
 
 from .base import Base
 from .change_log import ChangeLog
+from .creation_options import CreationOptions, VectorSourceCreationOptions
 from .metadata import FieldMetadata, VersionMetadata
-from .source import SourceType
+from .sources import SourceType
 
 
 class Version(Base):
@@ -17,7 +18,8 @@ class Version(Base):
     source_type: SourceType
     source_uri: Optional[List[str]] = None
     metadata: VersionMetadata
-    status: str
+    status: str = "pending"
+    creation_options: CreationOptions
 
     # Tablular/ Vector data only
 
@@ -30,8 +32,9 @@ class Version(Base):
 class VersionCreateIn(BaseModel):
     is_latest: bool = False
     source_type: SourceType
-    source_uri: Optional[List[str]]
+    source_uri: List[str]
     metadata: VersionMetadata
+    creation_options: CreationOptions
 
 
 class VersionUpdateIn(BaseModel):
@@ -39,3 +42,4 @@ class VersionUpdateIn(BaseModel):
     source_type: Optional[SourceType]
     source_uri: Optional[List[str]]
     metadata: Optional[VersionMetadata]
+    creation_options: Optional[CreationOptions]

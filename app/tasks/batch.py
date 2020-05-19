@@ -4,7 +4,7 @@ from time import sleep
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Set
 
 from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.job import Job
+from ..models.pydantic.jobs import Job
 from ..settings.globals import POLL_WAIT_TIME
 from ..utils.aws import get_batch_client
 
@@ -14,7 +14,7 @@ async def execute(
 ) -> ChangeLog:
 
     try:
-        scheduled_jobs = schedule(jobs, callback)
+        scheduled_jobs = await schedule(jobs, callback)
         print(f"SCHEDULED JOBS: {scheduled_jobs}")
     except RecursionError:
         status = "failed"
@@ -29,7 +29,7 @@ async def execute(
     return ChangeLog(date_time=datetime.now(), status=status, message=message)
 
 
-def schedule(
+async def schedule(
     jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]
 ) -> Dict[str, str]:
     """
@@ -44,7 +44,7 @@ def schedule(
     for job in jobs:
         if not job.parents:
             scheduled_jobs[job.job_name] = submit_batch_job(job)
-            callback(
+            await callback(
                 {
                     "date_time": datetime.now(),
                     "status": "pending",
@@ -74,7 +74,7 @@ def schedule(
                     for parent in job.parents  # type: ignore
                 ]
                 scheduled_jobs[job.job_name] = submit_batch_job(job, depends_on)
-                callback(
+                await callback(
                     {
                         "date_time": datetime.now(),
                         "status": "pending",
@@ -85,7 +85,7 @@ def schedule(
 
         i += 1
         if i > 10:
-            callback(
+            await callback(
                 {
                     "date_time": datetime.now(),
                     "status": "failed",
@@ -117,7 +117,7 @@ async def poll_jobs(
             )
             if job["status"] == "SUCCEEDED":
                 print(f"Container for job {job['jobId']} succeeded")
-                callback(
+                await callback(
                     {
                         "date_time": datetime.now(),
                         "status": "success",
@@ -128,7 +128,7 @@ async def poll_jobs(
                 completed_jobs.add(job["jobId"])
             if job["status"] == "FAILED":
                 print(f"Container for job {job['jobId']} failed")
-                callback(
+                await callback(
                     {
                         "date_time": datetime.now(),
                         "status": "failed",
@@ -139,7 +139,7 @@ async def poll_jobs(
                 failed_jobs.add(job["jobId"])
 
         if completed_jobs == set(job_ids):
-            callback(
+            await callback(
                 {
                     "date_time": datetime.now(),
                     "status": "success",
@@ -149,7 +149,7 @@ async def poll_jobs(
             )
             return "saved"
         elif failed_jobs:
-            callback(
+            await callback(
                 {
                     "date_time": datetime.now(),
                     "status": "failed",

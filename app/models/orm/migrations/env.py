@@ -13,10 +13,10 @@ sys.path.extend(["./"])
 from app.application import db
 
 # To include a model in migrations, add a line here.
-from app.models.orm.asset import Asset
-from app.models.orm.dataset import Dataset
+from app.models.orm.assets import Asset
+from app.models.orm.datasets import Dataset
 from app.models.orm.geostore import Geostore
-from app.models.orm.version import Version
+from app.models.orm.versions import Version
 
 ###############################################################################
 

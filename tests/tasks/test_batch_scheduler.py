@@ -5,7 +5,7 @@ import pytest
 
 import app
 import app.tasks.batch as batch
-from app.models.pydantic.job import (
+from app.models.pydantic.jobs import (
     GdalPythonExportJob,
     GdalPythonImportJob,
     PostgresqlClientJob,
@@ -31,6 +31,9 @@ writer_secrets = [
 
 @pytest.mark.asyncio
 async def test_batch_scheduler(batch_client):
+    async def callback(message):
+        pass
+
     _, logs = batch_client
 
     batch.POLL_WAIT_TIME = 1
@@ -67,7 +70,7 @@ async def test_batch_scheduler(batch_client):
         environment=writer_secrets,
     )
 
-    log = await batch.execute([job1, job2, job3, job4], lambda x: x)
+    log = await batch.execute([job1, job2, job3, job4], callback)
     assert log.status == "failed"
     #
     # resp = logs.describe_log_streams(

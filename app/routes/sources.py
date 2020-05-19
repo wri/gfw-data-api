@@ -3,7 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import ORJSONResponse
 
-from ..models.pydantic.source import Source
+from ..models.pydantic.sources import Source
 from ..routes import dataset_dependency, is_admin, version_dependency
 
 router = APIRouter()

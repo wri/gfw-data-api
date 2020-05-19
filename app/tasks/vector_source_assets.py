@@ -2,9 +2,10 @@ import os
 from typing import Any, Dict, List
 
 from app.crud import assets
-from app.models.pydantic.asset import AssetTaskCreate
+from app.models.pydantic.assets import AssetTaskCreate
 from app.models.pydantic.change_log import ChangeLog
-from app.models.pydantic.job import GdalPythonImportJob, Job, PostgresqlClientJob
+from app.models.pydantic.creation_options import VectorSourceCreationOptions
+from app.models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
 from app.models.pydantic.metadata import DatabaseTableMetadata
 from app.tasks import get_field_metadata, writer_secrets
 from app.tasks.batch import execute
@@ -15,16 +16,18 @@ async def vector_source_asset(
     dataset,
     version,
     source_uris: List[str],
-    config_options,
+    creation_options,
     metadata: Dict[str, Any],
     callback,
 ) -> ChangeLog:
     assert len(source_uris) == 1, "Vector sources only support one input file"
 
-    source_uri: str = gdal_path(source_uris[0], config_options.zipped)
+    options = VectorSourceCreationOptions(**creation_options)
 
-    if config_options.layers:
-        layers = config_options.layers
+    source_uri: str = gdal_path(source_uris[0], options.zipped)
+
+    if options.layers:
+        layers = options.layers
     else:
         layer, _ = os.path.splitext(os.path.basename(source_uri))
         layers = [layer]
@@ -35,7 +38,7 @@ async def vector_source_asset(
         version=version,
         asset_uri=f"/{dataset}/{version}/features",
         is_managed=True,
-        creation_options=config_options,
+        creation_options=options,
         metadata=DatabaseTableMetadata(**metadata),
     )
 
@@ -86,7 +89,7 @@ async def vector_source_asset(
 
     index_jobs: List[Job] = list()
 
-    for index in config_options.indices:
+    for index in options.indices:
         index_jobs.append(
             PostgresqlClientJob(
                 job_name="Create index",

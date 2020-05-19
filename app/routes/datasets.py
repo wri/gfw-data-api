@@ -6,9 +6,8 @@ from sqlalchemy.schema import CreateSchema, DropSchema
 
 from ..application import db
 from ..crud import datasets, versions
-from ..models.orm.dataset import Dataset as ORMDataset
-from ..models.orm.version import Version as ORMVersion
-from ..models.pydantic.dataset import Dataset, DatasetCreateIn, DatasetUpdateIn
+from ..models.orm.datasets import Dataset as ORMDataset
+from ..models.pydantic.datasets import Dataset, DatasetCreateIn, DatasetUpdateIn
 from ..routes import is_admin
 from ..settings.globals import READER_USERNAME
 from . import dataset_dependency
@@ -115,7 +114,7 @@ async def delete_dataset(
 
 async def _dataset_response(dataset: str, orm: ORMDataset) -> Dict[str, Any]:
 
-    _versions: List[ORMVersion] = await versions.get_versions(dataset)
+    _versions: List[Any] = await versions.get_version_names(dataset)
     response = Dataset.from_orm(orm).dict(by_alias=True)
     response["versions"] = [version[0] for version in _versions]
 

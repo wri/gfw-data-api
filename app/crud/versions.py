@@ -3,7 +3,7 @@ from typing import Any, List
 from asyncpg import UniqueViolationError
 from fastapi import HTTPException
 
-from ..models.orm.version import Version as ORMVersion
+from ..models.orm.versions import Version as ORMVersion
 from . import update_data
 
 

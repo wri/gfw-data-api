@@ -10,7 +10,7 @@ from app.crud.datasets import (
     get_datasets,
     update_dataset,
 )
-from app.models.pydantic.dataset import DatasetUpdateIn
+from app.models.pydantic.datasets import DatasetUpdateIn
 from app.models.pydantic.metadata import DatasetMetadata
 
 

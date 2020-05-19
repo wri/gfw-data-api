@@ -1,5 +1,5 @@
 import requests
-from fastapi import Depends, HTTPException, Path
+from fastapi import Depends, Form, HTTPException, Path
 from fastapi.security import OAuth2PasswordBearer
 
 VERSION_REGEX = r"^v\d{1,8}\.?\d{1,3}\.?\d{1,3}$|^latest$"
@@ -12,6 +12,16 @@ async def dataset_dependency(dataset: str = Path(..., title="Dataset")):
 
 async def version_dependency(
     version: str = Path(..., title="Dataset version", regex=VERSION_REGEX)
+):
+
+    # if version == "latest":
+    #     version = ...
+
+    return version
+
+
+async def version_dependency_form(
+    version: str = Form(..., title="Dataset version", regex=VERSION_REGEX)
 ):
 
     # if version == "latest":

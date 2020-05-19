@@ -5,7 +5,7 @@ from typing.io import IO
 
 from ..crud import versions
 from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.source import SourceType
+from ..models.pydantic.sources import SourceType
 from ..utils.aws import get_s3_client
 from ..utils.path import split_s3_path
 from .raster_source_assets import raster_source_asset
@@ -29,7 +29,7 @@ async def create_default_asset(
 
     source_type = input_data["source_type"]
     source_uri = input_data["source_uri"]
-    config_options = input_data["config_options"]
+    creation_options = input_data["creation_options"]
     metadata = input_data["metadata"]
 
     status = None
@@ -44,8 +44,9 @@ async def create_default_asset(
         # Seed default asset and create asset record in database
         if source_type in default_asset.keys():
             log = await default_asset[source_type](
-                dataset, version, source_uri, config_options, metadata, callback
+                dataset, version, source_uri, creation_options, metadata, callback
             )
+            status = log.status
         else:
             raise NotImplementedError(f"Unsupported asset source type {source_type})")
 

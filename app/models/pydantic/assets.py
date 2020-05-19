@@ -1,11 +1,12 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel
 
 from .base import Base
 from .change_log import ChangeLog
+from .creation_options import CreationOptions
 from .metadata import (
     DatabaseTableMetadata,
     RasterTileSetMetadata,
@@ -51,7 +52,7 @@ class Asset(Base):
     asset_uri: str
     status: Status
     is_managed: bool
-    creation_options: Dict[str, Any]
+    creation_options: CreationOptions
     metadata: AssetMetadata
     change_log: List[ChangeLog]
 
@@ -60,7 +61,7 @@ class AssetCreateIn(BaseModel):
     asset_type: AssetType
     asset_uri: Optional[str]
     is_managed: bool
-    creation_options: Dict[str, Any]
+    creation_options: CreationOptions
     metadata: Optional[AssetMetadata]
 
 
@@ -70,5 +71,5 @@ class AssetTaskCreate(BaseModel):
     version: str
     asset_uri: Optional[str]
     is_managed: bool
-    creation_options: Dict[str, Any]
+    creation_options: CreationOptions
     metadata: Optional[AssetMetadata]

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
@@ -15,7 +15,7 @@ class Index(BaseModel):
     column_name: str
 
 
-class VectorSourceConfigOptions(BaseModel):
+class VectorSourceCreationOptions(BaseModel):
     src_driver: str
     zipped: bool
     layers: Optional[List[str]] = None
@@ -24,3 +24,6 @@ class VectorSourceConfigOptions(BaseModel):
         Index(index_type="gist", column_name="geom_wm"),
         Index(index_type="hash", column_name="gfw_geostore_id"),
     ]
+
+
+CreationOptions = Union[VectorSourceCreationOptions]
