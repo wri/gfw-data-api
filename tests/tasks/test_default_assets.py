@@ -14,11 +14,12 @@ BUCKET = "test-bucket"
 
 
 @pytest.mark.asyncio
-async def test_vector_source_asset(batch_client, moto_s3):
+async def test_vector_source_asset(batch_client):
     # TODO: define what a callback should do
     async def callback(message):
         pass
 
+    _, logs = batch_client
     s3_client = boto3.client(
         "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
     )
@@ -47,4 +48,18 @@ async def test_vector_source_asset(batch_client, moto_s3):
 
     row = await versions.get_version(dataset, version)
     assert row.status == "failed"
+
+    resp = logs.describe_log_streams(logGroupName="/aws/batch/job")
+
+    for stream in resp["logStreams"]:
+        ls_name = stream["logStreamName"]
+
+        stream_resp = logs.get_log_events(
+            logGroupName="/aws/batch/job", logStreamName=ls_name
+        )
+
+        print(f"-------- LOGS FROM {ls_name} --------")
+        for event in stream_resp["events"]:
+            print(event["message"])
+
     assert row.change_log == ""

@@ -27,8 +27,10 @@ services:
       - AWS_SECRET_ACCESS_KEY=testing  # pragma: allowlist secret
       - AWS_SECURITY_TOKEN=testing  # pragma: allowlist secret
       - AWS_SESSION_TOKEN=testing  # pragma: allowlist secret
+      - POLL_WAIT_TIME=1
+      - ROOT=$PWD
 
-    entrypoint: wait_for_postgres.sh pytest --cov=app tests/tasks
+    entrypoint: wait_for_postgres.sh pytest --cov=app tests/
     depends_on:
       - test_database
       - motoserver

@@ -35,6 +35,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      -f|--file)
+      LOCAL_FILE="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -g|--geometry_name)
       GEOMETRY_NAME="$2"
       shift # past argument

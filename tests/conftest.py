@@ -1,6 +1,5 @@
-from moto import mock_batch, mock_iam, mock_ecs, mock_ec2, mock_logs  # isort:skip
-
 import contextlib
+import os
 from typing import Optional
 from unittest.mock import patch
 
@@ -30,7 +29,12 @@ from app.settings.globals import (
     WRITER_USERNAME,
 )
 
+from moto import mock_batch, mock_iam, mock_ecs, mock_ec2, mock_logs  # isort:skip
+
+
 SessionLocal: Optional[Session] = None
+LOG_GROUP = "/aws/batch/job"
+ROOT = os.environ["ROOT"]
 
 
 class AWSMock(object):
@@ -52,10 +56,16 @@ class AWSMock(object):
                 "client": client,
                 "mock": mocked_service,
             }
+        self.add_log_group(LOG_GROUP)
 
     def stop_services(self):
         for service in self.mocked_services.keys():
             self.mocked_services[service]["mock"].stop()
+
+    def add_log_group(self, log_group_name):
+        self.mocked_services["logs"]["client"].create_log_group(
+            logGroupName=log_group_name
+        )
 
     def add_compute_environment(self, compute_name, subnet_id, sg_id, iam_arn):
         return self.mocked_services["batch"]["client"].create_compute_environment(
@@ -97,7 +107,12 @@ class AWSMock(object):
                 "image": f"{docker_image}:latest",
                 "vcpus": 1,
                 "memory": 128,
-                "volumes": [{"host": {"sourcePath": "fixtures/aws"}, "name": "aws"}],
+                "volumes": [
+                    {
+                        "host": {"sourcePath": f"{ROOT}/tests/fixtures/aws"},
+                        "name": "aws",
+                    }
+                ],
                 "mountPoints": [
                     {
                         "sourceVolume": "aws",
@@ -110,14 +125,14 @@ class AWSMock(object):
 
     def print_logs(self):
         resp = self.mocked_services["logs"]["client"].describe_log_streams(
-            logGroupName="/aws/batch/job"
+            logGroupName=LOG_GROUP
         )
 
         for stream in resp["logStreams"]:
             ls_name = stream["logStreamName"]
 
             stream_resp = self.mocked_services["logs"]["client"].get_log_events(
-                logGroupName="/aws/batch/job", logStreamName=ls_name
+                logGroupName=LOG_GROUP, logStreamName=ls_name
             )
 
             print(f"-------- LOGS FROM {ls_name} --------")
@@ -213,7 +228,6 @@ def _setup(ec2_client, iam_client):
 
 @contextlib.contextmanager
 def session():
-
     global SessionLocal
 
     if SessionLocal is None:

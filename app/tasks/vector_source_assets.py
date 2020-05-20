@@ -47,7 +47,7 @@ async def vector_source_asset(
         new_asset = await assets.create_asset(**data.dict())
 
     create_vector_schema_job = GdalPythonImportJob(
-        job_name="Import vector data",
+        job_name="import_vector_data",
         command=[
             "create_vector_schema.sh",
             "-d",
@@ -65,7 +65,7 @@ async def vector_source_asset(
     for layer in layers:
         load_vector_data_jobs.append(
             GdalPythonImportJob(
-                job_name="Load vector data",
+                job_name="load_vector_data",
                 command=[
                     "load_vector_data.sh",
                     "-d",
@@ -83,7 +83,7 @@ async def vector_source_asset(
         )
 
     gfw_attribute_job = PostgresqlClientJob(
-        job_name="enrich gfw attributes",
+        job_name="enrich_gfw_attributes",
         command=["add_gfw_fields.sh", "-d", dataset, "-v", version],
         parents=[job.job_name for job in load_vector_data_jobs],
         environment=writer_secrets,
@@ -94,7 +94,7 @@ async def vector_source_asset(
     for index in options.indices:
         index_jobs.append(
             PostgresqlClientJob(
-                job_name="Create index",
+                job_name=f"create_index_{index.column_name}_{index.index_type}",
                 command=[
                     "create_index.sh",
                     "-d",
@@ -112,7 +112,7 @@ async def vector_source_asset(
         )
 
     inherit_geostore_job = PostgresqlClientJob(
-        job_name="inherit from geostore",
+        job_name="inherit_from_geostore",
         command=["inherit_geostore.sh", "-d", dataset, "-v", version],
         parents=[job.job_name for job in index_jobs],
         environment=writer_secrets,

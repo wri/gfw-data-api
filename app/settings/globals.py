@@ -98,4 +98,4 @@ TILE_CACHE_JOB_QUEUE = config("TILE_CACHE_JOB_QUEUE", cast=str, default="tile_ca
 PIXETL_JOB_DEFINITION = config("PIXETL_JOB_DEFINITION", cast=str, default="pixetl_jd")
 PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str, default="pixetl_jq")
 
-POLL_WAIT_TIME = config("PIXETL_JOB_QUEUE", cast=int, default=30)
+POLL_WAIT_TIME = config("POLL_WAIT_TIME", cast=int, default=30)
