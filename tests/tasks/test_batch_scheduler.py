@@ -72,31 +72,6 @@ async def test_batch_scheduler(batch_client):
 
     log = await batch.execute([job1, job2, job3, job4], callback)
     assert log.status == "failed"
-    #
-    # resp = logs.describe_log_streams(
-    #     logGroupName="/aws/batch/job"
-    # )
-    #
-    # for stream in resp["logStreams"]:
-    #     ls_name = stream["logStreamName"]
-    #
-    #     stream_resp = logs.get_log_events(
-    #         logGroupName="/aws/batch/job", logStreamName=ls_name
-    #     )
-    #
-    #     print(f"-------- LOGS FROM {ls_name} --------")
-    #     for event in stream_resp["events"]:
-    #         assert event[
-    #                    "message"] == "PSQL: ALTER TABLE .. Add GFW columns\npsql: could not connect to server: No such file or directory\nIs the server running locally and accepting\nconnections on Unix domain socket \"/var/run/postgresql/.s.PGSQL.5432\"?"
-    #         # print(event["message"])
-
-
-# import os
-# os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-# os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"  # pragma: allowlist secret
-# os.environ["AWS_SECURITY_TOKEN"] = "testing"
-# os.environ["AWS_SESSION_TOKEN"] = "testing"
-#
 
 
 def test_s3(moto_s3):

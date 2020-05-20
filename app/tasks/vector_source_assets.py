@@ -1,6 +1,7 @@
 import os
 from typing import Any, Dict, List
 
+from app.application import ContextEngine
 from app.crud import assets
 from app.models.pydantic.assets import AssetTaskCreate
 from app.models.pydantic.change_log import ChangeLog
@@ -42,7 +43,8 @@ async def vector_source_asset(
         metadata=DatabaseTableMetadata(**metadata),
     )
 
-    new_asset = await assets.create_asset(**data.dict())
+    async with ContextEngine("PUT"):
+        new_asset = await assets.create_asset(**data.dict())
 
     create_vector_schema_job = GdalPythonImportJob(
         job_name="Import vector data",
@@ -134,5 +136,8 @@ async def vector_source_asset(
         )
         metadata.update(fields=field_metadata)
 
-    await assets.update_asset(new_asset.asset_id, status=log.status, metadata=metadata)
+    async with ContextEngine("PUT"):
+        await assets.update_asset(
+            new_asset.asset_id, status=log.status, metadata=metadata
+        )
     return log

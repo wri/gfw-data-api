@@ -28,7 +28,7 @@ services:
       - AWS_SECURITY_TOKEN=testing  # pragma: allowlist secret
       - AWS_SESSION_TOKEN=testing  # pragma: allowlist secret
 
-    entrypoint: wait_for_postgres.sh pytest --cov=app tests/
+    entrypoint: wait_for_postgres.sh pytest --cov=app tests/tasks
     depends_on:
       - test_database
       - motoserver

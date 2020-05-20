@@ -11,7 +11,7 @@ WORKDIR tippecanoe-${TIPPECANOE_VERSION}
 RUN make && make install
 
 # Install tileputty
-RUN pip install tileputty
+RUN pip install tileputty awscli-plugin-endpoint
 
 COPY ./batch/scripts/ /usr/local/bin/
 

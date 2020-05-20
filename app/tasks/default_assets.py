@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 from typing.io import IO
 
+from ..application import ContextEngine
 from ..crud import versions
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.sources import SourceType
@@ -37,7 +38,8 @@ async def create_default_asset(
     # Copy attached file to data lake
     if file_obj:
         log: ChangeLog = await _inject_file(file_obj, source_uri[0])
-        await versions.update_version(dataset, version, change_log=[log.dict()])
+        async with ContextEngine("PUT"):
+            await versions.update_version(dataset, version, change_log=[log.dict()])
         status = log.status
 
     if status != "failed":
@@ -50,9 +52,10 @@ async def create_default_asset(
         else:
             raise NotImplementedError(f"Unsupported asset source type {source_type})")
 
-    await versions.update_version(
-        dataset, version, status=status, change_log=[log.dict()]
-    )
+    async with ContextEngine("PUT"):
+        await versions.update_version(
+            dataset, version, status=status, change_log=[log.dict()]
+        )
 
 
 async def _inject_file(file_obj: IO, s3_uri: str) -> ChangeLog:

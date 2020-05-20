@@ -97,6 +97,14 @@ class AWSMock(object):
                 "image": f"{docker_image}:latest",
                 "vcpus": 1,
                 "memory": 128,
+                "volumes": [{"host": {"sourcePath": "fixtures/aws"}, "name": "aws"}],
+                "mountPoints": [
+                    {
+                        "sourceVolume": "aws",
+                        "containerPath": "/root/.aws",
+                        "readOnly": True,
+                    }
+                ],
             },
         )
 
