@@ -35,5 +35,7 @@
 
 ## Outputs
 
-No output.
+| Name | Description |
+|------|-------------|
+| loadbalancer\_dns | n/a |
 
