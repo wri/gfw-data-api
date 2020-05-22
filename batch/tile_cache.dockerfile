@@ -15,4 +15,6 @@ RUN pip install tileputty awscli-plugin-endpoint
 
 COPY ./batch/scripts/ /usr/local/bin/
 
+WORKDIR /tmp
+
 ENTRYPOINT ["/bin/bash"]

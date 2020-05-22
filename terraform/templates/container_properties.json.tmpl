@@ -35,16 +35,6 @@
       "value": "${tile_cache}"
     }
   ],
-  "secrets": [
-      {
-        "name": "DB_WRITER_SECRET",
-        "valueFrom": "${writer_secret_arn}"
-      },
-       {
-        "name": "DB_READER_SECRET",
-        "valueFrom": "${writer_secret_arn}"
-      }
-    ]
   "jobRoleArn": "${job_role_arn}",
   "volumes": [
     {
@@ -67,9 +57,5 @@
       "name": "nofile",
       "softLimit": ${softULimit}
     }
-  ],
-  "linuxParameters": {
-      "maxSwap": ${maxSwap},
-      "swappiness": ${swappiness}
-  }
+  ]
 }

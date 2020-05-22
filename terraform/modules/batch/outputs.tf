@@ -2,7 +2,6 @@ output "aurora_job_definition" {
   value = aws_batch_job_definition.aurora.arn
 }
 
-
 output "aurora_job_queue" {
   value = aws_batch_job_queue.aurora.arn
 }

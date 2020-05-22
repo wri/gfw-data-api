@@ -9,4 +9,6 @@ RUN pip install csvkit awscli boto3 awscli-plugin-endpoint
 # Copy scripts
 COPY ./batch/scripts/ /usr/local/bin/
 
+WORKDIR /tmp
+
 ENTRYPOINT ["/bin/bash"]

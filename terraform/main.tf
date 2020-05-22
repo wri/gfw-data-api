@@ -28,53 +28,85 @@ locals {
 
 # Docker image for FastAPI app
 module "app_docker_image" {
-  source     = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.2"
+  source     = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.3"
   image_name = lower("${local.project}${local.name_suffix}")
   root_dir   = "${path.root}/../"
 }
 
 
-# Docker image for Batch jobs
-module "batch_docker_image" {
-  source     = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.2"
-  image_name = lower("${local.project}${local.name_suffix}")
-  root_dir   = "${path.root}/../batch/gdal-python.dockerfile"
+# Docker image for GDAL Python Batch jobs
+module "batch_gdal_python_image" {
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.3"
+  image_name      = lower("${local.project}-gdal_python${local.name_suffix}")
+  root_dir        = "${path.root}/../"
+  docker_path     = "batch"
+  docker_filename = "gdal-python.dockerfile"
 }
 
+# Docker image for PostgreSQL Client Batch jobs
+module "batch_postgresql_client_image" {
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.3"
+  image_name      = lower("${local.project}-postgresql_client${local.name_suffix}")
+  root_dir        = "${path.root}/../"
+  docker_path     = "batch"
+  docker_filename = "postgresql-client.dockerfile"
+}
+
+# Docker image for Tile Cache Batch jobs
+module "batch_tile_cache_image" {
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.3"
+  image_name      = lower("${local.project}-tile_cache${local.name_suffix}")
+  root_dir        = "${path.root}/../"
+  docker_path     = "batch"
+  docker_filename = "tile_cache.dockerfile"
+}
+
+
 module "fargate_autoscaling" {
-  source                       = "git::https://github.com/wri/gfw-terraform-modules.git//modules/fargate_autoscaling?ref=v0.1.2"
-  project                      = local.project
-  name_suffix                  = local.name_suffix
-  tags                         = local.tags
-  vpc_id                       = data.terraform_remote_state.core.outputs.vpc_id
-  private_subnet_ids           = data.terraform_remote_state.core.outputs.private_subnet_ids
-  public_subnet_ids            = data.terraform_remote_state.core.outputs.public_subnet_ids
-  container_name               = var.container_name
-  container_port               = var.container_port
-  listener_port                = var.listener_port
-  desired_count                = var.desired_count
-  fargate_cpu                  = var.fargate_cpu
-  fargate_memory               = var.fargate_memory
-  auto_scaling_cooldown        = var.auto_scaling_cooldown
-  auto_scaling_max_capacity    = var.auto_scaling_max_capacity
-  auto_scaling_max_cpu_util    = var.auto_scaling_max_cpu_util
-  auto_scaling_min_capacity    = var.auto_scaling_min_capacity
-  security_group_ids           = [data.terraform_remote_state.core.outputs.postgresql_security_group_id]
-  task_role_policies           = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn]
-  task_execution_role_policies = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn, data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn, data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn]
-  container_definition         = data.template_file.container_definition.rendered
+  source                    = "git::https://github.com/wri/gfw-terraform-modules.git//modules/fargate_autoscaling?ref=v0.1.3"
+  project                   = local.project
+  name_suffix               = local.name_suffix
+  tags                      = local.tags
+  vpc_id                    = data.terraform_remote_state.core.outputs.vpc_id
+  private_subnet_ids        = data.terraform_remote_state.core.outputs.private_subnet_ids
+  public_subnet_ids         = data.terraform_remote_state.core.outputs.public_subnet_ids
+  container_name            = var.container_name
+  container_port            = var.container_port
+  listener_port             = var.listener_port
+  desired_count             = var.desired_count
+  fargate_cpu               = var.fargate_cpu
+  fargate_memory            = var.fargate_memory
+  auto_scaling_cooldown     = var.auto_scaling_cooldown
+  auto_scaling_max_capacity = var.auto_scaling_max_capacity
+  auto_scaling_max_cpu_util = var.auto_scaling_max_cpu_util
+  auto_scaling_min_capacity = var.auto_scaling_min_capacity
+  security_group_ids = [
+  data.terraform_remote_state.core.outputs.postgresql_security_group_id]
+  task_role_policies = [
+  data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn]
+  task_execution_role_policies = [
+    data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
+    data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
+  data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn]
+  container_definition = data.template_file.container_definition.rendered
 
 }
 
 # Using instance types with 1 core only
 module "batch_aurora_writer" {
-  source                   = "git::https://github.com/wri/gfw-terraform-modules.git//modules/compute_environment?ref=master"
-  ecs_role_policy_arns     = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn, data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn, data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn]
-  instance_types           = ["a1.medium"] # currently not supported but want to have "m6g.medium", "t2.nano", "t2.micro", "t2.small"
-  key_pair                 = var.key_pair
-  max_vcpus                = local.aurora_max_vcpus
-  project                  = local.project
-  security_group_ids       = [data.terraform_remote_state.core.outputs.postgresql_security_group_id]
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//modules/compute_environment?ref=master"
+  ecs_role_policy_arns = [
+    data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
+    data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
+  data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn]
+  instance_types = [
+  "a1.medium"]
+  # currently not supported but want to have "m6g.medium", "t2.nano", "t2.micro", "t2.small"
+  key_pair  = var.key_pair
+  max_vcpus = local.aurora_max_vcpus
+  project   = local.project
+  security_group_ids = [
+  data.terraform_remote_state.core.outputs.postgresql_security_group_id]
   subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
   suffix                   = local.name_suffix
   tags                     = local.tags
@@ -84,11 +116,15 @@ module "batch_aurora_writer" {
 
 
 module "batch_data_lake_writer" {
-  source                   = "git::https://github.com/wri/gfw-terraform-modules.git//modules/compute_environment?ref=master"
-  ecs_role_policy_arns     = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn, data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn, data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn]
-  key_pair                 = var.key_pair
-  project                  = local.project
-  security_group_ids       = [data.terraform_remote_state.core.outputs.postgresql_security_group_id]
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//modules/compute_environment?ref=master"
+  ecs_role_policy_arns = [
+    data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
+    data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
+  data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn]
+  key_pair = var.key_pair
+  project  = local.project
+  security_group_ids = [
+  data.terraform_remote_state.core.outputs.postgresql_security_group_id]
   subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
   suffix                   = local.name_suffix
   tags                     = local.tags
@@ -104,7 +140,9 @@ module "batch_job_queues" {
   environment                        = var.environment
   name_suffix                        = local.name_suffix
   project                            = local.project
-  repository_url                     = "${module.batch_docker_image.repository_url}:latest"
+  gdal_repository_url                = "${module.batch_gdal_python_image.repository_url}:latest"
+  postgres_repository_url            = "${module.batch_postgresql_client_image.repository_url}:latest"
+  tile_cache_repository_url          = "${module.batch_tile_cache_image.repository_url}:latest"
   s3_write_data-lake_arn             = data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn
   reader_secret_arn                  = data.terraform_remote_state.core.outputs.secrets_postgresql-reader_arn
   writer_secret_arn                  = data.terraform_remote_state.core.outputs.secrets_postgresql-writer_arn

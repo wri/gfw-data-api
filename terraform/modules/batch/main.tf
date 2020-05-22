@@ -1,11 +1,11 @@
-locals{
+locals {
   bucket_suffix = var.environment == "production" ? "" : "-${var.environment}"
 }
 
 resource "aws_batch_job_definition" "aurora" {
   name                 = "${var.project}-aurora${var.name_suffix}"
   type                 = "container"
-  container_properties = data.template_file.container_properties.rendered
+  container_properties = data.template_file.postgres_container_properties.rendered
 }
 
 resource "aws_batch_job_queue" "aurora" {
@@ -14,13 +14,17 @@ resource "aws_batch_job_queue" "aurora" {
   priority             = 1
   compute_environments = [var.aurora_compute_environment_arn]
   depends_on           = [var.aurora_compute_environment_arn]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
-# TODO: Define container properties for data lake jobs
+
 resource "aws_batch_job_definition" "data_lake" {
   name                 = "${var.project}-data-lake${var.name_suffix}"
   type                 = "container"
-  container_properties = data.template_file.container_properties.rendered
+  container_properties = data.template_file.gdal_container_properties.rendered
 }
 
 resource "aws_batch_job_queue" "data_lake" {
@@ -29,13 +33,18 @@ resource "aws_batch_job_queue" "data_lake" {
   priority             = 1
   compute_environments = [var.data_lake_compute_environment_arn]
   depends_on           = [var.data_lake_compute_environment_arn]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
 }
 
-# TODO: Define container properties for tile cache jobs
+
 resource "aws_batch_job_definition" "tile_cache" {
   name                 = "${var.project}-tile_cache${var.name_suffix}"
   type                 = "container"
-  container_properties = data.template_file.container_properties.rendered
+  container_properties = data.template_file.tile_cache_container_properties.rendered
 }
 
 resource "aws_batch_job_queue" "tile_cache" {
@@ -44,12 +53,16 @@ resource "aws_batch_job_queue" "tile_cache" {
   priority             = 1
   compute_environments = [var.tile_cache_compute_environment_arn]
   depends_on           = [var.tile_cache_compute_environment_arn]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
-data "template_file" "container_properties" {
+data "template_file" "postgres_container_properties" {
   template = file("${path.root}/templates/container_properties.json.tmpl")
   vars = {
-    image_url      = var.repository_url
+    image_url      = var.postgres_repository_url
     environment    = var.environment
     job_role_arn   = aws_iam_role.aws_ecs_service_role.arn
     clone_role_arn = aws_iam_role.aws_ecs_service_role_clone.arn
@@ -58,8 +71,39 @@ data "template_file" "container_properties" {
     hardULimit     = 1024
     softULimit     = 1024
     tile_cache     = "gfw-tiles${local.bucket_suffix}"
-    writer_secret_arn = var.writer_secret_arn
-    reader_secret_arn = var.reader_secret_arn
+
+  }
+}
+
+data "template_file" "gdal_container_properties" {
+  template = file("${path.root}/templates/container_properties.json.tmpl")
+  vars = {
+    image_url      = var.gdal_repository_url
+    environment    = var.environment
+    job_role_arn   = aws_iam_role.aws_ecs_service_role.arn
+    clone_role_arn = aws_iam_role.aws_ecs_service_role_clone.arn
+    cpu            = 1
+    memory         = 480
+    hardULimit     = 1024
+    softULimit     = 1024
+    tile_cache     = "gfw-tiles${local.bucket_suffix}"
+
+  }
+}
+
+data "template_file" "tile_cache_container_properties" {
+  template = file("${path.root}/templates/container_properties.json.tmpl")
+  vars = {
+    image_url      = var.tile_cache_repository_url
+    environment    = var.environment
+    job_role_arn   = aws_iam_role.aws_ecs_service_role.arn
+    clone_role_arn = aws_iam_role.aws_ecs_service_role_clone.arn
+    cpu            = 1
+    memory         = 480
+    hardULimit     = 1024
+    softULimit     = 1024
+    tile_cache     = "gfw-tiles${local.bucket_suffix}"
+
   }
 }
 

@@ -7,4 +7,6 @@ RUN pip3 install csvkit awscli fiona rasterio boto3 awscli-plugin-endpoint
 
 COPY ./batch/scripts/ /usr/local/bin/
 
+WORKDIR /tmp
+
 ENTRYPOINT ["/bin/bash"]
