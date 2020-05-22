@@ -29,8 +29,6 @@ writer_secrets = [
     {"name": "PGPORT", "value": WRITER_PORT},
     {"name": "PGDATABASE", "value": WRITER_DBNAME},
     {"name": "PGUSER", "value": WRITER_USERNAME},
-    {"name": "AWS_ACCESS_KEY_ID", "value": "testing"},
-    {"name": "AWS_SECRET_ACCESS_KEY", "value": "testing"},
 ]
 
 GEOJSON_NAME = "test.geojson"

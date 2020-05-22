@@ -4,6 +4,7 @@ from fastapi.openapi.utils import get_openapi
 
 from .application import app
 from .routes import (
+    analysis,
     assets,
     datasets,
     features,
@@ -26,6 +27,7 @@ ROUTERS = (
     features.router,
     geostore.router,
     security.router,
+    analysis.router,
 )
 
 for r in ROUTERS:

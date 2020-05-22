@@ -63,10 +63,12 @@ async def create_dataset(
     new_dataset: ORMDataset = await datasets.create_dataset(dataset, **request.dict())
 
     await db.status(CreateSchema(dataset))
+    await db.status(f"GRANT USAGE ON SCHEMA {dataset} TO {READER_USERNAME};")
     await db.status(
         f"ALTER DEFAULT PRIVILEGES IN SCHEMA {dataset} GRANT SELECT ON TABLES TO {READER_USERNAME};"
     )
     response.headers["Location"] = f"/{dataset}"
+
     return await _dataset_response(dataset, new_dataset)
 
 

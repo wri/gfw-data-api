@@ -2,7 +2,33 @@
 
 set -e
 
-echo "$@"
+if [[ -n "${DEBUG}" ]]; then
+
+  echo "--------------"
+  echo "AWS CONFIG:"
+  echo "--------------"
+  cat /root/.aws/config
+  echo
+
+  echo "--------------"
+  echo "ENVIRONMENT VARIABLES:"
+  echo "--------------"
+  printenv
+  echo
+
+  echo "--------------"
+  echo "CMD ARGUMENTS"
+  echo "--------------"
+  echo "$@"
+  echo
+
+  echo "--------------"
+  echo "LOGS"
+  echo "--------------"
+
+#  set -x
+fi
+
 
 # Default values
 POSITIONAL=()
@@ -82,11 +108,3 @@ do
   esac
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
-
-#
-## Extract aurora secrets
-#PGPASSWORD=$(jq '.password' <<< "$DB_WRITER_SECRET")
-#PGHOST=$(jq '.host' <<< "$DB_WRITER_SECRET")
-#PGPORT=$(jq '.port' <<< "$DB_WRITER_SECRET")
-#PGDATABASE=$(jq '.dbname' <<< "$DB_WRITER_SECRET")
-#PGUSER=$(jq '.username' <<< "$DB_WRITER_SECRET")

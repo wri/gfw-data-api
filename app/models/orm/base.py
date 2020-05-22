@@ -1,16 +1,18 @@
 from datetime import datetime
 
+import geoalchemy2
 from geoalchemy2 import Geometry
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TEXT, UUID
 from sqlalchemy_utils import EmailType, generic_repr
 
 from ...application import db
 
-db.JSONB, db.UUID, db.ARRAY, db.EmailType, db.Geometry = (
+db.JSONB, db.UUID, db.ARRAY, db.EmailType, db.TEXT, db.Geometry = (
     JSONB,
     UUID,
     ARRAY,
     EmailType,
+    TEXT,
     Geometry,
 )
 

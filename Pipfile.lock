@@ -898,7 +898,7 @@
         "moto": {
             "editable": true,
             "git": "https://github.com/wri/moto.git",
-            "ref": "af8a88f0b367936045c604fd621f8a346a01cf00"
+            "ref": "f28825c8a7b42e4379daaaf2f4bf3c6b3aeae432"
         },
         "networkx": {
             "hashes": [

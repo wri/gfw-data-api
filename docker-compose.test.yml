@@ -30,7 +30,7 @@ services:
       - POLL_WAIT_TIME=1
       - ROOT=$PWD
 
-    entrypoint: wait_for_postgres.sh pytest --cov=app tests/
+    entrypoint: wait_for_postgres.sh pytest --cov=app
     depends_on:
       - test_database
       - motoserver

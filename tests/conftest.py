@@ -31,7 +31,6 @@ from app.settings.globals import (
 
 from moto import mock_batch, mock_iam, mock_ecs, mock_ec2, mock_logs  # isort:skip
 
-
 SessionLocal: Optional[Session] = None
 LOG_GROUP = "/aws/batch/job"
 ROOT = os.environ["ROOT"]
@@ -107,6 +106,11 @@ class AWSMock(object):
                 "image": f"{docker_image}:latest",
                 "vcpus": 1,
                 "memory": 128,
+                "environment": [
+                    {"name": "AWS_ACCESS_KEY_ID", "value": "testing"},
+                    {"name": "AWS_SECRET_ACCESS_KEY", "value": "testing"},
+                    {"name": "DEBUG", "value": "1"},
+                ],
                 "volumes": [
                     {
                         "host": {"sourcePath": f"{ROOT}/tests/fixtures/aws"},
@@ -193,7 +197,7 @@ def batch_client():
         "client"
     ]
 
-    aws_mock.print_logs()
+    # aws_mock.print_logs()
     aws_mock.stop_services()
 
 

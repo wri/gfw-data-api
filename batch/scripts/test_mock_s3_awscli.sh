@@ -2,10 +2,6 @@
 
 #set -e
 
-echo "CONFIG"
-cat /root/.aws/config
-echo
-
 # requires arguments
 # -s | --source
 . get_arguments.sh "$@"

@@ -155,6 +155,7 @@ def upgrade():
         sa.Column(
             "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
         ),
+        # sa.Column('geostore', sa.Column('gfw_geojson', sa.String(), nullable=True)),
         sa.Column("gfw_geostore_id", postgresql.UUID(), nullable=False),
         sa.Column("gfw_area__ha", sa.Numeric(), nullable=False),
         sa.Column(
@@ -223,7 +224,7 @@ def downgrade():
     op.drop_table("assets")
     op.drop_table("versions")
     op.drop_index("geostore_gfw_geostore_id_idx", table_name="geostore")
-    op.drop_table("geostore")
+    op.execute("""DROP TABLE IF EXISTS public.geostore CASCADE;""")
 
     conn = op.get_bind()
     res = conn.execute("SELECT dataset FROM public.datasets")

@@ -21,9 +21,9 @@ writer_secrets = [
 
 
 async def get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]]:
-    rows = await db.gino.status(fields, dataset=dataset, version=version)
+    rows = await db.all(fields, dataset=dataset, version=version)
     field_metadata = list()
-    for row in rows[1]:
+    for row in rows:
         metadata = FieldMetadata.from_orm(row)
         if metadata.field_name_ in ["geom", "geom_wm", "gfw_geojson", "gfw_bbox"]:
             metadata.is_filter = False

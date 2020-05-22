@@ -25,7 +25,9 @@ async def vector_source_asset(
 
     options = VectorSourceCreationOptions(**creation_options)
 
-    source_uri: str = gdal_path(source_uris[0], options.zipped)
+    # source_uri: str = gdal_path(source_uris[0], options.zipped)
+    source_uri = source_uris[0]
+    local_file = os.path.basename(source_uri)
 
     if options.layers:
         layers = options.layers
@@ -58,7 +60,10 @@ async def vector_source_asset(
             source_uri,
             "-l",
             layers[0],
+            "-f",
+            local_file,
         ],
+        environment=writer_secrets,
     )
 
     load_vector_data_jobs: List[Job] = list()
@@ -76,6 +81,8 @@ async def vector_source_asset(
                     source_uri,
                     "-l",
                     layer,
+                    "-f",
+                    local_file,
                 ],
                 parents=[create_vector_schema_job.job_name],
                 environment=writer_secrets,
