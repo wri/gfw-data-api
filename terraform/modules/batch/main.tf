@@ -14,10 +14,6 @@ resource "aws_batch_job_queue" "aurora" {
   priority             = 1
   compute_environments = [var.aurora_compute_environment_arn]
   depends_on           = [var.aurora_compute_environment_arn]
-
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
 
@@ -33,11 +29,6 @@ resource "aws_batch_job_queue" "data_lake" {
   priority             = 1
   compute_environments = [var.data_lake_compute_environment_arn]
   depends_on           = [var.data_lake_compute_environment_arn]
-
-  lifecycle {
-    create_before_destroy = true
-  }
-
 }
 
 
@@ -53,10 +44,6 @@ resource "aws_batch_job_queue" "tile_cache" {
   priority             = 1
   compute_environments = [var.tile_cache_compute_environment_arn]
   depends_on           = [var.tile_cache_compute_environment_arn]
-
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
 data "template_file" "postgres_container_properties" {
