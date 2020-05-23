@@ -41,23 +41,18 @@ do
   key="$1"
 
   case $key in
+      -c|--column_name)
+      COLUMN_NAME="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -d|--dataset)
       DATASET="$2"
       shift # past argument
       shift # past value
       ;;
-      -v|--version)
-      VERSION="$2"
-      shift # past argument
-      shift # past value
-      ;;
-      -s|--source)
-      SRC="$2"
-      shift # past argument
-      shift # past value
-      ;;
-      -l|--source_layer)
-      SRC_LAYER="$2"
+      -D|--delimiter)
+      DELIMITER="$2"
       shift # past argument
       shift # past value
       ;;
@@ -76,18 +71,43 @@ do
       shift # past argument
       shift # past value
       ;;
+      -l|--source_layer)
+      SRC_LAYER="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      --lat)
+      LAT="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      --lng)
+      LAT="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -p|--partition_type)
+      PARTITION_TYPE="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -s|--source)
+      SRC="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -t|--tile_strategy)
+      TILE_STRATEGY="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -v|--version)
+      VERSION="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -x|--index_type)
       INDEX_TYPE="$2"
-      shift # past argument
-      shift # past value
-      ;;
-      -c|--column_name)
-      COLUMN_NAME="$2"
-      shift # past argument
-      shift # past value
-      ;;
-      -Z|--min_zoom)
-      MIN_ZOOM="$2"
       shift # past argument
       shift # past value
       ;;
@@ -96,8 +116,8 @@ do
       shift # past argument
       shift # past value
       ;;
-      -t|--tile_strategy)
-      TILE_STRATEGY="$2"
+      -Z|--min_zoom)
+      MIN_ZOOM="$2"
       shift # past argument
       shift # past value
       ;;

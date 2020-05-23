@@ -81,6 +81,11 @@ async def test_vector_source_asset(client, batch_client):
     assert rows[0].gfw_geostore_id == UUID("b9faa657-34c9-96d4-fce4-8bb8a1507cb3")
 
 
+@pytest.mark.asyncio
+async def test_table_source_asset(client, batch_client):
+    raise NotImplementedError("Still in the works")
+
+
 def _print_logs(logs):
     resp = logs.describe_log_streams(logGroupName="/aws/batch/job")
 
