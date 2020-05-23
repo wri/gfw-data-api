@@ -92,66 +92,67 @@ async def add_new_version(
     response.headers["Location"] = f"/{dataset}/{version}"
     return await _version_response(dataset, version, new_version)
 
-
-@router.post(
-    "/{dataset}",
-    response_class=ORJSONResponse,
-    tags=["Version"],
-    response_model=Version,
-    status_code=202,
-)
-async def add_new_version_with_attached_file(
-    *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency_form),
-    is_latest: bool = Form(False),
-    source_type: SourceType = Form(...),
-    metadata: str = Form(
-        ...,
-        description="Version Metadata. Add data as JSON object, converted to String",
-    ),
-    creation_options: str = Form(
-        ...,
-        description="Creation Options. Add data as JSON object, converted to String",
-    ),
-    file_upload: UploadFile = File(...),
-    background_tasks: BackgroundTasks,
-    is_authorized: bool = Depends(is_admin),
-    response: Response,
-):
-    """
-    Create or update a version for a given dataset. When using this path operation,
-    you all parameter must be encoded as multipart/form-data, not application/json.
-    """
-
-    async def callback(message: Dict[str, Any]) -> None:
-        pass
-
-    file_obj: IO = file_upload.file
-    uri: str = f"{dataset}/{version}/raw/{file_upload.filename}"
-
-    version_metadata = VersionMetadata(**json.loads(metadata))
-    request = VersionCreateIn(
-        is_latest=is_latest,
-        source_type=source_type,
-        source_uri=[f"s3://{BUCKET}/{uri}"],
-        metadata=version_metadata,
-        creation_options=json.loads(creation_options),
-    )
-
-    input_data = request.dict()
-    # Register version with DB
-    new_version: ORMVersion = await versions.create_version(
-        dataset, version, **input_data
-    )
-
-    # Everything else happens in the background task asynchronously
-    background_tasks.add_task(
-        create_default_asset, dataset, version, input_data, file_obj, callback
-    )
-
-    response.headers["Location"] = f"/{dataset}/{version}"
-    return await _version_response(dataset, version, new_version)
+    # TODO: Something is wrong with this path operations and it interfers with the /token endpoint
+    #  when uncommented, login fails. Could not figure out why exactly
+    # @router.post(
+    #     "/{dataset}",
+    #     response_class=ORJSONResponse,
+    #     tags=["Version"],
+    #     response_model=Version,
+    #     status_code=202,
+    # )
+    # async def add_new_version_with_attached_file(
+    #     *,
+    #     dataset: str = Depends(dataset_dependency),
+    #     version: str = Depends(version_dependency_form),
+    #     is_latest: bool = Form(...),
+    #     source_type: SourceType = Form(...),
+    #     metadata: str = Form(
+    #         ...,
+    #         description="Version Metadata. Add data as JSON object, converted to String",
+    #     ),
+    #     creation_options: str = Form(
+    #         ...,
+    #         description="Creation Options. Add data as JSON object, converted to String",
+    #     ),
+    #     file_upload: UploadFile = File(...),
+    #     background_tasks: BackgroundTasks,
+    #     is_authorized: bool = Depends(is_admin),
+    #     response: Response,
+    # ):
+    #     """
+    #     Create or update a version for a given dataset. When using this path operation,
+    #     you all parameter must be encoded as multipart/form-data, not application/json.
+    #     """
+    #
+    # async def callback(message: Dict[str, Any]) -> None:
+    #     pass
+    #
+    # file_obj: IO = file_upload.file
+    # uri: str = f"{dataset}/{version}/raw/{file_upload.filename}"
+    #
+    # version_metadata = VersionMetadata(**json.loads(metadata))
+    # request = VersionCreateIn(
+    #     is_latest=is_latest,
+    #     source_type=source_type,
+    #     source_uri=[f"s3://{BUCKET}/{uri}"],
+    #     metadata=version_metadata,
+    #     creation_options=json.loads(creation_options),
+    # )
+    #
+    # input_data = request.dict()
+    # # Register version with DB
+    # new_version: ORMVersion = await versions.create_version(
+    #     dataset, version, **input_data
+    # )
+    #
+    # # Everything else happens in the background task asynchronously
+    # background_tasks.add_task(
+    #     create_default_asset, dataset, version, input_data, file_obj, callback
+    # )
+    #
+    # response.headers["Location"] = f"/{dataset}/{version}"
+    # return await _version_response(dataset, version, new_version)
 
 
 @router.patch(
