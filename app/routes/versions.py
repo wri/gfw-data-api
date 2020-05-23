@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List
 from typing.io import IO
 
 from fastapi import (
@@ -8,14 +8,12 @@ from fastapi import (
     Depends,
     File,
     Form,
-    HTTPException,
     Response,
     UploadFile,
-    logger,
 )
 from fastapi.responses import ORJSONResponse
 
-from ..crud import update_data, versions
+from ..crud import versions
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.change_log import ChangeLog
@@ -30,7 +28,6 @@ from ..routes import (
 )
 from ..settings.globals import BUCKET
 from ..tasks.default_assets import create_default_asset
-from ..utils import true_xor
 
 router = APIRouter()
 

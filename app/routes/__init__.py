@@ -1,5 +1,6 @@
 import requests
 from fastapi import Depends, Form, HTTPException, Path
+from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
 
 VERSION_REGEX = r"^v\d{1,8}\.?\d{1,3}\.?\d{1,3}$|^latest$"
@@ -40,6 +41,9 @@ async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200 and response.status_code != 401:
+        logger.warning(
+            f"Failed to authorize user. Server responded with response code: {response.status_code} and message: {response.text}"
+        )
         raise HTTPException(
             status_code=500, detail="Call to authorization server failed"
         )
@@ -48,6 +52,7 @@ async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
         response.json()["role"] == "ADMIN"
         and "gfw" in response.json()["extraUserData"]["apps"]
     ):
+        logger.info("Unauthorized user")
         raise HTTPException(status_code=401, detail="Unauthorized")
     else:
         return True

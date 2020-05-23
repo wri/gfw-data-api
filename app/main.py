@@ -1,5 +1,7 @@
+import logging
 import sys
 
+from fastapi.logger import logger
 from fastapi.openapi.utils import get_openapi
 
 from .application import app
@@ -15,6 +17,8 @@ from .routes import (
     versions,
 )
 
+gunicorn_logger = logging.getLogger("gunicorn.error")
+logger.handlers = gunicorn_logger.handlers
 sys.path.extend(["./"])
 
 
@@ -109,4 +113,7 @@ app.openapi = custom_openapi
 if __name__ == "__main__":
     import uvicorn
 
+    logger.setLevel(logging.DEBUG)
     uvicorn.run(app, host="0.0.0.0", port=8888, log_level="info")
+else:
+    logger.setLevel(gunicorn_logger.level)
