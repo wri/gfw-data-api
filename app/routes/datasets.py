@@ -14,6 +14,10 @@ from . import dataset_dependency
 
 router = APIRouter()
 
+description = (
+    "Datasets are just a bucket, for datasets which share the same core metadata"
+)
+
 
 # TODO:
 #  - set default asset type for a dataset (can be overriden by versions)

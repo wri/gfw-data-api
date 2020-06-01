@@ -11,6 +11,13 @@ from ..models.pydantic.change_log import ChangeLog
 from ..routes import dataset_dependency, is_admin, version_dependency
 
 router = APIRouter()
+description = """Assets are replicas of the original source files. Assets might
+                  be served in different formats, attribute values might be altered, additional attributes added,
+                  and feature resolution might have changed. Assets are either managed or unmanaged. Managed assets
+                  are created by the API and users can rely on data integrity. Unmanaged assets are only loosly linked
+                  to a dataset version and users must cannot rely on full integrety. We can only assume that unmanaged
+                  are based on the same version and do not know the processing history."""
+
 
 # TODO:
 #  - Assets should have config parameters to allow specifying creation options
@@ -180,7 +187,6 @@ async def _asset_response(data: ORMAsset) -> Dict[str, Any]:
 
 
 async def _create_database_table():
-
     # supported input types
     #  - table
     #  - vector
@@ -202,7 +208,6 @@ async def _create_database_table():
 
 
 async def _create_dynamic_vector_tile_cache():
-
     # supported input types
     #  - vector
 
@@ -220,7 +225,6 @@ async def _create_dynamic_vector_tile_cache():
 
 
 async def _create_static_vector_tile_cache():
-
     # supported input types
     #  - vector
 
@@ -244,7 +248,6 @@ async def _create_static_vector_tile_cache():
 
 
 async def _create_static_raster_tile_cache():
-
     # supported input types
     #  - raster
     #  - vector ?
@@ -288,7 +291,6 @@ async def _create_dynamic_raster_tile_cache():
 
 
 async def _create_tile_set():
-
     # supported input types
     #  - vector
     #  - raster

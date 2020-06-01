@@ -4,7 +4,8 @@ from fastapi.responses import ORJSONResponse
 from app.routes import dataset_dependency, version_dependency
 
 router = APIRouter()
-VERSION_REGEX = r"^v\d{1,8}\.?\d{1,3}\.?\d{1,3}$|^latest$"
+description = """Explore data entries for a given dataset version
+                  (vector and tablular data only) in a classic RESTful way"""
 
 
 @router.get(

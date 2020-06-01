@@ -30,6 +30,14 @@ from ..settings.globals import BUCKET
 from ..tasks.default_assets import create_default_asset
 
 router = APIRouter()
+description = """
+              Datasets can have different versions. Versions aer usually
+              linked to different releases. Versions can be either mutable (data can change) or immutable (data
+              cannot change). By default versions are immutable. Every version needs one or many source files.
+              These files can be a remote, publicly accessible URL or an uploaded file. Based on the source file(s),
+              users can create additional assets and activate additional endpoints to view and query the dataset.
+              Available assets and endpoints to choose from depend on the source type.
+              """
 
 
 # TODO:

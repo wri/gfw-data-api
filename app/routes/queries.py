@@ -6,6 +6,7 @@ from fastapi.responses import ORJSONResponse
 from app.routes import dataset_dependency, version_dependency
 
 router = APIRouter()
+description = """Explore data entries for a given dataset version using standard SQL"""
 
 
 @router.get("/{dataset}/{version}/query", response_class=ORJSONResponse, tags=["Query"])

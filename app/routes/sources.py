@@ -7,6 +7,15 @@ from ..models.pydantic.sources import Source
 from ..routes import dataset_dependency, is_admin, version_dependency
 
 router = APIRouter()
+description = """Sources are input files to seed new dataset version. Supported types are
+
+* Shapefiles
+* File Geodatabase
+* GeoTIFF
+* CSV
+* TSV
+* GeoJSON
+                  """
 
 
 @router.get(
