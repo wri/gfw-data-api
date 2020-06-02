@@ -4,7 +4,6 @@ from fastapi.responses import ORJSONResponse
 from app.routes import dataset_dependency, version_dependency
 
 router = APIRouter()
-VERSION_REGEX = r"^v\d{1,8}\.?\d{1,3}\.?\d{1,3}$|^latest$"
 
 
 @router.get(

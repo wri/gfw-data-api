@@ -61,3 +61,7 @@ def test_versions(mocked_task, client, db):
     assert version_data["is_latest"] is True
     assert version_data["metadata"] == VersionMetadata(**payload["metadata"])
     assert mocked_task.called
+
+    # Check if the latest endpoint redirects us to v1.1.1
+    response = client.get(f"/{dataset}/latest?test=test&test1=test1")
+    assert response.json()["version"] == "v1.1.1"

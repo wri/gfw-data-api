@@ -3,19 +3,11 @@ import sys
 
 from fastapi.logger import logger
 from fastapi.openapi.utils import get_openapi
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .application import app
-from .routes import (
-    analysis,
-    assets,
-    datasets,
-    features,
-    geostore,
-    query,
-    security,
-    sources,
-    versions,
-)
+from .middleware import redirect_latest, set_db_mode
+from .routes import assets, datasets, features, geostore, query, security, versions
 
 gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
@@ -25,17 +17,20 @@ sys.path.extend(["./"])
 ROUTERS = (
     datasets.router,
     versions.router,
-    sources.router,
     assets.router,
     query.router,
     features.router,
     geostore.router,
     security.router,
-    analysis.router,
 )
+
+MIDDLEWARE = (set_db_mode, redirect_latest)
 
 for r in ROUTERS:
     app.include_router(r)
+
+for m in MIDDLEWARE:
+    app.add_middleware(BaseHTTPMiddleware, dispatch=m)
 
 tags_desc_list = [
     {
