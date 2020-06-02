@@ -3,12 +3,15 @@ from typing import List
 from uuid import UUID
 
 import boto3
+import pendulum
 import pytest
+from pendulum.parsing.exceptions import ParserError
 from sqlalchemy.sql.ddl import CreateSchema
 
 from app.application import ContextEngine, db
 from app.crud import datasets, versions
 from app.models.orm.geostore import Geostore
+from app.models.pydantic.creation_options import Index
 from app.settings.globals import AWS_REGION, READER_USERNAME
 from app.tasks.default_assets import create_default_asset
 
@@ -18,7 +21,7 @@ BUCKET = "test-bucket"
 
 
 @pytest.mark.asyncio
-async def test_vector_source_asset(client, batch_client):
+async def test_vector_source_asset(batch_client):
     # TODO: define what a callback should do
     async def callback(message):
         pass
@@ -83,7 +86,76 @@ async def test_vector_source_asset(client, batch_client):
 
 @pytest.mark.asyncio
 async def test_table_source_asset(client, batch_client):
-    raise NotImplementedError("Still in the works")
+    # TODO: define what a callback should do
+    async def callback(message):
+        pass
+
+    _, logs = batch_client
+
+    # Upload file to mocked S3 bucket
+    s3_client = boto3.client(
+        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+    )
+
+    s3_client.create_bucket(Bucket=BUCKET)
+    s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
+
+    dataset = "table_test"
+    version = "v202002.1"
+
+    # define partition schema
+    partition_schema = dict()
+    years = range(2011, 2022)
+    for year in years:
+        for week in range(1, 54):
+            try:
+                week = f"y{year}_w{week:02}"
+                start = pendulum.parse(f"{year}-W{week}").to_date_string()
+                end = pendulum.parse(f"{year}-W{week}").add(days=7).to_date_string()
+                partition_schema[week] = (start, end)
+
+            except ParserError:
+                # Year has only 52 weeks
+                pass
+
+    input_data = {
+        "source_type": "vector",
+        "source_uri": [f"s3://{BUCKET}/{GEOJSON_NAME}"],
+        "creation_options": {
+            "src_driver": "TSV",
+            "delimiter": "\t",
+            "has_header": True,
+            "latitude": "latitude",
+            "longitude": "longitude",
+            "cluster": "geom_wm_gist",
+            "partitions": {
+                "partition_type": "range",
+                "partition_column": "alert__date",
+                "partition_schema": partition_schema,
+            },
+            "zipped": False,
+        },
+        "indices": [
+            Index(index_type="gist", column_name="geom"),
+            Index(index_type="gist", column_name="geom_wm"),
+            Index(index_type="btree", column_name="alert__date"),
+        ],
+        "metadata": {},
+    }
+
+    # Create dataset and version records
+    async with ContextEngine("PUT"):
+        await datasets.create_dataset(dataset)
+        await db.status(CreateSchema(dataset))
+        await db.status(f"GRANT USAGE ON SCHEMA {dataset} TO {READER_USERNAME};")
+        await db.status(
+            f"ALTER DEFAULT PRIVILEGES IN SCHEMA {dataset} GRANT SELECT ON TABLES TO {READER_USERNAME};"
+        )
+        await versions.create_version(dataset, version, **input_data)
+
+    # To start off, version should be in status "pending"
+    row = await versions.get_version(dataset, version)
+    assert row.status == "pending"
 
 
 def _print_logs(logs):

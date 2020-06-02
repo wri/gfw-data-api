@@ -12,6 +12,7 @@ pytest = "*"
 pytest-asyncio = "*"
 moto = {editable = true, git = "https://github.com/wri/moto.git",ref = "master"}
 pytest-cov = "*"
+pendulum = "*"
 
 [packages]
 fastapi = "*"

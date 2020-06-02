@@ -39,7 +39,7 @@ class Partitions(BaseModel):
         ..., description="Column to be used to create partitions."
     )
     create_default: bool = Field(
-        ...,
+        False,
         description="Create default partition to cache values not captured by partition schema",
     )
     partitions_schema: Union[
