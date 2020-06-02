@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from typing.io import IO
 
 from fastapi import (
@@ -17,14 +17,11 @@ from ..crud import versions
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.metadata import VersionMetadata
-from ..models.pydantic.sources import SourceType
 from ..models.pydantic.versions import Version, VersionCreateIn, VersionUpdateIn
-from ..routes import (
+from ..routes import (  # version_dependency_form,
     dataset_dependency,
     is_admin,
     version_dependency,
-    version_dependency_form,
 )
 from ..settings.globals import BUCKET
 from ..tasks.default_assets import create_default_asset
@@ -58,6 +55,7 @@ async def get_version(
     """
     Get basic metadata for a given version
     """
+
     row: ORMVersion = await versions.get_version(dataset, version)
 
     return await _version_response(dataset, version, row)
@@ -244,34 +242,3 @@ async def _version_response(
     response["assets"] = [(asset[0], asset[1]) for asset in assets]
 
     return response
-
-
-#
-# def _prepare_sources(
-#     dataset: str,
-#     version: str,
-#     request: Union[VersionCreateIn, Optional[VersionUpdateIn]],
-#     uploaded_file: Optional[UploadFile],
-# ) -> Tuple[Dict[str, Any], Optional[IO], Optional[str]]:
-#
-#     if request is None:
-#         input_data: Dict[str, Any] = {}
-#     else:
-#         # Check if either files or source_uri are set, but not both
-#         if not true_xor(bool(uploaded_file), bool(request.source_uri)):
-#             raise HTTPException(
-#                 status_code=400,
-#                 detail="Either source_uri must be set, or a file need to be attached",
-#             )
-#         input_data = request.dict()
-#
-#     if uploaded_file:
-#         file_obj: Optional[IO] = uploaded_file.file
-#         uri: Optional[str] = f"{dataset}/{version}/raw/{uploaded_file.filename}"
-#         input_data["source_uri"] = [f"s3://{BUCKET}/{uri}"]
-#
-#     else:
-#         file_obj = None
-#         uri = None
-#
-#     return input_data, file_obj, uri

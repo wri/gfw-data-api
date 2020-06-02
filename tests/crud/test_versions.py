@@ -10,6 +10,7 @@ from app.crud.datasets import create_dataset
 from app.crud.versions import (
     create_version,
     delete_version,
+    get_latest_version,
     get_version,
     get_version_names,
     get_versions,
@@ -139,3 +140,32 @@ async def test_versions():
     rows = await get_versions(dataset_name)
     assert isinstance(rows, list)
     assert len(rows) == 0
+
+
+@pytest.mark.asyncio
+async def test_latest_versions():
+    """
+    Test if trigger function on versions table work
+    It is suppose to reset is_latest field to False for all versions of a dataset
+    Once a version's is_latest field is set to True
+    Get Latest Version function should always return the latest version number
+    """
+
+    dataset_name = "test"
+
+    # Add a dataset
+    async with ContextEngine("PUT"):
+        await create_dataset(dataset_name)
+        await create_version(
+            dataset_name, "v1.1.1", source_type="table", is_latest=True
+        )
+        await create_version(
+            dataset_name, "v1.1.2", source_type="table", is_latest=True
+        )
+        latest = await get_latest_version(dataset_name)
+        first_row = await get_version(dataset_name, "v1.1.1")
+        second_row = await get_version(dataset_name, "v1.1.2")
+
+    assert first_row.is_latest is False
+    assert second_row.is_latest is True
+    assert latest == "v1.1.2"

@@ -25,21 +25,3 @@ def client_constructor(service: str):
 
 get_s3_client = client_constructor("s3")
 get_batch_client = client_constructor("batch")
-
-#
-# def get_s3_client():
-#     import boto3
-#
-#     global S3_CLIENT
-#     if S3_CLIENT is None:
-#         S3_CLIENT = boto3.client("s3", region_name=AWS_REGION)
-#     return S3_CLIENT
-#
-#
-# def get_batch_client():
-#     import boto3
-#
-#     global BATCH_CLIENT
-#     if BATCH_CLIENT is None:
-#         BATCH_CLIENT = boto3.client("batch", region_name=AWS_REGION)
-#     return BATCH_CLIENT

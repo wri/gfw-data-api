@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Optional
 
 from asyncpg import UniqueViolationError
 from fastapi import HTTPException
@@ -31,6 +31,22 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
             detail=f"Version with name {dataset}.{version} does not exist",
         )
     return row
+
+
+async def get_latest_version(dataset) -> str:
+    """
+    Fetch latest version number
+    """
+    latest: Optional[str] = await ORMVersion.select("version").where(
+        ORMVersion.dataset == dataset
+    ).where(ORMVersion.is_latest).gino.scalar()
+
+    if latest is None:
+        raise HTTPException(
+            status_code=400, detail=f"Dataset {dataset} has no latest version."
+        )
+
+    return latest
 
 
 async def create_version(dataset: str, version: str, **data) -> ORMVersion:

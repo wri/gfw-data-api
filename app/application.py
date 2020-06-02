@@ -1,9 +1,8 @@
 from asyncio import Future
-from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.logger import logger
 from gino import create_engine
 from gino_starlette import Gino, GinoEngine
@@ -90,19 +89,6 @@ class ContextEngine(object):
             logger.info("Use read engine")
             engine = READ_ENGINE
         return engine
-
-
-@app.middleware("http")
-async def set_db_mode(request: Request, call_next):
-    """
-    This middleware replaces the db engine depending on the request type.
-    Read requests use the read only pool.
-    Write requests use the write pool.
-    """
-
-    async with ContextEngine(request.method):
-        response = await call_next(request)
-    return response
 
 
 @app.on_event("startup")

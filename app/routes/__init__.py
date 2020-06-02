@@ -1,34 +1,41 @@
+from typing import Tuple
+
 import requests
 from fastapi import Depends, Form, HTTPException, Path
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
 
+from app.crud.versions import get_latest_version
+
 VERSION_REGEX = r"^v\d{1,8}\.?\d{1,3}\.?\d{1,3}$|^latest$"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 
-async def dataset_dependency(dataset: str = Path(..., title="Dataset")):
+async def dataset_dependency(dataset: str = Path(..., title="Dataset")) -> str:
     return dataset
 
 
 async def version_dependency(
-    version: str = Path(..., title="Dataset version", regex=VERSION_REGEX)
-):
-
-    # if version == "latest":
-    #     version = ...
-
+    version: str = Path(..., title="Dataset version", regex=VERSION_REGEX),
+) -> str:
+    # Middleware should have redirected GET requests to latest version already.
+    # Any other request method should not use `latest` keyword.
+    if version == "latest":
+        raise HTTPException(
+            status_code=400,
+            detail="You must list version name explicitly for this operation.",
+        )
     return version
 
 
-async def version_dependency_form(
-    version: str = Form(..., title="Dataset version", regex=VERSION_REGEX)
-):
-
-    # if version == "latest":
-    #     version = ...
-
-    return version
+# async def version_dependency_form(
+#     version: str = Form(..., title="Dataset version", regex=VERSION_REGEX)
+# ):
+#
+#     if version == "latest":
+#          version = await get_latest_version
+#
+#     return version
 
 
 async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
