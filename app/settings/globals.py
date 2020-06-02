@@ -7,7 +7,6 @@ from starlette.datastructures import Secret
 
 from ..models.pydantic.database import DatabaseURL
 
-
 # Read .env file, if exists
 p: Path = Path(__file__).parents[2] / ".env"
 config: Config = Config(p if p.exists() else None)
@@ -81,3 +80,16 @@ ALEMBIC_CONFIG: DatabaseURL = DatabaseURL(
     port=WRITER_PORT,
     database=WRITER_DBNAME,
 )
+
+AWS_REGION = config("AWS_REGION", cast=str, default="us-east-1")
+
+POSTGRESQL_CLIENT_JOB_DEFINITION = config("POSTGRESQL_CLIENT_JOB_DEFINITION", cast=str)
+GDAL_PYTHON_JOB_DEFINITION = config("GDAL_PYTHON_JOB_DEFINITION", cast=str)
+AURORA_JOB_QUEUE = config("AURORA_JOB_QUEUE", cast=str)
+DATA_LAKE_JOB_QUEUE = config("DATA_LAKE_JOB_QUEUE", cast=str)
+TILE_CACHE_JOB_DEFINITION = config("TILE_CACHE_JOB_DEFINITION", cast=str)
+TILE_CACHE_JOB_QUEUE = config("TILE_CACHE_JOB_QUEUE", cast=str)
+PIXETL_JOB_DEFINITION = config("PIXETL_JOB_DEFINITION", cast=str)
+PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str)
+
+POLL_WAIT_TIME = config("POLL_WAIT_TIME", cast=int, default=30)

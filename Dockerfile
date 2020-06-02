@@ -14,6 +14,7 @@ COPY Pipfile.lock Pipfile.lock
 
 RUN if [ "$ENV" = "dev" ] || [ "$ENV" = "test" ]; then \
 	     echo "Install all dependencies" && \
+	     apt-get install -y git && \
 	     pipenv install --system --deploy --ignore-pipfile --dev;  \
 	else \
 	     echo "Install production dependencies only" && \

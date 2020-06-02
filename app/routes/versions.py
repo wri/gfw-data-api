@@ -1,26 +1,30 @@
-from typing import List, Dict, Any, Optional, Tuple, Union
+import json
+from typing import Any, Dict, List, Tuple
 from typing.io import IO
 
-from asyncpg.exceptions import UniqueViolationError
 from fastapi import (
     APIRouter,
-    Depends,
-    HTTPException,
-    File,
-    UploadFile,
     BackgroundTasks,
+    Depends,
+    File,
+    Form,
     Response,
+    UploadFile,
 )
 from fastapi.responses import ORJSONResponse
 
-from ..models.orm.asset import Asset as ORMAsset
-from ..models.orm.version import Version as ORMVersion
+from ..crud import versions
+from ..models.orm.assets import Asset as ORMAsset
+from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.version import Version, VersionCreateIn, VersionUpdateIn
-from ..routes import dataset_dependency, is_admin, update_data, version_dependency
+from ..models.pydantic.versions import Version, VersionCreateIn, VersionUpdateIn
+from ..routes import (  # version_dependency_form,
+    dataset_dependency,
+    is_admin,
+    version_dependency,
+)
 from ..settings.globals import BUCKET
-from ..tasks.assets import seed_source_assets
-from ..tasks.data_lake import inject_file
+from ..tasks.default_assets import create_default_asset
 
 router = APIRouter()
 
@@ -43,12 +47,8 @@ async def get_version(
     """
     Get basic metadata for a given version
     """
-    row: ORMVersion = await ORMVersion.get([dataset, version])
-    if row is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Version with name {dataset}/{version} does not exist",
-        )
+
+    row: ORMVersion = await versions.get_version(dataset, version)
 
     return await _version_response(dataset, version, row)
 
@@ -58,14 +58,13 @@ async def get_version(
     response_class=ORJSONResponse,
     tags=["Version"],
     response_model=Version,
-    status_code=201,
+    status_code=202,
 )
 async def add_new_version(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
     request: VersionCreateIn,
-    files: Optional[UploadFile] = File(None),
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
     response: Response,
@@ -75,33 +74,83 @@ async def add_new_version(
     """
 
     async def callback(message: Dict[str, Any]) -> None:
-        await _version_history(message, dataset, version)
+        pass
 
-    input_data, file_obj, uri = _prepare_sources(dataset, version, request, files)
-
+    input_data = request.dict()
     # Register version with DB
-    try:
-        new_version: ORMVersion = await ORMVersion.create(
-            dataset=dataset, version=version, **input_data
-        )
-    except UniqueViolationError:
-        raise HTTPException(
-            status_code=400, detail=f"Dataset with name {dataset} already exists"
-        )
+    new_version: ORMVersion = await versions.create_version(
+        dataset, version, **input_data
+    )
 
-    # Inject appended files, if any
-    if file_obj is not None:
-        background_tasks.add_task(inject_file, file_obj, uri, callback)
-
-    # Seed source assets based on input type
-    # For vector and tabular data, import data into PostgreSQL
-    # For raster data, create geojson with tile extent(s) and raster stats
+    # Everything else happens in the background task asynchronously
     background_tasks.add_task(
-        seed_source_assets, input_data["source_type"], input_data["source_uri"]
+        create_default_asset, dataset, version, input_data, None, callback
     )
 
     response.headers["Location"] = f"/{dataset}/{version}"
     return await _version_response(dataset, version, new_version)
+
+    # TODO: Something is wrong with this path operations and it interfers with the /token endpoint
+    #  when uncommented, login fails. Could not figure out why exactly
+    # @router.post(
+    #     "/{dataset}",
+    #     response_class=ORJSONResponse,
+    #     tags=["Version"],
+    #     response_model=Version,
+    #     status_code=202,
+    # )
+    # async def add_new_version_with_attached_file(
+    #     *,
+    #     dataset: str = Depends(dataset_dependency),
+    #     version: str = Depends(version_dependency_form),
+    #     is_latest: bool = Form(...),
+    #     source_type: SourceType = Form(...),
+    #     metadata: str = Form(
+    #         ...,
+    #         description="Version Metadata. Add data as JSON object, converted to String",
+    #     ),
+    #     creation_options: str = Form(
+    #         ...,
+    #         description="Creation Options. Add data as JSON object, converted to String",
+    #     ),
+    #     file_upload: UploadFile = File(...),
+    #     background_tasks: BackgroundTasks,
+    #     is_authorized: bool = Depends(is_admin),
+    #     response: Response,
+    # ):
+    #     """
+    #     Create or update a version for a given dataset. When using this path operation,
+    #     you all parameter must be encoded as multipart/form-data, not application/json.
+    #     """
+    #
+    # async def callback(message: Dict[str, Any]) -> None:
+    #     pass
+    #
+    # file_obj: IO = file_upload.file
+    # uri: str = f"{dataset}/{version}/raw/{file_upload.filename}"
+    #
+    # version_metadata = VersionMetadata(**json.loads(metadata))
+    # request = VersionCreateIn(
+    #     is_latest=is_latest,
+    #     source_type=source_type,
+    #     source_uri=[f"s3://{BUCKET}/{uri}"],
+    #     metadata=version_metadata,
+    #     creation_options=json.loads(creation_options),
+    # )
+    #
+    # input_data = request.dict()
+    # # Register version with DB
+    # new_version: ORMVersion = await versions.create_version(
+    #     dataset, version, **input_data
+    # )
+    #
+    # # Everything else happens in the background task asynchronously
+    # background_tasks.add_task(
+    #     create_default_asset, dataset, version, input_data, file_obj, callback
+    # )
+    #
+    # response.headers["Location"] = f"/{dataset}/{version}"
+    # return await _version_response(dataset, version, new_version)
 
 
 @router.patch(
@@ -114,8 +163,7 @@ async def update_version(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
-    request: Optional[VersionUpdateIn],
-    files: Optional[List[UploadFile]] = File(None),
+    request: VersionUpdateIn,
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
 ):
@@ -124,18 +172,11 @@ async def update_version(
     When using PATCH and uploading files,
     this will overwrite the existing source(s) and trigger a complete update of all managed assets
     """
-    row: ORMVersion = await _get_version(dataset, version)
 
-    input_data, file_obj, uri = _prepare_sources(dataset, version, request, files)
+    input_data = request.dict()
 
-    row = await update_data(row, input_data)
-
-    # TODO: If files is not None, delete all files in RAW folder
-
-    if file_obj is not None:
-        background_tasks.add_task(inject_file, file_obj, uri)
-
-    # TODO: If files is not None, delete and recreate all Assets based on new input files
+    row: ORMVersion = await versions.update_version(dataset, version, **input_data)
+    # TODO: Need to clarify routine for when source_uri has changed. Append/ overwrite
 
     return await _version_response(dataset, version, row)
 
@@ -155,10 +196,7 @@ async def delete_version(
     """
     Delete a version
     """
-    row: ORMVersion = await _get_version(dataset, version)
-    await ORMVersion.delete.where(ORMVersion.dataset == dataset).where(
-        ORMVersion.version == version
-    ).gino.status()
+    row: ORMVersion = await versions.delete_version(dataset, version)
 
     # TODO:
     #  Delete all managed assets and raw data
@@ -177,34 +215,9 @@ async def version_history(
     """
     Log changes for given dataset version
     """
-    message = request.dict()
-    return await _version_history(message, dataset, version)
+    message = [request.dict()]
 
-
-async def _version_history(message: Dict[str, Any], dataset: str, version: str):
-    """
-    Update version history in database and return updated values
-    """
-    row = await _get_version(dataset, version)
-    change_log = row.change_log
-    change_log.append(message)
-
-    row = await row.update(change_log=change_log).apply()
-
-    return await _version_response(dataset, version, row)
-
-
-async def _get_version(dataset: str, version: str) -> ORMVersion:
-    """
-    Returns version, if exists or raises an Exception
-    """
-    row: ORMVersion = await ORMVersion.get([dataset, version])
-    if row is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Version with name {dataset}/{version} does not exists",
-        )
-    return row
+    return await versions.update_version(dataset, version, change_log=message)
 
 
 async def _version_response(
@@ -221,37 +234,3 @@ async def _version_response(
     response["assets"] = [(asset[0], asset[1]) for asset in assets]
 
     return response
-
-
-def _prepare_sources(
-    dataset: str,
-    version: str,
-    request: Union[VersionCreateIn, Optional[VersionUpdateIn]],
-    uploaded_file: Optional[UploadFile],
-) -> Tuple[Dict[str, Any], Optional[IO], Optional[str]]:
-
-    if request is None:
-        input_data: Dict[str, Any] = {}
-    else:
-        # Check if either files or source_uri are set, but not both
-        if not _true_xor(bool(uploaded_file), bool(request.source_uri)):
-            raise HTTPException(
-                status_code=400,
-                detail="Either source_uri must be set, or a file need to be attached",
-            )
-        input_data = request.dict()
-
-    if uploaded_file:
-        file_obj = uploaded_file.file
-        uri: Optional[str] = f"{dataset}/{version}/raw/{uploaded_file.filename}"
-        input_data["source_uri"] = [f"s3://{BUCKET}/{uri}"]
-
-    else:
-        file_obj = None
-        uri = None
-
-    return input_data, file_obj, uri
-
-
-def _true_xor(*args):
-    return sum(args) == 1

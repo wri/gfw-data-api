@@ -1,17 +1,14 @@
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, HTTPException, Response, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from fastapi.responses import ORJSONResponse
 
-from ..application import db
-from ..models.orm.asset import Asset as ORMAsset
-from ..models.orm.queries.fields import fields
-from ..models.pydantic.asset import Asset, AssetCreateIn, AssetType
+from ..crud import assets
+from ..models.orm.assets import Asset as ORMAsset
+from ..models.pydantic.assets import Asset, AssetCreateIn, AssetType
 from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.metadata import FieldMetadata
 from ..routes import dataset_dependency, is_admin, version_dependency
-
 
 router = APIRouter()
 
@@ -35,14 +32,7 @@ async def get_assets(
     """
     Get all assets for a given dataset version
     """
-    rows: List[ORMAsset] = await ORMAsset.select().where(
-        ORMAsset.dataset == dataset
-    ).where(ORMAsset.version == version).gino.status()
-    if not rows:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Version with name {dataset}/{version} does not exist",
-        )
+    rows: List[ORMAsset] = await assets.get_assets(dataset, version)
 
     # Filter rows by asset type
     result = list()
@@ -71,12 +61,14 @@ async def get_asset(
     """
     Get a specific asset
     """
-    row: ORMAsset = await ORMAsset.get([dataset, version, asset_id])
-    if row is None:
+    row: ORMAsset = await assets.get_asset(asset_id)
+
+    if row.dataset != dataset and row.version != version:
         raise HTTPException(
             status_code=404,
             detail=f"Could not find requested asset {dataset}/{version}/{asset_id}",
         )
+
     return row
 
 
@@ -93,11 +85,9 @@ async def get_assets_root(
     Get all assets
     """
     if asset_type:
-        rows: List[ORMAsset] = await ORMAsset.select().where(
-            ORMAsset.asset_type == asset_type
-        ).gino.status()
+        rows: List[ORMAsset] = await assets.get_assets_by_type(asset_type)
     else:
-        rows = await ORMAsset.select().gino.status()
+        rows = await assets.get_all_assets()
 
     return rows
 
@@ -112,11 +102,7 @@ async def get_asset_root(*, asset_id: UUID = Path(...)):
     """
     Get a specific asset
     """
-    row: ORMAsset = await ORMAsset.get([asset_id])
-    if row is None:
-        raise HTTPException(
-            status_code=404, detail=f"Could not find requested asset {asset_id}",
-        )
+    row: ORMAsset = await assets.get_asset(asset_id)
     return row
 
 
@@ -179,25 +165,10 @@ async def asset_history(
     """
     Log changes for given asset
     """
-    row = await _get_asset(asset_id)
-    change_log = row.change_log
-    change_log.append(request.dict())
 
-    row = await row.update(change_log=change_log).apply()
+    row = await assets.update_asset(asset_id, change_log=[request.dict()])
 
     return await _asset_response(row)
-
-
-async def _get_asset(asset_id: UUID) -> ORMAsset:
-    """
-    Fetch asset data, if exists
-    """
-    row: ORMAsset = await ORMAsset.get([asset_id])
-    if row is None:
-        raise HTTPException(
-            status_code=404, detail=f"Asset with id {asset_id} does not exists",
-        )
-    return row
 
 
 async def _asset_response(data: ORMAsset) -> Dict[str, Any]:
@@ -206,18 +177,6 @@ async def _asset_response(data: ORMAsset) -> Dict[str, Any]:
     """
     response = Asset.from_orm(data).dict(by_alias=True)
     return response
-
-
-async def _get_field_metadata(dataset: str, version: str):
-    rows = await db.status(fields, dataset=dataset, version=version)
-    field_metadata = list()
-    for row in rows[1]:
-        metadata = FieldMetadata.from_orm(row)
-        if "geom" in metadata.field_name_:
-            metadata.is_filter = False
-            metadata.is_feature_info = False
-        field_metadata.append(metadata)
-    return field_metadata
 
 
 async def _create_database_table():

@@ -9,13 +9,12 @@ import json
 import os
 
 import boto3
-import sqlalchemy as sa
 import geoalchemy2
-
+import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-from app.settings.globals import READER_USERNAME, READER_PASSWORD, READER_DBNAME
+from app.settings.globals import READER_DBNAME, READER_PASSWORD, READER_USERNAME
 
 # revision identifiers, used by Alembic.
 revision = "e47ec2fc3c51"
@@ -26,7 +25,7 @@ depends_on = None
 
 def upgrade():
 
-    op.execute(f"""CREATE EXTENSION IF NOT EXISTS postgis;""")
+    op.execute("""CREATE EXTENSION IF NOT EXISTS postgis;""")
 
     #### Create read only user
     op.execute(
@@ -156,6 +155,7 @@ def upgrade():
         sa.Column(
             "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
         ),
+        # sa.Column('geostore', sa.Column('gfw_geojson', sa.String(), nullable=True)),
         sa.Column("gfw_geostore_id", postgresql.UUID(), nullable=False),
         sa.Column("gfw_area__ha", sa.Numeric(), nullable=False),
         sa.Column(
@@ -224,7 +224,7 @@ def downgrade():
     op.drop_table("assets")
     op.drop_table("versions")
     op.drop_index("geostore_gfw_geostore_id_idx", table_name="geostore")
-    op.drop_table("geostore")
+    op.execute("""DROP TABLE IF EXISTS public.geostore CASCADE;""")
 
     conn = op.get_bind()
     res = conn.execute("SELECT dataset FROM public.datasets")

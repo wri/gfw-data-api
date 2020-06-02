@@ -1,7 +1,7 @@
-from typing import List, Optional, Dict, Any, Union
+from datetime import date
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
-from datetime import date
 
 
 class FieldMetadata(BaseModel):
@@ -49,7 +49,7 @@ class RasterTable(BaseModel):
     description: str
 
 
-class RasterTileSetMetadata(BaseModel):
+class RasterTileSetMetadata(VersionMetadata):
     # Raster Files/ Raster Tilesets
     raster_statistics: Optional[Dict[str, Any]]
     raster_table: Optional[List[RasterTable]]
@@ -59,12 +59,16 @@ class RasterTileSetMetadata(BaseModel):
     no_data_value: Optional[str]
 
 
-class VectorTileCacheMetadata(BaseModel):
+class VectorTileCacheMetadata(VersionMetadata):
     min_zoom: int
     max_zoom: int
 
 
-class AssetMetadata(VersionMetadata):
-    asset_type: Optional[Dict[str, Any]]
-    url: Optional[str]
-    advanced: Optional[Union[RasterTileSetMetadata, VectorTileCacheMetadata]]
+class DatabaseTableMetadata(VersionMetadata):
+    fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
+
+
+# class AssetMetadata(VersionMetadata):
+#     asset_type: Optional[Dict[str, Any]]
+#     url: Optional[str]
+#     info: Optional[Union[RasterTileSetMetadata, VectorTileCacheMetadata, FieldMetadata]]

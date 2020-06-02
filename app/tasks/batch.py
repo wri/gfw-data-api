@@ -1,31 +1,37 @@
-from typing import Any, Dict, List, Optional, Callable, Awaitable, Set
-from time import sleep
+import logging
 from datetime import datetime
-import os
+from time import sleep
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Set
 
-from app.models.pydantic.job import Job
-
-POLL_WAIT_TIME = 30
-BATCH_CLIENT = None
-REGION = os.environ.get("REGION", "us-east-1")
-
-
-def execute(jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]) -> None:
-    scheduled_jobs = schedule(jobs)
-
-    return poll_jobs(scheduled_jobs.values(), callback)
+from ..models.pydantic.change_log import ChangeLog
+from ..models.pydantic.jobs import Job
+from ..settings.globals import POLL_WAIT_TIME
+from ..utils.aws import get_batch_client
 
 
-def get_batch_client():
-    import boto3
+async def execute(
+    jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]
+) -> ChangeLog:
 
-    global BATCH_CLIENT
-    if BATCH_CLIENT is None:
-        BATCH_CLIENT = boto3.client("batch", region_name=REGION)
-    return BATCH_CLIENT
+    try:
+        scheduled_jobs = await schedule(jobs, callback)
+        print(f"SCHEDULED JOBS: {scheduled_jobs}")
+    except RecursionError:
+        status = "failed"
+        message = "Failed to schedule batch jobs"
+    else:
+        status = await poll_jobs(list(scheduled_jobs.values()), callback)
+        print(f"FINAL STATUS: {status}")
+        if status == "failed":
+            message = "Error while running batch jobs"
+        else:
+            message = "Successfully ran all batch jobs"
+    return ChangeLog(date_time=datetime.now(), status=status, message=message)
 
 
-def schedule(jobs: List[Job]) -> Dict[str, str]:
+async def schedule(
+    jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]
+) -> Dict[str, str]:
     """
     Submit multiple batch jobs at once. Submitted batch jobs can depend on each other.
     Dependent jobs need to be listed in `dependent_jobs`
@@ -38,6 +44,14 @@ def schedule(jobs: List[Job]) -> Dict[str, str]:
     for job in jobs:
         if not job.parents:
             scheduled_jobs[job.job_name] = submit_batch_job(job)
+            await callback(
+                {
+                    "date_time": datetime.now(),
+                    "status": "pending",
+                    "message": f"Scheduled job {job.job_name}",
+                    "detail": f"Job ID: {scheduled_jobs[job.job_name]}",
+                }
+            )
 
     if not scheduled_jobs:
         raise ValueError(
@@ -60,32 +74,52 @@ def schedule(jobs: List[Job]) -> Dict[str, str]:
                     for parent in job.parents  # type: ignore
                 ]
                 scheduled_jobs[job.job_name] = submit_batch_job(job, depends_on)
+                await callback(
+                    {
+                        "date_time": datetime.now(),
+                        "status": "pending",
+                        "message": f"Scheduled job {job.job_name}",
+                        "detail": f"Job ID: {scheduled_jobs[job.job_name]}, parents: {depends_on}",
+                    }
+                )
 
         i += 1
-        if i > 7:
+        if i > 10:
+            await callback(
+                {
+                    "date_time": datetime.now(),
+                    "status": "failed",
+                    "message": "Too many retries while scheduling jobs. Aboard.",
+                    "detail": f"Failed to schedule jobs {[job.job_name for job in jobs if job.job_name not in scheduled_jobs]}",
+                }
+            )
             raise RecursionError("Too many retries while scheduling jobs. Aboard.")
 
     return scheduled_jobs
 
 
-def poll_jobs(
+async def poll_jobs(
     job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable[None]]
-) -> bool:
-
+) -> str:
     client = get_batch_client()
     failed_jobs: Set[str] = set()
     completed_jobs: Set[str] = set()
     pending_jobs: Set[str] = set(job_ids)
 
     while True:
-        response = client.describe_jobs(jobs=list(pending_jobs.difference(completed_jobs)))
-        print(response)
+        response = client.describe_jobs(
+            jobs=list(pending_jobs.difference(completed_jobs))
+        )
 
-        for job in response['jobs']:
-            if job['status'] == 'SUCCEEDED':
-                callback(
+        for job in response["jobs"]:
+            print(
+                f"Container for job {job['jobId']} exited with status {job['status']}"
+            )
+            if job["status"] == "SUCCEEDED":
+                print(f"Container for job {job['jobId']} succeeded")
+                await callback(
                     {
-                        "datetime": datetime.now(),
+                        "date_time": datetime.now(),
                         "status": "success",
                         "message": f"Successfully completed job {job['jobName']}",
                         "detail": None,
@@ -93,34 +127,37 @@ def poll_jobs(
                 )
                 completed_jobs.add(job["jobId"])
             if job["status"] == "FAILED":
-                callback(
+                print(f"Container for job {job['jobId']} failed")
+                await callback(
                     {
-                        "datetime": datetime.now(),
+                        "date_time": datetime.now(),
                         "status": "failed",
                         "message": f"Job {job['jobName']} failed during asset creation",
-                        "detail": job["statusReason"],
+                        "detail": job.get("statusReason", None),
                     }
                 )
                 failed_jobs.add(job["jobId"])
 
         if completed_jobs == set(job_ids):
-            callback({
-                "datetime": datetime.now(),
-                "status": "success",
-                "message": f"Successfully completed all scheduled batch jobs for asset creation",
-                "detail": None,
-            })
-            return True
-        elif failed_jobs:
-            callback(
+            await callback(
                 {
-                    "datetime": datetime.now(),
-                    "status": "failed",
-                    "message": f"Job failures occurred during asset creation",
+                    "date_time": datetime.now(),
+                    "status": "success",
+                    "message": "Successfully completed all scheduled batch jobs for asset creation",
                     "detail": None,
                 }
             )
-            return False
+            return "saved"
+        elif failed_jobs:
+            await callback(
+                {
+                    "date_time": datetime.now(),
+                    "status": "failed",
+                    "message": "Job failures occurred during asset creation",
+                    "detail": None,
+                }
+            )
+            return "failed"
 
         sleep(POLL_WAIT_TIME)
 
@@ -145,6 +182,7 @@ def submit_batch_job(
             "command": job.command,
             "vcpus": job.vcpus,
             "memory": job.memory,
+            "environment": job.environment,
         },
         retryStrategy={"attempts": job.attempts},
         timeout={"attemptDurationSeconds": job.attempt_duration_seconds},

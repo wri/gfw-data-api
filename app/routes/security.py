@@ -1,9 +1,8 @@
 import json
-import logging
 
 import requests
-
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter()
@@ -14,13 +13,18 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     headers = {"Content-Type": "application/json"}
     payload = {"email": form_data.username, "password": form_data.password}
 
-    url = f"https://production-api.globalforestwatch.org/auth/login"
+    logger.debug(
+        f"Requesting Bearer token from GFW production API for user {form_data.username}"
+    )
+    url = "https://production-api.globalforestwatch.org/auth/login"
 
     response = requests.post(url, data=json.dumps(payload), headers=headers)
-    logging.warning(response.text)
-    if response.status_code != 200:
 
-        raise HTTPException(status_code=400, detail="Authentication failed")
+    if response.status_code != 200:
+        logger.warning(
+            f"Authentication for user {form_data.username} failed. API responded with status code {response.status_code} and message {response.text}"
+        )
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
     else:
         return {

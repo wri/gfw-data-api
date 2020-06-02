@@ -1,0 +1,61 @@
+{
+  "command": [],
+  "image": "${image_url}",
+  "vcpus": ${cpu},
+  "memory": ${memory},
+  "retry_strategy": {
+    "attemps": 1
+    },
+  "timeout": {
+    "attempt_duration_seconds":7500
+    },
+  "environment": [
+    {
+      "name": "ENV",
+      "value": "${environment}"
+    },
+    {
+      "name": "JOB_ROLE_ARN",
+      "value": "${clone_role_arn}"
+    },
+    {
+      "name": "ECS_TASK_METADATA_RPS_LIMIT",
+      "value": "100,150"
+    },
+    {
+      "name": "LC_ALL",
+      "value": "C.UTF-8"
+    },
+    {
+      "name": "LANG",
+      "value": "C.UTF-8"
+    },
+    {
+      "name": "TILE_CACHE",
+      "value": "${tile_cache}"
+    }
+  ],
+  "jobRoleArn": "${job_role_arn}",
+  "volumes": [
+    {
+      "host": {
+        "sourcePath": "/tmp"
+      },
+      "name": "tmp"
+    }
+  ],
+  "mountPoints": [
+    {
+      "sourceVolume": "tmp",
+      "containerPath": "/tmp",
+      "readOnly": false
+    }
+  ],
+  "ulimits": [
+    {
+      "hardLimit": ${hardULimit},
+      "name": "nofile",
+      "softLimit": ${softULimit}
+    }
+  ]
+}

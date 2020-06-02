@@ -1,7 +1,6 @@
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Schema, validator, Field
-from pydantic import fields
+from pydantic import BaseModel, Field, Schema, fields, validator
 from sqlalchemy.engine.url import URL
 from starlette.datastructures import Secret
 
