@@ -10,7 +10,6 @@ from app.models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJ
 from app.models.pydantic.metadata import DatabaseTableMetadata
 from app.tasks import get_field_metadata, writer_secrets
 from app.tasks.batch import execute
-from app.utils.path import gdal_path
 
 
 async def vector_source_asset(

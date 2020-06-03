@@ -82,7 +82,7 @@ do
       shift # past value
       ;;
       --lng)
-      LAT="$2"
+      LNG="$2"
       shift # past argument
       shift # past value
       ;;

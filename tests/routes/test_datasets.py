@@ -25,7 +25,6 @@ payload = {
 }
 
 
-# @pytest.mark.asyncio
 def test_datasets(client, db):
     """
     Basic test to check if empty data api response as expected

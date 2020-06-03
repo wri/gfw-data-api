@@ -42,7 +42,7 @@ class Partitions(BaseModel):
         False,
         description="Create default partition to cache values not captured by partition schema",
     )
-    partitions_schema: Union[
+    partition_schema: Union[
         int, Dict[str, List[str]], Dict[str, Tuple[Any, Any]]
     ] = Field(
         ...,
@@ -79,8 +79,8 @@ class TableSourceCreationOptions(BaseModel):
     longitude: Optional[str] = Field(
         None, description="Column with longitude coordinate"
     )
-    cluster: Optional[str] = Field(
-        None, description="Name of index to use for clustering (optional)"
+    cluster: Optional[Index] = Field(
+        None, description="Index to use for clustering (optional)."
     )
     partitions: Optional[Partitions] = Field(
         None, description="Partitioning schema (optional)"

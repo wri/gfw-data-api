@@ -11,12 +11,15 @@ from sqlalchemy.sql.ddl import CreateSchema
 from app.application import ContextEngine, db
 from app.crud import datasets, versions
 from app.models.orm.geostore import Geostore
-from app.models.pydantic.creation_options import Index
 from app.settings.globals import AWS_REGION, READER_USERNAME
 from app.tasks.default_assets import create_default_asset
 
 GEOJSON_NAME = "test.geojson"
 GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "..", "fixtures", GEOJSON_NAME)
+
+TSV_NAME = "test.tsv"
+TSV_PATH = os.path.join(os.path.dirname(__file__), "..", "fixtures", TSV_NAME)
+
 BUCKET = "test-bucket"
 
 
@@ -85,7 +88,7 @@ async def test_vector_source_asset(batch_client):
 
 
 @pytest.mark.asyncio
-async def test_table_source_asset(client, batch_client):
+async def test_table_source_asset(batch_client):
     # TODO: define what a callback should do
     async def callback(message):
         pass
@@ -98,7 +101,7 @@ async def test_table_source_asset(client, batch_client):
     )
 
     s3_client.create_bucket(Bucket=BUCKET)
-    s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
+    s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
 
     dataset = "table_test"
     version = "v202002.1"
@@ -119,27 +122,26 @@ async def test_table_source_asset(client, batch_client):
                 pass
 
     input_data = {
-        "source_type": "vector",
-        "source_uri": [f"s3://{BUCKET}/{GEOJSON_NAME}"],
+        "source_type": "table",
+        "source_uri": [f"s3://{BUCKET}/{TSV_NAME}"],
         "creation_options": {
             "src_driver": "TSV",
             "delimiter": "\t",
             "has_header": True,
             "latitude": "latitude",
             "longitude": "longitude",
-            "cluster": "geom_wm_gist",
+            "cluster": {"index_type": "gist", "column_name": "geom_wm"},
             "partitions": {
                 "partition_type": "range",
                 "partition_column": "alert__date",
                 "partition_schema": partition_schema,
             },
-            "zipped": False,
+            "indices": [
+                {"index_type": "gist", "column_name": "geom"},
+                {"index_type": "gist", "column_name": "geom_wm"},
+                {"index_type": "btree", "column_name": "alert__date"},
+            ],
         },
-        "indices": [
-            Index(index_type="gist", column_name="geom"),
-            Index(index_type="gist", column_name="geom_wm"),
-            Index(index_type="btree", column_name="alert__date"),
-        ],
         "metadata": {},
     }
 
@@ -156,6 +158,18 @@ async def test_table_source_asset(client, batch_client):
     # To start off, version should be in status "pending"
     row = await versions.get_version(dataset, version)
     assert row.status == "pending"
+
+    # Create default asset in mocked BATCH
+    await create_default_asset(
+        dataset, version, input_data, None, callback,
+    )
+
+    # Get the logs in case something went wrong
+    _print_logs(logs)
+
+    # If everything worked, version should be set to "saved"
+    row = await versions.get_version(dataset, version)
+    assert row.status == "saved"
 
 
 def _print_logs(logs):

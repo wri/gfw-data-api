@@ -64,13 +64,13 @@ async def table_source_asset(
     partition_jobs: List[Job] = list()
     if options.partitions:
         if options.partitions.partition_type == "hash" and isinstance(
-            options.partitions.partitions_schema, int
+            options.partitions.partition_schema, int
         ):
-            for i in range(options.partitions.partitions_schema):
+            for i in range(options.partitions.partition_schema):
                 command = [
                     "psql",
                     "-c",
-                    f'CREATE TABLE "{dataset}"."{version}_{i}" PARTITION OF "{dataset}"."{version}" FOR VALUES WITH (MODULUS {options.partitions.partitions_schema}, REMAINDER {i})',
+                    f'CREATE TABLE "{dataset}"."{version}_{i}" PARTITION OF "{dataset}"."{version}" FOR VALUES WITH (MODULUS {options.partitions.partition_schema}, REMAINDER {i})',
                 ]
                 partition_jobs.append(
                     PostgresqlClientJob(
@@ -81,13 +81,13 @@ async def table_source_asset(
                     )
                 )
         elif options.partitions.partition_type == "list" and isinstance(
-            options.partitions.partitions_schema, dict
+            options.partitions.partition_schema, dict
         ):
-            for key in options.partitions.partitions_schema.keys():
+            for key in options.partitions.partition_schema.keys():
                 command = [
                     "psql",
                     "-c",
-                    f'CREATE TABLE "{dataset}"."{version}_{key}" PARTITION OF "{dataset}"."{version}" FOR VALUES IN {tuple(options.partitions.partitions_schema[key])}',
+                    f'CREATE TABLE "{dataset}"."{version}_{key}" PARTITION OF "{dataset}"."{version}" FOR VALUES IN {tuple(options.partitions.partition_schema[key])}',
                 ]
                 partition_jobs.append(
                     PostgresqlClientJob(
@@ -99,13 +99,13 @@ async def table_source_asset(
                 )
 
         elif options.partitions.partition_type == "range" and isinstance(
-            options.partitions.partitions_schema, dict
+            options.partitions.partition_schema, dict
         ):
-            for key in options.partitions.partitions_schema.keys():
+            for key in options.partitions.partition_schema.keys():
                 command = [
                     "psql",
                     "-c",
-                    f"""CREATE TABLE "{dataset}"."{version}_{key}" PARTITION OF "{dataset}"."{version}" FOR VALUES FROM ('{options.partitions.partitions_schema[key][0]}') TO ('{options.partitions.partitions_schema[key][1]}')""",
+                    f"""CREATE TABLE "{dataset}"."{version}_{key}" PARTITION OF "{dataset}"."{version}" FOR VALUES FROM ('{options.partitions.partition_schema[key][0]}') TO ('{options.partitions.partition_schema[key][1]}')""",
                 ]
                 partition_jobs.append(
                     PostgresqlClientJob(
@@ -192,6 +192,7 @@ async def table_source_asset(
 
     # TODO:
     # Check if possible to break this down by partition tables
+    # Batch script should function the same. Instead of version name pass partition table name
     cluster_jobs: List[Job] = list()
 
     parents = [job.job_name for job in load_data_jobs]
@@ -203,12 +204,15 @@ async def table_source_asset(
             PostgresqlClientJob(
                 job_name="cluster",
                 command=[
-                    "cluster_table.sh" "-d",
+                    "cluster_table.sh",
+                    "-d",
                     dataset,
                     "-v",
                     version,
                     "-c",
-                    options.cluster,
+                    options.cluster.column_name,
+                    "-x",
+                    options.cluster.index_type,
                 ],
                 environment=writer_secrets,
                 parents=parents,
