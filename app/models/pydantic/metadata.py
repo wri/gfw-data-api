@@ -12,6 +12,9 @@ class FieldMetadata(BaseModel):
     is_feature_info: bool = True
     is_filter: bool = True
 
+    class Config:
+        orm_mode = True
+
 
 class DatasetMetadata(BaseModel):
     title: Optional[str]

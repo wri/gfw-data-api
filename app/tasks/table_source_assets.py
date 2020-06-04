@@ -1,6 +1,8 @@
 import json
 from typing import Any, Dict, List
 
+from fastapi.logger import logger
+
 from app.application import ContextEngine
 from app.crud import assets
 from app.models.pydantic.assets import AssetTaskCreate
@@ -8,7 +10,12 @@ from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import TableSourceCreationOptions
 from app.models.pydantic.jobs import Job, PostgresqlClientJob
 from app.models.pydantic.metadata import DatabaseTableMetadata
-from app.tasks import get_field_metadata, writer_secrets
+from app.tasks import (
+    get_field_metadata,
+    update_asset_field_metadata,
+    update_asset_status,
+    writer_secrets,
+)
 from app.tasks.batch import execute
 
 
@@ -234,15 +241,9 @@ async def table_source_asset(
         callback,
     )
 
-    metadata = new_asset.metadata
-    if log.status == "saved":
-        field_metadata: List[Dict[str, Any]] = await get_field_metadata(
-            dataset, version
-        )
-        metadata.update(fields=field_metadata)
+    await update_asset_field_metadata(
+        dataset, version, new_asset.asset_id,
+    )
+    await update_asset_status(new_asset.asset_id, log.status)
 
-    async with ContextEngine("PUT"):
-        await assets.update_asset(
-            new_asset.asset_id, status=log.status, metadata=metadata
-        )
     return log

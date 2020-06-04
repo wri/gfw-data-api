@@ -9,7 +9,7 @@ from pendulum.parsing.exceptions import ParserError
 from sqlalchemy.sql.ddl import CreateSchema
 
 from app.application import ContextEngine, db
-from app.crud import datasets, versions
+from app.crud import assets, datasets, versions
 from app.models.orm.geostore import Geostore
 from app.settings.globals import AWS_REGION, READER_USERNAME
 from app.tasks.default_assets import create_default_asset
@@ -182,14 +182,25 @@ async def test_table_source_asset(batch_client):
     row = await versions.get_version(dataset, version)
     assert row.status == "saved"
 
-    # There should be a table called "test"."v1.1.1" with one row
+    rows = await assets.get_assets(dataset, version)
+    assert len(rows) == 1
+    print(rows[0].metadata)
+    assert rows[0].status == "saved"
+    assert len(rows[0].metadata["fields_"]) == 33
+
+    _assert_fields(
+        rows[0].metadata["fields_"], input_data["creation_options"]["table_schema"]
+    )
+
+    # There should be a table called "table_test"."v202002.1" with 99 rows.
+    # It should have the right amount of partitions and indices
     async with ContextEngine("GET"):
         count = await db.scalar(
-            db.text(f'SELECT count(*) FROM "{dataset}"."{version}"')
+            db.text(f"""SELECT count(*) FROM "{dataset}"."{version}";""")
         )
         partition_count = await db.scalar(
             db.text(
-                f"""SELECT count(i.inhrelid::regclass) FROM pg_inherits i WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass"""
+                f"""SELECT count(i.inhrelid::regclass) FROM pg_inherits i WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass;"""
             )
         )
         index_count = await db.scalar(
@@ -201,6 +212,24 @@ async def test_table_source_asset(batch_client):
     assert count == 99
     assert partition_count == len(partition_schema)
     assert index_count == len(input_data["creation_options"]["indices"])
+
+
+def _assert_fields(field_list, field_schema):
+    count = 0
+    for field in field_list:
+        for schema in field_schema:
+            if (
+                field["field_name_"] == schema["field_name"]
+                and field["field_type"] == schema["field_type"]
+            ):
+                count += 1
+        if field["field_name_"] in ["geom", "geom_wm", "gfw_geojson", "gfw_bbox"]:
+            assert not field["is_filter"]
+            assert not field["is_feature_info"]
+        else:
+            assert field["is_filter"]
+            assert field["is_feature_info"]
+    assert count == len(field_schema)
 
 
 def _print_logs(logs):

@@ -52,6 +52,7 @@ async def create_default_asset(
         else:
             raise NotImplementedError(f"Unsupported asset source type {source_type})")
 
+    # Update version status and change log
     async with ContextEngine("PUT"):
         await versions.update_version(
             dataset, version, status=status, change_log=[log.dict()]
