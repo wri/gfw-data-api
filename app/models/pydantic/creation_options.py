@@ -21,6 +21,23 @@ class PartitionType(str, Enum):
     range = "range"
 
 
+class PGType(str, Enum):
+    bigint = "bigint"
+    boolean = "boolean"
+    character_varying = "character varying"
+    date = "date"
+    double_precision = "double precision"
+    integer = "integer"
+    jsonb = "jsonb"
+    numeric = "numeric"
+    smallint = "smallint"
+    text = "text"
+    time = "time"
+    timestamp = "timestamp"
+    uuid = "uuid"
+    xml = "xml"
+
+
 # class HashPartitionSchema(BaseModel):
 #     partition_schema: int
 #
@@ -51,6 +68,11 @@ class Partitions(BaseModel):
         "For List Partition a dictionaty where key=partition table suffix and value a list of values to use for each partition."
         "For Range Partition a dictionary where key=partition table suffix and value a tuple of start and end value for partition. End value is exclusive.",
     )
+
+
+class FieldType(BaseModel):
+    field_name: str = Field(..., description="Name of field")
+    field_type: PGType = Field(..., description="Type of field (PostgreSQL type).")
 
 
 class VectorSourceCreationOptions(BaseModel):
@@ -86,6 +108,10 @@ class TableSourceCreationOptions(BaseModel):
         None, description="Partitioning schema (optional)"
     )
     indices: List[Index] = Field([], description="List of indices to add to table")
+    table_schema: Optional[List[FieldType]] = Field(
+        None,
+        description="List of Field Types. Missing field types will be inferred. (optional)",
+    )
 
 
 CreationOptions = Union[VectorSourceCreationOptions, TableSourceCreationOptions]

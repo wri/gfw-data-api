@@ -141,6 +141,17 @@ async def test_table_source_asset(batch_client):
                 {"index_type": "gist", "column_name": "geom_wm"},
                 {"index_type": "btree", "column_name": "alert__date"},
             ],
+            "table_schema": [
+                {
+                    "field_name": "rspo_oil_palm__certification_status",
+                    "field_type": "text",
+                },
+                {"field_name": "per_forest_concession__type", "field_type": "text"},
+                {"field_name": "idn_forest_area__type", "field_type": "text"},
+                {"field_name": "alert__count", "field_type": "integer"},
+                {"field_name": "adm1", "field_type": "integer"},
+                {"field_name": "adm2", "field_type": "integer"},
+            ],
         },
         "metadata": {},
     }

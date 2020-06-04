@@ -86,6 +86,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      -m|--field_map)
+      FIELD_MAP="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -p|--partition_type)
       PARTITION_TYPE="$2"
       shift # past argument

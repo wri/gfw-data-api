@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, List
 
 from app.application import ContextEngine
@@ -42,6 +43,8 @@ async def table_source_asset(
         version,
         "-s",
         source_uris[0],
+        "-m",
+        json.dumps(options.dict()["table_schema"]),
     ]
     if options.partitions:
         command.extend(
