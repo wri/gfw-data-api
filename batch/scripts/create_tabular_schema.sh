@@ -27,9 +27,6 @@ sed -i "1s/^/SET SCHEMA '$DATASET';\n/" create_table.sql
 # It will export the different key value pairs as ENV variables so tat we can reference them within the for loop
 # We will then update rows within our create_table.sql file using the new field type
 # https://starkandwayne.com/blog/bash-for-loop-over-json-array-using-jq/
-
-echo "$FIELD_MAP"
-
 for row in $(echo "${FIELD_MAP}" | jq -r '.[] | @base64'); do
     _jq() {
      echo "${row}" | base64 --decode | jq -r "${1}"
@@ -43,8 +40,6 @@ for row in $(echo "${FIELD_MAP}" | jq -r '.[] | @base64'); do
    sed -i "s/^\t\"${FIELD_NAME}\" .*$/\t\"${FIELD_NAME}\" ${FIELD_TYPE},/" create_table.sql
    sed -i 'x; ${s/,//;p;x}; 1d' create_table.sql
 done
-
-cat create_table.sql
 
 # Make sure that table is create with partition if set
 if [[ -n "${PARTITION_TYPE}" ]]; then
