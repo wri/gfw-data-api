@@ -11,7 +11,7 @@ from app.models.pydantic.creation_options import TableSourceCreationOptions
 from app.models.pydantic.jobs import Job, PostgresqlClientJob
 from app.models.pydantic.metadata import DatabaseTableMetadata
 from app.tasks import (
-    get_field_metadata,
+    partition_parmas,
     update_asset_field_metadata,
     update_asset_status,
     writer_secrets,
@@ -29,6 +29,7 @@ async def table_source_asset(
 ) -> ChangeLog:
     options = TableSourceCreationOptions(**creation_options)
 
+    # Register asset in database
     data = AssetTaskCreate(
         asset_type="Database table",
         dataset=dataset,
@@ -73,61 +74,16 @@ async def table_source_asset(
     #  Also need to sanitize input data to avoid SQL injection!!
     partition_jobs: List[Job] = list()
     if options.partitions:
-        if options.partitions.partition_type == "hash" and isinstance(
-            options.partitions.partition_schema, int
-        ):
-            for i in range(options.partitions.partition_schema):
-                command = [
-                    "psql",
-                    "-c",
-                    f'CREATE TABLE "{dataset}"."{version}_{i}" PARTITION OF "{dataset}"."{version}" FOR VALUES WITH (MODULUS {options.partitions.partition_schema}, REMAINDER {i})',
-                ]
-                partition_jobs.append(
-                    PostgresqlClientJob(
-                        job_name=f"create_partition_{i}",
-                        command=command,
-                        environment=writer_secrets,
-                        parents=[create_table_job.job_name],
-                    )
-                )
-        elif options.partitions.partition_type == "list" and isinstance(
-            options.partitions.partition_schema, dict
-        ):
-            for key in options.partitions.partition_schema.keys():
-                command = [
-                    "psql",
-                    "-c",
-                    f'CREATE TABLE "{dataset}"."{version}_{key}" PARTITION OF "{dataset}"."{version}" FOR VALUES IN {tuple(options.partitions.partition_schema[key])}',
-                ]
-                partition_jobs.append(
-                    PostgresqlClientJob(
-                        job_name=f"create_partition_{key}",
-                        command=command,
-                        environment=writer_secrets,
-                        parents=[create_table_job.job_name],
-                    )
-                )
+        params = partition_parmas(dataset, version, options.partitions)
 
-        elif options.partitions.partition_type == "range" and isinstance(
-            options.partitions.partition_schema, dict
-        ):
-            for key in options.partitions.partition_schema.keys():
-                command = [
-                    "psql",
-                    "-c",
-                    f"""CREATE TABLE "{dataset}"."{version}_{key}" PARTITION OF "{dataset}"."{version}" FOR VALUES FROM ('{options.partitions.partition_schema[key][0]}') TO ('{options.partitions.partition_schema[key][1]}')""",
-                ]
-                partition_jobs.append(
-                    PostgresqlClientJob(
-                        job_name=f"create_partition_{key}",
-                        command=command,
-                        environment=writer_secrets,
-                        parents=[create_table_job.job_name],
-                    )
+        for param in params:
+            partition_jobs.append(
+                PostgresqlClientJob(
+                    job_name=f"create_partition_{param[0]}",
+                    command=["psql", "-c", param[1]],
+                    environment=writer_secrets,
+                    parents=[create_table_job.job_name],
                 )
-        else:
-            NotImplementedError(
-                "The Partition type and schema combination is not supported"
             )
 
     load_data_jobs: List[Job] = list()

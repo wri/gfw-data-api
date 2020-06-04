@@ -1,8 +1,9 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple, Union
 
 from ..application import ContextEngine, db
 from ..crud import assets
 from ..models.orm.queries.fields import fields
+from ..models.pydantic.creation_options import Partitions
 from ..models.pydantic.metadata import FieldMetadata
 from ..settings.globals import (
     WRITER_DBNAME,
@@ -58,3 +59,36 @@ async def update_asset_field_metadata(dataset, version, asset_id):
 
     async with ContextEngine("PUT"):
         await assets.update_asset(asset_id, metadata=metadata)
+
+
+def partition_parmas(
+    dataset: str, version: str, partitions: Partitions
+) -> List[Tuple[Union[str, int], str]]:
+
+    params: List[Tuple[Union[str, int], str]] = list()
+    if partitions.partition_type == "hash" and isinstance(
+        partitions.partition_schema, int
+    ):
+        for i in range(partitions.partition_schema):
+            sql = f'CREATE TABLE "{dataset}"."{version}_{i}" PARTITION OF "{dataset}"."{version}" FOR VALUES WITH (MODULUS {partitions.partition_schema}, REMAINDER {i})'
+            params.append((i, sql))
+
+    elif partitions.partition_type == "list" and isinstance(
+        partitions.partition_schema, dict
+    ):
+        for key in partitions.partition_schema.keys():
+            sql = f'CREATE TABLE "{dataset}"."{version}_{key}" PARTITION OF "{dataset}"."{version}" FOR VALUES IN {tuple(partitions.partition_schema[key])}'
+
+            params.append((key, sql))
+    elif partitions.partition_type == "range" and isinstance(
+        partitions.partition_schema, dict
+    ):
+        for key in partitions.partition_schema.keys():
+            sql = f"""CREATE TABLE "{dataset}"."{version}_{key}" PARTITION OF "{dataset}"."{version}" FOR VALUES FROM ('{partitions.partition_schema[key][0]}') TO ('{partitions.partition_schema[key][1]}')"""
+            params.append((key, sql))
+    else:
+        NotImplementedError(
+            "The Partition type and schema combination is not supported"
+        )
+
+    return params

@@ -43,7 +43,8 @@ done
 
 # Make sure that table is create with partition if set
 if [[ -n "${PARTITION_TYPE}" ]]; then
-  sed -i "s/$);/) PARTITION BY $PARTITION_TYPE ($COLUMN_NAME);/g" create_table.sql
+  echo "ADD PARTITION"
+  sed -i "s/);$/) PARTITION BY $PARTITION_TYPE ($COLUMN_NAME);/g" create_table.sql
 fi
 
 cat create_table.sql
