@@ -182,6 +182,26 @@ async def test_table_source_asset(batch_client):
     row = await versions.get_version(dataset, version)
     assert row.status == "saved"
 
+    # There should be a table called "test"."v1.1.1" with one row
+    async with ContextEngine("GET"):
+        count = await db.scalar(
+            db.text(f'SELECT count(*) FROM "{dataset}"."{version}"')
+        )
+        partition_count = await db.scalar(
+            db.text(
+                f"""SELECT count(i.inhrelid::regclass) FROM pg_inherits i WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass"""
+            )
+        )
+        index_count = await db.scalar(
+            db.text(
+                f" SELECT count(indexname) FROM pg_indexes WHERE schemaname = '{dataset}' AND tablename = '{version}';"
+            )
+        )
+
+    assert count == 99
+    assert partition_count == len(partition_schema)
+    assert index_count == len(input_data["creation_options"]["indices"])
+
 
 def _print_logs(logs):
     resp = logs.describe_log_streams(logGroupName="/aws/batch/job")
