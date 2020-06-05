@@ -196,22 +196,44 @@ async def test_table_source_asset(batch_client):
     # It should have the right amount of partitions and indices
     async with ContextEngine("GET"):
         count = await db.scalar(
-            db.text(f"""SELECT count(*) FROM "{dataset}"."{version}";""")
+            db.text(
+                f"""
+                    SELECT count(*)
+                        FROM "{dataset}"."{version}";"""
+            )
         )
         partition_count = await db.scalar(
             db.text(
-                f"""SELECT count(i.inhrelid::regclass) FROM pg_inherits i WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass;"""
+                f"""
+                    SELECT count(i.inhrelid::regclass)
+                        FROM pg_inherits i
+                        WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass;"""
             )
         )
         index_count = await db.scalar(
             db.text(
-                f" SELECT count(indexname) FROM pg_indexes WHERE schemaname = '{dataset}' AND tablename = '{version}';"
+                f"""
+                    SELECT count(indexname)
+                        FROM pg_indexes
+                        WHERE schemaname = '{dataset}' AND tablename like '{version}%';"""
+            )
+        )
+        cluster_count = await db.scalar(
+            db.text(
+                """
+                    SELECT count(relname)
+                        FROM   pg_class c
+                        JOIN   pg_index i ON i.indrelid = c.oid
+                        WHERE  relkind = 'r' AND relhasindex AND i.indisclustered"""
             )
         )
 
     assert count == 99
     assert partition_count == len(partition_schema)
-    assert index_count == len(input_data["creation_options"]["indices"])
+    assert index_count == partition_count * len(
+        input_data["creation_options"]["indices"]
+    )
+    assert cluster_count == len(partition_schema)
 
 
 def _assert_fields(field_list, field_schema):

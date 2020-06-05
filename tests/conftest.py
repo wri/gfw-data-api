@@ -252,7 +252,8 @@ def session():
 def db():
     """
     Aquire a database session for a test and make sure the connection gets
-    properly closed, even if test fails
+    properly closed, even if test fails.
+    This is a synchronous connection using psycopg2.
     """
     with contextlib.ExitStack() as stack:
         yield stack.enter_context(session())

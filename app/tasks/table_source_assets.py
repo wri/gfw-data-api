@@ -163,9 +163,7 @@ async def table_source_asset(
             )
         )
 
-    # TODO:
-    # Check if possible to break this down by partition tables
-    # Batch script should function the same. Instead of version name pass partition table name
+    # Cluster tables. This is a full lock operation.
     cluster_jobs: List[Job] = list()
 
     parents = [job.job_name for job in load_data_jobs]
@@ -173,28 +171,53 @@ async def table_source_asset(
     parents.extend([job.job_name for job in index_jobs])
 
     if options.cluster and options.partitions:
-        tables = partition_tables(dataset, version, options.partitions)
-        for table in tables:
-            cluster_jobs.append(
-                PostgresqlClientJob(
-                    job_name=f"cluster_{table}",
-                    command=[
-                        "cluster_table.sh",
-                        "-d",
-                        dataset,
-                        "-v",
-                        table,
-                        "-c",
-                        options.cluster.column_name,
-                        "-x",
-                        options.cluster.index_type,
-                    ],
-                    environment=writer_secrets,
-                    parents=parents,
-                )
+        # When using partitions we need to cluster each partition table separately.
+        # Playing it save and cluster partition tables one after the other.
+        # TODO: Still need to test if we can cluster tables which are part of the same partition concurrently.
+        #  this would speed up this step by a lot. Partitions require a full lock on the table,
+        #  but I don't know if the lock is aquired for the entire partition or only the partition table.
+        cluster_jobs.append(
+            PostgresqlClientJob(
+                job_name="cluster_partitions",
+                command=[
+                    "cluster_partitions.sh",
+                    "-d",
+                    dataset,
+                    "-v",
+                    version,
+                    "-p",
+                    options.partitions.partition_type,
+                    "-P",
+                    json.dumps(options.partitions.partition_schema),
+                    "-c",
+                    options.cluster.column_name,
+                    "-x",
+                    options.cluster.index_type,
+                ],
+                environment=writer_secrets,
+                parents=parents,
             )
-
-    print(cluster_jobs)
+        )
+    elif options.cluster:
+        # Without partitions we can cluster the main table directly
+        cluster_jobs.append(
+            PostgresqlClientJob(
+                job_name="cluster_table",
+                command=[
+                    "cluster_table.sh",
+                    "-d",
+                    dataset,
+                    "-v",
+                    version,
+                    "-c",
+                    options.cluster.column_name,
+                    "-x",
+                    options.cluster.index_type,
+                ],
+                environment=writer_secrets,
+                parents=parents,
+            )
+        )
 
     log: ChangeLog = await execute(
         [
