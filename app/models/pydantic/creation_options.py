@@ -1,7 +1,35 @@
+from datetime import date
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
+from pydantic.types import PositiveInt, constr
+
+COLUMN_REGEX = r"^[a-z][a-zA-Z0-9_-]{2,}$"
+PARTITION_SUFFIX_REGEX = r"^[a-z0-9_-]{3,}$"
+STR_VALUE_REGEX = r"^[a-zA-Z0-9_-]{1,}$"
+
+
+class TableDrivers(str, Enum):
+    text = "text"
+    # json = "json" # TODO: need to implement this eventually
+
+
+class VectorDrivers(str, Enum):
+    csv = "CSV"
+    esrijson = "ESRIJSON"
+    file_gdb = "FileGDB"
+    geojson = "GeoJSON"
+    geojson_seq = "GeoJSONSeq"
+    gpkg = "GPKG"
+    shp = "ESRI Shapefile"
+
+
+class Delimiters(str, Enum):
+    comma = ","
+    tab = "\t"
+    pipe = "|"
+    semicolon = ";"
 
 
 class IndexType(str, Enum):
@@ -12,7 +40,9 @@ class IndexType(str, Enum):
 
 class Index(BaseModel):
     index_type: IndexType
-    column_name: str
+    column_name: str = Field(
+        ..., description="Column to be used by index", regex=COLUMN_REGEX
+    )
 
 
 class PartitionType(str, Enum):
@@ -38,45 +68,52 @@ class PGType(str, Enum):
     xml = "xml"
 
 
-# class HashPartitionSchema(BaseModel):
-#     partition_schema: int
-#
-#
-# class ListPartitionSchema(BaseModel):
-#     partition_schema: Dict[str, List[str]]
-#
-#
-# class RangePartitionSchema(BaseModel):
-#     partition_schema: Dict[str, Tuple[Any, Any]]
+class HashPartitionSchema(BaseModel):
+    partition_count: PositiveInt
+
+
+class ListPartitionSchema(BaseModel):
+    partition_suffix: str = Field(
+        ..., description="Suffix for partition table", regex=PARTITION_SUFFIX_REGEX
+    )
+    value_list: List[str] = Field(
+        ..., description="List of values for partition", regex=STR_VALUE_REGEX
+    )
+
+
+class RangePartitionSchema(BaseModel):
+    partition_suffix: str = Field(
+        ..., description="Suffix for partition table", regex=PARTITION_SUFFIX_REGEX
+    )
+    start_value: Union[str, int, float, date] = Field(
+        ..., description="Start value of partition range", regex=STR_VALUE_REGEX
+    )
+    end_value: Union[str, int, float, date] = Field(
+        ..., description="Start value of partition rang", regex=STR_VALUE_REGEX
+    )
 
 
 class Partitions(BaseModel):
     partition_type: PartitionType = Field(..., description="Partition type")
     partition_column: str = Field(
-        ..., description="Column to be used to create partitions."
+        ..., description="Column to be used to create partitions.", regex=COLUMN_REGEX
     )
     create_default: bool = Field(
         False,
         description="Create default partition to cache values not captured by partition schema",
     )
     partition_schema: Union[
-        int, Dict[str, List[str]], Dict[str, Tuple[Any, Any]]
-    ] = Field(
-        ...,
-        description="Partition Schema. "
-        "For Hash Partition the number of columns (int)."
-        "For List Partition a dictionaty where key=partition table suffix and value a list of values to use for each partition."
-        "For Range Partition a dictionary where key=partition table suffix and value a tuple of start and end value for partition. End value is exclusive.",
-    )
+        HashPartitionSchema, List[ListPartitionSchema], List[RangePartitionSchema]
+    ] = Field(..., description="Partition Schema to be used.")
 
 
 class FieldType(BaseModel):
-    field_name: str = Field(..., description="Name of field")
+    field_name: str = Field(..., description="Name of field", regex=COLUMN_REGEX)
     field_type: PGType = Field(..., description="Type of field (PostgreSQL type).")
 
 
 class VectorSourceCreationOptions(BaseModel):
-    src_driver: str = Field(
+    src_driver: VectorDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
     )
     zipped: bool = Field(..., description="Indicate if source file is zipped")
@@ -94,12 +131,14 @@ class VectorSourceCreationOptions(BaseModel):
 
 
 class TableSourceCreationOptions(BaseModel):
-    src_driver: str = Field(..., description="Driver of input file (CSV, TSV, ...)")
-    delimiter: str = Field(..., description="Delimiter used in input file")
+    src_driver: TableDrivers = Field(..., description="Driver of input file.")
+    delimiter: Delimiters = Field(..., description="Delimiter used in input file")
     has_header: bool = Field(True, description="Input file has header. Must be true")
-    latitude: Optional[str] = Field(None, description="Column with latitude coordinate")
+    latitude: Optional[str] = Field(
+        None, description="Column with latitude coordinate", regex=COLUMN_REGEX
+    )
     longitude: Optional[str] = Field(
-        None, description="Column with longitude coordinate"
+        None, description="Column with longitude coordinate", regex=COLUMN_REGEX
     )
     cluster: Optional[Index] = Field(
         None, description="Index to use for clustering (optional)."

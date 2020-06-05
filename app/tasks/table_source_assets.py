@@ -10,12 +10,7 @@ from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import TableSourceCreationOptions
 from app.models.pydantic.jobs import Job, PostgresqlClientJob
 from app.models.pydantic.metadata import DatabaseTableMetadata
-from app.tasks import (
-    partition_tables,
-    update_asset_field_metadata,
-    update_asset_status,
-    writer_secrets,
-)
+from app.tasks import update_asset_field_metadata, update_asset_status, writer_secrets
 from app.tasks.batch import execute
 
 
@@ -72,6 +67,14 @@ async def table_source_asset(
     # Create partitions
     partition_jobs: List[Job] = list()
     if options.partitions:
+
+        if isinstance(options.partitions.partition_schema, list):
+            partition_schema: str = json.dumps(
+                [schema.dict() for schema in options.partitions.partition_schema]
+            )
+        else:
+            partition_schema = json.dumps(options.partitions.partition_schema.dict())
+
         partition_job = PostgresqlClientJob(
             job_name="create_partitions",
             command=[
@@ -83,7 +86,7 @@ async def table_source_asset(
                 "-p",
                 options.partitions.partition_type,
                 "-P",
-                json.dumps(options.partitions.partition_schema),
+                partition_schema,
             ],
             environment=writer_secrets,
             parents=[create_table_job.job_name],
@@ -176,6 +179,14 @@ async def table_source_asset(
         # TODO: Still need to test if we can cluster tables which are part of the same partition concurrently.
         #  this would speed up this step by a lot. Partitions require a full lock on the table,
         #  but I don't know if the lock is aquired for the entire partition or only the partition table.
+
+        if isinstance(options.partitions.partition_schema, list):
+            partition_schema = json.dumps(
+                [schema.dict() for schema in options.partitions.partition_schema]
+            )
+        else:
+            partition_schema = json.dumps(options.partitions.partition_schema.dict())
+
         cluster_jobs.append(
             PostgresqlClientJob(
                 job_name="cluster_partitions",
@@ -188,7 +199,7 @@ async def table_source_asset(
                     "-p",
                     options.partitions.partition_type,
                     "-P",
-                    json.dumps(options.partitions.partition_schema),
+                    partition_schema,
                     "-c",
                     options.cluster.column_name,
                     "-x",

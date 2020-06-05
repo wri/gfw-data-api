@@ -59,37 +59,3 @@ async def update_asset_field_metadata(dataset, version, asset_id):
 
     async with ContextEngine("PUT"):
         await assets.update_asset(asset_id, metadata=metadata)
-
-
-def partition_tables(dataset: str, version: str, partitions: Partitions) -> List[str]:
-
-    tables: List[str] = list()
-
-    if partitions.partition_type == "hash" and isinstance(
-        partitions.partition_schema, int
-    ):
-        for i in range(partitions.partition_schema):
-            table = f'"{dataset}"."{version}_{i}"'
-            tables.append(table)
-
-    elif partitions.partition_type == "list" and isinstance(
-        partitions.partition_schema, dict
-    ):
-        for key in partitions.partition_schema.keys():
-            table = f'"{dataset}"."{version}_{key}"'
-            tables.append(table)
-
-    elif partitions.partition_type == "range" and isinstance(
-        partitions.partition_schema, dict
-    ):
-        for key in partitions.partition_schema.keys():
-            table = f'"{dataset}"."{version}_{key}"'
-            tables.append(table)
-
-    else:
-        NotImplementedError(
-            "The Partition type and schema combination is not supported"
-        )
-
-    # print(tables)
-    return tables

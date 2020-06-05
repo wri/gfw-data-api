@@ -29,7 +29,7 @@ def cli(dataset: str, version: str, partition_type: str, partition_schema: str) 
 
     # HashSchema = int
     if partition_type == "hash":
-        partition_count: int = int(partition_schema)
+        partition_count: int = json.loads(partition_schema)["partition_count"]
         for i in range(partition_count):
             sql = f"""
                    CREATE TABLE "{dataset}"."{version}_{i}"
@@ -42,26 +42,26 @@ def cli(dataset: str, version: str, partition_type: str, partition_schema: str) 
 
     # ListSchema = Dict[str, List[str]]
     elif partition_type == "list":
-        partition_dict: dict = json.loads(partition_schema)
-        for key in partition_dict.keys():
+        partition_list: list = json.loads(partition_schema)
+        for partition in partition_list:
             sql = f"""
-                    CREATE TABLE "{dataset}"."{version}_{key}"
+                    CREATE TABLE "{dataset}"."{version}_{partition["partition_suffix"]}"
                         PARTITION OF "{dataset}"."{version}"
                         FOR VALUES
-                            IN {tuple(partition_dict[key])}
+                            IN {tuple(partition["value_list"])}
                     """
             click.echo(sql)
             cursor.execute(sql)
 
     # RangeSchema = Dict[str, Tuple[Any, Any]]
     elif partition_type == "range":
-        partition_dict = json.loads(partition_schema)
-        for key in partition_dict.keys():
-            sql = f"""CREATE TABLE "{dataset}"."{version}_{key}"
+        partition_list = json.loads(partition_schema)
+        for partition in partition_list:
+            sql = f"""CREATE TABLE "{dataset}"."{version}_{partition["partition_suffix"]}"
                         PARTITION OF "{dataset}"."{version}"
                         FOR VALUES
-                            FROM ('{partition_dict[key][0]}')
-                            TO ('{partition_dict[key][1]}')
+                            FROM ('{partition["start_value"]}')
+                            TO ('{partition["end_value"]}')
                     """
             # click.echo(sql)
             cursor.execute(sql)

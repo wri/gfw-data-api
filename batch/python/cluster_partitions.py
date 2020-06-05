@@ -44,7 +44,7 @@ def cli(
 
     # HashSchema = int
     if partition_type == "hash":
-        partition_count: int = int(partition_schema)
+        partition_count: int = json.loads(partition_schema)["partition_count"]
         for i in range(partition_count):
             sql = f"""CLUSTER "{dataset}"."{version}_{i}" USING "{version}_{i}_{column_name}_idx\";"""
             click.echo(sql)
@@ -52,17 +52,17 @@ def cli(
 
     # ListSchema = Dict[str, List[str]]
     elif partition_type == "list":
-        partition_dict: dict = json.loads(partition_schema)
-        for key in partition_dict.keys():
-            sql = f"""CLUSTER "{dataset}"."{version}_{key}" USING "{version}_{key}_{column_name}_idx\";"""
+        partition_list: list = json.loads(partition_schema)
+        for partition in partition_list:
+            sql = f"""CLUSTER "{dataset}"."{version}_{partition["partition_suffix"]}" USING "{version}_{partition["partition_suffix"]}_{column_name}_idx\";"""
             click.echo(sql)
             cursor.execute(sql)
 
     # RangeSchema = Dict[str, Tuple[Any, Any]]
     elif partition_type == "range":
-        partition_dict = json.loads(partition_schema)
-        for key in partition_dict.keys():
-            sql = f"""CLUSTER "{dataset}"."{version}_{key}" USING "{version}_{key}_{column_name}_idx\";"""
+        partition_list = json.loads(partition_schema)
+        for partition in partition_list:
+            sql = f"""CLUSTER "{dataset}"."{version}_{partition["partition_suffix"]}" USING "{version}_{partition["partition_suffix"]}_{column_name}_idx\";"""
             click.echo(sql)
             cursor.execute(sql)
 

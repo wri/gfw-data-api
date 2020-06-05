@@ -107,7 +107,7 @@ async def test_table_source_asset(batch_client):
     version = "v202002.1"
 
     # define partition schema
-    partition_schema = dict()
+    partition_schema = list()
     years = range(2011, 2022)
     for year in years:
         for week in range(1, 54):
@@ -115,7 +115,9 @@ async def test_table_source_asset(batch_client):
                 name = f"y{year}_w{week:02}"
                 start = pendulum.parse(f"{year}-W{week:02}").to_date_string()
                 end = pendulum.parse(f"{year}-W{week:02}").add(days=7).to_date_string()
-                partition_schema[name] = (start, end)
+                partition_schema.append(
+                    {"partition_suffix": name, "start_value": start, "end_value": end}
+                )
 
             except ParserError:
                 # Year has only 52 weeks
@@ -125,7 +127,7 @@ async def test_table_source_asset(batch_client):
         "source_type": "table",
         "source_uri": [f"s3://{BUCKET}/{TSV_NAME}"],
         "creation_options": {
-            "src_driver": "TSV",
+            "src_driver": "text",
             "delimiter": "\t",
             "has_header": True,
             "latitude": "latitude",
