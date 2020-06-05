@@ -13,7 +13,12 @@ RUN make && make install
 # Install tileputty
 RUN pip install tileputty awscli-plugin-endpoint
 
-COPY ./batch/scripts/ /usr/local/bin/
+# Copy scripts
+COPY ./batch/scripts/ /opt/scripts/
+COPY ./batch/python/ /opt/python/
+
+ENV PATH="/opt/scripts:${PATH}"
+ENV PATH="/opt/python:${PATH}"
 
 WORKDIR /tmp
 

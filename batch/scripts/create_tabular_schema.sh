@@ -9,6 +9,7 @@ set -e
 # -p | --partition_type
 # -c | --column_name
 # -m | --field_map
+ME=$(basename "$0")
 . get_arguments.sh "$@"
 
 # The `head` command will cause a broken pipe error for `aws s3 cp`, this is expected and can be ignored

@@ -61,34 +61,35 @@ async def update_asset_field_metadata(dataset, version, asset_id):
         await assets.update_asset(asset_id, metadata=metadata)
 
 
-def partition_parmas(
-    dataset: str, version: str, partitions: Partitions
-) -> List[Tuple[Union[str, int], str]]:
+def partition_tables(dataset: str, version: str, partitions: Partitions) -> List[str]:
 
-    params: List[Tuple[Union[str, int], str]] = list()
+    tables: List[str] = list()
+
     if partitions.partition_type == "hash" and isinstance(
         partitions.partition_schema, int
     ):
         for i in range(partitions.partition_schema):
-            sql = f'CREATE TABLE "{dataset}"."{version}_{i}" PARTITION OF "{dataset}"."{version}" FOR VALUES WITH (MODULUS {partitions.partition_schema}, REMAINDER {i})'
-            params.append((i, sql))
+            table = f'"{dataset}"."{version}_{i}"'
+            tables.append(table)
 
     elif partitions.partition_type == "list" and isinstance(
         partitions.partition_schema, dict
     ):
         for key in partitions.partition_schema.keys():
-            sql = f'CREATE TABLE "{dataset}"."{version}_{key}" PARTITION OF "{dataset}"."{version}" FOR VALUES IN {tuple(partitions.partition_schema[key])}'
+            table = f'"{dataset}"."{version}_{key}"'
+            tables.append(table)
 
-            params.append((key, sql))
     elif partitions.partition_type == "range" and isinstance(
         partitions.partition_schema, dict
     ):
         for key in partitions.partition_schema.keys():
-            sql = f"""CREATE TABLE "{dataset}"."{version}_{key}" PARTITION OF "{dataset}"."{version}" FOR VALUES FROM ('{partitions.partition_schema[key][0]}') TO ('{partitions.partition_schema[key][1]}')"""
-            params.append((key, sql))
+            table = f'"{dataset}"."{version}_{key}"'
+            tables.append(table)
+
     else:
         NotImplementedError(
             "The Partition type and schema combination is not supported"
         )
 
-    return params
+    # print(tables)
+    return tables

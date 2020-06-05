@@ -7,6 +7,7 @@ set -e
 # -v | --version
 # --lat
 # --lng
+ME=$(basename "$0")
 . get_arguments.sh "$@"
 
 # Add GFW specific layers

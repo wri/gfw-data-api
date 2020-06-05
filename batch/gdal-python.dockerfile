@@ -5,7 +5,12 @@ RUN apt-get update -y && \
 
 RUN pip3 install csvkit awscli fiona rasterio boto3 awscli-plugin-endpoint
 
-COPY ./batch/scripts/ /usr/local/bin/
+# Copy scripts
+COPY ./batch/scripts/ /opt/scripts/
+COPY ./batch/python/ /opt/python/
+
+ENV PATH="/opt/scripts:${PATH}"
+ENV PATH="/opt/python:${PATH}"
 
 WORKDIR /tmp
 

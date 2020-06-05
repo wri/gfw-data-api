@@ -5,6 +5,7 @@ set -e
 # requires arguments
 # -d | --dataset
 # -v | --version
+ME=$(basename "$0")
 . get_arguments.sh "$@"
 
 # Add GFW specific layers

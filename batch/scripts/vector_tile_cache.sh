@@ -9,6 +9,7 @@ set -e
 # -Z | --min_zoom
 # -z | --max_zoom
 # -t | --tile_strategy
+ME=$(basename "$0")
 . get_arguments.sh "$@"
 
 # Set TILE_STRATEGY

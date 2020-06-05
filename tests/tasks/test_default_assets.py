@@ -112,10 +112,10 @@ async def test_table_source_asset(batch_client):
     for year in years:
         for week in range(1, 54):
             try:
-                week = f"y{year}_w{week:02}"
-                start = pendulum.parse(f"{year}-W{week}").to_date_string()
-                end = pendulum.parse(f"{year}-W{week}").add(days=7).to_date_string()
-                partition_schema[week] = (start, end)
+                name = f"y{year}_w{week:02}"
+                start = pendulum.parse(f"{year}-W{week:02}").to_date_string()
+                end = pendulum.parse(f"{year}-W{week:02}").add(days=7).to_date_string()
+                partition_schema[name] = (start, end)
 
             except ParserError:
                 # Year has only 52 weeks

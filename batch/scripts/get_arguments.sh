@@ -5,6 +5,12 @@ set -e
 if [[ -n "${DEBUG}" ]]; then
 
   echo "--------------"
+  echo "CMD ARGUMENTS"
+  echo "--------------"
+  echo "$ME $*"
+  echo
+
+  echo "--------------"
   echo "AWS CONFIG:"
   echo "--------------"
   cat /root/.aws/config
@@ -14,12 +20,6 @@ if [[ -n "${DEBUG}" ]]; then
   echo "ENVIRONMENT VARIABLES:"
   echo "--------------"
   printenv
-  echo
-
-  echo "--------------"
-  echo "CMD ARGUMENTS"
-  echo "--------------"
-  echo "$@"
   echo
 
   echo "--------------"
@@ -93,6 +93,11 @@ do
       ;;
       -p|--partition_type)
       PARTITION_TYPE="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -P|--partition_schema)
+      PARTITION_SCHEMA="$2"
       shift # past argument
       shift # past value
       ;;

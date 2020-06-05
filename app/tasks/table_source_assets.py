@@ -11,7 +11,7 @@ from app.models.pydantic.creation_options import TableSourceCreationOptions
 from app.models.pydantic.jobs import Job, PostgresqlClientJob
 from app.models.pydantic.metadata import DatabaseTableMetadata
 from app.tasks import (
-    partition_parmas,
+    partition_tables,
     update_asset_field_metadata,
     update_asset_status,
     writer_secrets,
@@ -43,6 +43,7 @@ async def table_source_asset(
     async with ContextEngine("PUT"):
         new_asset = await assets.create_asset(**data.dict())
 
+    # Create table schema
     command = [
         "create_tabular_schema.sh",
         "-d",
@@ -68,24 +69,28 @@ async def table_source_asset(
         job_name="create_table", command=command, environment=writer_secrets,
     )
 
-    # TODO: We can do better than this!
-    #  ideally this would be offloaded into a single batch job.
-    #  Will need to figure out how to best pass the long lists to the container
-    #  Also need to sanitize input data to avoid SQL injection!!
+    # Create partitions
     partition_jobs: List[Job] = list()
     if options.partitions:
-        params = partition_parmas(dataset, version, options.partitions)
+        partition_job = PostgresqlClientJob(
+            job_name="create_partitions",
+            command=[
+                "create_partitions.sh",
+                "-d",
+                dataset,
+                "-v",
+                version,
+                "-p",
+                options.partitions.partition_type,
+                "-P",
+                json.dumps(options.partitions.partition_schema),
+            ],
+            environment=writer_secrets,
+            parents=[create_table_job.job_name],
+        )
+        partition_jobs.append(partition_job)
 
-        for param in params:
-            partition_jobs.append(
-                PostgresqlClientJob(
-                    job_name=f"create_partition_{param[0]}",
-                    command=["psql", "-c", param[1]],
-                    environment=writer_secrets,
-                    parents=[create_table_job.job_name],
-                )
-            )
-
+    # Load data
     load_data_jobs: List[Job] = list()
 
     parents = [create_table_job.job_name]
@@ -111,6 +116,7 @@ async def table_source_asset(
             )
         )
 
+    # Add geometry columns and update geometries
     geometry_jobs: List[Job] = list()
     if options.latitude and options.longitude:
         geometry_jobs.append(
@@ -132,6 +138,7 @@ async def table_source_asset(
             ),
         )
 
+    # Add indicies
     index_jobs: List[Job] = list()
     parents = [job.job_name for job in load_data_jobs]
     parents.extend([job.job_name for job in geometry_jobs])
@@ -165,25 +172,29 @@ async def table_source_asset(
     parents.extend([job.job_name for job in geometry_jobs])
     parents.extend([job.job_name for job in index_jobs])
 
-    if options.cluster:
-        cluster_jobs.append(
-            PostgresqlClientJob(
-                job_name="cluster",
-                command=[
-                    "cluster_table.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "-c",
-                    options.cluster.column_name,
-                    "-x",
-                    options.cluster.index_type,
-                ],
-                environment=writer_secrets,
-                parents=parents,
+    if options.cluster and options.partitions:
+        tables = partition_tables(dataset, version, options.partitions)
+        for table in tables:
+            cluster_jobs.append(
+                PostgresqlClientJob(
+                    job_name=f"cluster_{table}",
+                    command=[
+                        "cluster_table.sh",
+                        "-d",
+                        dataset,
+                        "-v",
+                        table,
+                        "-c",
+                        options.cluster.column_name,
+                        "-x",
+                        options.cluster.index_type,
+                    ],
+                    environment=writer_secrets,
+                    parents=parents,
+                )
             )
-        )
+
+    print(cluster_jobs)
 
     log: ChangeLog = await execute(
         [
