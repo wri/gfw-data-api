@@ -1,6 +1,5 @@
-import os
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, Optional
 from typing.io import IO
 
 from ..application import ContextEngine
@@ -60,9 +59,8 @@ async def create_default_asset(
 
 
 async def _inject_file(file_obj: IO, s3_uri: str) -> ChangeLog:
-    """
-    Upload a file-like object to S3 data lake
-    """
+    """ Upload a file-like object to S3 data lake """
+
     s3 = get_s3_client()
     bucket, path = split_s3_path(s3_uri)
 

@@ -8,12 +8,7 @@ from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import VectorSourceCreationOptions
 from app.models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
 from app.models.pydantic.metadata import DatabaseTableMetadata
-from app.tasks import (
-    get_field_metadata,
-    update_asset_field_metadata,
-    update_asset_status,
-    writer_secrets,
-)
+from app.tasks import update_asset_field_metadata, update_asset_status, writer_secrets
 from app.tasks.batch import execute
 
 
@@ -25,7 +20,9 @@ async def vector_source_asset(
     metadata: Dict[str, Any],
     callback,
 ) -> ChangeLog:
-    assert len(source_uris) == 1, "Vector sources only support one input file"
+
+    if len(source_uris) != 1:
+        raise AssertionError("Vector sources only support one input file")
 
     options = VectorSourceCreationOptions(**creation_options)
 

@@ -27,9 +27,8 @@ description = (
     "/", response_class=ORJSONResponse, tags=["Dataset"], response_model=List[Dataset]
 )
 async def get_datasets():
-    """
-    Get list of all datasets
-    """
+    """Get list of all datasets."""
+
     return await datasets.get_datasets()
 
 
@@ -40,9 +39,8 @@ async def get_datasets():
     response_model=Dataset,
 )
 async def get_dataset(*, dataset: str = Depends(dataset_dependency)):
-    """
-    Get basic metadata and available versions for a given dataset
-    """
+    """Get basic metadata and available versions for a given dataset."""
+
     row: ORMDataset = await datasets.get_dataset(dataset)
     return await _dataset_response(dataset, row)
 
@@ -61,9 +59,8 @@ async def create_dataset(
     is_authorized: bool = Depends(is_admin),
     response: Response,
 ):
-    """
-    Create or update a dataset
-    """
+    """Create or update a dataset."""
+
     new_dataset: ORMDataset = await datasets.create_dataset(dataset, **request.dict())
 
     await db.status(CreateSchema(dataset))
@@ -89,7 +86,9 @@ async def update_dataset_metadata(
     is_authorized: bool = Depends(is_admin),
 ):
     """
+
     Partially update a dataset. Only metadata field can be updated. All other fields will be ignored.
+
     """
 
     row: ORMDataset = await datasets.update_dataset(dataset, request)
@@ -108,9 +107,7 @@ async def delete_dataset(
     dataset: str = Depends(dataset_dependency),
     is_authorized: bool = Depends(is_admin),
 ):
-    """
-    Delete a dataset
-    """
+    """Delete a dataset."""
 
     row: ORMDataset = await datasets.delete_dataset(dataset)
     await db.status(DropSchema(dataset))

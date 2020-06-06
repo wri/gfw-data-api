@@ -1,8 +1,6 @@
 import json
 from typing import Any, Dict, List
 
-from fastapi.logger import logger
-
 from app.application import ContextEngine
 from app.crud import assets
 from app.models.pydantic.assets import AssetTaskCreate

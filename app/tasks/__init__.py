@@ -1,9 +1,8 @@
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List
 
 from ..application import ContextEngine, db
 from ..crud import assets
 from ..models.orm.queries.fields import fields
-from ..models.pydantic.creation_options import Partitions
 from ..models.pydantic.metadata import FieldMetadata
 from ..settings.globals import (
     WRITER_DBNAME,
@@ -23,9 +22,7 @@ writer_secrets = [
 
 
 async def get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]]:
-    """
-    Get field list for asset and convert into Metadata object
-    """
+    """Get field list for asset and convert into Metadata object."""
 
     rows = await db.all(fields, dataset=dataset, version=version)
     field_metadata = list()
@@ -42,17 +39,14 @@ async def get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]]
 
 
 async def update_asset_status(asset_id, status):
-    """
-    Update status of asset
-    """
+    """Update status of asset."""
+
     async with ContextEngine("PUT"):
         await assets.update_asset(asset_id, status=status)
 
 
 async def update_asset_field_metadata(dataset, version, asset_id):
-    """
-    Update asset field metadata
-    """
+    """Update asset field metadata."""
 
     field_metadata: List[Dict[str, Any]] = await get_field_metadata(dataset, version)
     metadata = {"fields_": field_metadata}

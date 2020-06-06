@@ -18,9 +18,7 @@ READ_ENGINE: Optional[GinoEngine] = None
 
 
 class ContextualGino(Gino):
-    """
-    Overide the Gino Metadata object to allow to dynamically change the binds
-    """
+    """Override the Gino Metadata object to allow to dynamically change the binds."""
 
     @property
     def bind(self):
@@ -61,7 +59,7 @@ class ContextEngine(object):
         self.method = method
 
     async def __aenter__(self):
-        """ initialize objects """
+        """initialize objects"""
         try:
             e = CURRENT_ENGINE.get()
         except LookupError:

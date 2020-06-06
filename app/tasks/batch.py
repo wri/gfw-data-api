@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 from time import sleep
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Set
@@ -33,9 +32,11 @@ async def schedule(
     jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]
 ) -> Dict[str, str]:
     """
+
     Submit multiple batch jobs at once. Submitted batch jobs can depend on each other.
     Dependent jobs need to be listed in `dependent_jobs`
-    and must have a `parents` attribute with the parent job names
+    and must have a `parents` attribute with the parent job names.
+
     """
 
     scheduled_jobs = dict()
@@ -165,9 +166,7 @@ async def poll_jobs(
 def submit_batch_job(
     job: Job, depends_on: Optional[List[Dict[str, Any]]] = None
 ) -> str:
-    """
-    Submit job to AWS Batch
-    """
+    """Submit job to AWS Batch."""
     client = get_batch_client()
 
     if depends_on is None:

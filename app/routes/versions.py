@@ -1,16 +1,6 @@
-import json
-from typing import Any, Dict, List, Tuple
-from typing.io import IO
+from typing import Any, Dict, List
 
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Depends,
-    File,
-    Form,
-    Response,
-    UploadFile,
-)
+from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from fastapi.responses import ORJSONResponse
 
 from ..crud import versions
@@ -18,23 +8,18 @@ from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.versions import Version, VersionCreateIn, VersionUpdateIn
-from ..routes import (  # version_dependency_form,
-    dataset_dependency,
-    is_admin,
-    version_dependency,
-)
-from ..settings.globals import BUCKET
+from ..routes import dataset_dependency, is_admin, version_dependency
 from ..tasks.default_assets import create_default_asset
 
 router = APIRouter()
 description = """
-              Datasets can have different versions. Versions aer usually
-              linked to different releases. Versions can be either mutable (data can change) or immutable (data
-              cannot change). By default versions are immutable. Every version needs one or many source files.
-              These files can be a remote, publicly accessible URL or an uploaded file. Based on the source file(s),
-              users can create additional assets and activate additional endpoints to view and query the dataset.
-              Available assets and endpoints to choose from depend on the source type.
-              """
+Datasets can have different versions. Versions aer usually
+linked to different releases. Versions can be either mutable (data can change) or immutable (data
+cannot change). By default versions are immutable. Every version needs one or many source files.
+These files can be a remote, publicly accessible URL or an uploaded file. Based on the source file(s),
+users can create additional assets and activate additional endpoints to view and query the dataset.
+Available assets and endpoints to choose from depend on the source type.
+"""
 
 
 # TODO:
@@ -52,9 +37,7 @@ async def get_version(
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
 ):
-    """
-    Get basic metadata for a given version
-    """
+    """Get basic metadata for a given version."""
 
     row: ORMVersion = await versions.get_version(dataset, version)
 
@@ -77,9 +60,7 @@ async def add_new_version(
     is_authorized: bool = Depends(is_admin),
     response: Response,
 ):
-    """
-    Create or update a version for a given dataset
-    """
+    """Create or update a version for a given dataset."""
 
     async def callback(message: Dict[str, Any]) -> None:
         pass
@@ -176,9 +157,11 @@ async def update_version(
     is_authorized: bool = Depends(is_admin),
 ):
     """
+
     Partially update a version of a given dataset.
     When using PATCH and uploading files,
-    this will overwrite the existing source(s) and trigger a complete update of all managed assets
+    this will overwrite the existing source(s) and trigger a complete update of all managed assets.
+
     """
 
     input_data = request.dict()
@@ -201,9 +184,8 @@ async def delete_version(
     version: str = Depends(version_dependency),
     is_authorized: bool = Depends(is_admin),
 ):
-    """
-    Delete a version
-    """
+    """Delete a version."""
+
     row: ORMVersion = await versions.delete_version(dataset, version)
 
     # TODO:
@@ -220,9 +202,8 @@ async def version_history(
     request: ChangeLog,
     is_authorized: bool = Depends(is_admin),
 ):
-    """
-    Log changes for given dataset version
-    """
+    """Log changes for given dataset version."""
+
     message = [request.dict()]
 
     return await versions.update_version(dataset, version, change_log=message)
@@ -231,9 +212,7 @@ async def version_history(
 async def _version_response(
     dataset: str, version: str, data: ORMVersion
 ) -> Dict[str, Any]:
-    """
-    Assure that version responses are parsed correctly and include associated assets
-    """
+    """Assure that version responses are parsed correctly and include associated assets."""
 
     assets: List[ORMAsset] = await ORMAsset.select("asset_type", "asset_uri").where(
         ORMAsset.dataset == dataset

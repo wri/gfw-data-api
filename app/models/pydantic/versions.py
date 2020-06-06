@@ -1,12 +1,11 @@
-from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from .base import Base
 from .change_log import ChangeLog
-from .creation_options import CreationOptions, VectorSourceCreationOptions
-from .metadata import FieldMetadata, VersionMetadata
+from .creation_options import CreationOptions
+from .metadata import VersionMetadata
 from .sources import SourceType
 
 

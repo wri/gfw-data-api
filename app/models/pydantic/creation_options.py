@@ -1,9 +1,9 @@
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
-from pydantic.types import PositiveInt, constr
+from pydantic.types import PositiveInt
 
 COLUMN_REGEX = r"^[a-z][a-zA-Z0-9_-]{2,}$"
 PARTITION_SUFFIX_REGEX = r"^[a-z0-9_-]{3,}$"

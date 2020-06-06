@@ -20,8 +20,10 @@ async def get_features(
     z: int = Query(None, title="Zoom level", ge=0, le=22)
 ):
     """
+
     Retrieve list of features
     Add optional spatial filter using a point buffer (for info tool).
+
     """
     # return await get_features_by_location(db, dataset, version, lat, lng, z)
     pass
@@ -38,9 +40,8 @@ async def get_feature(
     version: str = Depends(version_dependency),
     feature_id: int = Path(..., title="Feature ID", ge=0)
 ):
-    """
-    Retrieve attribute values for a given feature
-    """
+    """Retrieve attribute values for a given feature."""
+
     pass
 
 

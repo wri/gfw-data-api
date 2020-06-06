@@ -34,9 +34,8 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
 
 
 async def get_latest_version(dataset) -> str:
-    """
-    Fetch latest version number
-    """
+    """Fetch latest version number."""
+
     latest: Optional[str] = await ORMVersion.select("version").where(
         ORMVersion.dataset == dataset
     ).where(ORMVersion.is_latest).gino.scalar()

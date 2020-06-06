@@ -17,7 +17,6 @@ async def query_dataset(
     sql: str = Query(None, title="SQL query"),
     geostore_id: UUID = Query(None, title="Geostore ID")
 ):
-    """
-    Execute a read ONLY SQL query on the given dataset version (if implemented)
-    """
+    """Execute a read ONLY SQL query on the given dataset version (if implemented)."""
+
     pass
