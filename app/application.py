@@ -70,7 +70,7 @@ class ContextEngine(object):
         finally:
             self.token = CURRENT_ENGINE.set(e)
 
-    async def __aexit__(self, type, value, tb):
+    async def __aexit__(self, _type, value, tb):
         """ uninitialize objects """
         CURRENT_ENGINE.reset(self.token)
 

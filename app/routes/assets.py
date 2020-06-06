@@ -132,7 +132,7 @@ async def add_new_asset(
     # row: ORMAsset = ...
     # response.headers["Location"] = f"/{dataset}/{version}/asset/{row.asset_id}"
     # return row
-    pass
+    raise NotImplementedError
 
 
 @router.delete(
@@ -154,7 +154,7 @@ async def delete_asset(
     For managed assets, all resources will be deleted. For non-managed assets, only the link will be deleted.
 
     """
-    pass
+    raise NotImplementedError
 
 
 @router.post("/{dataset}/{version}/{asset_id}/change_log", tags=["Assets"])

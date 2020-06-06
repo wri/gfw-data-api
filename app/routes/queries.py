@@ -19,4 +19,4 @@ async def query_dataset(
 ):
     """Execute a read ONLY SQL query on the given dataset version (if implemented)."""
 
-    pass
+    raise NotImplementedError
