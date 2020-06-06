@@ -1,100 +1,100 @@
 iso	adm1	adm2	longitude	latitude	alert__date	alert__time_utc	confidence__cat	bright_ti4__K	bright_ti5__K	frp__MW	wdpa_protected_area__iucn_cat	is__umd_regional_primary_forest_2001	is__birdlife_alliance_for_zero_extinction_site	is__birdlife_key_biodiversity_area	is__landmark_land_right	gfw_plantation__type	is__gfw_mining	is__gfw_managed_forest	rspo_oil_palm__certification_status	is__gfw_wood_fiber	is__peatland	is__idn_forest_moratorium	is__gfw_oil_palm	idn_forest_area__type	per_forest_concession__type	is__gfw_oil_gas	is__gmw_mangroves_2016	is__ifl_intact_forest_landscape_2016	bra_biome__name	alert__count
-MOZ	7	18	38.24999	-14.63781	2013-08-19	1022	h	367.0	303.2	6.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-BOL	3	7	-66.29684	-14.5566	2016-10-16	1811	n	334.6	294.7	27.5	Other Category	true	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+MOZ	7	18	38.24999	-14.63781	2018-08-19	1022	h	367.0	303.2	6.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+BOL	3	7	-66.29684	-14.5566	2019-10-16	1811	n	334.6	294.7	27.5	Other Category	true	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 AUS	6	12	135.67308	-16.37322	2018-04-26	354	n	348.1	304.3	5.8	Other Category	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-BRA	11	60	-56.98476	-21.00147	2016-09-11	1725	l	339.8	311.6	49.6	Other Category	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	Cerrado	1
+BRA	11	60	-56.98476	-21.00147	2019-09-11	1725	l	339.8	311.6	49.6	Other Category	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	Cerrado	1
 CAF	7	2	17.97655	4.42813	2018-01-19	3	n	297.0	286.8	0.7	""	true	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 AUS	11	137	126.09324	-14.74245	2018-10-16	452	l	351.2	316.4	9.9	Other Category	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-MDG	4	3	44.31288	-18.45382	2017-07-14	1001	h	367.0	302.3	14.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-UGA	8	3	31.69929	2.87795	2016-02-03	1131	n	348.2	315.9	12.7	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-MOZ	11	9	35.58508	-16.32179	2014-09-29	1158	l	331.9	306.6	2.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-RUS	72	13	37.1752	57.23492	2014-04-18	1009	n	331.6	293.3	1.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-MEX	14	64	-103.18994	19.85325	2016-05-02	2034	n	353.2	314.1	12.9	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-TZA	13	5	34.92636	-8.14415	2016-07-11	1146	n	336.6	299.8	2.7	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-IDN	28	2	121.87366	-4.60718	2012-04-09	538	n	334.7	295.8	6.6	""	false	false	false	false	""	false	false	""	true	false	false	false	""	""	false	false	false	""	1
-FRA	11	7	0.00232	43.12781	2017-03-10	1303	n	344.0	295.6	3.1	""	false	false	false	false	Wood fiber / Timber	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-AGO	17	3	14.30901	-7.23171	2012-08-11	1157	h	367.0	297.4	24.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-BRA	12	31	-50.78715	-13.31683	2017-08-23	1739	h	367.0	302.5	12.3	Other Category	true	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	Cerrado	1
-AUS	11	137	127.70842	-15.54081	2015-09-28	1731	n	306.7	292.5	1.2	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+MDG	4	3	44.31288	-18.45382	2018-07-14	1001	h	367.0	302.3	14.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+UGA	8	3	31.69929	2.87795	2019-02-03	1131	n	348.2	315.9	12.7	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+MOZ	11	9	35.58508	-16.32179	2019-09-29	1158	l	331.9	306.6	2.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+RUS	72	13	37.1752	57.23492	2019-04-18	1009	n	331.6	293.3	1.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+MEX	14	64	-103.18994	19.85325	2019-05-02	2034	n	353.2	314.1	12.9	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+TZA	13	5	34.92636	-8.14415	2019-07-11	1146	n	336.6	299.8	2.7	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+IDN	28	2	121.87366	-4.60718	2019-04-09	538	n	334.7	295.8	6.6	""	false	false	false	false	""	false	false	""	true	false	false	false	""	""	false	false	false	""	1
+FRA	11	7	0.00232	43.12781	2018-03-10	1303	n	344.0	295.6	3.1	""	false	false	false	false	Wood fiber / Timber	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+AGO	17	3	14.30901	-7.23171	2019-08-11	1157	h	367.0	297.4	24.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+BRA	12	31	-50.78715	-13.31683	2018-08-23	1739	h	367.0	302.5	12.3	Other Category	true	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	Cerrado	1
+AUS	11	137	127.70842	-15.54081	2018-09-28	1731	n	306.7	292.5	1.2	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 COD	12	2	19.17965	-7.03275	2018-06-17	2353	n	298.0	285.1	0.3	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-COD	26	4	21.74138	-0.83126	2012-01-28	1134	n	328.5	294.3	3.3	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+COD	26	4	21.74138	-0.83126	2019-01-28	1134	n	328.5	294.3	3.3	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 ZMB	6	3	33.24893	-10.2541	2019-10-07	1200	n	341.3	302.4	7.7	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-IRN	15	12	49.28451	31.32202	2017-07-03	2244	n	332.3	303.3	2.5	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CAN	1	7	-113.78298	59.51487	2012-07-14	2108	h	367.0	299.4	7.0	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-COD	14	4	24.80846	-5.74885	2012-08-25	1234	n	342.1	290.8	11.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-COD	26	2	21.43153	-0.68953	2017-09-15	1207	n	334.4	296.6	3.2	""	true	false	false	false	""	false	true	""	false	false	false	false	""	""	true	false	false	""	1
-MLI	3	1	-10.97612	13.36484	2014-11-30	1426	n	337.4	297.3	41.9	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CAF	12	4	17.52456	5.63585	2015-12-16	1152	n	345.0	301.6	6.2	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-ZMB	1	6	30.22827	-12.42888	2015-08-08	1045	n	336.9	297.8	5.1	Other Category	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-RUS	3	27	127.54165	53.28683	2016-05-10	1651	n	323.2	280.8	2.4	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+IRN	15	12	49.28451	31.32202	2018-07-03	2244	n	332.3	303.3	2.5	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CAN	1	7	-113.78298	59.51487	2019-07-14	2108	h	367.0	299.4	7.0	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+COD	14	4	24.80846	-5.74885	2019-08-25	1234	n	342.1	290.8	11.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+COD	26	2	21.43153	-0.68953	2018-09-15	1207	n	334.4	296.6	3.2	""	true	false	false	false	""	false	true	""	false	false	false	false	""	""	true	false	false	""	1
+MLI	3	1	-10.97612	13.36484	2019-11-30	1426	n	337.4	297.3	41.9	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CAF	12	4	17.52456	5.63585	2018-12-16	1152	n	345.0	301.6	6.2	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+ZMB	1	6	30.22827	-12.42888	2018-08-08	1045	n	336.9	297.8	5.1	Other Category	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+RUS	3	27	127.54165	53.28683	2019-05-10	1651	n	323.2	280.8	2.4	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 COD	15	2	23.47011	-9.01521	2018-08-15	1242	n	352.4	299.1	7.6	""	true	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-BRA	27	41	-47.32977	-11.96083	2015-06-18	1647	n	340.3	305.0	3.1	""	false	false	false	false	""	true	false	""	false	false	false	false	""	""	false	false	false	Cerrado	1
-AUS	6	7	136.33852	-12.07108	2012-11-03	353	l	332.7	304.1	6.2	Other Category	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-VEN	12	13	-70.93547	10.77644	2016-04-06	551	n	313.1	263.0	2.5	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-GHA	1	20	-0.93163	7.16129	2013-02-03	1342	n	353.1	308.1	7.2	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CHN	28	6	92.91295	43.86359	2017-07-13	1931	n	301.1	287.1	1.0	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+BRA	27	41	-47.32977	-11.96083	2018-06-18	1647	n	340.3	305.0	3.1	""	false	false	false	false	""	true	false	""	false	false	false	false	""	""	false	false	false	Cerrado	1
+AUS	6	7	136.33852	-12.07108	2019-11-03	353	l	332.7	304.1	6.2	Other Category	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+VEN	12	13	-70.93547	10.77644	2019-04-06	551	n	313.1	263.0	2.5	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+GHA	1	20	-0.93163	7.16129	2018-02-03	1342	n	353.1	308.1	7.2	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CHN	28	6	92.91295	43.86359	2018-07-13	1931	n	301.1	287.1	1.0	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 AUS	7	20	142.66045	-11.93971	2018-07-28	1558	n	300.3	289.4	0.6	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 UGA	3	4	31.16273	2.56965	2020-01-13	1124	n	331.2	300.6	2.4	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-THA	21	9	102.10565	17.06171	2014-02-05	1813	n	322.5	290.4	1.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+THA	21	9	102.10565	17.06171	2019-02-05	1813	n	322.5	290.4	1.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 BRA	4	29	-58.30453	-3.12369	2018-10-06	1633	n	326.7	279.2	5.5	""	true	false	false	false	""	true	false	""	false	false	false	false	""	""	false	false	false	Amazônia	1
 CAF	9	1	22.50473	5.3526	2020-01-25	1242	h	367.0	295.7	22.7	""	true	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-JPN	1	55	136.85651	35.01829	2015-05-22	1737	n	300.3	281.6	3.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-TCD	4	2	16.64545	10.15639	2016-11-15	1210	l	332.7	305.2	4.4	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-AUS	11	133	121.26872	-24.24906	2014-10-25	1637	n	330.0	293.6	5.4	Other Category	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-IND	26	3	86.83287	21.53096	2013-11-12	1945	n	296.3	277.8	0.5	""	false	false	false	false	Unknown	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-DZA	33	5	8.03085	31.05438	2017-07-30	220	n	309.2	292.7	2.2	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-ZMB	8	2	30.13135	-8.78026	2015-06-14	1118	l	327.1	300.0	4.9	Other Category	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-AUS	6	2	135.09892	-17.19702	2014-09-01	1646	n	312.0	287.4	11.4	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-IND	21	9	94.55511	25.16887	2013-03-05	2006	n	302.8	284.7	0.8	""	true	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-BEN	4	3	2.2454	9.87401	2012-12-24	1311	n	345.2	313.0	3.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-ZMB	2	6	27.20718	-12.84596	2015-08-18	4	n	295.1	285.0	2.9	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-AUS	11	13	122.85072	-17.18701	2014-08-09	607	h	367.0	302.4	6.0	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-TCD	20	2	16.92976	9.40117	2015-01-06	1248	n	350.3	312.3	13.5	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-IDN	14	14	111.09514	-2.32138	2012-09-06	525	n	344.1	292.1	3.1	""	false	false	false	false	Oil Palm	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-AGO	8	5	16.80264	-16.90953	2013-09-18	1241	l	340.2	314.9	3.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CAF	5	3	23.44815	7.71399	2015-01-11	9	n	302.7	284.9	1.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-IRN	11	14	55.85464	26.85403	2016-04-30	2150	n	311.3	295.2	1.7	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CAN	11	84	-75.77996	51.41144	2013-07-04	1648	n	355.1	305.1	42.0	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-USA	4	56	-90.95436	35.48665	2015-10-08	1841	n	341.6	300.9	3.7	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-MOZ	10	3	33.28597	-16.68103	2017-08-10	1137	n	335.2	308.2	5.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-COD	3	2	28.26906	-10.51679	2014-09-21	1109	h	367.0	306.1	13.1	""	false	false	false	false	""	true	false	""	false	false	false	false	""	""	false	false	false	""	1
+JPN	1	55	136.85651	35.01829	2018-05-22	1737	n	300.3	281.6	3.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+TCD	4	2	16.64545	10.15639	2019-11-15	1210	l	332.7	305.2	4.4	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+AUS	11	133	121.26872	-24.24906	2019-10-25	1637	n	330.0	293.6	5.4	Other Category	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+IND	26	3	86.83287	21.53096	2018-11-12	1945	n	296.3	277.8	0.5	""	false	false	false	false	Unknown	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+DZA	33	5	8.03085	31.05438	2018-07-30	220	n	309.2	292.7	2.2	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+ZMB	8	2	30.13135	-8.78026	2018-06-14	1118	l	327.1	300.0	4.9	Other Category	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+AUS	6	2	135.09892	-17.19702	2019-09-01	1646	n	312.0	287.4	11.4	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+IND	21	9	94.55511	25.16887	2018-03-05	2006	n	302.8	284.7	0.8	""	true	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+BEN	4	3	2.2454	9.87401	2019-12-24	1311	n	345.2	313.0	3.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+ZMB	2	6	27.20718	-12.84596	2018-08-18	4	n	295.1	285.0	2.9	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+AUS	11	13	122.85072	-17.18701	2019-08-09	607	h	367.0	302.4	6.0	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+TCD	20	2	16.92976	9.40117	2018-01-06	1248	n	350.3	312.3	13.5	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+IDN	14	14	111.09514	-2.32138	2019-09-06	525	n	344.1	292.1	3.1	""	false	false	false	false	Oil Palm	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+AGO	8	5	16.80264	-16.90953	2018-09-18	1241	l	340.2	314.9	3.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CAF	5	3	23.44815	7.71399	2018-01-11	9	n	302.7	284.9	1.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+IRN	11	14	55.85464	26.85403	2019-04-30	2150	n	311.3	295.2	1.7	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CAN	11	84	-75.77996	51.41144	2018-07-04	1648	n	355.1	305.1	42.0	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+USA	4	56	-90.95436	35.48665	2018-10-08	1841	n	341.6	300.9	3.7	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+MOZ	10	3	33.28597	-16.68103	2018-08-10	1137	n	335.2	308.2	5.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+COD	3	2	28.26906	-10.51679	2019-09-21	1109	h	367.0	306.1	13.1	""	false	false	false	false	""	true	false	""	false	false	false	false	""	""	false	false	false	""	1
 COD	5	2	28.79161	4.10955	2020-03-05	1154	n	342.1	301.2	17.0	Other Category	true	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CAF	15	5	17.09047	7.5427	2013-01-12	1213	l	333.5	305.8	1.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-SSD	9	2	26.61315	7.42782	2017-12-07	1113	n	341.7	303.0	11.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-USA	2	11	-150.65012	60.23848	2014-05-25	2349	l	367.0	279.6	17.2	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CAF	15	5	17.09047	7.5427	2018-01-12	1213	l	333.5	305.8	1.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+SSD	9	2	26.61315	7.42782	2018-12-07	1113	n	341.7	303.0	11.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+USA	2	11	-150.65012	60.23848	2019-05-25	2349	l	367.0	279.6	17.2	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 AGO	10	8	15.79181	-15.11047	2018-09-01	1222	l	343.9	314.8	4.4	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 RUS	56	17	134.97961	43.88513	2018-04-27	352	n	335.9	302.1	3.3	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CMR	7	4	13.70072	8.77532	2017-03-16	1241	n	334.8	296.4	8.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-GHA	2	12	-1.37483	8.14924	2017-01-03	1332	l	336.0	309.0	5.0	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-COD	24	7	28.29808	-7.30803	2016-06-16	1115	n	350.1	302.6	11.2	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CMR	7	4	13.70072	8.77532	2018-03-16	1241	n	334.8	296.4	8.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+GHA	2	12	-1.37483	8.14924	2018-01-03	1332	l	336.0	309.0	5.0	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+COD	24	7	28.29808	-7.30803	2019-06-16	1115	n	350.1	302.6	11.2	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 SDN	15	3	29.63653	11.11401	2019-11-28	1054	l	334.5	308.1	4.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-MOZ	8	10	37.25636	-11.80117	2014-10-17	1122	n	338.6	300.4	3.5	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-MEX	20	10	-94.90569	16.78041	2013-05-17	2000	n	340.4	303.5	5.9	""	false	true	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+MOZ	8	10	37.25636	-11.80117	2019-10-17	1122	n	338.6	300.4	3.5	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+MEX	20	10	-94.90569	16.78041	2018-05-17	2000	n	340.4	303.5	5.9	""	false	true	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 CAF	5	2	23.29423	7.93257	2019-12-27	42	n	307.7	287.5	1.5	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-SDN	2	4	36.00405	12.84874	2013-11-23	1031	n	338.9	308.0	4.2	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-AGO	3	2	17.57926	-12.09573	2014-08-10	1236	n	341.3	303.3	8.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+SDN	2	4	36.00405	12.84874	2018-11-23	1031	n	338.9	308.0	4.2	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+AGO	3	2	17.57926	-12.09573	2019-08-10	1236	n	341.3	303.3	8.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 SLE	2	4	-12.49891	8.88097	2020-04-19	1430	n	336.5	300.6	3.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-IDN	11	7	112.48395	-7.14086	2015-09-25	541	l	331.9	304.4	0.9	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-COD	9	1	21.33976	-3.47819	2016-08-01	1154	n	339.5	293.3	4.5	""	true	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CIV	14	1	-3.36816	9.40649	2017-12-01	1307	n	334.6	305.9	2.8	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CIV	14	1	-3.58779	9.02009	2013-01-13	1336	n	352.7	314.9	8.2	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-ETH	3	10	36.42049	12.03351	2012-03-14	1035	l	367.0	327.6	18.0	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-RUS	35	4	96.13647	61.38882	2013-08-19	2107	n	301.1	284.1	0.9	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-SSD	5	2	27.38775	8.63017	2017-10-25	1119	n	345.7	300.1	9.7	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-ETH	4	3	35.46357	11.31587	2016-11-05	1017	n	345.8	302.2	4.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-TZA	21	4	30.88203	-7.80915	2014-08-30	1122	n	346.7	293.0	8.8	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CAN	6	1	-111.4585	61.28534	2017-08-14	1058	n	316.4	291.5	1.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+IDN	11	7	112.48395	-7.14086	2018-09-25	541	l	331.9	304.4	0.9	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+COD	9	1	21.33976	-3.47819	2018-08-01	1154	n	339.5	293.3	4.5	""	true	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CIV	14	1	-3.36816	9.40649	2018-12-01	1307	n	334.6	305.9	2.8	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CIV	14	1	-3.58779	9.02009	2018-01-13	1336	n	352.7	314.9	8.2	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+ETH	3	10	36.42049	12.03351	2018-03-14	1035	l	367.0	327.6	18.0	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+RUS	35	4	96.13647	61.38882	2018-08-19	2107	n	301.1	284.1	0.9	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+SSD	5	2	27.38775	8.63017	2018-10-25	1119	n	345.7	300.1	9.7	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+ETH	4	3	35.46357	11.31587	2018-11-05	1017	n	345.8	302.2	4.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+TZA	21	4	30.88203	-7.80915	2018-08-30	1122	n	346.7	293.0	8.8	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CAN	6	1	-111.4585	61.28534	2018-08-14	1058	n	316.4	291.5	1.8	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 AGO	12	7	19.76418	-9.83287	2018-06-01	1248	n	333.1	303.2	4.4	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-AGO	5	7	17.76524	-15.69148	2012-06-25	1316	h	367.0	302.5	101.5	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-COD	13	1	17.00449	-4.28358	2015-02-08	1225	n	332.6	297.7	3.3	""	true	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CIV	11	1	-4.66018	7.60115	2020-02-03	1318	n	345.6	312.9	7.0	Other Category	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CHN	19	7	110.21062	39.72436	2012-05-07	1924	n	332.2	286.6	2.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-NGA	27	15	6.0103	10.81449	2012-01-30	135	n	298.4	287.8	1.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CHN	23	2	115.98264	37.00309	2015-02-08	550	n	331.1	281.8	1.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+AGO	5	7	17.76524	-15.69148	2018-06-25	1316	h	367.0	302.5	101.5	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+COD	13	1	17.00449	-4.28358	2018-02-08	1225	n	332.6	297.7	3.3	""	true	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CIV	11	1	-4.66018	7.60115	2020-08-03	1318	n	345.6	312.9	7.0	Other Category	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CHN	19	7	110.21062	39.72436	2018-05-07	1924	n	332.2	286.6	2.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+NGA	27	15	6.0103	10.81449	2018-01-30	135	n	298.4	287.8	1.1	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CHN	23	2	115.98264	37.00309	2018-02-08	550	n	331.1	281.8	1.6	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 GIN	3	2	-10.84925	12.01652	2018-03-12	207	n	329.1	298.6	4.0	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-VEN	13	2	-66.3273	9.13944	2015-05-01	1834	n	339.1	304.6	5.3	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-AGO	15	7	19.83976	-13.62443	2014-10-21	1147	h	367.0	300.7	31.5	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+VEN	13	2	-66.3273	9.13944	2018-05-01	1834	n	339.1	304.6	5.3	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+AGO	15	7	19.83976	-13.62443	2018-10-21	1147	h	367.0	300.7	31.5	""	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
 MNG	18	15	107.62646	49.13892	2018-05-24	1923	n	313.0	269.4	4.1	Category Ia/b or II	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-TZA	8	9	29.85336	-6.04849	2012-07-16	2248	n	309.8	292.0	3.9	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-CAF	17	1	21.03873	9.53317	2013-01-07	1207	l	343.0	316.7	76.4	Other Category	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
-AUS	11	46	121.3429	-22.02654	2012-08-19	1709	n	306.8	287.5	1.3	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+TZA	8	9	29.85336	-6.04849	2018-07-16	2248	n	309.8	292.0	3.9	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+CAF	17	1	21.03873	9.53317	2018-01-07	1207	l	343.0	316.7	76.4	Other Category	false	false	false	false	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1
+AUS	11	46	121.3429	-22.02654	2018-08-19	1709	n	306.8	287.5	1.3	""	false	false	false	true	""	false	false	""	false	false	false	false	""	""	false	false	false	""	1

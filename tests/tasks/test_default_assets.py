@@ -108,7 +108,7 @@ async def test_table_source_asset(batch_client):
 
     # define partition schema
     partition_schema = list()
-    years = range(2011, 2022)
+    years = range(2018, 2021)
     for year in years:
         for week in range(1, 54):
             try:

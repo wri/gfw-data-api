@@ -12,8 +12,6 @@ import psycopg2
 @click.option("-v", "--version", type=str, help="Version name")
 @click.option("-p", "--partition_type", type=str, help="Partition type")
 @click.option("-P", "--partition_schema", type=str, help="Partition schema")
-@click.option("-P", "--partition_schema", type=str, help="Partition schema")
-@click.option("-P", "--partition_schema", type=str, help="Partition schema")
 @click.option("-x", "--index_type", type=str, help="Index type used for clustering")
 @click.option("-c", "--column_name", type=str, help="Column used for clustering")
 def cli(
@@ -26,7 +24,7 @@ def cli(
 ) -> None:
 
     click.echo(
-        f"python cluster_partition.py -d {dataset} -v {version} -p {partition_type} -P {partition_schema} -x {index_type} -c {column_name}"
+        f"python cluster_partitions.py -d {dataset} -v {version} -p {partition_type} -P {partition_schema} -x {index_type} -c {column_name}"
     )
 
     connection = psycopg2.connect(

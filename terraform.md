@@ -2,14 +2,14 @@
 
 | Name | Version |
 |------|---------|
-| terraform | >=0.12.24 |
-| aws | ~> 2.56.0 |
+| terraform | >=0.12.26 |
+| aws | ~> 2.65.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| aws | ~> 2.56.0 |
+| aws | ~> 2.65.0 |
 | template | n/a |
 | terraform | n/a |
 

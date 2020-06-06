@@ -63,7 +63,7 @@ def cli(dataset: str, version: str, partition_type: str, partition_schema: str) 
                             FROM ('{partition["start_value"]}')
                             TO ('{partition["end_value"]}')
                     """
-            # click.echo(sql)
+            click.echo(sql)
             cursor.execute(sql)
     else:
         NotImplementedError(

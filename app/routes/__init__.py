@@ -15,7 +15,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 async def dataset_dependency(
     dataset: str = Path(..., title="Dataset", regex=DATASET_REGEX)
 ) -> str:
-    if dataset == "latetst":
+    if dataset == "latest":
         raise HTTPException(
             status_code=400, detail="Name `latest` is reserved for versions only.",
         )
