@@ -17,7 +17,10 @@ RUN make && make install
 RUN rm -R /opt/src/tippecanoe-${TIPPECANOE_VERSION}
 
 # Install tileputty
-RUN pip install tileputty awscli-plugin-endpoint
+RUN pip install \
+        tileputty~=0.1.2 \
+        awscli~=1.18.74 \
+        awscli-plugin-endpoint~=0.3
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/

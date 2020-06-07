@@ -6,7 +6,13 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
-RUN pip install csvkit awscli boto3 awscli-plugin-endpoint click psycopg2-binary
+RUN pip install \
+        csvkit~=1.0.5 \
+        awscli~=1.18.74 \
+        boto3~=1.13.24 \
+        awscli-plugin-endpoint~=0.3 \
+        click~=7.1.2 \
+        psycopg2-binary~=2.8.5
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/
