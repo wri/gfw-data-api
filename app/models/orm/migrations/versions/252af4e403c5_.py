@@ -1,7 +1,7 @@
 """empty message
 
 Revision ID: 252af4e403c5
-Revises: 15a427d4fa82
+Revises: c1100a23a083
 Create Date: 2020-06-02 02:52:17.927668
 
 """
@@ -9,7 +9,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "252af4e403c5"  # pragma: allowlist secret
-down_revision = "15a427d4fa82"  # pragma: allowlist secret
+down_revision = "c1100a23a083"  # pragma: allowlist secret
 branch_labels = None
 depends_on = None
 
