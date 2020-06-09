@@ -93,7 +93,9 @@ async def table_source_asset(
                     "-s",
                     uri,
                     "-D",
-                    options.delimiter,
+                    options.delimiter.encode(
+                        "unicode_escape"
+                    ).decode(),  # Need to escape special characters such as TAB for batch job payload
                 ],
                 environment=writer_secrets,
                 parents=parents,

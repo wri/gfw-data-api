@@ -189,7 +189,7 @@ def submit_batch_job(
         "timeout": {"attemptDurationSeconds": job.attempt_duration_seconds},
     }
 
-    logger.debug(f"Submit batch job with payload: {payload}")
+    logger.info(f"Submit batch job with payload: {payload}")
 
     response = client.submit_job(
         jobName=job.job_name,
