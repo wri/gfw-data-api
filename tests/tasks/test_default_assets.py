@@ -73,6 +73,8 @@ async def test_vector_source_asset(batch_client):
     row = await versions.get_version(dataset, version)
     assert row.status == "saved"
     assert len(row.change_log) == 1
+    print(f"VECTOR_SOURCE_VERSION LOGS: {row.change_log}")
+    assert row.change_log[0]["message"] == "Successfully ran all batch jobs"
 
     # There should be a table called "test"."v1.1.1" with one row
     async with ContextEngine("GET"):
@@ -86,11 +88,13 @@ async def test_vector_source_asset(batch_client):
     assert len(rows) == 1
     assert rows[0].gfw_geostore_id == UUID("b9faa657-34c9-96d4-fce4-8bb8a1507cb3")
 
-    # asset_rows: List[Asset] = await assets.get_assets(dataset, version)
-    asset_rows = await assets.get_assets(dataset, version)
-    print("ASSET LOGS: {}".format(asset_rows[0].change_log))
+    asset_rows: List[Asset] = await assets.get_assets(dataset, version)
+    print(f"VECTOR SOURCE ASSET LOGS: {asset_rows[0].change_log}")
     assert len(asset_rows) == 1
-    # assert 1 == 42
+    assert asset_rows[0].change_log[-1]["message"] == (
+        "Successfully completed all scheduled batch jobs for asset creation"
+    )
+    assert len(asset_rows[0].change_log) == 15  # 14 for jobs, 1 for summary
 
 
 @pytest.mark.asyncio
@@ -184,14 +188,26 @@ async def test_table_source_asset(batch_client):
     _print_logs(logs)
 
     # If everything worked, version should be set to "saved"
+    # and there should now be a changelog item
     row = await versions.get_version(dataset, version)
     assert row.status == "saved"
+    assert len(row.change_log) == 1
+    print(f"TABLE SOURCE VERSION LOGS: {row.change_log}")
+    assert row.change_log[0]["message"] == "Successfully ran all batch jobs"
 
     rows = await assets.get_assets(dataset, version)
     assert len(rows) == 1
     print(rows[0].metadata)
     assert rows[0].status == "saved"
     assert len(rows[0].metadata["fields_"]) == 33
+
+    asset_rows: List[Asset] = await assets.get_assets(dataset, version)
+    print(f"TABLE SOURCE ASSET LOGS: {asset_rows[0].change_log}")
+    assert len(asset_rows) == 1
+    assert asset_rows[0].change_log[-1]["message"] == (
+        "Successfully completed all scheduled batch jobs for asset creation"
+    )
+    assert len(asset_rows[0].change_log) == 17  # 16 for jobs, 1 for summary
 
     _assert_fields(
         rows[0].metadata["fields_"], input_data["creation_options"]["table_schema"]
