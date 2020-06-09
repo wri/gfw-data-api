@@ -97,8 +97,8 @@ module "batch_aurora_writer" {
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
   data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn]
-  instance_types = [
-  "a1.medium"]
+  instance_types = [ "c5.large", "c4.large" , "m5.large", "m4.large"]
+  # "a1.medium" works but needs special ARM docker file
   # currently not supported but want to have "m6g.medium", "t2.nano", "t2.micro", "t2.small"
   key_pair  = var.key_pair
   max_vcpus = local.aurora_max_vcpus

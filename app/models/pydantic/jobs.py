@@ -28,15 +28,23 @@ class Job(BaseModel):
 
 
 class PostgresqlClientJob(Job):
+    """
+    Use for simple write operations to PostgreSQL
+    """
+
     job_queue = AURORA_JOB_QUEUE
     job_definition = POSTGRESQL_CLIENT_JOB_DEFINITION
     vcpus = 1
-    memory = 500
+    memory = 1500
     attempts = 1
     attempt_duration_seconds = 7500
 
 
 class GdalPythonImportJob(Job):
+    """
+    Use for write operations to PostgreSQL which require GDAL/ Ogr2Ogr drivers
+    """
+
     job_queue = AURORA_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
     vcpus = 1
@@ -46,6 +54,10 @@ class GdalPythonImportJob(Job):
 
 
 class GdalPythonExportJob(Job):
+    """
+    Use for export operations from PostgreSQL to S3 data lake which require GDAL/ Ogr2Ogr drivers.
+    """
+
     job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
     vcpus = 1
@@ -55,6 +67,10 @@ class GdalPythonExportJob(Job):
 
 
 class TileCacheJob(Job):
+    """
+    Use for generating Vector Tile Cache using TippeCanoe
+    """
+
     job_queue = TILE_CACHE_JOB_QUEUE
     job_definition = TILE_CACHE_JOB_DEFINITION
     vcpus = 48
@@ -64,6 +80,10 @@ class TileCacheJob(Job):
 
 
 class PixETLJob(Job):
+    """
+    Use for raster transformations using PixETL
+    """
+
     job_queue = PIXETL_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION
     vcpus = 48
