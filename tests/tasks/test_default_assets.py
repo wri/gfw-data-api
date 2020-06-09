@@ -95,9 +95,6 @@ async def test_vector_source_asset(batch_client):
 
 @pytest.mark.asyncio
 async def test_table_source_asset(batch_client):
-    # TODO: define what a callback should do
-    async def callback(message):
-        pass
 
     _, logs = batch_client
 
@@ -180,7 +177,7 @@ async def test_table_source_asset(batch_client):
 
     # Create default asset in mocked BATCH
     await create_default_asset(
-        dataset, version, input_data, None, callback,
+        dataset, version, input_data, None,
     )
 
     # Get the logs in case something went wrong
