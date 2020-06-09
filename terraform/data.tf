@@ -51,16 +51,12 @@ data "template_file" "container_definition" {
 data "template_file" "task_batch_policy" {
   template = file("${path.root}/templates/batch_policy.json.tmpl")
   vars = {
-    aurora_compute_environment_arn     = module.batch_aurora_writer.arn
     aurora_job_definition_arn          = module.batch_job_queues.aurora_job_definition
     aurora_job_queue_arn               = module.batch_job_queues.aurora_job_queue
-    data_lake_compute_environment_arn  = module.batch_data_lake_writer.arn
     data_lake_job_definition_arn       = module.batch_job_queues.data_lake_job_definition
     data_lake_job_queue_arn            = module.batch_job_queues.data_lake_job_queue
-    tile_cache_compute_environment_arn = module.batch_data_lake_writer.arn
     tile_cache_job_definition_arn      = module.batch_job_queues.tile_cache_job_definition
     tile_cache_job_queue_arn           = module.batch_job_queues.tile_cache_job_queue
-    pixetl_compute_environment_arn     = data.terraform_remote_state.pixetl.outputs.compute_environment_arn
     pixetl_job_definition_arn          = data.terraform_remote_state.pixetl.outputs.job_definition_arn
     pixetl_job_queue_arn               = data.terraform_remote_state.pixetl.outputs.job_queue_arn
   }

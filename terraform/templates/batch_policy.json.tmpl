@@ -6,30 +6,32 @@
             "Action": [
                 "batch:SubmitJob",
                 "batch:CancelJob",
+                "batch:TerminateJob",
+            ],
+            "Resource": [
+                "${aurora_job_queue_arn}",
+                "${aurora_job_definition_arn}",
+
+                "${data_lake_job_queue_arn}",
+                "${data_lake_job_definition_arn}",
+
+                "${tile_cache_job_queue_arn}",
+                "${tile_cache_job_definition_arn}",
+
+                "${pixetl_job_queue_arn}",
+                "${pixetl_job_definition_arn}"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
                 "batch:ListJobs",
                 "batch:DescribeJobs",
-                "batch:TerminateJob",
                 "batch:DescribeJobQueues",
                 "batch:DescribeComputeEnvironments",
                 "batch:DescribeJobDefinitions"
             ],
-            "Resource": [
-                "${aurora_compute_environment_arn}",
-                "${aurora_job_queue_arn}",
-                "${aurora_job_definition_arn}",
-
-                "${data_lake_compute_environment_arn}",
-                "${data_lake_job_queue_arn}",
-                "${data_lake_job_definition_arn}",
-
-                "${tile_cache_compute_environment_arn}",
-                "${tile_cache_job_queue_arn}",
-                "${tile_cache_job_definition_arn}",
-
-                "${pixetl_compute_environment_arn}",
-                "${pixetl_job_queue_arn}",
-                "${pixetl_job_definition_arn}"
-            ]
+            "Resource": ["*"]
         }
     ]
 }
