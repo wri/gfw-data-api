@@ -82,7 +82,7 @@ module "fargate_autoscaling" {
   auto_scaling_min_capacity = var.auto_scaling_min_capacity
   security_group_ids = [data.terraform_remote_state.core.outputs.postgresql_security_group_id,
   aws_security_group.egress_https.id]
-  task_role_policies = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn]
+  task_role_policies = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn, aws_iam_policy.s3_write_data-lake.arn]
   task_execution_role_policies = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
   data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn]
