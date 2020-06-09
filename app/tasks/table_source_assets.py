@@ -253,7 +253,7 @@ def _create_cluster_jobs(
 ) -> List[PostgresqlClientJob]:
     # Cluster tables. This is a full lock operation.
     cluster_jobs: List[PostgresqlClientJob] = list()
-    chunk_size: int = 100
+    chunk_size: int = 50
 
     if partitions:
         # When using partitions we need to cluster each partition table separately.
