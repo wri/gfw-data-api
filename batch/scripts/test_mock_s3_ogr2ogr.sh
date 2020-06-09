@@ -8,6 +8,7 @@
 # -s | --source
 # -l | --source_layer
 # -f | --local_file
+ME=$(basename "$0")
 . get_arguments.sh "$@"
 
 echo "AWSCLI: COPY DATA FROM S3 to STDOUT"

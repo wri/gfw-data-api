@@ -7,8 +7,11 @@ set -e
 # -v | --version
 # -c | --column_name
 # -x | --index_type
+ME=$(basename "$0")
 . get_arguments.sh "$@"
 
-psql -c "CREATE INDEX IF NOT EXISTS \"${VERSION}_${COLUMN_NAME}_idx\"
+#psql -c "\d+ \"$DATASET\".\"$VERSION\" "
+
+psql -c "CREATE INDEX IF NOT EXISTS \"${VERSION}_${COLUMN_NAME}_${INDEX_TYPE}_idx\"
      ON \"$DATASET\".\"$VERSION\" USING $INDEX_TYPE
      (${COLUMN_NAME});"

@@ -1,5 +1,0 @@
-CREATE INDEX IF NOT EXISTS {table}_y{year}w{week}_{column}_idx
-    ON {schema}.{table}_y{year}w{week} USING {index}
-    ({column});
-ALTER INDEX {schema}.{table}_{column}_idx
-    ATTACH PARTITION {schema}.{table}_y{year}w{week}_{column}_idx;

@@ -1,17 +1,20 @@
-from typing import Tuple
-
 import requests
-from fastapi import Depends, Form, HTTPException, Path
+from fastapi import Depends, HTTPException, Path
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
 
-from app.crud.versions import get_latest_version
-
+DATASET_REGEX = r"^[a-z][a-z0-9_-]{2,}$"
 VERSION_REGEX = r"^v\d{1,8}\.?\d{1,3}\.?\d{1,3}$|^latest$"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 
-async def dataset_dependency(dataset: str = Path(..., title="Dataset")) -> str:
+async def dataset_dependency(
+    dataset: str = Path(..., title="Dataset", regex=DATASET_REGEX)
+) -> str:
+    if dataset == "latest":
+        raise HTTPException(
+            status_code=400, detail="Name `latest` is reserved for versions only.",
+        )
     return dataset
 
 
@@ -28,20 +31,8 @@ async def version_dependency(
     return version
 
 
-# async def version_dependency_form(
-#     version: str = Form(..., title="Dataset version", regex=VERSION_REGEX)
-# ):
-#
-#     if version == "latest":
-#          version = await get_latest_version
-#
-#     return version
-
-
 async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
-    """
-    Calls GFW API to authorize user
-    """
+    """Calls GFW API to authorize user."""
 
     headers = {"Authorization": f"Bearer {token}"}
     url = "https://production-api.globalforestwatch.org/auth/check-logged"

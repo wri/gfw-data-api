@@ -5,6 +5,12 @@ set -e
 if [[ -n "${DEBUG}" ]]; then
 
   echo "--------------"
+  echo "CMD ARGUMENTS"
+  echo "--------------"
+  echo "$ME $*"
+  echo
+
+  echo "--------------"
   echo "AWS CONFIG:"
   echo "--------------"
   cat /root/.aws/config
@@ -14,12 +20,6 @@ if [[ -n "${DEBUG}" ]]; then
   echo "ENVIRONMENT VARIABLES:"
   echo "--------------"
   printenv
-  echo
-
-  echo "--------------"
-  echo "CMD ARGUMENTS"
-  echo "--------------"
-  echo "$@"
   echo
 
   echo "--------------"
@@ -41,23 +41,18 @@ do
   key="$1"
 
   case $key in
+      -c|--column_name)
+      COLUMN_NAME="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -d|--dataset)
       DATASET="$2"
       shift # past argument
       shift # past value
       ;;
-      -v|--version)
-      VERSION="$2"
-      shift # past argument
-      shift # past value
-      ;;
-      -s|--source)
-      SRC="$2"
-      shift # past argument
-      shift # past value
-      ;;
-      -l|--source_layer)
-      SRC_LAYER="$2"
+      -D|--delimiter)
+      DELIMITER="$2"
       shift # past argument
       shift # past value
       ;;
@@ -76,18 +71,53 @@ do
       shift # past argument
       shift # past value
       ;;
+      -l|--source_layer)
+      SRC_LAYER="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      --lat)
+      LAT="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      --lng)
+      LNG="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -m|--field_map)
+      FIELD_MAP="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -p|--partition_type)
+      PARTITION_TYPE="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -P|--partition_schema)
+      PARTITION_SCHEMA="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -s|--source)
+      SRC="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -t|--tile_strategy)
+      TILE_STRATEGY="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -v|--version)
+      VERSION="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -x|--index_type)
       INDEX_TYPE="$2"
-      shift # past argument
-      shift # past value
-      ;;
-      -c|--column_name)
-      COLUMN_NAME="$2"
-      shift # past argument
-      shift # past value
-      ;;
-      -Z|--min_zoom)
-      MIN_ZOOM="$2"
       shift # past argument
       shift # past value
       ;;
@@ -96,8 +126,8 @@ do
       shift # past argument
       shift # past value
       ;;
-      -t|--tile_strategy)
-      TILE_STRATEGY="$2"
+      -Z|--min_zoom)
+      MIN_ZOOM="$2"
       shift # past argument
       shift # past value
       ;;

@@ -5,9 +5,6 @@ Revises: 15a427d4fa82
 Create Date: 2020-05-22 02:33:34.075680
 
 """
-import sqlalchemy as sa
-import sqlalchemy_utils
-from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "d846d15cc93c"  # pragma: allowlist secret

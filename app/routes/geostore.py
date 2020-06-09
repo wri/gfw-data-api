@@ -6,15 +6,15 @@ from fastapi.responses import ORJSONResponse
 from app.routes import dataset_dependency, version_dependency
 
 router = APIRouter()
+description = """Retrieve a geometry using its mb5 hash for a given dataset,
+                  user defined geometries in the datastore"""
 
 
 @router.post(
     "/geostore", response_class=ORJSONResponse, tags=["Geostore"],
 )
 async def add_new_geostore():
-    """
-    Add geostore feature to User geostore
-    """
+    """Add geostore feature to User geostore."""
     pass
 
 
@@ -40,7 +40,9 @@ async def get_geostore(
     geostore_id: UUID = Path(..., title="geostore_id")
 ):
     """
+
     Retrieve GeoJSON representation for a given geostore ID of a dataset version.
     Obtain geostore ID from feature attributes.
+
     """
     pass

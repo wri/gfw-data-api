@@ -5,10 +5,6 @@ Revises:
 Create Date: 2020-04-14 21:58:38.173605
 
 """
-import json
-import os
-
-import boto3
 import geoalchemy2
 import sqlalchemy as sa
 from alembic import op
@@ -17,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 from app.settings.globals import READER_DBNAME, READER_PASSWORD, READER_USERNAME
 
 # revision identifiers, used by Alembic.
-revision = "e47ec2fc3c51"
+revision = "e47ec2fc3c51"  # pragma: allowlist secret
 down_revision = None
 branch_labels = None
 depends_on = None

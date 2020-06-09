@@ -10,9 +10,8 @@ from app.models.pydantic.change_log import ChangeLog
 async def update_data(
     row: db.Model, input_data: Union[BaseModel, Dict[str, Any]]  # type: ignore
 ) -> db.Model:  # type: ignore
-    """
-    Merge updated metadata filed with existing fields
-    """
+    """Merge updated metadata filed with existing fields."""
+
     if isinstance(input_data, BaseModel):
         input_data = input_data.dict(skip_defaults=True)
 

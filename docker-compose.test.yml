@@ -9,7 +9,7 @@ services:
     container_name: app_test
     volumes:
       - ./app:/app/app:ro
-      - ./tests:/app/tests:ro
+      - ./tests:/app/tests
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - DB_HOST=test_database
@@ -37,7 +37,7 @@ services:
       - DATA_LAKE_JOB_QUEUE=data_lake_jq
       - TILE_CACHE_JOB_QUEUE=tile_cache_jq
       - PIXETL_JOB_QUEUE=pixetl_jq
-    entrypoint: wait_for_postgres.sh pytest --cov=app
+    entrypoint: wait_for_postgres.sh pytest --cov-report xml:/app/tests/cobertura.xml --cov=app
     depends_on:
       - test_database
       - motoserver

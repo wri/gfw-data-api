@@ -6,13 +6,12 @@ Create Date: 2020-04-27 21:28:06.078081
 
 """
 import sqlalchemy as sa
-import sqlalchemy_utils
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "bb1ed7d0e219"
-down_revision = "e47ec2fc3c51"
+revision = "bb1ed7d0e219"  # pragma: allowlist secret
+down_revision = "e47ec2fc3c51"  # pragma: allowlist secret
 branch_labels = None
 depends_on = None
 

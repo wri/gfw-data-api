@@ -1,3 +1,0 @@
-UPDATE {schema}.{table}
-SET geom = ST_SetSRID(ST_MakePoint(longitude, latitude),4326),
-    geom_wm = ST_Transform(ST_SetSRID(ST_MakePoint(longitude, latitude),4326), 3857);

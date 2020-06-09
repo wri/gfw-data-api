@@ -2,13 +2,14 @@
 
 set -e
 
-
 # requires arguments
 # -d | --dataset
 # -v | --version
 # -s | --source
 # -l | --source_layer
 # -f | --local_file
+
+ME=$(basename "$0")
 . get_arguments.sh "$@"
 
 echo "AWSCLI: COPY DATA FROM $SRC TO $LOCAL_FILE"

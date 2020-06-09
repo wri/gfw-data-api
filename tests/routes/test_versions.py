@@ -49,7 +49,7 @@ def test_versions(mocked_task, client, db):
         "source_type": "vector",
         "source_uri": ["s3://some/path"],
         "metadata": payload["metadata"],
-        "creation_options": {"src_driver": "SHP", "zipped": True},
+        "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
     }
 
     # with patch("app.tasks.default_assets.create_default_asset", return_value=True) as mock_asset:

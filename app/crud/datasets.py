@@ -11,9 +11,8 @@ from . import update_data
 
 
 async def get_datasets() -> List[ORMDataset]:
-    """
-    Get list of all datasets
-    """
+    """Get list of all datasets."""
+
     rows = await db.all(all_datasets)
     return rows
 

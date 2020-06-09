@@ -8,9 +8,11 @@ from app.settings.globals import AWS_REGION
 
 def client_constructor(service: str):
     """
+
     Using closure design for a client constructor
     This way we only need to create the client once in central location
     and it will be easier to mock
+
     """
     service_client = None
 

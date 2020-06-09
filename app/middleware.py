@@ -1,15 +1,17 @@
 from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-from .application import ContextEngine, app
+from .application import ContextEngine
 from .crud.versions import get_latest_version
 
 
 async def set_db_mode(request: Request, call_next):
     """
+
     This middleware replaces the db engine depending on the request type.
     Read requests use the read only pool.
     Write requests use the write pool.
+
     """
 
     async with ContextEngine(request.method):
@@ -19,7 +21,9 @@ async def set_db_mode(request: Request, call_next):
 
 async def redirect_latest(request: Request, call_next):
     """
+
     Redirect all GET requests using latest version to actual version number.
+
     """
 
     if request.method == "GET" and "latest" in request.url.path:

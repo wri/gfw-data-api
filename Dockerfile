@@ -3,7 +3,8 @@ FROM tiangolo/uvicorn-gunicorn-fastapi:python3.8-slim
 # Optional build argument for different environments
 ARG ENV
 
-RUN apt-get update -y && apt-get install -y postgresql-client
+RUN apt-get update -y \
+    && apt-get install --no-install-recommends -y postgresql-client
 
 RUN pip install --upgrade pip && pip install pipenv
 
@@ -14,12 +15,15 @@ COPY Pipfile.lock Pipfile.lock
 
 RUN if [ "$ENV" = "dev" ] || [ "$ENV" = "test" ]; then \
 	     echo "Install all dependencies" && \
-	     apt-get install -y git && \
+	     apt-get install -y --no-install-recommends git && \
 	     pipenv install --system --deploy --ignore-pipfile --dev;  \
 	else \
 	     echo "Install production dependencies only" && \
 	     pipenv install --system --deploy; \
 	fi
+
+RUN apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY ./app /app/app
 

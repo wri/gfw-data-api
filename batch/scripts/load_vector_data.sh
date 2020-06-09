@@ -8,10 +8,10 @@ set -e
 # -s | --source
 # -l | --source_layer
 # -f | --local_file
+ME=$(basename "$0")
 . get_arguments.sh "$@"
 
 echo "AWSCLI: COPY DATA FROM S3 to STDOUT"
-# shellcheck disable=SC2086
 aws s3 cp "$SRC" "$LOCAL_FILE"
 
 echo "OGR2OGR: Import \"${DATASET}\".\"${VERSION}\" from ${LOCAL_FILE} ${SRC_LAYER}"

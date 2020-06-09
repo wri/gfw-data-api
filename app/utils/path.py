@@ -7,14 +7,15 @@ def split_s3_path(s3_path: str) -> Tuple[str, str]:
     return o.netloc, o.path.lstrip("/")
 
 
-def gdal_path(s3_uri: str, zipped: bool) -> str:
-    """
-    Rename source using gdal Virtual file system notation.
-    """
-    bucket, path = split_s3_path(s3_uri)
-    if zipped:
-        vsizip = "/vsizip"
-    else:
-        vsizip = ""
-
-    return f"{vsizip}/vsis3/{bucket}/{path}"
+# TODO: Might still need this in a slightly different way to handle local zip files
+# def gdal_path(s3_uri: str, zipped: bool) -> str:
+#     """
+#     Rename source using gdal Virtual file system notation.
+#     """
+#     bucket, path = split_s3_path(s3_uri)
+#     if zipped:
+#         vsizip = "/vsizip"
+#     else:
+#         vsizip = ""
+#
+#     return f"{vsizip}/vsis3/{bucket}/{path}"

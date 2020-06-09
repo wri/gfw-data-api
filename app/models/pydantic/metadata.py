@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -11,6 +11,9 @@ class FieldMetadata(BaseModel):
     field_type: str
     is_feature_info: bool = True
     is_filter: bool = True
+
+    class Config:
+        orm_mode = True
 
 
 class DatasetMetadata(BaseModel):
