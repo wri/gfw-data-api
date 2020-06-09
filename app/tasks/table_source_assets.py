@@ -18,7 +18,6 @@ async def table_source_asset(
     source_uris: List[str],
     creation_options,
     metadata: Dict[str, Any],
-    callback,
 ) -> ChangeLog:
     options = TableSourceCreationOptions(**creation_options)
 
@@ -227,6 +226,10 @@ async def table_source_asset(
                 parents=parents,
             )
         )
+
+    async def callback(message: Dict[str, Any]) -> None:
+        async with ContextEngine("PUT"):
+            await assets.update_asset(new_asset.asset_id, change_log=[message])
 
     log: ChangeLog = await execute(
         [

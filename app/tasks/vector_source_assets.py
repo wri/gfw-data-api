@@ -18,7 +18,6 @@ async def vector_source_asset(
     source_uris: List[str],
     creation_options,
     metadata: Dict[str, Any],
-    callback,
 ) -> ChangeLog:
 
     if len(source_uris) != 1:
@@ -125,6 +124,10 @@ async def vector_source_asset(
         parents=[job.job_name for job in index_jobs],
         environment=writer_secrets,
     )
+
+    async def callback(message: Dict[str, Any]) -> None:
+        async with ContextEngine("PUT"):
+            await assets.update_asset(new_asset.asset_id, change_log=[message])
 
     log: ChangeLog = await execute(
         [

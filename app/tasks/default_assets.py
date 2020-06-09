@@ -20,11 +20,7 @@ default_asset = {
 
 
 async def create_default_asset(
-    dataset: str,
-    version: str,
-    input_data: Dict[str, Any],
-    file_obj: Optional[IO],
-    callback: Callable[[Dict[str, Any]], Awaitable[None]],
+    dataset: str, version: str, input_data: Dict[str, Any], file_obj: Optional[IO],
 ) -> None:
 
     source_type = input_data["source_type"]
@@ -45,7 +41,7 @@ async def create_default_asset(
         # Seed default asset and create asset record in database
         if source_type in default_asset.keys():
             log = await default_asset[source_type](
-                dataset, version, source_uri, creation_options, metadata, callback
+                dataset, version, source_uri, creation_options, metadata
             )
             status = log.status
         else:

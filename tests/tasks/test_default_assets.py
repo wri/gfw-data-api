@@ -10,6 +10,7 @@ from sqlalchemy.sql.ddl import CreateSchema
 
 from app.application import ContextEngine, db
 from app.crud import assets, datasets, versions
+from app.models.orm.assets import Asset
 from app.models.orm.geostore import Geostore
 from app.settings.globals import AWS_REGION, READER_USERNAME
 from app.tasks.default_assets import create_default_asset
@@ -25,9 +26,6 @@ BUCKET = "test-bucket"
 
 @pytest.mark.asyncio
 async def test_vector_source_asset(batch_client):
-    # TODO: define what a callback should do
-    async def callback(message):
-        pass
 
     _, logs = batch_client
 
@@ -59,20 +57,22 @@ async def test_vector_source_asset(batch_client):
         await versions.create_version(dataset, version, **input_data)
 
     # To start off, version should be in status "pending"
+    # and changelog should be an empty list
     row = await versions.get_version(dataset, version)
     assert row.status == "pending"
+    assert row.change_log == []
 
     # Create default asset in mocked BATCH
-    await create_default_asset(
-        dataset, version, input_data, None, callback,
-    )
+    await create_default_asset(dataset, version, input_data, None)
 
     # Get the logs in case something went wrong
     _print_logs(logs)
 
     # If everything worked, version should be set to "saved"
+    # and there should now be a changelog item
     row = await versions.get_version(dataset, version)
     assert row.status == "saved"
+    assert len(row.change_log) == 1
 
     # There should be a table called "test"."v1.1.1" with one row
     async with ContextEngine("GET"):
@@ -85,6 +85,12 @@ async def test_vector_source_asset(batch_client):
 
     assert len(rows) == 1
     assert rows[0].gfw_geostore_id == UUID("b9faa657-34c9-96d4-fce4-8bb8a1507cb3")
+
+    # asset_rows: List[Asset] = await assets.get_assets(dataset, version)
+    asset_rows = await assets.get_assets(dataset, version)
+    print("ASSET LOGS: {}".format(asset_rows[0].change_log))
+    assert len(asset_rows) == 1
+    # assert 1 == 42
 
 
 @pytest.mark.asyncio

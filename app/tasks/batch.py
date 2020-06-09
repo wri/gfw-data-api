@@ -90,11 +90,11 @@ async def schedule(
                 {
                     "date_time": datetime.now(),
                     "status": "failed",
-                    "message": "Too many retries while scheduling jobs. Aboard.",
+                    "message": "Too many retries while scheduling jobs. Abort.",
                     "detail": f"Failed to schedule jobs {[job.job_name for job in jobs if job.job_name not in scheduled_jobs]}",
                 }
             )
-            raise RecursionError("Too many retries while scheduling jobs. Aboard.")
+            raise RecursionError("Too many retries while scheduling jobs. Abort.")
 
     return scheduled_jobs
 

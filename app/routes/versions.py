@@ -62,9 +62,6 @@ async def add_new_version(
 ):
     """Create or update a version for a given dataset."""
 
-    async def callback(message: Dict[str, Any]) -> None:
-        pass
-
     input_data = request.dict()
     # Register version with DB
     new_version: ORMVersion = await versions.create_version(
@@ -72,14 +69,12 @@ async def add_new_version(
     )
 
     # Everything else happens in the background task asynchronously
-    background_tasks.add_task(
-        create_default_asset, dataset, version, input_data, None, callback
-    )
+    background_tasks.add_task(create_default_asset, dataset, version, input_data, None)
 
     response.headers["Location"] = f"/{dataset}/{version}"
     return await _version_response(dataset, version, new_version)
 
-    # TODO: Something is wrong with this path operations and it interfers with the /token endpoint
+    # TODO: Something is wrong with this path operations and it interferes with the /token endpoint
     #  when uncommented, login fails. Could not figure out why exactly
     # @router.post(
     #     "/{dataset}",
