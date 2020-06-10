@@ -93,3 +93,4 @@ PIXETL_JOB_DEFINITION = config("PIXETL_JOB_DEFINITION", cast=str)
 PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str)
 
 POLL_WAIT_TIME = config("POLL_WAIT_TIME", cast=int, default=30)
+CHUNK_SIZE = config("CHUNK_SIZE", cast=int, default=50)

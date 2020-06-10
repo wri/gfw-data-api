@@ -12,6 +12,7 @@ from app.models.pydantic.creation_options import (
 )
 from app.models.pydantic.jobs import Job, PostgresqlClientJob
 from app.models.pydantic.metadata import DatabaseTableMetadata
+from app.settings.globals import CHUNK_SIZE
 from app.tasks import update_asset_field_metadata, update_asset_status, writer_secrets
 from app.tasks.batch import execute
 
@@ -188,13 +189,10 @@ def _create_partition_jobs(
     For large partition number, it will break the job into sub jobs
     """
 
-    chunk_size: int = 100
     partition_jobs: List[PostgresqlClientJob] = list()
 
     if isinstance(partitions.partition_schema, list):
-        chunks = _chunk_list(
-            [schema.dict() for schema in partitions.partition_schema], chunk_size,
-        )
+        chunks = _chunk_list([schema.dict() for schema in partitions.partition_schema])
         for i, chunk in enumerate(chunks):
             partition_schema: str = json.dumps(chunk)
             job: PostgresqlClientJob = _partition_job(
@@ -253,7 +251,6 @@ def _create_cluster_jobs(
 ) -> List[PostgresqlClientJob]:
     # Cluster tables. This is a full lock operation.
     cluster_jobs: List[PostgresqlClientJob] = list()
-    chunk_size: int = 50
 
     if partitions:
         # When using partitions we need to cluster each partition table separately.
@@ -264,7 +261,7 @@ def _create_cluster_jobs(
 
         if isinstance(partitions.partition_schema, list):
             chunks = _chunk_list(
-                [schema.dict() for schema in partitions.partition_schema], chunk_size,
+                [schema.dict() for schema in partitions.partition_schema]
             )
             for i, chunk in enumerate(chunks):
                 partition_schema: str = json.dumps(chunk)
@@ -349,7 +346,7 @@ def _cluster_partition_job(
     )
 
 
-def _chunk_list(data: List[Any], chunk_size: int) -> List[List[Any]]:
+def _chunk_list(data: List[Any], chunk_size: int = CHUNK_SIZE) -> List[List[Any]]:
     """
     Split list into chunks of fixed size.
     """
