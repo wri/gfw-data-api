@@ -2,6 +2,8 @@ from datetime import datetime
 from time import sleep
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Set
 
+from fastapi.logger import logger
+
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.jobs import Job
 from ..settings.globals import POLL_WAIT_TIME
@@ -171,6 +173,23 @@ def submit_batch_job(
 
     if depends_on is None:
         depends_on = list()
+
+    payload = {
+        "jobName": job.job_name,
+        "jobQueue": job.job_queue,
+        "dependsOn": depends_on,
+        "jobDefinition": job.job_definition,
+        "containerOverrides": {
+            "command": job.command,
+            "vcpus": job.vcpus,
+            "memory": job.memory,
+            "environment": job.environment,
+        },
+        "retryStrategy": {"attempts": job.attempts},
+        "timeout": {"attemptDurationSeconds": job.attempt_duration_seconds},
+    }
+
+    logger.info(f"Submit batch job with payload: {payload}")
 
     response = client.submit_job(
         jobName=job.job_name,
