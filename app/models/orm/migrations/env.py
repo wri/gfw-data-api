@@ -16,6 +16,7 @@ from app.application import db
 from app.models.orm.assets import Asset
 from app.models.orm.datasets import Dataset
 from app.models.orm.geostore import Geostore
+from app.models.orm.tasks import Task
 from app.models.orm.versions import Version
 
 ###############################################################################
