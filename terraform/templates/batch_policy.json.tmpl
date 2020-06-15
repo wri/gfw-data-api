@@ -1,0 +1,37 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "batch:SubmitJob",
+                "batch:CancelJob",
+                "batch:TerminateJob"
+            ],
+            "Resource": [
+                "${aurora_job_queue_arn}",
+                "${aurora_job_definition_arn}",
+
+                "${data_lake_job_queue_arn}",
+                "${data_lake_job_definition_arn}",
+
+                "${tile_cache_job_queue_arn}",
+                "${tile_cache_job_definition_arn}",
+
+                "${pixetl_job_queue_arn}",
+                "${pixetl_job_definition_arn}"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "batch:ListJobs",
+                "batch:DescribeJobs",
+                "batch:DescribeJobQueues",
+                "batch:DescribeComputeEnvironments",
+                "batch:DescribeJobDefinitions"
+            ],
+            "Resource": "*"
+        }
+    ]
+}

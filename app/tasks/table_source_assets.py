@@ -1,13 +1,18 @@
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.application import ContextEngine
 from app.crud import assets
 from app.models.pydantic.assets import AssetTaskCreate
 from app.models.pydantic.change_log import ChangeLog
-from app.models.pydantic.creation_options import TableSourceCreationOptions
+from app.models.pydantic.creation_options import (
+    Index,
+    Partitions,
+    TableSourceCreationOptions,
+)
 from app.models.pydantic.jobs import Job, PostgresqlClientJob
 from app.models.pydantic.metadata import DatabaseTableMetadata
+from app.settings.globals import CHUNK_SIZE
 from app.tasks import update_asset_field_metadata, update_asset_status, writer_secrets
 from app.tasks.batch import execute
 
@@ -62,33 +67,12 @@ async def table_source_asset(
     )
 
     # Create partitions
-    partition_jobs: List[Job] = list()
     if options.partitions:
-
-        if isinstance(options.partitions.partition_schema, list):
-            partition_schema: str = json.dumps(
-                [schema.dict() for schema in options.partitions.partition_schema]
-            )
-        else:
-            partition_schema = json.dumps(options.partitions.partition_schema.dict())
-
-        partition_job = PostgresqlClientJob(
-            job_name="create_partitions",
-            command=[
-                "create_partitions.sh",
-                "-d",
-                dataset,
-                "-v",
-                version,
-                "-p",
-                options.partitions.partition_type,
-                "-P",
-                partition_schema,
-            ],
-            environment=writer_secrets,
-            parents=[create_table_job.job_name],
+        partition_jobs: List[Job] = _create_partition_jobs(
+            dataset, version, options.partitions, [create_table_job.job_name]
         )
-        partition_jobs.append(partition_job)
+    else:
+        partition_jobs = list()
 
     # Load data
     load_data_jobs: List[Job] = list()
@@ -109,7 +93,9 @@ async def table_source_asset(
                     "-s",
                     uri,
                     "-D",
-                    options.delimiter,
+                    options.delimiter.encode(
+                        "unicode_escape"
+                    ).decode(),  # Need to escape special characters such as TAB for batch job payload
                 ],
                 environment=writer_secrets,
                 parents=parents,
@@ -163,69 +149,16 @@ async def table_source_asset(
             )
         )
 
-    # Cluster tables. This is a full lock operation.
-    cluster_jobs: List[Job] = list()
-
     parents = [job.job_name for job in load_data_jobs]
     parents.extend([job.job_name for job in geometry_jobs])
     parents.extend([job.job_name for job in index_jobs])
 
-    if options.cluster and options.partitions:
-        # When using partitions we need to cluster each partition table separately.
-        # Playing it save and cluster partition tables one after the other.
-        # TODO: Still need to test if we can cluster tables which are part of the same partition concurrently.
-        #  this would speed up this step by a lot. Partitions require a full lock on the table,
-        #  but I don't know if the lock is aquired for the entire partition or only the partition table.
-
-        if isinstance(options.partitions.partition_schema, list):
-            partition_schema = json.dumps(
-                [schema.dict() for schema in options.partitions.partition_schema]
-            )
-        else:
-            partition_schema = json.dumps(options.partitions.partition_schema.dict())
-
-        cluster_jobs.append(
-            PostgresqlClientJob(
-                job_name="cluster_partitions",
-                command=[
-                    "cluster_partitions.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "-p",
-                    options.partitions.partition_type,
-                    "-P",
-                    partition_schema,
-                    "-c",
-                    options.cluster.column_name,
-                    "-x",
-                    options.cluster.index_type,
-                ],
-                environment=writer_secrets,
-                parents=parents,
-            )
+    if options.cluster:
+        cluster_jobs: List[Job] = _create_cluster_jobs(
+            dataset, version, options.partitions, options.cluster, parents
         )
-    elif options.cluster:
-        # Without partitions we can cluster the main table directly
-        cluster_jobs.append(
-            PostgresqlClientJob(
-                job_name="cluster_table",
-                command=[
-                    "cluster_table.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "-c",
-                    options.cluster.column_name,
-                    "-x",
-                    options.cluster.index_type,
-                ],
-                environment=writer_secrets,
-                parents=parents,
-            )
-        )
+    else:
+        cluster_jobs = list()
 
     async def callback(message: Dict[str, Any]) -> None:
         async with ContextEngine("PUT"):
@@ -249,3 +182,175 @@ async def table_source_asset(
     await update_asset_status(new_asset.asset_id, log.status)
 
     return log
+
+
+def _create_partition_jobs(
+    dataset: str, version: str, partitions: Partitions, parents
+) -> List[PostgresqlClientJob]:
+    """
+    Create partition job depending on the partition type.
+    For large partition number, it will break the job into sub jobs
+    """
+
+    partition_jobs: List[PostgresqlClientJob] = list()
+
+    if isinstance(partitions.partition_schema, list):
+        chunks = _chunk_list([schema.dict() for schema in partitions.partition_schema])
+        for i, chunk in enumerate(chunks):
+            partition_schema: str = json.dumps(chunk)
+            job: PostgresqlClientJob = _partition_job(
+                dataset,
+                version,
+                partitions.partition_type,
+                partition_schema,
+                parents,
+                i,
+            )
+
+            partition_jobs.append(job)
+    else:
+
+        partition_schema = json.dumps(partitions.partition_schema.dict())
+        job = _partition_job(
+            dataset, version, partitions.partition_type, partition_schema, parents,
+        )
+        partition_jobs.append(job)
+
+    return partition_jobs
+
+
+def _partition_job(
+    dataset: str,
+    version: str,
+    partition_type: str,
+    partition_schema: str,
+    parents: List[str],
+    suffix: int = 0,
+) -> PostgresqlClientJob:
+    return PostgresqlClientJob(
+        job_name=f"create_partitions_{suffix}",
+        command=[
+            "create_partitions.sh",
+            "-d",
+            dataset,
+            "-v",
+            version,
+            "-p",
+            partition_type,
+            "-P",
+            partition_schema,
+        ],
+        environment=writer_secrets,
+        parents=parents,
+    )
+
+
+def _create_cluster_jobs(
+    dataset: str,
+    version: str,
+    partitions: Optional[Partitions],
+    cluster: Index,
+    parents: List[str],
+) -> List[PostgresqlClientJob]:
+    # Cluster tables. This is a full lock operation.
+    cluster_jobs: List[PostgresqlClientJob] = list()
+
+    if partitions:
+        # When using partitions we need to cluster each partition table separately.
+        # Playing it save and cluster partition tables one after the other.
+        # TODO: Still need to test if we can cluster tables which are part of the same partition concurrently.
+        #  this would speed up this step by a lot. Partitions require a full lock on the table,
+        #  but I don't know if the lock is aquired for the entire partition or only the partition table.
+
+        if isinstance(partitions.partition_schema, list):
+            chunks = _chunk_list(
+                [schema.dict() for schema in partitions.partition_schema]
+            )
+            for i, chunk in enumerate(chunks):
+                partition_schema: str = json.dumps(chunk)
+                job: PostgresqlClientJob = _cluster_partition_job(
+                    dataset,
+                    version,
+                    partitions.partition_type,
+                    partition_schema,
+                    cluster.column_name,
+                    cluster.index_type,
+                    parents,
+                    i,
+                )
+                cluster_jobs.append(job)
+                parents = [job.job_name]
+
+        else:
+            partition_schema = json.dumps(partitions.partition_schema.dict())
+
+            job = _cluster_partition_job(
+                dataset,
+                version,
+                partitions.partition_type,
+                partition_schema,
+                cluster.column_name,
+                cluster.index_type,
+                parents,
+            )
+            cluster_jobs.append(job)
+
+    else:
+        # Without partitions we can cluster the main table directly
+        job = PostgresqlClientJob(
+            job_name="cluster_table",
+            command=[
+                "cluster_table.sh",
+                "-d",
+                dataset,
+                "-v",
+                version,
+                "-c",
+                cluster.column_name,
+                "-x",
+                cluster.index_type,
+            ],
+            environment=writer_secrets,
+            parents=parents,
+        )
+        cluster_jobs.append(job)
+    return cluster_jobs
+
+
+def _cluster_partition_job(
+    dataset: str,
+    version: str,
+    partition_type: str,
+    partition_schema: str,
+    column_name: str,
+    index_type: str,
+    parents: List[str],
+    index: int = 0,
+):
+    return PostgresqlClientJob(
+        job_name=f"cluster_partitions_{index}",
+        command=[
+            "cluster_partitions.sh",
+            "-d",
+            dataset,
+            "-v",
+            version,
+            "-p",
+            partition_type,
+            "-P",
+            partition_schema,
+            "-c",
+            column_name,
+            "-x",
+            index_type,
+        ],
+        environment=writer_secrets,
+        parents=parents,
+    )
+
+
+def _chunk_list(data: List[Any], chunk_size: int = CHUNK_SIZE) -> List[List[Any]]:
+    """
+    Split list into chunks of fixed size.
+    """
+    return [data[x : x + chunk_size] for x in range(0, len(data), chunk_size)]
