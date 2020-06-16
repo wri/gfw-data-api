@@ -7,7 +7,16 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .application import app
 from .middleware import redirect_latest, set_db_mode
-from .routes import assets, datasets, features, geostore, queries, security, versions
+from .routes import (
+    assets,
+    datasets,
+    features,
+    geostore,
+    queries,
+    security,
+    tasks,
+    versions,
+)
 
 gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
@@ -15,6 +24,7 @@ sys.path.extend(["./"])
 
 
 ROUTERS = (
+    tasks.router,
     datasets.router,
     versions.router,
     assets.router,
