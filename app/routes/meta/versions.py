@@ -15,7 +15,6 @@ from fastapi.responses import ORJSONResponse
 from app.crud import versions
 from app.models.orm.assets import Asset as ORMAsset
 from app.models.orm.versions import Version as ORMVersion
-from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.versions import (
     Version,
     VersionCreateIn,
