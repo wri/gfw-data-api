@@ -37,14 +37,14 @@ class ContextualGino(Gino):
         self._bind = val
 
 
-app = FastAPI()
+app = FastAPI(title="GFW Data API",)
 
 # Create Contextual Database, using default connection and pool size = 0
 # We will bind actual connection pools based on path operation using middleware
 # This allows us to query load-balanced Aurora read replicas for read-only operations
 # and Aurora Write Node for write operations
 db = ContextualGino(
-    app,
+    app=app,
     host=DATABASE_CONFIG.host,
     port=DATABASE_CONFIG.port,
     user=DATABASE_CONFIG.username,

@@ -1,3 +1,8 @@
+"""
+Retrieve a geometry using its mb5 hash for a given dataset,
+user defined geometries in the datastore
+"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path
@@ -6,8 +11,6 @@ from fastapi.responses import ORJSONResponse
 from app.routes import dataset_dependency, version_dependency
 
 router = APIRouter()
-description = """Retrieve a geometry using its mb5 hash for a given dataset,
-                  user defined geometries in the datastore"""
 
 
 @router.post(

@@ -30,7 +30,7 @@ payload = {
 
 # @patch("app.tasks.default_assets.create_default_asset", return_value=True)
 @patch("fastapi.BackgroundTasks.add_task", return_value=None)
-def test_versions(mocked_task, client, db):
+def test_versions(mocked_task, meta_client, db):
     """
     Test version path operations.
     We patch/ disable background tasks here, as they run asynchronously.
@@ -39,10 +39,10 @@ def test_versions(mocked_task, client, db):
     dataset = "test"
     version = "v1.1.1"
 
-    response = client.put(f"/{dataset}", data=json.dumps(payload))
+    response = meta_client.put(f"/meta/{dataset}", data=json.dumps(payload))
     assert response.status_code == 201
-    assert response.json()["metadata"] == payload["metadata"]
-    assert response.json()["versions"] == []
+    assert response.json()["data"]["metadata"] == payload["metadata"]
+    assert response.json()["data"]["versions"] == []
 
     version_payload = {
         "is_latest": True,
@@ -53,15 +53,17 @@ def test_versions(mocked_task, client, db):
     }
 
     # with patch("app.tasks.default_assets.create_default_asset", return_value=True) as mock_asset:
-    response = client.put(f"/{dataset}/{version}", data=json.dumps(version_payload))
+    response = meta_client.put(
+        f"/meta/{dataset}/{version}", data=json.dumps(version_payload)
+    )
     version_data = response.json()
     assert response.status_code == 202
-    assert version_data["dataset"] == dataset
-    assert version_data["version"] == version
-    assert version_data["is_latest"] is True
-    assert version_data["metadata"] == VersionMetadata(**payload["metadata"])
+    assert version_data["data"]["dataset"] == dataset
+    assert version_data["data"]["version"] == version
+    assert version_data["data"]["is_latest"] is True
+    assert version_data["data"]["metadata"] == VersionMetadata(**payload["metadata"])
     assert mocked_task.called
 
     # Check if the latest endpoint redirects us to v1.1.1
-    response = client.get(f"/{dataset}/latest?test=test&test1=test1")
-    assert response.json()["version"] == "v1.1.1"
+    response = meta_client.get(f"/meta/{dataset}/latest?test=test&test1=test1")
+    assert response.json()["data"]["version"] == "v1.1.1"

@@ -1,22 +1,27 @@
+"""
+Datasets are just a bucket, for datasets which share the same core metadata
+"""
+
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
-from ..application import db
-from ..crud import datasets, versions
-from ..models.orm.datasets import Dataset as ORMDataset
-from ..models.pydantic.datasets import Dataset, DatasetCreateIn, DatasetUpdateIn
-from ..routes import is_admin
-from ..settings.globals import READER_USERNAME
-from . import dataset_dependency
+from app.application import db
+from app.crud import datasets, versions
+from app.models.orm.datasets import Dataset as ORMDataset
+from app.models.pydantic.datasets import (
+    Dataset,
+    DatasetCreateIn,
+    DatasetResponse,
+    DatasetsResponse,
+    DatasetUpdateIn,
+)
+from app.routes import dataset_dependency, is_admin
+from app.settings.globals import READER_USERNAME
 
 router = APIRouter()
-
-description = (
-    "Datasets are just a bucket, for datasets which share the same core metadata"
-)
 
 
 # TODO:
@@ -24,21 +29,26 @@ description = (
 
 
 @router.get(
-    "/", response_class=ORJSONResponse, tags=["Dataset"], response_model=List[Dataset]
+    "/",
+    response_class=ORJSONResponse,
+    tags=["Dataset"],
+    response_model=DatasetsResponse,
 )
-async def get_datasets():
+async def get_datasets() -> DatasetsResponse:
     """Get list of all datasets."""
 
-    return await datasets.get_datasets()
+    data = await datasets.get_datasets()
+
+    return DatasetsResponse(data=data)
 
 
 @router.get(
     "/{dataset}",
     response_class=ORJSONResponse,
     tags=["Dataset"],
-    response_model=Dataset,
+    response_model=DatasetResponse,
 )
-async def get_dataset(*, dataset: str = Depends(dataset_dependency)):
+async def get_dataset(*, dataset: str = Depends(dataset_dependency)) -> DatasetResponse:
     """Get basic metadata and available versions for a given dataset."""
 
     row: ORMDataset = await datasets.get_dataset(dataset)
@@ -49,7 +59,7 @@ async def get_dataset(*, dataset: str = Depends(dataset_dependency)):
     "/{dataset}",
     response_class=ORJSONResponse,
     tags=["Dataset"],
-    response_model=Dataset,
+    response_model=DatasetResponse,
     status_code=201,
 )
 async def create_dataset(
@@ -58,7 +68,7 @@ async def create_dataset(
     request: DatasetCreateIn,
     is_authorized: bool = Depends(is_admin),
     response: Response,
-):
+) -> DatasetResponse:
     """Create or update a dataset."""
 
     new_dataset: ORMDataset = await datasets.create_dataset(dataset, **request.dict())
@@ -77,14 +87,14 @@ async def create_dataset(
     "/{dataset}",
     response_class=ORJSONResponse,
     tags=["Dataset"],
-    response_model=Dataset,
+    response_model=DatasetResponse,
 )
 async def update_dataset_metadata(
     *,
     dataset: str = Depends(dataset_dependency),
     request: DatasetUpdateIn,
     is_authorized: bool = Depends(is_admin),
-):
+) -> DatasetResponse:
     """
 
     Partially update a dataset. Only metadata field can be updated. All other fields will be ignored.
@@ -100,13 +110,13 @@ async def update_dataset_metadata(
     "/{dataset}",
     response_class=ORJSONResponse,
     tags=["Dataset"],
-    response_model=Dataset,
+    response_model=DatasetResponse,
 )
 async def delete_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
     is_authorized: bool = Depends(is_admin),
-):
+) -> DatasetResponse:
     """Delete a dataset."""
 
     row: ORMDataset = await datasets.delete_dataset(dataset)
@@ -115,10 +125,10 @@ async def delete_dataset(
     return await _dataset_response(dataset, row)
 
 
-async def _dataset_response(dataset: str, orm: ORMDataset) -> Dict[str, Any]:
+async def _dataset_response(dataset: str, orm: ORMDataset) -> DatasetResponse:
 
     _versions: List[Any] = await versions.get_version_names(dataset)
-    response = Dataset.from_orm(orm).dict(by_alias=True)
-    response["versions"] = [version[0] for version in _versions]
+    data = Dataset.from_orm(orm).dict(by_alias=True)
+    data["versions"] = [version[0] for version in _versions]
 
-    return response
+    return DatasetResponse(data=data)

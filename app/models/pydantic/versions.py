@@ -6,6 +6,7 @@ from .base import Base
 from .change_log import ChangeLog
 from .creation_options import CreationOptions
 from .metadata import VersionMetadata
+from .responses import Response
 from .sources import SourceType
 
 
@@ -42,3 +43,7 @@ class VersionUpdateIn(BaseModel):
     source_uri: Optional[List[str]]
     metadata: Optional[VersionMetadata]
     creation_options: Optional[CreationOptions]
+
+
+class VersionResponse(Response):
+    data: Version
