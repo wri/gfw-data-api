@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/geostore", response_class=ORJSONResponse, tags=["Geostore"],
+    "/geostore", response_class=ORJSONResponse,
 )
 async def add_new_geostore():
     """Add geostore feature to User geostore."""

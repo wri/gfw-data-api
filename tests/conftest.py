@@ -264,18 +264,18 @@ async def is_admin_mocked():
 
 
 @pytest.fixture(autouse=True)
-def meta_client():
+def client():
     """
     Set up a clean database before running a test
     Run all migrations before test and downgrade afterwards
     """
-    from app.main import meta_api
+    from app.main import app
 
     main(["--raiseerr", "upgrade", "head"])
-    meta_api.dependency_overrides[is_admin] = is_admin_mocked
+    app.dependency_overrides[is_admin] = is_admin_mocked
 
-    with TestClient(meta_api) as client:
+    with TestClient(app) as client:
         yield client
 
-    meta_api.dependency_overrides = {}
+    app.dependency_overrides = {}
     main(["--raiseerr", "downgrade", "base"])

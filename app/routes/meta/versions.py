@@ -28,14 +28,10 @@ from app.tasks.default_assets import create_default_asset
 router = APIRouter()
 
 
-# TODO:
-#  - inherit/ override default asset type for new versions
-
-
 @router.get(
     "/{dataset}/{version}",
     response_class=ORJSONResponse,
-    tags=["Version"],
+    tags=["Versions"],
     response_model=VersionResponse,
 )
 async def get_version(
@@ -53,7 +49,7 @@ async def get_version(
 @router.put(
     "/{dataset}/{version}",
     response_class=ORJSONResponse,
-    tags=["Version"],
+    tags=["Versions"],
     response_model=VersionResponse,
     status_code=202,
 )
@@ -90,7 +86,7 @@ async def add_new_version(
     # @router.post(
     #     "/{dataset}",
     #     response_class=ORJSONResponse,
-    #     tags=["Version"],
+    #     tags=["Versions"],
     #     response_model=Version,
     #     status_code=202,
     # )
@@ -151,7 +147,7 @@ async def add_new_version(
 @router.patch(
     "/{dataset}/{version}",
     response_class=ORJSONResponse,
-    tags=["Version"],
+    tags=["Versions"],
     response_model=VersionResponse,
 )
 async def update_version(
@@ -181,7 +177,7 @@ async def update_version(
 @router.delete(
     "/{dataset}/{version}",
     response_class=ORJSONResponse,
-    tags=["Version"],
+    tags=["Versions"],
     response_model=VersionResponse,
 )
 async def delete_version(

@@ -11,9 +11,7 @@ from app.routes import dataset_dependency, version_dependency
 router = APIRouter()
 
 
-@router.get(
-    "/{dataset}/{version}/features", response_class=ORJSONResponse, tags=["Features"],
-)
+@router.get("/{dataset}/{version}/features", response_class=ORJSONResponse)
 async def get_features(
     *,
     dataset: str = Depends(dataset_dependency),

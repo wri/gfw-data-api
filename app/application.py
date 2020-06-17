@@ -37,7 +37,7 @@ class ContextualGino(Gino):
         self._bind = val
 
 
-app = FastAPI(title="GFW Data API",)
+app = FastAPI(title="GFW Data API", redoc_url="/")
 
 # Create Contextual Database, using default connection and pool size = 0
 # We will bind actual connection pools based on path operation using middleware

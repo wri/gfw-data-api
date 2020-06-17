@@ -28,6 +28,7 @@ gino_starlette = "*"
 requests = "*"
 orjson = "*"
 python-multipart = "*"
+aiofiles = "*"
 
 [requires]
 python_version = "3.8"

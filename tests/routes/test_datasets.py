@@ -25,27 +25,27 @@ payload = {
 }
 
 
-def test_datasets(meta_client, db):
+def test_datasets(client, db):
     """
     Basic test to check if empty data api response as expected
     """
 
     dataset = "test"
 
-    response = meta_client.get("/meta")
+    response = client.get("/meta")
     assert response.status_code == 200
     assert response.json() == {"data": [], "status": "success"}
 
-    response = meta_client.put(f"/meta/{dataset}", data=json.dumps(payload))
+    response = client.put(f"/meta/{dataset}", data=json.dumps(payload))
     assert response.status_code == 201
     assert response.json()["data"]["metadata"] == payload["metadata"]
 
-    response = meta_client.get("/meta")
+    response = client.get("/meta")
     assert response.status_code == 200
-    assert len(response.json()) == 1
+    assert len(response.json()["data"]) == 1
     assert response.json()["data"][0]["metadata"] == payload["metadata"]
 
-    response = meta_client.get(f"/meta/{dataset}")
+    response = client.get(f"/meta/{dataset}")
     assert response.status_code == 200
     assert response.json()["data"]["metadata"] == payload["metadata"]
 
@@ -57,13 +57,13 @@ def test_datasets(meta_client, db):
     assert len(rows) == 1
 
     new_payload = {"metadata": {"title": "New Title"}}
-    response = meta_client.patch(f"/meta/{dataset}", data=json.dumps(new_payload))
+    response = client.patch(f"/meta/{dataset}", data=json.dumps(new_payload))
     assert response.status_code == 200
     assert response.json()["data"]["metadata"] != payload["metadata"]
     assert response.json()["data"]["metadata"]["title"] == "New Title"
     assert response.json()["data"]["metadata"]["subtitle"] == "string"
 
-    response = meta_client.delete(f"/meta/{dataset}")
+    response = client.delete(f"/meta/{dataset}")
     assert response.status_code == 200
     assert response.json()["data"]["dataset"] == "test"
 
@@ -74,6 +74,6 @@ def test_datasets(meta_client, db):
     rows = cursor.fetchall()
     assert len(rows) == 0
 
-    response = meta_client.get("/meta")
+    response = client.get("/meta")
     assert response.status_code == 200
     assert response.json() == {"data": [], "status": "success"}

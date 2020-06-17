@@ -24,14 +24,10 @@ from app.settings.globals import READER_USERNAME
 router = APIRouter()
 
 
-# TODO:
-#  - set default asset type for a dataset (can be overriden by versions)
-
-
 @router.get(
     "/",
     response_class=ORJSONResponse,
-    tags=["Dataset"],
+    tags=["Datasets"],
     response_model=DatasetsResponse,
 )
 async def get_datasets() -> DatasetsResponse:
@@ -45,7 +41,7 @@ async def get_datasets() -> DatasetsResponse:
 @router.get(
     "/{dataset}",
     response_class=ORJSONResponse,
-    tags=["Dataset"],
+    tags=["Datasets"],
     response_model=DatasetResponse,
 )
 async def get_dataset(*, dataset: str = Depends(dataset_dependency)) -> DatasetResponse:
@@ -58,7 +54,7 @@ async def get_dataset(*, dataset: str = Depends(dataset_dependency)) -> DatasetR
 @router.put(
     "/{dataset}",
     response_class=ORJSONResponse,
-    tags=["Dataset"],
+    tags=["Datasets"],
     response_model=DatasetResponse,
     status_code=201,
 )
@@ -86,7 +82,7 @@ async def create_dataset(
 @router.patch(
     "/{dataset}",
     response_class=ORJSONResponse,
-    tags=["Dataset"],
+    tags=["Datasets"],
     response_model=DatasetResponse,
 )
 async def update_dataset_metadata(
@@ -109,7 +105,7 @@ async def update_dataset_metadata(
 @router.delete(
     "/{dataset}",
     response_class=ORJSONResponse,
-    tags=["Dataset"],
+    tags=["Datasets"],
     response_model=DatasetResponse,
 )
 async def delete_dataset(
