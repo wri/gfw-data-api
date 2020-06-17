@@ -32,22 +32,22 @@ def test_datasets(client, db):
 
     dataset = "test"
 
-    response = client.get("/")
+    response = client.get("/meta")
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json() == {"data": [], "status": "success"}
 
-    response = client.put(f"/{dataset}", data=json.dumps(payload))
+    response = client.put(f"/meta/{dataset}", data=json.dumps(payload))
     assert response.status_code == 201
-    assert response.json()["metadata"] == payload["metadata"]
+    assert response.json()["data"]["metadata"] == payload["metadata"]
 
-    response = client.get("/")
+    response = client.get("/meta")
     assert response.status_code == 200
-    assert len(response.json()) == 1
-    assert response.json()[0]["metadata"] == payload["metadata"]
+    assert len(response.json()["data"]) == 1
+    assert response.json()["data"][0]["metadata"] == payload["metadata"]
 
-    response = client.get(f"/{dataset}")
+    response = client.get(f"/meta/{dataset}")
     assert response.status_code == 200
-    assert response.json()["metadata"] == payload["metadata"]
+    assert response.json()["data"]["metadata"] == payload["metadata"]
 
     cursor = db.execute(
         "SELECT schema_name FROM information_schema.schemata WHERE schema_name = :dataset;",
@@ -57,15 +57,15 @@ def test_datasets(client, db):
     assert len(rows) == 1
 
     new_payload = {"metadata": {"title": "New Title"}}
-    response = client.patch(f"/{dataset}", data=json.dumps(new_payload))
+    response = client.patch(f"/meta/{dataset}", data=json.dumps(new_payload))
     assert response.status_code == 200
-    assert response.json()["metadata"] != payload["metadata"]
-    assert response.json()["metadata"]["title"] == "New Title"
-    assert response.json()["metadata"]["subtitle"] == "string"
+    assert response.json()["data"]["metadata"] != payload["metadata"]
+    assert response.json()["data"]["metadata"]["title"] == "New Title"
+    assert response.json()["data"]["metadata"]["subtitle"] == "string"
 
-    response = client.delete(f"/{dataset}")
+    response = client.delete(f"/meta/{dataset}")
     assert response.status_code == 200
-    assert response.json()["dataset"] == "test"
+    assert response.json()["data"]["dataset"] == "test"
 
     cursor = db.execute(
         "SELECT schema_name FROM information_schema.schemata WHERE schema_name = :dataset;",
@@ -74,6 +74,6 @@ def test_datasets(client, db):
     rows = cursor.fetchall()
     assert len(rows) == 0
 
-    response = client.get("/")
+    response = client.get("/meta")
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json() == {"data": [], "status": "success"}

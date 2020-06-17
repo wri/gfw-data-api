@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from .base import Base
 from .metadata import DatasetMetadata
+from .responses import Response
 
 
 class Dataset(Base):
@@ -18,3 +19,11 @@ class DatasetCreateIn(BaseModel):
 
 class DatasetUpdateIn(BaseModel):
     metadata: DatasetMetadata
+
+
+class DatasetResponse(Response):
+    data: Dataset
+
+
+class DatasetsResponse(Response):
+    data: List[Dataset]

@@ -12,6 +12,7 @@ from .metadata import (
     RasterTileSetMetadata,
     VectorTileCacheMetadata,
 )
+from .responses import Response
 
 AssetMetadata = Union[
     DatabaseTableMetadata, VectorTileCacheMetadata, RasterTileSetMetadata
@@ -73,3 +74,11 @@ class AssetTaskCreate(BaseModel):
     is_managed: bool
     creation_options: CreationOptions
     metadata: Optional[AssetMetadata]
+
+
+class AssetResponse(Response):
+    data: Asset
+
+
+class AssetsResponse(Response):
+    data: List[Asset]

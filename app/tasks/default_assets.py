@@ -77,3 +77,103 @@ async def _inject_file(file_obj: IO, s3_uri: str) -> ChangeLog:
     return ChangeLog(
         date_time=datetime.now(), status=status, message=message, detail=detail
     )
+
+
+async def _create_static_vector_tile_cache():
+    # supported input types
+    #  - vector
+
+    # steps
+    #  - wait until database table is created
+    #  - export ndjson file
+    #  - generate static vector tiles using tippecanoe and upload to S3
+    #  - create static vector tile asset entry to enable service
+
+    # creation options:
+    #  - default symbology/ legend
+    #  - tiling strategy
+    #  - min/max zoom level
+    #  - caching strategy
+
+    # custom metadata
+    #  - default symbology/ legend
+    #  - rendered zoom levels
+
+    raise NotImplementedError
+
+
+async def _create_static_raster_tile_cache():
+    # supported input types
+    #  - raster
+    #  - vector ?
+
+    # steps
+    # create raster tile cache using mapnik and upload to S3
+    # register static raster tile cache asset entry to enable service
+
+    # creation options:
+    #  - symbology/ legend
+    #  - tiling strategy
+    #  - min/max zoom level
+    #  - caching strategy
+
+    # custom metadata
+    #  - symbology/ legend
+    #  - rendered zoom levels
+
+    raise NotImplementedError
+
+
+async def _create_dynamic_raster_tile_cache():
+    # supported input types
+    #  - raster
+    #  - vector ?
+
+    # steps
+    # create raster set (pixETL) using WebMercator grid
+    # register dynamic raster tile cache asset entry to enable service
+
+    # creation options:
+    #  - symbology/ legend
+    #  - tiling strategy
+    #  - min/max zoom level
+    #  - caching strategy
+
+    # custom metadata
+    #  - symbology/ legend
+
+    raise NotImplementedError
+
+
+async def _create_tile_set():
+    # supported input types
+    #  - vector
+    #  - raster
+
+    # steps
+    #  - wait until database table is created (vector only)
+    #  - create 1x1 materialized view (vector only)
+    #  - create raster tiles using pixETL and upload to S3
+    #  - create tile set asset entry
+
+    # creation options
+    #  - set tile set value name
+    #  - select field value or expression to use for rasterization (vector only)
+    #  - select order direction (asc/desc) of field values for rasterization (vector only)
+    #  - override input raster, must be another raster tile set of the same version (raster only)
+    #  - define numpy calc expression (raster only)
+    #  - select resampling method (raster only)
+    #  - select out raster datatype
+    #  - select out raster nbit value
+    #  - select out raster no data value
+    #  - select out raster grid type
+
+    # custom metadata
+    #  - raster statistics
+    #  - raster table (pixel value look up)
+    #  - list of raster files
+    #  - raster data type
+    #  - compression
+    #  - no data value
+
+    raise NotImplementedError
