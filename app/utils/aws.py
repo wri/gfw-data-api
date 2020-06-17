@@ -2,9 +2,6 @@ import boto3
 
 from app.settings.globals import AWS_REGION
 
-# S3_CLIENT = None
-# BATCH_CLIENT = None
-
 
 def client_constructor(service: str):
     """
@@ -27,3 +24,4 @@ def client_constructor(service: str):
 
 get_s3_client = client_constructor("s3")
 get_batch_client = client_constructor("batch")
+get_cloudfront_client = client_constructor("cloudfront")

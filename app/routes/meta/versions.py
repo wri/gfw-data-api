@@ -23,6 +23,7 @@ from app.models.pydantic.versions import (
 )
 from app.routes import dataset_dependency, is_admin, version_dependency
 from app.tasks.default_assets import create_default_asset
+from app.tasks.delete_assets import delete_all_assets
 
 router = APIRouter()
 
@@ -184,13 +185,16 @@ async def delete_version(
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
     is_authorized: bool = Depends(is_admin),
+    background_tasks: BackgroundTasks,
 ):
-    """Delete a version."""
+    """
+    Delete a version.
+    All associated, managed assets will be deleted in consequence.
+    """
 
     row: ORMVersion = await versions.delete_version(dataset, version)
 
-    # TODO:
-    #  Delete all managed assets and raw data
+    background_tasks.add_task(delete_all_assets, dataset, version)
 
     return await _version_response(dataset, version, row)
 

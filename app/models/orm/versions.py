@@ -15,4 +15,10 @@ class Version(Base):
     change_log = db.Column(db.ARRAY(db.JSONB), default=list())
     creation_options = db.Column(db.JSONB, default=dict())
 
-    fk = db.ForeignKeyConstraint(["dataset"], ["datasets.dataset"], name="fk")
+    fk = db.ForeignKeyConstraint(
+        ["dataset"],
+        ["datasets.dataset"],
+        name="fk",
+        onupdate="CASCADE",
+        ondelete="CASCADE",
+    )

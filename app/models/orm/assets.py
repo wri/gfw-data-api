@@ -17,7 +17,11 @@ class Asset(Base):
     change_log = db.Column(db.ARRAY(db.JSONB), default=list())
 
     fk = db.ForeignKeyConstraint(
-        ["dataset", "version"], ["versions.dataset", "versions.version"], name="fk"
+        ["dataset", "version"],
+        ["versions.dataset", "versions.version"],
+        name="fk",
+        onupdate="CASCADE",
+        ondelete="CASCADE",
     )
 
     uq_asset_uri = db.UniqueConstraint("asset_uri", name="uq_asset_uri")

@@ -31,7 +31,10 @@ DB_READER_SECRET = json.loads(
 )
 
 ENV = config("ENV", cast=str, default="dev")
-BUCKET = config("BUCKET", cast=str, default=None)
+
+DATA_LAKE_BUCKET = config("DATA_LAKE_BUCKET", cast=str, default=None)
+TILE_CACHE_BUCKET = config("TILE_CACHE_BUCKET", cast=str, default=None)
+TILE_CACHE_CLOUDFRONT_ID = config("TILE_CACHE_CLOUDFRONT_ID", cast=str, default=None)
 
 READER_USERNAME: Optional[str] = config(
     "DB_USER_RO", cast=str, default=DB_READER_SECRET["username"]
