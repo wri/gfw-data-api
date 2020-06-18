@@ -1,7 +1,7 @@
 version: "3"
 
 services:
-  app:
+  app_test:
     build:
       context: .
       args:
@@ -37,6 +37,7 @@ services:
       - DATA_LAKE_JOB_QUEUE=data_lake_jq
       - TILE_CACHE_JOB_QUEUE=tile_cache_jq
       - PIXETL_JOB_QUEUE=pixetl_jq
+      - API_URL="http://app_test:8010"
     entrypoint: wait_for_postgres.sh pytest --cov-report term --cov-report xml:/app/tests/cobertura.xml --cov=app
     depends_on:
       - test_database

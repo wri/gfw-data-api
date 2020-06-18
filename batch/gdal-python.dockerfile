@@ -1,7 +1,7 @@
 FROM osgeo/gdal:ubuntu-small-latest
 
 RUN apt-get update -y \
-    && apt-get install --no-install-recommends -y postgresql-client-12 python3-pip jq \
+    && apt-get install --no-install-recommends -y postgresql-client-12 python3-pip jq curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -22,4 +22,4 @@ ENV PATH="/opt/python:${PATH}"
 
 WORKDIR /tmp
 
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["/opt/scripts/report_status.sh"]

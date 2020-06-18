@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 from typing.io import IO
 
 from ..application import ContextEngine
@@ -67,7 +67,7 @@ async def _inject_file(file_obj: IO, s3_uri: str) -> ChangeLog:
         detail = None
     except Exception as e:
         status = "failed"
-        message = f"Failed to injected file {path} into {bucket}"
+        message = f"Failed to inject file {path} into {bucket}"
         detail = str(e)
 
     return ChangeLog(

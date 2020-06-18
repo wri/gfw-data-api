@@ -48,6 +48,15 @@ async def vector_source_asset(
     async with ContextEngine("PUT"):
         new_asset = await assets.create_asset(**data.dict())
 
+    asset_id = new_asset.asset_id
+    if asset_id is None:
+        raise Exception("Asset_id is None!")
+    job_env = writer_secrets + [{"name": "ASSET_ID", "value": str(asset_id)}]
+
+    from fastapi.logger import logger
+
+    logger.debug(f"DEBUG: job_env: {job_env}")
+
     create_vector_schema_job = GdalPythonImportJob(
         job_name="import_vector_data",
         command=[
@@ -63,7 +72,7 @@ async def vector_source_asset(
             "-f",
             local_file,
         ],
-        environment=writer_secrets,
+        environment=job_env,
     )
 
     load_vector_data_jobs: List[Job] = list()
@@ -85,7 +94,7 @@ async def vector_source_asset(
                     local_file,
                 ],
                 parents=[create_vector_schema_job.job_name],
-                environment=writer_secrets,
+                environment=job_env,
             )
         )
 
@@ -93,7 +102,7 @@ async def vector_source_asset(
         job_name="enrich_gfw_attributes",
         command=["add_gfw_fields.sh", "-d", dataset, "-v", version],
         parents=[job.job_name for job in load_vector_data_jobs],
-        environment=writer_secrets,
+        environment=job_env,
     )
 
     index_jobs: List[Job] = list()
@@ -114,7 +123,7 @@ async def vector_source_asset(
                     index.index_type,
                 ],
                 parents=[gfw_attribute_job.job_name],
-                environment=writer_secrets,
+                environment=job_env,
             )
         )
 
@@ -122,12 +131,11 @@ async def vector_source_asset(
         job_name="inherit_from_geostore",
         command=["inherit_geostore.sh", "-d", dataset, "-v", version],
         parents=[job.job_name for job in index_jobs],
-        environment=writer_secrets,
+        environment=job_env,
     )
 
-    async def callback(message: Dict[str, Any]) -> None:
-        async with ContextEngine("PUT"):
-            await assets.update_asset(new_asset.asset_id, change_log=[message])
+    async def callback(*args, **kwargs):
+        pass
 
     log: ChangeLog = await execute(
         [

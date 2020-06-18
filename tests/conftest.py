@@ -200,7 +200,7 @@ def batch_client():
         "client"
     ]
 
-    # aws_mock.print_logs()
+    aws_mock.print_logs()
     aws_mock.stop_services()
 
 
@@ -299,7 +299,7 @@ class MemoryServer(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        # self.wfile.write(json.dumps({"foo": "bar"}).encode('utf-8'))
+        self.wfile.write(json.dumps({"foo": "bar"}).encode("utf-8"))
 
         content_length = int(self.headers["Content-Length"])
         put_data = self.rfile.read(content_length)
@@ -313,9 +313,9 @@ class MemoryServer(BaseHTTPRequestHandler):
 def httpd():
     server_class = HTTPServer
     handler_class = MemoryServer
-    port = 80
+    port = 8010
 
-    server_address = ("", port)
+    server_address = ("0.0.0.0", port)
     httpd = server_class(server_address, handler_class)
 
     t = threading.Thread(target=httpd.serve_forever, daemon=True)

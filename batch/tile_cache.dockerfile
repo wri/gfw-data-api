@@ -31,4 +31,4 @@ ENV PATH="/opt/python:${PATH}"
 
 WORKDIR /tmp
 
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["/opt/scripts/report_status.sh"]

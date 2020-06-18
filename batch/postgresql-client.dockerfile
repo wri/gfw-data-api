@@ -2,7 +2,7 @@ FROM python:3.8-slim
 
 # Update repos and install dependencies
 RUN apt-get update \
-  && apt-get --no-install-recommends -y install postgresql-client jq \
+  && apt-get --no-install-recommends -y install postgresql-client jq curl \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
@@ -23,4 +23,4 @@ ENV PATH="/opt/python:${PATH}"
 
 WORKDIR /tmp
 
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["/opt/scripts/report_status.sh"]

@@ -1,10 +1,12 @@
 from typing import Any, Dict, List
+from urllib.parse import urljoin
 
 from ..application import ContextEngine, db
 from ..crud import assets
 from ..models.orm.queries.fields import fields
 from ..models.pydantic.metadata import FieldMetadata
 from ..settings.globals import (
+    API_URL,
     WRITER_DBNAME,
     WRITER_HOST,
     WRITER_PASSWORD,
@@ -18,6 +20,7 @@ writer_secrets = [
     {"name": "PGPORT", "value": WRITER_PORT},
     {"name": "PGDATABASE", "value": WRITER_DBNAME},
     {"name": "PGUSER", "value": WRITER_USERNAME},
+    {"name": "STATUS_URL", "value": urljoin(API_URL, "tasks")},  # FIXME: Get endpoint dynamically
 ]
 
 

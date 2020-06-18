@@ -25,7 +25,7 @@ from app.models.pydantic.metadata import DatabaseTableMetadata
 @pytest.mark.asyncio
 async def test_assets():
     """
-    Testing all CRUD operations on dataset in one go
+    Testing all CRUD operations on assets in one go
     """
 
     dataset_name = "test"

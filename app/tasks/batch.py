@@ -1,12 +1,14 @@
 from datetime import datetime
-from time import sleep
+
+# from time import sleep
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Set
 
 from fastapi.logger import logger
 
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.jobs import Job
-from ..settings.globals import POLL_WAIT_TIME
+
+# from ..settings.globals import POLL_WAIT_TIME
 from ..utils.aws import get_batch_client
 
 
@@ -21,12 +23,8 @@ async def execute(
         status = "failed"
         message = "Failed to schedule batch jobs"
     else:
-        status = await poll_jobs(list(scheduled_jobs.values()), callback)
-        print(f"FINAL STATUS: {status}")
-        if status == "failed":
-            message = "Error while running batch jobs"
-        else:
-            message = "Successfully ran all batch jobs"
+        status = "pending"
+        message = "Successfully scheduled batch jobs"
     return ChangeLog(date_time=datetime.now(), status=status, message=message)
 
 
@@ -101,68 +99,68 @@ async def schedule(
     return scheduled_jobs
 
 
-async def poll_jobs(
-    job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable[None]]
-) -> str:
-    client = get_batch_client()
-    failed_jobs: Set[str] = set()
-    completed_jobs: Set[str] = set()
-    pending_jobs: Set[str] = set(job_ids)
-
-    while True:
-        response = client.describe_jobs(
-            jobs=list(pending_jobs.difference(completed_jobs))
-        )
-
-        for job in response["jobs"]:
-            print(
-                f"Container for job {job['jobId']} exited with status {job['status']}"
-            )
-            if job["status"] == "SUCCEEDED":
-                print(f"Container for job {job['jobId']} succeeded")
-                await callback(
-                    {
-                        "date_time": datetime.now(),
-                        "status": "success",
-                        "message": f"Successfully completed job {job['jobName']}",
-                        "detail": None,
-                    }
-                )
-                completed_jobs.add(job["jobId"])
-            if job["status"] == "FAILED":
-                print(f"Container for job {job['jobId']} failed")
-                await callback(
-                    {
-                        "date_time": datetime.now(),
-                        "status": "failed",
-                        "message": f"Job {job['jobName']} failed during asset creation",
-                        "detail": job.get("statusReason", None),
-                    }
-                )
-                failed_jobs.add(job["jobId"])
-
-        if completed_jobs == set(job_ids):
-            await callback(
-                {
-                    "date_time": datetime.now(),
-                    "status": "success",
-                    "message": "Successfully completed all scheduled batch jobs for asset creation",
-                    "detail": None,
-                }
-            )
-            return "saved"
-        elif failed_jobs:
-            await callback(
-                {
-                    "date_time": datetime.now(),
-                    "status": "failed",
-                    "message": "Job failures occurred during asset creation",
-                    "detail": None,
-                }
-            )
-            return "failed"
-
-        sleep(POLL_WAIT_TIME)
+# async def poll_jobs(
+#     job_ids: List[str], callback: Callable[[Dict[str, Any]], Awaitable[None]]
+# ) -> str:
+#     client = get_batch_client()
+#     failed_jobs: Set[str] = set()
+#     completed_jobs: Set[str] = set()
+#     pending_jobs: Set[str] = set(job_ids)
+#
+#     while True:
+#         response = client.describe_jobs(
+#             jobs=list(pending_jobs.difference(completed_jobs))
+#         )
+#
+#         for job in response["jobs"]:
+#             print(
+#                 f"Container for job {job['jobId']} exited with status {job['status']}"
+#             )
+#             if job["status"] == "SUCCEEDED":
+#                 print(f"Container for job {job['jobId']} succeeded")
+#                 await callback(
+#                     {
+#                         "date_time": datetime.now(),
+#                         "status": "success",
+#                         "message": f"Successfully completed job {job['jobName']}",
+#                         "detail": None,
+#                     }
+#                 )
+#                 completed_jobs.add(job["jobId"])
+#             if job["status"] == "FAILED":
+#                 print(f"Container for job {job['jobId']} failed")
+#                 await callback(
+#                     {
+#                         "date_time": datetime.now(),
+#                         "status": "failed",
+#                         "message": f"Job {job['jobName']} failed during asset creation",
+#                         "detail": job.get("statusReason", None),
+#                     }
+#                 )
+#                 failed_jobs.add(job["jobId"])
+#
+#         if completed_jobs == set(job_ids):
+#             await callback(
+#                 {
+#                     "date_time": datetime.now(),
+#                     "status": "success",
+#                     "message": "Successfully completed all scheduled batch jobs for asset creation",
+#                     "detail": None,
+#                 }
+#             )
+#             return "saved"
+#         elif failed_jobs:
+#             await callback(
+#                 {
+#                     "date_time": datetime.now(),
+#                     "status": "failed",
+#                     "message": "Job failures occurred during asset creation",
+#                     "detail": None,
+#                 }
+#             )
+#             return "failed"
+#
+#         sleep(POLL_WAIT_TIME)
 
 
 def submit_batch_job(
