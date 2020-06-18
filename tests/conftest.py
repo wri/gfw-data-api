@@ -1,5 +1,8 @@
 import contextlib
+import json
 import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Optional
 from unittest.mock import patch
 
@@ -251,7 +254,7 @@ def session():
 @pytest.fixture(scope="session", autouse=True)
 def db():
     """
-    Aquire a database session for a test and make sure the connection gets
+    Acquire a database session for a test and make sure the connection gets
     properly closed, even if test fails.
     This is a synchronous connection using psycopg2.
     """
@@ -279,3 +282,46 @@ def client():
 
     app.dependency_overrides = {}
     main(["--raiseerr", "downgrade", "base"])
+
+
+class MemoryServer(BaseHTTPRequestHandler):
+    requests_thus_far: list = []
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(
+            json.dumps({"requests": self.requests_thus_far}).encode("utf-8")
+        )
+
+    def do_PUT(self):
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        # self.wfile.write(json.dumps({"foo": "bar"}).encode('utf-8'))
+
+        content_length = int(self.headers["Content-Length"])
+        put_data = self.rfile.read(content_length)
+
+        self.requests_thus_far.append(
+            {"body": json.loads(str(put_data.decode("utf-8")))}
+        )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def httpd():
+    server_class = HTTPServer
+    handler_class = MemoryServer
+    port = 80
+
+    server_address = ("", port)
+    httpd = server_class(server_address, handler_class)
+
+    t = threading.Thread(target=httpd.serve_forever, daemon=True)
+    t.start()
+
+    yield httpd
+
+    httpd.shutdown()
+    t.join()
