@@ -40,8 +40,9 @@ async def vector_source_asset(
         asset_type="Database table",
         dataset=dataset,
         version=version,
-        asset_uri=f"/{dataset}/{version}/features",
+        asset_uri=f"/features/{dataset}/{version}",
         is_managed=True,
+        is_default=True,
         creation_options=options,
         metadata=DatabaseTableMetadata(**metadata),
     )

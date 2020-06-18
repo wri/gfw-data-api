@@ -8,7 +8,7 @@ from .aws_tasks import expire_s3_objects, flush_cloudfront_cache
 
 
 async def delete_all_assets(dataset: str, version: str) -> None:
-    await _delete_database_table(dataset, version)
+    await delete_database_table(dataset, version)
     expire_s3_objects(DATA_LAKE_BUCKET, f"{dataset}/{version}/")
     expire_s3_objects(TILE_CACHE_BUCKET, f"{dataset}/{version}/")
     flush_cloudfront_cache(TILE_CACHE_CLOUDFRONT_ID, f"{dataset}/{version}/*")
@@ -22,17 +22,36 @@ async def delete_dynamic_vector_tile_cache_assets(
     )
 
 
-async def delete_static_vector_tile_cache_assets(dataset: str, version: str) -> None:
-    expire_s3_objects(TILE_CACHE_BUCKET, f"{dataset}/{version}/default/")
-    flush_cloudfront_cache(TILE_CACHE_CLOUDFRONT_ID, f"{dataset}/{version}/default/*")
+async def delete_static_vector_tile_cache_assets(
+    dataset: str, version: str, implementation: str = "default"
+) -> None:
+    expire_s3_objects(
+        TILE_CACHE_BUCKET, f"{dataset}/{version}/{implementation}/", "format", "pbf"
+    )
+    flush_cloudfront_cache(
+        TILE_CACHE_CLOUDFRONT_ID, f"{dataset}/{version}/{implementation}/*.pbf"
+    )
+
+
+async def delete_static_raster_tile_cache_assets(
+    dataset: str, version: str, implementation: str = "default"
+) -> None:
+    expire_s3_objects(
+        TILE_CACHE_BUCKET, f"{dataset}/{version}/{implementation}/", "format", "png"
+    )
+    flush_cloudfront_cache(
+        TILE_CACHE_CLOUDFRONT_ID, f"{dataset}/{version}/{implementation}/*.png"
+    )
 
 
 async def delete_raster_tileset_assets(
-    dataset: str, version: str, grid: str, value: str
+    dataset: str, version: str, srid, size: int, col: int, value: str
 ) -> None:
-    expire_s3_objects(DATA_LAKE_BUCKET, f"{dataset}/{version}/raster/{grid}/{value}")
+    expire_s3_objects(
+        DATA_LAKE_BUCKET, f"{dataset}/{version}/raster/{srid}/{size}/{col}/{value}"
+    )
 
 
-async def _delete_database_table(dataset, version):
+async def delete_database_table(dataset, version):
     async with ContextEngine("PUT") as db:
         await db.status(f"""DROP TABLE IF EXISTS "{dataset}"."{version}" CASCADE;""")

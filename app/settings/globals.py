@@ -97,3 +97,5 @@ PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str)
 
 POLL_WAIT_TIME = config("POLL_WAIT_TIME", cast=int, default=30)
 CHUNK_SIZE = config("CHUNK_SIZE", cast=int, default=50)
+
+S3_ENTRYPOINT_URL = config("S3_ENTRYPOINT_URL", cast=str, default=None)

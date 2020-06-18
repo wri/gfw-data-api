@@ -6,10 +6,9 @@ These files can be a remote, publicly accessible URL or an uploaded file. Based 
 users can create additional assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
+from typing import Any, Dict, List, Optional
 
-from typing import Any, Dict, List
-
-from fastapi import APIRouter, BackgroundTasks, Depends, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
 
 from app.crud import versions
@@ -189,10 +188,26 @@ async def delete_version(
 ):
     """
     Delete a version.
+    Only delete version if it is not tagged as `latest` or if it is the only version associated with dataset.
     All associated, managed assets will be deleted in consequence.
     """
+    row: Optional[ORMVersion] = None
+    rows: List[ORMVersion] = await versions.get_versions(dataset)
 
-    row: ORMVersion = await versions.delete_version(dataset, version)
+    for row in rows:
+        if row.version == version:
+            break
+
+    if row and row.is_latest and len(rows) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Deletion failed."
+            "You can only delete a version tagged as `latest` if no other version of the same dataset exists."
+            "Change `latest` version, or delete all other versions first.",
+        )
+
+    # We check here if the version actually exists before we delete
+    row = await versions.delete_version(dataset, version)
 
     background_tasks.add_task(delete_all_assets, dataset, version)
 

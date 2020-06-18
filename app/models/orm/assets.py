@@ -12,6 +12,7 @@ class Asset(Base):
     asset_uri = db.Column(db.String, nullable=False)
     status = db.Column(db.String, nullable=False, default="pending")
     is_managed = db.Column(db.Boolean, nullable=False, default=True)
+    is_default = db.Column(db.Boolean, nullable=False, default=False)
     creation_options = db.Column(db.JSONB, default=dict())
     metadata = db.Column(db.JSONB, default=dict())
     change_log = db.Column(db.ARRAY(db.JSONB), default=list())
@@ -25,6 +26,3 @@ class Asset(Base):
     )
 
     uq_asset_uri = db.UniqueConstraint("asset_uri", name="uq_asset_uri")
-    uq_asset_type = db.UniqueConstraint(
-        "dataset", "version", "asset_type", name="uq_asset_type"
-    )
