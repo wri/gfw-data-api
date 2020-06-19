@@ -28,7 +28,7 @@ locals {
 
 # Docker image for FastAPI app
 module "app_docker_image" {
-  source     = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.5"
+  source     = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.6"
   image_name = lower("${local.project}${local.name_suffix}")
   root_dir   = "${path.root}/../"
 }
@@ -36,7 +36,7 @@ module "app_docker_image" {
 
 # Docker image for GDAL Python Batch jobs
 module "batch_gdal_python_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.5"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.6"
   image_name      = lower("${local.project}-gdal_python${local.name_suffix}")
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
@@ -45,7 +45,7 @@ module "batch_gdal_python_image" {
 
 # Docker image for PostgreSQL Client Batch jobs
 module "batch_postgresql_client_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.5"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.6"
   image_name      = lower("${local.project}-postgresql_client${local.name_suffix}")
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
@@ -54,7 +54,7 @@ module "batch_postgresql_client_image" {
 
 # Docker image for Tile Cache Batch jobs
 module "batch_tile_cache_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.5"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//modules/container_registry?ref=v0.1.6"
   image_name      = lower("${local.project}-tile_cache${local.name_suffix}")
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
@@ -63,7 +63,7 @@ module "batch_tile_cache_image" {
 
 
 module "fargate_autoscaling" {
-  source                    = "git::https://github.com/wri/gfw-terraform-modules.git//modules/fargate_autoscaling?ref=v0.1.5"
+  source                    = "git::https://github.com/wri/gfw-terraform-modules.git//modules/fargate_autoscaling?ref=v0.1.6"
   project                   = local.project
   name_suffix               = local.name_suffix
   tags                      = local.tags
@@ -92,7 +92,7 @@ module "fargate_autoscaling" {
 
 # Using instance types with 1 core only
 module "batch_aurora_writer" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//modules/compute_environment?ref=v0.1.5"
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//modules/compute_environment?ref=v0.1.6"
   ecs_role_policy_arns = [
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
@@ -114,7 +114,7 @@ module "batch_aurora_writer" {
 
 
 module "batch_data_lake_writer" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//modules/compute_environment?ref=v0.1.5"
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//modules/compute_environment?ref=v0.1.6"
   ecs_role_policy_arns = [
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,

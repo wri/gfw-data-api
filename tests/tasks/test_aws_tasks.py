@@ -10,9 +10,6 @@ from app.tasks.aws_tasks import (
 )
 from app.utils.aws import get_s3_client
 
-from moto import mock_s3  # isort:skip
-
-
 TSV_NAME = "test.tsv"
 TSV_PATH = os.path.join(os.path.dirname(__file__), "..", "fixtures", TSV_NAME)
 
