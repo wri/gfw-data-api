@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List
+from typing import Any, Awaitable, Dict, List
 
 from app.application import ContextEngine
 from app.crud import assets
@@ -134,8 +134,9 @@ async def vector_source_asset(
         environment=job_env,
     )
 
-    async def callback(*args, **kwargs):
-        pass
+    async def callback(message: Dict[str, str]) -> Awaitable[None]:
+        async with ContextEngine("PUT"):
+            return await assets.update_asset(new_asset.asset_id, change_log=[message])
 
     log: ChangeLog = await execute(
         [

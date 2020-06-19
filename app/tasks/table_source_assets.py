@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Awaitable, Dict, List, Optional
 
 from app.application import ContextEngine
 from app.crud import assets
@@ -165,8 +165,9 @@ async def table_source_asset(
     else:
         cluster_jobs = list()
 
-    async def callback(*args, **kwargs):
-        pass
+    async def callback(message: Dict[str, str]) -> Awaitable[None]:
+        async with ContextEngine("PUT"):
+            return await assets.update_asset(new_asset.asset_id, change_log=[message])
 
     log: ChangeLog = await execute(
         [

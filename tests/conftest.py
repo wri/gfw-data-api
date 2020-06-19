@@ -295,6 +295,13 @@ class MemoryServer(BaseHTTPRequestHandler):
             json.dumps({"requests": self.requests_thus_far}).encode("utf-8")
         )
 
+    def do_DELETE(self):
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"foo": "bar"}).encode("utf-8"))
+        self.requests_thus_far = []
+
     def do_PUT(self):
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -309,16 +316,21 @@ class MemoryServer(BaseHTTPRequestHandler):
         )
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="function")
 def httpd():
     server_class = HTTPServer
     handler_class = MemoryServer
-    port = 8010
+    port = 9000
 
-    server_address = ("0.0.0.0", port)
-    httpd = server_class(server_address, handler_class)
+    while port <= 9100:
+        try:
+            httpd = server_class(("0.0.0.0", port), handler_class)
+            httpd.allow_reuse_address = True
+        except OSError as ex:
+            # Port hasn't been let go yet
+            port += 1
 
-    t = threading.Thread(target=httpd.serve_forever, daemon=True)
+    t = threading.Thread(target=httpd.serve_forever)  # , daemon=True)
     t.start()
 
     yield httpd

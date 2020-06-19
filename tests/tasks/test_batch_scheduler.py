@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Awaitable, Callable, Dict
 from unittest.mock import patch
 
 import boto3
@@ -8,7 +9,8 @@ import pytest
 import app
 import app.tasks.batch as batch
 from app.application import ContextEngine
-from app.crud import datasets, versions
+from app.crud import assets, datasets, versions
+from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.jobs import (
     GdalPythonExportJob,
     GdalPythonImportJob,
@@ -32,10 +34,6 @@ writer_secrets = [
     {"name": "PGDATABASE", "value": WRITER_DBNAME},
     {"name": "PGUSER", "value": WRITER_USERNAME},
     # {"name": "STATUS_URL", "value": f"{API_URL}/tasks"},  # FIXME: Get endpoint dynamically
-    {
-        "name": "STATUS_URL",
-        "value": "http://app_test:8010/tasks",
-    },  # FIXME: Get endpoint dynamically
 ]
 
 GEOJSON_NAME = "test.geojson"
@@ -44,11 +42,13 @@ BUCKET = "test-bucket"
 
 
 @pytest.mark.asyncio
-async def test_batch_scheduler(batch_client):
-    async def callback(message):
-        pass
-
+async def test_batch_scheduler(batch_client, httpd):
     _, logs = batch_client
+    httpd_port = httpd.server_port
+
+    job_env = writer_secrets + [
+        {"name": "STATUS_URL", "value": f"http://app_test:{httpd_port}/tasks"}
+    ]
 
     batch.POLL_WAIT_TIME = 1
 
@@ -69,13 +69,19 @@ async def test_batch_scheduler(batch_client):
     }
 
     async with ContextEngine("PUT"):
-        await datasets.create_dataset(dataset)
-        await versions.create_version(dataset, version, **input_data)
+        new_dataset = await datasets.create_dataset(dataset)
+        new_version = await versions.create_version(dataset, version, **input_data)
+        new_asset = await assets.create_asset(
+            dataset,
+            version,
+            asset_type="Database table",
+            asset_uri="s3://path/to/file",
+        )
 
     job1 = PostgresqlClientJob(
         job_name="job1",
         command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
-        environment=writer_secrets,
+        environment=job_env,
     )
     job2 = GdalPythonImportJob(
         job_name="job2",
@@ -92,7 +98,7 @@ async def test_batch_scheduler(batch_client):
             "-f",
             GEOJSON_NAME,
         ],
-        environment=writer_secrets,
+        environment=job_env,
         parents=[job1.job_name],
     )
     job3 = GdalPythonExportJob(
@@ -110,18 +116,28 @@ async def test_batch_scheduler(batch_client):
             "-f",
             GEOJSON_NAME,
         ],
-        environment=writer_secrets,
+        environment=job_env,
         parents=[job2.job_name],
     )
     job4 = TileCacheJob(
         job_name="job4",
         command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
-        environment=writer_secrets,
+        environment=job_env,
         parents=[job3.job_name],
     )
 
+    asset_id = new_asset.asset_id
+
+    async def callback(message: Dict[str, str]) -> Awaitable[None]:
+        async with ContextEngine("PUT"):
+            return await assets.update_asset(asset_id, change_log=[message])
+
     log = await batch.execute([job1, job2, job3, job4], callback)
     assert log.status == "saved"
+
+    import requests
+
+    # del_resp = requests.delete("http://localhost:8010")
 
 
 #
@@ -145,10 +161,12 @@ async def test_batch_scheduler(batch_client):
 
 @pytest.mark.asyncio
 async def test_batch_scheduler_with_httpd(batch_client, httpd):
-    async def callback(message):
-        pass
-
     _, logs = batch_client
+    httpd_port = httpd.server_port
+
+    job_env = writer_secrets + [
+        {"name": "STATUS_URL", "value": f"http://app_test:{httpd_port}/tasks"}
+    ]
 
     batch.POLL_WAIT_TIME = 1
 
@@ -169,13 +187,19 @@ async def test_batch_scheduler_with_httpd(batch_client, httpd):
     }
 
     async with ContextEngine("PUT"):
-        await datasets.create_dataset(dataset)
-        await versions.create_version(dataset, version, **input_data)
+        new_dataset = await datasets.create_dataset(dataset)
+        new_version = await versions.create_version(dataset, version, **input_data)
+        new_asset = await assets.create_asset(
+            dataset,
+            version,
+            asset_type="Database table",
+            asset_uri="s3://path/to/file",
+        )
 
     job1 = PostgresqlClientJob(
         job_name="job1",
         command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
-        environment=writer_secrets,
+        environment=job_env,
     )
     job2 = GdalPythonImportJob(
         job_name="job2",
@@ -192,7 +216,7 @@ async def test_batch_scheduler_with_httpd(batch_client, httpd):
             "-f",
             GEOJSON_NAME,
         ],
-        environment=writer_secrets,
+        environment=job_env,
         parents=[job1.job_name],
     )
     job3 = GdalPythonExportJob(
@@ -210,15 +234,21 @@ async def test_batch_scheduler_with_httpd(batch_client, httpd):
             "-f",
             GEOJSON_NAME,
         ],
-        environment=writer_secrets,
+        environment=job_env,
         parents=[job2.job_name],
     )
     job4 = TileCacheJob(
         job_name="job4",
         command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
-        environment=writer_secrets,
+        environment=job_env,
         parents=[job3.job_name],
     )
+
+    asset_id = new_asset.asset_id
+
+    async def callback(message: Dict[str, str]) -> Awaitable[None]:
+        async with ContextEngine("PUT"):
+            return await assets.update_asset(asset_id, change_log=[message])
 
     log = await batch.execute([job1, job2, job3, job4], callback)
 
@@ -249,7 +279,8 @@ async def test_batch_scheduler_with_httpd(batch_client, httpd):
 
     import requests
 
-    get_resp = requests.get("http://localhost:8010")
+    httpd_port = httpd.server_port
+    get_resp = requests.get(f"http://localhost:{httpd_port}")
     req_list = get_resp.json()["requests"]
 
     assert len(req_list) == 4
