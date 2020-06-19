@@ -67,3 +67,36 @@ def test_versions(mocked_task, client, db):
     # Check if the latest endpoint redirects us to v1.1.1
     response = client.get(f"/meta/{dataset}/latest?test=test&test1=test1")
     assert response.json()["data"]["version"] == "v1.1.1"
+
+
+@patch("fastapi.BackgroundTasks.add_task", return_value=None)
+def test_version_delete_protection(mocked_task, client):
+    dataset = "test"
+    version1 = "v1.1.1"
+    version2 = "v1.1.2"
+
+    client.put(f"/meta/{dataset}", data=json.dumps(payload))
+
+    version_payload = {
+        "is_latest": True,
+        "source_type": "vector",
+        "source_uri": ["s3://some/path"],
+        "metadata": payload["metadata"],
+        "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
+    }
+
+    # with patch("app.tasks.default_assets.create_default_asset", return_value=True) as mock_asset:
+    client.put(f"/meta/{dataset}/{version1}", data=json.dumps(version_payload))
+
+    client.put(f"/meta/{dataset}/{version2}", data=json.dumps(version_payload))
+
+    client.patch(f"/meta/{dataset}/{version2}", data={"is_latest": True})
+
+    response = client.delete(f"/meta/{dataset}/{version2}")
+
+    assert response.status_code == 409
+
+    client.delete(f"/meta/{dataset}/{version1}")
+    response = client.delete(f"/meta/{dataset}/{version2}")
+    assert response.status_code == 200
+    assert mocked_task.called

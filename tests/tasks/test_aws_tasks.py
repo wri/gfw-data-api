@@ -47,7 +47,6 @@ class MockCloudfrontClient(object):
         }
 
 
-@mock_s3
 def test_delete_s3_objects():
     """"
     Make sure we can delete more than 1000 items
@@ -57,9 +56,9 @@ def test_delete_s3_objects():
 
     s3_client.create_bucket(Bucket=BUCKET)
     for i in range(1001):
-        s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME + str(i))
+        s3_client.upload_file(TSV_PATH, BUCKET, "TEST_DELETE_S3_OBJECTS" + str(i))
 
-    count = delete_s3_objects(BUCKET, TSV_NAME)
+    count = delete_s3_objects(BUCKET, "TEST_DELETE_S3_OBJECTS")
     assert count == 1001
 
 
