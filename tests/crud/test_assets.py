@@ -180,3 +180,105 @@ async def test_assets():
     rows = await get_all_assets()
     assert isinstance(rows, list)
     assert len(rows) == 0
+
+
+@pytest.mark.asyncio
+async def test_assets_metadata():
+    """
+    Testing all CRUD operations on dataset in one go
+    """
+
+    dataset = "test"
+    version = "v1.1.1"
+
+    dataset_metadata = {"title": "Title", "subtitle": "Subtitle"}
+
+    version_metadata = {"subtitle": "New Subtitle", "version_number": version}
+
+    asset_metadata = {
+        "title": "New Title",
+        "_fields": [
+            {
+                "field_name_": "Field",
+                "field_alias": "Field",
+                "field_description": "Field",
+                "field_type": "Var Char",
+                "is_feature_info": False,
+                "is_filter:": False,
+            }
+        ],
+    }
+
+    # Add a dataset
+    async with ContextEngine("PUT"):
+        await create_dataset(dataset, metadata=dataset_metadata)
+        await create_version(
+            dataset, version, source_type="table", metadata=version_metadata
+        )
+        new_asset = await create_asset(
+            dataset,
+            version,
+            asset_type="Database table",
+            asset_uri="s3://path/to/file",
+            metadata=asset_metadata,
+        )
+
+    result_metadata = {
+        "title": "New Title",
+        "subtitle": "New Subtitle",
+        "version_number": version,
+        "_fields": [
+            {
+                "field_name_": "Field",
+                "field_alias": "Field",
+                "field_description": "Field",
+                "field_type": "Var Char",
+                "is_feature_info": False,
+                "is_filter:": False,
+            }
+        ],
+    }
+
+    asset_id = new_asset.asset_id
+    assert new_asset.metadata == result_metadata
+
+    async with ContextEngine("GET"):
+        asset = await get_asset(asset_id)
+    assert asset.metadata == result_metadata
+
+    async with ContextEngine("GET"):
+        assets = await get_assets(dataset, version)
+    assert assets[0].metadata == result_metadata
+
+    async with ContextEngine("GET"):
+        assets = await get_assets_by_type("Database table")
+    assert assets[0].metadata == result_metadata
+
+    async with ContextEngine("GET"):
+        assets = await get_all_assets()
+    assert assets[0].metadata == result_metadata
+
+    result_metadata = {
+        "title": "New Title",
+        "subtitle": "New Subtitle",
+        "source": "Source",
+        "version_number": version,
+        "_fields": [
+            {
+                "field_name_": "Field",
+                "field_alias": "Field",
+                "field_description": "Field",
+                "field_type": "Var Char",
+                "is_feature_info": False,
+                "is_filter:": False,
+            }
+        ],
+    }
+
+    async with ContextEngine("PUT"):
+        asset = await update_asset(asset_id, metadata={"source": "Source"})
+    assert asset.metadata == result_metadata
+
+    async with ContextEngine("PUT"):
+        asset = await delete_asset(asset_id)
+    assert asset.metadata == result_metadata
