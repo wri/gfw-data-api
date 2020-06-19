@@ -18,14 +18,13 @@ from app.tasks.batch import execute
 
 
 async def table_source_asset(
-    dataset,
-    version,
-    source_uris: List[str],
-    creation_options,
-    metadata: Dict[str, Any],
-    callback,
+    dataset, version, input_data, callback=None,  # TODO delete
 ) -> ChangeLog:
-    options = TableSourceCreationOptions(**creation_options)
+
+    source_uris: List[str] = input_data["source_uri"]
+    metadata: Dict[str, Any] = input_data["metadata"]
+
+    creation_options = TableSourceCreationOptions(**input_data["creation_options"])
 
     # Register asset in database
     data = AssetTaskCreate(
@@ -34,7 +33,7 @@ async def table_source_asset(
         version=version,
         asset_uri=f"/{dataset}/{version}/features",
         is_managed=True,
-        creation_options=options,
+        creation_options=creation_options,
         metadata=DatabaseTableMetadata(**metadata),
     )
 
@@ -51,15 +50,15 @@ async def table_source_asset(
         "-s",
         source_uris[0],
         "-m",
-        json.dumps(options.dict()["table_schema"]),
+        json.dumps(creation_options.dict()["table_schema"]),
     ]
-    if options.partitions:
+    if creation_options.partitions:
         command.extend(
             [
                 "-p",
-                options.partitions.partition_type,
+                creation_options.partitions.partition_type,
                 "-c",
-                options.partitions.partition_column,
+                creation_options.partitions.partition_column,
             ]
         )
 
@@ -68,9 +67,9 @@ async def table_source_asset(
     )
 
     # Create partitions
-    if options.partitions:
+    if creation_options.partitions:
         partition_jobs: List[Job] = _create_partition_jobs(
-            dataset, version, options.partitions, [create_table_job.job_name]
+            dataset, version, creation_options.partitions, [create_table_job.job_name]
         )
     else:
         partition_jobs = list()
@@ -94,7 +93,7 @@ async def table_source_asset(
                     "-s",
                     uri,
                     "-D",
-                    options.delimiter.encode(
+                    creation_options.delimiter.encode(
                         "unicode_escape"
                     ).decode(),  # Need to escape special characters such as TAB for batch job payload
                 ],
@@ -105,7 +104,7 @@ async def table_source_asset(
 
     # Add geometry columns and update geometries
     geometry_jobs: List[Job] = list()
-    if options.latitude and options.longitude:
+    if creation_options.latitude and creation_options.longitude:
         geometry_jobs.append(
             PostgresqlClientJob(
                 job_name="add_point_geometry",
@@ -116,9 +115,9 @@ async def table_source_asset(
                     "-v",
                     version,
                     "--lat",
-                    options.latitude,
+                    creation_options.latitude,
                     "--lng",
-                    options.longitude,
+                    creation_options.longitude,
                 ],
                 environment=writer_secrets,
                 parents=[job.job_name for job in load_data_jobs],
@@ -130,7 +129,7 @@ async def table_source_asset(
     parents = [job.job_name for job in load_data_jobs]
     parents.extend([job.job_name for job in geometry_jobs])
 
-    for index in options.indices:
+    for index in creation_options.indices:
         index_jobs.append(
             PostgresqlClientJob(
                 job_name=f"create_index_{index.column_name}_{index.index_type}",
@@ -154,9 +153,13 @@ async def table_source_asset(
     parents.extend([job.job_name for job in geometry_jobs])
     parents.extend([job.job_name for job in index_jobs])
 
-    if options.cluster:
+    if creation_options.cluster:
         cluster_jobs: List[Job] = _create_cluster_jobs(
-            dataset, version, options.partitions, options.cluster, parents
+            dataset,
+            version,
+            creation_options.partitions,
+            creation_options.cluster,
+            parents,
         )
     else:
         cluster_jobs = list()

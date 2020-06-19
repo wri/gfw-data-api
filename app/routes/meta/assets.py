@@ -9,7 +9,7 @@ are based on the same version and do not know the processing history."""
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
 from fastapi.responses import ORJSONResponse
 
 from app.crud import assets
@@ -22,6 +22,7 @@ from app.models.pydantic.assets import (
     AssetType,
 )
 from app.routes import dataset_dependency, is_admin, version_dependency
+from app.tasks.assets import asset_factory
 
 router = APIRouter()
 
@@ -117,15 +118,16 @@ async def get_asset_root(*, asset_id: UUID = Path(...)) -> AssetResponse:
     response_class=ORJSONResponse,
     tags=["Assets"],
     response_model=AssetResponse,
-    status_code=201,
+    status_code=202,
 )
 async def add_new_asset(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
-    request: Optional[AssetCreateIn],
+    request: AssetCreateIn,
+    background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
-    response: Response,
+    response: ORJSONResponse,
 ) -> AssetResponse:
     """
 
@@ -135,10 +137,11 @@ async def add_new_asset(
     If the asset is not managed, you need to specify an Asset URI to link to.
 
     """
-    # row: ORMAsset = ...
-    # response.headers["Location"] = f"/{dataset}/{version}/asset/{row.asset_id}"
-    # return row
-    raise NotImplementedError
+    input_data = request.dict()
+    row: ORMAsset = await assets.create_asset(dataset, version, **input_data)
+    background_tasks.add_task(asset_factory, row.asset_id, dataset, version, input_data)
+    response.headers["Location"] = f"/{dataset}/{version}/asset/{row.asset_id}"
+    return await _asset_response(row)
 
 
 @router.delete(

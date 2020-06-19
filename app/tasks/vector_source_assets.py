@@ -13,25 +13,23 @@ from app.tasks.batch import execute
 
 
 async def vector_source_asset(
-    dataset,
-    version,
-    source_uris: List[str],
-    creation_options,
-    metadata: Dict[str, Any],
-    callback,
+    dataset, version, input_data, callback=None,  # TODO delete
 ) -> ChangeLog:
+
+    source_uris: List[str] = input_data["source_uri"]
+    metadata: Dict[str, Any] = input_data["metadata"]
 
     if len(source_uris) != 1:
         raise AssertionError("Vector sources only support one input file")
 
-    options = VectorSourceCreationOptions(**creation_options)
+    creation_options = VectorSourceCreationOptions(**input_data["creation_options"])
 
     # source_uri: str = gdal_path(source_uris[0], options.zipped)
     source_uri = source_uris[0]
     local_file = os.path.basename(source_uri)
 
-    if options.layers:
-        layers = options.layers
+    if creation_options.layers:
+        layers = creation_options.layers
     else:
         layer, _ = os.path.splitext(os.path.basename(source_uri))
         layers = [layer]
@@ -42,7 +40,7 @@ async def vector_source_asset(
         version=version,
         asset_uri=f"/{dataset}/{version}/features",
         is_managed=True,
-        creation_options=options,
+        creation_options=creation_options,
         metadata=DatabaseTableMetadata(**metadata),
     )
 
@@ -99,7 +97,7 @@ async def vector_source_asset(
 
     index_jobs: List[Job] = list()
 
-    for index in options.indices:
+    for index in creation_options.indices:
         index_jobs.append(
             PostgresqlClientJob(
                 job_name=f"create_index_{index.column_name}_{index.index_type}",

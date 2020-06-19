@@ -59,9 +59,7 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
     except UniqueViolationError:
         raise HTTPException(
             status_code=400,
-            detail="A similar Asset already exist."
-            "Dataset versions can only have one instance of asset type."
-            "Asset uri must be unique.",
+            detail="A similar Asset already exist." "Asset uri must be unique.",
         )
 
     d: ORMDataset = await datasets.get_dataset(dataset)
