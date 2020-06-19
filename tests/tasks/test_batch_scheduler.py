@@ -32,7 +32,10 @@ writer_secrets = [
     {"name": "PGDATABASE", "value": WRITER_DBNAME},
     {"name": "PGUSER", "value": WRITER_USERNAME},
     # {"name": "STATUS_URL", "value": f"{API_URL}/tasks"},  # FIXME: Get endpoint dynamically
-    {"name": "STATUS_URL", "value": "app_test:80"},  # FIXME: Get endpoint dynamically
+    {
+        "name": "STATUS_URL",
+        "value": "http://app_test:8010/tasks",
+    },  # FIXME: Get endpoint dynamically
 ]
 
 GEOJSON_NAME = "test.geojson"
@@ -249,5 +252,6 @@ async def test_batch_scheduler_with_httpd(batch_client, httpd):
     get_resp = requests.get("http://localhost:8010")
     req_list = get_resp.json()["requests"]
 
-    # assert len(req_list) == 5
+    assert len(req_list) == 4
+    assert req_list[0]["path"] == "/task"
     assert req_list[0]["body"] == {"hello": "world"}

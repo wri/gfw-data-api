@@ -305,7 +305,7 @@ class MemoryServer(BaseHTTPRequestHandler):
         put_data = self.rfile.read(content_length)
 
         self.requests_thus_far.append(
-            {"body": json.loads(str(put_data.decode("utf-8")))}
+            {"path": str(self.path), "body": json.loads(str(put_data.decode("utf-8")))}
         )
 
 
