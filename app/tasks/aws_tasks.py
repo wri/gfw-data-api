@@ -81,21 +81,21 @@ def _expiration_rule(
     """
 
     if prefix and key and value:
-        filter: Dict[str, Any] = {
+        rule_filter: Dict[str, Any] = {
             "And": {"Prefix": prefix, "Tags": [{"Key": key, "Value": value}]}
         }
     elif prefix and not key and not value:
 
-        filter = {"Prefix": prefix}
+        rule_filter = {"Prefix": prefix}
     elif not prefix and key and value:
-        filter = {"Tags": {"Key": key, "Value": value}}
+        rule_filter = {"Tags": {"Key": key, "Value": value}}
     else:
         raise ValueError("Cannot create filter using input data")
 
     rule = {
         "Expiration": {"Date": expiration_date},
         "ID": f"delete_{prefix}_{value}".replace("/", "_").replace(".", "_"),
-        "Filter": filter,
+        "Filter": rule_filter,
         "Status": "Enabled",
     }
     return rule
