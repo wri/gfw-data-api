@@ -4,7 +4,7 @@ from ..settings.globals import (
     TILE_CACHE_BUCKET,
     TILE_CACHE_CLOUDFRONT_ID,
 )
-from .aws_tasks import expire_s3_objects, flush_cloudfront_cache
+from .aws_tasks import delete_s3_objects, expire_s3_objects, flush_cloudfront_cache
 
 
 async def delete_all_assets(dataset: str, version: str) -> None:
@@ -47,7 +47,7 @@ async def delete_static_raster_tile_cache_assets(
 async def delete_raster_tileset_assets(
     dataset: str, version: str, srid, size: int, col: int, value: str
 ) -> None:
-    expire_s3_objects(
+    delete_s3_objects(
         DATA_LAKE_BUCKET, f"{dataset}/{version}/raster/{srid}/{size}/{col}/{value}"
     )
 

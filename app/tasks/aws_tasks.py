@@ -6,6 +6,38 @@ from botocore.exceptions import ClientError
 from ..utils.aws import get_cloudfront_client, get_s3_client
 
 
+def delete_s3_objects(bucket: str, prefix: str,) -> int:
+    """
+    S3 list_objects_v2 and delete_objects paginate responses in chunks of 1000
+    We need to use parginator object to retrieve objects and then delete 1000 at a time
+    https://stackoverflow.com/a/43436769/1410317
+    """
+
+    client = get_s3_client()
+    paginator = client.get_paginator("list_objects_v2")
+    pages = paginator.paginate(Bucket=bucket, Prefix=prefix)
+
+    delete_us: Dict[str, List[Dict[str, str]]] = {"Objects": []}
+    count = 0
+
+    for item in pages.search("Contents"):
+        if item:
+            delete_us["Objects"].append({"Key": item["Key"]})
+
+            # flush once aws limit reached
+            if len(delete_us["Objects"]) >= 1000:
+                count += len(delete_us["Objects"])
+                client.delete_objects(Bucket=bucket, Delete=delete_us)
+                delete_us = dict(Objects=[])
+
+    # flush rest
+    if len(delete_us["Objects"]):
+        count += len(delete_us["Objects"])
+        client.delete_objects(Bucket=bucket, Delete=delete_us)
+
+    return count
+
+
 def expire_s3_objects(
     bucket: str,
     prefix: Optional[str] = None,
@@ -52,17 +84,17 @@ def _expiration_rule(
         filter: Dict[str, Any] = {
             "And": {"Prefix": prefix, "Tags": [{"Key": key, "Value": value}]}
         }
-    elif prefix and (not key or not value):
+    elif prefix and not key and not value:
 
         filter = {"Prefix": prefix}
     elif not prefix and key and value:
-        filter = {"Tags": [{"Key": key, "Value": value}]}
+        filter = {"Tags": {"Key": key, "Value": value}}
     else:
-        raise ValueError("Cannot create fitler using input data")
+        raise ValueError("Cannot create filter using input data")
 
     rule = {
         "Expiration": {"Date": expiration_date},
-        "ID": f"delete_{prefix}_{value}".replace("/", "_"),
+        "ID": f"delete_{prefix}_{value}".replace("/", "_").replace(".", "_"),
         "Filter": filter,
         "Status": "Enabled",
     }
@@ -76,7 +108,6 @@ def _update_lifecycle_rule(bucket, rule) -> Dict[str, Any]:
     client = get_s3_client()
     rules = _get_lifecycle_rules(bucket)
     rules.append(rule)
-
     response = client.put_bucket_lifecycle_configuration(
         Bucket="string", LifecycleConfiguration={"Rules": rules}
     )

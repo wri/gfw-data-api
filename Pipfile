@@ -10,7 +10,7 @@ pre-commit = "*"
 detect-secrets = "*"
 pytest = "*"
 pytest-asyncio = "*"
-moto = {editable = true, git = "https://github.com/wri/moto.git",ref = "master"}
+moto = {editable = true, git = "https://github.com/wri/moto.git", ref = "feature/s3_lifecycles"}
 pytest-cov = "*"
 pendulum = "*"
 

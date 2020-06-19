@@ -1,10 +1,8 @@
 import os
-from unittest.mock import patch
 
 import boto3
 import pytest
 
-import app
 import app.tasks.batch as batch
 from app.application import ContextEngine
 from app.crud import datasets, versions
