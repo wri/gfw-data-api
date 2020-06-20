@@ -1,4 +1,4 @@
-from typing import Any, Awaitable, Callable, Dict
+from typing import Any, Awaitable, Callable, Dict, FrozenSet, Tuple
 from uuid import UUID
 
 from ..application import ContextEngine
@@ -7,18 +7,21 @@ from ..models.pydantic.change_log import ChangeLog
 
 # from ..models.pydantic.assets import AssetType
 
-ASSET_PIPELINES: Dict[Any, Any] = {
-    # AssetType.shapefile: shapefile_asset,
-    # AssetType.geopackage: geopackage_asset,
-    # AssetType.ndjson: ndjson_asset,
-    # AssetType.csv: csv_asset,
-    # AssetType.tsv: tsv_asset,
-    # AssetType.dynamic_vector_tile_cache: dynamic_vector_tile_cache_asset,
-    # AssetType.vector_tile_cache: vector_tile_cache_asset,
-    # AssetType.raster_tile_cache: raster_tile_cache_asset,
-    # AssetType.dynamic_raster_tile_cache: dynamic_raster_tile_cache_asset,
-    # AssetType.raster_tile_set: raster_tile_set_asset
-}
+
+ASSET_PIPELINES: FrozenSet[Tuple[Any, Any]] = frozenset(
+    {
+        # AssetType.shapefile: shapefile_asset,
+        # AssetType.geopackage: geopackage_asset,
+        # AssetType.ndjson: ndjson_asset,
+        # AssetType.csv: csv_asset,
+        # AssetType.tsv: tsv_asset,
+        # AssetType.dynamic_vector_tile_cache: dynamic_vector_tile_cache_asset,
+        # AssetType.vector_tile_cache: vector_tile_cache_asset,
+        # AssetType.raster_tile_cache: raster_tile_cache_asset,
+        # AssetType.dynamic_raster_tile_cache: dynamic_raster_tile_cache_asset,
+        # AssetType.raster_tile_set: raster_tile_set_asset
+    }.items()
+)
 
 
 async def create_asset(
@@ -28,18 +31,19 @@ async def create_asset(
     version: str,
     input_data: Dict[str, Any],
     callback: Callable[[Dict[str, Any]], Awaitable[None]],
-    asset_lookup: Dict[Any, Any] = ASSET_PIPELINES,
+    asset_lookup: FrozenSet[Tuple[Any, Any]] = ASSET_PIPELINES,
 ) -> None:
     """
     Call Asset Pipeline.
     Default assets use source_type for identification.
     All other assets use asset_type directly.
     """
+    lookup = dict(asset_lookup)
 
     try:
 
-        if asset_type in asset_lookup.keys():
-            log: ChangeLog = await asset_lookup[asset_type](
+        if asset_type in lookup.keys():
+            log: ChangeLog = await lookup[asset_type](
                 dataset, version, asset_id, input_data, callback
             )
 

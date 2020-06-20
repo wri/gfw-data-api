@@ -19,11 +19,13 @@ from .raster_source_assets import raster_source_asset
 from .table_source_assets import table_source_asset
 from .vector_source_assets import vector_source_asset
 
-DEFAULT_ASSET_PIPELINES = {
-    SourceType.vector: vector_source_asset,
-    SourceType.table: table_source_asset,
-    SourceType.raster: raster_source_asset,
-}
+DEFAULT_ASSET_PIPELINES = frozenset(
+    {
+        SourceType.vector: vector_source_asset,
+        SourceType.table: table_source_asset,
+        SourceType.raster: raster_source_asset,
+    }.items()
+)
 
 
 async def create_default_asset(
