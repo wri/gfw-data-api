@@ -1,10 +1,11 @@
-from typing import Any, Dict
+from typing import Any, Awaitable, Callable, Dict
 from uuid import UUID
 
-from app.application import ContextEngine
-from app.crud import assets, versions
-from app.models.pydantic.assets import AssetType
-from app.models.pydantic.change_log import ChangeLog
+from ..application import ContextEngine
+from ..crud import assets, versions
+from ..models.pydantic.change_log import ChangeLog
+
+# from ..models.pydantic.assets import AssetType
 
 ASSET_PIPELINES: Dict[Any, Any] = {
     # AssetType.shapefile: shapefile_asset,
@@ -20,12 +21,13 @@ ASSET_PIPELINES: Dict[Any, Any] = {
 }
 
 
-async def asset_factory(
+async def create_asset(
     asset_type: str,
     asset_id: UUID,
     dataset: str,
     version: str,
     input_data: Dict[str, Any],
+    callback: Callable[[Dict[str, Any]], Awaitable[None]],
     asset_lookup: Dict[Any, Any] = ASSET_PIPELINES,
 ) -> None:
     """
@@ -38,7 +40,7 @@ async def asset_factory(
 
         if asset_type in asset_lookup.keys():
             log: ChangeLog = await asset_lookup[asset_type](
-                dataset, version, input_data
+                dataset, version, asset_id, input_data, callback
             )
 
         else:
@@ -46,11 +48,12 @@ async def asset_factory(
 
     # Make sure asset status is set to `failed` in case there is an uncaught Exception
     except Exception:
-        await assets.update_asset(asset_id, status="failed")
+        async with ContextEngine("WRITE"):
+            await assets.update_asset(asset_id, status="failed")
         raise
 
     # Update version status and change log
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         await versions.update_version(
             dataset, version, status=log.status, change_log=[log.dict()]
         )

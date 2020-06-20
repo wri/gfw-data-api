@@ -12,17 +12,17 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
 from fastapi.responses import ORJSONResponse
 
-from app.crud import assets
-from app.models.orm.assets import Asset as ORMAsset
-from app.models.pydantic.assets import (
+from ...crud import assets
+from ...models.orm.assets import Asset as ORMAsset
+from ...models.pydantic.assets import (
     Asset,
     AssetCreateIn,
     AssetResponse,
     AssetsResponse,
     AssetType,
 )
-from app.routes import dataset_dependency, is_admin, version_dependency
-from app.tasks.assets import asset_factory
+from ...routes import dataset_dependency, is_admin, version_dependency
+from ...tasks.assets import create_asset
 
 router = APIRouter()
 
@@ -139,7 +139,7 @@ async def add_new_asset(
     """
     input_data = request.dict()
     row: ORMAsset = await assets.create_asset(dataset, version, **input_data)
-    background_tasks.add_task(asset_factory, row.asset_id, dataset, version, input_data)
+    background_tasks.add_task(create_asset, row.asset_id, dataset, version, input_data)
     response.headers["Location"] = f"/{dataset}/{version}/asset/{row.asset_id}"
     return await _asset_response(row)
 

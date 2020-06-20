@@ -4,9 +4,9 @@ from typing import Any, Dict, List, Union
 
 from pydantic.main import BaseModel
 
-from app.application import db
-from app.models.orm.base import Base
-from app.models.pydantic.change_log import ChangeLog
+from ..application import db
+from ..models.orm.base import Base
+from ..models.pydantic.change_log import ChangeLog
 
 
 async def update_data(

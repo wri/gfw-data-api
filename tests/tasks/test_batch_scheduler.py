@@ -61,7 +61,7 @@ async def test_batch_scheduler(batch_client):
         "metadata": {},
     }
 
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         await datasets.create_dataset(dataset)
         await versions.create_version(dataset, version, **input_data)
 

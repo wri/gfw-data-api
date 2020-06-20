@@ -12,17 +12,17 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from fastapi.responses import ORJSONResponse
 
-from app.crud import versions
-from app.models.orm.assets import Asset as ORMAsset
-from app.models.orm.versions import Version as ORMVersion
-from app.models.pydantic.versions import (
+from ...crud import versions
+from ...models.orm.assets import Asset as ORMAsset
+from ...models.orm.versions import Version as ORMVersion
+from ...models.pydantic.versions import (
     Version,
     VersionCreateIn,
     VersionResponse,
     VersionUpdateIn,
 )
-from app.routes import dataset_dependency, is_admin, version_dependency
-from app.tasks.default_assets import create_default_asset
+from ...routes import dataset_dependency, is_admin, version_dependency
+from ...tasks.default_assets import create_default_asset
 
 router = APIRouter()
 

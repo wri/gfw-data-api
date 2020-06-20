@@ -49,7 +49,7 @@ async def test_vector_source_asset(batch_client):
     }
 
     # Create dataset and version records
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         await datasets.create_dataset(dataset)
         await db.status(CreateSchema(dataset))
         await db.status(f"GRANT USAGE ON SCHEMA {dataset} TO {READER_USERNAME};")
@@ -75,12 +75,12 @@ async def test_vector_source_asset(batch_client):
     assert row.status == "saved"
 
     # There should be a table called "test"."v1.1.1" with one row
-    async with ContextEngine("GET"):
+    async with ContextEngine("READ"):
         count = await db.scalar(db.text('SELECT count(*) FROM test."v1.1.1"'))
     assert count == 1
 
     # The geometry should also be accessible via geostore
-    async with ContextEngine("GET"):
+    async with ContextEngine("READ"):
         rows: List[Geostore] = await Geostore.query.gino.all()
 
     assert len(rows) == 1
@@ -159,7 +159,7 @@ async def test_table_source_asset(batch_client):
     }
 
     # Create dataset and version records
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         await datasets.create_dataset(dataset)
         await db.status(CreateSchema(dataset))
         await db.status(f"GRANT USAGE ON SCHEMA {dataset} TO {READER_USERNAME};")
@@ -196,7 +196,7 @@ async def test_table_source_asset(batch_client):
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
-    async with ContextEngine("GET"):
+    async with ContextEngine("READ"):
         count = await db.scalar(
             db.text(
                 f"""

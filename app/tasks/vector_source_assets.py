@@ -1,23 +1,23 @@
 import os
-from typing import Any, Dict, List
+from typing import Any, Awaitable, Callable, Dict, List
+from uuid import UUID
 
-from app.application import ContextEngine
-from app.crud import assets
-from app.models.pydantic.assets import AssetTaskCreate
-from app.models.pydantic.change_log import ChangeLog
-from app.models.pydantic.creation_options import VectorSourceCreationOptions
-from app.models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
-from app.models.pydantic.metadata import DatabaseTableMetadata
-from app.tasks import update_asset_field_metadata, update_asset_status, writer_secrets
-from app.tasks.batch import execute
+from ..models.pydantic.change_log import ChangeLog
+from ..models.pydantic.creation_options import VectorSourceCreationOptions
+from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
+from . import update_asset_field_metadata, update_asset_status, writer_secrets
+from .batch import execute
 
 
 async def vector_source_asset(
-    dataset, version, input_data, callback=None,  # TODO delete
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    input_data: Dict[str, Any],
+    callback: Callable[[Dict[str, Any]], Awaitable[None]],  # TODO delete
 ) -> ChangeLog:
 
     source_uris: List[str] = input_data["source_uri"]
-    metadata: Dict[str, Any] = input_data["metadata"]
 
     if len(source_uris) != 1:
         raise AssertionError("Vector sources only support one input file")
@@ -33,19 +33,6 @@ async def vector_source_asset(
     else:
         layer, _ = os.path.splitext(os.path.basename(source_uri))
         layers = [layer]
-
-    data = AssetTaskCreate(
-        asset_type="Database table",
-        dataset=dataset,
-        version=version,
-        asset_uri=f"/{dataset}/{version}/features",
-        is_managed=True,
-        creation_options=creation_options,
-        metadata=DatabaseTableMetadata(**metadata),
-    )
-
-    async with ContextEngine("PUT"):
-        new_asset = await assets.create_asset(**data.dict())
 
     create_vector_schema_job = GdalPythonImportJob(
         job_name="import_vector_data",
@@ -136,8 +123,8 @@ async def vector_source_asset(
     )
 
     await update_asset_field_metadata(
-        dataset, version, new_asset.asset_id,
+        dataset, version, asset_id,
     )
-    await update_asset_status(new_asset.asset_id, log.status)
+    await update_asset_status(asset_id, log.status)
 
     return log

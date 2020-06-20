@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Awaitable, Callable, Dict, Optional
 from typing.io import IO
 
 from ..application import ContextEngine
@@ -14,7 +14,7 @@ from ..models.pydantic.metadata import DatabaseTableMetadata
 from ..models.pydantic.sources import SourceType
 from ..utils.aws import get_s3_client
 from ..utils.path import split_s3_path
-from .assets import asset_factory
+from .assets import create_asset
 from .raster_source_assets import raster_source_asset
 from .table_source_assets import table_source_asset
 from .vector_source_assets import vector_source_asset
@@ -27,7 +27,11 @@ DEFAULT_ASSET_PIPELINES = {
 
 
 async def create_default_asset(
-    dataset: str, version: str, input_data: Dict[str, Any], file_obj: Optional[IO],
+    dataset: str,
+    version: str,
+    input_data: Dict[str, Any],
+    file_obj: Optional[IO],
+    callback: Callable[[Dict[str, Any]], Awaitable[None]],
 ) -> None:
     source_type = input_data["source_type"]
     source_uri = input_data["source_uri"]
@@ -37,12 +41,12 @@ async def create_default_asset(
     # Copy attached file to data lake
     if file_obj:
         log = await _inject_file(file_obj, source_uri[0])
-        async with ContextEngine("PUT"):
+        async with ContextEngine("WRITE"):
             await versions.update_version(dataset, version, change_log=[log.dict()])
 
     if log and log.status == "failed":
         # Update version status and change log
-        async with ContextEngine("PUT"):
+        async with ContextEngine("WRITE"):
             await versions.update_version(
                 dataset, version, status=status, change_log=[log.dict()]
             )
@@ -50,17 +54,26 @@ async def create_default_asset(
     # register asset and start the pipeline
     else:
         try:
-            await default_asset_factory(
-                source_type, dataset=dataset, version=version, input_data=input_data
+            await _create_default_asset(
+                source_type,
+                dataset=dataset,
+                version=version,
+                input_data=input_data,
+                callback=callback,
             )
         # Make sure version status is set to `failed` in case there is an uncaught Exception
         except Exception:
-            await versions.update_version(dataset, version, status="failed")
+            async with ContextEngine("WRITE"):
+                await versions.update_version(dataset, version, status="failed")
             raise
 
 
-async def default_asset_factory(
-    source_type: str, dataset: str, version: str, input_data: Dict[str, Any]
+async def _create_default_asset(
+    source_type: str,
+    dataset: str,
+    version: str,
+    input_data: Dict[str, Any],
+    callback: Callable[[Dict[str, Any]], Awaitable[None]],
 ):
     asset_type = _default_asset_type(source_type)
     metadata = _default_asset_metadata(source_type, input_data["metadata"])
@@ -82,15 +95,16 @@ async def default_asset_factory(
         metadata=metadata,
     )
 
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         new_asset = await assets.create_asset(**data.dict())
 
-    return await asset_factory(
+    return await create_asset(
         source_type,
         new_asset.asset_id,
         dataset=dataset,
         version=version,
         input_data=input_data,
+        callback=callback,
         asset_lookup=DEFAULT_ASSET_PIPELINES,
     )
 

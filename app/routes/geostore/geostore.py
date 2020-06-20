@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Path
 from fastapi.responses import ORJSONResponse
 
-from app.routes import dataset_dependency, version_dependency
+from ...routes import dataset_dependency, version_dependency
 
 router = APIRouter()
 

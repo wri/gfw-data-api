@@ -1,6 +1,6 @@
 import boto3
 
-from app.settings.globals import AWS_REGION
+from ..settings.globals import AWS_REGION
 
 # S3_CLIENT = None
 # BATCH_CLIENT = None

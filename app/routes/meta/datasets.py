@@ -8,18 +8,18 @@ from fastapi import APIRouter, Depends, Response
 from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
-from app.application import db
-from app.crud import datasets, versions
-from app.models.orm.datasets import Dataset as ORMDataset
-from app.models.pydantic.datasets import (
+from ...application import db
+from ...crud import datasets, versions
+from ...models.orm.datasets import Dataset as ORMDataset
+from ...models.pydantic.datasets import (
     Dataset,
     DatasetCreateIn,
     DatasetResponse,
     DatasetsResponse,
     DatasetUpdateIn,
 )
-from app.routes import dataset_dependency, is_admin
-from app.settings.globals import READER_USERNAME
+from ...routes import dataset_dependency, is_admin
+from ...settings.globals import READER_USERNAME
 
 router = APIRouter()
 

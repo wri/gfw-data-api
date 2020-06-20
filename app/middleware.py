@@ -13,8 +13,11 @@ async def set_db_mode(request: Request, call_next):
     Write requests use the write pool.
 
     """
-
-    async with ContextEngine(request.method):
+    if request.method in ["PUT", "PATCH", "POST", "DELETE"]:
+        method = "WRITE"
+    else:
+        method = "READ"
+    async with ContextEngine(method):
         response = await call_next(request)
     return response
 
