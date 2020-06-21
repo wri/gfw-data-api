@@ -1,18 +1,4 @@
-from typing import Any, Dict, List
-
-from fastapi import APIRouter, BackgroundTasks, Depends, Response
-from fastapi.responses import ORJSONResponse
-
-from ..crud import versions
-from ..models.orm.assets import Asset as ORMAsset
-from ..models.orm.versions import Version as ORMVersion
-from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.versions import Version, VersionCreateIn, VersionUpdateIn
-from ..routes import dataset_dependency, is_admin, version_dependency
-from ..tasks.default_assets import create_default_asset
-
-router = APIRouter()
-description = """
+"""
 Datasets can have different versions. Versions aer usually
 linked to different releases. Versions can be either mutable (data can change) or immutable (data
 cannot change). By default versions are immutable. Every version needs one or many source files.
@@ -21,22 +7,37 @@ users can create additional assets and activate additional endpoints to view and
 Available assets and endpoints to choose from depend on the source type.
 """
 
+from typing import Any, Dict, List
 
-# TODO:
-#  - inherit/ override default asset type for new versions
+from fastapi import APIRouter, BackgroundTasks, Depends, Response
+from fastapi.responses import ORJSONResponse
+
+from app.crud import versions
+from app.models.orm.assets import Asset as ORMAsset
+from app.models.orm.versions import Version as ORMVersion
+from app.models.pydantic.versions import (
+    Version,
+    VersionCreateIn,
+    VersionResponse,
+    VersionUpdateIn,
+)
+from app.routes import dataset_dependency, is_admin, version_dependency
+from app.tasks.default_assets import create_default_asset
+
+router = APIRouter()
 
 
 @router.get(
     "/{dataset}/{version}",
     response_class=ORJSONResponse,
-    tags=["Version"],
-    response_model=Version,
+    tags=["Versions"],
+    response_model=VersionResponse,
 )
 async def get_version(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
-):
+) -> VersionResponse:
     """Get basic metadata for a given version."""
 
     row: ORMVersion = await versions.get_version(dataset, version)
@@ -47,8 +48,8 @@ async def get_version(
 @router.put(
     "/{dataset}/{version}",
     response_class=ORJSONResponse,
-    tags=["Version"],
-    response_model=Version,
+    tags=["Versions"],
+    response_model=VersionResponse,
     status_code=202,
 )
 async def add_new_version(
@@ -79,7 +80,7 @@ async def add_new_version(
     # @router.post(
     #     "/{dataset}",
     #     response_class=ORJSONResponse,
-    #     tags=["Version"],
+    #     tags=["Versions"],
     #     response_model=Version,
     #     status_code=202,
     # )
@@ -140,8 +141,8 @@ async def add_new_version(
 @router.patch(
     "/{dataset}/{version}",
     response_class=ORJSONResponse,
-    tags=["Version"],
-    response_model=Version,
+    tags=["Versions"],
+    response_model=VersionResponse,
 )
 async def update_version(
     *,
@@ -170,8 +171,8 @@ async def update_version(
 @router.delete(
     "/{dataset}/{version}",
     response_class=ORJSONResponse,
-    tags=["Version"],
-    response_model=Version,
+    tags=["Versions"],
+    response_model=VersionResponse,
 )
 async def delete_version(
     *,
@@ -189,30 +190,15 @@ async def delete_version(
     return await _version_response(dataset, version, row)
 
 
-@router.post("/{dataset}/{version}/change_log", tags=["Version"])
-async def version_history(
-    *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
-    request: ChangeLog,
-    is_authorized: bool = Depends(is_admin),
-):
-    """Log changes for given dataset version."""
-
-    message = [request.dict()]
-
-    return await versions.update_version(dataset, version, change_log=message)
-
-
 async def _version_response(
     dataset: str, version: str, data: ORMVersion
-) -> Dict[str, Any]:
+) -> VersionResponse:
     """Assure that version responses are parsed correctly and include associated assets."""
 
     assets: List[ORMAsset] = await ORMAsset.select("asset_type", "asset_uri").where(
         ORMAsset.dataset == dataset
     ).where(ORMAsset.version == version).gino.all()
-    response = Version.from_orm(data).dict(by_alias=True)
-    response["assets"] = [(asset[0], asset[1]) for asset in assets]
+    data = Version.from_orm(data).dict(by_alias=True)
+    data["assets"] = [(asset[0], asset[1]) for asset in assets]
 
-    return response
+    return VersionResponse(data=data)

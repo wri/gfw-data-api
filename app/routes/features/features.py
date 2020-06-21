@@ -1,16 +1,17 @@
+"""
+Explore data entries for a given dataset version
+(vector and tablular data only) in a classic RESTful way
+"""
+
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
 
 from app.routes import dataset_dependency, version_dependency
 
 router = APIRouter()
-description = """Explore data entries for a given dataset version
-                  (vector and tablular data only) in a classic RESTful way"""
 
 
-@router.get(
-    "/{dataset}/{version}/features", response_class=ORJSONResponse, tags=["Features"],
-)
+@router.get("/{dataset}/{version}/features", response_class=ORJSONResponse)
 async def get_features(
     *,
     dataset: str = Depends(dataset_dependency),

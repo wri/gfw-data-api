@@ -9,7 +9,7 @@ RUN \
         docker \
         openrc \
         go \
-    && pip3 install awscli
+    && pip3 install awscli==1.18.80
 
 RUN rc-update add docker boot
 RUN GO111MODULE="on" go get github.com/segmentio/terraform-docs@v0.9.1
