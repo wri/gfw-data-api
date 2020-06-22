@@ -193,4 +193,4 @@ async def _asset_response(asset_orm: ORMAsset) -> AssetResponse:
 async def _assets_response(assets_orm: List[ORMAsset]) -> AssetsResponse:
     """Serialize ORM response."""
     data = [Asset.from_orm(asset) for asset in assets_orm]  # .dict(by_alias=True)
-    return AssetResponse(data=data)
+    return AssetsResponse(data=data)
