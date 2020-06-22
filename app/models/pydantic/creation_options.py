@@ -128,6 +128,11 @@ class VectorSourceCreationOptions(BaseModel):
         ],
         description="List of indices to add to table",
     )
+    create_dynamic_vector_tile_cache: bool = Field(
+        True,
+        description="By default, vector sources will implicitly create a dynamic vector tile cache. "
+        "Disable this option by setting value to `false`",
+    )
 
 
 class TableSourceCreationOptions(BaseModel):
@@ -150,6 +155,30 @@ class TableSourceCreationOptions(BaseModel):
     table_schema: Optional[List[FieldType]] = Field(
         None,
         description="List of Field Types. Missing field types will be inferred. (optional)",
+    )
+    create_dynamic_vector_tile_cache: bool = Field(
+        True,
+        description="By default, table sources will implicitly create a dynamic vector tile cache "
+        "when geographic columns are present"
+        "Disable this option by setting value to `false`",
+    )
+
+
+class DynamicVectorTileCacheCreationOptions(BaseModel):
+    min_zoom: int = Field(
+        0, description="Minimum zoom level of tile cache", ge=0, le=22
+    )
+    max_zoom: int = Field(
+        22, description="Maximum zoom level of tile cache", ge=0, le=22
+    )
+
+
+class StaticVectorTileCacheCreationOptions(BaseModel):
+    min_zoom: int = Field(
+        ..., description="Minimum zoom level of tile cache", ge=0, le=22
+    )
+    max_zoom: int = Field(
+        ..., description="Maximum zoom level of tile cache", ge=0, le=22
     )
 
 

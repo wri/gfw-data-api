@@ -6,7 +6,7 @@ are created by the API and users can rely on data integrity. Unmanaged assets ar
 to a dataset version and users must cannot rely on full integrety. We can only assume that unmanaged
 are based on the same version and do not know the processing history."""
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
@@ -26,11 +26,6 @@ from ...routes import dataset_dependency, is_admin, version_dependency
 from ...tasks.assets import create_asset
 
 router = APIRouter()
-
-
-# TODO:
-#  - Assets should have config parameters to allow specifying creation options
-#  -- might be good to have different endpoints for different asset types to be able to validate config params?
 
 
 @router.get(
@@ -179,18 +174,23 @@ async def delete_asset(
 
     Delete selected asset.
     For managed assets, all resources will be deleted. For non-managed assets, only the link will be deleted.
-
     """
     raise NotImplementedError
 
 
 async def _asset_response(asset_orm: ORMAsset) -> AssetResponse:
-    """Serialize ORM response."""
+    """
+
+    Serialize ORM response.
+    """
     data = Asset.from_orm(asset_orm)  # .dict(by_alias=True)
     return AssetResponse(data=data)
 
 
 async def _assets_response(assets_orm: List[ORMAsset]) -> AssetsResponse:
-    """Serialize ORM response."""
+    """
+
+    Serialize ORM response.
+    """
     data = [Asset.from_orm(asset) for asset in assets_orm]  # .dict(by_alias=True)
     return AssetsResponse(data=data)
