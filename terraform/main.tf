@@ -63,7 +63,7 @@ module "batch_tile_cache_image" {
 
 
 module "fargate_autoscaling" {
-  source                    = "git::https://github.com/wri/gfw-terraform-modules.git//modules/fargate_autoscaling?ref=0.1.7"
+  source                    = "git::https://github.com/wri/gfw-terraform-modules.git//modules/fargate_autoscaling?ref=v0.1.7"
   project                   = local.project
   name_suffix               = local.name_suffix
   tags                      = local.tags
