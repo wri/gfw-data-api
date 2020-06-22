@@ -11,7 +11,7 @@ from .middleware import redirect_latest, set_db_mode
 from .routes import security
 from .routes.features import features
 from .routes.geostore import geostore
-from .routes.meta import assets, datasets, versions
+from .routes.meta import assets, datasets, tasks, versions
 from .routes.sql import queries
 
 ###############
@@ -48,6 +48,7 @@ app.include_router(security.router, tags=["Authentication"])
 ###############
 
 meta_routers = (
+    tasks.router,
     datasets.router,
     versions.router,
     assets.router,
