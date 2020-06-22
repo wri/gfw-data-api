@@ -12,8 +12,9 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
 from fastapi.responses import ORJSONResponse
 
-from ...crud import assets
+from ...crud import assets, versions
 from ...models.orm.assets import Asset as ORMAsset
+from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.assets import (
     Asset,
     AssetCreateIn,
@@ -25,6 +26,7 @@ from ...routes import dataset_dependency, is_admin, version_dependency
 from ...tasks.assets import create_asset
 
 router = APIRouter()
+
 
 # TODO:
 #  - Assets should have config parameters to allow specifying creation options
@@ -138,10 +140,26 @@ async def add_new_asset(
 
     """
     input_data = request.dict()
-    row: ORMAsset = await assets.create_asset(dataset, version, **input_data)
-    background_tasks.add_task(create_asset, row.asset_id, dataset, version, input_data)
-    response.headers["Location"] = f"/{dataset}/{version}/asset/{row.asset_id}"
-    return await _asset_response(row)
+
+    orm_version: ORMVersion = await versions.get_version(dataset, version)
+
+    if orm_version.status == "pending":
+        raise HTTPException(
+            status_code=409,
+            detail="Version status is currently `pending`."
+            "Please retry once version is in status `saved`",
+        )
+    elif orm_version.status == "failed":
+        raise HTTPException(
+            status_code=400, detail="Version status is `failed`. Cannot add any assets."
+        )
+    else:
+        row: ORMAsset = await assets.create_asset(dataset, version, **input_data)
+        background_tasks.add_task(
+            create_asset, row.asset_id, dataset, version, input_data
+        )
+        response.headers["Location"] = f"/{dataset}/{version}/asset/{row.asset_id}"
+        return await _asset_response(row)
 
 
 @router.delete(
