@@ -9,25 +9,25 @@ echo "URL: $URL"
 
 BEFORE=`date '+%Y-%m-%d %H:%M:%S'`
 
+# Execute command, save the exit code and output
 COMMAND="$@"
-echo Command: $COMMAND
-
-# Execute command, save exit code
-eval "$COMMAND"
+echo "Command: $COMMAND"
+$COMMAND 2>&1 >> ~/output.log
 EXIT_CODE=$?
+echo EXIT CODE: $EXIT_CODE
 
 AFTER=`date '+%Y-%m-%d %H:%M:%S'`
 
 
 if [[ $EXIT_CODE -eq 0 ]]
 then
-    STATUS="complete"
-    MESSAGE="Successfully ran [ $COMMAND ]"
-    DETAIL="blah"
+    STATUS="success"
+    MESSAGE="Successfully ran command [ $COMMAND ]"
+    DETAIL="None"
 else
-    STATUS="error"
-    MESSAGE="Error: Command [ $COMMAND ] returned exit code $EXIT_CODE"
-    DETAIL="bad blah"
+    STATUS="failure"
+    MESSAGE="Command [ $COMMAND ] returned exit code [ $EXIT_CODE ]"
+    DETAIL="None" # `tail -n100 ~/output.log`
 fi
 
 generate_payload()
@@ -44,8 +44,9 @@ generate_payload()
 EOF
 }
 
-curl -s -X PUT -d "$(generate_payload)" "${URL}"
-#curl -s -X PUT -H "$HEADERS" -d "$(generate_payload)" "$URL"
+echo PAYLOAD: "$(generate_payload)"
+
+curl -s -X PUT -H "${HEADERS}" -d "$(generate_payload)" "${URL}"
 
 sleep 2
 
