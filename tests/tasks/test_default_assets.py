@@ -13,6 +13,7 @@ from app.crud import assets, datasets, versions
 from app.models.orm.geostore import Geostore
 from app.settings.globals import AWS_REGION, READER_USERNAME
 from app.tasks.default_assets import create_default_asset
+from app.utils.aws import get_s3_client
 
 GEOJSON_NAME = "test.geojson"
 GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "..", "fixtures", GEOJSON_NAME)
@@ -88,17 +89,15 @@ async def test_vector_source_asset(batch_client):
 
 
 @pytest.mark.asyncio
-async def test_table_source_asset(batch_client):
+async def test_table_source_asset(client, batch_client):
     # TODO: define what a callback should do
     async def callback(message):
         pass
 
     _, logs = batch_client
 
-    # Upload file to mocked S3 bucket
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-    )
+    # test environment uses moto server
+    s3_client = get_s3_client()
 
     s3_client.create_bucket(Bucket=BUCKET)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
@@ -189,6 +188,7 @@ async def test_table_source_asset(batch_client):
     print(rows[0].metadata)
     assert rows[0].status == "saved"
     assert len(rows[0].metadata["fields_"]) == 33
+    assert rows[0].is_default is True
 
     _assert_fields(
         rows[0].metadata["fields_"], input_data["creation_options"]["table_schema"]

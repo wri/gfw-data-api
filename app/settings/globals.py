@@ -31,6 +31,7 @@ DB_READER_SECRET = json.loads(
 )
 
 ENV = config("ENV", cast=str, default="dev")
+
 DATA_LAKE_BUCKET = config("DATA_LAKE_BUCKET", cast=str, default=None)
 TILE_CACHE_BUCKET = config("TILE_CACHE_BUCKET", cast=str, default=None)
 TILE_CACHE_CLOUDFRONT_ID = config("TILE_CACHE_CLOUDFRONT_ID", cast=str, default=None)
@@ -96,3 +97,5 @@ PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str)
 
 POLL_WAIT_TIME = config("POLL_WAIT_TIME", cast=int, default=30)
 CHUNK_SIZE = config("CHUNK_SIZE", cast=int, default=50)
+
+S3_ENTRYPOINT_URL = config("S3_ENTRYPOINT_URL", cast=str, default=None)

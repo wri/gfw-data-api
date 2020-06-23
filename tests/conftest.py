@@ -144,15 +144,15 @@ class AWSMock(object):
                 print(event["message"])
 
 
-@pytest.fixture(autouse=True)
-def moto_s3():
-    with patch(
-        "app.utils.aws.get_s3_client",
-        return_value=boto3.client(
-            "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-        ),
-    ) as moto_s3:
-        yield moto_s3
+# @pytest.fixture(autouse=True)
+# def moto_s3():
+#     with patch(
+#         "app.utils.aws.get_s3_client",
+#         return_value=boto3.client(
+#             "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+#         ),
+#     ) as moto_s3:
+#         yield moto_s3
 
 
 @pytest.fixture(scope="session", autouse=True)

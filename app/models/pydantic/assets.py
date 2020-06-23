@@ -20,9 +20,10 @@ AssetMetadata = Union[
 
 
 class AssetType(str, Enum):
-    vector_tile_cache = "Vector tile cache"
+    dynamic_vector_tile_cache = "Dynamic vector tile cache"
+    static_vector_tile_cache = "Static vector tile cache"
     raster_tile_cache = "Raster tile cache"
-    raster_tile_set = "Raster tile set (COG/ GeoTIFF)"
+    raster_tile_set = "Raster tile set"
     database_table = "Database table"
     shapefile = "Shapefile"
     geopackage = "Geopackage"
