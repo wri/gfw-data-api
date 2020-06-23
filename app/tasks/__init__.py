@@ -5,6 +5,11 @@ from ..crud import assets as crud_assets
 from ..models.orm.queries.fields import fields
 from ..models.pydantic.metadata import FieldMetadata
 from ..settings.globals import (
+    READER_DBNAME,
+    READER_HOST,
+    READER_PASSWORD,
+    READER_PORT,
+    READER_USERNAME,
     WRITER_DBNAME,
     WRITER_HOST,
     WRITER_PASSWORD,
@@ -18,6 +23,14 @@ writer_secrets = [
     {"name": "PGPORT", "value": WRITER_PORT},
     {"name": "PGDATABASE", "value": WRITER_DBNAME},
     {"name": "PGUSER", "value": WRITER_USERNAME},
+]
+
+reader_secrets = [
+    {"name": "PGPASSWORD", "value": str(READER_PASSWORD)},
+    {"name": "PGHOST", "value": READER_HOST},
+    {"name": "PGPORT", "value": READER_PORT},
+    {"name": "PGDATABASE", "value": READER_DBNAME},
+    {"name": "PGUSER", "value": READER_USERNAME},
 ]
 
 

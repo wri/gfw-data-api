@@ -6,7 +6,7 @@ are created by the API and users can rely on data integrity. Unmanaged assets ar
 to a dataset version and users must cannot rely on full integrety. We can only assume that unmanaged
 are based on the same version and do not know the processing history."""
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query

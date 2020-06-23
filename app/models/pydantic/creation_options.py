@@ -38,6 +38,11 @@ class IndexType(str, Enum):
     hash = "hash"
 
 
+class TileStrategy(str, Enum):
+    continuous = "continuous"
+    discontinuous = "discontinuous"
+
+
 class Index(BaseModel):
     index_type: IndexType
     column_name: str = Field(
@@ -179,6 +184,17 @@ class StaticVectorTileCacheCreationOptions(BaseModel):
     )
     max_zoom: int = Field(
         ..., description="Maximum zoom level of tile cache", ge=0, le=22
+    )
+    field_attributes: Optional[List[str]] = Field(
+        None,
+        description="Field attributes to include in vector tiles. "
+        "If left blank, all fields marked as `is_feature_info` will be included.",
+    )
+
+    tile_strategy: TileStrategy = Field(
+        ...,
+        description="`discontinuous` corresponds to `drop-densest-as-needed` and"
+        "`continuous` corresponds to `coalesce-densest-as-needed`",
     )
 
 
