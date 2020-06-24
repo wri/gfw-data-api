@@ -10,10 +10,10 @@ import requests
 @pytest.mark.asyncio
 async def test_curl(httpd):
     httpd_port = httpd.server_port
-
-    put_resp = requests.put(
-        f"http://localhost:{httpd_port}", data=json.dumps({"hello": "world"})
-    )
+    requests.put(f"http://localhost:{httpd_port}", data=json.dumps({"hello": "world"}))
+    # put_resp = requests.put(
+    #     f"http://localhost:{httpd_port}", data=json.dumps({"hello": "world"})
+    # )
     # put_resp_json = json.loads(put_resp.text)
     # logging.error(f"Put response body: {put_resp_json}")
 

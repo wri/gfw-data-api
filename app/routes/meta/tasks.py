@@ -1,3 +1,9 @@
+"""
+
+Tasks represent the steps performed during asset creation.
+"""
+
+
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -51,7 +57,7 @@ async def update_task(
         version_changelog = ChangeLog(
             date_time=now, status="failed", message="One or more tasks failed"
         )
-        _: ORMVersion = await versions.update_version(
+        await versions.update_version(
             dataset, version, status="failed", change_log=[version_changelog]
         )
 
@@ -64,7 +70,7 @@ async def update_task(
                 all_finished = False
                 break
         if all_finished:
-            asset_row: ORMAsset = await assets.update_asset(
+            asset_row = await assets.update_asset(
                 asset_id, status="success", change_log=[task.change_log]
             )
             dataset, version = asset_row.dataset, asset_row.version
@@ -73,7 +79,7 @@ async def update_task(
                 status="success",
                 message="All tasks completed successfully",
             )
-            _: ORMVersion = await versions.update_version(
+            await versions.update_version(
                 dataset, version, status="success", change_log=[version_changelog]
             )
 

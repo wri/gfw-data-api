@@ -94,6 +94,7 @@ tags_metadata = [
     {"name": "Dataset", "description": datasets.__doc__},
     {"name": "Version", "description": versions.__doc__},
     {"name": "Assets", "description": assets.__doc__},
+    {"name": "Tasks", "description": tasks.__doc__},
     {"name": "Features", "description": features.__doc__},
     {"name": "Query", "description": queries.__doc__},
     {"name": "Geostore", "description": geostore.__doc__},

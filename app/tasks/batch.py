@@ -1,19 +1,16 @@
 from datetime import datetime
-
-# from time import sleep
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Set
+from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional, Set
 
 from fastapi.logger import logger
 
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.jobs import Job
-
-# from ..settings.globals import POLL_WAIT_TIME
 from ..utils.aws import get_batch_client
 
 
 async def execute(
-    jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]
+    jobs: List[Job],
+    callback: Callable[[Dict[str, Any]], Coroutine[Any, Any, Awaitable[None]]],
 ) -> ChangeLog:
 
     try:
@@ -29,7 +26,8 @@ async def execute(
 
 
 async def schedule(
-    jobs: List[Job], callback: Callable[[Dict[str, Any]], Awaitable[None]]
+    jobs: List[Job],
+    callback: Callable[[Dict[str, Any]], Coroutine[Any, Any, Awaitable[None]]],
 ) -> Dict[str, str]:
     """
 

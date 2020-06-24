@@ -326,7 +326,7 @@ def httpd():
         try:
             httpd = server_class(("0.0.0.0", port), handler_class)
             httpd.allow_reuse_address = True
-        except OSError as ex:
+        except OSError:
             # Port hasn't been let go yet
             port += 1
 

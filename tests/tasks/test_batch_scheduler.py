@@ -69,8 +69,8 @@ async def test_batch_scheduler(batch_client, httpd):
     }
 
     async with ContextEngine("PUT"):
-        new_dataset = await datasets.create_dataset(dataset)
-        new_version = await versions.create_version(dataset, version, **input_data)
+        await datasets.create_dataset(dataset)
+        await versions.create_version(dataset, version, **input_data)
         new_asset = await assets.create_asset(
             dataset,
             version,
@@ -187,8 +187,8 @@ async def test_batch_scheduler_with_httpd(batch_client, httpd):
     }
 
     async with ContextEngine("PUT"):
-        new_dataset = await datasets.create_dataset(dataset)
-        new_version = await versions.create_version(dataset, version, **input_data)
+        await datasets.create_dataset(dataset)
+        await versions.create_version(dataset, version, **input_data)
         new_asset = await assets.create_asset(
             dataset,
             version,
@@ -250,7 +250,7 @@ async def test_batch_scheduler_with_httpd(batch_client, httpd):
         async with ContextEngine("PUT"):
             return await assets.update_asset(asset_id, change_log=[message])
 
-    log = await batch.execute([job1, job2, job3, job4], callback)
+    await batch.execute([job1, job2, job3, job4], callback)
 
     from time import sleep
 

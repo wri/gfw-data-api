@@ -14,13 +14,16 @@ from ..settings.globals import (
     WRITER_USERNAME,
 )
 
-writer_secrets = [
+writer_secrets: List[Dict[str, Any]] = [
     {"name": "PGPASSWORD", "value": str(WRITER_PASSWORD)},
     {"name": "PGHOST", "value": WRITER_HOST},
     {"name": "PGPORT", "value": WRITER_PORT},
     {"name": "PGDATABASE", "value": WRITER_DBNAME},
     {"name": "PGUSER", "value": WRITER_USERNAME},
-    {"name": "STATUS_URL", "value": urljoin(API_URL, "tasks")},  # FIXME: Get endpoint dynamically
+    {
+        "name": "STATUS_URL",
+        "value": urljoin(API_URL, "tasks"),
+    },  # FIXME: Get endpoint dynamically
 ]
 
 
