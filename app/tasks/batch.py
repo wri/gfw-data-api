@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional, Set
+from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
+from uuid import UUID
 
 from fastapi.logger import logger
 
@@ -10,7 +11,9 @@ from ..utils.aws import get_batch_client
 
 async def execute(
     jobs: List[Job],
-    callback: Callable[[Dict[str, Any]], Coroutine[Any, Any, Awaitable[None]]],
+    callback: Callable[
+        [Optional[UUID], Dict[str, Any]], Coroutine[Any, Any, Awaitable[None]]
+    ],
 ) -> ChangeLog:
 
     try:
@@ -27,7 +30,9 @@ async def execute(
 
 async def schedule(
     jobs: List[Job],
-    callback: Callable[[Dict[str, Any]], Coroutine[Any, Any, Awaitable[None]]],
+    callback: Callable[
+        [Optional[UUID], Dict[str, Any]], Coroutine[Any, Any, Awaitable[None]]
+    ],
 ) -> Dict[str, str]:
     """
 
@@ -44,12 +49,13 @@ async def schedule(
         if not job.parents:
             scheduled_jobs[job.job_name] = submit_batch_job(job)
             await callback(
+                UUID(scheduled_jobs[job.job_name]),
                 {
                     "date_time": datetime.now(),
                     "status": "pending",
                     "message": f"Scheduled job {job.job_name}",
                     "detail": f"Job ID: {scheduled_jobs[job.job_name]}",
-                }
+                },
             )
 
     if not scheduled_jobs:
@@ -74,23 +80,25 @@ async def schedule(
                 ]
                 scheduled_jobs[job.job_name] = submit_batch_job(job, depends_on)
                 await callback(
+                    UUID(scheduled_jobs[job.job_name]),
                     {
                         "date_time": datetime.now(),
                         "status": "pending",
                         "message": f"Scheduled job {job.job_name}",
                         "detail": f"Job ID: {scheduled_jobs[job.job_name]}, parents: {depends_on}",
-                    }
+                    },
                 )
 
         i += 1
         if i > 10:
             await callback(
+                None,
                 {
                     "date_time": datetime.now(),
                     "status": "failed",
                     "message": "Too many retries while scheduling jobs. Abort.",
                     "detail": f"Failed to schedule jobs {[job.job_name for job in jobs if job.job_name not in scheduled_jobs]}",
-                }
+                },
             )
             raise RecursionError("Too many retries while scheduling jobs. Abort.")
 

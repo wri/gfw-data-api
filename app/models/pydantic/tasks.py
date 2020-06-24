@@ -1,4 +1,5 @@
 from typing import List
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -9,7 +10,7 @@ from .responses import Response
 
 class Task(Base):
     task_id: str
-    asset_id: str
+    asset_id: UUID
     change_log: List[ChangeLog]
 
 
