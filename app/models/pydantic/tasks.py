@@ -1,9 +1,10 @@
-from typing import List, Optional, Tuple
+from typing import List
 
 from pydantic import BaseModel
 
 from .base import Base
 from .change_log import ChangeLog
+from .responses import Response
 
 
 class Task(Base):
@@ -13,5 +14,12 @@ class Task(Base):
 
 
 class TaskUpdateIn(BaseModel):
-    # asset_id: str
     change_log: List[ChangeLog]
+
+
+class TaskResponse(Response):
+    data: Task
+
+
+class TasksResponse(Response):
+    data: List[Task]

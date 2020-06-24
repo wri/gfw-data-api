@@ -85,7 +85,8 @@ module "fargate_autoscaling" {
   task_role_policies = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn, aws_iam_policy.s3_write_data-lake.arn]
   task_execution_role_policies = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
-  data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn]
+  data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
+  data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_policy_arn]
   container_definition = data.template_file.container_definition.rendered
 
 }

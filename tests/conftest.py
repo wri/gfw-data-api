@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.routes import is_admin
+from app.routes import is_admin, is_service_account
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
     AWS_REGION,
@@ -266,6 +266,10 @@ async def is_admin_mocked():
     return True
 
 
+async def is_service_account_mocked():
+    return True
+
+
 @pytest.fixture(autouse=True)
 def client():
     """
@@ -276,6 +280,7 @@ def client():
 
     main(["--raiseerr", "upgrade", "head"])
     app.dependency_overrides[is_admin] = is_admin_mocked
+    app.dependency_overrides[is_service_account] = is_service_account_mocked
 
     with TestClient(app) as client:
         yield client

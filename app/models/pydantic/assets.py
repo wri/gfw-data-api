@@ -19,6 +19,12 @@ AssetMetadata = Union[
 ]
 
 
+class AssetStatus(str, Enum):
+    saved = "saved"
+    pending = "pending"
+    failed = "failed"
+
+
 class AssetType(str, Enum):
     source = "Source"
     vector_tile_cache = "Vector tile cache"
@@ -39,19 +45,13 @@ class AssetType(str, Enum):
     mapbox_item = "Mapbox item"
 
 
-class Status(str, Enum):
-    failed = "failed"
-    pending = "pending"
-    success = "success"
-
-
 class Asset(Base):
     asset_id: UUID
     dataset: str
     version: str
     asset_type: AssetType
     asset_uri: str
-    status: Status
+    status: AssetStatus = AssetStatus.pending
     is_managed: bool
     creation_options: CreationOptions
     metadata: AssetMetadata

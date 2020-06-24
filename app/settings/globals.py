@@ -11,7 +11,7 @@ from ..models.pydantic.database import DatabaseURL
 p: Path = Path(__file__).parents[2] / ".env"
 config: Config = Config(p if p.exists() else None)
 
-empty_secret = {
+empty_db_secret = {
     "dbInstanceIdentifier": None,
     "dbname": None,
     "engine": None,
@@ -21,13 +21,19 @@ empty_secret = {
     "username": None,
 }
 
+empty_sa_secret = {"email": None, "token": None}
+
 # As of writing, Fargate doesn't support to fetch secrets by key.
 # Only entire secret object can be obtained.
 DB_WRITER_SECRET = json.loads(
-    config("DB_WRITER_SECRET", cast=str, default=json.dumps(empty_secret))
+    config("DB_WRITER_SECRET", cast=str, default=json.dumps(empty_db_secret))
 )
 DB_READER_SECRET = json.loads(
-    config("DB_READER_SECRET", cast=str, default=json.dumps(empty_secret))
+    config("DB_READER_SECRET", cast=str, default=json.dumps(empty_db_secret))
+)
+
+SERVICE_ACCOUNT_SECRET = json.loads(
+    config("SERVICE_ACCOUNT_SECRET", cast=str, default=json.dumps(empty_sa_secret))
 )
 
 ENV = config("ENV", cast=str, default="dev")
@@ -95,3 +101,7 @@ PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str)
 POLL_WAIT_TIME = config("POLL_WAIT_TIME", cast=int, default=30)
 CHUNK_SIZE = config("CHUNK_SIZE", cast=int, default=50)
 API_URL = config("API_URL", cast=str)
+
+SERVICE_ACCOUNT_TOKEN = config(
+    "SERVICE_ACCOUNT_TOKEN", cast=str, default=SERVICE_ACCOUNT_SECRET["token"]
+)
