@@ -28,7 +28,7 @@ router = APIRouter()
 )
 async def get_task(*, task_id) -> TaskResponse:
     row = await tasks.get_task(task_id)
-    return await _task_response(row)
+    return _task_response(row)
 
 
 @router.patch(
