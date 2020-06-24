@@ -45,8 +45,8 @@ data "template_file" "container_definition" {
     pixetl_job_definition     = data.terraform_remote_state.pixetl.outputs.job_definition_arn
     pixetl_job_queue          = data.terraform_remote_state.pixetl.outputs.job_queue_arn
 
-    service_url =""
-    api_token_secret_arn = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
+    service_url               = local.service_url
+    api_token_secret_arn      = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
 
   }
 }

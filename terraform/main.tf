@@ -23,6 +23,7 @@ locals {
   project               = "gfw-data-api"
   aurora_instance_class = data.terraform_remote_state.core.outputs.aurora_cluster_instance_class
   aurora_max_vcpus      = local.aurora_instance_class == "db.t3.medium" ? 2 : local.aurora_instance_class == "db.r4.large" ? 2 : local.aurora_instance_class == "db.r4.xlarge" ? 4 : local.aurora_instance_class == "db.r4.2xlarge" ? 8 : local.aurora_instance_class == "db.r4.4xlarge" ? 16 : local.aurora_instance_class == "db.r4.8xlarge" ? 32 : local.aurora_instance_class == "db.r4.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.large" ? 2 : local.aurora_instance_class == "db.r5.xlarge" ? 4 : local.aurora_instance_class == "db.r5.2xlarge" ? 8 : local.aurora_instance_class == "db.r5.4xlarge" ? 16 : local.aurora_instance_class == "db.r5.8xlarge" ? 32 : local.aurora_instance_class == "db.r5.12xlarge" ? 48 : local.aurora_instance_class == "db.r5.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.24xlarge" ? 96 : ""
+  service_url           = var.environment == "dev" ? "http://${module.fargate_autoscaling.lb_dns_name}" : var.service_url
 }
 
 
