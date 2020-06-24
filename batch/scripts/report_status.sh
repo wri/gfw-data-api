@@ -1,34 +1,35 @@
 #!/bin/bash
+COMMAND="$@"
 
 # ADMIN_TOKEN, STATUS_URL are put in the env from WRITER_SECRETS
 # AWS_BATCH_JOB_ID is put in the env by AWS Batch/moto
 HEADERS="Authorization: Bearer $ADMIN_TOKEN"
 URL=${STATUS_URL}/${AWS_BATCH_JOB_ID}
-
 echo "URL: $URL"
 
-BEFORE=`date '+%Y-%m-%d %H:%M:%S'`
-
-# Execute command, save the exit code and output
-COMMAND="$@"
-echo "Command: $COMMAND"
-$COMMAND 2>&1 >> ~/output.log
+# Execute command, save the exit code and output (stdout AND stderr)
+OUTPUT=$($COMMAND 2>&1)
 EXIT_CODE=$?
-echo EXIT CODE: $EXIT_CODE
 
-AFTER=`date '+%Y-%m-%d %H:%M:%S'`
+echo COMMAND EXIT CODE: $EXIT_CODE
+echo OUTPUT: $OUTPUT
 
+echo $OUTPUT | grep -i error
+GREP_EXIT_CODE=$?
 
-if [[ $EXIT_CODE -eq 0 ]]
-then
+echo GREP EXIT CODE: $GREP_EXIT_CODE
+
+if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
     STATUS="success"
     MESSAGE="Successfully ran command [ $COMMAND ]"
     DETAIL="None"
 else
     STATUS="failure"
-    MESSAGE="Command [ $COMMAND ] returned exit code [ $EXIT_CODE ]"
-    DETAIL="None" # `tail -n100 ~/output.log`
+    MESSAGE="Command [ $COMMAND ] encountered errors"
+    DETAIL="None" # Would be nice to attach properly escaped output here
 fi
+
+AFTER=`date '+%Y-%m-%d %H:%M:%S'`
 
 generate_payload()
 {
@@ -48,6 +49,8 @@ echo PAYLOAD: "$(generate_payload)"
 
 curl -s -X PUT -H "${HEADERS}" -d "$(generate_payload)" "${URL}"
 
-sleep 2
-
-exit $EXIT_STATUS
+if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
+    exit 0
+else
+    exit 1
+fi
