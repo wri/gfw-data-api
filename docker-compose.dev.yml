@@ -33,6 +33,7 @@ services:
       - DATA_LAKE_JOB_QUEUE=data_lake_jq
       - TILE_CACHE_JOB_QUEUE=tile_cache_jq
       - PIXETL_JOB_QUEUE=pixetl_jq
+      - API_URL="http://app_dev:80"
     ports:
       - 8008:80
     entrypoint: wait_for_postgres.sh /start-reload.sh
