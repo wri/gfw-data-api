@@ -97,62 +97,34 @@ async def get_asset(
     return await _asset_response(row)
 
 
-@router.get(
-    "/{dataset}/{version}/assets/{asset_id}/tasks",
-    response_class=ORJSONResponse,
-    tags=["Assets"],
-    response_model=AssetResponse,
-)
-async def get_asset_tasks(
-    *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
-    asset_id: UUID = Path(...),
-) -> TasksResponse:
-    """Get a specific asset."""
-
-    row: ORMAsset = await assets.get_asset(asset_id)
-    if row.dataset != dataset and row.version != version:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Could not find requested asset {dataset}/{version}/{asset_id}",
-        )
-    rows: List[ORMTask] = await tasks.get_tasks(asset_id)
-    return await _tasks_response(rows)
-
-
-@router.get(
-    "/assets",
-    response_class=ORJSONResponse,
-    tags=["Assets"],
-    response_model=AssetsResponse,
-)
-async def get_assets_root(
-    *, asset_type: Optional[AssetType] = Query(None, title="Filter by Asset Type")
-) -> AssetsResponse:
-    """
-    Get all assets.
-    """
-    if asset_type:
-        rows: List[ORMAsset] = await assets.get_assets_by_type(asset_type)
-    else:
-        rows = await assets.get_all_assets()
-
-    return await _assets_response(rows)
-
-
-@router.get(
-    "assets/{asset_id}",
-    response_class=ORJSONResponse,
-    tags=["Assets"],
-    response_model=AssetResponse,
-)
-async def get_asset_root(*, asset_id: UUID = Path(...)) -> AssetResponse:
-    """
-    Get a specific asset.
-    """
-    row: ORMAsset = await assets.get_asset(asset_id)
-    return await _asset_response(row)
+# @router.get(
+#     "/assets",
+#     response_class=ORJSONResponse,
+#     tags=["Assets"],
+#     response_model=AssetsResponse,
+# )
+# async def get_assets_root(
+#     *, asset_type: Optional[AssetType] = Query(None, title="Filter by Asset Type")
+# ) -> AssetsResponse:
+#     """Get all assets."""
+#     if asset_type:
+#         rows: List[ORMAsset] = await assets.get_assets_by_type(asset_type)
+#     else:
+#         rows = await assets.get_all_assets()
+#
+#     return await _assets_response(rows)
+#
+#
+# @router.get(
+#     "assets/{asset_id}",
+#     response_class=ORJSONResponse,
+#     tags=["Assets"],
+#     response_model=AssetResponse,
+# )
+# async def get_asset_root(*, asset_id: UUID = Path(...)) -> AssetResponse:
+#     """Get a specific asset."""
+#     row: ORMAsset = await assets.get_asset(asset_id)
+#     return await _asset_response(row)
 
 
 @router.get(

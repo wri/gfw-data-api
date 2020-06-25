@@ -1,20 +1,22 @@
 """
 
 Tasks represent the steps performed during asset creation.
+You can view a single tasks or all tasks associated with as specific asset.
+Only _service accounts_ can create or update tasks.
 """
 
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 
 from ...crud import assets, tasks, versions
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.tasks import Task as ORMTask
 from ...models.pydantic.change_log import ChangeLog
-from ...models.pydantic.tasks import TaskResponse, TaskUpdateIn
+from ...models.pydantic.tasks import TaskResponse, TasksResponse, TaskUpdateIn
 from ...routes import is_service_account
 
 router = APIRouter()
@@ -23,23 +25,38 @@ router = APIRouter()
 @router.get(
     "/tasks/{task_id}",
     response_class=ORJSONResponse,
-    tags=["Task"],
+    tags=["Tasks"],
     response_model=TaskResponse,
 )
-async def get_task(*, task_id) -> TaskResponse:
+async def get_task(*, task_id: UUID = Path(...)) -> TaskResponse:
+    """
+    Get single tasks by task ID
+    """
     row = await tasks.get_task(task_id)
     return _task_response(row)
+
+
+@router.get(
+    "assets/{asset_id}",
+    response_class=ORJSONResponse,
+    tags=["Tasks"],
+    response_model=TasksResponse,
+)
+async def get_asset_tasks_root(*, asset_id: UUID = Path(...)) -> TasksResponse:
+    """Get all Tasks for selected asset"""
+    rows: List[ORMTask] = await tasks.get_tasks(asset_id)
+    return _tasks_response(rows)
 
 
 @router.patch(
     "/tasks/{task_id}",
     response_class=ORJSONResponse,
-    tags=["Task"],
+    tags=["Tasks"],
     response_model=TaskResponse,
 )
 async def update_task(
     *,
-    task_id: UUID,
+    task_id: UUID = Path(...),
     request: TaskUpdateIn,
     is_service_account: bool = Depends(is_service_account),
 ) -> TaskResponse:
@@ -151,3 +168,9 @@ def _task_response(data: ORMTask) -> TaskResponse:
     """Assure that task responses are parsed correctly and include associated assets."""
 
     return TaskResponse(data=data)
+
+
+def _tasks_response(data: List[ORMTask]) -> TasksResponse:
+    """Assure that tasks responses are parsed correctly and include associated assets."""
+
+    return TasksResponse(data=data)
