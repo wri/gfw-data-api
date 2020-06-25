@@ -107,8 +107,7 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
       shift
       echo "Starting terraform apply..."
       terraform apply \
-        "terraform.tfplan" \
-        "$@"
+        "terraform.tfplan"
       echo "Terraform apply finished."
       ;;
     destroy)

@@ -1,10 +1,8 @@
 import os
-from unittest.mock import patch
 
 import boto3
 import pytest
 
-import app
 import app.tasks.batch as batch
 from app.application import ContextEngine
 from app.crud import datasets, versions
@@ -61,7 +59,7 @@ async def test_batch_scheduler(batch_client):
         "metadata": {},
     }
 
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         await datasets.create_dataset(dataset)
         await versions.create_version(dataset, version, **input_data)
 

@@ -1,10 +1,15 @@
 from typing import Any, Dict, List
 
 from ..application import ContextEngine, db
-from ..crud import assets
+from ..crud import assets as crud_assets
 from ..models.orm.queries.fields import fields
 from ..models.pydantic.metadata import FieldMetadata
 from ..settings.globals import (
+    READER_DBNAME,
+    READER_HOST,
+    READER_PASSWORD,
+    READER_PORT,
+    READER_USERNAME,
     WRITER_DBNAME,
     WRITER_HOST,
     WRITER_PASSWORD,
@@ -18,6 +23,14 @@ writer_secrets = [
     {"name": "PGPORT", "value": WRITER_PORT},
     {"name": "PGDATABASE", "value": WRITER_DBNAME},
     {"name": "PGUSER", "value": WRITER_USERNAME},
+]
+
+reader_secrets = [
+    {"name": "PGPASSWORD", "value": str(READER_PASSWORD)},
+    {"name": "PGHOST", "value": READER_HOST},
+    {"name": "PGPORT", "value": READER_PORT},
+    {"name": "PGDATABASE", "value": READER_DBNAME},
+    {"name": "PGUSER", "value": READER_USERNAME},
 ]
 
 
@@ -41,8 +54,8 @@ async def get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]]
 async def update_asset_status(asset_id, status):
     """Update status of asset."""
 
-    async with ContextEngine("PUT"):
-        await assets.update_asset(asset_id, status=status)
+    async with ContextEngine("WRITE"):
+        await crud_assets.update_asset(asset_id, status=status)
 
 
 async def update_asset_field_metadata(dataset, version, asset_id):
@@ -51,5 +64,5 @@ async def update_asset_field_metadata(dataset, version, asset_id):
     field_metadata: List[Dict[str, Any]] = await get_field_metadata(dataset, version)
     metadata = {"fields_": field_metadata}
 
-    async with ContextEngine("PUT"):
-        await assets.update_asset(asset_id, metadata=metadata)
+    async with ContextEngine("WRITE"):
+        await crud_assets.update_asset(asset_id, metadata=metadata)

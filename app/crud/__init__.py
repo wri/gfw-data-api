@@ -1,10 +1,12 @@
 import json
-from typing import Any, Dict, Union
+from copy import deepcopy
+from typing import Any, Dict, List, Union
 
 from pydantic.main import BaseModel
 
-from app.application import db
-from app.models.pydantic.change_log import ChangeLog
+from ..application import db
+from ..models.orm.base import Base
+from ..models.pydantic.change_log import ChangeLog
 
 
 async def update_data(
@@ -36,3 +38,22 @@ async def update_data(
     await row.update(**input_data).apply()
 
     return row
+
+
+def update_metadata(row: Base, parent: Base):
+    _metadata = deepcopy(parent.metadata)
+    filtered_metadata = {
+        key: value for key, value in row.metadata.items() if value is not None
+    }
+    _metadata.update(filtered_metadata)
+    row.metadata = _metadata
+    return row
+
+
+def update_all_metadata(rows: List[Base], parent: Base) -> List[Base]:
+    new_rows = list()
+    for row in rows:
+        update_metadata(row, parent)
+        new_rows.append(row)
+
+    return new_rows

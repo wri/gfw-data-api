@@ -1,14 +1,14 @@
-from typing import Any, Dict, List
+from typing import Any, Awaitable, Callable, Dict
+from uuid import UUID
 
-from app.models.pydantic.change_log import ChangeLog
+from ..models.pydantic.change_log import ChangeLog
 
 
 async def raster_source_asset(
-    dataset,
-    version,
-    source_uri: List[str],
-    config_options,
-    metadata: Dict[str, Any],
-    callback,
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    input_data: Dict[str, Any],
+    callback: Callable[[Dict[str, Any]], Awaitable[None]],
 ) -> ChangeLog:
     pass

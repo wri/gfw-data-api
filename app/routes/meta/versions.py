@@ -6,23 +6,23 @@ These files can be a remote, publicly accessible URL or an uploaded file. Based 
 users can create additional assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
+from typing import Any, Dict, List, Optional
 
-from typing import Any, Dict, List
-
-from fastapi import APIRouter, BackgroundTasks, Depends, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
 
-from app.crud import versions
-from app.models.orm.assets import Asset as ORMAsset
-from app.models.orm.versions import Version as ORMVersion
-from app.models.pydantic.versions import (
+from ...crud import versions
+from ...models.orm.assets import Asset as ORMAsset
+from ...models.orm.versions import Version as ORMVersion
+from ...models.pydantic.versions import (
     Version,
     VersionCreateIn,
     VersionResponse,
     VersionUpdateIn,
 )
-from app.routes import dataset_dependency, is_admin, version_dependency
-from app.tasks.default_assets import create_default_asset
+from ...routes import dataset_dependency, is_admin, version_dependency
+from ...tasks.default_assets import create_default_asset
+from ...tasks.delete_assets import delete_all_assets
 
 router = APIRouter()
 
@@ -184,13 +184,32 @@ async def delete_version(
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
     is_authorized: bool = Depends(is_admin),
+    background_tasks: BackgroundTasks,
 ):
-    """Delete a version."""
+    """
+    Delete a version.
+    Only delete version if it is not tagged as `latest` or if it is the only version associated with dataset.
+    All associated, managed assets will be deleted in consequence.
+    """
+    row: Optional[ORMVersion] = None
+    rows: List[ORMVersion] = await versions.get_versions(dataset)
 
-    row: ORMVersion = await versions.delete_version(dataset, version)
+    for row in rows:
+        if row.version == version:
+            break
 
-    # TODO:
-    #  Delete all managed assets and raw data
+    if row and row.is_latest and len(rows) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Deletion failed."
+            "You can only delete a version tagged as `latest` if no other version of the same dataset exists."
+            "Change `latest` version, or delete all other versions first.",
+        )
+
+    # We check here if the version actually exists before we delete
+    row = await versions.delete_version(dataset, version)
+
+    background_tasks.add_task(delete_all_assets, dataset, version)
 
     return await _version_response(dataset, version, row)
 
