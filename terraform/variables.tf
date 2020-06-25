@@ -15,7 +15,6 @@ variable "log_level" {}
 
 variable "log_retention" { default = 30 }
 
-variable "listener_port" { default = 80 }
 variable "desired_count" { default = 1 }
 variable "fargate_cpu" { default = 256 }
 variable "fargate_memory" { default = 2048 }
