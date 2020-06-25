@@ -1,8 +1,9 @@
 import json
 from typing import Any, Awaitable, Dict, List, Optional
+from uuid import UUID
 
 from app.application import ContextEngine
-from app.crud import assets
+from app.crud import assets, tasks
 from app.models.pydantic.assets import AssetTaskCreate
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import (
@@ -41,7 +42,7 @@ async def table_source_asset(
         new_asset = await assets.create_asset(**data.dict())
 
     asset_id = new_asset.asset_id
-    job_env: List[Dict[str, str]] = writer_secrets + [
+    job_env: List[Dict[str, Any]] = writer_secrets + [
         {"name": "ASSET_ID", "value": str(asset_id)}
     ]
 
@@ -165,8 +166,14 @@ async def table_source_asset(
     else:
         cluster_jobs = list()
 
-    async def callback(message: Dict[str, str]) -> Awaitable[None]:
+    async def callback(
+        task_id: Optional[UUID], message: Dict[str, Any]
+    ) -> Awaitable[None]:
         async with ContextEngine("PUT"):
+            if task_id:
+                _ = await tasks.create_task(
+                    task_id, asset_id=new_asset.asset_id, change_log=[message]
+                )
             return await assets.update_asset(new_asset.asset_id, change_log=[message])
 
     log: ChangeLog = await execute(

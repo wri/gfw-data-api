@@ -3,7 +3,7 @@ from .base import Base, db
 
 class Task(Base):
     __tablename__ = "tasks"
-    task_id = db.Column(db.String, primary_key=True)
+    task_id = db.Column(db.UUID, primary_key=True)
     asset_id = db.Column(db.UUID, nullable=False)
     status = db.Column(db.String, nullable=False, default="pending")
 

@@ -12,9 +12,9 @@ OUTPUT=$($COMMAND 2>&1)
 EXIT_CODE=$?
 
 echo COMMAND EXIT CODE: $EXIT_CODE
-echo OUTPUT: $OUTPUT
+echo OUTPUT: "$OUTPUT"
 
-echo $OUTPUT | grep -i error
+echo "$OUTPUT" | grep -i error
 GREP_EXIT_CODE=$?
 
 echo GREP EXIT CODE: $GREP_EXIT_CODE
@@ -26,10 +26,10 @@ if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
 else
     STATUS="failure"
     MESSAGE="Command [ $COMMAND ] encountered errors"
-    DETAIL="None" # Would be nice to attach properly escaped output here
+    DETAIL="None" # Would be nice to attach properly escaped OUTPUT here
 fi
 
-AFTER=`date '+%Y-%m-%d %H:%M:%S'`
+AFTER=$(date '+%Y-%m-%d %H:%M:%S')
 
 generate_payload()
 {
@@ -47,7 +47,7 @@ EOF
 
 echo PAYLOAD: "$(generate_payload)"
 
-curl -s -X PUT -H "${HEADERS}" -d "$(generate_payload)" "${URL}"
+curl -s -X PATCH -H "${HEADERS}" -d "$(generate_payload)" "${URL}"
 
 if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
     exit 0

@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
@@ -10,6 +11,12 @@ from .responses import Response
 from .sources import SourceType
 
 
+class VersionStatus(str, Enum):
+    saved = "saved"
+    pending = "pending"
+    failed = "failed"
+
+
 class Version(Base):
     dataset: str
     version: str
@@ -18,7 +25,7 @@ class Version(Base):
     source_type: SourceType
     source_uri: Optional[List[str]] = None
     metadata: VersionMetadata
-    status: str = "pending"
+    status: VersionStatus = VersionStatus.pending
     creation_options: CreationOptions
 
     # Tablular/ Vector data only
