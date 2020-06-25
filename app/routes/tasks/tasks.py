@@ -25,10 +25,10 @@ router = APIRouter()
 @router.get(
     "/{task_id}",
     response_class=ORJSONResponse,
-    tags=["Task"],
+    tags=["Tasks"],
     response_model=TaskResponse,
 )
-async def get_task(*, task_id) -> TaskResponse:
+async def get_task(*, task_id: UUID = Path(...)) -> TaskResponse:
     """
     Get single tasks by task ID
     """
@@ -39,7 +39,7 @@ async def get_task(*, task_id) -> TaskResponse:
 @router.get(
     "assets/{asset_id}",
     response_class=ORJSONResponse,
-    tags=["Assets"],
+    tags=["Tasks"],
     response_model=TasksResponse,
 )
 async def get_asset_tasks_root(*, asset_id: UUID = Path(...)) -> TasksResponse:
@@ -51,12 +51,12 @@ async def get_asset_tasks_root(*, asset_id: UUID = Path(...)) -> TasksResponse:
 @router.patch(
     "/{task_id}",
     response_class=ORJSONResponse,
-    tags=["Task"],
+    tags=["Tasks"],
     response_model=TaskResponse,
 )
 async def update_task(
     *,
-    task_id: UUID,
+    task_id: UUID = Path(...),
     request: TaskUpdateIn,
     is_service_account: bool = Depends(is_service_account),
 ) -> TaskResponse:

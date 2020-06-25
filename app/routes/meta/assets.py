@@ -84,34 +84,34 @@ async def get_asset(
     return await _asset_response(row)
 
 
-@router.get(
-    "/assets",
-    response_class=ORJSONResponse,
-    tags=["Assets"],
-    response_model=AssetsResponse,
-)
-async def get_assets_root(
-    *, asset_type: Optional[AssetType] = Query(None, title="Filter by Asset Type")
-) -> AssetsResponse:
-    """Get all assets."""
-    if asset_type:
-        rows: List[ORMAsset] = await assets.get_assets_by_type(asset_type)
-    else:
-        rows = await assets.get_all_assets()
-
-    return await _assets_response(rows)
-
-
-@router.get(
-    "assets/{asset_id}",
-    response_class=ORJSONResponse,
-    tags=["Assets"],
-    response_model=AssetResponse,
-)
-async def get_asset_root(*, asset_id: UUID = Path(...)) -> AssetResponse:
-    """Get a specific asset."""
-    row: ORMAsset = await assets.get_asset(asset_id)
-    return await _asset_response(row)
+# @router.get(
+#     "/assets",
+#     response_class=ORJSONResponse,
+#     tags=["Assets"],
+#     response_model=AssetsResponse,
+# )
+# async def get_assets_root(
+#     *, asset_type: Optional[AssetType] = Query(None, title="Filter by Asset Type")
+# ) -> AssetsResponse:
+#     """Get all assets."""
+#     if asset_type:
+#         rows: List[ORMAsset] = await assets.get_assets_by_type(asset_type)
+#     else:
+#         rows = await assets.get_all_assets()
+#
+#     return await _assets_response(rows)
+#
+#
+# @router.get(
+#     "assets/{asset_id}",
+#     response_class=ORJSONResponse,
+#     tags=["Assets"],
+#     response_model=AssetResponse,
+# )
+# async def get_asset_root(*, asset_id: UUID = Path(...)) -> AssetResponse:
+#     """Get a specific asset."""
+#     row: ORMAsset = await assets.get_asset(asset_id)
+#     return await _asset_response(row)
 
 
 @router.post(
