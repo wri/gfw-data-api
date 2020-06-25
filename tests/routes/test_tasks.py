@@ -1,4 +1,6 @@
+import json
 from datetime import datetime
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -9,23 +11,63 @@ from app.crud.datasets import create_dataset
 from app.crud.tasks import create_task
 from app.crud.versions import create_version
 
+dataset_payload = {
+    "metadata": {
+        "title": "string",
+        "subtitle": "string",
+        "function": "string",
+        "resolution": "string",
+        "geographic_coverage": "string",
+        "source": "string",
+        "update_frequency": "string",
+        "cautions": "string",
+        "license": "string",
+        "overview": "string",
+        "citation": "string",
+        "tags": ["string"],
+        "data_language": "string",
+        "key_restrictions": "string",
+        "scale": "string",
+        "added_date": "string",
+        "why_added": "string",
+        "other": "string",
+        "learn_more": "string",
+    }
+}
 
+version_payload = {
+    "is_latest": True,
+    "source_type": "vector",
+    "source_uri": ["s3://some/path"],
+    "metadata": dataset_payload["metadata"],
+    "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
+}
+
+
+# @patch("fastapi.BackgroundTasks.add_task", return_value=None)
 @pytest.mark.asyncio
 async def test_tasks(client, db):
     """
-    Basic test to make sure tasks route behaves correctly
+    Basic test to make sure task routes behave correctly
     """
 
-    dataset_name = "test"
-    version_name = "v1.1.1"
+    # dataset = "test"
+    # _ = client.put(f"/meta/{dataset}", data=json.dumps(dataset_payload))
+    #
+    # version = "v1.1.1"
+    # _ = client.put(
+    #     f"/meta/{dataset}/{version}", data=json.dumps(version_payload)
+    # )
 
     # Add a dataset, version, and asset
-    async with ContextEngine("PUT"):
-        _ = await create_dataset(dataset_name)
-        _ = await create_version(dataset_name, version_name, source_type="table")
+    dataset = "test"
+    version = "v1.1.1"
+    async with ContextEngine("WRITE"):
+        _ = await create_dataset(dataset)
+        _ = await create_version(dataset, version, source_type="table")
         new_asset = await create_asset(
-            dataset_name,
-            version_name,
+            dataset,
+            version,
             asset_type="Database table",
             asset_uri="s3://path/to/file",
         )
@@ -33,7 +75,7 @@ async def test_tasks(client, db):
     asset_id = new_asset.asset_id
 
     new_task_id = uuid4()
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         new_task = await create_task(
             new_task_id,
             asset_id=asset_id,
@@ -53,7 +95,14 @@ async def test_tasks(client, db):
     # Assert on the structure + content
 
     # Send an HTTP PATCH with another "pending" changelog
-    # patch_resp = client.patch(f"/meta/tasks/{new_task_id}", )
+    # changelog = {
+    #     "date_time": "2020-06-25 14:30:00",
+    #     "status": "pending",
+    #     "detail": "None"
+    # }
+    # patch_resp = client.patch(f"/meta/tasks/{new_task_id}", data=json.dumps(changelog))
+    # print(patch_resp.json())
+
     # Make sure that changelogs were concatenated, now 2 of them
     # Make sure that asset, version status still "pending"
 
