@@ -155,7 +155,7 @@ async def test_assets():
 
     # It should be possible to update a dataset using a context engine
     metadata = DatabaseTableMetadata(title="Test Title", tags=["tag1", "tag2"])
-    logs = ChangeLog(date_time=datetime.now(), status="saved", message="all good")
+    logs = ChangeLog(date_time=datetime.now(), status="pending", message="all good")
     async with ContextEngine("WRITE"):
         row = await update_asset(
             asset_id, metadata=metadata.dict(), change_log=[logs.dict()]

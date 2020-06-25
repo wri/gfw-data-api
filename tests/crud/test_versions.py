@@ -116,7 +116,7 @@ async def test_versions():
 
     # It should be possible to update a dataset using a context engine
     metadata = VersionMetadata(title="Test Title", tags=["tag1", "tag2"])
-    logs = ChangeLog(date_time=datetime.now(), status="saved", message="all good")
+    logs = ChangeLog(date_time=datetime.now(), status="pending", message="all good")
     async with ContextEngine("WRITE"):
         row = await update_version(
             dataset_name,
