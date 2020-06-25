@@ -1,38 +1,55 @@
 """
 
 Tasks represent the steps performed during asset creation.
+You can view a single tasks or all tasks associated with as specific asset.
+Only _service accounts_ can create or update tasks.
 """
 
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 
 from ...crud import assets, tasks, versions
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.tasks import Task as ORMTask
 from ...models.pydantic.change_log import ChangeLog
-from ...models.pydantic.tasks import Task, TaskResponse, TaskUpdateIn
-from ...routes import is_service_account
+from ...models.pydantic.tasks import Task, TaskResponse, TasksResponse, TaskUpdateIn
+from .. import is_service_account
 
 router = APIRouter()
 
 
 @router.get(
-    "/tasks/{task_id}",
+    "/{task_id}",
     response_class=ORJSONResponse,
     tags=["Task"],
     response_model=TaskResponse,
 )
 async def get_task(*, task_id) -> TaskResponse:
+    """
+    Get single tasks by task ID
+    """
     row = await tasks.get_task(task_id)
     return _task_response(row)
 
 
+@router.get(
+    "assets/{asset_id}",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=TasksResponse,
+)
+async def get_asset_tasks_root(*, asset_id: UUID = Path(...)) -> TasksResponse:
+    """Get all Tasks for selected asset"""
+    row: List[ORMTask] = await tasks.get_tasks(asset_id)
+    return await _tasks_response(row)
+
+
 @router.patch(
-    "/tasks/{task_id}",
+    "/{task_id}",
     response_class=ORJSONResponse,
     tags=["Task"],
     response_model=TaskResponse,
@@ -151,3 +168,9 @@ def _task_response(data: ORMTask) -> TaskResponse:
     """Assure that task responses are parsed correctly and include associated assets."""
 
     return TaskResponse(data=data)
+
+
+async def _tasks_response(tasks_orm: List[ORMTask]) -> TasksResponse:
+    """Serialize ORM response."""
+    data = [Task.from_orm(task) for task in tasks_orm]  # .dict(by_alias=True)
+    return TasksResponse(data=data)

@@ -85,30 +85,6 @@ async def get_asset(
 
 
 @router.get(
-    "/{dataset}/{version}/assets/{asset_id}/tasks",
-    response_class=ORJSONResponse,
-    tags=["Assets"],
-    response_model=AssetResponse,
-)
-async def get_asset_tasks(
-    *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
-    asset_id: UUID = Path(...),
-) -> TasksResponse:
-    """Get a specific asset."""
-
-    row: ORMAsset = await assets.get_asset(asset_id)
-    if row.dataset != dataset and row.version != version:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Could not find requested asset {dataset}/{version}/{asset_id}",
-        )
-    rows: List[ORMTask] = await tasks.get_tasks(asset_id)
-    return await _tasks_response(rows)
-
-
-@router.get(
     "/assets",
     response_class=ORJSONResponse,
     tags=["Assets"],
@@ -136,18 +112,6 @@ async def get_asset_root(*, asset_id: UUID = Path(...)) -> AssetResponse:
     """Get a specific asset."""
     row: ORMAsset = await assets.get_asset(asset_id)
     return await _asset_response(row)
-
-
-@router.get(
-    "assets/{asset_id}/tasks",
-    response_class=ORJSONResponse,
-    tags=["Assets"],
-    response_model=AssetResponse,
-)
-async def get_asset_tasks_root(*, asset_id: UUID = Path(...)) -> AssetResponse:
-    """Get a specific asset."""
-    row: List[ORMTask] = await tasks.get_tasks(asset_id)
-    return await _tasks_response(row)
 
 
 @router.post(
@@ -211,9 +175,3 @@ async def _assets_response(assets_orm: List[ORMAsset]) -> AssetsResponse:
     """Serialize ORM response."""
     data = [Asset.from_orm(asset) for asset in assets_orm]  # .dict(by_alias=True)
     return AssetsResponse(data=data)
-
-
-async def _tasks_response(tasks_orm: List[ORMTask]) -> TasksResponse:
-    """Serialize ORM response."""
-    data = [Task.from_orm(task) for task in tasks_orm]  # .dict(by_alias=True)
-    return TasksResponse(data=data)

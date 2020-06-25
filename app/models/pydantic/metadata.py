@@ -1,4 +1,3 @@
-from datetime import date
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -32,7 +31,11 @@ class DatasetMetadata(BaseModel):
     data_language: Optional[str]
     key_restrictions: Optional[str]
     scale: Optional[str]
-    added_date: Optional[str]
+    added_date: Optional[str] = Field(
+        None,
+        description="Date the data were added to GFW website",
+        regex="^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$",
+    )
     why_added: Optional[str]
     other: Optional[str]
     learn_more: Optional[str]
@@ -40,8 +43,16 @@ class DatasetMetadata(BaseModel):
 
 class VersionMetadata(DatasetMetadata):
     version_number: Optional[str]
-    content_date: Optional[str]
-    last_update: Optional[date]
+    content_date: Optional[str] = Field(
+        None,
+        description="Date content was created",
+        regex="^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$",
+    )
+    last_update: Optional[str] = Field(
+        None,
+        description="Date the data were last updated",
+        regex="^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$",
+    )
     download: Optional[str]
     analysis: Optional[str]
     data_updates: Optional[str]
