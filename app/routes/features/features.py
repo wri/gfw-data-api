@@ -6,7 +6,7 @@ Explore data entries for a given dataset version
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
 
-from app.routes import dataset_dependency, version_dependency
+from ...routes import dataset_dependency, version_dependency
 
 router = APIRouter()
 

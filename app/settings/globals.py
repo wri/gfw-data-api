@@ -37,7 +37,10 @@ SERVICE_ACCOUNT_SECRET = json.loads(
 )
 
 ENV = config("ENV", cast=str, default="dev")
-BUCKET = config("BUCKET", cast=str, default=None)
+
+DATA_LAKE_BUCKET = config("DATA_LAKE_BUCKET", cast=str, default=None)
+TILE_CACHE_BUCKET = config("TILE_CACHE_BUCKET", cast=str, default=None)
+TILE_CACHE_CLOUDFRONT_ID = config("TILE_CACHE_CLOUDFRONT_ID", cast=str, default=None)
 
 READER_USERNAME: Optional[str] = config(
     "DB_USER_RO", cast=str, default=DB_READER_SECRET["username"]
@@ -105,3 +108,5 @@ API_URL = config("API_URL", cast=str)
 SERVICE_ACCOUNT_TOKEN = config(
     "SERVICE_ACCOUNT_TOKEN", cast=str, default=SERVICE_ACCOUNT_SECRET["token"]
 )
+
+S3_ENTRYPOINT_URL = config("S3_ENTRYPOINT_URL", cast=str, default=None)

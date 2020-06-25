@@ -1,17 +1,13 @@
-import logging
 import os
-from typing import Any, Awaitable, Callable, Dict, Optional
-from unittest.mock import patch
+from typing import Any, Awaitable, Dict, Optional
 from uuid import UUID
 
 import boto3
 import pytest
 
-import app
 import app.tasks.batch as batch
 from app.application import ContextEngine
 from app.crud import assets, datasets, tasks, versions
-from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.jobs import (
     GdalPythonExportJob,
     GdalPythonImportJob,
@@ -68,7 +64,7 @@ async def test_batch_scheduler(batch_client, httpd):
         "metadata": {},
     }
 
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         await datasets.create_dataset(dataset)
         await versions.create_version(dataset, version, **input_data)
         new_asset = await assets.create_asset(

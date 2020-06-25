@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 
 payload = {
     "metadata": {
@@ -77,3 +78,32 @@ def test_datasets(client, db):
     response = client.get("/meta")
     assert response.status_code == 200
     assert response.json() == {"data": [], "status": "success"}
+
+
+@patch("fastapi.BackgroundTasks.add_task", return_value=None)
+def test_dataset_delete_protection(mocked_task, client):
+    dataset = "test"
+    version = "v1.1.1"
+
+    client.put(f"/meta/{dataset}", data=json.dumps(payload))
+
+    version_payload = {
+        "is_latest": True,
+        "source_type": "vector",
+        "source_uri": ["s3://some/path"],
+        "metadata": payload["metadata"],
+        "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
+    }
+
+    # with patch("app.tasks.default_assets.create_default_asset", return_value=True) as mock_asset:
+    client.put(f"/meta/{dataset}/{version}", data=json.dumps(version_payload))
+
+    response = client.delete(f"/meta/{dataset}")
+
+    assert response.status_code == 409
+
+    client.delete(f"/meta/{dataset}/{version}")
+    response = client.delete(f"/meta/{dataset}")
+
+    assert response.status_code == 200
+    assert mocked_task.called

@@ -4,22 +4,23 @@ Datasets are just a bucket, for datasets which share the same core metadata
 
 from typing import Any, List
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
-from app.application import db
-from app.crud import datasets, versions
-from app.models.orm.datasets import Dataset as ORMDataset
-from app.models.pydantic.datasets import (
+from ...application import db
+from ...crud import datasets, versions
+from ...models.orm.datasets import Dataset as ORMDataset
+from ...models.orm.versions import Version as ORMVersion
+from ...models.pydantic.datasets import (
     Dataset,
     DatasetCreateIn,
     DatasetResponse,
     DatasetsResponse,
     DatasetUpdateIn,
 )
-from app.routes import dataset_dependency, is_admin
-from app.settings.globals import READER_USERNAME
+from ...routes import dataset_dependency, is_admin
+from ...settings.globals import READER_USERNAME
 
 router = APIRouter()
 
@@ -113,9 +114,23 @@ async def delete_dataset(
     dataset: str = Depends(dataset_dependency),
     is_authorized: bool = Depends(is_admin),
 ) -> DatasetResponse:
-    """Delete a dataset."""
+    """
+    Delete a dataset.
+    By the time users are allowed to delete datasets, there should be no versions and assets left.
+    So only thing beside deleting the dataset row is to drop the schema in the database.
+    """
+
+    version_rows: List[ORMVersion] = await versions.get_versions(dataset)
+    if len(version_rows):
+        raise HTTPException(
+            status_code=409,
+            detail="There are versions registered with the dataset."
+            "Delete all related versions prior to deleting a dataset",
+        )
 
     row: ORMDataset = await datasets.delete_dataset(dataset)
+
+    # Delete all dataset related entries
     await db.status(DropSchema(dataset))
 
     return await _dataset_response(dataset, row)

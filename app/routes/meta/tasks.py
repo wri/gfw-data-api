@@ -14,7 +14,7 @@ from ...crud import assets, tasks, versions
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.tasks import Task as ORMTask
 from ...models.pydantic.change_log import ChangeLog
-from ...models.pydantic.tasks import Task, TaskResponse, TaskUpdateIn
+from ...models.pydantic.tasks import TaskResponse, TaskUpdateIn
 from ...routes import is_service_account
 
 router = APIRouter()

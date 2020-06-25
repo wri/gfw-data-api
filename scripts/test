@@ -7,3 +7,6 @@ docker build -t batch_postgresql-client_test . -f batch/postgresql-client.docker
 docker build -t batch_tile_cache_test . -f batch/tile_cache.dockerfile
 docker-compose -f docker-compose.test.yml build app_test
 docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test run --rm --name app_test app_test tests/"$*"
+exit_code=$?
+docker-compose -f docker-compose.test.yml down
+exit $exit_code

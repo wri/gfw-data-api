@@ -32,7 +32,7 @@ async def test_assets():
     version_name = "v1.1.1"
 
     # Add a dataset
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         new_dataset = await create_dataset(dataset_name)
         new_version = await create_version(
             dataset_name, version_name, source_type="table"
@@ -71,7 +71,7 @@ async def test_assets():
         assert result == "permission denied for table assets"
 
     # Using context engine with "PUT" should work
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         new_row = await create_asset(
             dataset_name,
             version_name,
@@ -90,7 +90,7 @@ async def test_assets():
     assert new_row.change_log == []
 
     # This shouldn't work a second time
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         result = ""
         status_code = 200
         try:
@@ -104,11 +104,7 @@ async def test_assets():
             result = e.detail
             status_code = e.status_code
 
-        assert result == (
-            "A similar Asset already exist."
-            "Dataset versions can only have one instance of asset type."
-            "Asset uri must be unique."
-        )
+        assert result == ("A similar Asset already exist." "Asset uri must be unique.")
         assert status_code == 400
 
     # There should be an entry now
@@ -160,7 +156,7 @@ async def test_assets():
     # It should be possible to update a dataset using a context engine
     metadata = DatabaseTableMetadata(title="Test Title", tags=["tag1", "tag2"])
     logs = ChangeLog(date_time=datetime.now(), status="saved", message="all good")
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         row = await update_asset(
             asset_id, metadata=metadata.dict(), change_log=[logs.dict()]
         )
@@ -171,7 +167,7 @@ async def test_assets():
     assert row.change_log[0]["message"] == logs.dict()["message"]
 
     # When deleting a dataset, method should return the deleted object
-    async with ContextEngine("DELETE"):
+    async with ContextEngine("WRITE"):
         row = await delete_asset(asset_id)
     assert row.dataset == dataset_name
     assert row.version == version_name
@@ -180,3 +176,105 @@ async def test_assets():
     rows = await get_all_assets()
     assert isinstance(rows, list)
     assert len(rows) == 0
+
+
+@pytest.mark.asyncio
+async def test_assets_metadata():
+    """
+    Testing all CRUD operations on dataset in one go
+    """
+
+    dataset = "test"
+    version = "v1.1.1"
+
+    dataset_metadata = {"title": "Title", "subtitle": "Subtitle"}
+
+    version_metadata = {"subtitle": "New Subtitle", "version_number": version}
+
+    asset_metadata = {
+        "title": "New Title",
+        "_fields": [
+            {
+                "field_name_": "Field",
+                "field_alias": "Field",
+                "field_description": "Field",
+                "field_type": "Var Char",
+                "is_feature_info": False,
+                "is_filter:": False,
+            }
+        ],
+    }
+
+    # Add a dataset
+    async with ContextEngine("WRITE"):
+        await create_dataset(dataset, metadata=dataset_metadata)
+        await create_version(
+            dataset, version, source_type="table", metadata=version_metadata
+        )
+        new_asset = await create_asset(
+            dataset,
+            version,
+            asset_type="Database table",
+            asset_uri="s3://path/to/file",
+            metadata=asset_metadata,
+        )
+
+    result_metadata = {
+        "title": "New Title",
+        "subtitle": "New Subtitle",
+        "version_number": version,
+        "_fields": [
+            {
+                "field_name_": "Field",
+                "field_alias": "Field",
+                "field_description": "Field",
+                "field_type": "Var Char",
+                "is_feature_info": False,
+                "is_filter:": False,
+            }
+        ],
+    }
+
+    asset_id = new_asset.asset_id
+    assert new_asset.metadata == result_metadata
+
+    async with ContextEngine("READ"):
+        asset = await get_asset(asset_id)
+    assert asset.metadata == result_metadata
+
+    async with ContextEngine("READ"):
+        assets = await get_assets(dataset, version)
+    assert assets[0].metadata == result_metadata
+
+    async with ContextEngine("READ"):
+        assets = await get_assets_by_type("Database table")
+    assert assets[0].metadata == result_metadata
+
+    async with ContextEngine("READ"):
+        assets = await get_all_assets()
+    assert assets[0].metadata == result_metadata
+
+    result_metadata = {
+        "title": "New Title",
+        "subtitle": "New Subtitle",
+        "source": "Source",
+        "version_number": version,
+        "_fields": [
+            {
+                "field_name_": "Field",
+                "field_alias": "Field",
+                "field_description": "Field",
+                "field_type": "Var Char",
+                "is_feature_info": False,
+                "is_filter:": False,
+            }
+        ],
+    }
+
+    async with ContextEngine("WRITE"):
+        asset = await update_asset(asset_id, metadata={"source": "Source"})
+    assert asset.metadata == result_metadata
+
+    async with ContextEngine("WRITE"):
+        asset = await delete_asset(asset_id)
+    assert asset.metadata == result_metadata
