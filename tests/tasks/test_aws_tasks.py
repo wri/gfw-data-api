@@ -1,6 +1,3 @@
-import os
-from datetime import datetime
-from typing import Any, Dict, List
 from unittest import mock
 
 from app.tasks.aws_tasks import (
@@ -10,38 +7,7 @@ from app.tasks.aws_tasks import (
 )
 from app.utils.aws import get_s3_client
 
-TSV_NAME = "test.tsv"
-TSV_PATH = os.path.join(os.path.dirname(__file__), "..", "fixtures", TSV_NAME)
-
-BUCKET = "test-bucket"
-KEY = "KEY"
-VALUE = "VALUE"
-
-
-class MockS3Client(object):
-    rules: List[Dict[str, Any]] = []
-
-    def get_bucket_lifecycle_configuration(self, Bucket):
-        return {"Rules": self.rules}
-
-    def put_bucket_lifecycle_configuration(self, Bucket, LifecycleConfiguration):
-        self.rules = LifecycleConfiguration["Rules"]
-        return {
-            "ResponseMetadata": {"...": "..."},
-        }
-
-
-class MockCloudfrontClient(object):
-    def create_invalidation(self, DistributionId, InvalidationBatch):
-        return {
-            "Location": "string",
-            "Invalidation": {
-                "Id": "string",
-                "Status": "string",
-                "CreateTime": datetime.now(),
-                "InvalidationBatch": InvalidationBatch,
-            },
-        }
+from . import BUCKET, KEY, TSV_NAME, TSV_PATH, VALUE, MockCloudfrontClient, MockS3Client
 
 
 def test_delete_s3_objects():
