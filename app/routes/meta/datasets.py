@@ -97,8 +97,8 @@ async def update_dataset_metadata(
     Partially update a dataset. Only metadata field can be updated. All other fields will be ignored.
 
     """
-
-    row: ORMDataset = await datasets.update_dataset(dataset, request)
+    input_data = request.dict(exclude_unset=True)
+    row: ORMDataset = await datasets.update_dataset(dataset, **input_data)
 
     return await _dataset_response(dataset, row)
 

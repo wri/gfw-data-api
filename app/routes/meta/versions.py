@@ -160,7 +160,7 @@ async def update_version(
 
     """
 
-    input_data = request.dict()
+    input_data = request.dict(exclude_unset=True)
 
     row: ORMVersion = await versions.update_version(dataset, version, **input_data)
     # TODO: Need to clarify routine for when source_uri has changed. Append/ overwrite

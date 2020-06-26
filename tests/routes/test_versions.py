@@ -183,7 +183,7 @@ def test_version_delete_protection(mocked_task, client):
 
     client.put(f"/meta/{dataset}/{version2}", data=json.dumps(version_payload))
 
-    client.patch(f"/meta/{dataset}/{version2}", data={"is_latest": True})
+    client.patch(f"/meta/{dataset}/{version2}", data=json.dumps({"is_latest": True}))
 
     response = client.delete(f"/meta/{dataset}/{version2}")
 
@@ -193,3 +193,51 @@ def test_version_delete_protection(mocked_task, client):
     response = client.delete(f"/meta/{dataset}/{version2}")
     assert response.status_code == 200
     assert mocked_task.called
+
+
+@patch("fastapi.BackgroundTasks.add_task", return_value=None)
+def test_latest_middleware(mocked_task, client):
+    """
+    Test if middleware redirects to correct version when using `latest` version identifier
+    """
+
+    dataset = "test"
+    version = "v1.1.1"
+
+    response = client.put(f"/meta/{dataset}", data=json.dumps(payload))
+    print(response.json())
+    assert response.status_code == 201
+
+    version_payload = {
+        "is_latest": False,
+        "source_type": "vector",
+        "source_uri": ["s3://some/path"],
+        "metadata": payload["metadata"],
+        "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
+    }
+
+    response = client.put(
+        f"/meta/{dataset}/{version}", data=json.dumps(version_payload)
+    )
+    print(response.json())
+    assert response.status_code == 202
+
+    response = client.get(f"/meta/{dataset}/{version}")
+    print(response.json())
+    assert response.status_code == 200
+
+    response = client.get(f"/meta/{dataset}/latest")
+    print(response.json())
+    assert response.status_code == 400
+
+    response = client.patch(
+        f"/meta/{dataset}/{version}", data=json.dumps({"is_latest": True})
+    )
+    print(response.json())
+    assert response.status_code == 200
+    assert response.json()["data"]["is_latest"] is True
+
+    response = client.get(f"/meta/{dataset}/latest")
+    print(response.json())
+    assert response.status_code == 200
+    assert response.json()["data"]["version"] == version

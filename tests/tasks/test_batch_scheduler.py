@@ -6,9 +6,10 @@ from uuid import UUID
 import boto3
 import pytest
 import requests
+from sqlalchemy.sql.ddl import CreateSchema
 
 import app.tasks.batch as batch
-from app.application import ContextEngine
+from app.application import ContextEngine, db
 from app.crud import assets, datasets, tasks, versions
 from app.models.pydantic.jobs import (
     GdalPythonExportJob,
@@ -19,12 +20,14 @@ from app.models.pydantic.jobs import (
 from app.settings.globals import (
     API_URL,
     AWS_REGION,
+    READER_USERNAME,
     WRITER_DBNAME,
     WRITER_HOST,
     WRITER_PASSWORD,
     WRITER_PORT,
     WRITER_USERNAME,
 )
+from tests.tasks import check_callbacks, poll_jobs
 
 writer_secrets = [
     {"name": "PGPASSWORD", "value": str(WRITER_PASSWORD)},
@@ -39,7 +42,7 @@ GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "..", "fixtures", GEOJSON
 BUCKET = "test-bucket"
 
 
-@pytest.mark.skip(reason="Needs to be updated for new task behavior")
+# @pytest.mark.skip(reason="Needs to be updated for new task behavior")
 @pytest.mark.asyncio
 async def test_batch_scheduler(batch_client, httpd):
     _, logs = batch_client
@@ -69,6 +72,11 @@ async def test_batch_scheduler(batch_client, httpd):
 
     async with ContextEngine("WRITE"):
         await datasets.create_dataset(dataset)
+        await db.status(CreateSchema(dataset))
+        await db.status(f"GRANT USAGE ON SCHEMA {dataset} TO {READER_USERNAME};")
+        await db.status(
+            f"ALTER DEFAULT PRIVILEGES IN SCHEMA {dataset} GRANT SELECT ON TABLES TO {READER_USERNAME};"
+        )
         await versions.create_version(dataset, version, **input_data)
         new_asset = await assets.create_asset(
             dataset,
@@ -102,19 +110,20 @@ async def test_batch_scheduler(batch_client, httpd):
     )
     job3 = GdalPythonExportJob(
         job_name="job3",
-        command=[
-            "test_mock_s3_ogr2ogr.sh",
-            "-d",
-            "test",
-            "-v",
-            "v1.0.0",
-            "-s",
-            f"s3://{BUCKET}/{GEOJSON_NAME}",
-            "-l",
-            "test",
-            "-f",
-            GEOJSON_NAME,
-        ],
+        command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
+        # command=[
+        #     "test_mock_s3_ogr2ogr.sh",
+        #     "-d",
+        #     "test",
+        #     "-v",
+        #     "v1.0.0",
+        #     "-s",
+        #     f"s3://{BUCKET}/{GEOJSON_NAME}",
+        #     "-l",
+        #     "test",
+        #     "-f",
+        #     GEOJSON_NAME,
+        # ],
         environment=job_env,
         parents=[job2.job_name],
     )
@@ -136,19 +145,17 @@ async def test_batch_scheduler(batch_client, httpd):
             return await assets.update_asset(new_asset.asset_id, change_log=[message])
 
     log = await batch.execute([job1, job2, job3, job4], callback)
-
     assert log.status == "pending"
 
-    sleep(30)
+    tasks_rows = await tasks.get_tasks(new_asset.asset_id)
 
-    get_resp = requests.get(f"http://localhost:{httpd_port}")
-    req_list = get_resp.json()["requests"]
+    task_ids = [str(task.task_id) for task in tasks_rows]
 
-    assert len(req_list) == 4
-    assert req_list[0]["data"]["path"] == "/task"
+    # make sure, all jobs completed
+    status = await poll_jobs(task_ids)
+    assert status == "saved"
 
-    for req in req_list:
-        assert req["data"]["body"]["changelog"][0]["status"] == "success"
+    check_callbacks(task_ids, httpd.server_port)
 
 
 #

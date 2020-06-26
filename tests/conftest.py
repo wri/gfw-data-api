@@ -1,8 +1,10 @@
 import contextlib
 import json
 import os
+import socket
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from time import sleep
 from typing import Optional
 from unittest.mock import patch
 
@@ -200,7 +202,7 @@ def batch_client():
         "client"
     ]
 
-    aws_mock.print_logs()
+    # aws_mock.print_logs()
     aws_mock.stop_services()
 
 
@@ -320,6 +322,19 @@ class MemoryServer(BaseHTTPRequestHandler):
             {"path": str(self.path), "body": json.loads(str(put_data.decode("utf-8")))}
         )
 
+    def do_PATCH(self):
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"foo": "bar"}).encode("utf-8"))
+
+        content_length = int(self.headers["Content-Length"])
+        put_data = self.rfile.read(content_length)
+
+        self.requests_thus_far.append(
+            {"path": str(self.path), "body": json.loads(str(put_data.decode("utf-8")))}
+        )
+
 
 @pytest.fixture(scope="function")
 def httpd():
@@ -327,14 +342,19 @@ def httpd():
     handler_class = MemoryServer
     port = 9000
 
-    while port <= 9100:
-        try:
-            httpd = server_class(("0.0.0.0", port), handler_class)
-            break
-            # httpd.allow_reuse_address = True
-        except OSError:
-            # Port hasn't been let go yet
-            port += 1
+    httpd = server_class(("0.0.0.0", port), handler_class)
+
+    # httpd.allow_reuse_address = True
+    # httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    # while port <= 9100:
+    #     try:
+    #         httpd = server_class(("0.0.0.0", port), handler_class)
+    #         break
+    #         # httpd.allow_reuse_address = True
+    #     except OSError:
+    #         # Port hasn't been let go yet
+    #         port += 1
 
     t = threading.Thread(target=httpd.serve_forever)  # , daemon=True)
     t.start()

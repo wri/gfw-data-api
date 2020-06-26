@@ -57,7 +57,11 @@ async def table_source_asset(
     # Create partitions
     if creation_options.partitions:
         partition_jobs: List[Job] = _create_partition_jobs(
-            dataset, version, creation_options.partitions, [create_table_job.job_name]
+            dataset,
+            version,
+            creation_options.partitions,
+            [create_table_job.job_name],
+            job_env,
         )
     else:
         partition_jobs = list()
@@ -175,10 +179,10 @@ async def table_source_asset(
         callback,
     )
 
-    await update_asset_field_metadata(
-        dataset, version, asset_id,
-    )
-    await update_asset_status(asset_id, log.status)
+    # await update_asset_field_metadata(
+    #     dataset, version, asset_id,
+    # )
+    # await update_asset_status(asset_id, log.status)
 
     return log
 
@@ -188,7 +192,7 @@ def _create_partition_jobs(
     version: str,
     partitions: Partitions,
     parents,
-    job_env: List[Dict[str, str]] = [],
+    job_env: List[Dict[str, str]],
 ) -> List[PostgresqlClientJob]:
     """
     Create partition job depending on the partition type.
@@ -216,7 +220,13 @@ def _create_partition_jobs(
 
         partition_schema = json.dumps(partitions.partition_schema.dict())
         job = _partition_job(
-            dataset, version, partitions.partition_type, partition_schema, parents,
+            dataset,
+            version,
+            partitions.partition_type,
+            partition_schema,
+            parents,
+            0,
+            job_env,
         )
         partition_jobs.append(job)
 
@@ -229,8 +239,8 @@ def _partition_job(
     partition_type: str,
     partition_schema: str,
     parents: List[str],
-    suffix: int = 0,
-    job_env: List[Dict[str, str]] = [],
+    suffix: int,
+    job_env: List[Dict[str, str]],
 ) -> PostgresqlClientJob:
     return PostgresqlClientJob(
         job_name=f"create_partitions_{suffix}",
@@ -256,7 +266,7 @@ def _create_cluster_jobs(
     partitions: Optional[Partitions],
     cluster: Index,
     parents: List[str],
-    job_env: List[Dict[str, str]] = [],
+    job_env: List[Dict[str, str]],
 ) -> List[PostgresqlClientJob]:
     # Cluster tables. This is a full lock operation.
     cluster_jobs: List[PostgresqlClientJob] = list()
@@ -283,6 +293,7 @@ def _create_cluster_jobs(
                     cluster.index_type,
                     parents,
                     i,
+                    job_env,
                 )
                 cluster_jobs.append(job)
                 parents = [job.job_name]
@@ -298,6 +309,8 @@ def _create_cluster_jobs(
                 cluster.column_name,
                 cluster.index_type,
                 parents,
+                0,
+                job_env,
             )
             cluster_jobs.append(job)
 
@@ -331,8 +344,8 @@ def _cluster_partition_job(
     column_name: str,
     index_type: str,
     parents: List[str],
-    index: int = 0,
-    job_env: List[Dict[str, str]] = [],
+    index: int,
+    job_env: List[Dict[str, str]],
 ):
     return PostgresqlClientJob(
         job_name=f"cluster_partitions_{index}",

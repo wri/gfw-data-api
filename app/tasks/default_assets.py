@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, Optional
 from typing.io import IO
+from uuid import UUID
 
 from ..application import ContextEngine
 from ..crud import assets, versions
@@ -30,7 +31,7 @@ DEFAULT_ASSET_PIPELINES = frozenset(
 
 async def create_default_asset(
     dataset: str, version: str, input_data: Dict[str, Any], file_obj: Optional[IO],
-) -> None:
+) -> UUID:
     source_type = input_data["source_type"]
     source_uri = input_data["source_uri"]
     status = None
@@ -48,13 +49,15 @@ async def create_default_asset(
             await versions.update_version(
                 dataset, version, status=status, change_log=[log.dict()]
             )
+        raise RuntimeError(f"Could not create asset for {dataset}.{version}")
 
     # register asset and start the pipeline
     else:
         try:
-            await _create_default_asset(
+            asset_id: UUID = await _create_default_asset(
                 source_type, dataset=dataset, version=version, input_data=input_data,
             )
+            return asset_id
         # Make sure version status is set to `failed` in case there is an uncaught Exception
         except Exception:
             async with ContextEngine("WRITE"):
@@ -64,7 +67,7 @@ async def create_default_asset(
 
 async def _create_default_asset(
     source_type: str, dataset: str, version: str, input_data: Dict[str, Any],
-):
+) -> UUID:
     asset_type = _default_asset_type(source_type)
     metadata = _default_asset_metadata(source_type, input_data["metadata"])
     asset_uri = _default_asset_uri(
@@ -88,7 +91,7 @@ async def _create_default_asset(
     async with ContextEngine("WRITE"):
         new_asset = await assets.create_asset(**data.dict())
 
-    return await create_asset(
+    await create_asset(
         source_type,
         new_asset.asset_id,
         dataset=dataset,
@@ -96,6 +99,8 @@ async def _create_default_asset(
         input_data=input_data,
         asset_lookup=DEFAULT_ASSET_PIPELINES,
     )
+
+    return new_asset.asset_id
 
 
 async def _inject_file(file_obj: IO, s3_uri: str) -> ChangeLog:

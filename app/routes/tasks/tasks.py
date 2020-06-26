@@ -22,6 +22,12 @@ from .. import is_service_account
 router = APIRouter()
 
 
+# TODO: update field metadata for table and vector source assets
+# await update_asset_field_metadata(
+#     dataset, version, asset_id,
+# )
+
+
 @router.get(
     "/{task_id}",
     response_class=ORJSONResponse,

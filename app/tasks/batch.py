@@ -79,7 +79,7 @@ async def schedule(
                 and all([parent in scheduled_jobs for parent in job.parents])
             ):
                 depends_on = [
-                    {"jobId": scheduled_jobs[parent], "type": "SEQUENTIAL"}
+                    {"jobId": str(scheduled_jobs[parent]), "type": "SEQUENTIAL"}
                     for parent in job.parents  # type: ignore
                 ]
                 scheduled_jobs[job.job_name] = submit_batch_job(job, depends_on)
