@@ -16,14 +16,20 @@ from ...crud import assets, tasks, versions
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.tasks import Task as ORMTask
 from ...models.pydantic.change_log import ChangeLog
-from ...models.pydantic.tasks import TaskResponse, TasksResponse, TaskUpdateIn
-from ...routes import is_service_account
+from ...models.pydantic.tasks import Task, TaskResponse, TasksResponse, TaskUpdateIn
+from .. import is_service_account
 
 router = APIRouter()
 
 
+# TODO: update field metadata for table and vector source assets
+# await update_asset_field_metadata(
+#     dataset, version, asset_id,
+# )
+
+
 @router.get(
-    "/tasks/{task_id}",
+    "/{task_id}",
     response_class=ORJSONResponse,
     tags=["Tasks"],
     response_model=TaskResponse,
@@ -45,11 +51,11 @@ async def get_task(*, task_id: UUID = Path(...)) -> TaskResponse:
 async def get_asset_tasks_root(*, asset_id: UUID = Path(...)) -> TasksResponse:
     """Get all Tasks for selected asset"""
     rows: List[ORMTask] = await tasks.get_tasks(asset_id)
-    return _tasks_response(rows)
+    return await _tasks_response(rows)
 
 
 @router.patch(
-    "/tasks/{task_id}",
+    "/{task_id}",
     response_class=ORJSONResponse,
     tags=["Tasks"],
     response_model=TaskResponse,
@@ -170,7 +176,7 @@ def _task_response(data: ORMTask) -> TaskResponse:
     return TaskResponse(data=data)
 
 
-def _tasks_response(data: List[ORMTask]) -> TasksResponse:
-    """Assure that tasks responses are parsed correctly and include associated assets."""
-
+async def _tasks_response(tasks_orm: List[ORMTask]) -> TasksResponse:
+    """Serialize ORM response."""
+    data = [Task.from_orm(task) for task in tasks_orm]  # .dict(by_alias=True)
     return TasksResponse(data=data)

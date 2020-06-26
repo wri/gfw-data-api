@@ -22,10 +22,14 @@ async def execute(
     except RecursionError:
         status = "failed"
         message = "Failed to schedule batch jobs"
+        detail = None
     else:
         status = "pending"
         message = "Successfully scheduled batch jobs"
-    return ChangeLog(date_time=datetime.now(), status=status, message=message)
+        detail = f"Scheduled jobs: {scheduled_jobs}"
+    return ChangeLog(
+        date_time=datetime.now(), status=status, message=message, detail=detail
+    )
 
 
 async def schedule(
@@ -33,7 +37,7 @@ async def schedule(
     callback: Callable[
         [Optional[UUID], Dict[str, Any]], Coroutine[Any, Any, Awaitable[None]]
     ],
-) -> Dict[str, str]:
+) -> Dict[str, UUID]:
     """
 
     Submit multiple batch jobs at once. Submitted batch jobs can depend on each other.
@@ -49,7 +53,7 @@ async def schedule(
         if not job.parents:
             scheduled_jobs[job.job_name] = submit_batch_job(job)
             await callback(
-                UUID(scheduled_jobs[job.job_name]),
+                scheduled_jobs[job.job_name],
                 {
                     "date_time": datetime.now(),
                     "status": "pending",
@@ -75,12 +79,12 @@ async def schedule(
                 and all([parent in scheduled_jobs for parent in job.parents])
             ):
                 depends_on = [
-                    {"jobId": scheduled_jobs[parent], "type": "SEQUENTIAL"}
+                    {"jobId": str(scheduled_jobs[parent]), "type": "SEQUENTIAL"}
                     for parent in job.parents  # type: ignore
                 ]
                 scheduled_jobs[job.job_name] = submit_batch_job(job, depends_on)
                 await callback(
-                    UUID(scheduled_jobs[job.job_name]),
+                    scheduled_jobs[job.job_name],
                     {
                         "date_time": datetime.now(),
                         "status": "pending",
@@ -171,7 +175,7 @@ async def schedule(
 
 def submit_batch_job(
     job: Job, depends_on: Optional[List[Dict[str, Any]]] = None
-) -> str:
+) -> UUID:
     """Submit job to AWS Batch."""
     client = get_batch_client()
 
@@ -210,4 +214,4 @@ def submit_batch_job(
         timeout={"attemptDurationSeconds": job.attempt_duration_seconds},
     )
 
-    return response["jobId"]
+    return UUID(response["jobId"])

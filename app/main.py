@@ -6,12 +6,14 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.routes.tasks import tasks
+
 from .application import app
 from .middleware import redirect_latest, set_db_mode
 from .routes import security
 from .routes.features import features
 from .routes.geostore import geostore
-from .routes.meta import assets, datasets, tasks, versions
+from .routes.meta import assets, datasets, versions
 from .routes.sql import queries
 
 ###############
@@ -48,7 +50,6 @@ app.include_router(security.router, tags=["Authentication"])
 ###############
 
 meta_routers = (
-    tasks.router,
     datasets.router,
     versions.router,
     assets.router,
@@ -85,6 +86,15 @@ geostore_routers = (geostore.router,)
 for r in geostore_routers:
     app.include_router(r, prefix="/geostore")
 
+
+###############
+# TASK API
+###############
+
+task_routers = (tasks.router,)
+for r in task_routers:
+    app.include_router(r, prefix="/tasks")
+
 ##################
 # OPENAPI Documentation
 ##################
@@ -94,10 +104,10 @@ tags_metadata = [
     {"name": "Dataset", "description": datasets.__doc__},
     {"name": "Version", "description": versions.__doc__},
     {"name": "Assets", "description": assets.__doc__},
-    {"name": "Tasks", "description": tasks.__doc__},
     {"name": "Features", "description": features.__doc__},
     {"name": "Query", "description": queries.__doc__},
     {"name": "Geostore", "description": geostore.__doc__},
+    {"name": "Tasks", "description": tasks.__doc__},
 ]
 
 
@@ -116,10 +126,11 @@ def custom_openapi(openapi_prefix: str = ""):
     openapi_schema["tags"] = tags_metadata
     openapi_schema["info"]["x-logo"] = {"url": "/static/gfw-data-api.png"}
     openapi_schema["x-tagGroups"] = [
-        {"name": "Meta API", "tags": ["Datasets", "Versions", "Assets", "Tasks"]},
+        {"name": "Meta API", "tags": ["Datasets", "Versions", "Assets"]},
         {"name": "Geostore API", "tags": ["Geostore"]},
         {"name": "Feature API", "tags": ["Features"]},
         {"name": "SQL API", "tags": ["Query"]},
+        {"name": "Task API", "tags": ["Tasks"]},
     ]
 
     app.openapi_schema = openapi_schema

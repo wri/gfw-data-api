@@ -1,7 +1,8 @@
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 from uuid import UUID
 
-from ..crud import assets
+from ..application import ContextEngine
+from ..crud import assets, tasks
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
@@ -13,16 +14,22 @@ from .batch import execute
 
 
 async def static_vector_tile_asset(
-    dataset: str,
-    version: str,
-    asset_id: UUID,
-    input_data: Dict[str, Any],
-    callback: Callable[[Dict[str, Any]], Awaitable[None]],  # TODO delete
+    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
     """
 
     Create Vector tile cache and NDJSON file as intermediate data.
     """
+
+    async def callback(
+        task_id: Optional[UUID], message: Dict[str, Any]
+    ) -> Awaitable[None]:
+        async with ContextEngine("PUT"):
+            if task_id:
+                _ = await tasks.create_task(
+                    task_id, asset_id=asset_id, change_log=[message]
+                )
+            return await assets.update_asset(asset_id, change_log=[message])
 
     creation_options = StaticVectorTileCacheCreationOptions(
         **input_data["creation_options"]

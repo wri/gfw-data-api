@@ -1,14 +1,14 @@
 #!/bin/bash
-COMMAND="$@"
 
-# ADMIN_TOKEN, STATUS_URL are put in the env from WRITER_SECRETS
+
+# SERVICE_ACCOUNT_TOKEN, STATUS_URL are put in the env from WRITER_SECRETS
 # AWS_BATCH_JOB_ID is put in the env by AWS Batch/moto
-HEADERS="Authorization: Bearer $ADMIN_TOKEN"
+HEADERS="Authorization: Bearer $SERVICE_ACCOUNT_TOKEN"
 URL=${STATUS_URL}/${AWS_BATCH_JOB_ID}
 echo "URL: $URL"
 
 # Execute command, save the exit code and output (stdout AND stderr)
-OUTPUT=$($COMMAND 2>&1)
+OUTPUT=$("$@" 2>&1)
 EXIT_CODE=$?
 
 echo COMMAND EXIT CODE: $EXIT_CODE
@@ -19,13 +19,16 @@ GREP_EXIT_CODE=$?
 
 echo GREP EXIT CODE: $GREP_EXIT_CODE
 
+COMMAND="$*"
+ESC_COMMAND=$(echo "$COMMAND" | sed 's/"/\\"/g')
+
 if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
     STATUS="success"
-    MESSAGE="Successfully ran command [ $COMMAND ]"
+    MESSAGE="Successfully ran command [ $ESC_COMMAND ]"
     DETAIL="None"
 else
     STATUS="failure"
-    MESSAGE="Command [ $COMMAND ] encountered errors"
+    MESSAGE="Command [ $ESC_COMMAND ] encountered errors"
     DETAIL="None" # Would be nice to attach properly escaped OUTPUT here
 fi
 

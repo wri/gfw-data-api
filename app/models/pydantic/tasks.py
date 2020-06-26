@@ -9,7 +9,7 @@ from .responses import Response
 
 
 class Task(Base):
-    task_id: str
+    task_id: UUID
     asset_id: UUID
     change_log: List[ChangeLog]
 

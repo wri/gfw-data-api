@@ -12,6 +12,7 @@ from ..settings.globals import (
     READER_PASSWORD,
     READER_PORT,
     READER_USERNAME,
+    SERVICE_ACCOUNT_TOKEN,
     WRITER_DBNAME,
     WRITER_HOST,
     WRITER_PASSWORD,
@@ -19,25 +20,26 @@ from ..settings.globals import (
     WRITER_USERNAME,
 )
 
-writer_secrets: List[Dict[str, Any]] = [
+report_vars: List = [
+    {"name": "STATUS_URL", "value": urljoin(API_URL, "tasks")},
+    {"name": "SERVICE_ACCOUNT_TOKEN", "value": SERVICE_ACCOUNT_TOKEN},
+]
+
+writer_secrets: List = [
     {"name": "PGPASSWORD", "value": str(WRITER_PASSWORD)},
     {"name": "PGHOST", "value": WRITER_HOST},
     {"name": "PGPORT", "value": WRITER_PORT},
     {"name": "PGDATABASE", "value": WRITER_DBNAME},
     {"name": "PGUSER", "value": WRITER_USERNAME},
-    {
-        "name": "STATUS_URL",
-        "value": urljoin(API_URL, "tasks"),
-    },  # FIXME: Get endpoint dynamically
-]
+] + report_vars
 
-reader_secrets = [
+reader_secrets: List = [
     {"name": "PGPASSWORD", "value": str(READER_PASSWORD)},
     {"name": "PGHOST", "value": READER_HOST},
     {"name": "PGPORT", "value": READER_PORT},
     {"name": "PGDATABASE", "value": READER_DBNAME},
     {"name": "PGUSER", "value": READER_USERNAME},
-]
+] + report_vars
 
 
 async def get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]]:

@@ -1,4 +1,3 @@
-import os
 from typing import List
 from uuid import UUID
 
@@ -6,30 +5,35 @@ import boto3
 import pendulum
 import pytest
 from pendulum.parsing.exceptions import ParserError
-from sqlalchemy.sql.ddl import CreateSchema
 
 from app.application import ContextEngine, db
-from app.crud import assets, datasets, versions
-from app.models.orm.assets import Asset
+from app.crud import assets, tasks, versions
 from app.models.orm.geostore import Geostore
-from app.settings.globals import AWS_REGION, READER_USERNAME
+from app.settings.globals import AWS_REGION
 from app.tasks.default_assets import create_default_asset
 from app.utils.aws import get_s3_client
 
-GEOJSON_NAME = "test.geojson"
-GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "..", "fixtures", GEOJSON_NAME)
+from . import (
+    BUCKET,
+    GEOJSON_NAME,
+    GEOJSON_PATH,
+    TSV_NAME,
+    TSV_PATH,
+    check_callbacks,
+    create_version,
+    poll_jobs,
+)
 
-TSV_NAME = "test.tsv"
-TSV_PATH = os.path.join(os.path.dirname(__file__), "..", "fixtures", TSV_NAME)
 
-BUCKET = "test-bucket"
-
-
-@pytest.mark.skip(reason="Needs to be updated for new task behavior")
 @pytest.mark.asyncio
-async def test_vector_source_asset(batch_client):
+async def test_vector_source_asset(batch_client, httpd):
 
     _, logs = batch_client
+    httpd_port = httpd.server_port
+
+    ############################
+    # Setup test
+    ############################
 
     # Upload file to mocked S3 bucket
     s3_client = boto3.client(
@@ -48,36 +52,27 @@ async def test_vector_source_asset(batch_client):
         "metadata": {},
     }
 
-    # Create dataset and version records
-    async with ContextEngine("WRITE"):
-        await datasets.create_dataset(dataset)
-        await db.status(CreateSchema(dataset))
-        await db.status(f"GRANT USAGE ON SCHEMA {dataset} TO {READER_USERNAME};")
-        await db.status(
-            f"ALTER DEFAULT PRIVILEGES IN SCHEMA {dataset} GRANT SELECT ON TABLES TO {READER_USERNAME};"
-        )
-        await versions.create_version(dataset, version, **input_data)
+    await create_version(dataset, version, input_data)
 
-    # To start off, version should be in status "pending"
-    # and changelog should be an empty list
-    row = await versions.get_version(dataset, version)
-    assert row.status == "pending"
-    assert row.change_log == []
-
+    ######################
+    # Test asset creation
+    #####################
     # Create default asset in mocked BATCH
     async with ContextEngine("WRITE"):
-        await create_default_asset(dataset, version, input_data, None)
+        asset_id = await create_default_asset(dataset, version, input_data, None)
+
+    tasks_rows = await tasks.get_tasks(asset_id)
+    task_ids = [str(task.task_id) for task in tasks_rows]
+
+    # make sure, all jobs completed
+    status = await poll_jobs(task_ids)
+    assert status == "saved"
 
     # Get the logs in case something went wrong
     _print_logs(logs)
 
-    # If everything worked, version should be set to "saved"
-    # and there should now be a changelog item
-    row = await versions.get_version(dataset, version)
-    assert row.status == "saved"
-    assert len(row.change_log) == 1
-    print(f"VECTOR_SOURCE_VERSION LOGS: {row.change_log}")
-    assert row.change_log[0]["message"] == "Successfully ran all batch jobs"
+    await _check_version_status(dataset, version)
+    await _check_asset_status(dataset, version, 7, "inherit_from_geostore")
 
     # There should be a table called "test"."v1.1.1" with one row
     async with ContextEngine("READ"):
@@ -91,21 +86,19 @@ async def test_vector_source_asset(batch_client):
     assert len(rows) == 1
     assert rows[0].gfw_geostore_id == UUID("b9faa657-34c9-96d4-fce4-8bb8a1507cb3")
 
-    asset_rows: List[Asset] = await assets.get_assets(dataset, version)
-    print(f"VECTOR SOURCE ASSET LOGS: {asset_rows[0].change_log}")
-    assert len(asset_rows) == 1
-    assert asset_rows[0].change_log[-1]["message"] == (
-        "Successfully completed all scheduled batch jobs for asset creation"
-    )
-    assert len(asset_rows[0].change_log) == 15  # 14 for jobs, 1 for summary
+    check_callbacks(task_ids, httpd_port)
 
 
-@pytest.mark.skip(reason="Needs to be updated for new task behavior")
 @pytest.mark.asyncio
-async def test_table_source_asset(client, batch_client):
-    _, logs = batch_client
+async def test_table_source_asset(batch_client, httpd):
 
-    # test environment uses moto server
+    _, logs = batch_client
+    httpd_port = httpd.server_port
+
+    ############################
+    # Setup test
+    ############################
+
     s3_client = get_s3_client()
 
     s3_client.create_bucket(Bucket=BUCKET)
@@ -166,55 +159,28 @@ async def test_table_source_asset(client, batch_client):
         "metadata": {},
     }
 
-    # Create dataset and version records
-    async with ContextEngine("WRITE"):
-        await datasets.create_dataset(dataset)
-        await db.status(CreateSchema(dataset))
-        await db.status(f"GRANT USAGE ON SCHEMA {dataset} TO {READER_USERNAME};")
-        await db.status(
-            f"ALTER DEFAULT PRIVILEGES IN SCHEMA {dataset} GRANT SELECT ON TABLES TO {READER_USERNAME};"
-        )
-        await versions.create_version(dataset, version, **input_data)
+    await create_version(dataset, version, input_data)
 
-    # To start off, version should be in status "pending"
-    row = await versions.get_version(dataset, version)
-    assert row.status == "pending"
+    #####################
+    # Test asset creation
+    #####################
 
     # Create default asset in mocked BATCH
     async with ContextEngine("WRITE"):
-        await create_default_asset(
-            dataset, version, input_data, None,
-        )
+        asset_id = await create_default_asset(dataset, version, input_data, None,)
+
+    tasks_rows = await tasks.get_tasks(asset_id)
+    task_ids = [str(task.task_id) for task in tasks_rows]
+
+    # make sure, all jobs completed
+    status = await poll_jobs(task_ids)
+    assert status == "saved"
 
     # Get the logs in case something went wrong
-    _print_logs(logs)
+    # _print_logs(logs)
 
-    # If everything worked, version should be set to "saved"
-    # and there should now be a changelog item
-    row = await versions.get_version(dataset, version)
-    assert row.status == "saved"
-    assert len(row.change_log) == 1
-    print(f"TABLE SOURCE VERSION LOGS: {row.change_log}")
-    assert row.change_log[0]["message"] == "Successfully ran all batch jobs"
-
-    rows = await assets.get_assets(dataset, version)
-    assert len(rows) == 1
-    print(rows[0].metadata)
-    assert rows[0].status == "saved"
-    assert len(rows[0].metadata["fields_"]) == 33
-    assert rows[0].is_default is True
-
-    asset_rows: List[Asset] = await assets.get_assets(dataset, version)
-    print(f"TABLE SOURCE ASSET LOGS: {asset_rows[0].change_log}")
-    assert len(asset_rows) == 1
-    assert asset_rows[0].change_log[-1]["message"] == (
-        "Successfully completed all scheduled batch jobs for asset creation"
-    )
-    assert len(asset_rows[0].change_log) == 17  # 16 for jobs, 1 for summary
-
-    _assert_fields(
-        rows[0].metadata["fields_"], input_data["creation_options"]["table_schema"]
-    )
+    await _check_version_status(dataset, version)
+    await _check_asset_status(dataset, version, 14, "cluster_partitions_3")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -258,6 +224,7 @@ async def test_table_source_asset(client, batch_client):
         input_data["creation_options"]["indices"]
     )
     assert cluster_count == len(partition_schema)
+    check_callbacks(task_ids, httpd_port)
 
 
 def _assert_fields(field_list, field_schema):
@@ -291,3 +258,29 @@ def _print_logs(logs):
         print(f"-------- LOGS FROM {ls_name} --------")
         for event in stream_resp["events"]:
             print(event["message"])
+
+
+async def _check_version_status(dataset, version):
+    row = await versions.get_version(dataset, version)
+
+    # in this test we don't set the final version status to saved or failed
+    assert row.status == "pending"
+
+    # in this test we only see the logs from background task, not from batch jobs
+    print(f"TABLE SOURCE VERSION LOGS: {row.change_log}")
+    assert len(row.change_log) == 1
+    assert row.change_log[0]["message"] == "Successfully scheduled batch jobs"
+
+
+async def _check_asset_status(dataset, version, nb_jobs, last_job_name):
+    rows = await assets.get_assets(dataset, version)
+    assert len(rows) == 1
+
+    # in this test we don't set the final asset status to saved or failed
+    assert rows[0].status == "pending"
+    assert rows[0].is_default is True
+
+    # in this test we only see the logs from background task, not from batch jobs
+    print(f"TABLE SOURCE ASSET LOGS: {rows[0].change_log}")
+    assert len(rows[0].change_log) == nb_jobs
+    assert rows[0].change_log[-1]["message"] == (f"Scheduled job {last_job_name}")

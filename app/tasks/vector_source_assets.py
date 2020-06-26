@@ -132,9 +132,9 @@ async def vector_source_asset(
         callback,
     )
 
-    await update_asset_field_metadata(
-        dataset, version, asset_id,
-    )
-    await update_asset_status(asset_id, log.status)
+    # await update_asset_field_metadata(
+    #     dataset, version, asset_id,
+    # )
+    # await update_asset_status(asset_id, log.status)
 
     return log

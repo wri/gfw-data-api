@@ -89,7 +89,7 @@ async def test_dataset():
     metadata = DatasetMetadata(title="Test Title", tags=["tag1", "tag2"])
     data = DatasetUpdateIn(metadata=metadata)
     async with ContextEngine("WRITE"):
-        row = await update_dataset("test", data)
+        row = await update_dataset("test", **data.dict(exclude_unset=True))
     assert row.metadata["title"] == "Test Title"
     assert row.metadata["tags"] == ["tag1", "tag2"]
 

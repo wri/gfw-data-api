@@ -17,6 +17,10 @@ RUN pip3 install \
 COPY ./batch/scripts/ /opt/scripts/
 COPY ./batch/python/ /opt/python/
 
+# make sure scripts are excecutable
+RUN chmod +x -R /opt/scripts/
+RUN chmod +x -R /opt/python/
+
 ENV PATH="/opt/scripts:${PATH}"
 ENV PATH="/opt/python:${PATH}"
 

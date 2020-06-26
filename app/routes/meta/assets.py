@@ -12,10 +12,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
 from fastapi.responses import ORJSONResponse
 
-from app.models.orm.tasks import Task as ORMTask
-from app.models.pydantic.tasks import Task, TasksResponse
-
-from ...crud import assets, tasks, versions
+from ...crud import assets, versions
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.assets import (
@@ -125,18 +122,6 @@ async def get_asset(
 #     """Get a specific asset."""
 #     row: ORMAsset = await assets.get_asset(asset_id)
 #     return await _asset_response(row)
-
-
-@router.get(
-    "assets/{asset_id}/tasks",
-    response_class=ORJSONResponse,
-    tags=["Assets"],
-    response_model=AssetResponse,
-)
-async def get_asset_tasks_root(*, asset_id: UUID = Path(...)) -> TasksResponse:
-    """Get a specific asset."""
-    row: List[ORMTask] = await tasks.get_tasks(asset_id)
-    return await _tasks_response(row)
 
 
 @router.post(
@@ -275,9 +260,3 @@ async def _assets_response(assets_orm: List[ORMAsset]) -> AssetsResponse:
     """
     data = [Asset.from_orm(asset) for asset in assets_orm]  # .dict(by_alias=True)
     return AssetsResponse(data=data)
-
-
-async def _tasks_response(tasks_orm: List[ORMTask]) -> TasksResponse:
-    """Serialize ORM response."""
-    data = [Task.from_orm(task) for task in tasks_orm]  # .dict(by_alias=True)
-    return TasksResponse(data=data)
