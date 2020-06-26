@@ -30,7 +30,7 @@ async def test_versions():
     version_name = "v1.1.1"
 
     # Add a dataset
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         new_row = await create_dataset(dataset_name)
     assert new_row.dataset == dataset_name
 
@@ -50,7 +50,7 @@ async def test_versions():
         assert result == "permission denied for table versions"
 
     # Using context engine with "PUT" should work
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         new_row = await create_version(dataset_name, version_name, source_type="table")
     assert new_row.dataset == dataset_name
     assert new_row.version == version_name
@@ -64,7 +64,7 @@ async def test_versions():
     assert new_row.change_log == []
 
     # This shouldn't work a second time
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         result = ""
         status_code = 200
         try:
@@ -116,8 +116,8 @@ async def test_versions():
 
     # It should be possible to update a dataset using a context engine
     metadata = VersionMetadata(title="Test Title", tags=["tag1", "tag2"])
-    logs = ChangeLog(date_time=datetime.now(), status="saved", message="all good")
-    async with ContextEngine("PUT"):
+    logs = ChangeLog(date_time=datetime.now(), status="pending", message="all good")
+    async with ContextEngine("WRITE"):
         row = await update_version(
             dataset_name,
             version_name,
@@ -131,7 +131,7 @@ async def test_versions():
     assert row.change_log[0]["message"] == logs.dict()["message"]
 
     # When deleting a dataset, method should return the deleted object
-    async with ContextEngine("DELETE"):
+    async with ContextEngine("WRITE"):
         row = await delete_version(dataset_name, version_name)
     assert row.dataset == dataset_name
     assert row.version == version_name
@@ -154,7 +154,7 @@ async def test_latest_versions():
     dataset_name = "test"
 
     # Add a dataset
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         await create_dataset(dataset_name)
         await create_version(
             dataset_name, "v1.1.1", source_type="table", is_latest=True

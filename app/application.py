@@ -79,8 +79,7 @@ class ContextEngine(object):
         """
         Select the database connection depending on request method
         """
-        write_methods = ["PUT", "PATCH", "POST", "DELETE"]
-        if method in write_methods:
+        if method.upper() == "WRITE":
             logger.info("Use write engine")
             engine: GinoEngine = WRITE_ENGINE
         else:

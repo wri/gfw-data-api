@@ -44,8 +44,8 @@ async def get_task(*, task_id: UUID = Path(...)) -> TaskResponse:
 )
 async def get_asset_tasks_root(*, asset_id: UUID = Path(...)) -> TasksResponse:
     """Get all Tasks for selected asset"""
-    row: List[ORMTask] = await tasks.get_tasks(asset_id)
-    return await _tasks_response(row)
+    rows: List[ORMTask] = await tasks.get_tasks(asset_id)
+    return await _tasks_response(rows)
 
 
 @router.patch(

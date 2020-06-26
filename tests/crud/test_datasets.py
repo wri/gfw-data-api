@@ -36,12 +36,12 @@ async def test_dataset():
         assert result == "permission denied for table datasets"
 
     # Using context engine with "PUT" should work
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         new_row = await create_dataset("test")
     assert new_row.dataset == "test"
 
     # This shouldn't work a second time
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         result = ""
         status_code = 200
         try:
@@ -88,13 +88,13 @@ async def test_dataset():
     # It should be possible to update a dataset using a context engine
     metadata = DatasetMetadata(title="Test Title", tags=["tag1", "tag2"])
     data = DatasetUpdateIn(metadata=metadata)
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         row = await update_dataset("test", data)
     assert row.metadata["title"] == "Test Title"
     assert row.metadata["tags"] == ["tag1", "tag2"]
 
     # When deleting a dataset, method should return the deleted object
-    async with ContextEngine("DELETE"):
+    async with ContextEngine("WRITE"):
         row = await delete_dataset("test")
     assert row.dataset == "test"
 

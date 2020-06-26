@@ -19,10 +19,26 @@ data "terraform_remote_state" "pixetl" {
   }
 }
 
+
+# import tile_cache state
+# This might cause a chicken/ egg problem on new deployments.
+# B/C tile cache state also imports data-api state
+# In our case, we only need the S3 bucket name here which already exists in all envionments.
+# If we were to migrate this project to a different account, you would need to create bucket manually first
+# and import into tile cache state for this to work
+data "terraform_remote_state" "tile_cache" {
+  backend = "s3"
+  config = {
+    bucket = local.tf_state_bucket
+    region = "us-east-1"
+    key    = "wri__gfw_fire-vector-tiles.tfstate"
+  }
+}
+
 data "template_file" "container_definition" {
   template = file("${path.root}/templates/container_definition.json.tmpl")
   vars = {
-    image = "${module.app_docker_image.repository_url}:latest"
+    image = "${module.app_docker_image.repository_url}:${local.container_tag}"
 
     container_name = var.container_name
     container_port = var.container_port
@@ -35,6 +51,10 @@ data "template_file" "container_definition" {
     project           = local.project
     environment       = var.environment
     aws_region        = var.region
+
+    data_lake_bucket  = data.terraform_remote_state.core.outputs.data-lake_bucket
+    tile_cache_bucket = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_name
+    tile_cache_cloudfront_id = data.terraform_remote_state.tile_cache.outputs.cloudfront_distribution_id
 
     aurora_job_definition     = module.batch_job_queues.aurora_job_definition
     aurora_job_queue          = module.batch_job_queues.aurora_job_queue

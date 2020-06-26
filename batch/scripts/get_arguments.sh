@@ -46,6 +46,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      -C|--column_names)
+      COLUMN_NAMES="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -d|--dataset)
       DATASET="$2"
       shift # past argument
@@ -58,6 +63,11 @@ do
       ;;
       -f|--file)
       LOCAL_FILE="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -F|--format)
+      FORMAT="$2"
       shift # past argument
       shift # past value
       ;;
@@ -111,8 +121,18 @@ do
       shift # past argument
       shift # past value
       ;;
+      -T|--target)
+      TARGET="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -v|--version)
       VERSION="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -w|--where)
+      WHERE="$2"
       shift # past argument
       shift # past value
       ;;

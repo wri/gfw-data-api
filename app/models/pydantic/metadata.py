@@ -82,6 +82,7 @@ class DatabaseTableMetadata(VersionMetadata):
     fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
 
 
+#
 # class AssetMetadata(VersionMetadata):
 #     asset_type: Optional[Dict[str, Any]]
 #     url: Optional[str]
