@@ -29,10 +29,10 @@ async def create_asset(
     input_data: Dict[str, Any],
     asset_lookup: FrozenSet[Tuple[Any, Any]] = ASSET_PIPELINES,
 ) -> None:
-    """
-    Call Asset Pipeline.
-    Default assets use source_type for identification.
-    All other assets use asset_type directly.
+    """Call Asset Pipeline.
+
+    Default assets use source_type for identification. All other assets
+    use asset_type directly.
     """
     lookup = dict(asset_lookup)
 

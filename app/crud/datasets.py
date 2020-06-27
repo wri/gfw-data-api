@@ -6,7 +6,6 @@ from fastapi import HTTPException
 from ..application import db
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.queries.datasets import all_datasets
-from ..models.pydantic.datasets import DatasetUpdateIn
 from . import update_data
 
 

@@ -11,9 +11,7 @@ from . import BUCKET, KEY, TSV_NAME, TSV_PATH, VALUE, MockCloudfrontClient, Mock
 
 
 def test_delete_s3_objects():
-    """"
-    Make sure we can delete more than 1000 items
-    """
+    """" Make sure we can delete more than 1000 items."""
 
     s3_client = get_s3_client()
 
@@ -27,10 +25,8 @@ def test_delete_s3_objects():
 
 @mock.patch("app.tasks.aws_tasks.get_s3_client")
 def test_expire_s3_objects(mock_client):
-    """
-    Updating lifecycle policies in Moto doesn't seem to work correctly
-    Hence I created a custom mock
-    """
+    """Updating lifecycle policies in Moto doesn't seem to work correctly Hence
+    I created a custom mock."""
 
     mock_client.return_value = MockS3Client()
     s3_client = mock_client()
@@ -73,9 +69,7 @@ def test_expire_s3_objects(mock_client):
 
 @mock.patch("app.tasks.aws_tasks.get_cloudfront_client")
 def test_flush_cloudfront_cache(mock_client):
-    """
-    Moto doesn't cover cloudfront, hence my onw mock
-    """
+    """Moto doesn't cover cloudfront, hence my onw mock."""
     mock_client.return_value = MockCloudfrontClient()
     # cloudfront_client = mock_client()
 

@@ -16,9 +16,7 @@ from app.models.pydantic.metadata import DatasetMetadata
 
 @pytest.mark.asyncio
 async def test_dataset():
-    """
-    Testing all CRUD operations on dataset in one go
-    """
+    """Testing all CRUD operations on dataset in one go."""
 
     # There should be an empty DB
     rows = await get_datasets()

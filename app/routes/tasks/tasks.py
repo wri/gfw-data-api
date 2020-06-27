@@ -1,31 +1,28 @@
-"""
+"""Tasks represent the steps performed during asset creation.
 
-Tasks represent the steps performed during asset creation.
-You can view a single tasks or all tasks associated with as specific asset.
-Only _service accounts_ can create or update tasks.
+You can view a single tasks or all tasks associated with as specific
+asset. Only _service accounts_ can create or update tasks.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 
+from ...application import ContextEngine
 from ...crud import assets, tasks, versions
 from ...models.orm.assets import Asset as ORMAsset
+from ...models.orm.queries.fields import fields
 from ...models.orm.tasks import Task as ORMTask
+from ...models.pydantic.assets import AssetType
 from ...models.pydantic.change_log import ChangeLog
+from ...models.pydantic.metadata import FieldMetadata
 from ...models.pydantic.tasks import Task, TaskResponse, TasksResponse, TaskUpdateIn
 from .. import is_service_account
 
 router = APIRouter()
-
-
-# TODO: update field metadata for table and vector source assets
-# await update_asset_field_metadata(
-#     dataset, version, asset_id,
-# )
 
 
 @router.get(
@@ -35,9 +32,7 @@ router = APIRouter()
     response_model=TaskResponse,
 )
 async def get_task(*, task_id: UUID = Path(...)) -> TaskResponse:
-    """
-    Get single tasks by task ID
-    """
+    """Get single tasks by task ID."""
     row = await tasks.get_task(task_id)
     return _task_response(row)
 
@@ -49,7 +44,7 @@ async def get_task(*, task_id: UUID = Path(...)) -> TaskResponse:
     response_model=TasksResponse,
 )
 async def get_asset_tasks_root(*, asset_id: UUID = Path(...)) -> TasksResponse:
-    """Get all Tasks for selected asset"""
+    """Get all Tasks for selected asset."""
     rows: List[ORMTask] = await tasks.get_tasks(asset_id)
     return await _tasks_response(rows)
 
@@ -64,10 +59,10 @@ async def update_task(
     *,
     task_id: UUID = Path(...),
     request: TaskUpdateIn,
-    is_service_account: bool = Depends(is_service_account),
+    is_authorized: bool = Depends(is_service_account),
 ) -> TaskResponse:
-    """
-    Update the status of a task.
+    """Update the status of a task.
+
     If the task has errored, or all tasks are complete, propagate status
     to asset and version rows.
     """
@@ -101,8 +96,8 @@ async def update_task(
 
 
 async def _set_failed(task_id: UUID, asset_id: UUID):
-    """
-    Set asset status to `failed`.
+    """Set asset status to `failed`.
+
     If asset is default asset, also set version status to `failed`
     """
     now = datetime.now()
@@ -117,6 +112,17 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
     asset_row: ORMAsset = await assets.update_asset(
         asset_id, status="failed", change_log=[status_change_log]
     )
+
+    # For database tables, try to fetch list of fields and their types from PostgreSQL
+    # and add them to metadata object.
+    # This is still useful, even if asset creation failed, since it will help to debug possible errors.
+    # Query returns empty list in case table does not exist.
+    if asset_row.asset_type == AssetType.database_table:
+        await _update_asset_field_metadata(
+            asset_row.dataset, asset_row.version, asset_id,
+        )
+
+    # If default asset failed, we must version status also to failed.
     if asset_row.is_default:
         dataset, version = asset_row.dataset, asset_row.version
 
@@ -126,10 +132,10 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
 
 
 async def _check_completed(asset_id: UUID):
-    """
-    Check if all tasks have completed.
-    If yes, set asset status to `saved`.
-    If asset is default asset, also set version status to `saved`.
+    """Check if all tasks have completed.
+
+    If yes, set asset status to `saved`. If asset is default asset, also
+    set version status to `saved`.
     """
     now = datetime.now()
 
@@ -146,6 +152,15 @@ async def _check_completed(asset_id: UUID):
         asset_row = await assets.update_asset(
             asset_id, status="saved", change_log=[status_change_log]
         )
+
+        # For database tables, fetch list of fields and their types from PostgreSQL
+        # and add them to metadata object
+        if asset_row.asset_type == AssetType.database_table:
+            await _update_asset_field_metadata(
+                asset_row.dataset, asset_row.version, asset_id,
+            )
+
+        # If default asset, make sure, version is also set to saved
         if asset_row.is_default:
             dataset, version = asset_row.dataset, asset_row.version
 
@@ -155,9 +170,7 @@ async def _check_completed(asset_id: UUID):
 
 
 def _all_finished(task_rows: List[ORMTask]) -> bool:
-    """
-    Loop over task list to check if all completed successfully
-    """
+    """Loop over task list to check if all completed successfully."""
     all_finished = True
 
     for row in task_rows:
@@ -170,8 +183,36 @@ def _all_finished(task_rows: List[ORMTask]) -> bool:
     return all_finished
 
 
+async def _get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]]:
+    """Get field list for asset and convert into Metadata object."""
+    async with ContextEngine("READ") as db:
+        rows = await db.all(fields, dataset=dataset, version=version)
+    field_metadata = list()
+
+    for row in rows:
+        metadata = FieldMetadata.from_orm(row)
+        if metadata.field_name_ in ["geom", "geom_wm", "gfw_geojson", "gfw_bbox"]:
+            metadata.is_filter = False
+            metadata.is_feature_info = False
+        metadata.field_alias = metadata.field_name_
+        field_metadata.append(metadata.dict())
+
+    return field_metadata
+
+
+async def _update_asset_field_metadata(dataset, version, asset_id):
+    """Update asset field metadata."""
+
+    field_metadata: List[Dict[str, Any]] = await _get_field_metadata(dataset, version)
+    metadata = {"fields_": field_metadata}
+
+    async with ContextEngine("WRITE"):
+        await assets.update_asset(asset_id, metadata=metadata)
+
+
 def _task_response(data: ORMTask) -> TaskResponse:
-    """Assure that task responses are parsed correctly and include associated assets."""
+    """Assure that task responses are parsed correctly and include associated
+    assets."""
 
     return TaskResponse(data=data)
 

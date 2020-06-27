@@ -4,13 +4,9 @@ from ..settings.globals import AWS_REGION, S3_ENTRYPOINT_URL
 
 
 def client_constructor(service: str, entrypoint_url=None):
-    """
-
-    Using closure design for a client constructor
-    This way we only need to create the client once in central location
-    and it will be easier to mock
-
-    """
+    """Using closure design for a client constructor This way we only need to
+    create the client once in central location and it will be easier to
+    mock."""
     service_client = None
 
     def client():

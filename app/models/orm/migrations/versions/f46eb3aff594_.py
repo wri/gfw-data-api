@@ -1,12 +1,10 @@
-"""empty message
+"""empty message.
 
 Revision ID: f46eb3aff594
 Revises: 6e56faf9e16f
 Create Date: 2020-06-13 01:38:20.446751
-
 """
 import sqlalchemy as sa
-import sqlalchemy_utils
 from alembic import op
 from sqlalchemy.dialects import postgresql
 

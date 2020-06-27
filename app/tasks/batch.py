@@ -38,12 +38,11 @@ async def schedule(
         [Optional[UUID], Dict[str, Any]], Coroutine[Any, Any, Awaitable[None]]
     ],
 ) -> Dict[str, UUID]:
-    """
+    """Submit multiple batch jobs at once.
 
-    Submit multiple batch jobs at once. Submitted batch jobs can depend on each other.
-    Dependent jobs need to be listed in `dependent_jobs`
-    and must have a `parents` attribute with the parent job names.
-
+    Submitted batch jobs can depend on each other. Dependent jobs need
+    to be listed in `dependent_jobs` and must have a `parents` attribute
+    with the parent job names.
     """
 
     scheduled_jobs = dict()

@@ -7,7 +7,7 @@ from ..crud import assets, tasks
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import VectorSourceCreationOptions
 from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
-from . import update_asset_field_metadata, update_asset_status, writer_secrets
+from . import writer_secrets
 from .batch import execute
 
 
@@ -131,10 +131,5 @@ async def vector_source_asset(
         ],
         callback,
     )
-
-    # await update_asset_field_metadata(
-    #     dataset, version, asset_id,
-    # )
-    # await update_asset_status(asset_id, log.status)
 
     return log

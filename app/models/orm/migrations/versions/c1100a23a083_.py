@@ -1,9 +1,8 @@
-"""empty message
+"""empty message.
 
 Revision ID: c1100a23a083
 Revises: d846d15cc93c
 Create Date: 2020-05-22 02:43:51.509116
-
 """
 
 # revision identifiers, used by Alembic.

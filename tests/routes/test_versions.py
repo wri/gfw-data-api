@@ -31,8 +31,8 @@ payload = {
 # @patch("app.tasks.default_assets.create_default_asset", return_value=True)
 @patch("fastapi.BackgroundTasks.add_task", return_value=None)
 def test_versions(mocked_task, client, db):
-    """
-    Test version path operations.
+    """Test version path operations.
+
     We patch/ disable background tasks here, as they run asynchronously.
     Such tasks are tested separately in a different module
     """
@@ -71,8 +71,8 @@ def test_versions(mocked_task, client, db):
 
 @patch("fastapi.BackgroundTasks.add_task", return_value=None)
 def test_version_metadata(mocked_task, client):
-    """
-    Test if Version inherits metadata from Dataset.
+    """Test if Version inherits metadata from Dataset.
+
     Version should be able to overwrite any metadata attribute
     """
     dataset = "test"
@@ -197,9 +197,8 @@ def test_version_delete_protection(mocked_task, client):
 
 @patch("fastapi.BackgroundTasks.add_task", return_value=None)
 def test_latest_middleware(mocked_task, client):
-    """
-    Test if middleware redirects to correct version when using `latest` version identifier
-    """
+    """Test if middleware redirects to correct version when using `latest`
+    version identifier."""
 
     dataset = "test"
     version = "v1.1.1"

@@ -1,9 +1,11 @@
-"""
-Datasets can have different versions. Versions aer usually
-linked to different releases. Versions can be either mutable (data can change) or immutable (data
-cannot change). By default versions are immutable. Every version needs one or many source files.
-These files can be a remote, publicly accessible URL or an uploaded file. Based on the source file(s),
-users can create additional assets and activate additional endpoints to view and query the dataset.
+"""Datasets can have different versions.
+
+Versions aer usually linked to different releases. Versions can be
+either mutable (data can change) or immutable (data cannot change). By
+default versions are immutable. Every version needs one or many source
+files. These files can be a remote, publicly accessible URL or an
+uploaded file. Based on the source file(s), users can create additional
+assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
 from typing import List, Optional
@@ -152,12 +154,11 @@ async def update_version(
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
 ):
-    """
+    """Partially update a version of a given dataset.
 
-    Partially update a version of a given dataset.
-    When using PATCH and uploading files,
-    this will overwrite the existing source(s) and trigger a complete update of all managed assets.
-
+    When using PATCH and uploading files, this will overwrite the
+    existing source(s) and trigger a complete update of all managed
+    assets.
     """
 
     input_data = request.dict(exclude_unset=True)
@@ -181,10 +182,11 @@ async def delete_version(
     is_authorized: bool = Depends(is_admin),
     background_tasks: BackgroundTasks,
 ):
-    """
-    Delete a version.
-    Only delete version if it is not tagged as `latest` or if it is the only version associated with dataset.
-    All associated, managed assets will be deleted in consequence.
+    """Delete a version.
+
+    Only delete version if it is not tagged as `latest` or if it is the
+    only version associated with dataset. All associated, managed assets
+    will be deleted in consequence.
     """
     row: Optional[ORMVersion] = None
     rows: List[ORMVersion] = await versions.get_versions(dataset)
@@ -212,7 +214,8 @@ async def delete_version(
 async def _version_response(
     dataset: str, version: str, data: ORMVersion
 ) -> VersionResponse:
-    """Assure that version responses are parsed correctly and include associated assets."""
+    """Assure that version responses are parsed correctly and include
+    associated assets."""
 
     assets: List[ORMAsset] = await ORMAsset.select("asset_type", "asset_uri").where(
         ORMAsset.dataset == dataset
