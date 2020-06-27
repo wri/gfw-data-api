@@ -19,7 +19,13 @@ from ...models.orm.tasks import Task as ORMTask
 from ...models.pydantic.assets import AssetType
 from ...models.pydantic.change_log import ChangeLog
 from ...models.pydantic.metadata import FieldMetadata
-from ...models.pydantic.tasks import Task, TaskResponse, TasksResponse, TaskUpdateIn
+from ...models.pydantic.tasks import (
+    Task,
+    TaskCreateIn,
+    TaskResponse,
+    TasksResponse,
+    TaskUpdateIn,
+)
 from .. import is_service_account
 
 router = APIRouter()
@@ -38,7 +44,7 @@ async def get_task(*, task_id: UUID = Path(...)) -> TaskResponse:
 
 
 @router.get(
-    "assets/{asset_id}",
+    "/assets/{asset_id}",
     response_class=ORJSONResponse,
     tags=["Tasks"],
     response_model=TasksResponse,
@@ -47,6 +53,26 @@ async def get_asset_tasks_root(*, asset_id: UUID = Path(...)) -> TasksResponse:
     """Get all Tasks for selected asset."""
     rows: List[ORMTask] = await tasks.get_tasks(asset_id)
     return await _tasks_response(rows)
+
+
+@router.put(
+    "/{task_id}",
+    response_class=ORJSONResponse,
+    tags=["Tasks"],
+    response_model=TaskResponse,
+)
+async def create_task(
+    *,
+    task_id: UUID = Path(...),
+    request: TaskCreateIn,
+    is_service_account: bool = Depends(is_service_account),
+) -> TaskResponse:
+    """Create a task."""
+
+    input_data = request.dict()
+    task_row = await tasks.create_task(task_id, **input_data)
+
+    return _task_response(task_row)
 
 
 @router.patch(

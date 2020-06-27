@@ -1,90 +1,77 @@
+import json
 from datetime import datetime
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from fastapi.encoders import jsonable_encoder
 
-from app.application import ContextEngine
-from app.crud.assets import create_asset
-from app.crud.datasets import create_dataset
-from app.crud.tasks import create_task
-from app.crud.versions import create_version
+from tests.routes import create_asset
 
-dataset_payload = {
-    "metadata": {
-        "title": "string",
-        "subtitle": "string",
-        "function": "string",
-        "resolution": "string",
-        "geographic_coverage": "string",
-        "source": "string",
-        "update_frequency": "string",
-        "cautions": "string",
-        "license": "string",
-        "overview": "string",
-        "citation": "string",
-        "tags": ["string"],
-        "data_language": "string",
-        "key_restrictions": "string",
-        "scale": "string",
-        "added_date": "string",
-        "why_added": "string",
-        "other": "string",
-        "learn_more": "string",
-    }
+version_metadata = {
+    "title": "string",
+    "subtitle": "string",
+    "function": "string",
+    "resolution": "string",
+    "geographic_coverage": "string",
+    "source": "string",
+    "update_frequency": "string",
+    "cautions": "string",
+    "license": "string",
+    "overview": "string",
+    "citation": "string",
+    "tags": ["string"],
+    "data_language": "string",
+    "key_restrictions": "string",
+    "scale": "string",
+    "added_date": "string",
+    "why_added": "string",
+    "other": "string",
+    "learn_more": "string",
 }
 
-version_payload = {
+version_data = {
     "is_latest": True,
     "source_type": "vector",
     "source_uri": ["s3://some/path"],
-    "metadata": dataset_payload["metadata"],
+    "metadata": version_metadata,
     "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
 }
 
 
-# @patch("fastapi.BackgroundTasks.add_task", return_value=None)
-@pytest.mark.asyncio
-async def test_tasks(client, db):
+def test_tasks(client, db):
     """Basic test to make sure task routes behave correctly."""
-
-    # dataset = "test"
-    # _ = client.put(f"/meta/{dataset}", data=json.dumps(dataset_payload))
-    #
-    # version = "v1.1.1"
-    # _ = client.put(
-    #     f"/meta/{dataset}/{version}", data=json.dumps(version_payload)
-    # )
-
     # Add a dataset, version, and asset
     dataset = "test"
-    version = "v1.1.1"
-    async with ContextEngine("WRITE"):
-        _ = await create_dataset(dataset)
-        _ = await create_version(dataset, version, source_type="table")
-        new_asset = await create_asset(
-            dataset,
-            version,
-            asset_type="Database table",
-            asset_uri="s3://path/to/file",
-        )
+    version = "v20200626"
+    asset_type = "Database table"
+    asset_uri = "s3://path/to/file"
 
-    asset_id = new_asset.asset_id
+    # with patch("fastapi.BackgroundTasks.add_task", return_value=None):
+    asset = create_asset(client, dataset, version, asset_type, asset_uri)
+    asset_id = asset["asset_id"]
 
-    new_task_id = uuid4()
-    async with ContextEngine("WRITE"):
-        new_task = await create_task(
-            new_task_id,
-            asset_id=asset_id,
-            change_log=[
-                {
-                    "date_time": datetime.now(),
-                    "status": "pending",
-                    "message": f"Scheduled job {new_task_id}",
-                    "detail": f"Job ID: {new_task_id}",
-                }
-            ],
-        )
-    assert new_task.asset_id == asset_id
+    # # Now create a single task
+    # new_task_id = uuid4()
+    # task_payload = {
+    #     "asset_id": asset_id,
+    #     "change_log": [
+    #         {
+    #             "date_time": str(datetime.now()),
+    #             "status": "pending",
+    #             "message": f"Scheduled job {new_task_id}",
+    #             "detail": f"Job ID: {new_task_id}",
+    #         }
+    #     ],
+    # }
+    # create_resp = client.put(f"/tasks/{new_task_id}", data=json.dumps(task_payload))
+    # assert create_resp.json()["status"] == "success"
+    # # Assert on response structure and content
+
+    existing_tasks = client.get(f"/tasks/assets/{asset_id}").json()["data"]
+    for task in existing_tasks:
+        assert len(task["change_log"]) == 1
+        print(task["change_log"][0]["status"])
 
     # Do an HTTP GET to check structure and content of response
     # get_resp = client.get(f"/meta/tasks/{new_task_id}")
@@ -98,6 +85,7 @@ async def test_tasks(client, db):
     # }
     # patch_resp = client.patch(f"/meta/tasks/{new_task_id}", data=json.dumps(changelog))
     # print(patch_resp.json())
+    assert 1 == 2
 
     # Make sure that changelogs were concatenated, now 2 of them
     # Make sure that asset, version status still "pending"

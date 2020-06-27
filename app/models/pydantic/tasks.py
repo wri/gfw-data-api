@@ -14,6 +14,11 @@ class Task(Base):
     change_log: List[ChangeLog]
 
 
+class TaskCreateIn(BaseModel):
+    asset_id: UUID
+    change_log: List[ChangeLog]
+
+
 class TaskUpdateIn(BaseModel):
     change_log: List[ChangeLog]
 
