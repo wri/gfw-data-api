@@ -6,26 +6,24 @@ Only _service accounts_ can create or update tasks.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 
+from ...application import ContextEngine
 from ...crud import assets, tasks, versions
 from ...models.orm.assets import Asset as ORMAsset
+from ...models.orm.queries.fields import fields
 from ...models.orm.tasks import Task as ORMTask
+from ...models.pydantic.assets import AssetType
 from ...models.pydantic.change_log import ChangeLog
+from ...models.pydantic.metadata import FieldMetadata
 from ...models.pydantic.tasks import Task, TaskResponse, TasksResponse, TaskUpdateIn
 from .. import is_service_account
 
 router = APIRouter()
-
-
-# TODO: update field metadata for table and vector source assets
-# await update_asset_field_metadata(
-#     dataset, version, asset_id,
-# )
 
 
 @router.get(
@@ -64,7 +62,7 @@ async def update_task(
     *,
     task_id: UUID = Path(...),
     request: TaskUpdateIn,
-    is_service_account: bool = Depends(is_service_account),
+    is_authorized: bool = Depends(is_service_account),
 ) -> TaskResponse:
     """
     Update the status of a task.
@@ -146,6 +144,11 @@ async def _check_completed(asset_id: UUID):
         asset_row = await assets.update_asset(
             asset_id, status="saved", change_log=[status_change_log]
         )
+        if asset_row.asset_type == AssetType.database_table:
+            await _update_asset_field_metadata(
+                asset_row.dataset, asset_row.version, asset_id,
+            )
+
         if asset_row.is_default:
             dataset, version = asset_row.dataset, asset_row.version
 
@@ -168,6 +171,35 @@ def _all_finished(task_rows: List[ORMTask]) -> bool:
             break
 
     return all_finished
+
+
+async def _get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]]:
+    """Get field list for asset and convert into Metadata object."""
+    async with ContextEngine("READ") as db:
+        rows = await db.all(fields, dataset=dataset, version=version)
+    field_metadata = list()
+
+    for row in rows:
+        metadata = FieldMetadata.from_orm(row)
+        if metadata.field_name_ in ["geom", "geom_wm", "gfw_geojson", "gfw_bbox"]:
+            metadata.is_filter = False
+            metadata.is_feature_info = False
+        metadata.field_alias = metadata.field_name_
+        field_metadata.append(metadata.dict())
+
+    return field_metadata
+
+
+async def _update_asset_field_metadata(dataset, version, asset_id):
+    """
+    Update asset field metadata.
+    """
+
+    field_metadata: List[Dict[str, Any]] = await _get_field_metadata(dataset, version)
+    metadata = {"fields_": field_metadata}
+
+    async with ContextEngine("WRITE"):
+        await assets.update_asset(asset_id, metadata=metadata)
 
 
 def _task_response(data: ORMTask) -> TaskResponse:

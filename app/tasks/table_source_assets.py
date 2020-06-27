@@ -13,7 +13,7 @@ from ..models.pydantic.creation_options import (
 )
 from ..models.pydantic.jobs import Job, PostgresqlClientJob
 from ..settings.globals import CHUNK_SIZE
-from ..tasks import update_asset_field_metadata, update_asset_status, writer_secrets
+from ..tasks import writer_secrets
 from ..tasks.batch import execute
 
 
@@ -178,11 +178,6 @@ async def table_source_asset(
         ],
         callback,
     )
-
-    # await update_asset_field_metadata(
-    #     dataset, version, asset_id,
-    # )
-    # await update_asset_status(asset_id, log.status)
 
     return log
 

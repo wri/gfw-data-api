@@ -19,8 +19,8 @@ GREP_EXIT_CODE=$?
 
 echo GREP EXIT CODE: $GREP_EXIT_CODE
 
-COMMAND="$*"
-ESC_COMMAND=$(echo "$COMMAND" | sed 's/"/\\"/g')
+# escape all quotes inside command to not break JSON payload
+ESC_COMMAND=${"$*"//\"/\\\"}
 
 if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
     STATUS="success"
