@@ -1,6 +1,6 @@
 import json
 
-from tests.routes import create_asset
+from tests.routes import create_default_asset
 
 version_metadata = {
     "title": "string",
@@ -38,10 +38,8 @@ def test_tasks_success(client, db):
     # Add a dataset, version, and asset
     dataset = "test"
     version = "v20200626"
-    asset_type = "Database table"
-    asset_uri = "s3://path/to/file"
 
-    asset = create_asset(client, dataset, version, asset_type, asset_uri)
+    asset = create_default_asset(client, dataset, version)
     asset_id = asset["asset_id"]
 
     # Verify that the asset and version are in state "pending"
@@ -52,7 +50,7 @@ def test_tasks_success(client, db):
     assert asset_resp.json()["data"]["status"] == "pending"
 
     # At this point there should be a bunch of tasks started for the default
-    # asset, though they haven't been able to report their status because the
+    # asset, though they won't be able to report their status because the
     # full application isn't up and listening. That's fine, we're going to
     # update the tasks via the task status endpoint the same way the Batch
     # tasks would (though via the test client instead of curl).
@@ -94,7 +92,7 @@ def test_tasks_success(client, db):
     assert asset_resp.json()["data"]["status"] == "pending"
 
     # Update the rest of the tasks with changelogs of status "success"
-    # Verify that the status is propagated to the asset and version
+    # Verify that the commpletion status is propagated to the asset and version
     for task in existing_tasks[1:]:
         patch_payload = {
             "change_log": [

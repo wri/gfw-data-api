@@ -1,10 +1,6 @@
 import json
-from typing import Any, Dict
-from uuid import UUID
 
-from fastapi.encoders import jsonable_encoder
-
-basic_metadata = {
+generic_dataset_metadata = {
     "metadata": {
         "title": "string",
         "subtitle": "string",
@@ -28,18 +24,12 @@ basic_metadata = {
     }
 }
 
-# version_creation_data = {
-#     "is_latest": True,
-#     "source_type": "vector",
-#     "source_uri": ["s3://some/path"],
-#     "metadata": basic_metadata['metadata'],
-#     "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
-# }
-
 
 def create_version(test_client, dataset, version) -> None:
     # Create dataset and version
-    dataset_resp = test_client.put(f"/meta/{dataset}", data=json.dumps(basic_metadata))
+    dataset_resp = test_client.put(
+        f"/meta/{dataset}", data=json.dumps(generic_dataset_metadata)
+    )
     assert dataset_resp.json()["status"] == "success"
 
     version_payload = {
@@ -55,8 +45,9 @@ def create_version(test_client, dataset, version) -> None:
     assert version_response.json()["status"] == "success"
 
 
-def create_asset(test_client, dataset, version, asset_type, asset_uri):
-    # Create dataset and version records
+def create_default_asset(test_client, dataset, version):
+    # Create dataset and version records. A default asset is created
+    # automatically when the version is created.
     create_version(test_client, dataset, version)
 
     resp = test_client.get(f"/meta/{dataset}/{version}/assets")
@@ -64,19 +55,3 @@ def create_asset(test_client, dataset, version, asset_type, asset_uri):
     assert resp.json()["status"] == "success"
 
     return resp.json()["data"][0]
-
-    # asset_payload = {
-    #     "asset_type": asset_type,
-    #     "asset_uri": asset_uri,
-    #     "is_managed": False,
-    #     "creation_options": {
-    #         "zipped": False,
-    #         "src_driver": "GeoJSON",
-    #         "delimiter": ","
-    #     }
-    # }
-    #
-    # resp = test_client.post(
-    #     f"/meta/{dataset}/{version}/assets", data=json.dumps(asset_payload)
-    # )
-    # return resp
