@@ -189,8 +189,8 @@ def _create_partition_jobs(
     parents,
     job_env: List[Dict[str, str]],
 ) -> List[PostgresqlClientJob]:
-    """
-    Create partition job depending on the partition type.
+    """Create partition job depending on the partition type.
+
     For large partition number, it will break the job into sub jobs
     """
 
@@ -365,7 +365,5 @@ def _cluster_partition_job(
 
 
 def _chunk_list(data: List[Any], chunk_size: int = CHUNK_SIZE) -> List[List[Any]]:
-    """
-    Split list into chunks of fixed size.
-    """
+    """Split list into chunks of fixed size."""
     return [data[x : x + chunk_size] for x in range(0, len(data), chunk_size)]

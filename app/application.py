@@ -18,7 +18,8 @@ READ_ENGINE: Optional[GinoEngine] = None
 
 
 class ContextualGino(Gino):
-    """Override the Gino Metadata object to allow to dynamically change the binds."""
+    """Override the Gino Metadata object to allow to dynamically change the
+    binds."""
 
     @property
     def bind(self):
@@ -59,7 +60,7 @@ class ContextEngine(object):
         self.method = method
 
     async def __aenter__(self):
-        """initialize objects"""
+        """initialize objects."""
         try:
             e = CURRENT_ENGINE.get()
         except LookupError:
@@ -71,14 +72,12 @@ class ContextEngine(object):
             self.token = CURRENT_ENGINE.set(e)
 
     async def __aexit__(self, _type, value, tb):
-        """ uninitialize objects """
+        """Uninitialize objects."""
         CURRENT_ENGINE.reset(self.token)
 
     @staticmethod
     async def get_engine(method: str) -> GinoEngine:
-        """
-        Select the database connection depending on request method
-        """
+        """Select the database connection depending on request method."""
         if method.upper() == "WRITE":
             logger.info("Use write engine")
             engine: GinoEngine = WRITE_ENGINE
@@ -90,9 +89,7 @@ class ContextEngine(object):
 
 @app.on_event("startup")
 async def startup_event():
-    """
-    Initializing the database connections on startup
-    """
+    """Initializing the database connections on startup."""
 
     global WRITE_ENGINE
     global READ_ENGINE
@@ -111,9 +108,7 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """
-    Closing the database connections on shutdown
-    """
+    """Closing the database connections on shutdown."""
     global WRITE_ENGINE
     global READ_ENGINE
 

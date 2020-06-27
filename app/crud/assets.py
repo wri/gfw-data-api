@@ -118,10 +118,7 @@ async def _update_all_asset_metadata(assets):
 
 
 def _validate_creation_options(**data) -> Dict[str, Any]:
-    """
-
-    Validate if submitted creation options match asset type.
-    """
+    """Validate if submitted creation options match asset type."""
 
     if "creation_options" in data.keys() and "asset_type" in data.keys():
         asset_type = data["asset_type"]
@@ -137,10 +134,7 @@ def _validate_creation_options(**data) -> Dict[str, Any]:
 
 
 def _creation_option_factory(asset_type, creation_options) -> CreationOptions:
-    """
-
-    Create creation options pydantic model based on asset type
-    """
+    """Create creation options pydantic model based on asset type."""
 
     driver = creation_options.get("src_driver", None)
     table_drivers: List[str] = [t.value for t in TableDrivers]

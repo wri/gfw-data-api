@@ -45,9 +45,7 @@ version_payload = {
 # @patch("fastapi.BackgroundTasks.add_task", return_value=None)
 @pytest.mark.asyncio
 async def test_tasks(client, db):
-    """
-    Basic test to make sure task routes behave correctly
-    """
+    """Basic test to make sure task routes behave correctly."""
 
     # dataset = "test"
     # _ = client.put(f"/meta/{dataset}", data=json.dumps(dataset_payload))

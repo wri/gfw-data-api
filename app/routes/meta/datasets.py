@@ -1,6 +1,5 @@
-"""
-Datasets are just a bucket, for datasets which share the same core metadata
-"""
+"""Datasets are just a bucket, for datasets which share the same core
+metadata."""
 
 from typing import Any, List
 
@@ -92,10 +91,10 @@ async def update_dataset_metadata(
     request: DatasetUpdateIn,
     is_authorized: bool = Depends(is_admin),
 ) -> DatasetResponse:
-    """
+    """Partially update a dataset.
 
-    Partially update a dataset. Only metadata field can be updated. All other fields will be ignored.
-
+    Only metadata field can be updated. All other fields will be
+    ignored.
     """
     input_data = request.dict(exclude_unset=True)
     row: ORMDataset = await datasets.update_dataset(dataset, **input_data)
@@ -114,10 +113,11 @@ async def delete_dataset(
     dataset: str = Depends(dataset_dependency),
     is_authorized: bool = Depends(is_admin),
 ) -> DatasetResponse:
-    """
-    Delete a dataset.
-    By the time users are allowed to delete datasets, there should be no versions and assets left.
-    So only thing beside deleting the dataset row is to drop the schema in the database.
+    """Delete a dataset.
+
+    By the time users are allowed to delete datasets, there should be no
+    versions and assets left. So only thing beside deleting the dataset
+    row is to drop the schema in the database.
     """
 
     version_rows: List[ORMVersion] = await versions.get_versions(dataset)

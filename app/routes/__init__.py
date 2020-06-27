@@ -35,8 +35,8 @@ async def version_dependency(
 
 
 async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
-    """
-    Calls GFW API to authorize user.
+    """Calls GFW API to authorize user.
+
     User must be ADMIN for gfw app
     """
 
@@ -53,8 +53,8 @@ async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
 
 
 async def is_service_account(token: str = Depends(oauth2_scheme)) -> bool:
-    """
-    Calls GFW API to authorize user.
+    """Calls GFW API to authorize user.
+
     User must be service account with email gfw-sync@wri.org
     """
 
@@ -71,9 +71,7 @@ async def is_service_account(token: str = Depends(oauth2_scheme)) -> bool:
 
 
 def who_am_i(token) -> Response:
-    """
-    Call GFW API to get token's identity
-    """
+    """Call GFW API to get token's identity."""
 
     if ENV == "dev":
         prefix = "staging"

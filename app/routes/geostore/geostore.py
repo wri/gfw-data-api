@@ -1,7 +1,5 @@
-"""
-Retrieve a geometry using its mb5 hash for a given dataset,
-user defined geometries in the datastore
-"""
+"""Retrieve a geometry using its mb5 hash for a given dataset, user defined
+geometries in the datastore."""
 
 from uuid import UUID
 
@@ -25,9 +23,8 @@ async def add_new_geostore():
     "/geostore/{geostore_id}", response_class=ORJSONResponse, tags=["Geostore"],
 )
 async def get_geostore_root(*, geostore_id: UUID = Path(..., title="geostore_id")):
-    """
-    Retrieve GeoJSON representation for a given geostore ID of any dataset
-    """
+    """Retrieve GeoJSON representation for a given geostore ID of any
+    dataset."""
     pass
 
 
@@ -42,10 +39,9 @@ async def get_geostore(
     version: str = Depends(version_dependency),
     geostore_id: UUID = Path(..., title="geostore_id")
 ):
-    """
+    """Retrieve GeoJSON representation for a given geostore ID of a dataset
+    version.
 
-    Retrieve GeoJSON representation for a given geostore ID of a dataset version.
     Obtain geostore ID from feature attributes.
-
     """
     pass

@@ -91,9 +91,9 @@ def batch_client():
 
 @pytest.fixture(scope="session", autouse=True)
 def db():
-    """
-    Acquire a database session for a test and make sure the connection gets
+    """Acquire a database session for a test and make sure the connection gets
     properly closed, even if test fails.
+
     This is a synchronous connection using psycopg2.
     """
     with contextlib.ExitStack() as stack:
@@ -102,10 +102,8 @@ def db():
 
 @pytest.fixture(autouse=True)
 def client():
-    """
-    Set up a clean database before running a test
-    Run all migrations before test and downgrade afterwards
-    """
+    """Set up a clean database before running a test Run all migrations before
+    test and downgrade afterwards."""
     from app.main import app
 
     main(["--raiseerr", "upgrade", "head"])
@@ -138,7 +136,5 @@ def httpd():
 
 @pytest.fixture(autouse=True)
 def flush_request_list(httpd):
-    """
-    Delete request cache before every test
-    """
+    """Delete request cache before every test."""
     requests.delete(f"http://localhost:{httpd.server_port}")
