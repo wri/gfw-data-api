@@ -136,7 +136,7 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
     )
 
     asset_row: ORMAsset = await assets.update_asset(
-        asset_id, status="failed", change_log=[status_change_log]
+        asset_id, status="failed", change_log=[status_change_log.dict()]
     )
 
     # For database tables, try to fetch list of fields and their types from PostgreSQL
@@ -153,7 +153,7 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
         dataset, version = asset_row.dataset, asset_row.version
 
         await versions.update_version(
-            dataset, version, status="failed", change_log=[status_change_log]
+            dataset, version, status="failed", change_log=[status_change_log.dict()]
         )
 
 
