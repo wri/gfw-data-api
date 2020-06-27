@@ -1,10 +1,4 @@
 import json
-from datetime import datetime
-from unittest.mock import patch
-from uuid import uuid4
-
-import pytest
-from fastapi.encoders import jsonable_encoder
 
 from tests.routes import create_asset
 
@@ -39,7 +33,7 @@ version_data = {
 }
 
 
-def test_tasks(client, db):
+def test_tasks_success(client, db):
     """Basic test to make sure task routes behave correctly."""
     # Add a dataset, version, and asset
     dataset = "test"
@@ -47,49 +41,78 @@ def test_tasks(client, db):
     asset_type = "Database table"
     asset_uri = "s3://path/to/file"
 
-    # with patch("fastapi.BackgroundTasks.add_task", return_value=None):
     asset = create_asset(client, dataset, version, asset_type, asset_uri)
     asset_id = asset["asset_id"]
 
-    # # Now create a single task
-    # new_task_id = uuid4()
-    # task_payload = {
-    #     "asset_id": asset_id,
-    #     "change_log": [
-    #         {
-    #             "date_time": str(datetime.now()),
-    #             "status": "pending",
-    #             "message": f"Scheduled job {new_task_id}",
-    #             "detail": f"Job ID: {new_task_id}",
-    #         }
-    #     ],
-    # }
-    # create_resp = client.put(f"/tasks/{new_task_id}", data=json.dumps(task_payload))
-    # assert create_resp.json()["status"] == "success"
-    # # Assert on response structure and content
+    # Verify that the asset and version are in state "pending"
+    version_resp = client.get(f"/meta/{dataset}/{version}")
+    assert version_resp.json()["data"]["status"] == "pending"
 
+    asset_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
+    assert asset_resp.json()["data"]["status"] == "pending"
+
+    # At this point there should be a bunch of tasks started for the default
+    # asset, though they haven't been able to report their status because the
+    # full application isn't up and listening. That's fine, we're going to
+    # update the tasks via the task status endpoint the same way the Batch
+    # tasks would (though via the test client instead of curl).
+
+    # Verify the existence of the tasks, and that they each have only the
+    # initial changelog with status "pending"
     existing_tasks = client.get(f"/tasks/assets/{asset_id}").json()["data"]
+    assert len(existing_tasks) == 7
     for task in existing_tasks:
         assert len(task["change_log"]) == 1
-        print(task["change_log"][0]["status"])
+        assert task["change_log"][0]["status"] == "pending"
 
-    # Do an HTTP GET to check structure and content of response
-    # get_resp = client.get(f"/meta/tasks/{new_task_id}")
-    # Assert on the structure + content
+    # Arbitrarily choose a task and add a changelog.
+    sample_task_id = existing_tasks[0]["task_id"]
+    patch_payload = {
+        "change_log": [
+            {
+                "date_time": "2020-06-25 14:30:00",
+                "status": "success",
+                "message": "All finished!",
+                "detail": "None",
+            }
+        ]
+    }
+    patch_resp = client.patch(
+        f"/tasks/{sample_task_id}", data=json.dumps(patch_payload)
+    )
+    assert patch_resp.json()["status"] == "success"
 
-    # Send an HTTP PATCH with another "pending" changelog
-    # changelog = {
-    #     "date_time": "2020-06-25 14:30:00",
-    #     "status": "pending",
-    #     "detail": "None"
-    # }
-    # patch_resp = client.patch(f"/meta/tasks/{new_task_id}", data=json.dumps(changelog))
-    # print(patch_resp.json())
-    assert 1 == 2
+    # Verify the task has two changelogs now.
+    get_resp = client.get(f"/tasks/{sample_task_id}")
+    assert len(get_resp.json()["data"]["change_log"]) == 2
 
-    # Make sure that changelogs were concatenated, now 2 of them
-    # Make sure that asset, version status still "pending"
+    # Verify that the asset and version are still in state "pending"
+    version_resp = client.get(f"/meta/{dataset}/{version}")
+    assert version_resp.json()["data"]["status"] == "pending"
 
-    # Send an HTTP PATCH with a "failed" changelog
-    # patch_resp = client.patch(f"/meta/tasks/{new_task_id}", )
-    # Make sure that asset, version status become "failed"
+    asset_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
+    assert asset_resp.json()["data"]["status"] == "pending"
+
+    # Update the rest of the tasks with changelogs of status "success"
+    # Verify that the status is propagated to the asset and version
+    for task in existing_tasks[1:]:
+        patch_payload = {
+            "change_log": [
+                {
+                    "date_time": "2020-06-25 14:30:00",
+                    "status": "success",
+                    "message": "All finished!",
+                    "detail": "None",
+                }
+            ]
+        }
+        patch_resp = client.patch(
+            f"/tasks/{task['task_id']}", data=json.dumps(patch_payload)
+        )
+        assert patch_resp.json()["status"] == "success"
+
+    version_resp = client.get(f"/meta/{dataset}/{version}")
+    assert version_resp.json()["data"]["status"] == "saved"
+
+    asset_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
+    assert asset_resp.json()["data"]["status"] == "saved"

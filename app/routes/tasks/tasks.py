@@ -176,7 +176,7 @@ async def _check_completed(asset_id: UUID):
 
     if all_finished:
         asset_row = await assets.update_asset(
-            asset_id, status="saved", change_log=[status_change_log]
+            asset_id, status="saved", change_log=[status_change_log.dict()]
         )
 
         # For database tables, fetch list of fields and their types from PostgreSQL
@@ -200,7 +200,7 @@ def _all_finished(task_rows: List[ORMTask]) -> bool:
     all_finished = True
 
     for row in task_rows:
-        if any(changelog.status == "success" for changelog in row.change_log):
+        if any(changelog["status"] == "success" for changelog in row.change_log):
             continue
         else:
             all_finished = False

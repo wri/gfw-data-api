@@ -61,6 +61,7 @@ def create_asset(test_client, dataset, version, asset_type, asset_uri):
 
     resp = test_client.get(f"/meta/{dataset}/{version}/assets")
     assert len(resp.json()["data"]) == 1
+    assert resp.json()["status"] == "success"
 
     return resp.json()["data"][0]
 
