@@ -11,7 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 
-from ...application import ContextEngine
+from ...application import ContextEngine, db
 from ...crud import assets, tasks, versions
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.queries.fields import fields
@@ -191,7 +191,7 @@ async def _check_completed(asset_id: UUID):
             dataset, version = asset_row.dataset, asset_row.version
 
             await versions.update_version(
-                dataset, version, status="saved", change_log=[status_change_log]
+                dataset, version, status="saved", change_log=[status_change_log.dict()]
             )
 
 
@@ -211,7 +211,7 @@ def _all_finished(task_rows: List[ORMTask]) -> bool:
 
 async def _get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]]:
     """Get field list for asset and convert into Metadata object."""
-    async with ContextEngine("READ") as db:
+    async with ContextEngine("READ"):
         rows = await db.all(fields, dataset=dataset, version=version)
     field_metadata = list()
 
