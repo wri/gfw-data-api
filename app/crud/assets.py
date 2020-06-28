@@ -4,6 +4,7 @@ from uuid import UUID
 from asyncpg import UniqueViolationError
 from fastapi import HTTPException
 
+from ..errors import ClientError, ServerError
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
@@ -68,9 +69,9 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
             dataset=dataset, version=version, **data
         )
     except UniqueViolationError:
-        raise HTTPException(
+        raise ClientError(
             status_code=400,
-            detail="A similar Asset already exist." "Asset uri must be unique.",
+            detail="A similar Asset already exists. Asset uri must be unique.",
         )
 
     d: ORMDataset = await datasets.get_dataset(dataset)
@@ -150,7 +151,7 @@ def _creation_option_factory(asset_type, creation_options) -> CreationOptions:
         model = StaticVectorTileCacheCreationOptions(**creation_options)
 
     else:
-        raise HTTPException(
+        raise ServerError(
             status_code=501,
             detail=f"Creation options validation for {asset_type} not implemented",
         )

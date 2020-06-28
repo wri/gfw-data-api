@@ -18,6 +18,7 @@ from app.crud.assets import (
 )
 from app.crud.datasets import create_dataset
 from app.crud.versions import create_version
+from app.errors import ClientError
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.metadata import DatabaseTableMetadata
 
@@ -98,11 +99,11 @@ async def test_assets():
                 asset_type="Database table",
                 asset_uri="s3://path/to/file",
             )
-        except HTTPException as e:
+        except ClientError as e:
             result = e.detail
             status_code = e.status_code
 
-        assert result == ("A similar Asset already exist." "Asset uri must be unique.")
+        assert result == ("A similar Asset already exists. Asset uri must be unique.")
         assert status_code == 400
 
     # There should be an entry now

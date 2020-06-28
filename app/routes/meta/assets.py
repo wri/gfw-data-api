@@ -12,10 +12,11 @@ the same version and do not know the processing history.
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
 
 from ...crud import assets, versions
+from ...errors import ClientError
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.assets import (
@@ -85,7 +86,7 @@ async def get_asset(
     row: ORMAsset = await assets.get_asset(asset_id)
 
     if row.dataset != dataset and row.version != version:
-        raise HTTPException(
+        raise ClientError(
             status_code=404,
             detail=f"Could not find requested asset {dataset}/{version}/{asset_id}",
         )
@@ -151,13 +152,13 @@ async def add_new_asset(
     orm_version: ORMVersion = await versions.get_version(dataset, version)
 
     if orm_version.status == "pending":
-        raise HTTPException(
+        raise ClientError(
             status_code=409,
-            detail="Version status is currently `pending`."
+            detail="Version status is currently `pending`. "
             "Please retry once version is in status `saved`",
         )
     elif orm_version.status == "failed":
-        raise HTTPException(
+        raise ClientError(
             status_code=400, detail="Version status is `failed`. Cannot add any assets."
         )
     else:
@@ -192,10 +193,10 @@ async def delete_asset(
     row: ORMAsset = await assets.get_asset(asset_id)
 
     if row.is_default:
-        raise HTTPException(
+        raise ClientError(
             status_code=409,
-            detail="Deletion failed. You cannot delete a default asset."
-            "To delete default asset you must delete version.",
+            detail="Deletion failed. You cannot delete a default asset. "
+            "To delete a default asset you must delete the parent version.",
         )
 
     if row.asset_type == "Dynamic vector tile cache":
@@ -235,7 +236,7 @@ async def delete_asset(
     elif row.asset_type == "Database table":
         background_tasks.add_task(delete_database_table, dataset, version)
     else:
-        raise HTTPException(
+        raise ClientError(
             status_code=400,
             detail=f"Cannot delete asset of type {row.asset_type}. Not implemented.",
         )
