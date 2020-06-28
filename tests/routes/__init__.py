@@ -1,4 +1,4 @@
-import json
+from typing import Any, Dict
 
 generic_dataset_metadata = {
     "metadata": {
@@ -27,9 +27,7 @@ generic_dataset_metadata = {
 
 def create_version(test_client, dataset, version) -> None:
     # Create dataset and version
-    dataset_resp = test_client.put(
-        f"/meta/{dataset}", data=json.dumps(generic_dataset_metadata)
-    )
+    dataset_resp = test_client.put(f"/meta/{dataset}", json=generic_dataset_metadata)
     assert dataset_resp.json()["status"] == "success"
 
     version_payload = {
@@ -40,12 +38,12 @@ def create_version(test_client, dataset, version) -> None:
         "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
     }
     version_response = test_client.put(
-        f"/meta/{dataset}/{version}", data=json.dumps(version_payload)
+        f"/meta/{dataset}/{version}", json=version_payload
     )
     assert version_response.json()["status"] == "success"
 
 
-def create_default_asset(test_client, dataset, version):
+def create_default_asset(test_client, dataset, version) -> Dict[str, Any]:
     # Create dataset and version records. A default asset is created
     # automatically when the version is created.
     create_version(test_client, dataset, version)
