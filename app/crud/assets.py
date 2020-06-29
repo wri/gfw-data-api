@@ -153,7 +153,7 @@ def _creation_option_factory(asset_type, creation_options) -> CreationOptions:
         model = StaticVectorTileCacheCreationOptions(**creation_options)
 
     else:
-        raise ServerError(
+        raise HTTPException(
             status_code=501,
             detail=f"Creation options validation for {asset_type} not implemented",
         )

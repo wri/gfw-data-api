@@ -1,4 +1,6 @@
 import json
+import uuid
+from unittest.mock import patch
 
 from tests.routes import create_default_asset
 
@@ -14,7 +16,11 @@ def test_tasks_success(client, db):
     dataset = "test"
     version = "v20200626"
 
-    asset = create_default_asset(client, dataset, version)
+    def generate_uuid(*args, **kwargs):
+        return uuid.uuid4()
+
+    with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
+        asset = create_default_asset(client, dataset, version)
     asset_id = asset["asset_id"]
 
     # Verify that the asset and version are in state "pending"
@@ -24,11 +30,11 @@ def test_tasks_success(client, db):
     asset_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
     assert asset_resp.json()["data"]["status"] == "pending"
 
-    # At this point there should be a bunch of tasks started for the default
-    # asset, though they won't be able to report their status because the
-    # full application isn't up and listening. That's fine, we're going to
-    # update the tasks via the task status endpoint the same way the Batch
-    # tasks would (though via the test client instead of curl).
+    # At this point there should be a bunch of tasks rows for the default
+    # asset, though we've mocked out the actual creation of Batch jobs.
+    # That's fine, we're going to update the task rows via the task status
+    # endpoint the same way the Batch tasks would (though via the test
+    # client instead of curl).
 
     # Verify the existence of the tasks, and that they each have only the
     # initial changelog with status "pending"
@@ -164,7 +170,11 @@ def test_tasks_failure(client, db):
     dataset = "test"
     version = "v20200626"
 
-    asset = create_default_asset(client, dataset, version)
+    def generate_uuid(*args, **kwargs):
+        return uuid.uuid4()
+
+    with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
+        asset = create_default_asset(client, dataset, version)
     asset_id = asset["asset_id"]
 
     # Verify that the asset and version are in state "pending"
@@ -174,11 +184,11 @@ def test_tasks_failure(client, db):
     asset_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
     assert asset_resp.json()["data"]["status"] == "pending"
 
-    # At this point there should be a bunch of tasks started for the default
-    # asset, though they won't be able to report their status because the
-    # full application isn't up and listening. That's fine, we're going to
-    # update the tasks via the task status endpoint the same way the Batch
-    # tasks would (though via the test client instead of curl).
+    # At this point there should be a bunch of tasks rows for the default
+    # asset, though we've mocked out the actual creation of Batch jobs.
+    # That's fine, we're going to update the task rows via the task status
+    # endpoint the same way the Batch tasks would (though via the test
+    # client instead of curl).
 
     # Verify the existence of the tasks, and that they each have only the
     # initial changelog with status "pending"

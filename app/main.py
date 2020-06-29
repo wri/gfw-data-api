@@ -2,7 +2,7 @@ import json
 import logging
 import sys
 
-from fastapi.exceptions import RequestValidationError
+from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.logger import logger
 from fastapi.openapi.utils import get_openapi
 from fastapi.requests import Request
@@ -38,7 +38,7 @@ sys.path.extend(["./"])
 @app.exception_handler(ClientError)
 async def client_error_handler(request: Request, exc: ClientError):
     return JSONResponse(
-        status_code=exc.status_code, content={"status": "fail", "data": exc.detail}
+        status_code=exc.status_code, content={"status": "failed", "data": exc.detail}
     )
 
 
@@ -49,10 +49,21 @@ async def server_error_handler(request: Request, exc: ServerError):
     )
 
 
+@app.exception_handler(HTTPException)
+async def httpexception_error_handler(request: Request, exc: HTTPException):
+    if exc.status_code < 500:
+        status = "failed"
+    else:
+        status = "error"
+    return JSONResponse(
+        status_code=exc.status_code, content={"status": status, "message": exc.detail}
+    )
+
+
 @app.exception_handler(RequestValidationError)
 async def rve_error_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
-        status_code=400, content={"status": "fail", "message": json.loads(exc.json())}
+        status_code=422, content={"status": "failed", "message": json.loads(exc.json())}
     )
 
 

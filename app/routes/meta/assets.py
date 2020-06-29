@@ -13,13 +13,11 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Path, Query
-from fastapi.encoders import jsonable_encoder
 from fastapi.responses import ORJSONResponse
 
-from ...crud import assets, versions
+from ...crud import assets
 from ...errors import ClientError
 from ...models.orm.assets import Asset as ORMAsset
-from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.assets import (
     Asset,
     AssetCreateIn,
