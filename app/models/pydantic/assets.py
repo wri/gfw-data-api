@@ -28,7 +28,7 @@ class AssetStatus(str, Enum):
 class AssetType(str, Enum):
     dynamic_vector_tile_cache = "Dynamic vector tile cache"
     static_vector_tile_cache = "Static vector tile cache"
-    raster_tile_cache = "Raster tile cache"
+    static_raster_tile_cache = "Static raster tile cache"
     raster_tile_set = "Raster tile set"
     database_table = "Database table"
     shapefile = "Shapefile"
@@ -64,6 +64,10 @@ class AssetCreateIn(BaseModel):
     is_managed: bool
     creation_options: CreationOptions
     metadata: Optional[AssetMetadata]
+
+
+class AssetUpdateIn(BaseModel):
+    metadata: AssetMetadata
 
 
 class AssetTaskCreate(BaseModel):

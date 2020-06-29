@@ -198,4 +198,8 @@ class StaticVectorTileCacheCreationOptions(BaseModel):
     )
 
 
-CreationOptions = Union[VectorSourceCreationOptions, TableSourceCreationOptions]
+CreationOptions = Union[
+    VectorSourceCreationOptions,
+    TableSourceCreationOptions,
+    StaticVectorTileCacheCreationOptions,
+]

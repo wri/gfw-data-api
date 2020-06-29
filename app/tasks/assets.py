@@ -3,7 +3,9 @@ from uuid import UUID
 
 from ..application import ContextEngine
 from ..crud import assets, versions
+from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
+from .static_vector_tile_cache_assets import static_vector_tile_cache_asset
 
 ASSET_PIPELINES: FrozenSet[Tuple[Any, Any]] = frozenset(
     {
@@ -13,6 +15,7 @@ ASSET_PIPELINES: FrozenSet[Tuple[Any, Any]] = frozenset(
         # AssetType.csv: csv_asset,
         # AssetType.tsv: tsv_asset,
         # AssetType.dynamic_vector_tile_cache: dynamic_vector_tile_cache_asset,
+        AssetType.static_vector_tile_cache: static_vector_tile_cache_asset,
         # AssetType.vector_tile_cache: vector_tile_cache_asset,
         # AssetType.raster_tile_cache: raster_tile_cache_asset,
         # AssetType.dynamic_raster_tile_cache: dynamic_raster_tile_cache_asset,

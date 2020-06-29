@@ -103,7 +103,10 @@ async def test_assets():
             result = e.detail
             status_code = e.status_code
 
-        assert result == ("A similar Asset already exists. Asset uri must be unique.")
+        assert result == (
+            "Cannot create asset of type Database table. "
+            "Asset uri must be unique. An asset with uri s3://path/to/file already exists"
+        )
         assert status_code == 400
 
     # There should be an entry now
@@ -153,7 +156,13 @@ async def test_assets():
     assert status_code == 404
 
     # It should be possible to update a dataset using a context engine
-    metadata = DatabaseTableMetadata(title="Test Title", tags=["tag1", "tag2"])
+    metadata = DatabaseTableMetadata(
+        title="Test Title",
+        tags=["tag1", "tag2"],
+        fields=[
+            {"field_name": "test", "field_type": "numeric", "is_feature_info": True}
+        ],
+    )
     logs = ChangeLog(date_time=datetime.now(), status="pending", message="all good")
     async with ContextEngine("WRITE"):
         row = await update_asset(
@@ -161,6 +170,16 @@ async def test_assets():
         )
     assert row.metadata["title"] == "Test Title"
     assert row.metadata["tags"] == ["tag1", "tag2"]
+    assert row.metadata["fields_"] == [
+        {
+            "field_name_": "test",
+            "field_type": "numeric",
+            "is_feature_info": True,
+            "field_alias": None,
+            "field_description": None,
+            "is_filter": True,
+        }
+    ]
     assert row.change_log[0]["date_time"] == json.loads(logs.json())["date_time"]
     assert row.change_log[0]["status"] == logs.dict()["status"]
     assert row.change_log[0]["message"] == logs.dict()["message"]

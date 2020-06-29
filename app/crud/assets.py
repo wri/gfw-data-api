@@ -8,6 +8,7 @@ from ..errors import ClientError, ServerError
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
+from ..models.pydantic.assets import AssetType
 from ..models.pydantic.creation_options import (
     CreationOptions,
     StaticVectorTileCacheCreationOptions,
@@ -71,7 +72,8 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
     except UniqueViolationError:
         raise ClientError(
             status_code=400,
-            detail="A similar Asset already exists. Asset uri must be unique.",
+            detail=f"Cannot create asset of type {data['asset_type']}. "
+            f"Asset uri must be unique. An asset with uri {data['asset_uri']} already exists",
         )
 
     d: ORMDataset = await datasets.get_dataset(dataset)
@@ -141,13 +143,13 @@ def _creation_option_factory(asset_type, creation_options) -> CreationOptions:
     table_drivers: List[str] = [t.value for t in TableDrivers]
     vector_drivers: List[str] = [v.value for v in VectorDrivers]
 
-    if asset_type == "Database table" and driver in table_drivers:
+    if asset_type == AssetType.database_table and driver in table_drivers:
         model = TableSourceCreationOptions(**creation_options)
 
-    elif asset_type == "Database table" and driver in vector_drivers:
+    elif asset_type == AssetType.database_table and driver in vector_drivers:
         model = VectorSourceCreationOptions(**creation_options)
 
-    elif asset_type == "Vector tile cache":
+    elif asset_type == AssetType.static_vector_tile_cache:
         model = StaticVectorTileCacheCreationOptions(**creation_options)
 
     else:
