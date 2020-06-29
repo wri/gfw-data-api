@@ -63,7 +63,7 @@ async def httpexception_error_handler(request: Request, exc: HTTPException):
 @app.exception_handler(RequestValidationError)
 async def rve_error_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
-        status_code=400, content={"status": "failed", "message": json.loads(exc.json())}
+        status_code=422, content={"status": "failed", "message": json.loads(exc.json())}
     )
 
 
