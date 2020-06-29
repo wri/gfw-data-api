@@ -18,15 +18,14 @@ from app.crud.assets import (
 )
 from app.crud.datasets import create_dataset
 from app.crud.versions import create_version
+from app.errors import ClientError
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.metadata import DatabaseTableMetadata
 
 
 @pytest.mark.asyncio
 async def test_assets():
-    """
-    Testing all CRUD operations on dataset in one go
-    """
+    """Testing all CRUD operations on assets in one go."""
 
     dataset_name = "test"
     version_name = "v1.1.1"
@@ -100,11 +99,11 @@ async def test_assets():
                 asset_type="Database table",
                 asset_uri="s3://path/to/file",
             )
-        except HTTPException as e:
+        except ClientError as e:
             result = e.detail
             status_code = e.status_code
 
-        assert result == ("A similar Asset already exist." "Asset uri must be unique.")
+        assert result == ("A similar Asset already exists. Asset uri must be unique.")
         assert status_code == 400
 
     # There should be an entry now
@@ -155,7 +154,7 @@ async def test_assets():
 
     # It should be possible to update a dataset using a context engine
     metadata = DatabaseTableMetadata(title="Test Title", tags=["tag1", "tag2"])
-    logs = ChangeLog(date_time=datetime.now(), status="saved", message="all good")
+    logs = ChangeLog(date_time=datetime.now(), status="pending", message="all good")
     async with ContextEngine("WRITE"):
         row = await update_asset(
             asset_id, metadata=metadata.dict(), change_log=[logs.dict()]
@@ -180,9 +179,7 @@ async def test_assets():
 
 @pytest.mark.asyncio
 async def test_assets_metadata():
-    """
-    Testing all CRUD operations on dataset in one go
-    """
+    """Testing all CRUD operations on dataset in one go."""
 
     dataset = "test"
     version = "v1.1.1"

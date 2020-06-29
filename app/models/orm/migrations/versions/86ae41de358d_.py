@@ -1,9 +1,8 @@
-"""empty message
+"""empty message.
 
 Revision ID: 86ae41de358d
 Revises:
 Create Date: 2020-04-14 21:58:38.173605
-
 """
 import geoalchemy2
 import sqlalchemy as sa

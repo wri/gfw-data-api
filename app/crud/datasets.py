@@ -6,7 +6,6 @@ from fastapi import HTTPException
 from ..application import db
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.queries.datasets import all_datasets
-from ..models.pydantic.datasets import DatasetUpdateIn
 from . import update_data
 
 
@@ -37,7 +36,7 @@ async def create_dataset(dataset: str, **data) -> ORMDataset:
     return new_dataset
 
 
-async def update_dataset(dataset: str, data: DatasetUpdateIn):
+async def update_dataset(dataset: str, **data):
     row: ORMDataset = await get_dataset(dataset)
 
     return await update_data(row, data)

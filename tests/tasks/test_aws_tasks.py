@@ -1,6 +1,3 @@
-import os
-from datetime import datetime
-from typing import Any, Dict, List
 from unittest import mock
 
 from app.tasks.aws_tasks import (
@@ -10,44 +7,11 @@ from app.tasks.aws_tasks import (
 )
 from app.utils.aws import get_s3_client
 
-TSV_NAME = "test.tsv"
-TSV_PATH = os.path.join(os.path.dirname(__file__), "..", "fixtures", TSV_NAME)
-
-BUCKET = "test-bucket"
-KEY = "KEY"
-VALUE = "VALUE"
-
-
-class MockS3Client(object):
-    rules: List[Dict[str, Any]] = []
-
-    def get_bucket_lifecycle_configuration(self, Bucket):
-        return {"Rules": self.rules}
-
-    def put_bucket_lifecycle_configuration(self, Bucket, LifecycleConfiguration):
-        self.rules = LifecycleConfiguration["Rules"]
-        return {
-            "ResponseMetadata": {"...": "..."},
-        }
-
-
-class MockCloudfrontClient(object):
-    def create_invalidation(self, DistributionId, InvalidationBatch):
-        return {
-            "Location": "string",
-            "Invalidation": {
-                "Id": "string",
-                "Status": "string",
-                "CreateTime": datetime.now(),
-                "InvalidationBatch": InvalidationBatch,
-            },
-        }
+from . import BUCKET, KEY, TSV_NAME, TSV_PATH, VALUE, MockCloudfrontClient, MockS3Client
 
 
 def test_delete_s3_objects():
-    """"
-    Make sure we can delete more than 1000 items
-    """
+    """" Make sure we can delete more than 1000 items."""
 
     s3_client = get_s3_client()
 
@@ -61,10 +25,8 @@ def test_delete_s3_objects():
 
 @mock.patch("app.tasks.aws_tasks.get_s3_client")
 def test_expire_s3_objects(mock_client):
-    """
-    Updating lifecycle policies in Moto doesn't seem to work correctly
-    Hence I created a custom mock
-    """
+    """Updating lifecycle policies in Moto doesn't seem to work correctly Hence
+    I created a custom mock."""
 
     mock_client.return_value = MockS3Client()
     s3_client = mock_client()
@@ -107,9 +69,7 @@ def test_expire_s3_objects(mock_client):
 
 @mock.patch("app.tasks.aws_tasks.get_cloudfront_client")
 def test_flush_cloudfront_cache(mock_client):
-    """
-    Moto doesn't cover cloudfront, hence my onw mock
-    """
+    """Moto doesn't cover cloudfront, hence my onw mock."""
     mock_client.return_value = MockCloudfrontClient()
     # cloudfront_client = mock_client()
 

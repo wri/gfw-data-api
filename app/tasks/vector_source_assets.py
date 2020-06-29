@@ -1,20 +1,18 @@
 import os
-from typing import Any, Awaitable, Callable, Dict, List
+from typing import Any, Awaitable, Dict, List, Optional
 from uuid import UUID
 
+from ..application import ContextEngine
+from ..crud import assets, tasks
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import VectorSourceCreationOptions
 from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
-from . import update_asset_field_metadata, update_asset_status, writer_secrets
+from . import writer_secrets
 from .batch import execute
 
 
 async def vector_source_asset(
-    dataset: str,
-    version: str,
-    asset_id: UUID,
-    input_data: Dict[str, Any],
-    callback: Callable[[Dict[str, Any]], Awaitable[None]],  # TODO delete
+    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
 
     source_uris: List[str] = input_data["source_uri"]
@@ -34,6 +32,8 @@ async def vector_source_asset(
         layer, _ = os.path.splitext(os.path.basename(source_uri))
         layers = [layer]
 
+    job_env = writer_secrets + [{"name": "ASSET_ID", "value": str(asset_id)}]
+
     create_vector_schema_job = GdalPythonImportJob(
         job_name="import_vector_data",
         command=[
@@ -49,7 +49,7 @@ async def vector_source_asset(
             "-f",
             local_file,
         ],
-        environment=writer_secrets,
+        environment=job_env,
     )
 
     load_vector_data_jobs: List[Job] = list()
@@ -71,7 +71,7 @@ async def vector_source_asset(
                     local_file,
                 ],
                 parents=[create_vector_schema_job.job_name],
-                environment=writer_secrets,
+                environment=job_env,
             )
         )
 
@@ -79,7 +79,7 @@ async def vector_source_asset(
         job_name="enrich_gfw_attributes",
         command=["add_gfw_fields.sh", "-d", dataset, "-v", version],
         parents=[job.job_name for job in load_vector_data_jobs],
-        environment=writer_secrets,
+        environment=job_env,
     )
 
     index_jobs: List[Job] = list()
@@ -100,7 +100,7 @@ async def vector_source_asset(
                     index.index_type,
                 ],
                 parents=[gfw_attribute_job.job_name],
-                environment=writer_secrets,
+                environment=job_env,
             )
         )
 
@@ -108,8 +108,18 @@ async def vector_source_asset(
         job_name="inherit_from_geostore",
         command=["inherit_geostore.sh", "-d", dataset, "-v", version],
         parents=[job.job_name for job in index_jobs],
-        environment=writer_secrets,
+        environment=job_env,
     )
+
+    async def callback(
+        task_id: Optional[UUID], message: Dict[str, Any]
+    ) -> Awaitable[None]:
+        async with ContextEngine("PUT"):
+            if task_id:
+                _ = await tasks.create_task(
+                    task_id, asset_id=asset_id, change_log=[message]
+                )
+            return await assets.update_asset(asset_id, change_log=[message])
 
     log: ChangeLog = await execute(
         [
@@ -121,10 +131,5 @@ async def vector_source_asset(
         ],
         callback,
     )
-
-    await update_asset_field_metadata(
-        dataset, version, asset_id,
-    )
-    await update_asset_status(asset_id, log.status)
 
     return log

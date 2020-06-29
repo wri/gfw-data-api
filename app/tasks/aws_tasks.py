@@ -7,11 +7,9 @@ from ..utils.aws import get_cloudfront_client, get_s3_client
 
 
 def delete_s3_objects(bucket: str, prefix: str,) -> int:
-    """
-    S3 list_objects_v2 and delete_objects paginate responses in chunks of 1000
-    We need to use parginator object to retrieve objects and then delete 1000 at a time
-    https://stackoverflow.com/a/43436769/1410317
-    """
+    """S3 list_objects_v2 and delete_objects paginate responses in chunks of
+    1000 We need to use parginator object to retrieve objects and then delete
+    1000 at a time https://stackoverflow.com/a/43436769/1410317."""
 
     client = get_s3_client()
     paginator = client.get_paginator("list_objects_v2")
@@ -44,9 +42,9 @@ def expire_s3_objects(
     key: Optional[str] = None,
     value: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    Add new lifecycle rule to data lake bucket which will delete all
-    objects with dataset/version/ prefix.
+    """Add new lifecycle rule to data lake bucket which will delete all objects
+    with dataset/version/ prefix.
+
     Deletion might take up to 24 h.
     """
     rule = _expiration_rule(prefix, key, value)
@@ -54,9 +52,7 @@ def expire_s3_objects(
 
 
 def flush_cloudfront_cache(cloudfront_id: str, path: str) -> Dict[str, Any]:
-    """
-    Flush tile cache cloudfront cache for a given path
-    """
+    """Flush tile cache cloudfront cache for a given path."""
     client = get_cloudfront_client()
 
     response = client.create_invalidation(
@@ -75,10 +71,8 @@ def _expiration_rule(
     value: Optional[str] = None,
     expiration_date=datetime.utcnow(),
 ) -> Dict[str, Any]:
-    """
-    Define S3 lifecycle rule which will delete all files
-    with prefix dataset/version/ within 24h
-    """
+    """Define S3 lifecycle rule which will delete all files with prefix
+    dataset/version/ within 24h."""
 
     if prefix and key and value:
         rule_filter: Dict[str, Any] = {
@@ -102,9 +96,7 @@ def _expiration_rule(
 
 
 def _update_lifecycle_rule(bucket, rule) -> Dict[str, Any]:
-    """
-    Add new lifecycle rule to bucket
-    """
+    """Add new lifecycle rule to bucket."""
     client = get_s3_client()
     rules = _get_lifecycle_rules(bucket)
     rules.append(rule)
@@ -115,9 +107,7 @@ def _update_lifecycle_rule(bucket, rule) -> Dict[str, Any]:
 
 
 def _get_lifecycle_rules(bucket: str) -> List[Dict[str, Any]]:
-    """
-    Get current lifecycle rules for bucket
-    """
+    """Get current lifecycle rules for bucket."""
     client = get_s3_client()
 
     try:

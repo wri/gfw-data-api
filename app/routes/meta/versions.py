@@ -1,12 +1,14 @@
-"""
-Datasets can have different versions. Versions aer usually
-linked to different releases. Versions can be either mutable (data can change) or immutable (data
-cannot change). By default versions are immutable. Every version needs one or many source files.
-These files can be a remote, publicly accessible URL or an uploaded file. Based on the source file(s),
-users can create additional assets and activate additional endpoints to view and query the dataset.
+"""Datasets can have different versions.
+
+Versions aer usually linked to different releases. Versions can be
+either mutable (data can change) or immutable (data cannot change). By
+default versions are immutable. Every version needs one or many source
+files. These files can be a remote, publicly accessible URL or an
+uploaded file. Based on the source file(s), users can create additional
+assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
@@ -63,9 +65,6 @@ async def add_new_version(
 ):
     """Create or update a version for a given dataset."""
 
-    async def callback(message: Dict[str, Any]) -> None:
-        pass
-
     input_data = request.dict()
     # Register version with DB
     new_version: ORMVersion = await versions.create_version(
@@ -73,14 +72,12 @@ async def add_new_version(
     )
 
     # Everything else happens in the background task asynchronously
-    background_tasks.add_task(
-        create_default_asset, dataset, version, input_data, None, callback
-    )
+    background_tasks.add_task(create_default_asset, dataset, version, input_data, None)
 
     response.headers["Location"] = f"/{dataset}/{version}"
     return await _version_response(dataset, version, new_version)
 
-    # TODO: Something is wrong with this path operations and it interfers with the /token endpoint
+    # TODO: Something is wrong with this path operations and it interferes with the /token endpoint
     #  when uncommented, login fails. Could not figure out why exactly
     # @router.post(
     #     "/{dataset}",
@@ -157,15 +154,14 @@ async def update_version(
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
 ):
+    """Partially update a version of a given dataset.
+
+    When using PATCH and uploading files, this will overwrite the
+    existing source(s) and trigger a complete update of all managed
+    assets.
     """
 
-    Partially update a version of a given dataset.
-    When using PATCH and uploading files,
-    this will overwrite the existing source(s) and trigger a complete update of all managed assets.
-
-    """
-
-    input_data = request.dict()
+    input_data = request.dict(exclude_unset=True)
 
     row: ORMVersion = await versions.update_version(dataset, version, **input_data)
     # TODO: Need to clarify routine for when source_uri has changed. Append/ overwrite
@@ -186,10 +182,11 @@ async def delete_version(
     is_authorized: bool = Depends(is_admin),
     background_tasks: BackgroundTasks,
 ):
-    """
-    Delete a version.
-    Only delete version if it is not tagged as `latest` or if it is the only version associated with dataset.
-    All associated, managed assets will be deleted in consequence.
+    """Delete a version.
+
+    Only delete version if it is not tagged as `latest` or if it is the
+    only version associated with dataset. All associated, managed assets
+    will be deleted in consequence.
     """
     row: Optional[ORMVersion] = None
     rows: List[ORMVersion] = await versions.get_versions(dataset)
@@ -217,7 +214,8 @@ async def delete_version(
 async def _version_response(
     dataset: str, version: str, data: ORMVersion
 ) -> VersionResponse:
-    """Assure that version responses are parsed correctly and include associated assets."""
+    """Assure that version responses are parsed correctly and include
+    associated assets."""
 
     assets: List[ORMAsset] = await ORMAsset.select("asset_type", "asset_uri").where(
         ORMAsset.dataset == dataset

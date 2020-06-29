@@ -14,4 +14,4 @@ docker-compose.test.yml
 .gitignore
 
 # Terraform
-terraform
+*terraform*

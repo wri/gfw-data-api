@@ -28,9 +28,7 @@ class Job(BaseModel):
 
 
 class PostgresqlClientJob(Job):
-    """
-    Use for simple write operations to PostgreSQL
-    """
+    """Use for simple write operations to PostgreSQL."""
 
     job_queue = AURORA_JOB_QUEUE
     job_definition = POSTGRESQL_CLIENT_JOB_DEFINITION
@@ -41,9 +39,8 @@ class PostgresqlClientJob(Job):
 
 
 class GdalPythonImportJob(Job):
-    """
-    Use for write operations to PostgreSQL which require GDAL/ Ogr2Ogr drivers
-    """
+    """Use for write operations to PostgreSQL which require GDAL/ Ogr2Ogr
+    drivers."""
 
     job_queue = AURORA_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
@@ -54,9 +51,8 @@ class GdalPythonImportJob(Job):
 
 
 class GdalPythonExportJob(Job):
-    """
-    Use for export operations from PostgreSQL to S3 data lake which require GDAL/ Ogr2Ogr drivers.
-    """
+    """Use for export operations from PostgreSQL to S3 data lake which require
+    GDAL/ Ogr2Ogr drivers."""
 
     job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
@@ -67,9 +63,7 @@ class GdalPythonExportJob(Job):
 
 
 class TileCacheJob(Job):
-    """
-    Use for generating Vector Tile Cache using TippeCanoe
-    """
+    """Use for generating Vector Tile Cache using TippeCanoe."""
 
     job_queue = TILE_CACHE_JOB_QUEUE
     job_definition = TILE_CACHE_JOB_DEFINITION
@@ -80,9 +74,7 @@ class TileCacheJob(Job):
 
 
 class PixETLJob(Job):
-    """
-    Use for raster transformations using PixETL
-    """
+    """Use for raster transformations using PixETL."""
 
     job_queue = PIXETL_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION

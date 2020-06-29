@@ -1,12 +1,9 @@
-from typing import Any, Awaitable, Callable, Dict, FrozenSet, Tuple
+from typing import Any, Dict, FrozenSet, Tuple
 from uuid import UUID
 
 from ..application import ContextEngine
 from ..crud import assets, versions
 from ..models.pydantic.change_log import ChangeLog
-
-# from ..models.pydantic.assets import AssetType
-
 
 ASSET_PIPELINES: FrozenSet[Tuple[Any, Any]] = frozenset(
     {
@@ -30,13 +27,12 @@ async def create_asset(
     dataset: str,
     version: str,
     input_data: Dict[str, Any],
-    callback: Callable[[Dict[str, Any]], Awaitable[None]],
     asset_lookup: FrozenSet[Tuple[Any, Any]] = ASSET_PIPELINES,
 ) -> None:
-    """
-    Call Asset Pipeline.
-    Default assets use source_type for identification.
-    All other assets use asset_type directly.
+    """Call Asset Pipeline.
+
+    Default assets use source_type for identification. All other assets
+    use asset_type directly.
     """
     lookup = dict(asset_lookup)
 
@@ -44,7 +40,7 @@ async def create_asset(
 
         if asset_type in lookup.keys():
             log: ChangeLog = await lookup[asset_type](
-                dataset, version, asset_id, input_data, callback
+                dataset, version, asset_id, input_data,
             )
 
         else:

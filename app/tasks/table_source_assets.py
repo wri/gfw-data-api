@@ -1,6 +1,9 @@
 import json
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Dict, List, Optional
 from uuid import UUID
+
+from app.application import ContextEngine
+from app.crud import assets, tasks
 
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import (
@@ -10,20 +13,17 @@ from ..models.pydantic.creation_options import (
 )
 from ..models.pydantic.jobs import Job, PostgresqlClientJob
 from ..settings.globals import CHUNK_SIZE
-from ..tasks import update_asset_field_metadata, update_asset_status, writer_secrets
+from ..tasks import writer_secrets
 from ..tasks.batch import execute
 
 
 async def table_source_asset(
-    dataset: str,
-    version: str,
-    asset_id: UUID,
-    input_data: Dict[str, Any],
-    callback: Callable[[Dict[str, Any]], Awaitable[None]],  # TODO delete
+    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
 
     source_uris: List[str] = input_data["source_uri"]
     creation_options = TableSourceCreationOptions(**input_data["creation_options"])
+
     # Create table schema
     command = [
         "create_tabular_schema.sh",
@@ -46,14 +46,22 @@ async def table_source_asset(
             ]
         )
 
+    job_env: List[Dict[str, Any]] = writer_secrets + [
+        {"name": "ASSET_ID", "value": str(asset_id)}
+    ]
+
     create_table_job = PostgresqlClientJob(
-        job_name="create_table", command=command, environment=writer_secrets,
+        job_name="create_table", command=command, environment=job_env,
     )
 
     # Create partitions
     if creation_options.partitions:
         partition_jobs: List[Job] = _create_partition_jobs(
-            dataset, version, creation_options.partitions, [create_table_job.job_name]
+            dataset,
+            version,
+            creation_options.partitions,
+            [create_table_job.job_name],
+            job_env,
         )
     else:
         partition_jobs = list()
@@ -81,7 +89,7 @@ async def table_source_asset(
                         "unicode_escape"
                     ).decode(),  # Need to escape special characters such as TAB for batch job payload
                 ],
-                environment=writer_secrets,
+                environment=job_env,
                 parents=parents,
             )
         )
@@ -103,7 +111,7 @@ async def table_source_asset(
                     "--lng",
                     creation_options.longitude,
                 ],
-                environment=writer_secrets,
+                environment=job_env,
                 parents=[job.job_name for job in load_data_jobs],
             ),
         )
@@ -129,7 +137,7 @@ async def table_source_asset(
                     index.index_type,
                 ],
                 parents=parents,
-                environment=writer_secrets,
+                environment=job_env,
             )
         )
 
@@ -144,9 +152,20 @@ async def table_source_asset(
             creation_options.partitions,
             creation_options.cluster,
             parents,
+            job_env,
         )
     else:
         cluster_jobs = list()
+
+    async def callback(
+        task_id: Optional[UUID], message: Dict[str, Any]
+    ) -> Awaitable[None]:
+        async with ContextEngine("PUT"):
+            if task_id:
+                _ = await tasks.create_task(
+                    task_id, asset_id=asset_id, change_log=[message]
+                )
+            return await assets.update_asset(asset_id, change_log=[message])
 
     log: ChangeLog = await execute(
         [
@@ -160,19 +179,18 @@ async def table_source_asset(
         callback,
     )
 
-    await update_asset_field_metadata(
-        dataset, version, asset_id,
-    )
-    await update_asset_status(asset_id, log.status)
-
     return log
 
 
 def _create_partition_jobs(
-    dataset: str, version: str, partitions: Partitions, parents
+    dataset: str,
+    version: str,
+    partitions: Partitions,
+    parents,
+    job_env: List[Dict[str, str]],
 ) -> List[PostgresqlClientJob]:
-    """
-    Create partition job depending on the partition type.
+    """Create partition job depending on the partition type.
+
     For large partition number, it will break the job into sub jobs
     """
 
@@ -189,6 +207,7 @@ def _create_partition_jobs(
                 partition_schema,
                 parents,
                 i,
+                job_env,
             )
 
             partition_jobs.append(job)
@@ -196,7 +215,13 @@ def _create_partition_jobs(
 
         partition_schema = json.dumps(partitions.partition_schema.dict())
         job = _partition_job(
-            dataset, version, partitions.partition_type, partition_schema, parents,
+            dataset,
+            version,
+            partitions.partition_type,
+            partition_schema,
+            parents,
+            0,
+            job_env,
         )
         partition_jobs.append(job)
 
@@ -209,7 +234,8 @@ def _partition_job(
     partition_type: str,
     partition_schema: str,
     parents: List[str],
-    suffix: int = 0,
+    suffix: int,
+    job_env: List[Dict[str, str]],
 ) -> PostgresqlClientJob:
     return PostgresqlClientJob(
         job_name=f"create_partitions_{suffix}",
@@ -224,7 +250,7 @@ def _partition_job(
             "-P",
             partition_schema,
         ],
-        environment=writer_secrets,
+        environment=job_env,
         parents=parents,
     )
 
@@ -235,6 +261,7 @@ def _create_cluster_jobs(
     partitions: Optional[Partitions],
     cluster: Index,
     parents: List[str],
+    job_env: List[Dict[str, str]],
 ) -> List[PostgresqlClientJob]:
     # Cluster tables. This is a full lock operation.
     cluster_jobs: List[PostgresqlClientJob] = list()
@@ -261,6 +288,7 @@ def _create_cluster_jobs(
                     cluster.index_type,
                     parents,
                     i,
+                    job_env,
                 )
                 cluster_jobs.append(job)
                 parents = [job.job_name]
@@ -276,6 +304,8 @@ def _create_cluster_jobs(
                 cluster.column_name,
                 cluster.index_type,
                 parents,
+                0,
+                job_env,
             )
             cluster_jobs.append(job)
 
@@ -294,7 +324,7 @@ def _create_cluster_jobs(
                 "-x",
                 cluster.index_type,
             ],
-            environment=writer_secrets,
+            environment=job_env,
             parents=parents,
         )
         cluster_jobs.append(job)
@@ -309,7 +339,8 @@ def _cluster_partition_job(
     column_name: str,
     index_type: str,
     parents: List[str],
-    index: int = 0,
+    index: int,
+    job_env: List[Dict[str, str]],
 ):
     return PostgresqlClientJob(
         job_name=f"cluster_partitions_{index}",
@@ -328,13 +359,11 @@ def _cluster_partition_job(
             "-x",
             index_type,
         ],
-        environment=writer_secrets,
+        environment=job_env,
         parents=parents,
     )
 
 
 def _chunk_list(data: List[Any], chunk_size: int = CHUNK_SIZE) -> List[List[Any]]:
-    """
-    Split list into chunks of fixed size.
-    """
+    """Split list into chunks of fixed size."""
     return [data[x : x + chunk_size] for x in range(0, len(data), chunk_size)]

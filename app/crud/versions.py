@@ -38,9 +38,7 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
 
 
 async def get_latest_version(dataset) -> str:
-    """
-    Fetch latest version number.
-    """
+    """Fetch latest version number."""
 
     latest: Optional[str] = await ORMVersion.select("version").where(
         ORMVersion.dataset == dataset
@@ -55,9 +53,7 @@ async def get_latest_version(dataset) -> str:
 
 
 async def create_version(dataset: str, version: str, **data) -> ORMVersion:
-    """
-    Create new version record if version does not yet exist
-    """
+    """Create new version record if version does not yet exist."""
     try:
         new_version: ORMVersion = await ORMVersion.create(
             dataset=dataset, version=version, **data
@@ -73,9 +69,7 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
 
 
 async def update_version(dataset: str, version: str, **data):
-    """
-    Update fields of version
-    """
+    """Update fields of version."""
     row: ORMVersion = await get_version(dataset, version)
     row = await update_data(row, data)
 
@@ -85,9 +79,7 @@ async def update_version(dataset: str, version: str, **data):
 
 
 async def delete_version(dataset: str, version: str) -> ORMVersion:
-    """
-    Delete a version
-    """
+    """Delete a version."""
     row: ORMVersion = await get_version(dataset, version)
     await ORMVersion.delete.where(ORMVersion.dataset == dataset).where(
         ORMVersion.version == version

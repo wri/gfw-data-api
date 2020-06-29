@@ -2,7 +2,7 @@ FROM python:3.8-slim
 
 # Update repos and install dependencies
 RUN apt-get update \
-  && apt-get --no-install-recommends -y install postgresql-client jq \
+  && apt-get --no-install-recommends -y install postgresql-client jq curl \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
@@ -18,9 +18,13 @@ RUN pip install \
 COPY ./batch/scripts/ /opt/scripts/
 COPY ./batch/python/ /opt/python/
 
+# make sure scripts are excecutable
+RUN chmod +x -R /opt/scripts/
+RUN chmod +x -R /opt/python/
+
 ENV PATH="/opt/scripts:${PATH}"
 ENV PATH="/opt/python:${PATH}"
 
 WORKDIR /tmp
 
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["/opt/scripts/report_status.sh"]

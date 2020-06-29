@@ -25,7 +25,6 @@ async def update_data(
 
     if "change_log" in input_data.keys():
         change_log = row.change_log
-
         # Make sure dates are correctly parsed as strings
         _logs = list()
         for data in input_data["change_log"]:

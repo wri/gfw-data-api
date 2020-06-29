@@ -23,4 +23,5 @@ variable "auto_scaling_max_capacity" { default = 15 }
 variable "auto_scaling_max_cpu_util" { default = 75 }
 variable "auto_scaling_min_capacity" { default = 1 }
 variable "key_pair" { default = "tmaschler_gfw" }
+variable "service_url" {}
 variable "git_sha" {}

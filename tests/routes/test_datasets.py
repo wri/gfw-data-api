@@ -18,7 +18,7 @@ payload = {
         "data_language": "string",
         "key_restrictions": "string",
         "scale": "string",
-        "added_date": "string",
+        "added_date": "2020-06-25",
         "why_added": "string",
         "other": "string",
         "learn_more": "string",
@@ -27,9 +27,7 @@ payload = {
 
 
 def test_datasets(client, db):
-    """
-    Basic test to check if empty data api response as expected
-    """
+    """Basic test to check if empty data api response as expected."""
 
     dataset = "test"
 

@@ -29,7 +29,7 @@
       "value": "${aurora_job_definition}"
     },
     {
-      "name": "GDAL_PYTHON_JOB_DEFINITION=",
+      "name": "GDAL_PYTHON_JOB_DEFINITION",
       "value": "${data_lake_job_definition}"
     },
     {
@@ -56,6 +56,10 @@
     {
       "name": "PIXETL_JOB_QUEUE",
       "value": "${pixetl_job_queue}"
+    },
+    {
+      "name": "API_URL",
+      "value": "${service_url}"
     }
     ],
   "secrets": [
@@ -66,6 +70,10 @@
        {
         "name": "DB_READER_SECRET",
         "valueFrom": "${reader_secret_arn}"
+      },
+      {
+        "name": "SERVICE_ACCOUNT_SECRET",
+        "valueFrom": "${api_token_secret_arn}"
       }
     ],
   "portMappings": [

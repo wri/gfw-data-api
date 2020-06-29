@@ -1,7 +1,5 @@
-"""
-Explore data entries for a given dataset version
-(vector and tablular data only) in a classic RESTful way
-"""
+"""Explore data entries for a given dataset version (vector and tablular data
+only) in a classic RESTful way."""
 
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
@@ -20,12 +18,8 @@ async def get_features(
     lng: float = Query(None, title="Longitude", ge=-180, le=180),
     z: int = Query(None, title="Zoom level", ge=0, le=22)
 ):
-    """
-
-    Retrieve list of features
-    Add optional spatial filter using a point buffer (for info tool).
-
-    """
+    """Retrieve list of features Add optional spatial filter using a point
+    buffer (for info tool)."""
     # return await get_features_by_location(db, dataset, version, lat, lng, z)
     pass
 

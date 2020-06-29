@@ -1,11 +1,12 @@
-import os
+from typing import Any, Awaitable, Dict, Optional
+from uuid import UUID
 
 import boto3
 import pytest
 
 import app.tasks.batch as batch
 from app.application import ContextEngine
-from app.crud import datasets, versions
+from app.crud import assets, tasks
 from app.models.pydantic.jobs import (
     GdalPythonExportJob,
     GdalPythonImportJob,
@@ -21,6 +22,16 @@ from app.settings.globals import (
     WRITER_USERNAME,
 )
 
+from . import (
+    BUCKET,
+    GEOJSON_NAME,
+    GEOJSON_PATH,
+    check_callbacks,
+    create_asset,
+    create_version,
+    poll_jobs,
+)
+
 writer_secrets = [
     {"name": "PGPASSWORD", "value": str(WRITER_PASSWORD)},
     {"name": "PGHOST", "value": WRITER_HOST},
@@ -29,17 +40,32 @@ writer_secrets = [
     {"name": "PGUSER", "value": WRITER_USERNAME},
 ]
 
-GEOJSON_NAME = "test.geojson"
-GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "..", "fixtures", GEOJSON_NAME)
-BUCKET = "test-bucket"
 
-
+@pytest.mark.skip(
+    reason="This is just to make sure that the batch scheduler works. Only run when in doubt."
+)
 @pytest.mark.asyncio
-async def test_batch_scheduler(batch_client):
-    async def callback(message):
-        pass
+async def test_batch_scheduler(batch_client, httpd):
+    async def callback(
+        task_id: Optional[UUID], message: Dict[str, Any]
+    ) -> Awaitable[None]:
+        async with ContextEngine("WRITE"):
+            if task_id:
+                _ = await tasks.create_task(
+                    task_id, asset_id=new_asset.asset_id, change_log=[message]
+                )
+            return await assets.update_asset(new_asset.asset_id, change_log=[message])
 
     _, logs = batch_client
+    httpd_port = httpd.server_port
+
+    ############################
+    # Setup test
+    ############################
+
+    job_env = writer_secrets + [
+        {"name": "STATUS_URL", "value": f"http://app_test:{httpd_port}/tasks"}
+    ]
 
     batch.POLL_WAIT_TIME = 1
 
@@ -59,14 +85,18 @@ async def test_batch_scheduler(batch_client):
         "metadata": {},
     }
 
-    async with ContextEngine("WRITE"):
-        await datasets.create_dataset(dataset)
-        await versions.create_version(dataset, version, **input_data)
+    new_asset = await create_asset(
+        dataset, version, "Database table", "s3://path/to/file", input_data
+    )
+
+    ############################
+    # Test if mocking batch jobs using the different environments works
+    ############################
 
     job1 = PostgresqlClientJob(
         job_name="job1",
         command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
-        environment=writer_secrets,
+        environment=job_env,
     )
     job2 = GdalPythonImportJob(
         job_name="job2",
@@ -83,52 +113,31 @@ async def test_batch_scheduler(batch_client):
             "-f",
             GEOJSON_NAME,
         ],
-        environment=writer_secrets,
+        environment=job_env,
         parents=[job1.job_name],
     )
     job3 = GdalPythonExportJob(
         job_name="job3",
-        command=[
-            "test_mock_s3_ogr2ogr.sh",
-            "-d",
-            "test",
-            "-v",
-            "v1.0.0",
-            "-s",
-            f"s3://{BUCKET}/{GEOJSON_NAME}",
-            "-l",
-            "test",
-            "-f",
-            GEOJSON_NAME,
-        ],
-        environment=writer_secrets,
+        command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
+        environment=job_env,
         parents=[job2.job_name],
     )
     job4 = TileCacheJob(
         job_name="job4",
         command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
-        environment=writer_secrets,
+        environment=job_env,
         parents=[job3.job_name],
     )
 
     log = await batch.execute([job1, job2, job3, job4], callback)
-    assert log.status == "saved"
+    assert log.status == "pending"
 
+    tasks_rows = await tasks.get_tasks(new_asset.asset_id)
 
-#
-# def test_s3(moto_s3):
-#     # import boto3
-#     # boto3.client("s3", region_name="us-east-1", endpoint_url="http://motoserver:5000") #
-#
-#     client = app.utils.aws.get_s3_client()
-#
-#     client.create_bucket(Bucket="my_bucket_name")
-#     more_binary_data = b"Here we have some more data"
-#
-#     client.put_object(
-#         Body=more_binary_data,
-#         Bucket="my_bucket_name",
-#         Key="my/key/including/anotherfilename.txt",
-#     )
-#     assert moto_s3.called
-#     assert moto_s3.call_count == 1
+    task_ids = [str(task.task_id) for task in tasks_rows]
+
+    # make sure, all jobs completed
+    status = await poll_jobs(task_ids)
+    assert status == "saved"
+
+    check_callbacks(task_ids, httpd.server_port)

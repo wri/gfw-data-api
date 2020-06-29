@@ -1,7 +1,6 @@
-""" env.py
+"""env.py.
 
-    Alembic ENV module
-    isort:skip_file
+Alembic ENV module isort:skip_file
 """
 
 # Native libraries
@@ -16,6 +15,7 @@ from app.application import db
 from app.models.orm.assets import Asset
 from app.models.orm.datasets import Dataset
 from app.models.orm.geostore import Geostore
+from app.models.orm.tasks import Task
 from app.models.orm.versions import Version
 
 ###############################################################################
@@ -54,9 +54,7 @@ def include_object(obj, name, type_, reflected, compare_to):
 
 
 def run_migrations_offline():
-    """
-
-    Run migrations in 'offline' mode.
+    """Run migrations in 'offline' mode.
 
     This configures the context with just a URL
     and not an Engine, though an Engine is acceptable
@@ -65,7 +63,6 @@ def run_migrations_offline():
 
     Calls to context.execute() here emit the given string to the
     script output.
-
     """
     context.configure(
         url=ALEMBIC_CONFIG.url.__to_string__(hide_password=False),
@@ -79,13 +76,10 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
-    """
+    """Run migrations in 'online' mode.
 
-    Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
+    In this scenario we need to create an Engine and associate a
+    connection with the context.
     """
     connectable = engine_from_config(
         {"sqlalchemy.url": ALEMBIC_CONFIG.url.__to_string__(hide_password=False)},
