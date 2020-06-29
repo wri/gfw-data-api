@@ -1,3 +1,6 @@
+import uuid
+from unittest.mock import patch
+
 from tests.routes import create_default_asset
 
 
@@ -7,7 +10,11 @@ def test_assets(client, db):
     dataset = "test"
     version = "v20200626"
 
-    asset = create_default_asset(client, dataset, version)
+    def generate_uuid(*args, **kwargs):
+        return uuid.uuid4()
+
+    with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
+        asset = create_default_asset(client, dataset, version)
     asset_id = asset["asset_id"]
 
     # Verify that the asset and version are in state "pending"
@@ -32,8 +39,8 @@ def test_assets(client, db):
     create_asset_resp = client.post(
         f"/meta/{dataset}/{version}/assets", json=asset_payload
     )
-    assert create_asset_resp.json()["status"] == "fail"
-    assert create_asset_resp.json()["data"] == (
+    assert create_asset_resp.json()["status"] == "failed"
+    assert create_asset_resp.json()["message"] == (
         "Version status is currently `pending`. "
         "Please retry once version is in status `saved`"
     )
@@ -59,7 +66,7 @@ def test_assets(client, db):
     create_asset_resp = client.post(
         f"/meta/{dataset}/{version}/assets", json=asset_payload
     )
-    assert create_asset_resp.json()["status"] == "fail"
-    assert create_asset_resp.json()["data"] == (
+    assert create_asset_resp.json()["status"] == "failed"
+    assert create_asset_resp.json()["message"] == (
         "Version status is `failed`. Cannot add any assets."
     )

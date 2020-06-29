@@ -13,6 +13,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Path, Query
+from fastapi.exceptions import HTTPException
 from fastapi.responses import ORJSONResponse
 
 from ...crud import assets, versions
@@ -152,13 +153,13 @@ async def add_new_asset(
     orm_version: ORMVersion = await versions.get_version(dataset, version)
 
     if orm_version.status == "pending":
-        raise ClientError(
+        raise HTTPException(
             status_code=409,
             detail="Version status is currently `pending`. "
             "Please retry once version is in status `saved`",
         )
     elif orm_version.status == "failed":
-        raise ClientError(
+        raise HTTPException(
             status_code=400, detail="Version status is `failed`. Cannot add any assets."
         )
     else:
