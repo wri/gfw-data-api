@@ -1,9 +1,9 @@
 from typing import List
 
 from asyncpg import UniqueViolationError
-from fastapi import HTTPException
 
 from ..application import db
+from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.queries.datasets import all_datasets
 from . import update_data
@@ -19,9 +19,7 @@ async def get_datasets() -> List[ORMDataset]:
 async def get_dataset(dataset: str) -> ORMDataset:
     row: ORMDataset = await ORMDataset.get(dataset)
     if row is None:
-        raise HTTPException(
-            status_code=404, detail=f"Dataset with name {dataset} does not exist"
-        )
+        raise RecordNotFoundError(f"Dataset with name {dataset} does not exist")
 
     return row
 
@@ -30,9 +28,8 @@ async def create_dataset(dataset: str, **data) -> ORMDataset:
     try:
         new_dataset: ORMDataset = await ORMDataset.create(dataset=dataset, **data)
     except UniqueViolationError:
-        raise HTTPException(
-            status_code=400, detail=f"Dataset with name {dataset} already exists"
-        )
+        raise RecordAlreadyExistsError(f"Dataset with name {dataset} already exists")
+
     return new_dataset
 
 

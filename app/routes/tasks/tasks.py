@@ -13,6 +13,7 @@ from fastapi.responses import ORJSONResponse
 
 from ...application import ContextEngine, db
 from ...crud import assets, tasks, versions
+from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.queries.fields import fields
 from ...models.orm.tasks import Task as ORMTask
@@ -39,7 +40,11 @@ router = APIRouter()
 )
 async def get_task(*, task_id: UUID = Path(...)) -> TaskResponse:
     """Get single tasks by task ID."""
-    row = await tasks.get_task(task_id)
+    try:
+        row = await tasks.get_task(task_id)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
     return _task_response(row)
 
 
@@ -70,7 +75,10 @@ async def create_task(
     """Create a task."""
 
     input_data = request.dict()
-    task_row = await tasks.create_task(task_id, **input_data)
+    try:
+        task_row = await tasks.create_task(task_id, **input_data)
+    except RecordAlreadyExistsError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     return _task_response(task_row)
 

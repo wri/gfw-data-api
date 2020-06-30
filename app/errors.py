@@ -17,3 +17,15 @@ class TooManyRetriesError(RecursionError):
     def __init__(self, message: str, detail: str):
         self.message = message
         self.detail = detail
+
+
+class RecordNotFoundError(Exception):
+    pass
+
+
+class RecordAlreadyExistsError(Exception):
+    pass
+
+
+class BadRequestError(Exception):
+    pass

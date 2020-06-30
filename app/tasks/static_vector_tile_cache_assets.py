@@ -1,8 +1,7 @@
-from typing import Any, Awaitable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from ..application import ContextEngine
-from ..crud import assets, tasks
+from ..crud import assets
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
@@ -122,6 +121,7 @@ async def _get_field_attributes(
     """
 
     orm_assets: List[ORMAsset] = await assets.get_assets(dataset, version)
+
     fields: Optional[List[Dict[str, str]]] = None
     for asset in orm_assets:
         if asset.is_default:

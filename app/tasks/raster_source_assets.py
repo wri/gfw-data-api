@@ -1,4 +1,4 @@
-from typing import Any, Awaitable, Callable, Dict
+from typing import Any, Dict
 from uuid import UUID
 
 from ..models.pydantic.change_log import ChangeLog

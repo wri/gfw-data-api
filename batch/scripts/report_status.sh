@@ -19,15 +19,17 @@ GREP_EXIT_CODE=$?
 
 echo GREP EXIT CODE: $GREP_EXIT_CODE
 
+COMMAND="$*"
+
 # escape all quotes inside command to not break JSON payload
-ESC_COMMAND=${"$*"//\"/\\\"}
+ESC_COMMAND=${"$COMMAND"//\"/\\\"}
 
 if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
     STATUS="success"
     MESSAGE="Successfully ran command [ $ESC_COMMAND ]"
     DETAIL="None"
 else
-    STATUS="failure"
+    STATUS="failed"
     MESSAGE="Command [ $ESC_COMMAND ] encountered errors"
     DETAIL="None" # Would be nice to attach properly escaped OUTPUT here
 fi

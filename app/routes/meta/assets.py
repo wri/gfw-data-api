@@ -12,11 +12,11 @@ the same version and do not know the processing history.
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Path, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
 from fastapi.responses import ORJSONResponse
 
-from ...crud import assets, versions
-from ...errors import ClientError
+from ...crud import assets
+from ...errors import ClientError, RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.pydantic.assets import (
     Asset,
@@ -26,8 +26,6 @@ from ...models.pydantic.assets import (
     AssetType,
     AssetUpdateIn,
 )
-from ...models.pydantic.creation_options import asset_creation_option_factory
-from ...models.pydantic.metadata import asset_metadata_factory
 from ...routes import dataset_dependency, is_admin, version_dependency
 from ...tasks.assets import create_asset
 from ...tasks.delete_assets import (
@@ -56,7 +54,10 @@ async def get_assets(
 ):
     """Get all assets for a given dataset version."""
 
-    rows: List[ORMAsset] = await assets.get_assets(dataset, version)
+    try:
+        rows: List[ORMAsset] = await assets.get_assets(dataset, version)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     # Filter rows by asset type
     data = list()
@@ -83,7 +84,10 @@ async def get_asset(
     asset_id: UUID = Path(...),
 ) -> AssetResponse:
     """Get a specific asset."""
-    row: ORMAsset = await assets.get_asset(asset_id)
+    try:
+        row: ORMAsset = await assets.get_asset(asset_id)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     if row.dataset != dataset and row.version != version:
         raise ClientError(
@@ -121,7 +125,13 @@ async def add_new_asset(
 
     await verify_version_status(dataset, version)
 
-    row: ORMAsset = await assets.create_asset(dataset, version, **input_data)
+    try:
+        row: ORMAsset = await assets.create_asset(dataset, version, **input_data)
+    except RecordAlreadyExistsError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+
     background_tasks.add_task(
         create_asset, row.asset_type, row.asset_id, dataset, version, input_data
     )
@@ -142,14 +152,19 @@ async def update_asset(
     asset_id: UUID = Path(...),
     request: AssetUpdateIn,
     is_authorized: bool = Depends(is_admin),
-    response: ORJSONResponse,
 ) -> AssetResponse:
     """Update Asset metadata."""
 
     input_data = request.dict(exclude_unset=True)
     await verify_version_status(dataset, version)
 
-    row: ORMAsset = await assets.update_asset(asset_id, **input_data)
+    try:
+        row: ORMAsset = await assets.update_asset(asset_id, **input_data)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+
     return await _asset_response(row)
 
 
@@ -173,7 +188,10 @@ async def delete_asset(
     assets, only the link will be deleted.
     """
 
-    row: ORMAsset = await assets.get_asset(asset_id)
+    try:
+        row: ORMAsset = await assets.get_asset(asset_id)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     if row.is_default:
         raise ClientError(

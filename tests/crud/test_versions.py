@@ -3,7 +3,6 @@ from datetime import datetime
 
 import asyncpg
 import pytest
-from fastapi import HTTPException
 
 from app.application import ContextEngine
 from app.crud.datasets import create_dataset
@@ -16,6 +15,7 @@ from app.crud.versions import (
     get_versions,
     update_version,
 )
+from app.errors import RecordAlreadyExistsError, RecordNotFoundError
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.metadata import VersionMetadata
 
@@ -64,17 +64,14 @@ async def test_versions():
     # This shouldn't work a second time
     async with ContextEngine("WRITE"):
         result = ""
-        status_code = 200
         try:
             await create_version(dataset_name, version_name, source_type="table")
-        except HTTPException as e:
-            result = e.detail
-            status_code = e.status_code
+        except RecordAlreadyExistsError as e:
+            result = str(e)
 
         assert (
             result == f"Version with name {dataset_name}.{version_name} already exists"
         )
-        assert status_code == 400
 
     # There should be an entry now
     rows = await get_versions(dataset_name)
@@ -102,15 +99,12 @@ async def test_versions():
 
     # But only if the dataset exists
     result = ""
-    status_code = 200
     try:
         await get_version("test2", version_name)
-    except HTTPException as e:
-        result = e.detail
-        status_code = e.status_code
+    except RecordNotFoundError as e:
+        result = str(e)
 
     assert result == f"Version with name test2.{version_name} does not exist"
-    assert status_code == 404
 
     # It should be possible to update a dataset using a context engine
     metadata = VersionMetadata(title="Test Title", tags=["tag1", "tag2"])

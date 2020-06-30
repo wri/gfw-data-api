@@ -1,7 +1,6 @@
 from fastapi import HTTPException
 
 from app.crud.versions import get_version as _get_version
-from app.errors import ClientError
 
 from ...models.orm.versions import Version as ORMVersion
 

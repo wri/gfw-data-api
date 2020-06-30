@@ -2,10 +2,9 @@ from typing import Any, Dict, List
 from uuid import UUID
 
 from asyncpg import UniqueViolationError
-from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 
-from ..errors import ClientError, ServerError
+from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
@@ -26,10 +25,10 @@ async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
         ORMAsset.dataset == dataset
     ).where(ORMAsset.version == version).gino.all()
     if not rows:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Version with name {dataset}.{version} does not exist",
+        raise RecordNotFoundError(
+            f"No assets for version with name {dataset}.{version} found"
         )
+
     d: ORMDataset = await datasets.get_dataset(dataset)
     v: ORMVersion = await versions.get_version(dataset, version)
 
@@ -50,11 +49,11 @@ async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
 
 
 async def get_asset(asset_id: UUID) -> ORMAsset:
+
     row: ORMAsset = await ORMAsset.get([asset_id])
     if row is None:
-        raise HTTPException(
-            status_code=404, detail=f"Could not find requested asset {asset_id}",
-        )
+        raise RecordNotFoundError(f"Could not find requested asset {asset_id}")
+
     dataset: ORMDataset = await datasets.get_dataset(row.dataset)
     version: ORMVersion = await versions.get_version(row.dataset, row.version)
     version = update_metadata(version, dataset)
@@ -71,10 +70,9 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
             dataset=dataset, version=version, **jsonable_data
         )
     except UniqueViolationError:
-        raise ClientError(
-            status_code=400,
-            detail=f"Cannot create asset of type {data['asset_type']}. "
-            f"Asset uri must be unique. An asset with uri {data['asset_uri']} already exists",
+        raise RecordAlreadyExistsError(
+            f"Cannot create asset of type {data['asset_type']}. "
+            f"Asset uri must be unique. An asset with uri {data['asset_uri']} already exists"
         )
 
     d: ORMDataset = await datasets.get_dataset(dataset)
@@ -155,9 +153,8 @@ def _creation_option_factory(asset_type, creation_options) -> CreationOptions:
         model = StaticVectorTileCacheCreationOptions(**creation_options)
 
     else:
-        raise HTTPException(
-            status_code=501,
-            detail=f"Creation options validation for {asset_type} not implemented",
+        raise NotImplementedError(
+            f"Creation options validation for {asset_type} not implemented"
         )
 
     return model
