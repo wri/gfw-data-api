@@ -1,5 +1,4 @@
-from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
-from uuid import UUID
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -13,7 +12,6 @@ from ...settings.globals import (
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
 )
-from .change_log import ChangeLog
 
 
 class Job(BaseModel):
