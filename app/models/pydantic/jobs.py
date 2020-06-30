@@ -1,4 +1,5 @@
-from typing import Dict, List, Optional
+from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -12,6 +13,7 @@ from ...settings.globals import (
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
 )
+from .change_log import ChangeLog
 
 
 class Job(BaseModel):
@@ -25,6 +27,8 @@ class Job(BaseModel):
     attempts: int
     attempt_duration_seconds: int
     parents: Optional[List[str]] = None
+    # somehow mypy doesn't like the type when declared here?
+    callback: Any  # Callable[[UUID, ChangeLog], Coroutine[Any, Any, Awaitable[None]]]
 
 
 class PostgresqlClientJob(Job):

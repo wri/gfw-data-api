@@ -1,13 +1,11 @@
 import os
-from typing import Any, Awaitable, Dict, List, Optional
+from typing import Any, Dict, List
 from uuid import UUID
 
-from ..application import ContextEngine
-from ..crud import assets, tasks
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import VectorSourceCreationOptions
 from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
-from . import writer_secrets
+from . import Callback, callback_constructor, writer_secrets
 from .batch import execute
 
 
@@ -21,6 +19,7 @@ async def vector_source_asset(
         raise AssertionError("Vector sources only support one input file")
 
     creation_options = VectorSourceCreationOptions(**input_data["creation_options"])
+    callback: Callback = callback_constructor(asset_id)
 
     # source_uri: str = gdal_path(source_uris[0], options.zipped)
     source_uri = source_uris[0]
@@ -50,6 +49,7 @@ async def vector_source_asset(
             local_file,
         ],
         environment=job_env,
+        callback=callback,
     )
 
     load_vector_data_jobs: List[Job] = list()
@@ -72,6 +72,7 @@ async def vector_source_asset(
                 ],
                 parents=[create_vector_schema_job.job_name],
                 environment=job_env,
+                callback=callback,
             )
         )
 
@@ -80,6 +81,7 @@ async def vector_source_asset(
         command=["add_gfw_fields.sh", "-d", dataset, "-v", version],
         parents=[job.job_name for job in load_vector_data_jobs],
         environment=job_env,
+        callback=callback,
     )
 
     index_jobs: List[Job] = list()
@@ -101,6 +103,7 @@ async def vector_source_asset(
                 ],
                 parents=[gfw_attribute_job.job_name],
                 environment=job_env,
+                callback=callback,
             )
         )
 
@@ -109,17 +112,8 @@ async def vector_source_asset(
         command=["inherit_geostore.sh", "-d", dataset, "-v", version],
         parents=[job.job_name for job in index_jobs],
         environment=job_env,
+        callback=callback,
     )
-
-    async def callback(
-        task_id: Optional[UUID], message: Dict[str, Any]
-    ) -> Awaitable[None]:
-        async with ContextEngine("PUT"):
-            if task_id:
-                _ = await tasks.create_task(
-                    task_id, asset_id=asset_id, change_log=[message]
-                )
-            return await assets.update_asset(asset_id, change_log=[message])
 
     log: ChangeLog = await execute(
         [
@@ -128,8 +122,7 @@ async def vector_source_asset(
             gfw_attribute_job,
             *index_jobs,
             inherit_geostore_job,
-        ],
-        callback,
+        ]
     )
 
     return log

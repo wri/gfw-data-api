@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Dict, FrozenSet, Tuple
 from uuid import UUID
 
@@ -50,16 +51,23 @@ async def create_asset(
             raise NotImplementedError(f"Unsupported asset type {asset_type}")
 
     # Make sure asset status is set to `failed` in case there is an uncaught Exception
-    except Exception:
+    except Exception as e:
+        change_log = ChangeLog(
+            date_time=datetime.now(),
+            status="failed",
+            message="Failed to create asset. An unexpected error occured",
+            detail=str(e),
+        )
         async with ContextEngine("WRITE"):
-            await assets.update_asset(asset_id, status="failed")
+            await assets.update_asset(
+                asset_id, status="failed", change_log=[change_log.dict()]
+            )
         raise
 
-    # Update version status and change log
+    # Update asset status and change log
     async with ContextEngine("WRITE"):
-        await versions.update_version(
-            dataset, version, status=log.status, change_log=[log.dict()]
-        )
+        await assets.update_asset(asset_id, status=log.status, change_log=[log.dict()])
+        await versions.update_version(dataset, version, change_log=[log.dict()])
 
 
 async def vector_tile_cache_asset():

@@ -15,7 +15,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
 
-from ...crud import assets
+from ...crud import assets, versions
 from ...errors import ClientError
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.pydantic.assets import (
@@ -26,6 +26,8 @@ from ...models.pydantic.assets import (
     AssetType,
     AssetUpdateIn,
 )
+from ...models.pydantic.creation_options import asset_creation_option_factory
+from ...models.pydantic.metadata import asset_metadata_factory
 from ...routes import dataset_dependency, is_admin, version_dependency
 from ...tasks.assets import create_asset
 from ...tasks.delete_assets import (
@@ -38,9 +40,6 @@ from ...tasks.delete_assets import (
 from . import verify_version_status
 
 router = APIRouter()
-
-# TODO:
-#  - Assets should have config parameters to allow specifying creation options
 
 
 @router.get(
@@ -68,7 +67,7 @@ async def get_assets(
     else:
         data = rows
 
-    return AssetsResponse(data=data)
+    return await _assets_response(data)
 
 
 @router.get(
@@ -232,11 +231,13 @@ async def delete_asset(
 
 async def _asset_response(asset_orm: ORMAsset) -> AssetResponse:
     """Serialize ORM response."""
-    data = Asset.from_orm(asset_orm)  # .dict(by_alias=True)
+
+    data = Asset.from_orm(asset_orm)
+
     return AssetResponse(data=data)
 
 
 async def _assets_response(assets_orm: List[ORMAsset]) -> AssetsResponse:
     """Serialize ORM response."""
-    data = [Asset.from_orm(asset) for asset in assets_orm]  # .dict(by_alias=True)
+    data = [Asset.from_orm(asset) for asset in assets_orm]
     return AssetsResponse(data=data)

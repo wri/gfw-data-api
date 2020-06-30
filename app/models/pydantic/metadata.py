@@ -1,6 +1,8 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 from pydantic import BaseModel, Field
+
+from ..enum.assets import AssetType
 
 
 class FieldMetadata(BaseModel):
@@ -82,8 +84,26 @@ class DatabaseTableMetadata(VersionMetadata):
     fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
 
 
-#
-# class AssetMetadata(VersionMetadata):
-#     asset_type: Optional[Dict[str, Any]]
-#     url: Optional[str]
-#     info: Optional[Union[RasterTileSetMetadata, VectorTileCacheMetadata, FieldMetadata]]
+AssetMetadata = Union[
+    DatabaseTableMetadata, VectorTileCacheMetadata, RasterTileSetMetadata,
+]
+
+
+def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMetadata:
+    """Create Pydantic Asset Metadata class based on asset type."""
+    metadata_factory: Dict[str, Type[AssetMetadata]] = {
+        AssetType.static_vector_tile_cache: VectorTileCacheMetadata,
+        AssetType.dynamic_vector_tile_cache: VectorTileCacheMetadata,
+        AssetType.raster_tile_set: RasterTileSetMetadata,
+        AssetType.database_table: DatabaseTableMetadata,
+        AssetType.ndjson: VersionMetadata,
+    }
+    if asset_type in metadata_factory.keys():
+        md: AssetMetadata = metadata_factory[asset_type](**metadata)
+
+    else:
+        raise NotImplementedError(
+            f"Asset metadata factory for type {asset_type} not implemented"
+        )
+
+    return md

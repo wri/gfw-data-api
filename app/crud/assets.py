@@ -3,6 +3,7 @@ from uuid import UUID
 
 from asyncpg import UniqueViolationError
 from fastapi import HTTPException
+from fastapi.encoders import jsonable_encoder
 
 from ..errors import ClientError, ServerError
 from ..models.orm.assets import Asset as ORMAsset
@@ -64,10 +65,10 @@ async def get_asset(asset_id: UUID) -> ORMAsset:
 async def create_asset(dataset, version, **data) -> ORMAsset:
 
     data = _validate_creation_options(**data)
-
+    jsonable_data = jsonable_encoder(data)
     try:
         new_asset: ORMAsset = await ORMAsset.create(
-            dataset=dataset, version=version, **data
+            dataset=dataset, version=version, **jsonable_data
         )
     except UniqueViolationError:
         raise ClientError(
@@ -86,9 +87,10 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
 async def update_asset(asset_id: UUID, **data) -> ORMAsset:
 
     data = _validate_creation_options(**data)
+    jsonable_data = jsonable_encoder(data)
 
     row: ORMAsset = await get_asset(asset_id)
-    row = await update_data(row, data)
+    row = await update_data(row, jsonable_data)
 
     dataset: ORMDataset = await datasets.get_dataset(row.dataset)
     version: ORMVersion = await versions.get_version(row.dataset, row.version)

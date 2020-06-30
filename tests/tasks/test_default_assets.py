@@ -72,7 +72,8 @@ async def test_vector_source_asset(batch_client, httpd):
     _print_logs(logs)
 
     await _check_version_status(dataset, version)
-    await _check_asset_status(dataset, version, 7, "inherit_from_geostore")
+    await _check_asset_status(dataset, version, 1)
+    await _check_task_status(asset_id, 7, "inherit_from_geostore")
 
     # There should be a table called "test"."v1.1.1" with one row
     async with ContextEngine("READ"):
@@ -180,7 +181,8 @@ async def test_table_source_asset(batch_client, httpd):
     # _print_logs(logs)
 
     await _check_version_status(dataset, version)
-    await _check_asset_status(dataset, version, 14, "cluster_partitions_3")
+    await _check_asset_status(dataset, version, 1)
+    await _check_task_status(asset_id, 14, "cluster_partitions_3")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -272,7 +274,7 @@ async def _check_version_status(dataset, version):
     assert row.change_log[0]["message"] == "Successfully scheduled batch jobs"
 
 
-async def _check_asset_status(dataset, version, nb_jobs, last_job_name):
+async def _check_asset_status(dataset, version, nb_assets):
     rows = await assets.get_assets(dataset, version)
     assert len(rows) == 1
 
@@ -282,5 +284,15 @@ async def _check_asset_status(dataset, version, nb_jobs, last_job_name):
 
     # in this test we only see the logs from background task, not from batch jobs
     print(f"TABLE SOURCE ASSET LOGS: {rows[0].change_log}")
-    assert len(rows[0].change_log) == nb_jobs
-    assert rows[0].change_log[-1]["message"] == (f"Scheduled job {last_job_name}")
+    assert len(rows[0].change_log) == nb_assets
+
+
+async def _check_task_status(asset_id, nb_jobs, last_job_name):
+    rows = await tasks.get_tasks(asset_id)
+    assert len(rows) == nb_jobs
+
+    for row in rows:
+        # in this test we don't set the final asset status to saved or failed
+        assert row.status == "pending"
+    # in this test we only see the logs from background task, not from batch jobs
+    assert rows[-1].change_log[0]["message"] == (f"Scheduled job {last_job_name}")

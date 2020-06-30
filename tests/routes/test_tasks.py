@@ -103,7 +103,7 @@ def test_tasks_success(client, db):
     }
 
     asset_resp = client.patch(
-        f"/meta/{dataset}/{version}/assets/{asset_id}", json=json.dumps(field_payload)
+        f"/meta/{dataset}/{version}/assets/{asset_id}", json=field_payload
     )
     print(asset_resp.json())
     assert asset_resp.json()["status"] == "success"
@@ -122,26 +122,28 @@ def test_tasks_success(client, db):
             "tile_strategy": "discontinuous",
         },
     }
-    create_asset_resp = client.post(
-        f"/meta/{dataset}/{version}/assets", json=asset_payload
-    )
+    with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
+        create_asset_resp = client.post(
+            f"/meta/{dataset}/{version}/assets", json=asset_payload
+        )
     print(json.dumps(create_asset_resp.json(), indent=2))
     assert create_asset_resp.json()["status"] == "success"
     asset_id = create_asset_resp.json()["data"]["asset_id"]
 
-    # Verify there are two assets now
+    # Verify there are three assets now,
+    # including the implicitly created ndjson asset
     get_resp = client.get(f"/meta/{dataset}/{version}/assets")
-    assert len(get_resp.json()["data"]) == 2
+    assert len(get_resp.json()["data"]) == 3
 
     # Verify the existence of tasks for the new asset
     non_default_tasks = client.get(f"/tasks/assets/{asset_id}").json()["data"]
-    assert len(existing_tasks) == 7
+    assert len(non_default_tasks) == 1
     for task in non_default_tasks:
         assert len(task["change_log"]) == 1
         assert task["change_log"][0]["status"] == "pending"
 
     # Arbitrarily choose a task and add a changelog with status "failed"
-    sample_task_id = existing_tasks[0]["task_id"]
+    sample_task_id = non_default_tasks[0]["task_id"]
     patch_payload = {
         "change_log": [
             {
