@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi.logger import logger
 
 from ..errors import TooManyRetriesError
+from ..models.enum.change_log import ChangeLogStatus
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.jobs import Job
 from ..utils.aws import get_batch_client
@@ -15,11 +16,11 @@ async def execute(jobs: List[Job],) -> ChangeLog:
         scheduled_jobs = await schedule(jobs)
         print(f"SCHEDULED JOBS: {scheduled_jobs}")
     except TooManyRetriesError as e:
-        status = "failed"
+        status = ChangeLogStatus.failed
         message = e.message
         detail = e.detail
     else:
-        status = "pending"
+        status = ChangeLogStatus.pending
         message = "Successfully scheduled batch jobs"
         detail = f"Scheduled jobs: {scheduled_jobs}"
     return ChangeLog(
@@ -45,7 +46,7 @@ async def schedule(jobs: List[Job]) -> Dict[str, UUID]:
                 task_id=scheduled_jobs[job.job_name],
                 change_log=ChangeLog(
                     date_time=datetime.now(),
-                    status="pending",
+                    status=ChangeLogStatus.pending,
                     message=f"Scheduled job {job.job_name}",
                     detail=f"Job ID: {scheduled_jobs[job.job_name]}",
                 ),
@@ -76,7 +77,7 @@ async def schedule(jobs: List[Job]) -> Dict[str, UUID]:
                     task_id=scheduled_jobs[job.job_name],
                     change_log=ChangeLog(
                         date_time=datetime.now(),
-                        status="pending",
+                        status=ChangeLogStatus.pending,
                         message=f"Scheduled job {job.job_name}",
                         detail=f"Job ID: {scheduled_jobs[job.job_name]}, parents: {depends_on}",
                     ),

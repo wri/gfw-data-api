@@ -21,15 +21,16 @@ echo GREP EXIT CODE: $GREP_EXIT_CODE
 
 # escape all quotes inside command to not break JSON payload
 ESC_COMMAND=$(echo "$*" | sed 's/"/\\"/g')
+ESC_OUTPUT=$(echo "$OUTPUT" | sed 's/"/\\"/g') # TODO: make sure we don't log any sensitive information like data word passwords or tokens
 
 if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
     STATUS="success"
     MESSAGE="Successfully ran command [ $ESC_COMMAND ]"
-    DETAIL="None"
+    DETAIL=""
 else
     STATUS="failed"
     MESSAGE="Command [ $ESC_COMMAND ] encountered errors"
-    DETAIL="None" # Would be nice to attach properly escaped OUTPUT here
+    DETAIL="$ESC_OUTPUT"
 fi
 
 AFTER=$(date '+%Y-%m-%d %H:%M:%S')

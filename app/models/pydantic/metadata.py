@@ -78,6 +78,7 @@ class RasterTileSetMetadata(VersionMetadata):
 class VectorTileCacheMetadata(VersionMetadata):
     min_zoom: int
     max_zoom: int
+    # TODO: default symbology/ legend
 
 
 class DatabaseTableMetadata(VersionMetadata):

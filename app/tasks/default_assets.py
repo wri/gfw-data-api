@@ -1,11 +1,12 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, FrozenSet, Optional
 from typing.io import IO
 from uuid import UUID
 
 from ..application import ContextEngine
 from ..crud import assets, versions
 from ..models.enum.assets import default_asset_type
+from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
 from ..models.pydantic.assets import AssetTaskCreate
 from ..models.pydantic.change_log import ChangeLog
@@ -18,7 +19,7 @@ from .raster_source_assets import raster_source_asset
 from .table_source_assets import table_source_asset
 from .vector_source_assets import vector_source_asset
 
-DEFAULT_ASSET_PIPELINES = frozenset(
+DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
     {
         SourceType.vector: vector_source_asset,
         SourceType.table: table_source_asset,
@@ -96,7 +97,7 @@ async def _create_default_asset(
         dataset=dataset,
         version=version,
         input_data=input_data,
-        asset_lookup=DEFAULT_ASSET_PIPELINES,
+        constructor=DEFAULT_ASSET_PIPELINES,
     )
 
     return new_asset.asset_id
@@ -110,11 +111,11 @@ async def _inject_file(file_obj: IO, s3_uri: str) -> ChangeLog:
 
     try:
         s3.upload_fileobj(file_obj, bucket, path)
-        status = "success"
+        status = ChangeLogStatus.success
         message = f"Injected file {path} into {bucket}"
         detail = None
     except Exception as e:
-        status = "failed"
+        status = ChangeLogStatus.failed
         message = f"Failed to inject file {path} into {bucket}"
         detail = str(e)
 

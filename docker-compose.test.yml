@@ -36,6 +36,7 @@ services:
       - AURORA_JOB_QUEUE=aurora_jq
       - DATA_LAKE_JOB_QUEUE=data_lake_jq
       - TILE_CACHE_JOB_QUEUE=tile_cache_jq
+      - TILE_CACHE_URL=https://tiles.globalforestwatch.org
       - PIXETL_JOB_QUEUE=pixetl_jq
       - API_URL=http://app_test:9000
       - S3_ENTRYPOINT_URL=http://motoserver:5000

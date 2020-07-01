@@ -21,6 +21,10 @@ async def static_vector_tile_cache_asset(
 ) -> ChangeLog:
     """Create Vector tile cache and NDJSON file as intermediate data."""
 
+    #######################
+    # Update asset metadata
+    #######################
+
     creation_options = asset_creation_option_factory(
         None, AssetType.static_vector_tile_cache, input_data["creation_options"]
     )
@@ -33,11 +37,15 @@ async def static_vector_tile_cache_asset(
         },
     )
 
+    ############################
+    # Create NDJSON asset as side effect
+    ############################
+
     field_attributes: List[Dict[str, Any]] = await _get_field_attributes(
         dataset, version, creation_options
     )
 
-    if input_data["metadata"] is None:
+    if not input_data["metadata"]:
         _metadata = {}
     else:
         _metadata = input_data["metadata"]
@@ -47,8 +55,6 @@ async def static_vector_tile_cache_asset(
 
     ndjson_uri = f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/epsg:4326/{dataset}_{version}.ndjson"
 
-    # We create a NDJSON file as intermediate data and will add it as an asset implicitly.
-    # TODO: Will need to list the available fields in metadata. Should be the same as listed for tile cache
     ndjson_asset: ORMAsset = await assets.create_asset(
         dataset,
         version,
@@ -56,6 +62,10 @@ async def static_vector_tile_cache_asset(
         asset_uri=ndjson_uri,
         metadata=metadata,
     )
+
+    ############################
+    # Define jobs
+    ############################
 
     # Create table schema
     command: List[str] = [
@@ -104,6 +114,10 @@ async def static_vector_tile_cache_asset(
         parents=[export_ndjson.job_name],
         callback=callback_constructor(asset_id),
     )
+
+    #######################
+    # execute jobs
+    #######################
 
     log: ChangeLog = await execute([export_ndjson, create_vector_tile_cache])
 
