@@ -1,10 +1,8 @@
-from typing import Any, Dict, List
+from typing import List
 from urllib.parse import urljoin
 
-from ..application import ContextEngine, db
+from ..application import ContextEngine
 from ..crud import assets as crud_assets
-from ..models.orm.queries.fields import fields
-from ..models.pydantic.metadata import FieldMetadata
 from ..settings.globals import (
     API_URL,
     READER_DBNAME,

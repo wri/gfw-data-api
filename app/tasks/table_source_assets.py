@@ -50,6 +50,11 @@ async def table_source_asset(
         {"name": "ASSET_ID", "value": str(asset_id)}
     ]
 
+    from logging import getLogger
+
+    some_log = getLogger("funkytown")
+    some_log.error(f"Environment: {job_env}")
+
     create_table_job = PostgresqlClientJob(
         job_name="create_table", command=command, environment=job_env,
     )
@@ -160,7 +165,7 @@ async def table_source_asset(
     async def callback(
         task_id: Optional[UUID], message: Dict[str, Any]
     ) -> Awaitable[None]:
-        async with ContextEngine("PUT"):
+        async with ContextEngine("WRITE"):
             if task_id:
                 _ = await tasks.create_task(
                     task_id, asset_id=asset_id, change_log=[message]

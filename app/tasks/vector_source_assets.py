@@ -114,7 +114,7 @@ async def vector_source_asset(
     async def callback(
         task_id: Optional[UUID], message: Dict[str, Any]
     ) -> Awaitable[None]:
-        async with ContextEngine("PUT"):
+        async with ContextEngine("WRITE"):
             if task_id:
                 _ = await tasks.create_task(
                     task_id, asset_id=asset_id, change_log=[message]
