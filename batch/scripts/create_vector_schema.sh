@@ -15,6 +15,10 @@ ME=$(basename "$0")
 echo "AWSCLI: COPY DATA FROM $SRC TO $LOCAL_FILE"
 aws s3 cp "$SRC" "$LOCAL_FILE"
 
+if [ "${ZIPPED}" == "True" ]; then
+  LOCAL_FILE="/vsizip/${LOCAL_FILE}"
+fi
+
 echo "OGR2OGR: Create table schema for \"${DATASET}\".\"${VERSION}\" from ${LOCAL_FILE} ${SRC_LAYER}"
 ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=$PGDATABASE user=$PGUSER" \
      "$LOCAL_FILE" "$SRC_LAYER" \

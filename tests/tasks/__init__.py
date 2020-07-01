@@ -12,13 +12,6 @@ from app.models.orm.assets import Asset as AssetORM
 from app.settings.globals import READER_USERNAME
 from app.utils.aws import get_batch_client
 
-TSV_NAME = "test.tsv"
-TSV_PATH = os.path.join(os.path.dirname(__file__), "..", "fixtures", TSV_NAME)
-
-GEOJSON_NAME = "test.geojson"
-GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "..", "fixtures", GEOJSON_NAME)
-
-BUCKET = "test-bucket"
 KEY = "KEY"
 VALUE = "VALUE"
 
@@ -103,8 +96,9 @@ def check_callbacks(task_ids, port):
     assert all(elem in task_path for elem in req_paths)
 
 
-async def create_version(dataset, version, input_data) -> None:
-    # Create dataset and version records
+async def create_dataset(dataset) -> None:
+
+    # Create dataset record and dataset schema
     async with ContextEngine("WRITE"):
         await datasets.create_dataset(dataset)
         await db.status(CreateSchema(dataset))
@@ -112,6 +106,16 @@ async def create_version(dataset, version, input_data) -> None:
         await db.status(
             f"ALTER DEFAULT PRIVILEGES IN SCHEMA {dataset} GRANT SELECT ON TABLES TO {READER_USERNAME};"
         )
+    row = await datasets.get_dataset(dataset)
+    assert row.dataset == dataset
+    assert dataset == await db.scalar(
+        f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{dataset}';"
+    )
+
+
+async def create_version(dataset, version, input_data) -> None:
+    # Create dataset and version records
+    async with ContextEngine("WRITE"):
         await versions.create_version(dataset, version, **input_data)
 
     # Make sure everything we need is in place
@@ -121,13 +125,11 @@ async def create_version(dataset, version, input_data) -> None:
     row = await versions.get_version(dataset, version)
     assert row.status == "pending"
     assert row.change_log == []
-    assert dataset == await db.scalar(
-        f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{dataset}';"
-    )
 
 
 async def create_asset(dataset, version, asset_type, asset_uri, input_data) -> AssetORM:
     # Create dataset and version records
+    await create_dataset(dataset)
     await create_version(dataset, version, input_data)
     async with ContextEngine("WRITE"):
         new_asset = await assets.create_asset(

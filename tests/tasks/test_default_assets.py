@@ -1,28 +1,19 @@
 from typing import List
 from uuid import UUID
 
-import boto3
 import pendulum
 import pytest
+import requests
 from pendulum.parsing.exceptions import ParserError
 
 from app.application import ContextEngine, db
 from app.crud import assets, tasks, versions
 from app.models.orm.geostore import Geostore
-from app.settings.globals import AWS_REGION
 from app.tasks.default_assets import create_default_asset
 from app.utils.aws import get_s3_client
 
-from . import (
-    BUCKET,
-    GEOJSON_NAME,
-    GEOJSON_PATH,
-    TSV_NAME,
-    TSV_PATH,
-    check_callbacks,
-    create_version,
-    poll_jobs,
-)
+from .. import BUCKET, GEOJSON_NAME, SHP_NAME, TSV_NAME, TSV_PATH
+from . import check_callbacks, create_dataset, create_version, poll_jobs
 
 
 @pytest.mark.asyncio
@@ -35,59 +26,58 @@ async def test_vector_source_asset(batch_client, httpd):
     # Setup test
     ############################
 
-    # Upload file to mocked S3 bucket
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-    )
-
-    s3_client.create_bucket(Bucket=BUCKET)
-    s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
-
     dataset = "test"
-    version = "v1.1.1"
-    input_data = {
-        "source_type": "vector",
-        "source_uri": [f"s3://{BUCKET}/{GEOJSON_NAME}"],
-        "creation_options": {"src_driver": "GeoJSON", "zipped": False},
-        "metadata": {},
-    }
+    sources = (SHP_NAME, GEOJSON_NAME)
 
-    await create_version(dataset, version, input_data)
+    await create_dataset(dataset)
 
-    ######################
-    # Test asset creation
-    #####################
-    # Create default asset in mocked BATCH
-    async with ContextEngine("WRITE"):
-        asset_id = await create_default_asset(dataset, version, input_data, None)
+    for i, source in enumerate(sources):
+        version = f"v1.1.{i}"
+        input_data = {
+            "source_type": "vector",
+            "source_uri": [f"s3://{BUCKET}/{source}"],
+            "creation_options": {"src_driver": "GeoJSON", "zipped": False},
+            "metadata": {},
+        }
+        await create_version(dataset, version, input_data)
 
-    tasks_rows = await tasks.get_tasks(asset_id)
-    task_ids = [str(task.task_id) for task in tasks_rows]
+        ######################
+        # Test asset creation
+        #####################
+        # Create default asset in mocked BATCH
+        async with ContextEngine("WRITE"):
+            asset_id = await create_default_asset(dataset, version, input_data, None)
 
-    # make sure, all jobs completed
-    status = await poll_jobs(task_ids)
-    assert status == "saved"
+        tasks_rows = await tasks.get_tasks(asset_id)
+        task_ids = [str(task.task_id) for task in tasks_rows]
 
-    # Get the logs in case something went wrong
-    _print_logs(logs)
+        # make sure, all jobs completed
+        status = await poll_jobs(task_ids)
 
-    await _check_version_status(dataset, version)
-    await _check_asset_status(dataset, version, 1)
-    await _check_task_status(asset_id, 7, "inherit_from_geostore")
+        # Get the logs in case something went wrong
+        _print_logs(logs)
+        assert status == "saved"
 
-    # There should be a table called "test"."v1.1.1" with one row
-    async with ContextEngine("READ"):
-        count = await db.scalar(db.text('SELECT count(*) FROM test."v1.1.1"'))
-    assert count == 1
+        await _check_version_status(dataset, version)
+        await _check_asset_status(dataset, version, 1)
+        await _check_task_status(asset_id, 7, "inherit_from_geostore")
 
-    # The geometry should also be accessible via geostore
-    async with ContextEngine("READ"):
-        rows: List[Geostore] = await Geostore.query.gino.all()
+        # There should be a table called "test"."v1.1.1" with one row
+        async with ContextEngine("READ"):
+            count = await db.scalar(
+                db.text(f'SELECT count(*) FROM {dataset}."{version}"')
+            )
+        assert count == 1
 
-    assert len(rows) == 1
-    assert rows[0].gfw_geostore_id == UUID("b9faa657-34c9-96d4-fce4-8bb8a1507cb3")
+        # The geometry should also be accessible via geostore
+        async with ContextEngine("READ"):
+            rows: List[Geostore] = await Geostore.query.gino.all()
 
-    check_callbacks(task_ids, httpd_port)
+        assert len(rows) == 1 + i
+        assert rows[0].gfw_geostore_id == UUID("23866dd0-9b1a-d742-a7e3-21dd255481dd")
+
+        check_callbacks(task_ids, httpd_port)
+        requests.delete(f"http://localhost:{httpd.server_port}")
 
 
 @pytest.mark.asyncio
@@ -160,6 +150,7 @@ async def test_table_source_asset(batch_client, httpd):
         "metadata": {},
     }
 
+    await create_dataset(dataset)
     await create_version(dataset, version, input_data)
 
     #####################

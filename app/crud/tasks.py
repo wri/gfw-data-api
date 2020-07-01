@@ -12,7 +12,7 @@ from . import update_data
 async def get_tasks(asset_id: UUID) -> List[ORMTask]:
     tasks: List[ORMTask] = await ORMTask.query.where(
         ORMTask.asset_id == asset_id
-    ).gino.all()
+    ).order_by(ORMTask.created_on).gino.all()
 
     return tasks
 

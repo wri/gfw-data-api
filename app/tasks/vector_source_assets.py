@@ -5,6 +5,7 @@ from uuid import UUID
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import VectorSourceCreationOptions
 from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
+from ..utils.path import get_layer_name, is_zipped
 from . import Callback, callback_constructor, writer_secrets
 from .batch import execute
 
@@ -21,14 +22,14 @@ async def vector_source_asset(
     creation_options = VectorSourceCreationOptions(**input_data["creation_options"])
     callback: Callback = callback_constructor(asset_id)
 
-    # source_uri: str = gdal_path(source_uris[0], options.zipped)
-    source_uri = source_uris[0]
-    local_file = os.path.basename(source_uri)
+    source_uri: str = source_uris[0]
+    local_file: str = os.path.basename(source_uri)
+    zipped: bool = is_zipped(source_uri)
 
     if creation_options.layers:
         layers = creation_options.layers
     else:
-        layer, _ = os.path.splitext(os.path.basename(source_uri))
+        layer = get_layer_name(source_uri)
         layers = [layer]
 
     job_env = writer_secrets + [{"name": "ASSET_ID", "value": str(asset_id)}]
@@ -47,6 +48,8 @@ async def vector_source_asset(
             layers[0],
             "-f",
             local_file,
+            "-X",
+            str(zipped),
         ],
         environment=job_env,
         callback=callback,

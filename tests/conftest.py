@@ -1,8 +1,8 @@
 import contextlib
 import threading
 from http.server import HTTPServer
-from typing import Optional
 
+import boto3
 import pytest
 import requests
 from alembic.config import main
@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from app.routes import is_admin, is_service_account
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
+    AWS_REGION,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
     PIXETL_JOB_DEFINITION,
@@ -22,6 +23,13 @@ from app.settings.globals import (
 )
 
 from . import (
+    BUCKET,
+    GEOJSON_NAME,
+    GEOJSON_PATH,
+    SHP_NAME,
+    SHP_PATH,
+    TSV_NAME,
+    TSV_PATH,
     AWSMock,
     MemoryServer,
     is_admin_mocked,
@@ -138,3 +146,16 @@ def httpd():
 def flush_request_list(httpd):
     """Delete request cache before every test."""
     requests.delete(f"http://localhost:{httpd.server_port}")
+
+
+@pytest.fixture(autouse=True)
+def copy_fixtures():
+    # Upload file to mocked S3 bucket
+    s3_client = boto3.client(
+        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+    )
+
+    s3_client.create_bucket(Bucket=BUCKET)
+    s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
+    s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
+    s3_client.upload_file(SHP_PATH, BUCKET, SHP_NAME)

@@ -72,6 +72,8 @@ class FieldType(BaseModel):
     field_type: PGType = Field(..., description="Type of field (PostgreSQL type).")
 
 
+# TODO: we currently ignore src_driver and zipped field
+#  decide whether to keep these fields or to remove them entirely
 class VectorSourceCreationOptions(BaseModel):
     src_driver: VectorDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
