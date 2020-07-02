@@ -9,4 +9,10 @@ class Task(Base):
 
     change_log = db.Column(db.ARRAY(db.JSONB), default=list())
 
-    fk = db.ForeignKeyConstraint(["asset_id"], ["assets.asset_id"], name="fk")
+    fk = db.ForeignKeyConstraint(
+        ["asset_id"],
+        ["assets.asset_id"],
+        name="fk",
+        onupdate="CASCADE",
+        ondelete="CASCADE",
+    )
