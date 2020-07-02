@@ -1,5 +1,5 @@
 resource "aws_iam_policy" "run_batch_jobs" {
-  name   = "${local.project}-ecs_run_batch_jobs${local.name_suffix}"
+  name   = "${local.project}-run_batch_jobs${local.name_suffix}"
   policy = data.template_file.task_batch_policy.rendered
 
 }
