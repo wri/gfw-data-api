@@ -2,24 +2,26 @@
 only) in a classic RESTful way."""
 from collections import defaultdict
 from functools import partial
+from logging import getLogger
 from typing import DefaultDict, Optional
 
 import pyproj
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import ORJSONResponse
 from shapely.geometry import Point, Polygon
 from shapely.ops import transform
-from sqlalchemy import column, select, table, text
+from sqlalchemy import column, table, text
 from sqlalchemy.sql.elements import TextClause
 
 from ...application import ContextEngine, db
-from ...models.orm.queries.fields import fields
+from ...models.orm.queries.fields import fields as field_query
 from ...routes import dataset_dependency, version_dependency
 
 router = APIRouter()
+logger = getLogger("features")
 
 
-@router.get("/features/{dataset}/{version}", response_class=ORJSONResponse)
+@router.get("/{dataset}/{version}", response_class=ORJSONResponse)
 async def get_features(
     *,
     dataset: str = Depends(dataset_dependency),
@@ -33,20 +35,6 @@ async def get_features(
     return await get_features_by_location(dataset, version, lat, lng, z)
 
 
-@router.get(
-    "/feature/{feature_id}", response_class=ORJSONResponse, tags=["Features"],
-)
-async def get_feature(
-    *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
-    feature_id: int = Path(..., title="Feature ID", ge=0),
-):
-    """Retrieve attribute values for a given feature."""
-
-    pass
-
-
 async def get_features_by_location(dataset, version, lat, lng, zoom):
     t = table(version)  # TODO validate version
     t.schema = dataset
@@ -57,9 +45,13 @@ async def get_features_by_location(dataset, version, lat, lng, zoom):
     else:
         geometry = Point((lat, lng))
 
-    _fields = await get_fields(dataset, version)
+    fields = await get_fields(dataset, version)
 
-    columns = [column(field["name"]) for field in _fields if field["is_feature_info"]]
+    logger.error(f"fields: {fields}")
+
+    columns = [column(field["name"]) for field in fields if field["is_feature_info"]]
+
+    logger.error(f"columns: {columns}")
 
     features = (
         db.select(columns)
@@ -81,23 +73,25 @@ def geodesic_point_buffer(lat, lng, meter):
     )
     buf = Point(0, 0).buffer(meter)  # distance in metres
 
-    return [transform(project, buf).exterior.coords[:]]
+    coord_list = transform(project, buf).exterior.coords[:]
+    logger.error(f"Coordinate list: {coord_list}")
+    return coord_list
 
 
 def _get_buffer_distance(zoom: int) -> Optional[int]:
-    zoom_buffer: DefaultDict[str, Optional[int]] = defaultdict(lambda: None)
+    zoom_buffer: DefaultDict[int, Optional[int]] = defaultdict(lambda: None)
     zoom_buffer.update(
         {
-            "z0": 10000,
-            "z1": 5000,
-            "z2": 2500,
-            "z3": 1250,
-            "z4": 600,
-            "z5": 300,
-            "z6": 500,
-            "z7": 80,
-            "z8": 40,
-            "z9": 20,
+            0: 10000,
+            1: 5000,
+            2: 2500,
+            3: 1250,
+            4: 600,
+            5: 300,
+            6: 500,
+            7: 80,
+            8: 40,
+            9: 20,
         }
     )
     return zoom_buffer[zoom]
@@ -112,6 +106,13 @@ def filter_intersects(field, geometry) -> TextClause:
 
 
 async def get_fields(dataset, version):
+    # async with ContextEngine("READ") as engine:
+    #     meta = MetaData()
+    #     meta.reflect(bind=engine)
+    #     some_table = Table('information_schema', meta, autoload=True)
+    #     columns = [c.name for c in some_table.columns]
+    #     logger.error(f"COLUMNS: {columns}")
     async with ContextEngine("READ"):
-        rows = await db.all(fields, dataset=dataset, version=version)
+        rows = await db.all(field_query, dataset=dataset, version=version)
+
     return rows
