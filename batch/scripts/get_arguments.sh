@@ -117,7 +117,7 @@ do
       shift # past value
       ;;
       -s|--source)
-      SRC="$2"
+      SRC+=("$2")
       shift # past argument
       shift # past value
       ;;

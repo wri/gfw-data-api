@@ -1,4 +1,5 @@
 import json
+import math
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -11,7 +12,7 @@ from ..models.pydantic.creation_options import (
 from ..models.pydantic.jobs import Job, PostgresqlClientJob
 from ..settings.globals import CHUNK_SIZE
 from ..tasks import Callback, callback_constructor, writer_secrets
-from ..tasks.batch import execute
+from ..tasks.batch import execute, BATCH_DEPENDENCY_LIMIT
 
 
 async def table_source_asset(
@@ -72,23 +73,35 @@ async def table_source_asset(
     parents = [create_table_job.job_name]
     parents.extend([job.job_name for job in partition_jobs])
 
-    for i, uri in enumerate(source_uris):
+    # We can break into at most BATCH_DEPENDENCY_LIMIT parallel jobs, otherwise future jobs will hit the dependency
+    # limit, so break sources into chunks
+    chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
+    uri_chunks = [
+        source_uris[x: x + chunk_size]
+        for x in range(0, len(source_uris), chunk_size)
+    ]
+
+    for i, uri_chunk in enumerate(uri_chunks):
+        command = [
+            "load_tabular_data.sh",
+            "-d",
+            dataset,
+            "-v",
+            version,
+            "-D",
+            creation_options.delimiter.encode(
+                "unicode_escape"
+            ).decode(),  # Need to escape special characters such as TAB for batch job payload
+        ]
+
+        for uri in uri_chunk:
+            command.append("-s")
+            command.append(uri)
+
         load_data_jobs.append(
             PostgresqlClientJob(
                 job_name=f"load_data_{i}",
-                command=[
-                    "load_tabular_data.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "-s",
-                    uri,
-                    "-D",
-                    creation_options.delimiter.encode(
-                        "unicode_escape"
-                    ).decode(),  # Need to escape special characters such as TAB for batch job payload
-                ],
+                command=command,
                 environment=job_env,
                 parents=parents,
                 callback=callback,
