@@ -85,3 +85,7 @@ data "template_file" "task_batch_policy" {
     pixetl_job_queue_arn          = data.terraform_remote_state.pixetl.outputs.job_queue_arn
   }
 }
+
+data "local_file" "iam_s3_read_only" {
+  filename = "${path.root}/templates/iam_s3_read_only.json"
+}
