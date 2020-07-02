@@ -13,8 +13,9 @@ from shapely.ops import transform
 from sqlalchemy import column, table, text
 from sqlalchemy.sql.elements import TextClause
 
-from ...application import ContextEngine, db
-from ...models.orm.queries.fields import fields as field_query
+from ...application import db
+from ...crud import assets
+from ...models.pydantic.assets import AssetType
 from ...routes import dataset_dependency, version_dependency
 
 router = APIRouter()
@@ -47,11 +48,7 @@ async def get_features_by_location(dataset, version, lat, lng, zoom):
 
     fields = await get_fields(dataset, version)
 
-    logger.error(f"fields: {fields}")
-
     columns = [column(field["name"]) for field in fields if field["is_feature_info"]]
-
-    logger.error(f"columns: {columns}")
 
     features = (
         db.select(columns)
@@ -106,13 +103,11 @@ def filter_intersects(field, geometry) -> TextClause:
 
 
 async def get_fields(dataset, version):
-    # async with ContextEngine("READ") as engine:
-    #     meta = MetaData()
-    #     meta.reflect(bind=engine)
-    #     some_table = Table('information_schema', meta, autoload=True)
-    #     columns = [c.name for c in some_table.columns]
-    #     logger.error(f"COLUMNS: {columns}")
-    async with ContextEngine("READ"):
-        rows = await db.all(field_query, dataset=dataset, version=version)
+    rows = await assets.get_assets(dataset, version)
+    fields = []
+    for row in rows:
+        if row.asset_type == AssetType.database_table:
+            fields = row.metadata["fields_"]
+            break
 
-    return rows
+    return fields
