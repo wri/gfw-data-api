@@ -16,5 +16,6 @@ if [ "$DELIMITER" == "\t" ]; then
   DELIMITER=$(echo -e "\t")
 fi
 
-aws s3 cp "${SRC}" - | psql -c "COPY \"$DATASET\".\"$VERSION\" FROM STDIN WITH (FORMAT CSV, DELIMITER '$DELIMITER', HEADER)"
-
+for uri in "${SRC[@]}"; do
+  aws s3 cp "${uri}" - | psql -c "COPY \"$DATASET\".\"$VERSION\" FROM STDIN WITH (FORMAT CSV, DELIMITER '$DELIMITER', HEADER)"
+done
