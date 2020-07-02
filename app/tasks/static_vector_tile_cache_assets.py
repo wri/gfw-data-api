@@ -1,48 +1,71 @@
-from typing import Any, Awaitable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from ..application import ContextEngine
-from ..crud import assets, tasks
+from ..crud import assets
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.creation_options import StaticVectorTileCacheCreationOptions
+from ..models.pydantic.creation_options import (
+    StaticVectorTileCacheCreationOptions,
+    asset_creation_option_factory,
+)
 from ..models.pydantic.jobs import GdalPythonExportJob, TileCacheJob
+from ..models.pydantic.metadata import asset_metadata_factory
 from ..settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_JOB_QUEUE
-from . import reader_secrets, update_asset_status
+from . import callback_constructor, reader_secrets
 from .batch import execute
 
 
-async def static_vector_tile_asset(
+async def static_vector_tile_cache_asset(
     dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
     """Create Vector tile cache and NDJSON file as intermediate data."""
 
-    async def callback(
-        task_id: Optional[UUID], message: Dict[str, Any]
-    ) -> Awaitable[None]:
-        async with ContextEngine("WRITE"):
-            if task_id:
-                _ = await tasks.create_task(
-                    task_id, asset_id=asset_id, change_log=[message]
-                )
-            return await assets.update_asset(asset_id, change_log=[message])
+    #######################
+    # Update asset metadata
+    #######################
 
-    creation_options = StaticVectorTileCacheCreationOptions(
-        **input_data["creation_options"]
+    creation_options = asset_creation_option_factory(
+        None, AssetType.static_vector_tile_cache, input_data["creation_options"]
     )
 
-    field_attributes: List[str] = await _get_field_attributes(
+    await assets.update_asset(
+        asset_id,
+        metadata={
+            "min_zoom": creation_options.min_zoom,
+            "max_zoom": creation_options.max_zoom,
+        },
+    )
+
+    ############################
+    # Create NDJSON asset as side effect
+    ############################
+
+    field_attributes: List[Dict[str, Any]] = await _get_field_attributes(
         dataset, version, creation_options
     )
 
+    if not input_data["metadata"]:
+        _metadata = {}
+    else:
+        _metadata = input_data["metadata"]
+    _metadata["fields_"] = field_attributes
+
+    metadata = asset_metadata_factory(AssetType.ndjson, _metadata)
+
     ndjson_uri = f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/epsg:4326/{dataset}_{version}.ndjson"
 
-    # We create a NDJSON file as intermediate data and will add it as an asset implicitly.
-    # TODO: Will need to list the available fields in metadata. Should be the same as listed for tile cache
     ndjson_asset: ORMAsset = await assets.create_asset(
-        dataset, version, asset_type=AssetType.ndjson, asset_uri=ndjson_uri,
+        dataset,
+        version,
+        asset_type=AssetType.ndjson,
+        asset_uri=ndjson_uri,
+        metadata=metadata,
     )
+
+    ############################
+    # Define jobs
+    ############################
 
     # Create table schema
     command: List[str] = [
@@ -58,7 +81,7 @@ async def static_vector_tile_asset(
         "-T",
         ndjson_uri,
         "-C",
-        ",".join(field_attributes),
+        ",".join([field["field_name_"] for field in field_attributes]),
     ]
 
     export_ndjson = GdalPythonExportJob(
@@ -66,6 +89,7 @@ async def static_vector_tile_asset(
         job_queue=TILE_CACHE_JOB_QUEUE,
         command=command,
         environment=reader_secrets,
+        callback=callback_constructor(ndjson_asset.asset_id),
     )
 
     command = [
@@ -88,44 +112,48 @@ async def static_vector_tile_asset(
         job_name="create_vector_tile_cache",
         command=command,
         parents=[export_ndjson.job_name],
+        callback=callback_constructor(asset_id),
     )
 
-    log: ChangeLog = await execute(
-        [export_ndjson, create_vector_tile_cache], callback,
-    )
+    #######################
+    # execute jobs
+    #######################
 
-    # TODO: this will change once using the TASK route approach
-    #  here we will need to associate each job with a different asset
-    #  export ndjson with NDJSON asset, create tile cache with Static vector tile cache
-    await update_asset_status(asset_id, log.status)
-    await update_asset_status(ndjson_asset.asset_id, log.status)
+    log: ChangeLog = await execute([export_ndjson, create_vector_tile_cache])
 
     return log
 
 
 async def _get_field_attributes(
     dataset: str, version: str, creation_options: StaticVectorTileCacheCreationOptions
-) -> List[str]:
+) -> List[Dict[str, Any]]:
     """Get field attribute list from creation options.
 
-    If no attribute list provided, use fields from DB table, marked as
-    `is_feature_info`
+    If no attribute list provided, use all fields from DB table, marked
+    as `is_feature_info`. Otherwise compare to provide list with
+    available fields and use intersection.
     """
 
-    if creation_options.field_attributes:
-        field_attributes: List[str] = creation_options.field_attributes
+    orm_assets: List[ORMAsset] = await assets.get_assets(dataset, version)
+
+    fields: Optional[List[Dict[str, str]]] = None
+    for asset in orm_assets:
+        if asset.is_default:
+            fields = asset.metadata["fields_"]
+            break
+
+    if fields:
+        field_attributes: List[Dict[str, Any]] = [
+            field for field in fields if field["is_feature_info"]
+        ]
     else:
-        orm_assets: List[ORMAsset] = await assets.get_assets(dataset, version)
-        fields: Optional[List[Dict[str, str]]] = None
-        for asset in orm_assets:
-            if asset.is_default:
-                fields = asset.metadata["fields_"]
-                break
-        if fields:
-            field_attributes = [
-                field["field_name_"] for field in fields if field["is_feature_info"]
-            ]
-        else:
-            raise RuntimeError("No default asset found.")
+        raise RuntimeError("No default asset found.")
+
+    if creation_options.field_attributes:
+        field_attributes = [
+            field
+            for field in field_attributes
+            if field["field_name_"] in creation_options.field_attributes
+        ]
 
     return field_attributes

@@ -1,6 +1,5 @@
 import asyncpg
 import pytest
-from fastapi import HTTPException
 
 from app.application import ContextEngine
 from app.crud.datasets import (
@@ -10,6 +9,7 @@ from app.crud.datasets import (
     get_datasets,
     update_dataset,
 )
+from app.errors import RecordAlreadyExistsError, RecordNotFoundError
 from app.models.pydantic.datasets import DatasetUpdateIn
 from app.models.pydantic.metadata import DatasetMetadata
 
@@ -41,15 +41,12 @@ async def test_dataset():
     # This shouldn't work a second time
     async with ContextEngine("WRITE"):
         result = ""
-        status_code = 200
         try:
             await create_dataset("test")
-        except HTTPException as e:
-            result = e.detail
-            status_code = e.status_code
+        except RecordAlreadyExistsError as e:
+            result = str(e)
 
         assert result == "Dataset with name test already exists"
-        assert status_code == 400
 
     # Trying to write without context shouldn't work
     result = ""
@@ -73,15 +70,12 @@ async def test_dataset():
 
     # But only if the dataset exists
     result = ""
-    status_code = 200
     try:
         await get_dataset("test2")
-    except HTTPException as e:
-        result = e.detail
-        status_code = e.status_code
+    except RecordNotFoundError as e:
+        result = str(e)
 
     assert result == "Dataset with name test2 does not exist"
-    assert status_code == 404
 
     # It should be possible to update a dataset using a context engine
     metadata = DatasetMetadata(title="Test Title", tags=["tag1", "tag2"])

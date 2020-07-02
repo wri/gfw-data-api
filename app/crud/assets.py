@@ -2,19 +2,18 @@ from typing import Any, Dict, List
 from uuid import UUID
 
 from asyncpg import UniqueViolationError
-from fastapi import HTTPException
+from fastapi.encoders import jsonable_encoder
 
-from ..errors import ClientError, ServerError
+from ..errors import RecordAlreadyExistsError, RecordNotFoundError
+from ..models.enum.sources import SourceType
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.creation_options import (
     CreationOptions,
-    StaticVectorTileCacheCreationOptions,
     TableDrivers,
-    TableSourceCreationOptions,
     VectorDrivers,
-    VectorSourceCreationOptions,
+    asset_creation_option_factory,
 )
 from . import datasets, update_all_metadata, update_data, update_metadata, versions
 
@@ -22,12 +21,12 @@ from . import datasets, update_all_metadata, update_data, update_metadata, versi
 async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
     rows: List[ORMAsset] = await ORMAsset.query.where(
         ORMAsset.dataset == dataset
-    ).where(ORMAsset.version == version).gino.all()
+    ).where(ORMAsset.version == version).order_by(ORMAsset.created_on).gino.all()
     if not rows:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Version with name {dataset}.{version} does not exist",
+        raise RecordNotFoundError(
+            f"No assets for version with name {dataset}.{version} found"
         )
+
     d: ORMDataset = await datasets.get_dataset(dataset)
     v: ORMVersion = await versions.get_version(dataset, version)
 
@@ -48,11 +47,11 @@ async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
 
 
 async def get_asset(asset_id: UUID) -> ORMAsset:
+
     row: ORMAsset = await ORMAsset.get([asset_id])
     if row is None:
-        raise HTTPException(
-            status_code=404, detail=f"Could not find requested asset {asset_id}",
-        )
+        raise RecordNotFoundError(f"Could not find requested asset {asset_id}")
+
     dataset: ORMDataset = await datasets.get_dataset(row.dataset)
     version: ORMVersion = await versions.get_version(row.dataset, row.version)
     version = update_metadata(version, dataset)
@@ -63,15 +62,15 @@ async def get_asset(asset_id: UUID) -> ORMAsset:
 async def create_asset(dataset, version, **data) -> ORMAsset:
 
     data = _validate_creation_options(**data)
-
+    jsonable_data = jsonable_encoder(data)
     try:
         new_asset: ORMAsset = await ORMAsset.create(
-            dataset=dataset, version=version, **data
+            dataset=dataset, version=version, **jsonable_data
         )
     except UniqueViolationError:
-        raise ClientError(
-            status_code=400,
-            detail="A similar Asset already exists. Asset uri must be unique.",
+        raise RecordAlreadyExistsError(
+            f"Cannot create asset of type {data['asset_type']}. "
+            f"Asset uri must be unique. An asset with uri {data['asset_uri']} already exists"
         )
 
     d: ORMDataset = await datasets.get_dataset(dataset)
@@ -84,9 +83,10 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
 async def update_asset(asset_id: UUID, **data) -> ORMAsset:
 
     data = _validate_creation_options(**data)
+    jsonable_data = jsonable_encoder(data)
 
     row: ORMAsset = await get_asset(asset_id)
-    row = await update_data(row, data)
+    row = await update_data(row, jsonable_data)
 
     dataset: ORMDataset = await datasets.get_dataset(row.dataset)
     version: ORMVersion = await versions.get_version(row.dataset, row.version)
@@ -141,19 +141,10 @@ def _creation_option_factory(asset_type, creation_options) -> CreationOptions:
     table_drivers: List[str] = [t.value for t in TableDrivers]
     vector_drivers: List[str] = [v.value for v in VectorDrivers]
 
-    if asset_type == "Database table" and driver in table_drivers:
-        model = TableSourceCreationOptions(**creation_options)
+    source_type = None
+    if driver in table_drivers:
+        source_type = SourceType.table
+    elif driver in vector_drivers:
+        source_type = SourceType.vector
 
-    elif asset_type == "Database table" and driver in vector_drivers:
-        model = VectorSourceCreationOptions(**creation_options)
-
-    elif asset_type == "Vector tile cache":
-        model = StaticVectorTileCacheCreationOptions(**creation_options)
-
-    else:
-        raise HTTPException(
-            status_code=501,
-            detail=f"Creation options validation for {asset_type} not implemented",
-        )
-
-    return model
+    return asset_creation_option_factory(source_type, asset_type, creation_options)

@@ -9,6 +9,7 @@ from sqlalchemy.schema import CreateSchema, DropSchema
 
 from ...application import db
 from ...crud import datasets, versions
+from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.datasets import Dataset as ORMDataset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.datasets import (
@@ -46,8 +47,11 @@ async def get_datasets() -> DatasetsResponse:
 )
 async def get_dataset(*, dataset: str = Depends(dataset_dependency)) -> DatasetResponse:
     """Get basic metadata and available versions for a given dataset."""
+    try:
+        row: ORMDataset = await datasets.get_dataset(dataset)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-    row: ORMDataset = await datasets.get_dataset(dataset)
     return await _dataset_response(dataset, row)
 
 
@@ -67,7 +71,12 @@ async def create_dataset(
 ) -> DatasetResponse:
     """Create or update a dataset."""
 
-    new_dataset: ORMDataset = await datasets.create_dataset(dataset, **request.dict())
+    try:
+        new_dataset: ORMDataset = await datasets.create_dataset(
+            dataset, **request.dict()
+        )
+    except RecordAlreadyExistsError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     await db.status(CreateSchema(dataset))
     await db.status(f"GRANT USAGE ON SCHEMA {dataset} TO {READER_USERNAME};")

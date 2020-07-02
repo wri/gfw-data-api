@@ -1,48 +1,14 @@
-from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
 
+from ..enum.assets import AssetStatus, AssetType
 from .base import Base
 from .change_log import ChangeLog
 from .creation_options import CreationOptions
-from .metadata import (
-    DatabaseTableMetadata,
-    RasterTileSetMetadata,
-    VectorTileCacheMetadata,
-)
+from .metadata import AssetMetadata
 from .responses import Response
-
-AssetMetadata = Union[
-    DatabaseTableMetadata, VectorTileCacheMetadata, RasterTileSetMetadata
-]
-
-
-class AssetStatus(str, Enum):
-    saved = "saved"
-    pending = "pending"
-    failed = "failed"
-
-
-class AssetType(str, Enum):
-    dynamic_vector_tile_cache = "Dynamic vector tile cache"
-    static_vector_tile_cache = "Static vector tile cache"
-    raster_tile_cache = "Raster tile cache"
-    raster_tile_set = "Raster tile set"
-    database_table = "Database table"
-    shapefile = "Shapefile"
-    geopackage = "Geopackage"
-    ndjson = "ndjson"
-    csv = "csv"
-    tsv = "tsv"
-    # esri_map_service = "ESRI Map Service"
-    # esri_feature_service = "ESRI Feature Service"
-    # esri_image_service = "ESRI Image Service"
-    # esri_vector_service = "ESRI Vector Service"
-    # arcgis_online_item = "ArcGIS Online item"
-    # carto_item = "Carto item"
-    # mapbox_item = "Mapbox item"
 
 
 class Asset(Base):
@@ -64,6 +30,10 @@ class AssetCreateIn(BaseModel):
     is_managed: bool
     creation_options: CreationOptions
     metadata: Optional[AssetMetadata]
+
+
+class AssetUpdateIn(BaseModel):
+    metadata: AssetMetadata
 
 
 class AssetTaskCreate(BaseModel):

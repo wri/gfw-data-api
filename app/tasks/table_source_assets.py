@@ -1,9 +1,6 @@
 import json
-from typing import Any, Awaitable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
-
-from app.application import ContextEngine
-from app.crud import assets, tasks
 
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import (
@@ -13,7 +10,7 @@ from ..models.pydantic.creation_options import (
 )
 from ..models.pydantic.jobs import Job, PostgresqlClientJob
 from ..settings.globals import CHUNK_SIZE
-from ..tasks import writer_secrets
+from ..tasks import Callback, callback_constructor, writer_secrets
 from ..tasks.batch import execute
 
 
@@ -23,6 +20,8 @@ async def table_source_asset(
 
     source_uris: List[str] = input_data["source_uri"]
     creation_options = TableSourceCreationOptions(**input_data["creation_options"])
+
+    callback: Callback = callback_constructor(asset_id)
 
     # Create table schema
     command = [
@@ -56,7 +55,7 @@ async def table_source_asset(
     some_log.error(f"Environment: {job_env}")
 
     create_table_job = PostgresqlClientJob(
-        job_name="create_table", command=command, environment=job_env,
+        job_name="create_table", command=command, environment=job_env, callback=callback
     )
 
     # Create partitions
@@ -67,6 +66,7 @@ async def table_source_asset(
             creation_options.partitions,
             [create_table_job.job_name],
             job_env,
+            callback,
         )
     else:
         partition_jobs = list()
@@ -96,6 +96,7 @@ async def table_source_asset(
                 ],
                 environment=job_env,
                 parents=parents,
+                callback=callback,
             )
         )
 
@@ -118,6 +119,7 @@ async def table_source_asset(
                 ],
                 environment=job_env,
                 parents=[job.job_name for job in load_data_jobs],
+                callback=callback,
             ),
         )
 
@@ -143,6 +145,7 @@ async def table_source_asset(
                 ],
                 parents=parents,
                 environment=job_env,
+                callback=callback,
             )
         )
 
@@ -158,19 +161,10 @@ async def table_source_asset(
             creation_options.cluster,
             parents,
             job_env,
+            callback,
         )
     else:
         cluster_jobs = list()
-
-    async def callback(
-        task_id: Optional[UUID], message: Dict[str, Any]
-    ) -> Awaitable[None]:
-        async with ContextEngine("WRITE"):
-            if task_id:
-                _ = await tasks.create_task(
-                    task_id, asset_id=asset_id, change_log=[message]
-                )
-            return await assets.update_asset(asset_id, change_log=[message])
 
     log: ChangeLog = await execute(
         [
@@ -180,8 +174,7 @@ async def table_source_asset(
             *geometry_jobs,
             *index_jobs,
             *cluster_jobs,
-        ],
-        callback,
+        ]
     )
 
     return log
@@ -193,6 +186,7 @@ def _create_partition_jobs(
     partitions: Partitions,
     parents,
     job_env: List[Dict[str, str]],
+    callback: Callback,
 ) -> List[PostgresqlClientJob]:
     """Create partition job depending on the partition type.
 
@@ -213,6 +207,7 @@ def _create_partition_jobs(
                 parents,
                 i,
                 job_env,
+                callback,
             )
 
             partition_jobs.append(job)
@@ -227,6 +222,7 @@ def _create_partition_jobs(
             parents,
             0,
             job_env,
+            callback,
         )
         partition_jobs.append(job)
 
@@ -241,6 +237,7 @@ def _partition_job(
     parents: List[str],
     suffix: int,
     job_env: List[Dict[str, str]],
+    callback: Callback,
 ) -> PostgresqlClientJob:
     return PostgresqlClientJob(
         job_name=f"create_partitions_{suffix}",
@@ -257,6 +254,7 @@ def _partition_job(
         ],
         environment=job_env,
         parents=parents,
+        callback=callback,
     )
 
 
@@ -267,6 +265,7 @@ def _create_cluster_jobs(
     cluster: Index,
     parents: List[str],
     job_env: List[Dict[str, str]],
+    callback: Callback,
 ) -> List[PostgresqlClientJob]:
     # Cluster tables. This is a full lock operation.
     cluster_jobs: List[PostgresqlClientJob] = list()
@@ -294,6 +293,7 @@ def _create_cluster_jobs(
                     parents,
                     i,
                     job_env,
+                    callback,
                 )
                 cluster_jobs.append(job)
                 parents = [job.job_name]
@@ -311,6 +311,7 @@ def _create_cluster_jobs(
                 parents,
                 0,
                 job_env,
+                callback,
             )
             cluster_jobs.append(job)
 
@@ -331,6 +332,7 @@ def _create_cluster_jobs(
             ],
             environment=job_env,
             parents=parents,
+            callback=callback,
         )
         cluster_jobs.append(job)
     return cluster_jobs
@@ -346,6 +348,7 @@ def _cluster_partition_job(
     parents: List[str],
     index: int,
     job_env: List[Dict[str, str]],
+    callback: Callback,
 ):
     return PostgresqlClientJob(
         job_name=f"cluster_partitions_{index}",
@@ -366,6 +369,7 @@ def _cluster_partition_job(
         ],
         environment=job_env,
         parents=parents,
+        callback=callback,
     )
 
 

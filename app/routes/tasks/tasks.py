@@ -13,11 +13,17 @@ from fastapi.responses import ORJSONResponse
 
 from ...application import ContextEngine, db
 from ...crud import assets, tasks, versions
+from ...errors import RecordAlreadyExistsError, RecordNotFoundError
+from ...models.enum.assets import AssetStatus
+from ...models.enum.change_log import ChangeLogStatus
+from ...models.enum.versions import VersionStatus
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.queries.fields import fields
 from ...models.orm.tasks import Task as ORMTask
-from ...models.pydantic.assets import AssetType
+from ...models.orm.versions import Version as ORMVersion
+from ...models.pydantic.assets import AssetCreateIn, AssetType
 from ...models.pydantic.change_log import ChangeLog
+from ...models.pydantic.creation_options import DynamicVectorTileCacheCreationOptions
 from ...models.pydantic.metadata import FieldMetadata
 from ...models.pydantic.tasks import (
     Task,
@@ -26,6 +32,8 @@ from ...models.pydantic.tasks import (
     TasksResponse,
     TaskUpdateIn,
 )
+from ...settings.globals import TILE_CACHE_URL
+from ...tasks.assets import create_asset
 from .. import is_service_account
 
 router = APIRouter()
@@ -39,7 +47,11 @@ router = APIRouter()
 )
 async def get_task(*, task_id: UUID = Path(...)) -> TaskResponse:
     """Get single tasks by task ID."""
-    row = await tasks.get_task(task_id)
+    try:
+        row = await tasks.get_task(task_id)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
     return _task_response(row)
 
 
@@ -70,7 +82,10 @@ async def create_task(
     """Create a task."""
 
     input_data = request.dict()
-    task_row = await tasks.create_task(task_id, **input_data)
+    try:
+        task_row = await tasks.create_task(task_id, **input_data)
+    except RecordAlreadyExistsError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     return _task_response(task_row)
 
@@ -103,13 +118,13 @@ async def update_task(
     # check if any of the change logs indicate failure
     for change_log in request.change_log:
         status = change_log.status
-        if change_log.status == "failed":
+        if change_log.status == ChangeLogStatus.failed:
             break
 
-    if status and status == "failed":
+    if status and status == ChangeLogStatus.failed:
         await _set_failed(task_id, asset_id)
 
-    elif status and status == "success":
+    elif status and status == ChangeLogStatus.success:
         await _check_completed(asset_id)
 
     else:
@@ -130,13 +145,13 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
 
     status_change_log: ChangeLog = ChangeLog(
         date_time=now,
-        status="failed",
+        status=ChangeLogStatus.failed,
         message="One or more tasks failed.",
         detail=f"Check task /meta/tasks/{task_id} for more detail",
     )
 
     asset_row: ORMAsset = await assets.update_asset(
-        asset_id, status="failed", change_log=[status_change_log.dict()]
+        asset_id, status=AssetStatus.failed, change_log=[status_change_log.dict()]
     )
 
     # For database tables, try to fetch list of fields and their types from PostgreSQL
@@ -153,7 +168,10 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
         dataset, version = asset_row.dataset, asset_row.version
 
         await versions.update_version(
-            dataset, version, status="failed", change_log=[status_change_log.dict()]
+            dataset,
+            version,
+            status=VersionStatus.failed,
+            change_log=[status_change_log.dict()],
         )
 
 
@@ -170,20 +188,25 @@ async def _check_completed(asset_id: UUID):
 
     status_change_log: ChangeLog = ChangeLog(
         date_time=now,
-        status="success",
+        status=ChangeLogStatus.success,
         message=f"Successfully created asset {asset_id}.",
     )
 
     if all_finished:
-        asset_row = await assets.update_asset(
-            asset_id, status="saved", change_log=[status_change_log.dict()]
+        asset_row: ORMAsset = await assets.update_asset(
+            asset_id, status=AssetStatus.saved, change_log=[status_change_log.dict()]
         )
 
         # For database tables, fetch list of fields and their types from PostgreSQL
         # and add them to metadata object
+        # Check if creation options specify to register a dynamic vector tile cache asset
         if asset_row.asset_type == AssetType.database_table:
-            await _update_asset_field_metadata(
+            asset_row = await _update_asset_field_metadata(
                 asset_row.dataset, asset_row.version, asset_id,
+            )
+
+            await _register_dynamic_vector_tile_cache(
+                asset_row.dataset, asset_row.version, asset_row.metadata
             )
 
         # If default asset, make sure, version is also set to saved
@@ -191,7 +214,10 @@ async def _check_completed(asset_id: UUID):
             dataset, version = asset_row.dataset, asset_row.version
 
             await versions.update_version(
-                dataset, version, status="saved", change_log=[status_change_log.dict()]
+                dataset,
+                version,
+                status=VersionStatus.saved,
+                change_log=[status_change_log.dict()],
             )
 
 
@@ -200,7 +226,10 @@ def _all_finished(task_rows: List[ORMTask]) -> bool:
     all_finished = True
 
     for row in task_rows:
-        if any(changelog["status"] == "success" for changelog in row.change_log):
+        if any(
+            changelog["status"] == ChangeLogStatus.success
+            for changelog in row.change_log
+        ):
             continue
         else:
             all_finished = False
@@ -226,14 +255,60 @@ async def _get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]
     return field_metadata
 
 
-async def _update_asset_field_metadata(dataset, version, asset_id):
+async def _update_asset_field_metadata(dataset, version, asset_id) -> ORMAsset:
     """Update asset field metadata."""
 
     field_metadata: List[Dict[str, Any]] = await _get_field_metadata(dataset, version)
     metadata = {"fields_": field_metadata}
 
     async with ContextEngine("WRITE"):
-        await assets.update_asset(asset_id, metadata=metadata)
+        return await assets.update_asset(asset_id, metadata=metadata)
+
+
+async def _register_dynamic_vector_tile_cache(
+    dataset: str, version: str, metadata: Dict[str, Any]
+) -> None:
+    """Register dynamic vector tile cache asset with version if required."""
+    row: ORMVersion = await versions.get_version(
+        dataset, version,
+    )
+    creation_options = DynamicVectorTileCacheCreationOptions()
+    if row.creation_options["create_dynamic_vector_tile_cache"]:
+        data = AssetCreateIn(
+            asset_type=AssetType.dynamic_vector_tile_cache,
+            asset_uri=f"{TILE_CACHE_URL}/{dataset}/{version}/dynamic/{{z}}/{{x}}/{{y}}.pbf",
+            is_managed=True,
+            creation_options=creation_options.dict(),
+            metadata={
+                "fields_": metadata["fields_"],
+                "min_zoom": creation_options.min_zoom,
+                "max_zoom": creation_options.max_zoom,
+            },
+        )
+
+        try:
+            async with ContextEngine("WRITE"):
+                asset_orm = await assets.create_asset(dataset, version, **data.dict())
+
+        except Exception as e:
+            # In case creating the asset record fails we only log to version change log
+            log = ChangeLog(
+                date_time=datetime.now(),
+                status=ChangeLogStatus.failed,
+                message="Failed to create Dynamic Vector Tile Cache Asset",
+                detail=str(e),
+            )
+            async with ContextEngine("WRITE"):
+                await versions.update_version(dataset, version, change_log=[log.dict()])
+        else:
+            # otherwise we run the asset pipeline (synchronously)
+            await create_asset(
+                AssetType.dynamic_vector_tile_cache,
+                asset_orm.asset_id,
+                dataset,
+                version,
+                data.dict(),
+            )
 
 
 def _task_response(data: ORMTask) -> TaskResponse:

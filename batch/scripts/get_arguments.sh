@@ -141,6 +141,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      -X|--zipped)
+      ZIPPED="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -z|--max_zoom)
       MAX_ZOOM="$2"
       shift # past argument

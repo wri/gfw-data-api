@@ -1,8 +1,13 @@
-from typing import List
+from typing import Any, Awaitable, Callable, Coroutine, List
 from urllib.parse import urljoin
+from uuid import UUID
 
 from ..application import ContextEngine
 from ..crud import assets as crud_assets
+from ..crud import tasks as crud_tasks
+from ..models.orm.assets import Asset as ORMAsset
+from ..models.orm.tasks import Task as ORMTask
+from ..models.pydantic.change_log import ChangeLog
 from ..settings.globals import (
     API_URL,
     READER_DBNAME,
@@ -45,3 +50,24 @@ async def update_asset_status(asset_id, status):
 
     async with ContextEngine("WRITE"):
         await crud_assets.update_asset(asset_id, status=status)
+
+
+Callback = Callable[[UUID, ChangeLog], Coroutine[Any, Any, Awaitable[None]]]
+
+
+def callback_constructor(asset_id: UUID,) -> Callback:
+    """Callback constructor.
+
+    Assign asset_id in the context of the constructor once. Afterwards
+    you will only need to pass the ChangeLog object.
+    """
+
+    async def callback(task_id: UUID, change_log: ChangeLog) -> ORMAsset:
+        async with ContextEngine("WRITE"):
+            task: ORMTask = await crud_tasks.create_task(
+                task_id, asset_id=asset_id, change_log=[change_log.dict()]
+            )
+
+        return task
+
+    return callback

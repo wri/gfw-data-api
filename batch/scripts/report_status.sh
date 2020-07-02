@@ -20,16 +20,27 @@ GREP_EXIT_CODE=$?
 echo GREP EXIT CODE: $GREP_EXIT_CODE
 
 # escape all quotes inside command to not break JSON payload
-ESC_COMMAND=${"$*"//\"/\\\"}
+# Also make sure we don't reveal any sensitive information
+# But we still want to know if the var was set
+ESC_COMMAND=$(echo "$*" | sed 's/"/\\"/g')
+ESC_OUTPUT=$(echo "$OUTPUT" | sed 's/"/\\"/g')
+ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^AWS_SECRET_ACCESS_KEY.*$/AWS_SECRET_ACCESS_KEY=\*\*\*/') # pragma: allowlist secret
+ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^AWS_ACCESS_KEY_ID.*$/AWS_ACCESS_KEY_ID=\*\*\*/')
+ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^PGPASSWORD.*$/PGPASSWORD=\*\*\*/')  # pragma: allowlist secret
+ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^PGUSER.*$/PGUSER=\*\*\*/')
+ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^PGDATABASE.*$/PGDATABASE=\*\*\*/')
+ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^PGHOST.*$/PGHOST=\*\*\*/')
+ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^SERVICE_ACCOUNT_TOKEN.*$/SERVICE_ACCOUNT_TOKEN=\*\*\*/')
+ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^GPG_KEY.*$/GPG_KEY=\*\*\*/')
 
 if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
     STATUS="success"
     MESSAGE="Successfully ran command [ $ESC_COMMAND ]"
-    DETAIL="None"
+    DETAIL=""
 else
-    STATUS="failure"
+    STATUS="failed"
     MESSAGE="Command [ $ESC_COMMAND ] encountered errors"
-    DETAIL="None" # Would be nice to attach properly escaped OUTPUT here
+    DETAIL="$ESC_OUTPUT"
 fi
 
 AFTER=$(date '+%Y-%m-%d %H:%M:%S')

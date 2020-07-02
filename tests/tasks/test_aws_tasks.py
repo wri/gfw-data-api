@@ -7,7 +7,8 @@ from app.tasks.aws_tasks import (
 )
 from app.utils.aws import get_s3_client
 
-from . import BUCKET, KEY, TSV_NAME, TSV_PATH, VALUE, MockCloudfrontClient, MockS3Client
+from .. import BUCKET, TSV_NAME, TSV_PATH
+from . import KEY, VALUE, MockCloudfrontClient, MockS3Client
 
 
 def test_delete_s3_objects():
@@ -15,7 +16,6 @@ def test_delete_s3_objects():
 
     s3_client = get_s3_client()
 
-    s3_client.create_bucket(Bucket=BUCKET)
     for i in range(1001):
         s3_client.upload_file(TSV_PATH, BUCKET, "TEST_DELETE_S3_OBJECTS" + str(i))
 

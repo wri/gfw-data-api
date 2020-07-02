@@ -4,7 +4,6 @@ from uuid import UUID, uuid4
 
 import asyncpg
 import pytest
-from fastapi import HTTPException
 
 from app.application import ContextEngine
 from app.crud.assets import (
@@ -18,7 +17,7 @@ from app.crud.assets import (
 )
 from app.crud.datasets import create_dataset
 from app.crud.versions import create_version
-from app.errors import ClientError
+from app.errors import RecordAlreadyExistsError, RecordNotFoundError
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.metadata import DatabaseTableMetadata
 
@@ -44,15 +43,14 @@ async def test_assets():
     # This will throw an error b/c when initialized correctly,
     # there will be always a default asset
     result = ""
-    status_code = 200
     try:
         await get_assets(dataset_name, version_name)
-    except HTTPException as e:
-        result = e.detail
-        status_code = e.status_code
+    except RecordNotFoundError as e:
+        result = str(e)
 
-    assert result == f"Version with name {dataset_name}.{version_name} does not exist"
-    assert status_code == 404
+    assert (
+        result == f"No assets for version with name {dataset_name}.{version_name} found"
+    )
 
     # Writing to DB using context engine with "READ" shouldn't work
     async with ContextEngine("READ"):
@@ -91,7 +89,6 @@ async def test_assets():
     # This shouldn't work a second time
     async with ContextEngine("WRITE"):
         result = ""
-        status_code = 200
         try:
             await create_asset(
                 dataset_name,
@@ -99,12 +96,13 @@ async def test_assets():
                 asset_type="Database table",
                 asset_uri="s3://path/to/file",
             )
-        except ClientError as e:
-            result = e.detail
-            status_code = e.status_code
+        except RecordAlreadyExistsError as e:
+            result = str(e)
 
-        assert result == ("A similar Asset already exists. Asset uri must be unique.")
-        assert status_code == 400
+        assert result == (
+            "Cannot create asset of type Database table. "
+            "Asset uri must be unique. An asset with uri s3://path/to/file already exists"
+        )
 
     # There should be an entry now
     rows = await get_assets(dataset_name, version_name)
@@ -141,19 +139,22 @@ async def test_assets():
 
     # But only if the asset exists
     result = ""
-    status_code = 200
     _asset_id = uuid4()
     try:
         await get_asset(_asset_id)
-    except HTTPException as e:
-        result = e.detail
-        status_code = e.status_code
+    except RecordNotFoundError as e:
+        result = str(e)
 
     assert result == f"Could not find requested asset {_asset_id}"
-    assert status_code == 404
 
     # It should be possible to update a dataset using a context engine
-    metadata = DatabaseTableMetadata(title="Test Title", tags=["tag1", "tag2"])
+    metadata = DatabaseTableMetadata(
+        title="Test Title",
+        tags=["tag1", "tag2"],
+        fields=[
+            {"field_name": "test", "field_type": "numeric", "is_feature_info": True}
+        ],
+    )
     logs = ChangeLog(date_time=datetime.now(), status="pending", message="all good")
     async with ContextEngine("WRITE"):
         row = await update_asset(
@@ -161,6 +162,16 @@ async def test_assets():
         )
     assert row.metadata["title"] == "Test Title"
     assert row.metadata["tags"] == ["tag1", "tag2"]
+    assert row.metadata["fields_"] == [
+        {
+            "field_name_": "test",
+            "field_type": "numeric",
+            "is_feature_info": True,
+            "field_alias": None,
+            "field_description": None,
+            "is_filter": True,
+        }
+    ]
     assert row.change_log[0]["date_time"] == json.loads(logs.json())["date_time"]
     assert row.change_log[0]["status"] == logs.dict()["status"]
     assert row.change_log[0]["message"] == logs.dict()["message"]

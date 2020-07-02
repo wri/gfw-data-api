@@ -1,6 +1,8 @@
+import json
 import uuid
 from unittest.mock import patch
 
+from app.models.enum.assets import AssetType
 from tests.routes import create_default_asset
 
 
@@ -91,62 +93,89 @@ def test_tasks_success(client, db):
     asset_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
     assert asset_resp.json()["data"]["status"] == "saved"
 
+    # Verify if the dynamic vector tile cache was created. Status should be failed b/c batch jobs were not tiggered.
+    assets_resp = client.get(f"/meta/{dataset}/{version}/assets")
+    assert len(version_resp.json()["data"]["assets"]) == 1
+    assert len(assets_resp.json()["data"]) == 2
+    assert assets_resp.json()["data"][0]["asset_type"] == AssetType.database_table
+    assert (
+        assets_resp.json()["data"][1]["asset_type"]
+        == AssetType.dynamic_vector_tile_cache
+    )
+    assert assets_resp.json()["data"][1]["status"] == "failed"
+
     # The following will fail until creation of auxiliary assets is working
 
-    # # Now that the default asset is saved we can create a non-default
-    # # asset, which is handled slightly differently. In particular if
-    # # creation of the auxiliary asset fails the version remains in the
-    # # "saved" state. Let's verify that.
-    # asset_payload = {
-    #     "asset_type": "Vector tile cache",
-    #     "asset_uri": "http://www.slashdot.org",
-    #     "is_managed": False,
-    #     "creation_options": {
-    #         "zipped": False,
-    #         "src_driver": "GeoJSON",
-    #         "delimiter": ",",
-    #     },
-    # }
-    # create_asset_resp = client.post(
-    #     f"/meta/{dataset}/{version}/assets", json=asset_payload
-    # )
-    # print(json.dumps(create_asset_resp.json(), indent=2))
-    # assert create_asset_resp.json()["status"] == "success"
-    # asset_id = create_asset_resp.json()["data"]["asset_id"]
+    field_payload = {
+        "metadata": {
+            "fields": [
+                {"field_name": "test", "field_type": "numeric", "is_feature_info": True}
+            ]
+        }
+    }
 
-    # # Verify there are two assets now
-    # get_resp = client.get(f"/meta/{dataset}/{version}/assets")
-    # assert len(get_resp.json()["data"]) == 2
-    #
-    # # Verify the existence of tasks for the new asset
-    # non_default_tasks = client.get(f"/tasks/assets/{asset_id}").json()["data"]
-    # assert len(existing_tasks) == 7
-    # for task in non_default_tasks:
-    #     assert len(task["change_log"]) == 1
-    #     assert task["change_log"][0]["status"] == "pending"
-    #
-    # # Arbitrarily choose a task and add a changelog with status "failed"
-    # sample_task_id = existing_tasks[0]["task_id"]
-    # patch_payload = {
-    #     "change_log": [
-    #         {
-    #             "date_time": "2020-06-25 14:30:00",
-    #             "status": "failed",
-    #             "message": "Womp womp!",
-    #             "detail": "None",
-    #         }
-    #     ]
-    # }
-    # patch_resp = client.patch(f"/tasks/{sample_task_id}", json=patch_payload)
-    # assert patch_resp.json()["status"] == "success"
-    #
-    # # Verify the asset status is now "failed"
-    # get_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
-    # assert get_resp.json()["data"]["status"] == "failed"
-    #
-    # # ... but that the version status is still "saved"
-    # get_resp = client.get(f"/meta/{dataset}/{version}")
-    # assert get_resp.json()["data"]["status"] == "saved"
+    asset_resp = client.patch(
+        f"/meta/{dataset}/{version}/assets/{asset_id}", json=field_payload
+    )
+    print(asset_resp.json())
+    assert asset_resp.json()["status"] == "success"
+
+    # Now that the default asset is saved we can create a non-default
+    # asset, which is handled slightly differently. In particular if
+    # creation of the auxiliary asset fails the version remains in the
+    # "saved" state. Let's verify that.
+    asset_payload = {
+        "asset_type": "Static vector tile cache",
+        "asset_uri": "http://www.humptydumpty.org",
+        "is_managed": False,
+        "creation_options": {
+            "min_zoom": 0,
+            "max_zoom": 9,
+            "tile_strategy": "discontinuous",
+        },
+    }
+    with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
+        create_asset_resp = client.post(
+            f"/meta/{dataset}/{version}/assets", json=asset_payload
+        )
+    print(json.dumps(create_asset_resp.json(), indent=2))
+    assert create_asset_resp.json()["status"] == "success"
+    asset_id = create_asset_resp.json()["data"]["asset_id"]
+
+    # Verify there are three assets now,
+    # including the implicitly created ndjson asset
+    get_resp = client.get(f"/meta/{dataset}/{version}/assets")
+    assert len(get_resp.json()["data"]) == 4
+
+    # Verify the existence of tasks for the new asset
+    non_default_tasks = client.get(f"/tasks/assets/{asset_id}").json()["data"]
+    assert len(non_default_tasks) == 1
+    for task in non_default_tasks:
+        assert len(task["change_log"]) == 1
+        assert task["change_log"][0]["status"] == "pending"
+
+    # Arbitrarily choose a task and add a changelog with status "failed"
+    sample_task_id = non_default_tasks[0]["task_id"]
+    patch_payload = {
+        "change_log": [
+            {
+                "date_time": "2020-06-25 14:30:00",
+                "status": "failed",
+                "message": "Womp womp!",
+                "detail": "None",
+            }
+        ]
+    }
+    patch_resp = client.patch(f"/tasks/{sample_task_id}", json=patch_payload)
+    assert patch_resp.json()["status"] == "success"
+
+    # Verify the asset status is now "failed"
+    get_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
+    assert get_resp.json()["data"]["status"] == "failed"
+
+    # ... but that the version status is still "saved"
+    get_resp = client.get(f"/meta/{dataset}/{version}")
+    assert get_resp.json()["data"]["status"] == "saved"
 
 
 def test_tasks_failure(client, db):

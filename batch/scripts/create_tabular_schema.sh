@@ -28,19 +28,21 @@ sed -i "1s/^/SET SCHEMA '$DATASET';\n/" create_table.sql
 # It will export the different key value pairs as ENV variables so tat we can reference them within the for loop
 # We will then update rows within our create_table.sql file using the new field type
 # https://starkandwayne.com/blog/bash-for-loop-over-json-array-using-jq/
-for row in $(echo "${FIELD_MAP}" | jq -r '.[] | @base64'); do
-    _jq() {
-     echo "${row}" | base64 --decode | jq -r "${1}"
-    }
-   FIELD_NAME=$(_jq '.field_name')
-   FIELD_TYPE=$(_jq '.field_type')
+if [[ -n "${FIELD_MAP}" ]]; then
+  for row in $(echo "${FIELD_MAP}" | jq -r '.[] | @base64'); do
+      _jq() {
+       echo "${row}" | base64 --decode | jq -r "${1}"
+      }
+     FIELD_NAME=$(_jq '.field_name')
+     FIELD_TYPE=$(_jq '.field_type')
 
-   # field names might be in double quotes
-   # make sure there is no comma after the last field
-   sed -i "s/^\t${FIELD_NAME} .*$/\t${FIELD_NAME} ${FIELD_TYPE},/" create_table.sql
-   sed -i "s/^\t\"${FIELD_NAME}\" .*$/\t\"${FIELD_NAME}\" ${FIELD_TYPE},/" create_table.sql
-   sed -i 'x; ${s/,//;p;x}; 1d' create_table.sql
-done
+     # field names might be in double quotes
+     # make sure there is no comma after the last field
+     sed -i "s/^\t${FIELD_NAME} .*$/\t${FIELD_NAME} ${FIELD_TYPE},/" create_table.sql
+     sed -i "s/^\t\"${FIELD_NAME}\" .*$/\t\"${FIELD_NAME}\" ${FIELD_TYPE},/" create_table.sql
+     sed -i 'x; ${s/,//;p;x}; 1d' create_table.sql
+  done
+fi
 
 # Make sure that table is create with partition if set
 if [[ -n "${PARTITION_TYPE}" ]]; then
