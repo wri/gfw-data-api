@@ -1,14 +1,9 @@
 from datetime import datetime
-from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel
 
-
-class ChangeLogStatus(str, Enum):
-    success = "success"
-    pending = "pending"
-    failed = "failed"
+from ..enum.change_log import ChangeLogStatus
 
 
 class ChangeLog(BaseModel):

@@ -1,20 +1,14 @@
-from enum import Enum
 from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
 
+from ..enum.sources import SourceType
+from ..enum.versions import VersionStatus
 from .base import Base
 from .change_log import ChangeLog
 from .creation_options import CreationOptions
 from .metadata import VersionMetadata
 from .responses import Response
-from .sources import SourceType
-
-
-class VersionStatus(str, Enum):
-    saved = "saved"
-    pending = "pending"
-    failed = "failed"
 
 
 class Version(Base):

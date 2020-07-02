@@ -1,46 +1,24 @@
 from datetime import date
-from enum import Enum
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from pydantic import BaseModel, Field
 from pydantic.types import PositiveInt
 
+from ..enum.assets import AssetType
+from ..enum.creation_options import (
+    Delimiters,
+    IndexType,
+    PartitionType,
+    PGType,
+    TableDrivers,
+    TileStrategy,
+    VectorDrivers,
+)
+from ..enum.sources import SourceType
+
 COLUMN_REGEX = r"^[a-z][a-zA-Z0-9_-]{2,}$"
 PARTITION_SUFFIX_REGEX = r"^[a-z0-9_-]{3,}$"
 STR_VALUE_REGEX = r"^[a-zA-Z0-9_-]{1,}$"
-
-
-class TableDrivers(str, Enum):
-    text = "text"
-    # json = "json" # TODO: need to implement this eventually
-
-
-class VectorDrivers(str, Enum):
-    csv = "CSV"
-    esrijson = "ESRIJSON"
-    file_gdb = "FileGDB"
-    geojson = "GeoJSON"
-    geojson_seq = "GeoJSONSeq"
-    gpkg = "GPKG"
-    shp = "ESRI Shapefile"
-
-
-class Delimiters(str, Enum):
-    comma = ","
-    tab = "\t"
-    pipe = "|"
-    semicolon = ";"
-
-
-class IndexType(str, Enum):
-    gist = "gist"
-    btree = "btree"
-    hash = "hash"
-
-
-class TileStrategy(str, Enum):
-    continuous = "continuous"
-    discontinuous = "discontinuous"
 
 
 class Index(BaseModel):
@@ -48,29 +26,6 @@ class Index(BaseModel):
     column_name: str = Field(
         ..., description="Column to be used by index", regex=COLUMN_REGEX
     )
-
-
-class PartitionType(str, Enum):
-    hash = "hash"
-    list = "list"
-    range = "range"
-
-
-class PGType(str, Enum):
-    bigint = "bigint"
-    boolean = "boolean"
-    character_varying = "character varying"
-    date = "date"
-    double_precision = "double precision"
-    integer = "integer"
-    jsonb = "jsonb"
-    numeric = "numeric"
-    smallint = "smallint"
-    text = "text"
-    time = "time"
-    timestamp = "timestamp"
-    uuid = "uuid"
-    xml = "xml"
 
 
 class HashPartitionSchema(BaseModel):
@@ -117,6 +72,8 @@ class FieldType(BaseModel):
     field_type: PGType = Field(..., description="Type of field (PostgreSQL type).")
 
 
+# TODO: we currently ignore src_driver and zipped field
+#  decide whether to keep these fields or to remove them entirely
 class VectorSourceCreationOptions(BaseModel):
     src_driver: VectorDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
@@ -198,4 +155,49 @@ class StaticVectorTileCacheCreationOptions(BaseModel):
     )
 
 
-CreationOptions = Union[VectorSourceCreationOptions, TableSourceCreationOptions]
+class NdjsonCreationOptions(BaseModel):
+    pass
+
+
+SourceCreationOptions = Union[VectorSourceCreationOptions, TableSourceCreationOptions]
+
+OtherCreationOptions = Union[
+    StaticVectorTileCacheCreationOptions, NdjsonCreationOptions
+]
+
+CreationOptions = Union[SourceCreationOptions, OtherCreationOptions]
+
+
+def asset_creation_option_factory(
+    source_type: Optional[str], asset_type: str, creation_options: Dict[str, Any]
+) -> CreationOptions:
+    """Create Asset Creation Option based on asset or source type."""
+
+    source_creation_option_factory: Dict[str, Type[SourceCreationOptions]] = {
+        SourceType.vector: VectorSourceCreationOptions,
+        SourceType.table: TableSourceCreationOptions,
+        # SourceType.raster: RasterSourceCreationOptions
+    }
+
+    creation_options_factory: Dict[str, Type[OtherCreationOptions]] = {
+        AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheCreationOptions,
+        AssetType.static_vector_tile_cache: StaticVectorTileCacheCreationOptions,
+        AssetType.ndjson: NdjsonCreationOptions,
+    }
+
+    try:
+        if (
+            asset_type == AssetType.database_table
+            or asset_type == AssetType.raster_tile_set
+        ) and source_type:
+            co: CreationOptions = source_creation_option_factory[source_type](
+                **creation_options
+            )
+        else:
+            co = creation_options_factory[asset_type](**creation_options)
+    except KeyError:
+        raise NotImplementedError(
+            f"Asset creation options factory for type {asset_type} and source {source_type} not implemented"
+        )
+
+    return co

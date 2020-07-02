@@ -14,6 +14,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
 
 from ...crud import versions
+from ...errors import RecordAlreadyExistsError, RecordNotFoundError
+from ...models.enum.assets import AssetStatus
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.versions import (
@@ -42,7 +44,10 @@ async def get_version(
 ) -> VersionResponse:
     """Get basic metadata for a given version."""
 
-    row: ORMVersion = await versions.get_version(dataset, version)
+    try:
+        row: ORMVersion = await versions.get_version(dataset, version)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     return await _version_response(dataset, version, row)
 
@@ -67,9 +72,12 @@ async def add_new_version(
 
     input_data = request.dict()
     # Register version with DB
-    new_version: ORMVersion = await versions.create_version(
-        dataset, version, **input_data
-    )
+    try:
+        new_version: ORMVersion = await versions.create_version(
+            dataset, version, **input_data
+        )
+    except RecordAlreadyExistsError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     # Everything else happens in the background task asynchronously
     background_tasks.add_task(create_default_asset, dataset, version, input_data, None)
@@ -219,7 +227,9 @@ async def _version_response(
 
     assets: List[ORMAsset] = await ORMAsset.select("asset_type", "asset_uri").where(
         ORMAsset.dataset == dataset
-    ).where(ORMAsset.version == version).gino.all()
+    ).where(ORMAsset.version == version).where(
+        ORMAsset.status == AssetStatus.saved
+    ).gino.all()
     data = Version.from_orm(data).dict(by_alias=True)
     data["assets"] = [(asset[0], asset[1]) for asset in assets]
 

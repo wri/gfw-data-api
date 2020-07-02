@@ -1,8 +1,10 @@
-from fastapi import HTTPException, Request
+from fastapi import Request
+from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse, RedirectResponse
 
 from .application import ContextEngine
 from .crud.versions import get_latest_version
+from .errors import BadRequestError, RecordNotFoundError
 
 
 async def set_db_mode(request: Request, call_next):
@@ -33,12 +35,31 @@ async def redirect_latest(request: Request, call_next):
                 if item == "latest":
                     break
             if i == 0:
-                raise HTTPException(status_code=400, detail="Invalid URI")
+
+                raise BadRequestError("Invalid URI")
             path_items[i] = await get_latest_version(path_items[i - 1])
             url = "/".join(path_items)
             return RedirectResponse(url=f"{url}?{request.query_params}")
         else:
             response = await call_next(request)
             return response
-    except HTTPException as e:
-        return ORJSONResponse(status_code=e.status_code, content=e.detail)
+
+    except BadRequestError as e:
+        return ORJSONResponse(
+            status_code=400, content={"status": "failed", "data": str(e)}
+        )
+
+    except RecordNotFoundError as e:
+        return ORJSONResponse(
+            status_code=404, content={"status": "failed", "data": str(e)}
+        )
+
+    except Exception as e:
+        logger.exception(str(e))
+        return ORJSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "data": "Internal Server Error. Could not process request.",
+            },
+        )

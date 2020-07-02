@@ -1,5 +1,7 @@
 from typing import Any, Dict
 
+from tests import BUCKET, SHP_NAME
+
 generic_dataset_metadata = {
     "metadata": {
         "title": "string",
@@ -27,7 +29,7 @@ generic_dataset_metadata = {
 generic_version_metadata = {
     "is_latest": True,
     "source_type": "vector",
-    "source_uri": ["s3://some/path"],
+    "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
     "metadata": {},
     "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
 }

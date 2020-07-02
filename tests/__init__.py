@@ -22,6 +22,17 @@ REQUESTS_THUS_FAR: List = list()
 LOG_GROUP = "/aws/batch/job"
 ROOT = os.environ["ROOT"]
 
+TSV_NAME = "test.tsv"
+TSV_PATH = os.path.join(os.path.dirname(__file__), "fixtures", TSV_NAME)
+
+GEOJSON_NAME = "test.geojson"
+GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "fixtures", GEOJSON_NAME)
+
+SHP_NAME = "test.shp.zip"
+SHP_PATH = os.path.join(os.path.dirname(__file__), "fixtures", SHP_NAME)
+
+BUCKET = "test-bucket"
+
 SessionLocal: Optional[Session] = None
 
 

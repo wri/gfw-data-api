@@ -1,8 +1,8 @@
 from typing import Any, List, Optional
 
 from asyncpg import UniqueViolationError
-from fastapi import HTTPException
 
+from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
 from . import datasets, update_all_metadata, update_data, update_metadata
@@ -28,9 +28,8 @@ async def get_version_names(dataset: str) -> List[Any]:
 async def get_version(dataset: str, version: str) -> ORMVersion:
     row: ORMVersion = await ORMVersion.get([dataset, version])
     if row is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Version with name {dataset}.{version} does not exist",
+        raise RecordNotFoundError(
+            f"Version with name {dataset}.{version} does not exist"
         )
     d: ORMDataset = await datasets.get_dataset(dataset)
 
@@ -45,9 +44,7 @@ async def get_latest_version(dataset) -> str:
     ).where(ORMVersion.is_latest).gino.scalar()
 
     if latest is None:
-        raise HTTPException(
-            status_code=400, detail=f"Dataset {dataset} has no latest version."
-        )
+        raise RecordNotFoundError(f"Dataset {dataset} has no latest version.")
 
     return latest
 
@@ -59,9 +56,8 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
             dataset=dataset, version=version, **data
         )
     except UniqueViolationError:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Version with name {dataset}.{version} already exists",
+        raise RecordAlreadyExistsError(
+            f"Version with name {dataset}.{version} already exists"
         )
     d: ORMDataset = await datasets.get_dataset(dataset)
 

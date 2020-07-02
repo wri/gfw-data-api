@@ -55,6 +55,7 @@ data "template_file" "container_definition" {
     data_lake_bucket  = data.terraform_remote_state.core.outputs.data-lake_bucket
     tile_cache_bucket = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_name
     tile_cache_cloudfront_id = data.terraform_remote_state.tile_cache.outputs.cloudfront_distribution_id
+    tile_cache_url = data.terraform_remote_state.tile_cache.outputs.tile_cache_url
 
     aurora_job_definition     = module.batch_job_queues.aurora_job_definition
     aurora_job_queue          = module.batch_job_queues.aurora_job_queue

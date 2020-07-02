@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -25,6 +25,8 @@ class Job(BaseModel):
     attempts: int
     attempt_duration_seconds: int
     parents: Optional[List[str]] = None
+    # somehow mypy doesn't like the type when declared here?
+    callback: Any  # Callable[[UUID, ChangeLog], Coroutine[Any, Any, Awaitable[None]]]
 
 
 class PostgresqlClientJob(Job):

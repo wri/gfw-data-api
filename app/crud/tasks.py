@@ -2,9 +2,9 @@ from typing import List
 from uuid import UUID
 
 from asyncpg import UniqueViolationError
-from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 
+from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.tasks import Task as ORMTask
 from . import update_data
 
@@ -12,7 +12,7 @@ from . import update_data
 async def get_tasks(asset_id: UUID) -> List[ORMTask]:
     tasks: List[ORMTask] = await ORMTask.query.where(
         ORMTask.asset_id == asset_id
-    ).gino.all()
+    ).order_by(ORMTask.created_on).gino.all()
 
     return tasks
 
@@ -20,9 +20,7 @@ async def get_tasks(asset_id: UUID) -> List[ORMTask]:
 async def get_task(task_id: UUID) -> ORMTask:
     row: ORMTask = await ORMTask.get(task_id)
     if row is None:
-        raise HTTPException(
-            status_code=404, detail=f"Task with task_id {task_id} does not exist",
-        )
+        raise RecordNotFoundError(f"Task with task_id {task_id} does not exist")
     return row
 
 
@@ -31,9 +29,7 @@ async def create_task(task_id: UUID, **data) -> ORMTask:
     try:
         new_task: ORMTask = await ORMTask.create(task_id=task_id, **jsonable_data)
     except UniqueViolationError:
-        raise HTTPException(
-            status_code=400, detail=f"Task with task_id {task_id} already exists",
-        )
+        raise RecordAlreadyExistsError(f"Task with task_id {task_id} already exists")
 
     return new_task
 

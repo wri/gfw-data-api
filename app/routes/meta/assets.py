@@ -12,20 +12,19 @@ the same version and do not know the processing history.
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Path, Query
-from fastapi.exceptions import HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
 from fastapi.responses import ORJSONResponse
 
-from ...crud import assets, versions
-from ...errors import ClientError
+from ...crud import assets
+from ...errors import ClientError, RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.assets import Asset as ORMAsset
-from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.assets import (
     Asset,
     AssetCreateIn,
     AssetResponse,
     AssetsResponse,
     AssetType,
+    AssetUpdateIn,
 )
 from ...routes import dataset_dependency, is_admin, version_dependency
 from ...tasks.assets import create_asset
@@ -36,11 +35,9 @@ from ...tasks.delete_assets import (
     delete_static_raster_tile_cache_assets,
     delete_static_vector_tile_cache_assets,
 )
+from . import verify_version_status
 
 router = APIRouter()
-
-# TODO:
-#  - Assets should have config parameters to allow specifying creation options
 
 
 @router.get(
@@ -57,7 +54,10 @@ async def get_assets(
 ):
     """Get all assets for a given dataset version."""
 
-    rows: List[ORMAsset] = await assets.get_assets(dataset, version)
+    try:
+        rows: List[ORMAsset] = await assets.get_assets(dataset, version)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     # Filter rows by asset type
     data = list()
@@ -68,7 +68,7 @@ async def get_assets(
     else:
         data = rows
 
-    return AssetsResponse(data=data)
+    return await _assets_response(data)
 
 
 @router.get(
@@ -84,7 +84,10 @@ async def get_asset(
     asset_id: UUID = Path(...),
 ) -> AssetResponse:
     """Get a specific asset."""
-    row: ORMAsset = await assets.get_asset(asset_id)
+    try:
+        row: ORMAsset = await assets.get_asset(asset_id)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     if row.dataset != dataset and row.version != version:
         raise ClientError(
@@ -93,36 +96,6 @@ async def get_asset(
         )
 
     return await _asset_response(row)
-
-
-# @router.get(
-#     "/assets",
-#     response_class=ORJSONResponse,
-#     tags=["Assets"],
-#     response_model=AssetsResponse,
-# )
-# async def get_assets_root(
-#     *, asset_type: Optional[AssetType] = Query(None, title="Filter by Asset Type")
-# ) -> AssetsResponse:
-#     """Get all assets."""
-#     if asset_type:
-#         rows: List[ORMAsset] = await assets.get_assets_by_type(asset_type)
-#     else:
-#         rows = await assets.get_all_assets()
-#
-#     return await _assets_response(rows)
-#
-#
-# @router.get(
-#     "assets/{asset_id}",
-#     response_class=ORJSONResponse,
-#     tags=["Assets"],
-#     response_model=AssetResponse,
-# )
-# async def get_asset_root(*, asset_id: UUID = Path(...)) -> AssetResponse:
-#     """Get a specific asset."""
-#     row: ORMAsset = await assets.get_asset(asset_id)
-#     return await _asset_response(row)
 
 
 @router.post(
@@ -150,25 +123,49 @@ async def add_new_asset(
     """
     input_data = request.dict()
 
-    orm_version: ORMVersion = await versions.get_version(dataset, version)
+    await verify_version_status(dataset, version)
 
-    if orm_version.status == "pending":
-        raise HTTPException(
-            status_code=409,
-            detail="Version status is currently `pending`. "
-            "Please retry once version is in status `saved`",
-        )
-    elif orm_version.status == "failed":
-        raise HTTPException(
-            status_code=400, detail="Version status is `failed`. Cannot add any assets."
-        )
-    else:
+    try:
         row: ORMAsset = await assets.create_asset(dataset, version, **input_data)
-        background_tasks.add_task(
-            create_asset, row.asset_id, dataset, version, input_data
-        )
-        response.headers["Location"] = f"/{dataset}/{version}/asset/{row.asset_id}"
-        return await _asset_response(row)
+    except RecordAlreadyExistsError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+
+    background_tasks.add_task(
+        create_asset, row.asset_type, row.asset_id, dataset, version, input_data
+    )
+    response.headers["Location"] = f"/{dataset}/{version}/asset/{row.asset_id}"
+    return await _asset_response(row)
+
+
+@router.patch(
+    "/{dataset}/{version}/assets/{asset_id}",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=AssetResponse,
+)
+async def update_asset(
+    *,
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+    asset_id: UUID = Path(...),
+    request: AssetUpdateIn,
+    is_authorized: bool = Depends(is_admin),
+) -> AssetResponse:
+    """Update Asset metadata."""
+
+    input_data = request.dict(exclude_unset=True)
+    await verify_version_status(dataset, version)
+
+    try:
+        row: ORMAsset = await assets.update_asset(asset_id, **input_data)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+
+    return await _asset_response(row)
 
 
 @router.delete(
@@ -191,7 +188,10 @@ async def delete_asset(
     assets, only the link will be deleted.
     """
 
-    row: ORMAsset = await assets.get_asset(asset_id)
+    try:
+        row: ORMAsset = await assets.get_asset(asset_id)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     if row.is_default:
         raise ClientError(
@@ -200,7 +200,7 @@ async def delete_asset(
             "To delete a default asset you must delete the parent version.",
         )
 
-    if row.asset_type == "Dynamic vector tile cache":
+    if row.asset_type == AssetType.dynamic_vector_tile_cache:
         background_tasks.add_task(
             delete_dynamic_vector_tile_cache_assets,
             dataset,
@@ -208,7 +208,7 @@ async def delete_asset(
             row.creation_options.implementation,
         )
 
-    elif row.asset_type == "Static vector tile cache":
+    elif row.asset_type == AssetType.static_vector_tile_cache:
         background_tasks.add_task(
             delete_static_vector_tile_cache_assets,
             dataset,
@@ -216,7 +216,7 @@ async def delete_asset(
             row.creation_options.implementation,
         )
 
-    elif row.asset_type == "Static raster tile cache":
+    elif row.asset_type == AssetType.static_raster_tile_cache:
         background_tasks.add_task(
             delete_static_raster_tile_cache_assets,
             dataset,
@@ -224,7 +224,7 @@ async def delete_asset(
             row.creation_options.implementation,
         )
 
-    elif row.asset_type == "Raster tile set":
+    elif row.asset_type == AssetType.raster_tile_set:
         background_tasks.add_task(
             delete_raster_tileset_assets,
             dataset,
@@ -234,7 +234,7 @@ async def delete_asset(
             row.creation_options.col,
             row.creation_options.value,
         )
-    elif row.asset_type == "Database table":
+    elif row.asset_type == AssetType.database_table:
         background_tasks.add_task(delete_database_table, dataset, version)
     else:
         raise ClientError(
@@ -249,11 +249,13 @@ async def delete_asset(
 
 async def _asset_response(asset_orm: ORMAsset) -> AssetResponse:
     """Serialize ORM response."""
-    data = Asset.from_orm(asset_orm)  # .dict(by_alias=True)
+
+    data = Asset.from_orm(asset_orm)
+
     return AssetResponse(data=data)
 
 
 async def _assets_response(assets_orm: List[ORMAsset]) -> AssetsResponse:
     """Serialize ORM response."""
-    data = [Asset.from_orm(asset) for asset in assets_orm]  # .dict(by_alias=True)
+    data = [Asset.from_orm(asset) for asset in assets_orm]
     return AssetsResponse(data=data)

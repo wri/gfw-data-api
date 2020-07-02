@@ -227,7 +227,7 @@ def test_latest_middleware(mocked_task, client):
 
     response = client.get(f"/meta/{dataset}/latest")
     print(response.json())
-    assert response.status_code == 400
+    assert response.status_code == 404
 
     response = client.patch(
         f"/meta/{dataset}/{version}", data=json.dumps({"is_latest": True})

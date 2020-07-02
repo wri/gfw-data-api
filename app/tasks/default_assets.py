@@ -1,18 +1,17 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, FrozenSet, Optional
 from typing.io import IO
 from uuid import UUID
 
 from ..application import ContextEngine
 from ..crud import assets, versions
+from ..models.enum.assets import default_asset_type
+from ..models.enum.change_log import ChangeLogStatus
+from ..models.enum.sources import SourceType
 from ..models.pydantic.assets import AssetTaskCreate
 from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.creation_options import (
-    TableSourceCreationOptions,
-    VectorSourceCreationOptions,
-)
-from ..models.pydantic.metadata import DatabaseTableMetadata
-from ..models.pydantic.sources import SourceType
+from ..models.pydantic.creation_options import asset_creation_option_factory
+from ..models.pydantic.metadata import asset_metadata_factory
 from ..utils.aws import get_s3_client
 from ..utils.path import split_s3_path
 from .assets import create_asset
@@ -20,7 +19,7 @@ from .raster_source_assets import raster_source_asset
 from .table_source_assets import table_source_asset
 from .vector_source_assets import vector_source_asset
 
-DEFAULT_ASSET_PIPELINES = frozenset(
+DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
     {
         SourceType.vector: vector_source_asset,
         SourceType.table: table_source_asset,
@@ -59,6 +58,7 @@ async def create_default_asset(
             )
             return asset_id
         # Make sure version status is set to `failed` in case there is an uncaught Exception
+
         except Exception:
             async with ContextEngine("WRITE"):
                 await versions.update_version(dataset, version, status="failed")
@@ -68,13 +68,13 @@ async def create_default_asset(
 async def _create_default_asset(
     source_type: str, dataset: str, version: str, input_data: Dict[str, Any],
 ) -> UUID:
-    asset_type = _default_asset_type(source_type)
-    metadata = _default_asset_metadata(source_type, input_data["metadata"])
+    asset_type = default_asset_type(source_type)
+    metadata = asset_metadata_factory(asset_type, input_data["metadata"])
     asset_uri = _default_asset_uri(
         source_type, dataset, version, input_data["creation_options"]
     )
-    creation_options = _default_asset_creation_options(
-        source_type, input_data["creation_options"]
+    creation_options = asset_creation_option_factory(
+        source_type, asset_type, input_data["creation_options"]
     )
 
     data = AssetTaskCreate(
@@ -97,7 +97,7 @@ async def _create_default_asset(
         dataset=dataset,
         version=version,
         input_data=input_data,
-        asset_lookup=DEFAULT_ASSET_PIPELINES,
+        constructor=DEFAULT_ASSET_PIPELINES,
     )
 
     return new_asset.asset_id
@@ -111,40 +111,17 @@ async def _inject_file(file_obj: IO, s3_uri: str) -> ChangeLog:
 
     try:
         s3.upload_fileobj(file_obj, bucket, path)
-        status = "success"
+        status = ChangeLogStatus.success
         message = f"Injected file {path} into {bucket}"
         detail = None
     except Exception as e:
-        status = "failed"
+        status = ChangeLogStatus.failed
         message = f"Failed to inject file {path} into {bucket}"
         detail = str(e)
 
     return ChangeLog(
         date_time=datetime.now(), status=status, message=message, detail=detail
     )
-
-
-def _default_asset_type(source_type):
-    if source_type == "table" or source_type == "vector":
-        asset_type = "Database table"
-    elif source_type == "raster":
-        asset_type = "Raster tileset"
-    else:
-        raise NotImplementedError("Not a supported input source")
-    return asset_type
-
-
-def _default_asset_creation_options(source_type, creation_options):
-    if source_type == "vector":
-        co = VectorSourceCreationOptions(**creation_options)
-    elif source_type == "table":
-        co = TableSourceCreationOptions(**creation_options)
-    # elif source_type == "raster":
-    #     co = RasterSourceCreationOptions(**creation_options)
-    else:
-        raise NotImplementedError("Not a supported input source")
-
-    return co
 
 
 def _default_asset_uri(source_type, dataset, version, creation_option=None):
@@ -157,14 +134,3 @@ def _default_asset_uri(source_type, dataset, version, creation_option=None):
         raise NotImplementedError("Not a supported default input source")
 
     return asset_uri
-
-
-def _default_asset_metadata(source_type, metadata):
-    if source_type == "table" or source_type == "vector":
-        md = DatabaseTableMetadata(**metadata)
-    # elif source_type == "raster":
-    #     md = RasterSetMetadata(**metadata)
-    else:
-        raise NotImplementedError("Not a supported default input source")
-
-    return md
