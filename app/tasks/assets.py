@@ -71,9 +71,14 @@ async def create_asset(
             )
         raise
 
+    if log.status == ChangeLogStatus.success:
+        status = AssetStatus.saved
+    else:
+        status = log.status
+
     # Update asset status and change log
     async with ContextEngine("WRITE"):
-        await assets.update_asset(asset_id, status=log.status, change_log=[log.dict()])
+        await assets.update_asset(asset_id, status=status, change_log=[log.dict()])
         await versions.update_version(dataset, version, change_log=[log.dict()])
 
 

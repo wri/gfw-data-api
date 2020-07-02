@@ -180,6 +180,7 @@ def asset_creation_option_factory(
     }
 
     creation_options_factory: Dict[str, Type[OtherCreationOptions]] = {
+        AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheCreationOptions,
         AssetType.static_vector_tile_cache: StaticVectorTileCacheCreationOptions,
         AssetType.ndjson: NdjsonCreationOptions,
     }

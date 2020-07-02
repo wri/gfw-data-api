@@ -2,6 +2,7 @@ import json
 import uuid
 from unittest.mock import patch
 
+from app.models.enum.assets import AssetType
 from tests.routes import create_default_asset
 
 
@@ -92,6 +93,17 @@ def test_tasks_success(client, db):
     asset_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
     assert asset_resp.json()["data"]["status"] == "saved"
 
+    # Verify if the dynamic vector tile cache was created. Status should be failed b/c batch jobs were not tiggered.
+    assets_resp = client.get(f"/meta/{dataset}/{version}/assets")
+    assert len(version_resp.json()["data"]["assets"]) == 1
+    assert len(assets_resp.json()["data"]) == 2
+    assert assets_resp.json()["data"][0]["asset_type"] == AssetType.database_table
+    assert (
+        assets_resp.json()["data"][1]["asset_type"]
+        == AssetType.dynamic_vector_tile_cache
+    )
+    assert assets_resp.json()["data"][1]["status"] == "failed"
+
     # The following will fail until creation of auxiliary assets is working
 
     field_payload = {
@@ -133,7 +145,7 @@ def test_tasks_success(client, db):
     # Verify there are three assets now,
     # including the implicitly created ndjson asset
     get_resp = client.get(f"/meta/{dataset}/{version}/assets")
-    assert len(get_resp.json()["data"]) == 3
+    assert len(get_resp.json()["data"]) == 4
 
     # Verify the existence of tasks for the new asset
     non_default_tasks = client.get(f"/tasks/assets/{asset_id}").json()["data"]

@@ -15,6 +15,7 @@ from fastapi.responses import ORJSONResponse
 
 from ...crud import versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
+from ...models.enum.assets import AssetStatus
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.versions import (
@@ -226,7 +227,9 @@ async def _version_response(
 
     assets: List[ORMAsset] = await ORMAsset.select("asset_type", "asset_uri").where(
         ORMAsset.dataset == dataset
-    ).where(ORMAsset.version == version).gino.all()
+    ).where(ORMAsset.version == version).where(
+        ORMAsset.status == AssetStatus.saved
+    ).gino.all()
     data = Version.from_orm(data).dict(by_alias=True)
     data["assets"] = [(asset[0], asset[1]) for asset in assets]
 

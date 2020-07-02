@@ -8,7 +8,12 @@ from pendulum.parsing.exceptions import ParserError
 
 from app.application import ContextEngine, db
 from app.crud import assets, tasks, versions
+from app.models.enum.assets import AssetStatus, AssetType
 from app.models.orm.geostore import Geostore
+from app.routes.tasks.tasks import (
+    _register_dynamic_vector_tile_cache,
+    _update_asset_field_metadata,
+)
 from app.tasks.default_assets import create_default_asset
 from app.utils.aws import get_s3_client
 
@@ -36,7 +41,11 @@ async def test_vector_source_asset(batch_client, httpd):
         input_data = {
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{source}"],
-            "creation_options": {"src_driver": "GeoJSON", "zipped": False},
+            "creation_options": {
+                "src_driver": "GeoJSON",
+                "zipped": False,
+                "create_dynamic_vector_tile_cache": True,
+            },
             "metadata": {},
         }
         await create_version(dataset, version, input_data)
@@ -56,6 +65,8 @@ async def test_vector_source_asset(batch_client, httpd):
 
         # Get the logs in case something went wrong
         _print_logs(logs)
+        check_callbacks(task_ids, httpd_port)
+
         assert status == "saved"
 
         await _check_version_status(dataset, version)
@@ -76,7 +87,8 @@ async def test_vector_source_asset(batch_client, httpd):
         assert len(rows) == 1 + i
         assert rows[0].gfw_geostore_id == UUID("23866dd0-9b1a-d742-a7e3-21dd255481dd")
 
-        check_callbacks(task_ids, httpd_port)
+        await _check_dynamic_vector_tile_cache_status(dataset, version)
+
         requests.delete(f"http://localhost:{httpd.server_port}")
 
 
@@ -166,10 +178,12 @@ async def test_table_source_asset(batch_client, httpd):
 
     # make sure, all jobs completed
     status = await poll_jobs(task_ids)
-    assert status == "saved"
 
     # Get the logs in case something went wrong
-    # _print_logs(logs)
+    _print_logs(logs)
+    check_callbacks(task_ids, httpd_port)
+
+    assert status == "saved"
 
     await _check_version_status(dataset, version)
     await _check_asset_status(dataset, version, 1)
@@ -217,7 +231,6 @@ async def test_table_source_asset(batch_client, httpd):
         input_data["creation_options"]["indices"]
     )
     assert cluster_count == len(partition_schema)
-    check_callbacks(task_ids, httpd_port)
 
 
 def _assert_fields(field_list, field_schema):
@@ -287,3 +300,36 @@ async def _check_task_status(asset_id, nb_jobs, last_job_name):
         assert row.status == "pending"
     # in this test we only see the logs from background task, not from batch jobs
     assert rows[-1].change_log[0]["message"] == (f"Scheduled job {last_job_name}")
+
+
+async def _check_dynamic_vector_tile_cache_status(dataset, version):
+    rows = await assets.get_assets(dataset, version)
+    asset_row = rows[0]
+    asset_row = await _update_asset_field_metadata(
+        asset_row.dataset, asset_row.version, asset_row.asset_id,
+    )
+
+    # SHP files have one additional attribute (fid)
+    if asset_row.version == "v1.1.0":
+        assert len(asset_row.metadata["fields_"]) == 10
+    else:
+        assert len(asset_row.metadata["fields_"]) == 9
+
+    # We need the asset status in saved to create dynamic vector tile cache
+    async with ContextEngine("WRITE"):
+        asset_row = await assets.update_asset(
+            asset_row.asset_id, status=AssetStatus.saved
+        )
+
+    await _register_dynamic_vector_tile_cache(
+        asset_row.dataset, asset_row.version, asset_row.metadata
+    )
+
+    rows = await assets.get_assets(dataset, version)
+    v = await versions.get_version(dataset, version)
+    print(v.change_log)
+
+    assert len(rows) == 2
+    assert rows[0].asset_type == AssetType.database_table
+    assert rows[1].asset_type == AssetType.dynamic_vector_tile_cache
+    assert rows[1].status == AssetStatus.saved

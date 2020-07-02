@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from ..application import ContextEngine
 from ..crud import assets
 from ..models.enum.assets import AssetStatus, AssetType
 from ..models.enum.change_log import ChangeLogStatus
@@ -16,7 +17,8 @@ async def dynamic_vector_tile_cache_asset(
     """Verify if given database table asset is present and correctly configured
     for dynamic vector tile cache."""
 
-    orm_assets: List[ORMAsset] = await assets.get_assets(dataset, version)
+    async with ContextEngine("READ"):
+        orm_assets: List[ORMAsset] = await assets.get_assets(dataset, version)
 
     # Let's first assume that the database table is not correctly configured or present
     # And then try to proof it is.

@@ -287,7 +287,8 @@ async def _register_dynamic_vector_tile_cache(
         )
 
         try:
-            asset_orm = await assets.create_asset(dataset, version, **data.dict())
+            async with ContextEngine("WRITE"):
+                asset_orm = await assets.create_asset(dataset, version, **data.dict())
 
         except Exception as e:
             # In case creating the asset record fails we only log to version change log

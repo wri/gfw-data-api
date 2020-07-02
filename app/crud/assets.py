@@ -5,17 +5,15 @@ from asyncpg import UniqueViolationError
 from fastapi.encoders import jsonable_encoder
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
+from ..models.enum.sources import SourceType
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
-from ..models.pydantic.assets import AssetType
 from ..models.pydantic.creation_options import (
     CreationOptions,
-    StaticVectorTileCacheCreationOptions,
     TableDrivers,
-    TableSourceCreationOptions,
     VectorDrivers,
-    VectorSourceCreationOptions,
+    asset_creation_option_factory,
 )
 from . import datasets, update_all_metadata, update_data, update_metadata, versions
 
@@ -23,7 +21,7 @@ from . import datasets, update_all_metadata, update_data, update_metadata, versi
 async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
     rows: List[ORMAsset] = await ORMAsset.query.where(
         ORMAsset.dataset == dataset
-    ).where(ORMAsset.version == version).gino.all()
+    ).where(ORMAsset.version == version).order_by(ORMAsset.created_on).gino.all()
     if not rows:
         raise RecordNotFoundError(
             f"No assets for version with name {dataset}.{version} found"
@@ -143,18 +141,10 @@ def _creation_option_factory(asset_type, creation_options) -> CreationOptions:
     table_drivers: List[str] = [t.value for t in TableDrivers]
     vector_drivers: List[str] = [v.value for v in VectorDrivers]
 
-    if asset_type == AssetType.database_table and driver in table_drivers:
-        model = TableSourceCreationOptions(**creation_options)
+    source_type = None
+    if driver in table_drivers:
+        source_type = SourceType.table
+    elif driver in vector_drivers:
+        source_type = SourceType.vector
 
-    elif asset_type == AssetType.database_table and driver in vector_drivers:
-        model = VectorSourceCreationOptions(**creation_options)
-
-    elif asset_type == AssetType.static_vector_tile_cache:
-        model = StaticVectorTileCacheCreationOptions(**creation_options)
-
-    else:
-        raise NotImplementedError(
-            f"Creation options validation for {asset_type} not implemented"
-        )
-
-    return model
+    return asset_creation_option_factory(source_type, asset_type, creation_options)
