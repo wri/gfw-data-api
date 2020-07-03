@@ -328,7 +328,7 @@ async def test_table_source_asset_parallel(batch_client, httpd):
 
     await _check_version_status(dataset, version)
     await _check_asset_status(dataset, version, 1)
-    await _check_task_status(asset_id, 33, "cluster_partitions_3")
+    await _check_task_status(asset_id, 26, "cluster_partitions_3")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
