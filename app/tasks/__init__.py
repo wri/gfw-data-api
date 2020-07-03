@@ -65,7 +65,7 @@ def callback_constructor(asset_id: UUID,) -> Callback:
     async def callback(task_id: UUID, change_log: ChangeLog) -> ORMAsset:
         async with ContextEngine("WRITE"):
             task: ORMTask = await crud_tasks.create_task(
-                task_id, asset_id=asset_id, change_log=[change_log.dict()]
+                task_id, asset_id=asset_id, change_log=[change_log.dict(by_alias=True)]
             )
 
         return task

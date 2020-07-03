@@ -15,7 +15,7 @@ async def update_data(
     """Merge updated metadata filed with existing fields."""
 
     if isinstance(input_data, BaseModel):
-        input_data = input_data.dict(skip_defaults=True)
+        input_data = input_data.dict(skip_defaults=True, by_alias=True)
 
     # Make sure, existing metadata not mentioned in request remain untouched
     if "metadata" in input_data.keys() and input_data["metadata"]:
