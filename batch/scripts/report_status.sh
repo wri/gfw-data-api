@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 # SERVICE_ACCOUNT_TOKEN, STATUS_URL are put in the env from WRITER_SECRETS
 # AWS_BATCH_JOB_ID is put in the env by AWS Batch/moto
 HEADERS="Authorization: Bearer $SERVICE_ACCOUNT_TOKEN"

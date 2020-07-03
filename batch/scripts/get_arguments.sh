@@ -2,6 +2,11 @@
 
 set -e
 
+# make sure we work in a distinct folder for the batch job with in /tmp directory
+WORK_DIR="/tmp/$AWS_BATCH_JOB_ID"
+mkdir -p "$WORK_DIR"
+pushd "${WORK_DIR}"
+
 if [[ -n "${DEBUG}" ]]; then
 
   echo "--------------"
