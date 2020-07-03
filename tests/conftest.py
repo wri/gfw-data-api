@@ -1,7 +1,7 @@
 import contextlib
-import threading
 import csv
 import io
+import threading
 from http.server import HTTPServer
 
 import boto3
@@ -163,13 +163,12 @@ def copy_fixtures():
     s3_client.upload_file(SHP_PATH, BUCKET, SHP_NAME)
 
     # upload a separate for each row so we can test running large numbers of sources in parallel
-    reader = csv.DictReader(open(TSV_PATH, newline=''), delimiter='\t')
+    reader = csv.DictReader(open(TSV_PATH, newline=""), delimiter="\t")
     for row in reader:
         out = io.StringIO()
-        writer = csv.writer(out, delimiter='\t')
+        writer = csv.writer(out, delimiter="\t")
         writer.writerow(reader.fieldnames)
         writer.writerow(row.values())
 
         s3_client.upload_fileobj(out, BUCKET, f"test_{reader.line_num}.tsv")
         out.close()
-

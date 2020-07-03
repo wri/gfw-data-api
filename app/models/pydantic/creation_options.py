@@ -162,7 +162,9 @@ class NdjsonCreationOptions(BaseModel):
 SourceCreationOptions = Union[VectorSourceCreationOptions, TableSourceCreationOptions]
 
 OtherCreationOptions = Union[
-    StaticVectorTileCacheCreationOptions, NdjsonCreationOptions
+    StaticVectorTileCacheCreationOptions,
+    DynamicVectorTileCacheCreationOptions,
+    NdjsonCreationOptions,
 ]
 
 CreationOptions = Union[SourceCreationOptions, OtherCreationOptions]

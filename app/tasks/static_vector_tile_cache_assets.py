@@ -45,11 +45,8 @@ async def static_vector_tile_cache_asset(
         dataset, version, creation_options
     )
 
-    if not input_data["metadata"]:
-        _metadata = {}
-    else:
-        _metadata = input_data["metadata"]
-    _metadata["fields_"] = field_attributes
+    _metadata = input_data.get("metadata", {})
+    _metadata["fields"] = field_attributes
 
     metadata = asset_metadata_factory(AssetType.ndjson, _metadata)
 
@@ -81,7 +78,7 @@ async def static_vector_tile_cache_asset(
         "-T",
         ndjson_uri,
         "-C",
-        ",".join([field["field_name_"] for field in field_attributes]),
+        ",".join([field["field_name"] for field in field_attributes]),
     ]
 
     export_ndjson = GdalPythonExportJob(
@@ -139,7 +136,7 @@ async def _get_field_attributes(
     fields: Optional[List[Dict[str, str]]] = None
     for asset in orm_assets:
         if asset.is_default:
-            fields = asset.metadata["fields_"]
+            fields = asset.metadata["fields"]
             break
 
     if fields:
@@ -153,7 +150,7 @@ async def _get_field_attributes(
         field_attributes = [
             field
             for field in field_attributes
-            if field["field_name_"] in creation_options.field_attributes
+            if field["field_name"] in creation_options.field_attributes
         ]
 
     return field_attributes

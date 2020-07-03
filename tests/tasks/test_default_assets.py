@@ -269,7 +269,8 @@ async def test_table_source_asset_parallel(batch_client, httpd):
 
     input_data = {
         "source_type": "table",
-        "source_uri": [f"s3://{BUCKET}/{TSV_NAME}"] + [f"s3://{BUCKET}/test_{i}.tsv" for i in range(2, 101)],
+        "source_uri": [f"s3://{BUCKET}/{TSV_NAME}"]
+        + [f"s3://{BUCKET}/test_{i}.tsv" for i in range(2, 101)],
         "creation_options": {
             "src_driver": "text",
             "delimiter": "\t",
@@ -451,9 +452,9 @@ async def _check_dynamic_vector_tile_cache_status(dataset, version):
 
     # SHP files have one additional attribute (fid)
     if asset_row.version == "v1.1.0":
-        assert len(asset_row.metadata["fields_"]) == 10
+        assert len(asset_row.metadata["fields"]) == 10
     else:
-        assert len(asset_row.metadata["fields_"]) == 9
+        assert len(asset_row.metadata["fields"]) == 9
 
     # We need the asset status in saved to create dynamic vector tile cache
     async with ContextEngine("WRITE"):

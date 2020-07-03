@@ -158,13 +158,15 @@ async def test_assets():
     logs = ChangeLog(date_time=datetime.now(), status="pending", message="all good")
     async with ContextEngine("WRITE"):
         row = await update_asset(
-            asset_id, metadata=metadata.dict(), change_log=[logs.dict()]
+            asset_id,
+            metadata=metadata.dict(by_alias=True),
+            change_log=[logs.dict(by_alias=True)],
         )
     assert row.metadata["title"] == "Test Title"
     assert row.metadata["tags"] == ["tag1", "tag2"]
-    assert row.metadata["fields_"] == [
+    assert row.metadata["fields"] == [
         {
-            "field_name_": "test",
+            "field_name": "test",
             "field_type": "numeric",
             "is_feature_info": True,
             "field_alias": None,
@@ -173,8 +175,8 @@ async def test_assets():
         }
     ]
     assert row.change_log[0]["date_time"] == json.loads(logs.json())["date_time"]
-    assert row.change_log[0]["status"] == logs.dict()["status"]
-    assert row.change_log[0]["message"] == logs.dict()["message"]
+    assert row.change_log[0]["status"] == logs.dict(by_alias=True)["status"]
+    assert row.change_log[0]["message"] == logs.dict(by_alias=True)["message"]
 
     # When deleting a dataset, method should return the deleted object
     async with ContextEngine("WRITE"):

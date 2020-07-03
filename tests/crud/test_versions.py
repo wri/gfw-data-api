@@ -113,14 +113,14 @@ async def test_versions():
         row = await update_version(
             dataset_name,
             version_name,
-            metadata=metadata.dict(),
-            change_log=[logs.dict()],
+            metadata=metadata.dict(by_alias=True),
+            change_log=[logs.dict(by_alias=True)],
         )
     assert row.metadata["title"] == "Test Title"
     assert row.metadata["tags"] == ["tag1", "tag2"]
     assert row.change_log[0]["date_time"] == json.loads(logs.json())["date_time"]
-    assert row.change_log[0]["status"] == logs.dict()["status"]
-    assert row.change_log[0]["message"] == logs.dict()["message"]
+    assert row.change_log[0]["status"] == logs.dict(by_alias=True)["status"]
+    assert row.change_log[0]["message"] == logs.dict(by_alias=True)["message"]
 
     # When deleting a dataset, method should return the deleted object
     async with ContextEngine("WRITE"):

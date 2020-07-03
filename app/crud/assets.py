@@ -129,7 +129,7 @@ def _validate_creation_options(**data) -> Dict[str, Any]:
             asset_type, creation_options
         )
 
-        data["creation_options"] = co_model.dict()
+        data["creation_options"] = co_model.dict(by_alias=True)
 
     return data
 
