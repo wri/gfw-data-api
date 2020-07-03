@@ -8,6 +8,7 @@ set -e
 # -s | --source
 # -l | --source_layer
 # -f | --local_file
+# -X | --zipped
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"
