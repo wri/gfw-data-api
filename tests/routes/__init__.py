@@ -1,5 +1,8 @@
 from typing import Any, Dict
 
+from httpx import AsyncClient
+
+from app.application import app
 from tests import BUCKET, SHP_NAME
 
 generic_dataset_metadata = {
@@ -35,25 +38,30 @@ generic_version_metadata = {
 }
 
 
-def create_dataset(
-    test_client, dataset_name, metadata: Dict[str, Any]
-) -> Dict[str, Any]:
-    resp = test_client.put(f"/meta/{dataset_name}", json=metadata)
+async def create_dataset(dataset_name, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    async with AsyncClient(
+        app=app, base_url="http://test", trust_env=False
+    ) as test_client:
+        resp = await test_client.put(f"/meta/{dataset_name}", json=metadata)
     assert resp.json()["status"] == "success"
     return resp.json()["data"]
 
 
-def create_version(
-    test_client, dataset_name, version, version_metadata: Dict[str, Any]
+async def create_version(
+    dataset_name, version, version_metadata: Dict[str, Any]
 ) -> Dict[str, Any]:
-    resp = test_client.put(f"/meta/{dataset_name}/{version}", json=version_metadata)
+    async with AsyncClient(
+        app=app, base_url="http://test", trust_env=False
+    ) as test_client:
+        resp = await test_client.put(
+            f"/meta/{dataset_name}/{version}", json=version_metadata
+        )
     assert resp.json()["status"] == "success"
 
     return resp.json()["data"]
 
 
-def create_default_asset(
-    test_client,
+async def create_default_asset(
     dataset_name,
     version,
     dataset_metadata: Dict[str, Any] = generic_dataset_metadata,
@@ -61,11 +69,16 @@ def create_default_asset(
 ) -> Dict[str, Any]:
     # Create dataset, version, and default asset records.
     # The default asset is created automatically when the version is created.
-    _ = create_dataset(test_client, dataset_name, dataset_metadata)
-    create_version(test_client, dataset_name, version, version_metadata)
+
+    _ = await create_dataset(dataset_name, dataset_metadata)
+    _ = await create_version(dataset_name, version, version_metadata)
 
     # Verify the default asset was created
-    resp = test_client.get(f"/meta/{dataset_name}/{version}/assets")
+    async with AsyncClient(
+        app=app, base_url="http://test", trust_env=False
+    ) as test_client:
+        resp = await test_client.get(f"/meta/{dataset_name}/{version}/assets")
+
     assert len(resp.json()["data"]) == 1
     assert resp.json()["status"] == "success"
 
