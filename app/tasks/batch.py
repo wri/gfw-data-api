@@ -10,7 +10,7 @@ from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.jobs import Job
 from ..utils.aws import get_batch_client
 
-BATCH_DEPENDENCY_LIMIT = 20
+BATCH_DEPENDENCY_LIMIT = 14
 
 
 async def execute(jobs: List[Job],) -> ChangeLog:
