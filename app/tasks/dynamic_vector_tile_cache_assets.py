@@ -56,8 +56,8 @@ def _get_database_table_asset(assets: List[ORMAsset]) -> Optional[ORMAsset]:
 
 def _has_geom_wm(metadata: Dict[str, Any]) -> bool:
     """Check if geom_wm column is present."""
-    for field in metadata["fields_"]:
-        if field["field_name_"] == "geom_wm":
+    for field in metadata["fields"]:
+        if field["field_name"] == "geom_wm":
             return True
     return False
 

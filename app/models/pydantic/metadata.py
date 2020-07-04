@@ -75,29 +75,43 @@ class RasterTileSetMetadata(VersionMetadata):
     no_data_value: Optional[str]
 
 
-class VectorTileCacheMetadata(VersionMetadata):
-    min_zoom: int
-    max_zoom: int
+class StaticVectorTileCacheMetadata(VersionMetadata):
+    min_zoom: Optional[int]
+    max_zoom: Optional[int]
+    fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
     # TODO: default symbology/ legend
+
+
+class DynamicVectorTileCacheMetadata(StaticVectorTileCacheMetadata):
+    min_zoom: int = 0
+    max_zoom: int = 22
 
 
 class DatabaseTableMetadata(VersionMetadata):
     fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
 
 
+class VectorFileMetadata(VersionMetadata):
+    pass
+
+
 AssetMetadata = Union[
-    DatabaseTableMetadata, VectorTileCacheMetadata, RasterTileSetMetadata,
+    DatabaseTableMetadata,
+    StaticVectorTileCacheMetadata,
+    DynamicVectorTileCacheMetadata,
+    RasterTileSetMetadata,
+    VectorFileMetadata,
 ]
 
 
 def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMetadata:
     """Create Pydantic Asset Metadata class based on asset type."""
     metadata_factory: Dict[str, Type[AssetMetadata]] = {
-        AssetType.static_vector_tile_cache: VectorTileCacheMetadata,
-        AssetType.dynamic_vector_tile_cache: VectorTileCacheMetadata,
+        AssetType.static_vector_tile_cache: StaticVectorTileCacheMetadata,
+        AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheMetadata,
         AssetType.raster_tile_set: RasterTileSetMetadata,
         AssetType.database_table: DatabaseTableMetadata,
-        AssetType.ndjson: VersionMetadata,
+        AssetType.ndjson: VectorFileMetadata,
     }
     if asset_type in metadata_factory.keys():
         md: AssetMetadata = metadata_factory[asset_type](**metadata)

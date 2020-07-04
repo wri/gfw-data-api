@@ -233,6 +233,147 @@ async def test_table_source_asset(batch_client, httpd):
     assert cluster_count == len(partition_schema)
 
 
+@pytest.mark.asyncio
+async def test_table_source_asset_parallel(batch_client, httpd):
+    _, logs = batch_client
+    httpd_port = httpd.server_port
+
+    ############################
+    # Setup test
+    ############################
+
+    s3_client = get_s3_client()
+
+    s3_client.create_bucket(Bucket=BUCKET)
+    s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
+
+    dataset = "table_test"
+    version = "v202002.1"
+
+    # define partition schema
+    partition_schema = list()
+    years = range(2018, 2021)
+    for year in years:
+        for week in range(1, 54):
+            try:
+                name = f"y{year}_w{week:02}"
+                start = pendulum.parse(f"{year}-W{week:02}").to_date_string()
+                end = pendulum.parse(f"{year}-W{week:02}").add(days=7).to_date_string()
+                partition_schema.append(
+                    {"partition_suffix": name, "start_value": start, "end_value": end}
+                )
+
+            except ParserError:
+                # Year has only 52 weeks
+                pass
+
+    input_data = {
+        "source_type": "table",
+        "source_uri": [f"s3://{BUCKET}/{TSV_NAME}"]
+        + [f"s3://{BUCKET}/test_{i}.tsv" for i in range(2, 101)],
+        "creation_options": {
+            "src_driver": "text",
+            "delimiter": "\t",
+            "has_header": True,
+            "latitude": "latitude",
+            "longitude": "longitude",
+            "cluster": {"index_type": "gist", "column_name": "geom_wm"},
+            "partitions": {
+                "partition_type": "range",
+                "partition_column": "alert__date",
+                "partition_schema": partition_schema,
+            },
+            "indices": [
+                {"index_type": "gist", "column_name": "geom"},
+                {"index_type": "gist", "column_name": "geom_wm"},
+                {"index_type": "btree", "column_name": "alert__date"},
+            ],
+            "table_schema": [
+                {
+                    "field_name": "rspo_oil_palm__certification_status",
+                    "field_type": "text",
+                },
+                {"field_name": "per_forest_concession__type", "field_type": "text"},
+                {"field_name": "idn_forest_area__type", "field_type": "text"},
+                {"field_name": "alert__count", "field_type": "integer"},
+                {"field_name": "adm1", "field_type": "integer"},
+                {"field_name": "adm2", "field_type": "integer"},
+            ],
+        },
+        "metadata": {},
+    }
+
+    await create_dataset(dataset)
+    await create_version(dataset, version, input_data)
+
+    #####################
+    # Test asset creation
+    #####################
+
+    # Create default asset in mocked BATCH
+    async with ContextEngine("WRITE"):
+        asset_id = await create_default_asset(dataset, version, input_data, None,)
+
+    tasks_rows = await tasks.get_tasks(asset_id)
+    task_ids = [str(task.task_id) for task in tasks_rows]
+
+    # make sure, all jobs completed
+    status = await poll_jobs(task_ids)
+
+    # Get the logs in case something went wrong
+    _print_logs(logs)
+    check_callbacks(task_ids, httpd_port)
+
+    assert status == "saved"
+
+    await _check_version_status(dataset, version)
+    await _check_asset_status(dataset, version, 1)
+    await _check_task_status(asset_id, 26, "cluster_partitions_3")
+
+    # There should be a table called "table_test"."v202002.1" with 99 rows.
+    # It should have the right amount of partitions and indices
+    async with ContextEngine("READ"):
+        count = await db.scalar(
+            db.text(
+                f"""
+                    SELECT count(*)
+                        FROM "{dataset}"."{version}";"""
+            )
+        )
+        partition_count = await db.scalar(
+            db.text(
+                f"""
+                    SELECT count(i.inhrelid::regclass)
+                        FROM pg_inherits i
+                        WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass;"""
+            )
+        )
+        index_count = await db.scalar(
+            db.text(
+                f"""
+                    SELECT count(indexname)
+                        FROM pg_indexes
+                        WHERE schemaname = '{dataset}' AND tablename like '{version}%';"""
+            )
+        )
+        cluster_count = await db.scalar(
+            db.text(
+                """
+                    SELECT count(relname)
+                        FROM   pg_class c
+                        JOIN   pg_index i ON i.indrelid = c.oid
+                        WHERE  relkind = 'r' AND relhasindex AND i.indisclustered"""
+            )
+        )
+
+    assert count == 99
+    assert partition_count == len(partition_schema)
+    assert index_count == partition_count * len(
+        input_data["creation_options"]["indices"]
+    )
+    assert cluster_count == len(partition_schema)
+
+
 def _assert_fields(field_list, field_schema):
     count = 0
     for field in field_list:
@@ -311,9 +452,9 @@ async def _check_dynamic_vector_tile_cache_status(dataset, version):
 
     # SHP files have one additional attribute (fid)
     if asset_row.version == "v1.1.0":
-        assert len(asset_row.metadata["fields_"]) == 10
+        assert len(asset_row.metadata["fields"]) == 10
     else:
-        assert len(asset_row.metadata["fields_"]) == 9
+        assert len(asset_row.metadata["fields"]) == 9
 
     # We need the asset status in saved to create dynamic vector tile cache
     async with ContextEngine("WRITE"):

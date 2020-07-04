@@ -70,7 +70,7 @@ async def add_new_version(
 ):
     """Create or update a version for a given dataset."""
 
-    input_data = request.dict()
+    input_data = request.dict(exclude_none=True, by_alias=True)
     # Register version with DB
     try:
         new_version: ORMVersion = await versions.create_version(
@@ -133,7 +133,7 @@ async def add_new_version(
     #     creation_options=json.loads(creation_options),
     # )
     #
-    # input_data = request.dict()
+    # input_data = request.dict(by_alias=True)
     # # Register version with DB
     # new_version: ORMVersion = await versions.create_version(
     #     dataset, version, **input_data
@@ -169,7 +169,7 @@ async def update_version(
     assets.
     """
 
-    input_data = request.dict(exclude_unset=True)
+    input_data = request.dict(exclude_none=True, by_alias=True)
 
     row: ORMVersion = await versions.update_version(dataset, version, **input_data)
     # TODO: Need to clarify routine for when source_uri has changed. Append/ overwrite
