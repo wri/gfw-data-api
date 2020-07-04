@@ -8,9 +8,10 @@ from typing import DefaultDict, Optional
 import pyproj
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import ORJSONResponse
-from shapely.geometry import Point, Polygon
+from geojson import Point as geoPoint
+from geojson import Polygon as geoPolygon
+from shapely.geometry import Point
 from shapely.ops import transform
-from sqlalchemy import column, table, text
 from sqlalchemy.sql.elements import TextClause
 
 from ...application import db
@@ -19,7 +20,6 @@ from ...models.pydantic.assets import AssetType
 from ...routes import dataset_dependency, version_dependency
 
 router = APIRouter()
-logger = getLogger("features")
 
 
 @router.get("/{dataset}/{version}", response_class=ORJSONResponse)
@@ -33,28 +33,32 @@ async def get_features(
 ):
     """Retrieve list of features Add optional spatial filter using a point
     buffer (for info tool)."""
-    return await get_features_by_location(dataset, version, lat, lng, z)
+    feature_list = await get_features_by_location(dataset, version, lat, lng, z)
+    return feature_list
 
 
 async def get_features_by_location(dataset, version, lat, lng, zoom):
-    t = table(version)  # TODO validate version
+    t = db.table(version)  # TODO validate version
     t.schema = dataset
 
     buffer_distance = _get_buffer_distance(zoom)
     if buffer_distance:
-        geometry = Polygon(geodesic_point_buffer(lat, lng, buffer_distance))
+        geometry = geoPolygon(geodesic_point_buffer(lat, lng, buffer_distance))
     else:
-        geometry = Point((lat, lng))
+        geometry = geoPoint((lat, lng))
 
     fields = await get_fields(dataset, version)
 
-    columns = [column(field["name"]) for field in fields if field["is_feature_info"]]
+    columns = [
+        db.column(field["field_name"]) for field in fields if field["is_feature_info"]
+    ]
 
-    features = (
+    sql = (
         db.select(columns)
         .select_from(t)
         .where(filter_intersects("geom", str(geometry)))
     )
+    features = await db.all(sql)
 
     return features
 
@@ -71,8 +75,8 @@ def geodesic_point_buffer(lat, lng, meter):
     buf = Point(0, 0).buffer(meter)  # distance in metres
 
     coord_list = transform(project, buf).exterior.coords[:]
-    logger.error(f"Coordinate list: {coord_list}")
-    return coord_list
+
+    return [coord_list]
 
 
 def _get_buffer_distance(zoom: int) -> Optional[int]:
@@ -95,7 +99,9 @@ def _get_buffer_distance(zoom: int) -> Optional[int]:
 
 
 def filter_intersects(field, geometry) -> TextClause:
-    f = text(f"ST_Intersects({field}, ST_SetSRID(ST_GeomFromGeoJSON(:geometry),4326))")
+    f = db.text(
+        f"ST_Intersects({field}, ST_SetSRID(ST_GeomFromGeoJSON(:geometry),4326))"
+    )
     value = {"geometry": f"{geometry}"}
     f = f.bindparams(**value)
 
@@ -107,7 +113,7 @@ async def get_fields(dataset, version):
     fields = []
     for row in rows:
         if row.asset_type == AssetType.database_table:
-            fields = row.metadata["fields_"]
+            fields = row.metadata["fields"]
             break
 
     return fields

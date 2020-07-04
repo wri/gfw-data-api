@@ -132,14 +132,17 @@ async def test_features(batch_client, httpd):
         asset_resp = await ac.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
         assert asset_resp.json()["data"]["status"] == "saved"
 
-        # Print out the asset too, because you're going to want to look at the
-        # metadata['fields'] section. Null. Infuriating.
-        print(json.dumps(json.loads(asset_resp.text), indent=2))
+        # Print out the asset too
+        # print(json.dumps(json.loads(asset_resp.text), indent=2))
 
         # Verify that the features endpoint doesn't 500
-        resp = await ac.get(f"/features/{dataset}/{version}?lat=50&lng=60&z=10")
+        resp = await ac.get(
+            f"/features/{dataset}/{version}?lat=4.42813&lng=17.97655&z=0"
+        )
         print(resp.json())
         assert resp.status_code == 200
+
+        assert 1 == 42
 
         # More stuff, like using _assert_fields which someone graciously provided
 
