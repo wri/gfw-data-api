@@ -50,11 +50,6 @@ async def table_source_asset(
         {"name": "ASSET_ID", "value": str(asset_id)}
     ]
 
-    from logging import getLogger
-
-    some_log = getLogger("funkytown")
-    some_log.error(f"Environment: {job_env}")
-
     create_table_job = PostgresqlClientJob(
         job_name="create_table", command=command, environment=job_env, callback=callback
     )

@@ -7,8 +7,7 @@ from pendulum.parsing.exceptions import ParserError
 
 from app.application import app
 from app.crud import tasks
-from app.utils.aws import get_s3_client
-from tests import BUCKET, TSV_NAME, TSV_PATH
+from tests import BUCKET, TSV_NAME
 from tests.routes import create_default_asset
 from tests.tasks import poll_jobs
 
@@ -16,17 +15,9 @@ from tests.tasks import poll_jobs
 @pytest.mark.asyncio
 async def test_features(batch_client, httpd):
 
-    _, logs = batch_client
-    # httpd_port = httpd.server_port
-
     ############################
     # Setup test
     ############################
-
-    s3_client = get_s3_client()
-
-    s3_client.create_bucket(Bucket=BUCKET)
-    s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
 
     dataset = "table_test"
     version = "v202002.1"
@@ -84,7 +75,7 @@ async def test_features(batch_client, httpd):
         "metadata": {},
     }
 
-    # Create default asset in mocked BATCH
+    # Create default asset in mocked Batch
     asset = await create_default_asset(
         dataset, version, dataset_metadata=input_data, version_metadata=input_data
     )
@@ -93,24 +84,15 @@ async def test_features(batch_client, httpd):
     tasks_rows = await tasks.get_tasks(asset_id)
     task_ids = [str(task.task_id) for task in tasks_rows]
 
-    # make sure, all jobs completed
+    # Wait until all jobs have finished
     status = await poll_jobs(task_ids)
     assert status == "saved"
-
-    # Get the logs in case something went wrong
-    # _print_logs(logs)
-
-    ########################
-    # Test features endpoint
-    ########################
 
     # All jobs completed, but they couldn't update the task status. Set them all
     # to report success. This should allow the logic that fills out the metadata
     # fields to proceed.
     async with AsyncClient(app=app, base_url="http://test", trust_env=False) as ac:
-        existing_tasks = await ac.get(f"/tasks/assets/{asset_id}")
-
-        for task in existing_tasks.json()["data"]:
+        for task_id in task_ids:
             patch_payload = {
                 "change_log": [
                     {
@@ -121,86 +103,92 @@ async def test_features(batch_client, httpd):
                     }
                 ]
             }
-            patch_resp = await ac.patch(f"/tasks/{task['task_id']}", json=patch_payload)
+            patch_resp = await ac.patch(f"/tasks/{task_id}", json=patch_payload)
             assert patch_resp.json()["status"] == "success"
 
-    # Verify the status of asset + version have been updated to "saved"
+    ########################
+    # Test features endpoint
+    ########################
     async with AsyncClient(app=app, base_url="http://test", trust_env=False) as ac:
-        version_resp = await ac.get(f"/meta/{dataset}/{version}")
-        assert version_resp.json()["data"]["status"] == "saved"
-
-        asset_resp = await ac.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
-        assert asset_resp.json()["data"]["status"] == "saved"
-
-        # Print out the asset too
-        # print(json.dumps(json.loads(asset_resp.text), indent=2))
-
-        # Verify that the features endpoint doesn't 500
+        # Exact match, z > 9 (though see FIXME in app/routes/features/features.py)
         resp = await ac.get(
-            f"/features/{dataset}/{version}?lat=4.42813&lng=17.97655&z=0"
+            f"/features/{dataset}/{version}?lat=4.42813&lng=17.97655&z=10"
         )
-        print(resp.json())
         assert resp.status_code == 200
+        assert len(resp.json()["data"]) == 1
+        assert resp.json()["data"][0]["iso"] == "CAF"
 
-        assert 1 == 42
-
-        # More stuff, like using _assert_fields which someone graciously provided
-
-
-def _assert_fields(field_list, field_schema):
-    count = 0
-    for field in field_list:
-        for schema in field_schema:
-            if (
-                field["field_name_"] == schema["field_name"]
-                and field["field_type"] == schema["field_type"]
-            ):
-                count += 1
-        if field["field_name_"] in ["geom", "geom_wm", "gfw_geojson", "gfw_bbox"]:
-            assert not field["is_filter"]
-            assert not field["is_feature_info"]
-        else:
-            assert field["is_filter"]
-            assert field["is_feature_info"]
-    assert count == len(field_schema)
-
-
-def _print_logs(logs):
-    resp = logs.describe_log_streams(logGroupName="/aws/batch/job")
-
-    for stream in resp["logStreams"]:
-        ls_name = stream["logStreamName"]
-
-        stream_resp = logs.get_log_events(
-            logGroupName="/aws/batch/job", logStreamName=ls_name
+        # Nearby match
+        resp = await ac.get(
+            f"/features/{dataset}/{version}?lat=9.40645&lng=-3.3681&z=9"
         )
+        assert resp.status_code == 200
+        assert len(resp.json()["data"]) == 1
+        assert resp.json()["data"][0]["iso"] == "CIV"
 
-        print(f"-------- LOGS FROM {ls_name} --------")
-        for event in stream_resp["events"]:
-            print(event["message"])
+        # No match
+        resp = await ac.get(f"/features/{dataset}/{version}?lat=10&lng=-10&z=22")
+        assert resp.status_code == 200
+        assert len(resp.json()["data"]) == 0
 
+        # Invalid latitude, longitude, or zoom level
+        # Check all the constraints at once, why not?
+        expected_messages = [
+            {
+                "loc": ["query", "lat"],
+                "msg": "ensure this value is less than or equal to 90",
+                "type": "value_error.number.not_le",
+                "ctx": {"limit_value": 90},
+            },
+            {
+                "loc": ["query", "lng"],
+                "msg": "ensure this value is less than or equal to 180",
+                "type": "value_error.number.not_le",
+                "ctx": {"limit_value": 180},
+            },
+            {
+                "loc": ["query", "z"],
+                "msg": "ensure this value is less than or equal to 22",
+                "type": "value_error.number.not_le",
+                "ctx": {"limit_value": 22},
+            },
+        ]
+        resp = await ac.get(f"/features/{dataset}/{version}?lat=360&lng=360&z=25")
 
-# async def _check_version_status(dataset, version):
-#     row = await versions.get_version(dataset, version)
-#
-#     # in this test we don't set the final version status to saved or failed
-#     assert row.status == "pending"
-#
-#     # in this test we only see the logs from background task, not from batch jobs
-#     print(f"TABLE SOURCE VERSION LOGS: {row.change_log}")
-#     assert len(row.change_log) == 1
-#     assert row.change_log[0]["message"] == "Successfully scheduled batch jobs"
-#
-#
-# async def _check_asset_status(dataset, version, nb_jobs, last_job_name):
-#     rows = await assets.get_assets(dataset, version)
-#     assert len(rows) == 1
-#
-#     # in this test we don't set the final asset status to saved or failed
-#     assert rows[0].status == "pending"
-#     assert rows[0].is_default is True
-#
-#     # in this test we only see the logs from background task, not from batch jobs
-#     print(f"TABLE SOURCE ASSET LOGS: {rows[0].change_log}")
-#     assert len(rows[0].change_log) == nb_jobs
-#     assert rows[0].change_log[-1]["message"] == f"Scheduled job {last_job_name}"
+        assert resp.status_code == 422
+        assert resp.json()["status"] == "failed"
+        assert set(
+            [json.dumps(msg, sort_keys=True) for msg in resp.json()["message"]]
+        ) == set(json.dumps(msg, sort_keys=True) for msg in expected_messages)
+
+        # Invalid latitude, longitude, or zoom level, opposite limits
+        # Check all the constraints at once, why not?
+        expected_messages = [
+            {
+                "loc": ["query", "lat"],
+                "msg": "ensure this value is greater than or equal to -90",
+                "type": "value_error.number.not_ge",
+                "ctx": {"limit_value": -90},
+            },
+            {
+                "loc": ["query", "lng"],
+                "msg": "ensure this value is greater than or equal to -180",
+                "type": "value_error.number.not_ge",
+                "ctx": {"limit_value": -180},
+            },
+            {
+                "loc": ["query", "z"],
+                "msg": "ensure this value is greater than or equal to 0",
+                "type": "value_error.number.not_ge",
+                "ctx": {"limit_value": 0},
+            },
+        ]
+        resp = await ac.get(f"/features/{dataset}/{version}?lat=-360&lng=-360&z=-1")
+        print(resp.json())
+        assert resp.status_code == 422
+        assert resp.json()["status"] == "failed"
+        assert set(
+            [json.dumps(msg, sort_keys=True) for msg in resp.json()["message"]]
+        ) == set(json.dumps(msg, sort_keys=True) for msg in expected_messages)
+
+        # TODO: Assert on the content of the fields in the features response

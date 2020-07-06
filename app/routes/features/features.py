@@ -2,8 +2,7 @@
 only) in a classic RESTful way."""
 from collections import defaultdict
 from functools import partial
-from logging import getLogger
-from typing import DefaultDict, Optional
+from typing import DefaultDict, List, Optional
 
 import pyproj
 from fastapi import APIRouter, Depends, Query
@@ -17,6 +16,7 @@ from sqlalchemy.sql.elements import TextClause
 from ...application import db
 from ...crud import assets
 from ...models.pydantic.assets import AssetType
+from ...models.pydantic.features import FeaturesResponse
 from ...routes import dataset_dependency, version_dependency
 
 router = APIRouter()
@@ -33,12 +33,13 @@ async def get_features(
 ):
     """Retrieve list of features Add optional spatial filter using a point
     buffer (for info tool)."""
-    feature_list = await get_features_by_location(dataset, version, lat, lng, z)
-    return feature_list
+    feature_rows = await get_features_by_location(dataset, version, lat, lng, z)
+
+    return await _features_response(feature_rows)
 
 
 async def get_features_by_location(dataset, version, lat, lng, zoom):
-    t = db.table(version)  # TODO validate version
+    t = db.table(version)
     t.schema = dataset
 
     buffer_distance = _get_buffer_distance(zoom)
@@ -47,17 +48,19 @@ async def get_features_by_location(dataset, version, lat, lng, zoom):
     else:
         geometry = geoPoint((lat, lng))
 
-    fields = await get_fields(dataset, version)
-
-    columns = [
-        db.column(field["field_name"]) for field in fields if field["is_feature_info"]
+    all_columns = await get_fields(dataset, version)
+    feature_columns = [
+        db.column(field["field_name"])
+        for field in all_columns
+        if field["is_feature_info"]
     ]
 
     sql = (
-        db.select(columns)
+        db.select(feature_columns)
         .select_from(t)
         .where(filter_intersects("geom", str(geometry)))
     )
+
     features = await db.all(sql)
 
     return features
@@ -80,7 +83,10 @@ def geodesic_point_buffer(lat, lng, meter):
 
 
 def _get_buffer_distance(zoom: int) -> Optional[int]:
-    zoom_buffer: DefaultDict[int, Optional[int]] = defaultdict(lambda: None)
+    # FIXME: Couldn't get the exact match to work, so setting a buffer
+    # distance of 1m for zoom levels >9.
+    # zoom_buffer: DefaultDict[int, Optional[int]] = defaultdict(lambda: None)
+    zoom_buffer: DefaultDict[int, Optional[int]] = defaultdict(lambda: 1)
     zoom_buffer.update(
         {
             0: 10000,
@@ -89,7 +95,7 @@ def _get_buffer_distance(zoom: int) -> Optional[int]:
             3: 1250,
             4: 600,
             5: 300,
-            6: 500,
+            6: 150,
             7: 80,
             8: 40,
             9: 20,
@@ -117,3 +123,9 @@ async def get_fields(dataset, version):
             break
 
     return fields
+
+
+async def _features_response(rows) -> FeaturesResponse:
+    """Serialize ORM response."""
+    data = list(rows)
+    return FeaturesResponse(data=data)
