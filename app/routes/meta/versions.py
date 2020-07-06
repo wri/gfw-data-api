@@ -174,6 +174,15 @@ async def update_version(
     row: ORMVersion = await versions.update_version(dataset, version, **input_data)
     # TODO: Need to clarify routine for when source_uri has changed. Append/ overwrite
 
+    if "source_uri" in input_data:
+        if row["is_mutable"]:
+            # append
+            input_data["creation_options"] = row["creation_options"]
+            background_tasks.add_task(append_default_asset, dataset, version, input_data, None)
+        else:
+            # overwrite
+            raise NotImplementedError()
+
     return await _version_response(dataset, version, row)
 
 

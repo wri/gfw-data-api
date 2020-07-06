@@ -16,7 +16,7 @@ from ..utils.aws import get_s3_client
 from ..utils.path import split_s3_path
 from .assets import create_asset
 from .raster_source_assets import raster_source_asset
-from .table_source_assets import table_source_asset
+from .table_source_assets import table_source_asset, append_table_source_asset
 from .vector_source_assets import vector_source_asset
 
 DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
@@ -27,6 +27,11 @@ DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
     }.items()
 )
 
+DEFAULT_APPEND_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
+    {
+        SourceType.table: append_table_source_asset,
+    }.items()
+)
 
 async def create_default_asset(
     dataset: str, version: str, input_data: Dict[str, Any], file_obj: Optional[IO],
@@ -63,6 +68,29 @@ async def create_default_asset(
             async with ContextEngine("WRITE"):
                 await versions.update_version(dataset, version, status="failed")
             raise
+
+
+async def append_default_asset(
+    dataset: str, version: str, input_data: Dict[str, Any], file_obj: Optional[IO],
+) -> UUID:
+    source_type = input_data["source_type"]
+    source_uri = input_data["source_uri"]
+    try:
+        await create_asset(
+            source_type,
+            asset.asset_id,
+            dataset=dataset,
+            version=version,
+            input_data=input_data,
+            constructor=DEFAULT_APPEND_ASSET_PIPELINES,
+        )
+
+    # Make sure version status is set to `failed` in case there is an uncaught Exception
+
+    except Exception:
+        async with ContextEngine("WRITE"):
+            await versions.update_version(dataset, version, status="failed")
+        raise
 
 
 async def _create_default_asset(
