@@ -32,7 +32,7 @@ ASSET_PIPELINES: FrozenSet[AssetType] = frozenset(
 Pipeline = Callable[[str, str, UUID, Dict[str, Any]], Coroutine[Any, Any, ChangeLog]]
 
 
-async def create_asset(
+async def put_asset(
     asset_type: str,
     asset_id: UUID,
     dataset: str,
@@ -62,7 +62,7 @@ async def create_asset(
         change_log = ChangeLog(
             date_time=datetime.now(),
             status=ChangeLogStatus.failed,
-            message="Failed to create asset. An unexpected error occurred",
+            message="Failed to create or update asset. An unexpected error occurred",
             detail=str(e),
         )
         async with ContextEngine("WRITE"):

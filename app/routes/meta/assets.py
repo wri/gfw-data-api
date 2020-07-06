@@ -27,7 +27,7 @@ from ...models.pydantic.assets import (
     AssetUpdateIn,
 )
 from ...routes import dataset_dependency, is_admin, version_dependency
-from ...tasks.assets import create_asset
+from ...tasks.assets import put_asset
 from ...tasks.delete_assets import (
     delete_database_table,
     delete_dynamic_vector_tile_cache_assets,
@@ -133,7 +133,7 @@ async def add_new_asset(
         raise HTTPException(status_code=501, detail=str(e))
 
     background_tasks.add_task(
-        create_asset, row.asset_type, row.asset_id, dataset, version, input_data
+        put_asset, row.asset_type, row.asset_id, dataset, version, input_data
     )
     response.headers["Location"] = f"/{dataset}/{version}/asset/{row.asset_id}"
     return await _asset_response(row)

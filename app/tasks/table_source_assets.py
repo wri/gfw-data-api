@@ -10,6 +10,7 @@ from ..models.pydantic.creation_options import (
     TableSourceCreationOptions,
 )
 from ..models.pydantic.jobs import Job, PostgresqlClientJob
+from ..routes.tasks.tasks import _get_field_metadata
 from ..settings.globals import CHUNK_SIZE
 from ..tasks import Callback, callback_constructor, writer_secrets
 from ..tasks.batch import execute, BATCH_DEPENDENCY_LIMIT
@@ -194,6 +195,8 @@ async def append_table_source_asset(
     creation_options = TableSourceCreationOptions(**input_data["creation_options"])  # TODO get from row
     source_uris: List[str] = input_data["source_uri"]
 
+    field_metadata = await _get_field_metadata(dataset, version)
+    field_names = f"({','.join([field['field_name_'] for field in field_metadata if field['is_feature_info']])})"
     callback: Callback = callback_constructor(asset_id)
 
     job_env: List[Dict[str, Any]] = writer_secrets + [
@@ -221,12 +224,16 @@ async def append_table_source_asset(
             "-D",
             creation_options.delimiter.encode(
                 "unicode_escape"
-            ).decode(),  # Need to escape special characters such as TAB for batch job payload
+            ).decode(),  # Need to escape special characters such as TAB for batch job payload,
+            "-fn",
+            field_names,
         ]
 
         for uri in uri_chunk:
-            command.append("-s")
-            command.append(uri)
+            command += ["-s", uri]
+
+        #for field in field_names:
+        #    command += ["-fn", field]
 
         load_data_jobs.append(
             PostgresqlClientJob(
@@ -245,7 +252,7 @@ async def append_table_source_asset(
             PostgresqlClientJob(
                 job_name="add_point_geometry",
                 command=[
-                    "add_point_geometry.sh",
+                    "add_point_geometry_fields.sh",
                     "-d",
                     dataset,
                     "-v",
@@ -261,12 +268,27 @@ async def append_table_source_asset(
             ),
         )
 
-    # TODO do we need to regularly call CLUSTER? or will we be fine just waiting for the quarterly update?
+    """
+    if creation_options.cluster:
+        cluster_jobs: List[Job] = _create_cluster_jobs(
+            dataset,
+            version,
+            creation_options.partitions,
+            creation_options.cluster,
+            geometry_jobs + load_data_jobs,
+            job_env,
+            callback,
+        )
+    else:
+        cluster_jobs = list()
+    """
+    cluster_jobs = list()
 
     log: ChangeLog = await execute(
         [
             *load_data_jobs,
             *geometry_jobs,
+            *cluster_jobs,
         ]
     )
 
@@ -442,24 +464,30 @@ def _cluster_partition_job(
     index: int,
     job_env: List[Dict[str, str]],
     callback: Callback,
+    partition_suffix: Optional[str] = None,
 ):
+    command = [
+        "cluster_partitions.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+        "-p",
+        partition_type,
+        "-P",
+        partition_schema,
+        "-c",
+        column_name,
+        "-x",
+        index_type,
+    ]
+
+    if partition_suffix:
+        command += ["-PS", partition_suffix]
+
     return PostgresqlClientJob(
         job_name=f"cluster_partitions_{index}",
-        command=[
-            "cluster_partitions.sh",
-            "-d",
-            dataset,
-            "-v",
-            version,
-            "-p",
-            partition_type,
-            "-P",
-            partition_schema,
-            "-c",
-            column_name,
-            "-x",
-            index_type,
-        ],
+        command=command,
         environment=job_env,
         parents=parents,
         callback=callback,

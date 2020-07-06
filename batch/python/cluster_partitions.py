@@ -14,6 +14,7 @@ import psycopg2
 @click.option("-P", "--partition_schema", type=str, help="Partition schema")
 @click.option("-x", "--index_type", type=str, help="Index type used for clustering")
 @click.option("-c", "--column_name", type=str, help="Column used for clustering")
+@click.option("-PS", "--partition_suffix", type=str, help="Column used for clustering")
 def cli(
     dataset: str,
     version: str,
@@ -21,10 +22,11 @@ def cli(
     partition_schema: str,
     index_type: str,
     column_name: str,
+    partition_suffix: str,
 ) -> None:
 
     click.echo(
-        f"python cluster_partitions.py -d {dataset} -v {version} -p {partition_type} -P {partition_schema} -x {index_type} -c {column_name}"
+        f"python cluster_partitions.py -d {dataset} -v {version} -p {partition_type} -P {partition_schema} -x {index_type} -c {column_name} -s {partition_suffix}"
     )
 
     connection = psycopg2.connect(
@@ -51,7 +53,8 @@ def cli(
     # ListSchema = Dict[str, List[str]]
     elif partition_type == "list":
         partition_list: list = json.loads(partition_schema)
-        for partition in partition_list:
+        partitions = {partition_suffix: partition_list[partition_suffix]} if partition_suffix else partition_list
+        for partition in partitions:
             sql = f"""CLUSTER "{dataset}"."{version}_{partition["partition_suffix"]}" USING "{version}_{partition["partition_suffix"]}_{column_name}_idx\";"""
             click.echo(sql)
             cursor.execute(sql)
@@ -59,7 +62,8 @@ def cli(
     # RangeSchema = Dict[str, Tuple[Any, Any]]
     elif partition_type == "range":
         partition_list = json.loads(partition_schema)
-        for partition in partition_list:
+        partitions = {partition_suffix: partition_list[partition_suffix]} if partition_suffix else partition_list
+        for partition in partitions:
             sql = f"""CLUSTER "{dataset}"."{version}_{partition["partition_suffix"]}" USING "{version}_{partition["partition_suffix"]}_{column_name}_idx\";"""
             click.echo(sql)
             cursor.execute(sql)

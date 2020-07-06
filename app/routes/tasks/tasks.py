@@ -33,7 +33,7 @@ from ...models.pydantic.tasks import (
     TaskUpdateIn,
 )
 from ...settings.globals import TILE_CACHE_URL
-from ...tasks.assets import create_asset
+from ...tasks.assets import put_asset
 from .. import is_service_account
 
 router = APIRouter()
@@ -302,7 +302,7 @@ async def _register_dynamic_vector_tile_cache(
                 await versions.update_version(dataset, version, change_log=[log.dict()])
         else:
             # otherwise we run the asset pipeline (synchronously)
-            await create_asset(
+            await put_asset(
                 AssetType.dynamic_vector_tile_cache,
                 asset_orm.asset_id,
                 dataset,

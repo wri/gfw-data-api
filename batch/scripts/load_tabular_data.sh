@@ -7,6 +7,7 @@ set -e
 # -v | --version
 # -s | --source
 # -D | --delimiter
+# -fn | --field_names
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
@@ -17,5 +18,9 @@ if [ "$DELIMITER" == "\t" ]; then
 fi
 
 for uri in "${SRC[@]}"; do
-  aws s3 cp "${uri}" - | psql -c "COPY \"$DATASET\".\"$VERSION\" FROM STDIN WITH (FORMAT CSV, DELIMITER '$DELIMITER', HEADER)"
+  if [ -z "$FIELD_NAMES" ]; then
+    aws s3 cp "${uri}" - | psql -c "COPY \"$DATASET\".\"$VERSION\" FROM STDIN WITH (FORMAT CSV, DELIMITER '$DELIMITER', HEADER)"
+  else
+    aws s3 cp "${uri}" - | psql -c "COPY \"$DATASET\".\"$VERSION\" $FIELD_NAMES FROM STDIN WITH (FORMAT CSV, DELIMITER '$DELIMITER', HEADER)"
+  fi
 done
