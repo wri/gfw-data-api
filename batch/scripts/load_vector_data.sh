@@ -13,7 +13,8 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
-echo "AWSCLI: COPY DATA FROM S3 to STDOUT"
+
+echo "AWSCLI: COPY DATA FROM $SRC TO $LOCAL_FILE"
 aws s3 cp "$SRC" "$LOCAL_FILE"
 
 # use virtual GDAL vsizip wrapper for ZIP files
@@ -21,7 +22,7 @@ aws s3 cp "$SRC" "$LOCAL_FILE"
 #  the current implementation assumes that the file sits at the root level of the zip file
 #  and can't be in sub directory.
 if [ "${ZIPPED}" == "True" ]; then
-  LOCAL_FILE="/vsizip/${LOCAL_FILE}/${LOCAL_FILE//.zip/}"
+  LOCAL_FILE="/vsizip/${LOCAL_FILE}"
 fi
 
 echo "OGR2OGR: Import \"${DATASET}\".\"${VERSION}\" from ${LOCAL_FILE} ${SRC_LAYER}"
