@@ -74,7 +74,8 @@ async def append_default_asset(
     dataset: str, version: str, input_data: Dict[str, Any], file_obj: Optional[IO],
 ) -> UUID:
     source_type = input_data["source_type"]
-    source_uri = input_data["source_uri"]
+    asset = input_data["asset_id"]
+
     try:
         await create_asset(
             source_type,
