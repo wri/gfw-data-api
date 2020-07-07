@@ -42,11 +42,7 @@ async def get_features_by_location(dataset, version, lat, lng, zoom):
     t = db.table(version)
     t.schema = dataset
 
-    buffer_distance = _get_buffer_distance(zoom)
-    if buffer_distance:
-        geometry = geoPolygon(geodesic_point_buffer(lat, lng, buffer_distance))
-    else:
-        geometry = geoPoint((lat, lng))
+    geometry = geodesic_point_buffer(lat, lng, zoom)
 
     all_columns = await get_fields(dataset, version)
     feature_columns = [
@@ -66,20 +62,30 @@ async def get_features_by_location(dataset, version, lat, lng, zoom):
     return features
 
 
-def geodesic_point_buffer(lat, lng, meter):
-    """https://gis.stackexchange.com/questions/289044/creating-buffer-circle-x-
+def geodesic_point_buffer(lat, lng, zoom):
+    """Return either a point at or polygon surrounding provided latitude and
+    longitude (depending on zoom level) as geoJSON see
+    https://gis.stackexchange.com/questions/289044/creating-buffer-circle-x-
     kilometers-from-point-using-python."""
-    proj_wgs84 = pyproj.Proj(init="epsg:4326")
-    # Azimuthal equidistant projection
-    aeqd_proj = "+proj=aeqd +lat_0={lat} +lon_0={lon} +x_0=0 +y_0=0"
-    project = partial(
-        pyproj.transform, pyproj.Proj(aeqd_proj.format(lat=lat, lon=lng)), proj_wgs84
-    )
-    buf = Point(0, 0).buffer(meter)  # distance in metres
+    buffer_distance = _get_buffer_distance(zoom)
 
-    coord_list = transform(project, buf).exterior.coords[:]
+    if buffer_distance:
+        proj_wgs84 = pyproj.Proj(init="epsg:4326")
+        # Azimuthal equidistant projection
+        aeqd_proj = "+proj=aeqd +lat_0={lat} +lon_0={lon} +x_0=0 +y_0=0"
+        project = partial(
+            pyproj.transform,
+            pyproj.Proj(aeqd_proj.format(lat=lat, lon=lng)),
+            proj_wgs84,
+        )
+        buf = Point(0, 0).buffer(buffer_distance)  # distance in metres
 
-    return [coord_list]
+        coord_list = transform(project, buf).exterior.coords[:]
+        geojson_geometry = geoPolygon([coord_list])
+    else:
+        geojson_geometry = geoPoint((lat, lng))
+
+    return geojson_geometry
 
 
 def _get_buffer_distance(zoom: int) -> Optional[int]:
