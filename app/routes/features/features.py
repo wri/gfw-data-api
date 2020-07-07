@@ -2,7 +2,7 @@
 only) in a classic RESTful way."""
 from collections import defaultdict
 from functools import partial
-from typing import DefaultDict, List, Optional
+from typing import DefaultDict, Optional
 
 import pyproj
 from fastapi import APIRouter, Depends, Query
