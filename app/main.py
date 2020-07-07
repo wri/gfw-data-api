@@ -4,13 +4,13 @@ import sys
 
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.logger import logger
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
-
-from app.routes.tasks import tasks
 
 from .application import app
 from .errors import ClientError, ServerError
@@ -20,6 +20,7 @@ from .routes.features import features
 from .routes.geostore import geostore
 from .routes.meta import assets, datasets, versions
 from .routes.sql import queries
+from .routes.tasks import tasks
 
 ################
 # LOGGING
@@ -82,6 +83,10 @@ MIDDLEWARE = (set_db_mode, redirect_latest)
 for m in MIDDLEWARE:
     app.add_middleware(BaseHTTPMiddleware, dispatch=m)
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+)
 ################
 # AUTHENTICATION
 ################

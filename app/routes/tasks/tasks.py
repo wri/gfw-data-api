@@ -81,7 +81,7 @@ async def create_task(
 ) -> TaskResponse:
     """Create a task."""
 
-    input_data = request.dict()
+    input_data = request.dict(exclude_none=True, by_alias=True)
     try:
         task_row = await tasks.create_task(task_id, **input_data)
     except RecordAlreadyExistsError as e:
@@ -108,7 +108,7 @@ async def update_task(
     to asset and version rows.
     """
 
-    input_data = request.dict()
+    input_data = request.dict(exclude_none=True, by_alias=True)
     task_row = await tasks.update_task(task_id, **input_data)
 
     asset_id = task_row.asset_id
@@ -151,7 +151,9 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
     )
 
     asset_row: ORMAsset = await assets.update_asset(
-        asset_id, status=AssetStatus.failed, change_log=[status_change_log.dict()]
+        asset_id,
+        status=AssetStatus.failed,
+        change_log=[status_change_log.dict(by_alias=True)],
     )
 
     # For database tables, try to fetch list of fields and their types from PostgreSQL
@@ -171,7 +173,7 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
             dataset,
             version,
             status=VersionStatus.failed,
-            change_log=[status_change_log.dict()],
+            change_log=[status_change_log.dict(by_alias=True)],
         )
 
 
@@ -194,7 +196,9 @@ async def _check_completed(asset_id: UUID):
 
     if all_finished:
         asset_row: ORMAsset = await assets.update_asset(
-            asset_id, status=AssetStatus.saved, change_log=[status_change_log.dict()]
+            asset_id,
+            status=AssetStatus.saved,
+            change_log=[status_change_log.dict(by_alias=True)],
         )
 
         # For database tables, fetch list of fields and their types from PostgreSQL
@@ -217,7 +221,7 @@ async def _check_completed(asset_id: UUID):
                 dataset,
                 version,
                 status=VersionStatus.saved,
-                change_log=[status_change_log.dict()],
+                change_log=[status_change_log.dict(by_alias=True)],
             )
 
 
@@ -250,7 +254,7 @@ async def _get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]
             metadata.is_filter = False
             metadata.is_feature_info = False
         metadata.field_alias = metadata.field_name_
-        field_metadata.append(metadata.dict())
+        field_metadata.append(metadata.dict(by_alias=True))
 
     return field_metadata
 
@@ -259,7 +263,7 @@ async def _update_asset_field_metadata(dataset, version, asset_id) -> ORMAsset:
     """Update asset field metadata."""
 
     field_metadata: List[Dict[str, Any]] = await _get_field_metadata(dataset, version)
-    metadata = {"fields_": field_metadata}
+    metadata = {"fields": field_metadata}
 
     async with ContextEngine("WRITE"):
         return await assets.update_asset(asset_id, metadata=metadata)
@@ -273,14 +277,17 @@ async def _register_dynamic_vector_tile_cache(
         dataset, version,
     )
     creation_options = DynamicVectorTileCacheCreationOptions()
-    if row.creation_options["create_dynamic_vector_tile_cache"]:
+    create_dynamic_vector_tile_cache: Optional[bool] = row.creation_options.get(
+        "create_dynamic_vector_tile_cache", None
+    )
+    if create_dynamic_vector_tile_cache:
         data = AssetCreateIn(
             asset_type=AssetType.dynamic_vector_tile_cache,
             asset_uri=f"{TILE_CACHE_URL}/{dataset}/{version}/dynamic/{{z}}/{{x}}/{{y}}.pbf",
             is_managed=True,
-            creation_options=creation_options.dict(),
+            creation_options=creation_options.dict(by_alias=True),
             metadata={
-                "fields_": metadata["fields_"],
+                "fields": metadata["fields"],
                 "min_zoom": creation_options.min_zoom,
                 "max_zoom": creation_options.max_zoom,
             },
@@ -288,7 +295,9 @@ async def _register_dynamic_vector_tile_cache(
 
         try:
             async with ContextEngine("WRITE"):
-                asset_orm = await assets.create_asset(dataset, version, **data.dict())
+                asset_orm = await assets.create_asset(
+                    dataset, version, **data.dict(by_alias=True)
+                )
 
         except Exception as e:
             # In case creating the asset record fails we only log to version change log
@@ -299,7 +308,9 @@ async def _register_dynamic_vector_tile_cache(
                 detail=str(e),
             )
             async with ContextEngine("WRITE"):
-                await versions.update_version(dataset, version, change_log=[log.dict()])
+                await versions.update_version(
+                    dataset, version, change_log=[log.dict(by_alias=True)]
+                )
         else:
             # otherwise we run the asset pipeline (synchronously)
             await put_asset(
@@ -307,7 +318,7 @@ async def _register_dynamic_vector_tile_cache(
                 asset_orm.asset_id,
                 dataset,
                 version,
-                data.dict(),
+                data.dict(by_alias=True),
             )
 
 
@@ -320,5 +331,5 @@ def _task_response(data: ORMTask) -> TaskResponse:
 
 async def _tasks_response(tasks_orm: List[ORMTask]) -> TasksResponse:
     """Serialize ORM response."""
-    data = [Task.from_orm(task) for task in tasks_orm]  # .dict(by_alias=True)
+    data = [Task.from_orm(task) for task in tasks_orm]
     return TasksResponse(data=data)

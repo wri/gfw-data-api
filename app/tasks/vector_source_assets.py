@@ -72,6 +72,8 @@ async def vector_source_asset(
                     layer,
                     "-f",
                     local_file,
+                    "-X",
+                    str(zipped),
                 ],
                 parents=[create_vector_schema_job.job_name],
                 environment=job_env,

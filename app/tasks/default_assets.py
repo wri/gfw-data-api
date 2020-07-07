@@ -46,13 +46,15 @@ async def create_default_asset(
     if file_obj:
         log = await _inject_file(file_obj, source_uri[0])
         async with ContextEngine("WRITE"):
-            await versions.update_version(dataset, version, change_log=[log.dict()])
+            await versions.update_version(
+                dataset, version, change_log=[log.dict(by_alias=True)]
+            )
 
     if log and log.status == "failed":
         # Update version status and change log
         async with ContextEngine("WRITE"):
             await versions.update_version(
-                dataset, version, status=status, change_log=[log.dict()]
+                dataset, version, status=status, change_log=[log.dict(by_alias=True)]
             )
         raise RuntimeError(f"Could not create asset for {dataset}.{version}")
 
@@ -118,7 +120,7 @@ async def _create_default_asset(
     )
 
     async with ContextEngine("WRITE"):
-        new_asset = await assets.create_asset(**data.dict())
+        new_asset = await assets.create_asset(**data.dict(by_alias=True))
 
     await put_asset(
         source_type,

@@ -13,11 +13,13 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
+from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
-from ...crud import assets
+from ...crud import assets, versions
 from ...errors import ClientError, RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.assets import Asset as ORMAsset
+from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.assets import (
     Asset,
     AssetCreateIn,
@@ -26,6 +28,8 @@ from ...models.pydantic.assets import (
     AssetType,
     AssetUpdateIn,
 )
+from ...models.pydantic.creation_options import asset_creation_option_factory
+from ...models.pydantic.metadata import asset_metadata_factory
 from ...routes import dataset_dependency, is_admin, version_dependency
 from ...tasks.assets import put_asset
 from ...tasks.delete_assets import (
@@ -91,8 +95,9 @@ async def get_asset(
 
     if row.dataset != dataset and row.version != version:
         raise ClientError(
-            status_code=404,
-            detail=f"Could not find requested asset {dataset}/{version}/{asset_id}",
+            status_code=400,
+            detail="The requested asset exists but does not belong to the specified dataset version."
+            f"Try {row.dataset}/{row.version}/{asset_id} instead",
         )
 
     return await _asset_response(row)
@@ -121,7 +126,8 @@ async def add_new_asset(
     If the asset is not managed, you need to specify an Asset URI to
     link to.
     """
-    input_data = request.dict()
+
+    input_data = request.dict(exclude_none=True, by_alias=True)
 
     await verify_version_status(dataset, version)
 
@@ -155,7 +161,7 @@ async def update_asset(
 ) -> AssetResponse:
     """Update Asset metadata."""
 
-    input_data = request.dict(exclude_unset=True)
+    input_data = request.dict(exclude_none=True, by_alias=True)
     await verify_version_status(dataset, version)
 
     try:
@@ -250,12 +256,24 @@ async def delete_asset(
 async def _asset_response(asset_orm: ORMAsset) -> AssetResponse:
     """Serialize ORM response."""
 
-    data = Asset.from_orm(asset_orm)
-
+    data: Asset = await _serialized_asset(asset_orm)
     return AssetResponse(data=data)
 
 
 async def _assets_response(assets_orm: List[ORMAsset]) -> AssetsResponse:
     """Serialize ORM response."""
-    data = [Asset.from_orm(asset) for asset in assets_orm]
+    data = [await _serialized_asset(asset_orm) for asset_orm in assets_orm]
     return AssetsResponse(data=data)
+
+
+async def _serialized_asset(asset_orm: ORMAsset) -> Asset:
+    version_orm: ORMVersion = await versions.get_version(
+        asset_orm.dataset, asset_orm.version
+    )
+    data: Asset = Asset.from_orm(asset_orm)
+    data.metadata = asset_metadata_factory(asset_orm.asset_type, asset_orm.metadata)
+    data.creation_options = asset_creation_option_factory(
+        version_orm.source_type, asset_orm.asset_type, asset_orm.creation_options
+    )
+    logger.debug(f"Metadata: {data.metadata.dict(by_alias=True)}")
+    return data

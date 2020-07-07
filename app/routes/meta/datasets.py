@@ -71,10 +71,10 @@ async def create_dataset(
 ) -> DatasetResponse:
     """Create or update a dataset."""
 
+    input_data = request.dict(exclude_none=True, by_alias=True)
+
     try:
-        new_dataset: ORMDataset = await datasets.create_dataset(
-            dataset, **request.dict()
-        )
+        new_dataset: ORMDataset = await datasets.create_dataset(dataset, **input_data)
     except RecordAlreadyExistsError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -105,7 +105,7 @@ async def update_dataset_metadata(
     Only metadata field can be updated. All other fields will be
     ignored.
     """
-    input_data = request.dict(exclude_unset=True)
+    input_data = request.dict(exclude_none=True, by_alias=True)
     row: ORMDataset = await datasets.update_dataset(dataset, **input_data)
 
     return await _dataset_response(dataset, row)

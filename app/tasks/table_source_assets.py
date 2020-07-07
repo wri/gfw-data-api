@@ -13,7 +13,7 @@ from ..models.pydantic.jobs import Job, PostgresqlClientJob
 from ..routes.tasks.tasks import _get_field_metadata
 from ..settings.globals import CHUNK_SIZE
 from ..tasks import Callback, callback_constructor, writer_secrets
-from ..tasks.batch import execute, BATCH_DEPENDENCY_LIMIT
+from ..tasks.batch import BATCH_DEPENDENCY_LIMIT, execute
 
 
 async def table_source_asset(
@@ -35,7 +35,7 @@ async def table_source_asset(
         "-s",
         source_uris[0],
         "-m",
-        json.dumps(creation_options.dict()["table_schema"]),
+        json.dumps(creation_options.dict(by_alias=True)["table_schema"]),
     ]
     if creation_options.partitions:
         command.extend(
@@ -78,8 +78,7 @@ async def table_source_asset(
     # limit, so break sources into chunks
     chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
     uri_chunks = [
-        source_uris[x: x + chunk_size]
-        for x in range(0, len(source_uris), chunk_size)
+        source_uris[x : x + chunk_size] for x in range(0, len(source_uris), chunk_size)
     ]
 
     for i, uri_chunk in enumerate(uri_chunks):
@@ -311,7 +310,9 @@ def _create_partition_jobs(
     partition_jobs: List[PostgresqlClientJob] = list()
 
     if isinstance(partitions.partition_schema, list):
-        chunks = _chunk_list([schema.dict() for schema in partitions.partition_schema])
+        chunks = _chunk_list(
+            [schema.dict(by_alias=True) for schema in partitions.partition_schema]
+        )
         for i, chunk in enumerate(chunks):
             partition_schema: str = json.dumps(chunk)
             job: PostgresqlClientJob = _partition_job(
@@ -328,7 +329,7 @@ def _create_partition_jobs(
             partition_jobs.append(job)
     else:
 
-        partition_schema = json.dumps(partitions.partition_schema.dict())
+        partition_schema = json.dumps(partitions.partition_schema.dict(by_alias=True))
         job = _partition_job(
             dataset,
             version,
@@ -394,7 +395,7 @@ def _create_cluster_jobs(
 
         if isinstance(partitions.partition_schema, list):
             chunks = _chunk_list(
-                [schema.dict() for schema in partitions.partition_schema]
+                [schema.dict(by_alias=True) for schema in partitions.partition_schema]
             )
             for i, chunk in enumerate(chunks):
                 partition_schema: str = json.dumps(chunk)
@@ -414,7 +415,9 @@ def _create_cluster_jobs(
                 parents = [job.job_name]
 
         else:
-            partition_schema = json.dumps(partitions.partition_schema.dict())
+            partition_schema = json.dumps(
+                partitions.partition_schema.dict(by_alias=True)
+            )
 
             job = _cluster_partition_job(
                 dataset,

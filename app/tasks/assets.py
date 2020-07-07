@@ -67,7 +67,9 @@ async def put_asset(
         )
         async with ContextEngine("WRITE"):
             await assets.update_asset(
-                asset_id, status=AssetStatus.failed, change_log=[change_log.dict()]
+                asset_id,
+                status=AssetStatus.failed,
+                change_log=[change_log.dict(by_alias=True)],
             )
         raise
 
@@ -78,8 +80,12 @@ async def put_asset(
 
     # Update asset status and change log
     async with ContextEngine("WRITE"):
-        await assets.update_asset(asset_id, status=status, change_log=[log.dict()])
-        await versions.update_version(dataset, version, change_log=[log.dict()])
+        await assets.update_asset(
+            asset_id, status=status, change_log=[log.dict(by_alias=True)]
+        )
+        await versions.update_version(
+            dataset, version, change_log=[log.dict(by_alias=True)]
+        )
 
 
 # TODO:
