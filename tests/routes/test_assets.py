@@ -1,10 +1,13 @@
 import uuid
 from unittest.mock import patch
 
+import pytest
+
 from tests.routes import create_default_asset
 
 
-def test_assets(client, db):
+@pytest.mark.asyncio
+async def test_assets(async_client, db):
     """Basic tests of asset endpoint behavior."""
     # Add a dataset, version, and default asset
     dataset = "test"
@@ -14,14 +17,14 @@ def test_assets(client, db):
         return uuid.uuid4()
 
     with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
-        asset = create_default_asset(client, dataset, version)
+        asset = await create_default_asset(dataset, version)
     asset_id = asset["asset_id"]
 
     # Verify that the asset and version are in state "pending"
-    version_resp = client.get(f"/meta/{dataset}/{version}")
+    version_resp = await async_client.get(f"/meta/{dataset}/{version}")
     assert version_resp.json()["data"]["status"] == "pending"
 
-    asset_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
+    asset_resp = await async_client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
     assert asset_resp.json()["data"]["status"] == "pending"
 
     # Try adding a non-default asset, which shouldn't work while the version
@@ -36,7 +39,7 @@ def test_assets(client, db):
             "delimiter": ",",
         },
     }
-    create_asset_resp = client.post(
+    create_asset_resp = await async_client.post(
         f"/meta/{dataset}/{version}/assets", json=asset_payload
     )
     assert create_asset_resp.json()["status"] == "failed"
@@ -48,7 +51,8 @@ def test_assets(client, db):
     # Now add a task changelog of status "failed" which should make the
     # version status "failed". Try to add a non-default asset again, which
     # should fail as well but with a different explanation.
-    tasks = client.get(f"/tasks/assets/{asset_id}").json()["data"]
+    get_resp = await async_client.get(f"/tasks/assets/{asset_id}")
+    tasks = get_resp.json()["data"]
     sample_task_id = tasks[0]["task_id"]
     patch_payload = {
         "change_log": [
@@ -60,10 +64,12 @@ def test_assets(client, db):
             }
         ]
     }
-    patch_resp = client.patch(f"/tasks/{sample_task_id}", json=patch_payload)
+    patch_resp = await async_client.patch(
+        f"/tasks/{sample_task_id}", json=patch_payload
+    )
     assert patch_resp.json()["status"] == "success"
 
-    create_asset_resp = client.post(
+    create_asset_resp = await async_client.post(
         f"/meta/{dataset}/{version}/assets", json=asset_payload
     )
     assert create_asset_resp.json()["status"] == "failed"

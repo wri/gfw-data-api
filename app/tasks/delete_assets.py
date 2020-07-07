@@ -53,5 +53,5 @@ async def delete_raster_tileset_assets(
 
 
 async def delete_database_table(dataset, version):
-    async with ContextEngine("PUT"):
+    async with ContextEngine("WRITE"):
         await db.status(f"""DROP TABLE IF EXISTS "{dataset}"."{version}" CASCADE;""")
