@@ -18,9 +18,12 @@ if [ "$DELIMITER" == "\t" ]; then
 fi
 
 for uri in "${SRC[@]}"; do
-  if [ -z "$FIELD_NAMES" ]; then
-    aws s3 cp "${uri}" - | psql -c "COPY \"$DATASET\".\"$VERSION\" FROM STDIN WITH (FORMAT CSV, DELIMITER '$DELIMITER', HEADER)"
-  else
-    aws s3 cp "${uri}" - | psql -c "COPY \"$DATASET\".\"$VERSION\" $FIELD_NAMES FROM STDIN WITH (FORMAT CSV, DELIMITER '$DELIMITER', HEADER)"
-  fi
+  set +e
+  FIELDS=$(aws s3 cp "${uri}" - | head -1)
+  set -e
+
+  FIELDS=$(sed -e $'s/\\t/,/g' -e 's/^/"/;s/$/"/' -e 's/,/","/g' <<< $FIELDS)
+  FIELDS="($FIELDS)"
+
+  aws s3 cp "${uri}" - | psql -c "COPY \"$DATASET\".\"$VERSION\" $FIELDS FROM STDIN WITH (FORMAT CSV, DELIMITER '$DELIMITER', HEADER)"
 done

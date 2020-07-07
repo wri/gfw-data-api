@@ -194,8 +194,6 @@ async def append_table_source_asset(
     creation_options = TableSourceCreationOptions(**input_data["creation_options"])  # TODO get from row
     source_uris: List[str] = input_data["source_uri"]
 
-    field_metadata = await _get_field_metadata(dataset, version)
-    field_names = f"({','.join([field['field_name_'] for field in field_metadata if field['is_feature_info']])})"
     callback: Callback = callback_constructor(asset_id)
 
     job_env: List[Dict[str, Any]] = writer_secrets + [
@@ -224,15 +222,10 @@ async def append_table_source_asset(
             creation_options.delimiter.encode(
                 "unicode_escape"
             ).decode(),  # Need to escape special characters such as TAB for batch job payload,
-            "-fn",
-            field_names,
         ]
 
         for uri in uri_chunk:
             command += ["-s", uri]
-
-        #for field in field_names:
-        #    command += ["-fn", field]
 
         load_data_jobs.append(
             PostgresqlClientJob(

@@ -234,11 +234,13 @@ async def test_table_source_asset(batch_client, httpd):
 
     append_data = {
         "source_uri": [f"s3://{BUCKET}/{APPEND_TSV_NAME}"],
+        "source_type": "table",
+        "creation_options": input_data["creation_options"]
     }
 
     # Create default asset in mocked BATCH
     async with ContextEngine("WRITE"):
-        asset_id = await append_default_asset(dataset, version, append_data, None, )
+        asset_id = await append_default_asset(dataset, version, append_data, asset_id)
 
     tasks_rows = await tasks.get_tasks(asset_id)
     task_ids = [str(task.task_id) for task in tasks_rows]
