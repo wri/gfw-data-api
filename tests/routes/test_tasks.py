@@ -2,11 +2,14 @@ import json
 import uuid
 from unittest.mock import patch
 
+import pytest
+
 from app.models.enum.assets import AssetType
 from tests.routes import create_default_asset
 
 
-def test_tasks_success(client, db):
+@pytest.mark.asyncio
+async def test_tasks_success(async_client, db):
     """Verify that all tasks succeeding -> 'saved' status for default
     asset/version.
 
@@ -21,14 +24,14 @@ def test_tasks_success(client, db):
         return uuid.uuid4()
 
     with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
-        asset = create_default_asset(client, dataset, version)
+        asset = await create_default_asset(dataset, version)
     asset_id = asset["asset_id"]
 
     # Verify that the asset and version are in state "pending"
-    version_resp = client.get(f"/meta/{dataset}/{version}")
+    version_resp = await async_client.get(f"/meta/{dataset}/{version}")
     assert version_resp.json()["data"]["status"] == "pending"
 
-    asset_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
+    asset_resp = await async_client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
     assert asset_resp.json()["data"]["status"] == "pending"
 
     # At this point there should be a bunch of tasks rows for the default
@@ -39,7 +42,9 @@ def test_tasks_success(client, db):
 
     # Verify the existence of the tasks, and that they each have only the
     # initial changelog with status "pending"
-    existing_tasks = client.get(f"/tasks/assets/{asset_id}").json()["data"]
+    get_resp = await async_client.get(f"/tasks/assets/{asset_id}")
+    existing_tasks = get_resp.json()["data"]
+
     assert len(existing_tasks) == 7
     for task in existing_tasks:
         assert len(task["change_log"]) == 1
@@ -57,18 +62,20 @@ def test_tasks_success(client, db):
             }
         ]
     }
-    patch_resp = client.patch(f"/tasks/{sample_task_id}", json=patch_payload)
+    patch_resp = await async_client.patch(
+        f"/tasks/{sample_task_id}", json=patch_payload
+    )
     assert patch_resp.json()["status"] == "success"
 
     # Verify the task has two changelogs now.
-    get_resp = client.get(f"/tasks/{sample_task_id}")
+    get_resp = await async_client.get(f"/tasks/{sample_task_id}")
     assert len(get_resp.json()["data"]["change_log"]) == 2
 
     # Verify that the asset and version are still in state "pending"
-    version_resp = client.get(f"/meta/{dataset}/{version}")
+    version_resp = await async_client.get(f"/meta/{dataset}/{version}")
     assert version_resp.json()["data"]["status"] == "pending"
 
-    asset_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
+    asset_resp = await async_client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
     assert asset_resp.json()["data"]["status"] == "pending"
 
     # Update the rest of the tasks with changelogs of status "success"
@@ -84,17 +91,19 @@ def test_tasks_success(client, db):
                 }
             ]
         }
-        patch_resp = client.patch(f"/tasks/{task['task_id']}", json=patch_payload)
+        patch_resp = await async_client.patch(
+            f"/tasks/{task['task_id']}", json=patch_payload
+        )
         assert patch_resp.json()["status"] == "success"
 
-    version_resp = client.get(f"/meta/{dataset}/{version}")
+    version_resp = await async_client.get(f"/meta/{dataset}/{version}")
     assert version_resp.json()["data"]["status"] == "saved"
 
-    asset_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
+    asset_resp = await async_client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
     assert asset_resp.json()["data"]["status"] == "saved"
 
     # Verify if the dynamic vector tile cache was created. Status should be failed b/c batch jobs were not tiggered.
-    assets_resp = client.get(f"/meta/{dataset}/{version}/assets")
+    assets_resp = await async_client.get(f"/meta/{dataset}/{version}/assets")
     assert len(version_resp.json()["data"]["assets"]) == 1
     assert len(assets_resp.json()["data"]) == 2
     assert assets_resp.json()["data"][0]["asset_type"] == AssetType.database_table
@@ -114,7 +123,7 @@ def test_tasks_success(client, db):
         }
     }
 
-    asset_resp = client.patch(
+    asset_resp = await async_client.patch(
         f"/meta/{dataset}/{version}/assets/{asset_id}", json=field_payload
     )
     print(asset_resp.json())
@@ -135,7 +144,7 @@ def test_tasks_success(client, db):
         },
     }
     with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
-        create_asset_resp = client.post(
+        create_asset_resp = await async_client.post(
             f"/meta/{dataset}/{version}/assets", json=asset_payload
         )
     print(json.dumps(create_asset_resp.json(), indent=2))
@@ -144,11 +153,12 @@ def test_tasks_success(client, db):
 
     # Verify there are three assets now,
     # including the implicitly created ndjson asset
-    get_resp = client.get(f"/meta/{dataset}/{version}/assets")
+    get_resp = await async_client.get(f"/meta/{dataset}/{version}/assets")
     assert len(get_resp.json()["data"]) == 4
 
     # Verify the existence of tasks for the new asset
-    non_default_tasks = client.get(f"/tasks/assets/{asset_id}").json()["data"]
+    get_resp = await async_client.get(f"/tasks/assets/{asset_id}")
+    non_default_tasks = get_resp.json()["data"]
     assert len(non_default_tasks) == 1
     for task in non_default_tasks:
         assert len(task["change_log"]) == 1
@@ -166,19 +176,22 @@ def test_tasks_success(client, db):
             }
         ]
     }
-    patch_resp = client.patch(f"/tasks/{sample_task_id}", json=patch_payload)
+    patch_resp = await async_client.patch(
+        f"/tasks/{sample_task_id}", json=patch_payload
+    )
     assert patch_resp.json()["status"] == "success"
 
     # Verify the asset status is now "failed"
-    get_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
+    get_resp = await async_client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
     assert get_resp.json()["data"]["status"] == "failed"
 
     # ... but that the version status is still "saved"
-    get_resp = client.get(f"/meta/{dataset}/{version}")
+    get_resp = await async_client.get(f"/meta/{dataset}/{version}")
     assert get_resp.json()["data"]["status"] == "saved"
 
 
-def test_tasks_failure(client, db):
+@pytest.mark.asyncio
+async def test_tasks_failure(async_client, db):
     """Verify that failing tasks result in failed asset/version."""
     # Add a dataset, version, and default asset
     dataset = "test"
@@ -188,14 +201,14 @@ def test_tasks_failure(client, db):
         return uuid.uuid4()
 
     with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
-        asset = create_default_asset(client, dataset, version)
+        asset = await create_default_asset(dataset, version)
     asset_id = asset["asset_id"]
 
     # Verify that the asset and version are in state "pending"
-    version_resp = client.get(f"/meta/{dataset}/{version}")
+    version_resp = await async_client.get(f"/meta/{dataset}/{version}")
     assert version_resp.json()["data"]["status"] == "pending"
 
-    asset_resp = client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
+    asset_resp = await async_client.get(f"/meta/{dataset}/{version}/assets/{asset_id}")
     assert asset_resp.json()["data"]["status"] == "pending"
 
     # At this point there should be a bunch of tasks rows for the default
@@ -206,7 +219,8 @@ def test_tasks_failure(client, db):
 
     # Verify the existence of the tasks, and that they each have only the
     # initial changelog with status "pending"
-    existing_tasks = client.get(f"/tasks/assets/{asset_id}").json()["data"]
+    get_resp = await async_client.get(f"/tasks/assets/{asset_id}")
+    existing_tasks = get_resp.json()["data"]
 
     assert len(existing_tasks) == 7
     for task in existing_tasks:
@@ -226,9 +240,11 @@ def test_tasks_failure(client, db):
             }
         ]
     }
-    patch_resp = client.patch(f"/tasks/{sample_task_id}", json=patch_payload)
+    patch_resp = await async_client.patch(
+        f"/tasks/{sample_task_id}", json=patch_payload
+    )
     assert patch_resp.json()["status"] == "success"
 
     # Verify that the asset and version have been changed to state "failed"
-    version_resp = client.get(f"/meta/{dataset}/{version}")
+    version_resp = await async_client.get(f"/meta/{dataset}/{version}")
     assert version_resp.json()["data"]["status"] == "failed"

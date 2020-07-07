@@ -29,7 +29,7 @@ if [ "${BUILD}" = true ]; then
   docker build -t batch_gdal-python_test . -f batch/gdal-python.dockerfile
   docker build -t batch_postgresql-client_test . -f batch/postgresql-client.dockerfile
   docker build -t batch_tile_cache_test . -f batch/tile_cache.dockerfile
-  docker-compose -f docker-compose.test.yml build app_test
+  docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test build --no-cache app_test
 fi
 
 docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test run --rm --name app_test app_test tests/"$*"

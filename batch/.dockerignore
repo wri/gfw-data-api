@@ -6,6 +6,9 @@
 #MyPy
 .mypy_cache
 
+# GIT
+.git
+
 # Docker Files
 docker-compose.dev.yml
 docker-compose.test.yml
