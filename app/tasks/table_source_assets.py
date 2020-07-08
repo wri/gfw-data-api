@@ -244,7 +244,7 @@ async def append_table_source_asset(
             PostgresqlClientJob(
                 job_name="add_point_geometry",
                 command=[
-                    "add_point_geometry_fields.sh",
+                    "update_point_geometry.sh",
                     "-d",
                     dataset,
                     "-v",
