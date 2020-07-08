@@ -15,3 +15,6 @@ docker-compose.test.yml
 
 # Terraform
 *terraform*
+
+# Virtual Environments
+.venv

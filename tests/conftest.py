@@ -10,6 +10,7 @@ import requests
 from alembic.config import main
 from docker.models.containers import ContainerCollection
 from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 from app.routes import is_admin, is_service_account
 from app.settings.globals import (
@@ -127,6 +128,16 @@ def client():
 
     app.dependency_overrides = {}
     main(["--raiseerr", "downgrade", "base"])
+
+
+@pytest.fixture(autouse=True)
+@pytest.mark.asyncio
+async def async_client():
+    """Async Test Client."""
+    from app.main import app
+
+    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
+        yield client
 
 
 @pytest.fixture(scope="session")

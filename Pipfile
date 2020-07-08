@@ -13,6 +13,7 @@ pytest-asyncio = "*"
 moto = {editable = true, git = "https://github.com/wri/moto.git", ref = "master"}
 pytest-cov = "*"
 pendulum = "*"
+httpx = "*"
 
 [packages]
 fastapi = "*"
@@ -29,6 +30,9 @@ requests = "*"
 orjson = "*"
 python-multipart = "*"
 aiofiles = "*"
+shapely = "*"
+pyproj = "*"
+geojson = "*"
 
 [requires]
 python_version = "3.8"
