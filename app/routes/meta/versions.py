@@ -179,8 +179,8 @@ async def update_version(
     if "source_uri" in input_data:
         if row.is_mutable:
             # append
-            version_data: ORMVersion = await versions.get_version(dataset, version)
-            version_data.update(input_data)
+            input_data["creation_options"] = row["creation_options"]  # use same creation options for append
+            input_data["source_type"] = row["source_type"]            # use same default asset type
 
             assets: List[ORMAsset] = await get_assets(dataset, version)
 
@@ -188,10 +188,14 @@ async def update_version(
                 if asset.asset_type == default_asset_type(row.source_type):
                     default_asset: ORMAsset = asset
 
-            background_tasks.add_task(append_default_asset, dataset, version, version_data, default_asset.asset_id, None)
+            background_tasks.add_task(append_default_asset, dataset, version, input_data, default_asset.asset_id)
         else:
             # overwrite
-            raise NotImplementedError()
+            raise HTTPException(
+                status_code=501,
+                detail="Not supported."
+                       "Overwriting version sources is not supported",
+            )
 
     return await _version_response(dataset, version, row)
 

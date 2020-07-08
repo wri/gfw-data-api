@@ -9,7 +9,6 @@ set -e
 # -P | --partition_schema
 # -x | --index_type
 # -c | --column_name
-# -PS | --partition_suffix
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"

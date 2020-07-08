@@ -260,27 +260,10 @@ async def append_table_source_asset(
             ),
         )
 
-    """
-    if creation_options.cluster:
-        cluster_jobs: List[Job] = _create_cluster_jobs(
-            dataset,
-            version,
-            creation_options.partitions,
-            creation_options.cluster,
-            geometry_jobs + load_data_jobs,
-            job_env,
-            callback,
-        )
-    else:
-        cluster_jobs = list()
-    """
-    cluster_jobs = list()
-
     log: ChangeLog = await execute(
         [
             *load_data_jobs,
             *geometry_jobs,
-            *cluster_jobs,
         ]
     )
 
@@ -460,7 +443,6 @@ def _cluster_partition_job(
     index: int,
     job_env: List[Dict[str, str]],
     callback: Callback,
-    partition_suffix: Optional[str] = None,
 ):
     command = [
         "cluster_partitions.sh",
@@ -477,9 +459,6 @@ def _cluster_partition_job(
         "-x",
         index_type,
     ]
-
-    if partition_suffix:
-        command += ["-PS", partition_suffix]
 
     return PostgresqlClientJob(
         job_name=f"cluster_partitions_{index}",

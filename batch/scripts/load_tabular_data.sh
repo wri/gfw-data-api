@@ -7,7 +7,6 @@ set -e
 # -v | --version
 # -s | --source
 # -D | --delimiter
-# -fn | --field_names
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 

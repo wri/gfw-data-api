@@ -240,24 +240,27 @@ async def test_table_source_asset(batch_client, httpd):
 
     # Create default asset in mocked BATCH
     async with ContextEngine("WRITE"):
-        asset_id = await append_default_asset(dataset, version, append_data, asset_id)
+        await append_default_asset(dataset, version, append_data, asset_id)
 
     tasks_rows = await tasks.get_tasks(asset_id)
     task_ids = [str(task.task_id) for task in tasks_rows]
+    print(task_ids)
 
     # make sure, all jobs completed
     status = await poll_jobs(task_ids)
+
 
     # Get the logs in case something went wrong
     _print_logs(logs)
     check_callbacks(task_ids, httpd_port)
 
+
     assert status == "saved"
 
-    await _check_version_status(dataset, version)
-    await _check_asset_status(dataset, version, 1)
+    await _check_version_status(dataset, version, 2)
+    await _check_asset_status(dataset, version, 2)
 
-    # The table should now have 100 rows after append
+    # The table should now have 101 rows after append
     async with ContextEngine("READ"):
         count = await db.scalar(
             db.text(
@@ -268,7 +271,6 @@ async def test_table_source_asset(batch_client, httpd):
         )
 
     assert count == 101
-
 
 
 
@@ -447,7 +449,7 @@ def _print_logs(logs):
             print(event["message"])
 
 
-async def _check_version_status(dataset, version):
+async def _check_version_status(dataset, version, log_count=1):
     row = await versions.get_version(dataset, version)
 
     # in this test we don't set the final version status to saved or failed
@@ -455,7 +457,7 @@ async def _check_version_status(dataset, version):
 
     # in this test we only see the logs from background task, not from batch jobs
     print(f"TABLE SOURCE VERSION LOGS: {row.change_log}")
-    assert len(row.change_log) == 1
+    assert len(row.change_log) == log_count
     assert row.change_log[0]["message"] == "Successfully scheduled batch jobs"
 
 

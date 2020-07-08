@@ -26,7 +26,7 @@ TSV_NAME = "test.tsv"
 TSV_PATH = os.path.join(os.path.dirname(__file__), "fixtures", TSV_NAME)
 
 APPEND_TSV_NAME = "append_test.tsv"
-APPEND_TSV_PATH = os.path.join(os.path.dirname(__file__), "fixtures", TSV_NAME)
+APPEND_TSV_PATH = os.path.join(os.path.dirname(__file__), "fixtures", APPEND_TSV_NAME)
 
 GEOJSON_NAME = "test.geojson"
 GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "fixtures", GEOJSON_NAME)

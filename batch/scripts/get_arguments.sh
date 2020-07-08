@@ -71,11 +71,6 @@ do
       shift # past argument
       shift # past value
       ;;
-      -fn|--field_names)
-      FIELD_NAMES=("$2")
-      shift # past argument
-      shift # past value
-      ;;
       -F|--format)
       FORMAT="$2"
       shift # past argument
@@ -118,11 +113,6 @@ do
       ;;
       -P|--partition_schema)
       PARTITION_SCHEMA="$2"
-      shift # past argument
-      shift # past value
-      ;;
-      -PS|--partition_suffix)
-      PARTITION_SUFFIX="$2"
       shift # past argument
       shift # past value
       ;;
