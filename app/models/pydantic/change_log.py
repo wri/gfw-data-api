@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
 from ..enum.change_log import ChangeLogStatus
+from .responses import Response
 
 
 class ChangeLog(BaseModel):
@@ -11,3 +12,7 @@ class ChangeLog(BaseModel):
     status: ChangeLogStatus
     message: str
     detail: Optional[str] = None
+
+
+class ChangeLogResponse(Response):
+    data: List[ChangeLog]

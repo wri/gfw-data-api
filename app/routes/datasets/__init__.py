@@ -1,12 +1,11 @@
 from fastapi import HTTPException
 
-from app.crud.versions import get_version as _get_version
-
+from ...crud import versions as _versions
 from ...models.orm.versions import Version as ORMVersion
 
 
 async def verify_version_status(dataset, version):
-    orm_version: ORMVersion = await _get_version(dataset, version)
+    orm_version: ORMVersion = await _versions.get_version(dataset, version)
 
     if orm_version.status == "pending":
         raise HTTPException(

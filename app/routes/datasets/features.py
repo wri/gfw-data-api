@@ -5,7 +5,8 @@ from functools import partial
 from typing import DefaultDict, Optional
 
 import pyproj
-from fastapi import APIRouter, Depends, Query
+from asyncpg import UndefinedTableError
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
 from geojson import Point as geoPoint
 from geojson import Polygon as geoPolygon
@@ -13,16 +14,18 @@ from shapely.geometry import Point
 from shapely.ops import transform
 from sqlalchemy.sql.elements import TextClause
 
-from ...application import db
-from ...crud import assets
-from ...models.pydantic.assets import AssetType
-from ...models.pydantic.features import FeaturesResponse
-from ...routes import dataset_dependency, version_dependency
+from app.application import db
+from app.crud import assets
+from app.models.pydantic.assets import AssetType
+from app.models.pydantic.features import FeaturesResponse
+from app.routes import dataset_dependency, version_dependency
 
 router = APIRouter()
 
 
-@router.get("/{dataset}/{version}", response_class=ORJSONResponse)
+@router.get(
+    "/{dataset}/{version}/features", response_class=ORJSONResponse, tags=["Versions"]
+)
 async def get_features(
     *,
     dataset: str = Depends(dataset_dependency),
@@ -33,7 +36,15 @@ async def get_features(
 ):
     """Retrieve list of features Add optional spatial filter using a point
     buffer (for info tool)."""
-    feature_rows = await get_features_by_location(dataset, version, lat, lng, z)
+
+    try:
+        feature_rows = await get_features_by_location(dataset, version, lat, lng, z)
+    except UndefinedTableError:
+        raise HTTPException(
+            status_code=501,
+            detail=f"Endpoint not implement for {dataset}.{version}."
+            "Not a table or vector asset.",
+        )
 
     return await _features_response(feature_rows)
 

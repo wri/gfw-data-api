@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from asyncpg import UniqueViolationError
@@ -13,7 +13,7 @@ from ..models.pydantic.creation_options import (
     CreationOptions,
     TableDrivers,
     VectorDrivers,
-    asset_creation_option_factory,
+    creation_option_factory,
 )
 from . import datasets, update_all_metadata, update_data, update_metadata, versions
 
@@ -46,8 +46,34 @@ async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
     return await _update_all_asset_metadata(assets)
 
 
-async def get_asset(asset_id: UUID) -> ORMAsset:
+async def get_assets_by_filter(
+    dataset: Optional[str] = None,
+    version: Optional[str] = None,
+    asset_type: Optional[str] = None,
+    asset_uri: Optional[str] = None,
+    is_latest: Optional[bool] = None,
+    is_default: Optional[bool] = None,
+) -> List[ORMAsset]:
+    query = ORMAsset.query
+    if dataset is not None:
+        query = query.where(ORMAsset.dataset == dataset)
+    if version is not None:
+        query = query.where(ORMAsset.version == version)
+    if asset_type is not None:
+        query = query.where(ORMAsset.asset_type == asset_type)
+    if asset_uri is not None:
+        query = query.where(ORMAsset.asset_uri == asset_uri)
+    if is_latest is not None:
+        query = query.where(ORMAsset.is_latest == is_latest)
+    if is_default is not None:
+        query = query.where(ORMAsset.is_default == is_default)
 
+    assets = await query.gino.all()
+
+    return await _update_all_asset_metadata(assets)
+
+
+async def get_asset(asset_id: UUID) -> ORMAsset:
     row: ORMAsset = await ORMAsset.get([asset_id])
     if row is None:
         raise RecordNotFoundError(f"Could not find requested asset {asset_id}")
@@ -59,8 +85,23 @@ async def get_asset(asset_id: UUID) -> ORMAsset:
     return update_metadata(row, version)
 
 
-async def create_asset(dataset, version, **data) -> ORMAsset:
+async def get_default_asset(dataset: str, version: str) -> ORMAsset:
+    row: ORMAsset = await ORMAsset.query.where(ORMAsset.dataset == dataset).where(
+        ORMAsset.version == version
+    ).where(ORMAsset.is_default is True).gino.first()
+    if row is None:
+        raise RecordNotFoundError(
+            f"Could not find default asset for {dataset}.{version}"
+        )
 
+    d: ORMDataset = await datasets.get_dataset(row.dataset)
+    v: ORMVersion = await versions.get_version(row.dataset, row.version)
+    v = update_metadata(v, d)
+
+    return update_metadata(row, v)
+
+
+async def create_asset(dataset, version, **data) -> ORMAsset:
     data = _validate_creation_options(**data)
     jsonable_data = jsonable_encoder(data)
     try:
@@ -81,7 +122,6 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
 
 
 async def update_asset(asset_id: UUID, **data) -> ORMAsset:
-
     data = _validate_creation_options(**data)
     jsonable_data = jsonable_encoder(data)
 
@@ -125,26 +165,10 @@ def _validate_creation_options(**data) -> Dict[str, Any]:
         asset_type = data["asset_type"]
         creation_options = data["creation_options"]
 
-        co_model: CreationOptions = _creation_option_factory(
+        co_model: CreationOptions = creation_option_factory(
             asset_type, creation_options
         )
 
         data["creation_options"] = co_model.dict(by_alias=True)
 
     return data
-
-
-def _creation_option_factory(asset_type, creation_options) -> CreationOptions:
-    """Create creation options pydantic model based on asset type."""
-
-    driver = creation_options.get("src_driver", None)
-    table_drivers: List[str] = [t.value for t in TableDrivers]
-    vector_drivers: List[str] = [v.value for v in VectorDrivers]
-
-    source_type = None
-    if driver in table_drivers:
-        source_type = SourceType.table
-    elif driver in vector_drivers:
-        source_type = SourceType.vector
-
-    return asset_creation_option_factory(source_type, asset_type, creation_options)

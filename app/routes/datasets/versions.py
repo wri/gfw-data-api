@@ -13,11 +13,19 @@ from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
 
-from ...crud import versions
+from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
+from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
+from ...models.pydantic.creation_options import (
+    CreationOptions,
+    CreationOptionsResponse,
+    creation_option_factory,
+)
+from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
+from ...models.pydantic.statistics import Stats, StatsResponse
 from ...models.pydantic.versions import (
     Version,
     VersionCreateIn,
@@ -84,68 +92,6 @@ async def add_new_version(
 
     response.headers["Location"] = f"/{dataset}/{version}"
     return await _version_response(dataset, version, new_version)
-
-    # TODO: Something is wrong with this path operations and it interferes with the /token endpoint
-    #  when uncommented, login fails. Could not figure out why exactly
-    # @router.post(
-    #     "/{dataset}",
-    #     response_class=ORJSONResponse,
-    #     tags=["Versions"],
-    #     response_model=Version,
-    #     status_code=202,
-    # )
-    # async def add_new_version_with_attached_file(
-    #     *,
-    #     dataset: str = Depends(dataset_dependency),
-    #     version: str = Depends(version_dependency_form),
-    #     is_latest: bool = Form(...),
-    #     source_type: SourceType = Form(...),
-    #     metadata: str = Form(
-    #         ...,
-    #         description="Version Metadata. Add data as JSON object, converted to String",
-    #     ),
-    #     creation_options: str = Form(
-    #         ...,
-    #         description="Creation Options. Add data as JSON object, converted to String",
-    #     ),
-    #     file_upload: UploadFile = File(...),
-    #     background_tasks: BackgroundTasks,
-    #     is_authorized: bool = Depends(is_admin),
-    #     response: Response,
-    # ):
-    #     """
-    #     Create or update a version for a given dataset. When using this path operation,
-    #     you all parameter must be encoded as multipart/form-data, not application/json.
-    #     """
-    #
-    # async def callback(message: Dict[str, Any]) -> None:
-    #     pass
-    #
-    # file_obj: IO = file_upload.file
-    # uri: str = f"{dataset}/{version}/raw/{file_upload.filename}"
-    #
-    # version_metadata = VersionMetadata(**json.loads(metadata))
-    # request = VersionCreateIn(
-    #     is_latest=is_latest,
-    #     source_type=source_type,
-    #     source_uri=[f"s3://{BUCKET}/{uri}"],
-    #     metadata=version_metadata,
-    #     creation_options=json.loads(creation_options),
-    # )
-    #
-    # input_data = request.dict(by_alias=True)
-    # # Register version with DB
-    # new_version: ORMVersion = await versions.create_version(
-    #     dataset, version, **input_data
-    # )
-    #
-    # # Everything else happens in the background task asynchronously
-    # background_tasks.add_task(
-    #     create_default_asset, dataset, version, input_data, file_obj, callback
-    # )
-    #
-    # response.headers["Location"] = f"/{dataset}/{version}"
-    # return await _version_response(dataset, version, new_version)
 
 
 @router.patch(
@@ -217,6 +163,72 @@ async def delete_version(
     background_tasks.add_task(delete_all_assets, dataset, version)
 
     return await _version_response(dataset, version, row)
+
+
+@router.get(
+    "/{dataset}/{version}/change_log",
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+    response_model=ChangeLogResponse,
+)
+async def get_change_log(
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+):
+    v = await versions.get_version(dataset, version)
+    change_logs: List[ChangeLog] = [
+        ChangeLog(**change_log) for change_log in v.change_log
+    ]
+
+    return ChangeLogResponse(data=change_logs)
+
+
+@router.get(
+    "/{dataset}/{version}/creation_options",
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+    response_model=CreationOptionsResponse,
+)
+async def get_creation_options(
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+):
+    asset = await assets.get_default_asset(dataset, version)
+    creation_options: CreationOptions = creation_option_factory(
+        asset.asset_type, asset.creation_options
+    )
+    return CreationOptionsResponse(data=creation_options)
+
+
+@router.get(
+    "/{dataset}/{version}/stats",
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+    response_model=StatsResponse,
+)
+async def get_stats(
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+):
+    asset = await assets.get_default_asset(dataset, version)
+    stats: Stats = Stats(**asset.stats)
+    return StatsResponse(data=stats)
+
+
+@router.get(
+    "/{dataset}/{version}/fields",
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+    response_model=FieldMetadataResponse,
+)
+async def get_fields(
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+):
+    asset = await assets.get_default_asset(dataset, version)
+    fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
+
+    return FieldMetadataResponse(data=fields)
 
 
 async def _version_response(
