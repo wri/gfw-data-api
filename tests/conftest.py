@@ -168,10 +168,10 @@ def copy_fixtures():
     # upload a separate for each row so we can test running large numbers of sources in parallel
     reader = csv.DictReader(open(TSV_PATH, newline=""), delimiter="\t")
     for row in reader:
-        out = io.StringIO()
-        writer = csv.writer(out, delimiter="\t")
-        writer.writerow(reader.fieldnames)
-        writer.writerow(row.values())
+        out = io.StringIO(newline="")
+        writer = csv.DictWriter(out, delimiter="\t", fieldnames=reader.fieldnames)
+        writer.writeheader()
+        writer.writerow(row)
 
-        s3_client.upload_fileobj(out, BUCKET, f"test_{reader.line_num}.tsv")
+        s3_client.put_object(Body=str.encode(out.getvalue()), Bucket=BUCKET, Key=f"test_{reader.line_num}.tsv")
         out.close()
