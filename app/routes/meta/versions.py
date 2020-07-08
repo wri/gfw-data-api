@@ -177,29 +177,31 @@ async def update_version(
     if "source_uri" in input_data:
         curr_version: ORMVersion = await versions.get_version(dataset, version)
 
-        if curr_version.is_mutable:
-            # append
-            input_data["creation_options"] = curr_version["creation_options"]  # use same creation options for append
-            input_data["source_type"] = curr_version["source_type"]            # use same default asset type
+        #if curr_version.is_mutable:
 
-            assets: List[ORMAsset] = await get_assets(dataset, version)
+        # append
+        input_data["creation_options"] = curr_version["creation_options"]  # use same creation options for append
+        input_data["source_type"] = curr_version["source_type"]            # use same default asset type
 
-            for asset in assets:
-                if asset.asset_type == default_asset_type(curr_version.source_type):
-                    default_asset: ORMAsset = asset
+        assets: List[ORMAsset] = await get_assets(dataset, version)
 
-            background_tasks.add_task(append_default_asset, dataset, version, input_data, default_asset.asset_id)
+        for asset in assets:
+            if asset.asset_type == default_asset_type(curr_version.source_type):
+                default_asset: ORMAsset = asset
 
-            version_update_data = deepcopy(input_data)
-            version_update_data["source_uri"] += curr_version["source_uri"]
-            row: ORMVersion = await versions.update_version(dataset, version, **version_update_data)
-        else:
-            # overwrite
-            raise HTTPException(
-                status_code=501,
-                detail="Not supported."
-                       "Overwriting version sources is not supported",
-            )
+        background_tasks.add_task(append_default_asset, dataset, version, input_data, default_asset.asset_id)
+
+        version_update_data = deepcopy(input_data)
+        version_update_data["source_uri"] += curr_version["source_uri"]
+        row: ORMVersion = await versions.update_version(dataset, version, **version_update_data)
+
+        # else:
+        #     # overwrite
+        #     raise HTTPException(
+        #         status_code=501,
+        #         detail="Not supported."
+        #                "Overwriting version sources is not supported",
+        #     )
     else:
         row: ORMVersion = await versions.update_version(dataset, version, **input_data)
 
