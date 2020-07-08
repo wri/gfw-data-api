@@ -180,8 +180,8 @@ async def update_version(
         #if curr_version.is_mutable:
 
         # append
-        input_data["creation_options"] = curr_version["creation_options"]  # use same creation options for append
-        input_data["source_type"] = curr_version["source_type"]            # use same default asset type
+        input_data["creation_options"] = curr_version.creation_options     # use same creation options for append
+        input_data["source_type"] = curr_version.source_type               # use same default asset type
 
         assets: List[ORMAsset] = await get_assets(dataset, version)
 
@@ -192,7 +192,7 @@ async def update_version(
         background_tasks.add_task(append_default_asset, dataset, version, input_data, default_asset.asset_id)
 
         version_update_data = deepcopy(input_data)
-        version_update_data["source_uri"] += curr_version["source_uri"]
+        version_update_data["source_uri"] += curr_version.source_uri
         row: ORMVersion = await versions.update_version(dataset, version, **version_update_data)
 
         # else:
