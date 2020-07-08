@@ -35,6 +35,7 @@ from ...models.pydantic.tasks import (
 from ...settings.globals import TILE_CACHE_URL
 from ...tasks.assets import put_asset
 from .. import is_service_account
+from . import task_response
 
 router = APIRouter()
 
@@ -52,19 +53,7 @@ async def get_task(*, task_id: UUID = Path(...)) -> TaskResponse:
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    return _task_response(row)
-
-
-@router.get(
-    "/assets/{asset_id}",
-    response_class=ORJSONResponse,
-    tags=["Tasks"],
-    response_model=TasksResponse,
-)
-async def get_asset_tasks_root(*, asset_id: UUID = Path(...)) -> TasksResponse:
-    """Get all Tasks for selected asset."""
-    rows: List[ORMTask] = await tasks.get_tasks(asset_id)
-    return await _tasks_response(rows)
+    return task_response(row)
 
 
 @router.put(
@@ -87,7 +76,7 @@ async def create_task(
     except RecordAlreadyExistsError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    return _task_response(task_row)
+    return task_response(task_row)
 
 
 @router.patch(
@@ -133,7 +122,7 @@ async def update_task(
             detail="change log status must be either `success` or `failed`",
         )
 
-    return _task_response(task_row)
+    return task_response(task_row)
 
 
 async def _set_failed(task_id: UUID, asset_id: UUID):
@@ -320,16 +309,3 @@ async def _register_dynamic_vector_tile_cache(
                 version,
                 data.dict(by_alias=True),
             )
-
-
-def _task_response(data: ORMTask) -> TaskResponse:
-    """Assure that task responses are parsed correctly and include associated
-    assets."""
-
-    return TaskResponse(data=data)
-
-
-async def _tasks_response(tasks_orm: List[ORMTask]) -> TasksResponse:
-    """Serialize ORM response."""
-    data = [Task.from_orm(task) for task in tasks_orm]
-    return TasksResponse(data=data)

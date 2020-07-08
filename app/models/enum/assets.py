@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Any, Dict
 
 from app.models.enum.sources import SourceType
 
@@ -15,6 +16,7 @@ class AssetType(str, Enum):
     static_raster_tile_cache = "Static raster tile cache"
     raster_tile_set = "Raster tile set"
     database_table = "Database table"
+    geo_database_table = "Geo database table"
     shapefile = "Shapefile"
     geopackage = "Geopackage"
     ndjson = "ndjson"
@@ -29,8 +31,17 @@ class AssetType(str, Enum):
     # mapbox_item = "Mapbox item"
 
 
-def default_asset_type(source_type: str) -> str:
-    if source_type == SourceType.table or source_type == SourceType.vector:
+def default_asset_type(source_type: str, creation_option: Dict[str, Any]) -> str:
+    """Get default asset type based on source type and creation options."""
+
+    lat = creation_option.get("latitude", None)
+    lng = creation_option.get("longitude", None)
+
+    if source_type == SourceType.vector:
+        asset_type = AssetType.geo_database_table
+    elif source_type == SourceType.table and lat and lng:
+        asset_type = AssetType.geo_database_table
+    elif source_type == SourceType.table:
         asset_type = AssetType.database_table
     elif source_type == SourceType.raster:
         asset_type = AssetType.raster_tile_set

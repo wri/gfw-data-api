@@ -26,20 +26,6 @@ router = APIRouter()
 
 
 @router.get(
-    "/",
-    response_class=ORJSONResponse,
-    tags=["Datasets"],
-    response_model=DatasetsResponse,
-)
-async def get_datasets() -> DatasetsResponse:
-    """Get list of all datasets."""
-
-    data = await datasets.get_datasets()
-
-    return DatasetsResponse(data=data)
-
-
-@router.get(
     "/{dataset}",
     response_class=ORJSONResponse,
     tags=["Datasets"],
@@ -94,7 +80,7 @@ async def create_dataset(
     tags=["Datasets"],
     response_model=DatasetResponse,
 )
-async def update_dataset_metadata(
+async def update_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
     request: DatasetUpdateIn,

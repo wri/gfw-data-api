@@ -15,6 +15,7 @@ from ..enum.creation_options import (
     VectorDrivers,
 )
 from ..enum.sources import SourceType
+from .responses import Response
 
 COLUMN_REGEX = r"^[a-z][a-zA-Z0-9_-]{2,}$"
 PARTITION_SUFFIX_REGEX = r"^[a-z0-9_-]{3,}$"
@@ -75,7 +76,9 @@ class FieldType(BaseModel):
 # TODO: we currently ignore src_driver and zipped field
 #  decide whether to keep these fields or to remove them entirely
 class VectorSourceCreationOptions(BaseModel):
-    src_driver: VectorDrivers = Field(
+    source_type: SourceType = SourceType.vector
+    source_uri: Optional[List[str]] = None
+    source_driver: VectorDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
     )
     zipped: bool = Field(..., description="Indicate if source file is zipped")
@@ -98,7 +101,9 @@ class VectorSourceCreationOptions(BaseModel):
 
 
 class TableSourceCreationOptions(BaseModel):
-    src_driver: TableDrivers = Field(..., description="Driver of input file.")
+    source_type: SourceType = SourceType.table
+    source_uri: Optional[List[str]] = None
+    source_driver: TableDrivers = Field(..., description="Driver of input file.")
     delimiter: Delimiters = Field(..., description="Delimiter used in input file")
     has_header: bool = Field(True, description="Input file has header. Must be true")
     latitude: Optional[str] = Field(
@@ -170,8 +175,12 @@ OtherCreationOptions = Union[
 CreationOptions = Union[SourceCreationOptions, OtherCreationOptions]
 
 
-def asset_creation_option_factory(
-    source_type: Optional[str], asset_type: str, creation_options: Dict[str, Any]
+class CreationOptionsResponse(Response):
+    data: CreationOptions
+
+
+def creation_option_factory(
+    asset_type: str, creation_options: Dict[str, Any]
 ) -> CreationOptions:
     """Create Asset Creation Option based on asset or source type."""
 
@@ -187,10 +196,13 @@ def asset_creation_option_factory(
         AssetType.ndjson: NdjsonCreationOptions,
     }
 
+    source_type = creation_options.get("source_type", None)
+
     try:
         if (
             asset_type == AssetType.database_table
             or asset_type == AssetType.raster_tile_set
+            or AssetType.geo_database_table
         ) and source_type:
             co: CreationOptions = source_creation_option_factory[source_type](
                 **creation_options

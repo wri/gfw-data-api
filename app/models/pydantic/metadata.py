@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 from pydantic import BaseModel, Field
 
 from ..enum.assets import AssetType
+from .responses import Response
 
 
 class FieldMetadata(BaseModel):
@@ -78,7 +79,7 @@ class RasterTileSetMetadata(VersionMetadata):
 class StaticVectorTileCacheMetadata(VersionMetadata):
     min_zoom: Optional[int]
     max_zoom: Optional[int]
-    fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
+    # fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
     # TODO: default symbology/ legend
 
 
@@ -88,7 +89,8 @@ class DynamicVectorTileCacheMetadata(StaticVectorTileCacheMetadata):
 
 
 class DatabaseTableMetadata(VersionMetadata):
-    fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
+    # fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
+    pass
 
 
 class VectorFileMetadata(VersionMetadata):
@@ -102,6 +104,10 @@ AssetMetadata = Union[
     RasterTileSetMetadata,
     VectorFileMetadata,
 ]
+
+
+class FieldMetadataResponse(Response):
+    data: List[FieldMetadata]
 
 
 def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMetadata:

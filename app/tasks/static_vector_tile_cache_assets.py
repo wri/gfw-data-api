@@ -7,7 +7,7 @@ from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import (
     StaticVectorTileCacheCreationOptions,
-    asset_creation_option_factory,
+    creation_option_factory,
 )
 from ..models.pydantic.jobs import GdalPythonExportJob, TileCacheJob
 from ..models.pydantic.metadata import asset_metadata_factory
@@ -25,8 +25,8 @@ async def static_vector_tile_cache_asset(
     # Update asset metadata
     #######################
 
-    creation_options = asset_creation_option_factory(
-        None, AssetType.static_vector_tile_cache, input_data["creation_options"]
+    creation_options = creation_option_factory(
+        AssetType.static_vector_tile_cache, input_data["creation_options"]
     )
 
     await assets.update_asset(
