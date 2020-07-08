@@ -48,7 +48,8 @@ async def poll_jobs(job_ids: List[str]) -> str:
     completed_jobs: Set[str] = set()
     pending_jobs: Set[str] = set(job_ids)
 
-    while True:
+    # 5 min timeout
+    for i in range(0, 300):
         response = client.describe_jobs(
             jobs=list(pending_jobs.difference(completed_jobs))
         )

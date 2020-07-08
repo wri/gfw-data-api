@@ -10,6 +10,7 @@ from ..models.pydantic.creation_options import (
     TableSourceCreationOptions,
 )
 from ..models.pydantic.jobs import Job, PostgresqlClientJob
+from ..routes.tasks.tasks import _get_field_metadata
 from ..settings.globals import CHUNK_SIZE
 from ..tasks import Callback, callback_constructor, writer_secrets
 from ..tasks.batch import BATCH_DEPENDENCY_LIMIT, execute
@@ -181,6 +182,88 @@ async def table_source_asset(
             *geometry_jobs,
             *index_jobs,
             *cluster_jobs,
+        ]
+    )
+
+    return log
+
+
+async def append_table_source_asset(
+    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
+) -> ChangeLog:
+    creation_options = TableSourceCreationOptions(**input_data["creation_options"])  # TODO get from row
+    source_uris: List[str] = input_data["source_uri"]
+
+    callback: Callback = callback_constructor(asset_id)
+
+    job_env: List[Dict[str, Any]] = writer_secrets + [
+        {"name": "ASSET_ID", "value": str(asset_id)}
+    ]
+
+    # Load data
+    load_data_jobs: List[Job] = list()
+
+    # We can break into at most BATCH_DEPENDENCY_LIMIT parallel jobs, otherwise future jobs will hit the dependency
+    # limit, so break sources into chunks
+    chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
+    uri_chunks = [
+        source_uris[x: x + chunk_size]
+        for x in range(0, len(source_uris), chunk_size)
+    ]
+
+    for i, uri_chunk in enumerate(uri_chunks):
+        command = [
+            "load_tabular_data.sh",
+            "-d",
+            dataset,
+            "-v",
+            version,
+            "-D",
+            creation_options.delimiter.encode(
+                "unicode_escape"
+            ).decode(),  # Need to escape special characters such as TAB for batch job payload,
+        ]
+
+        for uri in uri_chunk:
+            command += ["-s", uri]
+
+        load_data_jobs.append(
+            PostgresqlClientJob(
+                job_name=f"load_data_{i}",
+                command=command,
+                environment=job_env,
+                callback=callback,
+            )
+        )
+
+    # Add geometry columns and update geometries
+    # TODO is it possible to do this only for new data?
+    geometry_jobs: List[Job] = list()
+    if creation_options.latitude and creation_options.longitude:
+        geometry_jobs.append(
+            PostgresqlClientJob(
+                job_name="add_point_geometry",
+                command=[
+                    "update_point_geometry.sh",
+                    "-d",
+                    dataset,
+                    "-v",
+                    version,
+                    "--lat",
+                    creation_options.latitude,
+                    "--lng",
+                    creation_options.longitude,
+                ],
+                environment=job_env,
+                parents=[job.job_name for job in load_data_jobs],
+                callback=callback,
+            ),
+        )
+
+    log: ChangeLog = await execute(
+        [
+            *load_data_jobs,
+            *geometry_jobs,
         ]
     )
 
@@ -361,23 +444,25 @@ def _cluster_partition_job(
     job_env: List[Dict[str, str]],
     callback: Callback,
 ):
+    command = [
+        "cluster_partitions.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+        "-p",
+        partition_type,
+        "-P",
+        partition_schema,
+        "-c",
+        column_name,
+        "-x",
+        index_type,
+    ]
+
     return PostgresqlClientJob(
         job_name=f"cluster_partitions_{index}",
-        command=[
-            "cluster_partitions.sh",
-            "-d",
-            dataset,
-            "-v",
-            version,
-            "-p",
-            partition_type,
-            "-P",
-            partition_schema,
-            "-c",
-            column_name,
-            "-x",
-            index_type,
-        ],
+        command=command,
         environment=job_env,
         parents=parents,
         callback=callback,

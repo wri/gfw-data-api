@@ -33,6 +33,8 @@ from . import (
     SHP_PATH,
     TSV_NAME,
     TSV_PATH,
+    APPEND_TSV_NAME,
+    APPEND_TSV_PATH,
     AWSMock,
     MemoryServer,
     is_admin_mocked,
@@ -172,14 +174,15 @@ def copy_fixtures():
     s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
     s3_client.upload_file(SHP_PATH, BUCKET, SHP_NAME)
+    s3_client.upload_file(APPEND_TSV_PATH, BUCKET, APPEND_TSV_NAME)
 
     # upload a separate for each row so we can test running large numbers of sources in parallel
     reader = csv.DictReader(open(TSV_PATH, newline=""), delimiter="\t")
     for row in reader:
-        out = io.StringIO()
-        writer = csv.writer(out, delimiter="\t")
-        writer.writerow(reader.fieldnames)
-        writer.writerow(row.values())
+        out = io.StringIO(newline="")
+        writer = csv.DictWriter(out, delimiter="\t", fieldnames=reader.fieldnames)
+        writer.writeheader()
+        writer.writerow(row)
 
-        s3_client.upload_fileobj(out, BUCKET, f"test_{reader.line_num}.tsv")
+        s3_client.put_object(Body=str.encode(out.getvalue()), Bucket=BUCKET, Key=f"test_{reader.line_num}.tsv")
         out.close()
