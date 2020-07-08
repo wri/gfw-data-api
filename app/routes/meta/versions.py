@@ -9,6 +9,7 @@ assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
 from typing import List, Optional
+from copy import deepcopy
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
@@ -173,22 +174,25 @@ async def update_version(
 
     input_data = request.dict(exclude_none=True, by_alias=True)
 
-    row: ORMVersion = await versions.update_version(dataset, version, **input_data)
-    # TODO: Need to clarify routine for when source_uri has changed. Append/ overwrite
-
     if "source_uri" in input_data:
-        if row.is_mutable:
+        curr_version: ORMVersion = await versions.get_version(dataset, version)
+
+        if curr_version.is_mutable:
             # append
-            input_data["creation_options"] = row["creation_options"]  # use same creation options for append
-            input_data["source_type"] = row["source_type"]            # use same default asset type
+            input_data["creation_options"] = curr_version["creation_options"]  # use same creation options for append
+            input_data["source_type"] = curr_version["source_type"]            # use same default asset type
 
             assets: List[ORMAsset] = await get_assets(dataset, version)
 
             for asset in assets:
-                if asset.asset_type == default_asset_type(row.source_type):
+                if asset.asset_type == default_asset_type(curr_version.source_type):
                     default_asset: ORMAsset = asset
 
             background_tasks.add_task(append_default_asset, dataset, version, input_data, default_asset.asset_id)
+
+            version_update_data = deepcopy(input_data)
+            version_update_data["source_uri"] += curr_version["source_uri"]
+            row: ORMVersion = await versions.update_version(dataset, version, **version_update_data)
         else:
             # overwrite
             raise HTTPException(
@@ -196,6 +200,8 @@ async def update_version(
                 detail="Not supported."
                        "Overwriting version sources is not supported",
             )
+    else:
+        row: ORMVersion = await versions.update_version(dataset, version, **input_data)
 
     return await _version_response(dataset, version, row)
 
