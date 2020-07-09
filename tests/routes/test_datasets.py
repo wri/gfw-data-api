@@ -86,20 +86,20 @@ async def test_datasets(async_client):
 
 
 @pytest.mark.asyncio
-@patch("fastapi.BackgroundTasks.add_task", return_value=None)
-async def test_dataset_delete_protection(mocked_task, async_client):
+async def test_dataset_delete_protection(async_client):
     dataset = "test"
-    version = "v1.1.1"
+    version = "v20200626"
 
     with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
         await create_default_asset(async_client, dataset, version)
 
-    response = await async_client.delete(f"/dataset/{dataset}")
-    print(response.json())
-    assert response.status_code == 409
+    with patch("fastapi.BackgroundTasks.add_task", return_value=None) as mocked_task:
+        response = await async_client.delete(f"/dataset/{dataset}")
+        print(response.json())
+        assert response.status_code == 409
 
-    await async_client.delete(f"/dataset/{dataset}/{version}")
-    response = await async_client.delete(f"/dataset/{dataset}")
+        await async_client.delete(f"/dataset/{dataset}/{version}")
+        response = await async_client.delete(f"/dataset/{dataset}")
 
-    assert response.status_code == 200
-    assert mocked_task.called
+        assert response.status_code == 200
+        assert mocked_task.called
