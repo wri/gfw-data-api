@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+
+pip3.8 install pipenv
+/Library/Frameworks/Python.framework/Versions/3.8/bin/pipenv install --dev
+
+detect-secrets scan > .secrets.baseline
+pre-commit install

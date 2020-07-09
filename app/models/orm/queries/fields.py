@@ -1,0 +1,10 @@
+from ....application import db
+
+_fields_sql = """
+SELECT
+    column_name as field_name, CASE WHEN data_type = 'USER-DEFINED' THEN udt_name ELSE data_type END as field_type
+  FROM information_schema.columns
+  WHERE
+    table_schema = :dataset AND table_name = :version;"""
+
+fields = db.text(_fields_sql)

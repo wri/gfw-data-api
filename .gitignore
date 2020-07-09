@@ -6,5 +6,8 @@
 # MyPy
 .mypy_cache
 
+# GIT
+.git
+
 # Environment Files
 /.env

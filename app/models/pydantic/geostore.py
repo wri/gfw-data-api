@@ -1,9 +1,10 @@
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
 
 from .base import Base
+from .responses import Response
 
 
 class Geometry(BaseModel):
@@ -28,3 +29,7 @@ class Geostore(Base):
     gfw_geojson: FeatureCollection
     gfw_area__ha: float
     gfw_bbox: List[float]
+
+
+class GeostoreResponse(Response):
+    data: Geostore

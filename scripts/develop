@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+
+#./scripts/migrate
+docker build -t batch_gdal-python_test . -f batch/gdal-python.dockerfile
+docker build -t batch_postgresql-client_test . -f batch/postgresql-client.dockerfile
+docker build -t batch_tile_cache_test . -f batch/tile_cache.dockerfile
+docker-compose -f docker-compose.dev.yml --project-name gfw-data-api_dev up --abort-on-container-exit --remove-orphans --build

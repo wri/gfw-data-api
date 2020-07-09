@@ -1,0 +1,15 @@
+version: "3.7"
+services:
+  terraform:
+    image: globalforestwatch/terraform:1.0.0
+    volumes:
+      - ../../:/usr/local/src
+      - $HOME/.aws:/root/.aws:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - ENV
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_DEFAULT_REGION
+    working_dir: /usr/local/src
+    entrypoint: infra

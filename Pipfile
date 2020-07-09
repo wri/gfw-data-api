@@ -5,13 +5,15 @@ verify_ssl = true
 
 [dev-packages]
 black = "*"
-bandit = "*"
 flake8 = "*"
-rope = "*"
-watchgod = "*"
 pre-commit = "*"
 detect-secrets = "*"
 pytest = "*"
+pytest-asyncio = "*"
+moto = {editable = true, git = "https://github.com/wri/moto.git", ref = "master"}
+pytest-cov = "*"
+pendulum = "*"
+httpx = "*"
 
 [packages]
 fastapi = "*"
@@ -21,18 +23,19 @@ sqlalchemy-utils = "*"
 alembic = "*"
 psycopg2-binary = "*"
 uvicorn = "*"
-email_validator = "*"
-sentry-sdk = "*"
 geoalchemy2 = "*"
 boto3 = "*"
 gino_starlette = "*"
 requests = "*"
 orjson = "*"
-pytest-cov = "*"
 python-multipart = "*"
+aiofiles = "*"
+shapely = "*"
+pyproj = "*"
+geojson = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.8"
 
 [pipenv]
 allow_prereleases = true

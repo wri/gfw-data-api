@@ -1,18 +1,16 @@
-"""empty message
+"""empty message.
 
 Revision ID: 9b86ea12c201
 Revises: bb1ed7d0e219
 Create Date: 2020-04-29 23:27:30.879287
-
 """
-from alembic import op
 import sqlalchemy as sa
-import sqlalchemy_utils
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "9b86ea12c201"
-down_revision = "bb1ed7d0e219"
+revision = "9b86ea12c201"  # pragma: allowlist secret
+down_revision = "bb1ed7d0e219"  # pragma: allowlist secret
 branch_labels = None
 depends_on = None
 

@@ -1,0 +1,17 @@
+name: Destroy state and delete workspace after deleting feature branch
+
+on: [delete]
+
+jobs:
+  build:
+    if: contains(github.event.ref_type, 'branch') &&  (! contains(github.event.ref, 'master')) && (! contains(github.event.ref, 'develop'))
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Destroy state and delete workspace
+      env:
+        ENV: dev
+        AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_dev }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_dev }}
+        AWS_DEFAULT_REGION: ${{ secrets.aws_region_dev }}
+      run: docker-compose -f docker/terraform/docker-compose.yml run --entrypoint delete_workspace --rm  terraform github.event.ref

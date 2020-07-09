@@ -1,48 +1,166 @@
-from typing import List
-from app.models.pydantic.source import SourceType
+from datetime import datetime
+from typing import Any, Callable, Coroutine, Dict, FrozenSet, Union
+from uuid import UUID
 
-def seed_source_assets(source_type: str, source_uri: List[str]) -> None:
-    # create default asset for version (in database)
-    # Version status = pending
+from ..application import ContextEngine
+from ..crud import assets, versions
+from ..models.enum.assets import AssetStatus
+from ..models.enum.change_log import ChangeLogStatus
+from ..models.enum.sources import SourceType
+from ..models.pydantic.assets import AssetType
+from ..models.pydantic.change_log import ChangeLog
+from .dynamic_vector_tile_cache_assets import dynamic_vector_tile_cache_asset
+from .static_vector_tile_cache_assets import static_vector_tile_cache_asset
 
-    # Schedule batch job queues depending on source type
-    if source_type == SourceType.vector:
-        _vector_source_asset(source_type, source_uri)
-    elif source_type == SourceType.tabular:
-        _table_source_asset(source_type, source_uri)
-    elif source_type == SourceType.raster:
-        _raster_source_asset(source_type, source_uri)
+ASSET_PIPELINES: FrozenSet[AssetType] = frozenset(
+    {
+        # AssetType.shapefile: shapefile_asset,
+        # AssetType.geopackage: geopackage_asset,
+        # AssetType.ndjson: ndjson_asset,
+        # AssetType.csv: csv_asset,
+        # AssetType.tsv: tsv_asset,
+        AssetType.dynamic_vector_tile_cache: dynamic_vector_tile_cache_asset,
+        AssetType.static_vector_tile_cache: static_vector_tile_cache_asset,
+        # AssetType.vector_tile_cache: vector_tile_cache_asset,
+        # AssetType.raster_tile_cache: raster_tile_cache_asset,
+        # AssetType.dynamic_raster_tile_cache: dynamic_raster_tile_cache_asset,
+        # AssetType.raster_tile_set: raster_tile_set_asset
+    }.items()
+)
+
+
+Pipeline = Callable[[str, str, UUID, Dict[str, Any]], Coroutine[Any, Any, ChangeLog]]
+
+
+async def put_asset(
+    asset_type: str,
+    asset_id: UUID,
+    dataset: str,
+    version: str,
+    input_data: Dict[str, Any],
+    constructor: FrozenSet[Union[AssetType, SourceType]] = ASSET_PIPELINES,
+) -> None:
+    """Call Asset Pipeline.
+
+    Default assets use source_type for identification. All other assets
+    use asset_type directly.
+    """
+    asset_constructor: Dict[str, Pipeline] = dict(constructor)
+
+    try:
+
+        if asset_type in asset_constructor.keys():
+            log: ChangeLog = await asset_constructor[asset_type](
+                dataset, version, asset_id, input_data,
+            )
+
+        else:
+            raise NotImplementedError(f"Unsupported asset type {asset_type}")
+
+    # Make sure asset status is set to `failed` in case there is an uncaught Exception
+    except Exception as e:
+        change_log = ChangeLog(
+            date_time=datetime.now(),
+            status=ChangeLogStatus.failed,
+            message="Failed to create or update asset. An unexpected error occurred",
+            detail=str(e),
+        )
+        async with ContextEngine("WRITE"):
+            await assets.update_asset(
+                asset_id,
+                status=AssetStatus.failed,
+                change_log=[change_log.dict(by_alias=True)],
+            )
+        raise
+
+    if log.status == ChangeLogStatus.success:
+        status = AssetStatus.saved
     else:
-        raise ValueError(f"Unsupported asset source type {source_type})")
+        status = log.status
 
-    # Batch job would log to asset history
-
-    # Monitor job queue to make sure all job terminate and once done, set version status to saved and register newly created asset with version
-    # if job failed, set version status to failed with message "Default asset failed"
-
-
-def _vector_source_asset():
-    # check if input data are in a readable format (using ogrinfo)
-    # import data using ogr2ogr
-
-    # update geometry storage format
-    # repair geometries
-    # reproject geometries
-    # calculate gestore items
-    # create indicies
-    # link with geostore
-    pass
+    # Update asset status and change log
+    async with ContextEngine("WRITE"):
+        await assets.update_asset(
+            asset_id, status=status, change_log=[log.dict(by_alias=True)]
+        )
+        await versions.update_version(
+            dataset, version, change_log=[log.dict(by_alias=True)]
+        )
 
 
-def _table_source_asset():
-    # check if input data are in a readable format (must be csv or tsv file)
-    # Create table
-    #   either use provided schema or guess schema using csvkit
-    # Create partitions if specified
-    # upload data using pgsql COPY
-    # create indicies if specified
-    pass
-
-
-def _raster_source_asset():
-    pass
+# TODO:
+# async def raster_tile_cache_asset():
+#     # supported input types
+#     #  - raster
+#     #  - vector ?
+#
+#     # steps
+#     # create raster tile cache using mapnik and upload to S3
+#     # register static raster tile cache asset entry to enable service
+#
+#     # creation options:
+#     #  - symbology/ legend
+#     #  - tiling strategy
+#     #  - min/max zoom level
+#     #  - caching strategy
+#
+#     # custom metadata
+#     #  - symbology/ legend
+#     #  - rendered zoom levels
+#
+#     raise NotImplementedError
+#
+#
+# async def dynamic_raster_tile_cache_asset():
+#     # supported input types
+#     #  - raster
+#     #  - vector ?
+#
+#     # steps
+#     # create raster set (pixETL) using WebMercator grid
+#     # register dynamic raster tile cache asset entry to enable service
+#
+#     # creation options:
+#     #  - symbology/ legend
+#     #  - tiling strategy
+#     #  - min/max zoom level
+#     #  - caching strategy
+#
+#     # custom metadata
+#     #  - symbology/ legend
+#
+#     raise NotImplementedError
+#
+#
+# async def raster_tile_set_asset():
+#     # supported input types
+#     #  - vector
+#     #  - raster
+#
+#     # steps
+#     #  - wait until database table is created (vector only)
+#     #  - create 1x1 materialized view (vector only)
+#     #  - create raster tiles using pixETL and upload to S3
+#     #  - create tile set asset entry
+#
+#     # creation options
+#     #  - set tile set value name
+#     #  - select field value or expression to use for rasterization (vector only)
+#     #  - select order direction (asc/desc) of field values for rasterization (vector only)
+#     #  - override input raster, must be another raster tile set of the same version (raster only)
+#     #  - define numpy calc expression (raster only)
+#     #  - select resampling method (raster only)
+#     #  - select out raster datatype
+#     #  - select out raster nbit value
+#     #  - select out raster no data value
+#     #  - select out raster grid type
+#
+#     # custom metadata
+#     #  - raster statistics
+#     #  - raster table (pixel value look up)
+#     #  - list of raster files
+#     #  - raster data type
+#     #  - compression
+#     #  - no data value
+#
+#     raise NotImplementedError

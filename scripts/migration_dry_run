@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -e
+
+docker-compose -f docker-compose.dev.yml build app
+docker-compose -f docker-compose.dev.yml --project-name gfw-data-api_dev run --rm --entrypoint alembic app -x dry-run upgrade head

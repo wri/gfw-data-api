@@ -1,12 +1,11 @@
-import logging
 from asyncio import Future
 from contextvars import ContextVar
 from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
+from fastapi.logger import logger
 from gino import create_engine
 from gino_starlette import Gino, GinoEngine
-
 
 from .settings.globals import DATABASE_CONFIG, WRITE_DATABASE_CONFIG
 
@@ -19,20 +18,19 @@ READ_ENGINE: Optional[GinoEngine] = None
 
 
 class ContextualGino(Gino):
-    """
-    Overide the Gino Metadata object to allow to dynamically change the binds
-    """
+    """Override the Gino Metadata object to allow to dynamically change the
+    binds."""
 
     @property
     def bind(self):
         try:
             e = CURRENT_ENGINE.get()
             bind = e.result()
-            logging.warning(f"Set bind to {bind.repr(color=True)}")
+            logger.info(f"Set bind to {bind.repr(color=True)}")
             return bind
         except LookupError:
             # not in a request
-            logging.warning("Not in a request, using default bind")
+            logger.info("Not in a request, using default bind")
             return self._bind
 
     @bind.setter
@@ -40,14 +38,14 @@ class ContextualGino(Gino):
         self._bind = val
 
 
-app = FastAPI()
+app = FastAPI(title="GFW Data API", redoc_url="/")
 
 # Create Contextual Database, using default connection and pool size = 0
 # We will bind actual connection pools based on path operation using middleware
 # This allows us to query load-balanced Aurora read replicas for read-only operations
 # and Aurora Write Node for write operations
 db = ContextualGino(
-    app,
+    app=app,
     host=DATABASE_CONFIG.host,
     port=DATABASE_CONFIG.port,
     user=DATABASE_CONFIG.username,
@@ -57,47 +55,41 @@ db = ContextualGino(
 )
 
 
-async def get_engine(method: str) -> GinoEngine:
-    """
-    Select the database connection depending on request method
-    """
-    write_methods = ["PUT", "PATCH", "POST", "DELETE"]
-    if method in write_methods:
-        logging.warning("Use write engine")
-        engine: GinoEngine = WRITE_ENGINE
-    else:
-        logging.warning("Use read engine")
-        engine = READ_ENGINE
-    return engine
+class ContextEngine(object):
+    def __init__(self, method):
+        self.method = method
 
+    async def __aenter__(self):
+        """initialize objects."""
+        try:
+            e = CURRENT_ENGINE.get()
+        except LookupError:
+            e = Future()
+            engine = await self.get_engine(self.method)
+            e.set_result(engine)
+            await e
+        finally:
+            self.token = CURRENT_ENGINE.set(e)
 
-@app.middleware("http")
-async def set_db_mode(request: Request, call_next):
-    """
-    This middleware replaces the db engine depending on the request type.
-    Read requests use the read only pool.
-    Write requests use the write pool.
-    """
-    try:
-        e = CURRENT_ENGINE.get()
-    except LookupError:
-        e = Future()
-        engine = await get_engine(request.method)
-        e.set_result(engine)
-        await e
-    finally:
-        token = CURRENT_ENGINE.set(e)
+    async def __aexit__(self, _type, value, tb):
+        """Uninitialize objects."""
+        CURRENT_ENGINE.reset(self.token)
 
-    response = await call_next(request)
-    CURRENT_ENGINE.reset(token)
-    return response
+    @staticmethod
+    async def get_engine(method: str) -> GinoEngine:
+        """Select the database connection depending on request method."""
+        if method.upper() == "WRITE":
+            logger.info("Use write engine")
+            engine: GinoEngine = WRITE_ENGINE
+        else:
+            logger.info("Use read engine")
+            engine = READ_ENGINE
+        return engine
 
 
 @app.on_event("startup")
 async def startup_event():
-    """
-    Initializing the database connections on startup
-    """
+    """Initializing the database connections on startup."""
 
     global WRITE_ENGINE
     global READ_ENGINE
@@ -105,36 +97,34 @@ async def startup_event():
     WRITE_ENGINE = await create_engine(
         WRITE_DATABASE_CONFIG.url, max_size=5, min_size=1
     )
-    logging.warning(
+    logger.debug(
         f"Database connection pool for write operation created: {WRITE_ENGINE.repr(color=True)}"
     )
     READ_ENGINE = await create_engine(DATABASE_CONFIG.url, max_size=10, min_size=5)
-    logging.warning(
+    logger.debug(
         f"Database connection pool for read operation created: {READ_ENGINE.repr(color=True)}"
     )
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """
-    Closing the database connections on shutdown
-    """
+    """Closing the database connections on shutdown."""
     global WRITE_ENGINE
     global READ_ENGINE
 
     if WRITE_ENGINE:
-        logging.warning(
+        logger.info(
             f"Closing database connection for write operations {WRITE_ENGINE.repr(color=True)}"
         )
         await WRITE_ENGINE.close()
-        logging.warning(
+        logger.info(
             f"Closed database connection for write operations {WRITE_ENGINE.repr(color=True)}"
         )
     if READ_ENGINE:
-        logging.warning(
+        logger.info(
             f"Closing database connection for read operations {READ_ENGINE.repr(color=True)}"
         )
         await READ_ENGINE.close()
-        logging.warning(
+        logger.info(
             f"Closed database connection for read operations {READ_ENGINE.repr(color=True)}"
         )

@@ -2,71 +2,32 @@
 
 set -e
 
-# Load data using ogr2ogr
+# requires arguments
+# -d | --dataset
+# -v | --version
+# -s | --source
+# -l | --source_layer
+# -f | --local_file
+# -X | --zipped
+
+ME=$(basename "$0")
+. get_arguments.sh "$@"
+
+
+echo "AWSCLI: COPY DATA FROM $SRC TO $LOCAL_FILE"
+aws s3 cp "$SRC" "$LOCAL_FILE"
+
+# use virtual GDAL vsizip wrapper for ZIP files
+# TODO: [GTC-661] Allow for a more flexible file structure inside the ZIP file
+#  the current implementation assumes that the file sits at the root level of the zip file
+#  and can't be in sub directory.
+if [ "${ZIPPED}" == "True" ]; then
+  LOCAL_FILE="/vsizip/${LOCAL_FILE}"
+fi
+
+echo "OGR2OGR: Import \"${DATASET}\".\"${VERSION}\" from ${LOCAL_FILE} ${SRC_LAYER}"
 ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=$PGDATABASE user=$PGUSER" \
-     "$VECTOR_SOURCE" -nlt PROMOTE_TO_MULTI -nln "$VERSION" "$VECTOR_SOURCE_LAYER" --config PG_USE_COPY YES \
-      -lco SCHEMA="$DATASET" -lco GEOMETRY_NAME="$GEOMETRY_NAME" -lco SPATIAL_INDEX=NONE -lco FID="$FID_NAME"
-
-# Add GFW specific layers
-psql -c "ALTER TABLE $DATASET.$VERSION ADD COLUMN ${GEOMETRY_NAME}_wm geometry(MultiPolygon,3857);
-         ALTER TABLE $DATASET.$VERSION ADD COLUMN gfw_area__ha NUMERIC;
-         ALTER TABLE $DATASET.$VERSION ADD COLUMN gfw_geostore_id UUID;
-         ALTER TABLE $DATASET.$VERSION ADD COLUMN gfw_geojson TEXT;
-         ALTER TABLE $DATASET.$VERSION ADD COLUMN gfw_bbox BOX2D;"
-
-
-# Set storage to external for faster querying
-# http://blog.cleverelephant.ca/2018/09/postgis-external-storage.html
-psql -c "ALTER TABLE $DATASET.$VERSION ALTER COLUMN $GEOMETRY_NAME SET STORAGE EXTERNAL;
-         ALTER TABLE $DATASET.$VERSION ALTER COLUMN ${GEOMETRY_NAME}_wm SET STORAGE EXTERNAL;"
-
-
-# Repair geometries
-psql -c "
-WITH a AS (
-	SELECT
-		$FID_NAME,
-		st_makevalid($GEOMETRY_NAME) AS $GEOMETRY_NAME
-	FROM
-		$DATASET.$VERSION
-),
-b AS (
-	SELECT
-		$FID_NAME,CASE
-			WHEN st_geometrytype($GEOMETRY_NAME) = 'ST_GeometryCollection' :: TEXT THEN st_collectionextract($GEOMETRY_NAME, 3)
-			WHEN st_geometrytype($GEOMETRY_NAME) = 'ST_Polygon'
-			OR st_geometrytype($GEOMETRY_NAME) = 'ST_MultiPolygon' THEN $GEOMETRY_NAME
-		END AS $GEOMETRY_NAME
-	FROM
-		a
-)
-
-UPDATE
-	$DATASET.$VERSION
-SET
-	$GEOMETRY_NAME = b.$GEOMETRY_NAME
-FROM
-	b
-WHERE
-	$DATASET.$VERSION.$FID_NAME = b.$FID_NAME;"
-
-# Update GFW columns
-psql -c "UPDATE $DATASET.$VERSION SET ${GEOMETRY_NAME}_wm = ST_Transform($GEOMETRY_NAME, 3857);"
-psql -c "UPDATE $DATASET.$VERSION SET gfw_area__ha = ST_area($GEOMETRY_NAME::geography)/10000;"
-psql -c "UPDATE $DATASET.$VERSION SET gfw_geostore_id = md5(ST_asgeojson($GEOMETRY_NAME))::uuid;"
-psql -c "UPDATE $DATASET.$VERSION SET gfw_geojson = ST_asgeojson($GEOMETRY_NAME);"
-psql -c "UPDATE $DATASET.$VERSION SET gfw_bbox = box2d($GEOMETRY_NAME);"
-
-# Create indices
-psql -c "CREATE INDEX IF NOT EXISTS ${VERSION}_${GEOMETRY_NAME}_id_idx
-     ON $DATASET.$VERSION USING gist
-     (${GEOMETRY_NAME});"
-psql -c "CREATE INDEX IF NOT EXISTS ${VERSION}_${GEOMETRY_NAME}_wm_id_idx
-     ON $DATASET.$VERSION USING gist
-     (${GEOMETRY_NAME}_wm);"
-psql -c "CREATE INDEX IF NOT EXISTS ${VERSION}_gfw_geostore_id_idx
-     ON $DATASET.$VERSION USING hash
-     (gfw_geostore_id);"
-
-# Inherit from geostore
-psql -c "ALTER TABLE $DATASET.$VERSION INHERIT public.geostore;"
+     "$LOCAL_FILE" "$SRC_LAYER" \
+     -nlt PROMOTE_TO_MULTI -nln "$DATASET.$VERSION" \
+     -t_srs EPSG:4326 --config PG_USE_COPY YES \
+     -update -append -makevalid

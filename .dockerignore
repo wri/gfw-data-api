@@ -12,3 +12,9 @@ docker-compose.test.yml
 
 # Ignore Files
 .gitignore
+
+# Terraform
+*terraform*
+
+# Virtual Environments
+.venv

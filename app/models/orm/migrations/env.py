@@ -1,3 +1,8 @@
+"""env.py.
+
+Alembic ENV module isort:skip_file
+"""
+
 # Native libraries
 import sys
 
@@ -7,21 +12,23 @@ sys.path.extend(["./"])
 from app.application import db
 
 # To include a model in migrations, add a line here.
-from app.models.orm.dataset import Dataset
-from app.models.orm.version import Version
-from app.models.orm.asset import Asset
+from app.models.orm.assets import Asset
+from app.models.orm.datasets import Dataset
 from app.models.orm.geostore import Geostore
-
+from app.models.orm.tasks import Task
+from app.models.orm.versions import Version
 
 ###############################################################################
 
 # Third party packages
-from sqlalchemy import engine_from_config, pool
 from alembic import context
 from logging.config import fileConfig
+from sqlalchemy import engine_from_config, pool
+
 
 # App imports
 from app.settings.globals import ALEMBIC_CONFIG
+
 
 config = context.config
 fileConfig(config.config_file_name)
@@ -39,7 +46,7 @@ def exclude_tables_from_config(config_):
 exclude_tables = exclude_tables_from_config(config.get_section("alembic:exclude"))
 
 
-def include_object(object, name, type_, reflected, compare_to):
+def include_object(obj, name, type_, reflected, compare_to):
     if type_ == "table" and name in exclude_tables:
         return False
     else:
@@ -56,7 +63,6 @@ def run_migrations_offline():
 
     Calls to context.execute() here emit the given string to the
     script output.
-
     """
     context.configure(
         url=ALEMBIC_CONFIG.url.__to_string__(hide_password=False),
@@ -72,9 +78,8 @@ def run_migrations_offline():
 def run_migrations_online():
     """Run migrations in 'online' mode.
 
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
+    In this scenario we need to create an Engine and associate a
+    connection with the context.
     """
     connectable = engine_from_config(
         {"sqlalchemy.url": ALEMBIC_CONFIG.url.__to_string__(hide_password=False)},
@@ -88,8 +93,11 @@ def run_migrations_online():
             include_object=include_object,
         )
 
-        with context.begin_transaction():
+        with context.begin_transaction() as transaction:
             context.run_migrations()
+            if "dry-run" in context.get_x_argument():
+                print("Dry-run succeeded; now rolling back transactionapp")
+                transaction.rollback()
 
 
 if context.is_offline_mode():

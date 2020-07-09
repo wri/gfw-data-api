@@ -1,35 +1,26 @@
-"""empty message
+"""empty message.
 
 Revision ID: 86ae41de358d
 Revises:
 Create Date: 2020-04-14 21:58:38.173605
-
 """
-import json
-import os
-
-import boto3
-import sqlalchemy as sa
 import geoalchemy2
-
+import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
+from app.settings.globals import READER_DBNAME, READER_PASSWORD, READER_USERNAME
+
 # revision identifiers, used by Alembic.
-revision = "e47ec2fc3c51"
+revision = "e47ec2fc3c51"  # pragma: allowlist secret
 down_revision = None
 branch_labels = None
 depends_on = None
 
 
-USERNAME = os.environ["DB_USER"]
-PASSWORD = os.environ["DB_PASSWORD"]
-DBNAME = os.environ["DATABASE"]
-
-
 def upgrade():
 
-    op.execute(f"""CREATE EXTENSION IF NOT EXISTS postgis;""")
+    op.execute("""CREATE EXTENSION IF NOT EXISTS postgis;""")
 
     #### Create read only user
     op.execute(
@@ -40,16 +31,16 @@ def upgrade():
                    IF NOT EXISTS (
                       SELECT                       -- SELECT list can stay empty for this
                       FROM   pg_catalog.pg_roles
-                      WHERE  rolname = '{USERNAME}') THEN
-                      CREATE ROLE {USERNAME} LOGIN PASSWORD '{PASSWORD}';
+                      WHERE  rolname = '{READER_USERNAME}') THEN
+                      CREATE ROLE {READER_USERNAME} LOGIN PASSWORD '{READER_PASSWORD}';
                    END IF;
                 END
                 $do$;
                 """
     )
-    op.execute(f"GRANT CONNECT ON DATABASE {DBNAME} TO {USERNAME};")
+    op.execute(f"GRANT CONNECT ON DATABASE {READER_DBNAME} TO {READER_USERNAME};")
     op.execute(
-        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {USERNAME};"
+        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {READER_USERNAME};"
     )
 
     #### Create Fishnet Function
@@ -159,6 +150,7 @@ def upgrade():
         sa.Column(
             "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
         ),
+        # sa.Column('geostore', sa.Column('gfw_geojson', sa.String(), nullable=True)),
         sa.Column("gfw_geostore_id", postgresql.UUID(), nullable=False),
         sa.Column("gfw_area__ha", sa.Numeric(), nullable=False),
         sa.Column(
@@ -227,11 +219,22 @@ def downgrade():
     op.drop_table("assets")
     op.drop_table("versions")
     op.drop_index("geostore_gfw_geostore_id_idx", table_name="geostore")
-    op.drop_table("geostore")
+    op.execute("""DROP TABLE IF EXISTS public.geostore CASCADE;""")
+
+    conn = op.get_bind()
+    res = conn.execute("SELECT dataset FROM public.datasets")
+    rows = res.fetchall()
+
     op.drop_table("datasets")
     # ### end Alembic commands ###
 
+    for row in rows:
+        op.execute(f"""DROP SCHEMA IF EXISTS {row.dataset} CASCADE;""")
     op.execute("""DROP TYPE IF EXISTS public.gfw_grid_type;""")
     op.execute("""DROP MATERIALIZED VIEW IF EXISTS public.gfw_grid_1x1;""")
     op.execute("""DROP FUNCTION IF EXISTS public.gfw_create_fishnet;""")
-    # op.execute(f"""DROP USER IF EXISTS {USERNAME}""")
+    op.execute(
+        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE SELECT ON TABLES FROM {READER_USERNAME};"
+    )
+    op.execute(f"REVOKE CONNECT ON DATABASE {READER_DBNAME} FROM {READER_USERNAME};")
+    op.execute(f"""DROP USER IF EXISTS {READER_USERNAME}""")
