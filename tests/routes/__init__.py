@@ -1,11 +1,10 @@
+import json
+import uuid
 from typing import Any, Dict
 
-from httpx import AsyncClient
-
-from app.application import app
 from tests import BUCKET, SHP_NAME
 
-generic_dataset_metadata = {
+generic_dataset_payload = {
     "metadata": {
         "title": "string",
         "subtitle": "string",
@@ -29,57 +28,58 @@ generic_dataset_metadata = {
     }
 }
 
-generic_version_metadata = {
-    "is_latest": True,
-    "source_type": "vector",
-    "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
+generic_version_payload = {
     "metadata": {},
-    "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
+    "creation_options": {
+        "source_driver": "ESRI Shapefile",
+        "zipped": True,
+        "source_type": "vector",
+        "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
+    },
 }
 
 
-async def create_dataset(dataset_name, metadata: Dict[str, Any]) -> Dict[str, Any]:
-    async with AsyncClient(
-        app=app, base_url="http://test", trust_env=False
-    ) as test_client:
-        resp = await test_client.put(f"/meta/{dataset_name}", json=metadata)
+async def create_dataset(
+    async_client, dataset_name, payload: Dict[str, Any]
+) -> Dict[str, Any]:
+    resp = await async_client.put(f"/dataset/{dataset_name}", data=json.dumps(payload))
     assert resp.json()["status"] == "success"
     return resp.json()["data"]
 
 
 async def create_version(
-    dataset_name, version, version_metadata: Dict[str, Any]
+    async_client, dataset_name, version, payload: Dict[str, Any]
 ) -> Dict[str, Any]:
-    async with AsyncClient(
-        app=app, base_url="http://test", trust_env=False
-    ) as test_client:
-        resp = await test_client.put(
-            f"/meta/{dataset_name}/{version}", json=version_metadata
-        )
+
+    resp = await async_client.put(
+        f"/dataset/{dataset_name}/{version}", data=json.dumps(payload)
+    )
     assert resp.json()["status"] == "success"
 
     return resp.json()["data"]
 
 
 async def create_default_asset(
+    async_client,
     dataset_name,
     version,
-    dataset_metadata: Dict[str, Any] = generic_dataset_metadata,
-    version_metadata: Dict[str, Any] = generic_version_metadata,
+    dataset_payload: Dict[str, Any] = generic_dataset_payload,
+    version_payload: Dict[str, Any] = generic_version_payload,
 ) -> Dict[str, Any]:
     # Create dataset, version, and default asset records.
     # The default asset is created automatically when the version is created.
 
-    _ = await create_dataset(dataset_name, dataset_metadata)
-    _ = await create_version(dataset_name, version, version_metadata)
+    await create_dataset(async_client, dataset_name, dataset_payload)
+    await create_version(async_client, dataset_name, version, version_payload)
 
     # Verify the default asset was created
-    async with AsyncClient(
-        app=app, base_url="http://test", trust_env=False
-    ) as test_client:
-        resp = await test_client.get(f"/meta/{dataset_name}/{version}/assets")
-
+    resp = await async_client.get(f"/dataset/{dataset_name}/{version}/assets")
+    print(resp.json())
     assert len(resp.json()["data"]) == 1
     assert resp.json()["status"] == "success"
 
     return resp.json()["data"][0]
+
+
+def generate_uuid(*args, **kwargs) -> uuid.UUID:
+    return uuid.uuid4()

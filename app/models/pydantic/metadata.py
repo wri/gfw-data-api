@@ -117,6 +117,7 @@ def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMe
         AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheMetadata,
         AssetType.raster_tile_set: RasterTileSetMetadata,
         AssetType.database_table: DatabaseTableMetadata,
+        AssetType.geo_database_table: DatabaseTableMetadata,
         AssetType.ndjson: VectorFileMetadata,
     }
     if asset_type in metadata_factory.keys():

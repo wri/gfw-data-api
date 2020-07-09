@@ -100,17 +100,19 @@ def batch_client():
     aws_mock.stop_services()
 
 
-@pytest.fixture(scope="session", autouse=True)
-def db():
-    """Acquire a database session for a test and make sure the connection gets
-    properly closed, even if test fails.
-
-    This is a synchronous connection using psycopg2.
-    """
-    with contextlib.ExitStack() as stack:
-        yield stack.enter_context(session())
-
-
+#
+#
+# @pytest.fixture(scope="session", autouse=True)
+# def db():
+#     """Acquire a database session for a test and make sure the connection gets
+#     properly closed, even if test fails.
+#
+#     This is a synchronous connection using psycopg2.
+#     """
+#     with contextlib.ExitStack() as stack:
+#         yield stack.enter_context(session())
+#
+#
 @pytest.fixture(autouse=True)
 def client():
     """Set up a clean database before running a test Run all migrations before
@@ -134,8 +136,16 @@ async def async_client():
     """Async Test Client."""
     from app.main import app
 
+    # main(["--raiseerr", "upgrade", "head"])
+    app.dependency_overrides[is_admin] = is_admin_mocked
+    app.dependency_overrides[is_service_account] = is_service_account_mocked
+
     async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
         yield client
+
+
+# app.dependency_overrides = {}
+# main(["--raiseerr", "downgrade", "base"])
 
 
 @pytest.fixture(scope="session")
