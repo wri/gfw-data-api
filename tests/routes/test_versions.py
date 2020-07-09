@@ -1,6 +1,8 @@
 import json
 from unittest.mock import patch
 
+import pytest
+
 from app.models.pydantic.metadata import VersionMetadata
 
 payload = {
@@ -30,7 +32,8 @@ payload = {
 
 # @patch("app.tasks.default_assets.create_default_asset", return_value=True)
 @patch("fastapi.BackgroundTasks.add_task", return_value=None)
-def test_versions(mocked_task, client, db):
+@pytest.mark.asyncio
+async def test_versions(mocked_task, async_client):
     """Test version path operations.
 
     We patch/ disable background tasks here, as they run asynchronously.
@@ -39,7 +42,7 @@ def test_versions(mocked_task, client, db):
     dataset = "test"
     version = "v1.1.1"
 
-    response = client.put(f"/meta/{dataset}", data=json.dumps(payload))
+    response = await async_client.put(f"/dataset/{dataset}", data=json.dumps(payload))
     assert response.status_code == 201
     assert response.json()["data"]["metadata"] == payload["metadata"]
     assert response.json()["data"]["versions"] == []
@@ -47,14 +50,17 @@ def test_versions(mocked_task, client, db):
     version_payload = {
         "is_latest": True,
         "source_type": "vector",
-        "source_uri": ["s3://some/path"],
-        "metadata": payload["metadata"],
-        "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
+        "creation_options": {
+            "source_uri": ["s3://some/path"],
+            "metadata": payload["metadata"],
+            "source_driver": "ESRI Shapefile",
+            "zipped": True,
+        },
     }
 
     # with patch("app.tasks.default_assets.create_default_asset", return_value=True) as mock_asset:
-    response = client.put(
-        f"/meta/{dataset}/{version}", data=json.dumps(version_payload)
+    response = await async_client.put(
+        f"/dataset/{dataset}/{version}", data=json.dumps(version_payload)
     )
     version_data = response.json()
     assert response.status_code == 202
@@ -65,12 +71,14 @@ def test_versions(mocked_task, client, db):
     assert mocked_task.called
 
     # Check if the latest endpoint redirects us to v1.1.1
-    response = client.get(f"/meta/{dataset}/latest?test=test&test1=test1")
+    response = await async_client.get(
+        f"/dataset/{dataset}/latest?test=test&test1=test1"
+    )
     assert response.json()["data"]["version"] == "v1.1.1"
 
 
 @patch("fastapi.BackgroundTasks.add_task", return_value=None)
-def test_version_metadata(mocked_task, client):
+def test_version_metadata(mocked_task, async_client):
     """Test if Version inherits metadata from Dataset.
 
     Version should be able to overwrite any metadata attribute
@@ -80,8 +88,8 @@ def test_version_metadata(mocked_task, client):
 
     dataset_metadata = {"title": "Title", "subtitle": "Subtitle"}
 
-    response = client.put(
-        f"/meta/{dataset}", data=json.dumps({"metadata": dataset_metadata})
+    response = await async_client.put(
+        f"/dataset/{dataset}", data=json.dumps({"metadata": dataset_metadata})
     )
 
     result_metadata = {
@@ -113,14 +121,17 @@ def test_version_metadata(mocked_task, client):
 
     version_payload = {
         "is_latest": True,
-        "source_type": "vector",
-        "source_uri": ["s3://some/path"],
         "metadata": version_metadata,
-        "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
+        "creation_options": {
+            "source_type": "vector",
+            "source_uri": ["s3://some/path"],
+            "source_driver": "ESRI Shapefile",
+            "zipped": True,
+        },
     }
 
-    response = client.put(
-        f"/meta/{dataset}/{version}", data=json.dumps(version_payload)
+    response = await async_client.put(
+        f"/dataset/{dataset}/{version}", data=json.dumps(version_payload)
     )
 
     result_metadata = {
@@ -155,20 +166,20 @@ def test_version_metadata(mocked_task, client):
     assert response.json()["data"]["metadata"] == result_metadata
     assert mocked_task.called
 
-    response = client.get(f"/meta/{dataset}/{version}")
+    response = await async_client.get(f"/dataset/{dataset}/{version}")
     assert response.json()["data"]["metadata"] == result_metadata
 
-    response = client.delete(f"/meta/{dataset}/{version}")
+    response = await async_client.delete(f"/dataset/{dataset}/{version}")
     assert response.json()["data"]["metadata"] == result_metadata
 
 
 @patch("fastapi.BackgroundTasks.add_task", return_value=None)
-def test_version_delete_protection(mocked_task, client):
+def test_version_delete_protection(mocked_task, async_client):
     dataset = "test"
     version1 = "v1.1.1"
     version2 = "v1.1.2"
 
-    client.put(f"/meta/{dataset}", data=json.dumps(payload))
+    await async_client.put(f"/dataset/{dataset}", data=json.dumps(payload))
 
     version_payload = {
         "is_latest": True,
@@ -179,64 +190,73 @@ def test_version_delete_protection(mocked_task, client):
     }
 
     # with patch("app.tasks.default_assets.create_default_asset", return_value=True) as mock_asset:
-    client.put(f"/meta/{dataset}/{version1}", data=json.dumps(version_payload))
+    await async_client.put(
+        f"/dataset/{dataset}/{version1}", data=json.dumps(version_payload)
+    )
 
-    client.put(f"/meta/{dataset}/{version2}", data=json.dumps(version_payload))
+    await async_client.put(
+        f"/dataset/{dataset}/{version2}", data=json.dumps(version_payload)
+    )
 
-    client.patch(f"/meta/{dataset}/{version2}", data=json.dumps({"is_latest": True}))
+    await async_client.patch(
+        f"/dataset/{dataset}/{version2}", data=json.dumps({"is_latest": True})
+    )
 
-    response = client.delete(f"/meta/{dataset}/{version2}")
+    response = await async_client.delete(f"/dataset/{dataset}/{version2}")
 
     assert response.status_code == 409
 
-    client.delete(f"/meta/{dataset}/{version1}")
-    response = client.delete(f"/meta/{dataset}/{version2}")
+    await async_client.delete(f"/dataset/{dataset}/{version1}")
+    response = await async_client.delete(f"/dataset/{dataset}/{version2}")
     assert response.status_code == 200
     assert mocked_task.called
 
 
 @patch("fastapi.BackgroundTasks.add_task", return_value=None)
-def test_latest_middleware(mocked_task, client):
+def test_latest_middleware(mocked_task, async_client):
     """Test if middleware redirects to correct version when using `latest`
     version identifier."""
 
     dataset = "test"
     version = "v1.1.1"
 
-    response = client.put(f"/meta/{dataset}", data=json.dumps(payload))
+    response = await async_client.put(f"/dataset/{dataset}", data=json.dumps(payload))
     print(response.json())
     assert response.status_code == 201
 
     version_payload = {
         "is_latest": False,
-        "source_type": "vector",
-        "source_uri": ["s3://some/path"],
         "metadata": payload["metadata"],
-        "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
+        "creation_options": {
+            "source_type": "vector",
+            "source_uri": ["s3://some/path"],
+            "source_driver": "ESRI Shapefile",
+            "zipped": True,
+        },
     }
 
-    response = client.put(
-        f"/meta/{dataset}/{version}", data=json.dumps(version_payload)
+    response = await async_client.put(
+        f"/dataset/{dataset}/{version}", data=json.dumps(version_payload)
     )
     print(response.json())
     assert response.status_code == 202
 
-    response = client.get(f"/meta/{dataset}/{version}")
+    response = await async_client.get(f"/dataset/{dataset}/{version}")
     print(response.json())
     assert response.status_code == 200
 
-    response = client.get(f"/meta/{dataset}/latest")
+    response = await async_client.get(f"/dataset/{dataset}/latest")
     print(response.json())
     assert response.status_code == 404
 
-    response = client.patch(
-        f"/meta/{dataset}/{version}", data=json.dumps({"is_latest": True})
+    response = await async_client.patch(
+        f"/dataset/{dataset}/{version}", data=json.dumps({"is_latest": True})
     )
     print(response.json())
     assert response.status_code == 200
     assert response.json()["data"]["is_latest"] is True
 
-    response = client.get(f"/meta/{dataset}/latest")
+    response = await async_client.get(f"/dataset/{dataset}/latest")
     print(response.json())
     assert response.status_code == 200
     assert response.json()["data"]["version"] == version

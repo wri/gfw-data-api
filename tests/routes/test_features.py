@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 
 import pendulum
 import pytest
@@ -8,12 +9,12 @@ from pendulum.parsing.exceptions import ParserError
 from app.application import app
 from app.crud import tasks
 from tests import BUCKET, TSV_NAME
-from tests.routes import create_default_asset
+from tests.routes import create_default_asset, generate_uuid
 from tests.tasks import poll_jobs
 
 
 @pytest.mark.asyncio
-async def test_features(batch_client, httpd):
+async def test_features(async_client, batch_client, httpd):
 
     ############################
     # Setup test
@@ -40,11 +41,11 @@ async def test_features(batch_client, httpd):
                 pass
 
     input_data = {
-        "source_type": "table",
-        "source_uri": [f"s3://{BUCKET}/{TSV_NAME}"],
         "creation_options": {
+            "source_type": "table",
+            "source_uri": [f"s3://{BUCKET}/{TSV_NAME}"],
             "create_dynamic_vector_tile_cache": True,
-            "src_driver": "text",
+            "source_driver": "text",
             "delimiter": "\t",
             "has_header": True,
             "latitude": "latitude",
@@ -76,9 +77,14 @@ async def test_features(batch_client, httpd):
     }
 
     # Create default asset in mocked Batch
-    asset = await create_default_asset(
-        dataset, version, dataset_metadata=input_data, version_metadata=input_data
-    )
+    with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
+        asset = await create_default_asset(
+            async_client,
+            dataset,
+            version,
+            dataset_payload=input_data,
+            version_payload=input_data,
+        )
     asset_id = asset["asset_id"]
 
     tasks_rows = await tasks.get_tasks(asset_id)
@@ -91,104 +97,110 @@ async def test_features(batch_client, httpd):
     # All jobs completed, but they couldn't update the task status. Set them all
     # to report success. This should allow the logic that fills out the metadata
     # fields to proceed.
-    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as ac:
-        for task_id in task_ids:
-            patch_payload = {
-                "change_log": [
-                    {
-                        "date_time": "2020-06-25 14:30:00",
-                        "status": "success",
-                        "message": "All finished!",
-                        "detail": "None",
-                    }
-                ]
-            }
-            patch_resp = await ac.patch(f"/tasks/{task_id}", json=patch_payload)
-            assert patch_resp.json()["status"] == "success"
+
+    for task_id in task_ids:
+        patch_payload = {
+            "change_log": [
+                {
+                    "date_time": "2020-06-25 14:30:00",
+                    "status": "success",
+                    "message": "All finished!",
+                    "detail": "None",
+                }
+            ]
+        }
+        patch_resp = await async_client.patch(f"/tasks/{task_id}", json=patch_payload)
+        assert patch_resp.json()["status"] == "success"
 
     ########################
     # Test features endpoint
     ########################
-    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as ac:
-        # Exact match, z > 9 (though see FIXME in app/routes/features/features.py)
-        resp = await ac.get(
-            f"/features/{dataset}/{version}?lat=4.42813&lng=17.97655&z=10"
-        )
-        assert resp.status_code == 200
-        assert len(resp.json()["data"]) == 1
-        assert resp.json()["data"][0]["iso"] == "CAF"
 
-        # Nearby match
-        resp = await ac.get(
-            f"/features/{dataset}/{version}?lat=9.40645&lng=-3.3681&z=9"
-        )
-        assert resp.status_code == 200
-        assert len(resp.json()["data"]) == 1
-        assert resp.json()["data"][0]["iso"] == "CIV"
+    # Exact match, z > 9 (though see FIXME in app/routes/features/features.py)
+    resp = await async_client.get(
+        f"/dataset/{dataset}/{version}/features?lat=4.42813&lng=17.97655&z=10"
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()["data"]) == 1
+    assert resp.json()["data"][0]["iso"] == "CAF"
 
-        # No match
-        resp = await ac.get(f"/features/{dataset}/{version}?lat=10&lng=-10&z=22")
-        assert resp.status_code == 200
-        assert len(resp.json()["data"]) == 0
+    # Nearby match
+    resp = await async_client.get(
+        f"/dataset/{dataset}/{version}/features?lat=9.40645&lng=-3.3681&z=9"
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()["data"]) == 1
+    assert resp.json()["data"][0]["iso"] == "CIV"
 
-        # Invalid latitude, longitude, or zoom level
-        # Check all the constraints at once, why not?
-        expected_messages = [
-            {
-                "loc": ["query", "lat"],
-                "msg": "ensure this value is less than or equal to 90",
-                "type": "value_error.number.not_le",
-                "ctx": {"limit_value": 90},
-            },
-            {
-                "loc": ["query", "lng"],
-                "msg": "ensure this value is less than or equal to 180",
-                "type": "value_error.number.not_le",
-                "ctx": {"limit_value": 180},
-            },
-            {
-                "loc": ["query", "z"],
-                "msg": "ensure this value is less than or equal to 22",
-                "type": "value_error.number.not_le",
-                "ctx": {"limit_value": 22},
-            },
-        ]
-        resp = await ac.get(f"/features/{dataset}/{version}?lat=360&lng=360&z=25")
+    # No match
+    resp = await async_client.get(
+        f"/dataset/{dataset}/{version}/features?lat=10&lng=-10&z=22"
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()["data"]) == 0
 
-        assert resp.status_code == 422
-        assert resp.json()["status"] == "failed"
-        assert set(
-            [json.dumps(msg, sort_keys=True) for msg in resp.json()["message"]]
-        ) == set(json.dumps(msg, sort_keys=True) for msg in expected_messages)
+    # Invalid latitude, longitude, or zoom level
+    # Check all the constraints at once, why not?
+    expected_messages = [
+        {
+            "loc": ["query", "lat"],
+            "msg": "ensure this value is less than or equal to 90",
+            "type": "value_error.number.not_le",
+            "ctx": {"limit_value": 90},
+        },
+        {
+            "loc": ["query", "lng"],
+            "msg": "ensure this value is less than or equal to 180",
+            "type": "value_error.number.not_le",
+            "ctx": {"limit_value": 180},
+        },
+        {
+            "loc": ["query", "z"],
+            "msg": "ensure this value is less than or equal to 22",
+            "type": "value_error.number.not_le",
+            "ctx": {"limit_value": 22},
+        },
+    ]
+    resp = await async_client.get(
+        f"/dataset/{dataset}/{version}/features?lat=360&lng=360&z=25"
+    )
 
-        # Invalid latitude, longitude, or zoom level, opposite limits
-        # Check all the constraints at once, why not?
-        expected_messages = [
-            {
-                "loc": ["query", "lat"],
-                "msg": "ensure this value is greater than or equal to -90",
-                "type": "value_error.number.not_ge",
-                "ctx": {"limit_value": -90},
-            },
-            {
-                "loc": ["query", "lng"],
-                "msg": "ensure this value is greater than or equal to -180",
-                "type": "value_error.number.not_ge",
-                "ctx": {"limit_value": -180},
-            },
-            {
-                "loc": ["query", "z"],
-                "msg": "ensure this value is greater than or equal to 0",
-                "type": "value_error.number.not_ge",
-                "ctx": {"limit_value": 0},
-            },
-        ]
-        resp = await ac.get(f"/features/{dataset}/{version}?lat=-360&lng=-360&z=-1")
-        print(resp.json())
-        assert resp.status_code == 422
-        assert resp.json()["status"] == "failed"
-        assert set(
-            [json.dumps(msg, sort_keys=True) for msg in resp.json()["message"]]
-        ) == set(json.dumps(msg, sort_keys=True) for msg in expected_messages)
+    assert resp.status_code == 422
+    assert resp.json()["status"] == "failed"
+    assert set(
+        [json.dumps(msg, sort_keys=True) for msg in resp.json()["message"]]
+    ) == set(json.dumps(msg, sort_keys=True) for msg in expected_messages)
 
-        # TODO: Assert on the content of the fields in the features response
+    # Invalid latitude, longitude, or zoom level, opposite limits
+    # Check all the constraints at once, why not?
+    expected_messages = [
+        {
+            "loc": ["query", "lat"],
+            "msg": "ensure this value is greater than or equal to -90",
+            "type": "value_error.number.not_ge",
+            "ctx": {"limit_value": -90},
+        },
+        {
+            "loc": ["query", "lng"],
+            "msg": "ensure this value is greater than or equal to -180",
+            "type": "value_error.number.not_ge",
+            "ctx": {"limit_value": -180},
+        },
+        {
+            "loc": ["query", "z"],
+            "msg": "ensure this value is greater than or equal to 0",
+            "type": "value_error.number.not_ge",
+            "ctx": {"limit_value": 0},
+        },
+    ]
+    resp = await async_client.get(
+        f"/dataset/{dataset}/{version}/features?lat=-360&lng=-360&z=-1"
+    )
+    print(resp.json())
+    assert resp.status_code == 422
+    assert resp.json()["status"] == "failed"
+    assert set(
+        [json.dumps(msg, sort_keys=True) for msg in resp.json()["message"]]
+    ) == set(json.dumps(msg, sort_keys=True) for msg in expected_messages)
+
+    # TODO: Assert on the content of the fields in the features response
