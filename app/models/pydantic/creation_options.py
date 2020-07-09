@@ -76,15 +76,16 @@ class FieldType(BaseModel):
 # TODO: we currently ignore src_driver and zipped field
 #  decide whether to keep these fields or to remove them entirely
 class VectorSourceCreationOptions(BaseModel):
-    source_type: SourceType = SourceType.vector
-    source_uri: Optional[List[str]] = None
     source_driver: VectorDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
     )
-    zipped: bool = Field(..., description="Indicate if source file is zipped")
+    source_type: SourceType = SourceType.vector
+    source_uri: Optional[List[str]] = None
     layers: Optional[List[str]] = Field(
         None, description="List of input layers. Only required for .gdb and .gpkg"
     )
+    zipped: bool = Field(..., description="Indicate if source file is zipped")
+
     indices: List[Index] = Field(
         [
             Index(index_type="gist", column_name="geom"),
@@ -101,11 +102,12 @@ class VectorSourceCreationOptions(BaseModel):
 
 
 class TableSourceCreationOptions(BaseModel):
+    source_driver: TableDrivers = Field(..., description="Driver of input file.")
     source_type: SourceType = SourceType.table
     source_uri: Optional[List[str]] = None
-    source_driver: TableDrivers = Field(..., description="Driver of input file.")
-    delimiter: Delimiters = Field(..., description="Delimiter used in input file")
     has_header: bool = Field(True, description="Input file has header. Must be true")
+    delimiter: Delimiters = Field(..., description="Delimiter used in input file")
+
     latitude: Optional[str] = Field(
         None, description="Column with latitude coordinate", regex=COLUMN_REGEX
     )
@@ -164,7 +166,7 @@ class NdjsonCreationOptions(BaseModel):
     pass
 
 
-SourceCreationOptions = Union[VectorSourceCreationOptions, TableSourceCreationOptions]
+SourceCreationOptions = Union[TableSourceCreationOptions, VectorSourceCreationOptions]
 
 OtherCreationOptions = Union[
     StaticVectorTileCacheCreationOptions,

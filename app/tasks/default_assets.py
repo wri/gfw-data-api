@@ -38,7 +38,7 @@ async def create_default_asset(
     dataset: str, version: str, input_data: Dict[str, Any], file_obj: Optional[IO],
 ) -> UUID:
 
-    source_uri = input_data["source_uri"]
+    source_uri = input_data["creation_options"]["source_uri"]
     status = None
     log: Optional[ChangeLog] = None
 

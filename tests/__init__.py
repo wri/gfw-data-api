@@ -5,10 +5,12 @@ from http.server import BaseHTTPRequestHandler
 from typing import List, Optional
 
 import boto3
+from fastapi.testclient import TestClient
 from moto import mock_batch, mock_ec2, mock_ecs, mock_iam, mock_logs
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.main import app as data_api
 from app.settings.globals import (
     AWS_REGION,
     WRITER_DBNAME,
@@ -65,30 +67,55 @@ class MemoryServer(BaseHTTPRequestHandler):
         self.requests_thus_far = []
 
     def do_PUT(self):
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps({"foo": "bar"}).encode("utf-8"))
+        """Forward PUT request to Test Client and buffer requests in
+        request_thus_far property."""
 
         content_length = int(self.headers["Content-Length"])
         put_data = self.rfile.read(content_length)
-
+        request = json.loads(str(put_data.decode("utf-8")))
         self.requests_thus_far.append(
-            {"path": str(self.path), "body": json.loads(str(put_data.decode("utf-8")))}
+            {"method": "PUT", "path": str(self.path), "body": request}
         )
+
+        with TestClient(data_api) as client:
+            response = client.put(self.path, data=request)
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(response.json())
 
     def do_PATCH(self):
+        content_length = int(self.headers["Content-Length"])
+        put_data = self.rfile.read(content_length)
+        request = json.loads(str(put_data.decode("utf-8")))
+        self.requests_thus_far.append(
+            {"method": "PATCH", "path": str(self.path), "body": request}
+        )
+
+        with TestClient(data_api) as client:
+            response = client.patch(self.path, data=request)
+
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        self.wfile.write(json.dumps({"foo": "bar"}).encode("utf-8"))
+        self.wfile.write(response.json())
 
+    def do_POST(self):
         content_length = int(self.headers["Content-Length"])
         put_data = self.rfile.read(content_length)
-
+        request = json.loads(str(put_data.decode("utf-8")))
         self.requests_thus_far.append(
-            {"path": str(self.path), "body": json.loads(str(put_data.decode("utf-8")))}
+            {"method": "POST", "path": str(self.path), "body": request}
         )
+
+        with TestClient(data_api) as client:
+            response = client.post(self.path, data=request)
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(response.json())
 
 
 class AWSMock(object):

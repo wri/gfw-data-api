@@ -20,8 +20,11 @@ async def table_source_asset(
     dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
 
-    source_uris: List[str] = input_data["source_uri"]
     creation_options = TableSourceCreationOptions(**input_data["creation_options"])
+    if creation_options.source_uri:
+        source_uris: List[str] = creation_options.source_uri
+    else:
+        raise RuntimeError("No source URI provided.")
 
     callback: Callback = callback_constructor(asset_id)
 

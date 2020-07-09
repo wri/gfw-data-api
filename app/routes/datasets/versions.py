@@ -83,6 +83,10 @@ async def add_new_version(
     """Create or update a version for a given dataset."""
 
     input_data = request.dict(exclude_none=True, by_alias=True)
+
+    creation_options = input_data["creation_options"]
+    del input_data["creation_options"]
+
     # Register version with DB
     try:
         new_version: ORMVersion = await versions.create_version(
@@ -90,6 +94,8 @@ async def add_new_version(
         )
     except RecordAlreadyExistsError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    input_data["creation_options"] = creation_options
 
     # Everything else happens in the background task asynchronously
     background_tasks.add_task(create_default_asset, dataset, version, input_data, None)

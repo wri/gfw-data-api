@@ -132,7 +132,6 @@ async def delete_dataset(
 
 
 async def _dataset_response(dataset: str, orm: ORMDataset) -> DatasetResponse:
-
     _versions: List[Any] = await versions.get_version_names(dataset)
     data = Dataset.from_orm(orm).dict(by_alias=True)
     data["versions"] = [version[0] for version in _versions]
