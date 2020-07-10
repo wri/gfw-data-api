@@ -88,7 +88,9 @@ async def get_asset(asset_id: UUID) -> ORMAsset:
 async def get_default_asset(dataset: str, version: str) -> ORMAsset:
     row: ORMAsset = await ORMAsset.query.where(ORMAsset.dataset == dataset).where(
         ORMAsset.version == version
-    ).where(ORMAsset.is_default is True).gino.first()
+    ).where(
+        ORMAsset.is_default == True  # noqa: E712
+    ).gino.first()
     if row is None:
         raise RecordNotFoundError(
             f"Could not find default asset for {dataset}.{version}"

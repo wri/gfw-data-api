@@ -76,13 +76,13 @@ async def poll_jobs(job_ids: List[str]) -> str:
         sleep(1)
 
 
-def check_callbacks(task_ids, port):
+async def check_callbacks(task_ids, port, async_client=None):
     get_resp = requests.get(f"http://localhost:{port}")
     req_list = get_resp.json()["requests"]
 
-    print("#############")
-    print(len(req_list), req_list)
-    print(len(task_ids), task_ids)
+    # print("#############")
+    # print(len(req_list), req_list)
+    # print(len(task_ids), task_ids)
     assert len(req_list) == len(task_ids)
 
     task_path = [f"/tasks/{taskid}" for taskid in task_ids]
@@ -90,10 +90,32 @@ def check_callbacks(task_ids, port):
     for i, req in enumerate(req_list):
         req_paths.append(req["path"])
         assert req["body"]["change_log"][0]["status"] == "success"
+        if async_client:
+            await forward_request(async_client, req)
 
     # Order of task might vary if running in parallel.
     # We only check if URLs were correct
     assert all(elem in task_path for elem in req_paths)
+
+
+async def forward_request(async_client, request):
+
+    client_request = {
+        "PATCH": async_client.patch,
+        "PUT": async_client.put,
+        "POST": async_client.post,
+    }
+
+    try:
+        response = await client_request[request["method"]](
+            request["path"], json=request["body"]
+        )
+        print(response.json())
+        assert response.status_code == 200
+    except KeyError:
+        raise NotImplementedError(
+            f"Forwarding method {request['method']} not implemented"
+        )
 
 
 async def create_dataset(dataset) -> None:

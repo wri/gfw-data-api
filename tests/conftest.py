@@ -141,15 +141,16 @@ async def async_client():
     async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
         yield client
 
-
-# app.dependency_overrides = {}
-# main(["--raiseerr", "downgrade", "base"])
+    # app.dependency_overrides = {}
+    # main(["--raiseerr", "downgrade", "base"])
 
 
 @pytest.fixture(scope="session")
 def httpd():
+
     server_class = HTTPServer
     handler_class = MemoryServer
+
     port = 9000
 
     httpd = server_class(("0.0.0.0", port), handler_class)

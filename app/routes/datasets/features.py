@@ -67,7 +67,8 @@ async def get_features_by_location(dataset, version, lat, lng, zoom):
         .select_from(t)
         .where(filter_intersects("geom", str(geometry)))
     )
-
+    print(str(sql))
+    # print(str(geometry))
     features = await db.all(sql)
 
     return features
@@ -132,14 +133,9 @@ def filter_intersects(field, geometry) -> TextClause:
 
 
 async def get_fields(dataset, version):
-    rows = await assets.get_assets(dataset, version)
-    fields = []
-    for row in rows:
-        if row.asset_type == AssetType.database_table:
-            fields = row.metadata["fields"]
-            break
-
-    return fields
+    asset = await assets.get_default_asset(dataset, version)
+    print(asset.fields)
+    return asset.fields
 
 
 async def _features_response(rows) -> FeaturesResponse:

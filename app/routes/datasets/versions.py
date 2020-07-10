@@ -10,6 +10,8 @@ Available assets and endpoints to choose from depend on the source type.
 """
 from typing import List, Optional
 
+import botocore
+from botocore.exceptions import ClientError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
 
@@ -35,6 +37,8 @@ from ...models.pydantic.versions import (
 from ...routes import dataset_dependency, is_admin, version_dependency
 from ...tasks.default_assets import create_default_asset
 from ...tasks.delete_assets import delete_all_assets
+from ...utils.aws import get_s3_client
+from ...utils.path import split_s3_path
 
 router = APIRouter()
 
@@ -82,6 +86,8 @@ async def add_new_version(
 
     creation_options = input_data["creation_options"]
     del input_data["creation_options"]
+
+    _verify_source_file_access(creation_options["source_uri"])
 
     # Register version with DB
     try:
@@ -252,3 +258,20 @@ async def _version_response(
     data["assets"] = [(asset[0], asset[1]) for asset in assets]
 
     return VersionResponse(data=data)
+
+
+def _verify_source_file_access(s3_sources):
+    s3_client = get_s3_client()
+    invalid_sources = list()
+
+    for s3_source in s3_sources:
+        try:
+            bucket, key = split_s3_path(s3_source)
+            s3_client.head_object(Bucket=bucket, Key=key)
+        except ClientError:
+            invalid_sources.append(s3_source)
+
+    if invalid_sources:
+        raise HTTPException(
+            status_code=400, detail=f"Cannot access source files {invalid_sources}"
+        )

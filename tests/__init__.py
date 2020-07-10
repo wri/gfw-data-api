@@ -39,6 +39,14 @@ SessionLocal: Optional[Session] = None
 
 
 class MemoryServer(BaseHTTPRequestHandler):
+
+    # client = None
+    #
+    # @classmethod
+    # def with_test_client(cls, client):
+    #     cls.client = client
+    #     return cls
+
     @property
     def requests_thus_far(self):
         return REQUESTS_THUS_FAR
@@ -74,13 +82,16 @@ class MemoryServer(BaseHTTPRequestHandler):
             {"method": "PUT", "path": str(self.path), "body": request}
         )
 
-        with TestClient(data_api) as client:
-            response = client.put(self.path, data=request)
+        # response = self.client.put(self.path, data=json.dumps(request))
+        response = {
+            "data": {"response": "This is a mocked response"},
+            "status": "success",
+        }
 
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        self.wfile.write(response.json())
+        self.wfile.write(str(response).encode("utf-8"))
 
     def do_PATCH(self):
         content_length = int(self.headers["Content-Length"])
@@ -90,13 +101,16 @@ class MemoryServer(BaseHTTPRequestHandler):
             {"method": "PATCH", "path": str(self.path), "body": request}
         )
 
-        with TestClient(data_api) as client:
-            response = client.patch(self.path, data=request)
+        # response = self.client.patch(self.path, json=request)
+        response = {
+            "data": {"response": "This is a mocked response"},
+            "status": "success",
+        }
 
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        self.wfile.write(response.json())
+        self.wfile.write(str(response).encode("utf-8"))
 
     def do_POST(self):
         content_length = int(self.headers["Content-Length"])
@@ -106,13 +120,16 @@ class MemoryServer(BaseHTTPRequestHandler):
             {"method": "POST", "path": str(self.path), "body": request}
         )
 
-        with TestClient(data_api) as client:
-            response = client.post(self.path, data=request)
+        # response = self.client.post(self.path, data=json.dumps(request))
+        response = {
+            "data": {"response": "This is a mocked response"},
+            "status": "success",
+        }
 
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        self.wfile.write(response.json())
+        self.wfile.write(str(response).encode("utf-8"))
 
 
 class AWSMock(object):

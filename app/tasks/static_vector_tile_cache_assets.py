@@ -131,20 +131,13 @@ async def _get_field_attributes(
     available fields and use intersection.
     """
 
-    orm_assets: List[ORMAsset] = await assets.get_assets(dataset, version)
+    default_asset: ORMAsset = await assets.get_default_asset(dataset, version)
 
-    fields: Optional[List[Dict[str, str]]] = None
-    for asset in orm_assets:
-        if asset.is_default:
-            fields = asset.metadata["fields"]
-            break
+    fields: List[Dict[str, str]] = default_asset.fields
 
-    if fields:
-        field_attributes: List[Dict[str, Any]] = [
-            field for field in fields if field["is_feature_info"]
-        ]
-    else:
-        raise RuntimeError("No default asset found.")
+    field_attributes: List[Dict[str, Any]] = [
+        field for field in fields if field["is_feature_info"]
+    ]
 
     if creation_options.field_attributes:
         field_attributes = [
