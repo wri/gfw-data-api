@@ -53,6 +53,18 @@ def upgrade():
         nullable=False,
         existing_server_default=sa.text("'{}'::jsonb"),
     )
+    op.execute(
+        """UPDATE assets
+                SET creation_options = assets.creation_options || jsonb_build_object('source_uri', versions.source_uri) || jsonb_build_object('source_type', versions.source_type)
+            FROM versions WHERE assets.dataset = versions.dataset and assets.version = versions.version and assets.is_default = true;"""
+    )
+
+    op.execute(
+        """UPDATE assets
+        SET creation_options = creation_options - 'src_driver' || jsonb_build_object('source_driver', creation_options->'src_driver')
+        WHERE creation_options ? 'src_driver';"""
+    )
+
     op.drop_column("versions", "source_uri")
     op.drop_column("versions", "source_type")
     op.drop_column("versions", "creation_options")
@@ -83,12 +95,44 @@ def downgrade():
         ),
     )
     op.add_column(
-        "versions", sa.Column("source_type", sa.VARCHAR(), autoincrement=False)
-    )  # , nullable=False
+        "versions",
+        sa.Column("source_type", sa.VARCHAR(), autoincrement=False, nullable=True),
+    )
+
     op.add_column(
         "versions",
         sa.Column("source_uri", postgresql.ARRAY(sa.VARCHAR()), autoincrement=False),
-    )  # , nullable=True
+        nullable=True,
+    )
+
+    op.execute(
+        """UPDATE versions
+                SET source_type = assets.creation_options -> 'source_type',
+                source_uri = assets.creation_options -> 'source_uri'
+            FROM assets where assets.dataset = versions.dataset and assets.version = versions.version and assets.is_default = true;"""
+    )
+    op.execute(
+        """UPDATE assets
+                SET creation_options = creation_options - 'source_type' - 'source_uri'
+                WHERE is_default = true;"""
+    )
+
+    op.execute(
+        """UPDATE assets
+            SET creation_options = creation_options - 'source_driver' || jsonb_build_object('src_driver', creation_options->'source_driver')
+            WHERE creation_options ? 'source_driver';"""
+    )
+
+    op.execute(
+        """UPDATE versions
+                SET creation_options = assets.creation_options
+            FROM assets where assets.dataset = versions.dataset and assets.version = versions.version and assets.is_default = true;"""
+    )
+
+    op.alter_column(
+        "versions", "source_type", existing_type=sa.VARCHAR(), nullable=False,
+    )
+
     op.alter_column(
         "assets",
         "stats",

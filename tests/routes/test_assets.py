@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from tests.routes import create_default_asset, generate_uuid
+from tests.utils import create_default_asset
 
 
 @pytest.mark.asyncio
@@ -12,8 +12,9 @@ async def test_assets(async_client):
     dataset = "test"
     version = "v20200626"
 
-    with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
-        asset = await create_default_asset(async_client, dataset, version)
+    asset = await create_default_asset(
+        dataset, version, async_client=async_client, execute_batch_jobs=False
+    )
     asset_id = asset["asset_id"]
 
     # Verify that the asset and version are in state "pending"
@@ -60,9 +61,7 @@ async def test_assets(async_client):
             }
         ]
     }
-    patch_resp = await async_client.patch(
-        f"/tasks/{sample_task_id}", json=patch_payload
-    )
+    patch_resp = await async_client.patch(f"/task/{sample_task_id}", json=patch_payload)
     assert patch_resp.json()["status"] == "success"
 
     create_asset_resp = await async_client.post(

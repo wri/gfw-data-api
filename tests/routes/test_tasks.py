@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from app.models.enum.assets import AssetType
-from tests.routes import create_default_asset
+from tests.utils import create_default_asset
 
 
 @pytest.mark.asyncio
@@ -23,8 +23,9 @@ async def test_tasks_success(async_client):
     def generate_uuid(*args, **kwargs):
         return uuid.uuid4()
 
-    with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
-        asset = await create_default_asset(async_client, dataset, version)
+    asset = await create_default_asset(
+        dataset, version, async_client=async_client, execute_batch_jobs=False
+    )
     asset_id = asset["asset_id"]
 
     # Verify that the asset and version are in state "pending"
@@ -62,13 +63,11 @@ async def test_tasks_success(async_client):
             }
         ]
     }
-    patch_resp = await async_client.patch(
-        f"/tasks/{sample_task_id}", json=patch_payload
-    )
+    patch_resp = await async_client.patch(f"/task/{sample_task_id}", json=patch_payload)
     assert patch_resp.json()["status"] == "success"
 
     # Verify the task has two changelogs now.
-    get_resp = await async_client.get(f"/tasks/{sample_task_id}")
+    get_resp = await async_client.get(f"/task/{sample_task_id}")
     assert len(get_resp.json()["data"]["change_log"]) == 2
 
     # Verify that the asset and version are still in state "pending"
@@ -92,7 +91,7 @@ async def test_tasks_success(async_client):
             ]
         }
         patch_resp = await async_client.patch(
-            f"/tasks/{task['task_id']}", json=patch_payload
+            f"/task/{task['task_id']}", json=patch_payload
         )
         assert patch_resp.json()["status"] == "success"
 
@@ -174,9 +173,7 @@ async def test_tasks_success(async_client):
             }
         ]
     }
-    patch_resp = await async_client.patch(
-        f"/tasks/{sample_task_id}", json=patch_payload
-    )
+    patch_resp = await async_client.patch(f"/task/{sample_task_id}", json=patch_payload)
     assert patch_resp.json()["status"] == "success"
 
     # Verify the asset status is now "failed"
@@ -195,11 +192,9 @@ async def test_tasks_failure(async_client):
     dataset = "test"
     version = "v20200626"
 
-    def generate_uuid(*args, **kwargs):
-        return uuid.uuid4()
-
-    with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
-        asset = await create_default_asset(async_client, dataset, version)
+    asset = await create_default_asset(
+        dataset, version, async_client=async_client, execute_batch_jobs=False
+    )
     asset_id = asset["asset_id"]
 
     # Verify that the asset and version are in state "pending"
@@ -238,9 +233,7 @@ async def test_tasks_failure(async_client):
             }
         ]
     }
-    patch_resp = await async_client.patch(
-        f"/tasks/{sample_task_id}", json=patch_payload
-    )
+    patch_resp = await async_client.patch(f"/task/{sample_task_id}", json=patch_payload)
     assert patch_resp.json()["status"] == "success"
 
     # Verify that the asset and version have been changed to state "failed"

@@ -1,23 +1,18 @@
 import json
-from asyncio import sleep
 
 import pendulum
 import pytest
 from pendulum.parsing.exceptions import ParserError
 
 from app.application import ContextEngine, db
-from app.crud import tasks
 from tests import BUCKET, TSV_NAME
-from tests.routes import create_default_asset
-from tests.tasks import check_callbacks, poll_jobs
-from tests.tasks.test_default_assets import _print_logs
+from tests.utils import create_default_asset
 
 
 @pytest.mark.asyncio
-async def test_features(async_client, batch_client, httpd):
+async def test_features(async_client, batch_client):
 
     _, logs = batch_client
-    httpd_port = httpd.server_port
 
     ############################
     # Setup test
@@ -80,45 +75,19 @@ async def test_features(async_client, batch_client, httpd):
     }
 
     # Create default asset in mocked Batch
-    # with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
     asset = await create_default_asset(
-        async_client,
         dataset,
         version,
         dataset_payload=input_data,
         version_payload=input_data,
+        async_client=async_client,
+        logs=logs,
+        execute_batch_jobs=True,
     )
     asset_id = asset["asset_id"]
 
-    tasks_rows = await tasks.get_tasks(asset_id)
-    task_ids = [str(task.task_id) for task in tasks_rows]
-
-    # Wait until all jobs have finished
-    status = await poll_jobs(task_ids)
-    # _print_logs(logs)
-    await check_callbacks(task_ids, httpd_port, async_client)
-
-    assert status == "saved"
     response = await async_client.get(f"/asset/{asset_id}")
     assert response.json()["data"]["status"] == "saved"
-
-    # All jobs completed, but they couldn't update the task status. Set them all
-    # to report success. This should allow the logic that fills out the metadata
-    # fields to proceed.
-
-    # for task_id in task_ids:
-    #     patch_payload = {
-    #         "change_log": [
-    #             {
-    #                 "date_time": "2020-06-25 14:30:00",
-    #                 "status": "success",
-    #                 "message": "All finished!",
-    #                 "detail": "None",
-    #             }
-    #         ]
-    #     }
-    #     patch_resp = await async_client.patch(f"/tasks/{task_id}", json=patch_payload)
-    #     assert patch_resp.json()["status"] == "success"
 
     ########################
     # Test features endpoint

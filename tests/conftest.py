@@ -28,6 +28,7 @@ from . import (
     BUCKET,
     GEOJSON_NAME,
     GEOJSON_PATH,
+    PORT,
     SHP_NAME,
     SHP_PATH,
     TSV_NAME,
@@ -151,7 +152,7 @@ def httpd():
     server_class = HTTPServer
     handler_class = MemoryServer
 
-    port = 9000
+    port = PORT
 
     httpd = server_class(("0.0.0.0", port), handler_class)
 

@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from app.application import ContextEngine, db
-from tests.routes import create_default_asset, generate_uuid
+from tests.utils import create_default_asset
 
 payload = {
     "metadata": {
@@ -90,16 +90,20 @@ async def test_dataset_delete_protection(async_client):
     dataset = "test"
     version = "v20200626"
 
-    with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
-        await create_default_asset(async_client, dataset, version)
+    await create_default_asset(
+        dataset, version, async_client=async_client, execute_batch_jobs=False
+    )
 
     with patch("fastapi.BackgroundTasks.add_task", return_value=None) as mocked_task:
+
+        # You should not be able to delete datasets while there are still versions
+        # You will need to delete the version first
         response = await async_client.delete(f"/dataset/{dataset}")
-        print(response.json())
         assert response.status_code == 409
 
-        await async_client.delete(f"/dataset/{dataset}/{version}")
-        response = await async_client.delete(f"/dataset/{dataset}")
+        response = await async_client.delete(f"/dataset/{dataset}/{version}")
+        assert response.status_code == 200
 
+        response = await async_client.delete(f"/dataset/{dataset}")
         assert response.status_code == 200
         assert mocked_task.called

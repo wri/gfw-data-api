@@ -87,8 +87,7 @@ async def test_versions(mocked_task, async_client):
 
 
 @pytest.mark.asyncio
-@patch("fastapi.BackgroundTasks.add_task", return_value=None)
-async def test_version_metadata(mocked_task, async_client):
+async def test_version_metadata(async_client):
     """Test if Version inherits metadata from Dataset.
 
     Version should be able to overwrite any metadata attribute
@@ -139,9 +138,10 @@ async def test_version_metadata(mocked_task, async_client):
         },
     }
 
-    response = await async_client.put(
-        f"/dataset/{dataset}/{version}", data=json.dumps(version_payload)
-    )
+    with patch("app.tasks.default_assets.create_default_asset", return_value=True):
+        response = await async_client.put(
+            f"/dataset/{dataset}/{version}", data=json.dumps(version_payload)
+        )
 
     result_metadata = {
         "title": "Title",
@@ -173,13 +173,14 @@ async def test_version_metadata(mocked_task, async_client):
 
     assert response.status_code == 202
     assert response.json()["data"]["metadata"] == result_metadata
-    assert mocked_task.called
 
     response = await async_client.get(f"/dataset/{dataset}/{version}")
     assert response.json()["data"]["metadata"] == result_metadata
 
-    response = await async_client.delete(f"/dataset/{dataset}/{version}")
-    assert response.json()["data"]["metadata"] == result_metadata
+    with patch("fastapi.BackgroundTasks.add_task", return_value=None) as mocked_task:
+        response = await async_client.delete(f"/dataset/{dataset}/{version}")
+        assert response.json()["data"]["metadata"] == result_metadata
+        assert mocked_task.called
 
 
 @pytest.mark.asyncio
@@ -200,15 +201,15 @@ async def test_version_delete_protection(mocked_task, async_client):
             "zipped": True,
         },
     }
+    with patch("app.tasks.default_assets.create_default_asset", return_value=True):
+        response = await async_client.put(
+            f"/dataset/{dataset}/{version1}", json=version_payload
+        )
+        assert response.status_code == 202
 
-    response = await async_client.put(
-        f"/dataset/{dataset}/{version1}", json=version_payload
-    )
-    assert response.status_code == 202
-
-    response = await async_client.put(
-        f"/dataset/{dataset}/{version2}", json=version_payload
-    )
+        response = await async_client.put(
+            f"/dataset/{dataset}/{version2}", json=version_payload
+        )
     assert response.status_code == 202
 
     response = await async_client.patch(
@@ -274,3 +275,4 @@ async def test_latest_middleware(mocked_task, async_client):
     print(response.json())
     assert response.status_code == 200
     assert response.json()["data"]["version"] == version
+    assert mocked_task.called

@@ -3,7 +3,8 @@
 You can view a single tasks or all tasks associated with as specific
 asset. Only _service accounts_ can create or update tasks.
 """
-
+import sys
+import traceback
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -20,18 +21,11 @@ from ...models.enum.versions import VersionStatus
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.queries.fields import fields
 from ...models.orm.tasks import Task as ORMTask
-from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.assets import AssetCreateIn, AssetType
 from ...models.pydantic.change_log import ChangeLog
 from ...models.pydantic.creation_options import DynamicVectorTileCacheCreationOptions
 from ...models.pydantic.metadata import FieldMetadata
-from ...models.pydantic.tasks import (
-    Task,
-    TaskCreateIn,
-    TaskResponse,
-    TasksResponse,
-    TaskUpdateIn,
-)
+from ...models.pydantic.tasks import TaskCreateIn, TaskResponse, TaskUpdateIn
 from ...settings.globals import TILE_CACHE_URL
 from ...tasks.assets import create_asset
 from .. import is_service_account
@@ -124,8 +118,12 @@ async def update_task(
             )
 
         return task_response(task_row)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        raise HTTPException(
+            status_code=500,
+            detail=repr(traceback.format_exception(exc_type, exc_value, exc_traceback)),
+        )
 
 
 async def _set_failed(task_id: UUID, asset_id: UUID):
