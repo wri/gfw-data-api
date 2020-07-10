@@ -1,20 +1,23 @@
 import json
-from unittest.mock import patch
+from asyncio import sleep
 
 import pendulum
 import pytest
-from httpx import AsyncClient
 from pendulum.parsing.exceptions import ParserError
 
-from app.application import app
+from app.application import ContextEngine, db
 from app.crud import tasks
 from tests import BUCKET, TSV_NAME
-from tests.routes import create_default_asset, generate_uuid
-from tests.tasks import poll_jobs
+from tests.routes import create_default_asset
+from tests.tasks import check_callbacks, poll_jobs
+from tests.tasks.test_default_assets import _print_logs
 
 
 @pytest.mark.asyncio
 async def test_features(async_client, batch_client, httpd):
+
+    _, logs = batch_client
+    httpd_port = httpd.server_port
 
     ############################
     # Setup test
@@ -77,14 +80,14 @@ async def test_features(async_client, batch_client, httpd):
     }
 
     # Create default asset in mocked Batch
-    with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
-        asset = await create_default_asset(
-            async_client,
-            dataset,
-            version,
-            dataset_payload=input_data,
-            version_payload=input_data,
-        )
+    # with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
+    asset = await create_default_asset(
+        async_client,
+        dataset,
+        version,
+        dataset_payload=input_data,
+        version_payload=input_data,
+    )
     asset_id = asset["asset_id"]
 
     tasks_rows = await tasks.get_tasks(asset_id)
@@ -92,34 +95,44 @@ async def test_features(async_client, batch_client, httpd):
 
     # Wait until all jobs have finished
     status = await poll_jobs(task_ids)
+    # _print_logs(logs)
+    await check_callbacks(task_ids, httpd_port, async_client)
+
     assert status == "saved"
+    response = await async_client.get(f"/asset/{asset_id}")
+    assert response.json()["data"]["status"] == "saved"
 
     # All jobs completed, but they couldn't update the task status. Set them all
     # to report success. This should allow the logic that fills out the metadata
     # fields to proceed.
 
-    for task_id in task_ids:
-        patch_payload = {
-            "change_log": [
-                {
-                    "date_time": "2020-06-25 14:30:00",
-                    "status": "success",
-                    "message": "All finished!",
-                    "detail": "None",
-                }
-            ]
-        }
-        patch_resp = await async_client.patch(f"/tasks/{task_id}", json=patch_payload)
-        assert patch_resp.json()["status"] == "success"
+    # for task_id in task_ids:
+    #     patch_payload = {
+    #         "change_log": [
+    #             {
+    #                 "date_time": "2020-06-25 14:30:00",
+    #                 "status": "success",
+    #                 "message": "All finished!",
+    #                 "detail": "None",
+    #             }
+    #         ]
+    #     }
+    #     patch_resp = await async_client.patch(f"/tasks/{task_id}", json=patch_payload)
+    #     assert patch_resp.json()["status"] == "success"
 
     ########################
     # Test features endpoint
     ########################
 
+    async with ContextEngine("READ"):
+        row = await db.scalar(f"""SELECT COUNT(*) FROM "{dataset}"."{version}" """)
+    print(row)
+
     # Exact match, z > 9 (though see FIXME in app/routes/features/features.py)
     resp = await async_client.get(
         f"/dataset/{dataset}/{version}/features?lat=4.42813&lng=17.97655&z=10"
     )
+    print(resp.json())
     assert resp.status_code == 200
     assert len(resp.json()["data"]) == 1
     assert resp.json()["data"][0]["iso"] == "CAF"

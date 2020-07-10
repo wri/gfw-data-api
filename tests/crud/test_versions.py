@@ -49,15 +49,12 @@ async def test_versions():
 
     # Using context engine with "PUT" should work
     async with ContextEngine("WRITE"):
-        new_row = await create_version(dataset_name, version_name, source_type="table")
+        new_row = await create_version(dataset_name, version_name)
     assert new_row.dataset == dataset_name
     assert new_row.version == version_name
     assert new_row.is_latest is False
     assert new_row.is_mutable is False
-    assert new_row.source_type == "table"
-    assert new_row.source_uri == []
     assert new_row.status == "pending"
-    assert new_row.has_geostore is False
     assert new_row.metadata == {}
     assert new_row.change_log == []
 
@@ -65,7 +62,7 @@ async def test_versions():
     async with ContextEngine("WRITE"):
         result = ""
         try:
-            await create_version(dataset_name, version_name, source_type="table")
+            await create_version(dataset_name, version_name)
         except RecordAlreadyExistsError as e:
             result = str(e)
 
@@ -146,12 +143,8 @@ async def test_latest_versions():
     # Add a dataset
     async with ContextEngine("WRITE"):
         await create_dataset(dataset_name)
-        await create_version(
-            dataset_name, "v1.1.1", source_type="table", is_latest=True
-        )
-        await create_version(
-            dataset_name, "v1.1.2", source_type="table", is_latest=True
-        )
+        await create_version(dataset_name, "v1.1.1", is_latest=True)
+        await create_version(dataset_name, "v1.1.2", is_latest=True)
         latest = await get_latest_version(dataset_name)
         first_row = await get_version(dataset_name, "v1.1.1")
         second_row = await get_version(dataset_name, "v1.1.2")

@@ -106,7 +106,7 @@ async def test_tasks_success(async_client):
     assets_resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
     assert len(version_resp.json()["data"]["assets"]) == 1
     assert len(assets_resp.json()["data"]) == 2
-    assert assets_resp.json()["data"][0]["asset_type"] == AssetType.database_table
+    assert assets_resp.json()["data"][0]["asset_type"] == AssetType.geo_database_table
     assert (
         assets_resp.json()["data"][1]["asset_type"]
         == AssetType.dynamic_vector_tile_cache
