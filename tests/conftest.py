@@ -10,6 +10,7 @@ from alembic.config import main
 from docker.models.containers import ContainerCollection
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+from moto import mock_ecs
 
 from app.routes import is_admin, is_service_account
 from app.settings.globals import (
@@ -20,8 +21,10 @@ from app.settings.globals import (
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
+    TILE_CACHE_CLUSTER,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
+    TILE_CACHE_SERVICE,
 )
 
 from . import (
@@ -51,6 +54,28 @@ from . import (
 #         ),
 #     ) as moto_s3:
 #         yield moto_s3
+
+
+# TODO Fixme
+# @pytest.fixture(scope="session", autouse=True)
+# def ecs_client():
+#     with mock_ecs():
+#         client = boto3.client("ecs", region_name="us-east-1")
+#         task_definition = client.register_task_definition(
+#             family="test_task",
+#             networkMode='host',
+#             containerDefinitions=[{
+#             'name': 'test_container',
+#             'image': 'test_image',}]
+#         )
+#         cluster = client.create_cluster(clusterName=TILE_CACHE_CLUSTER)
+#         service = client.create_service(
+#             cluster=cluster["cluster"]["clusterArn"],
+#             serviceName=TILE_CACHE_SERVICE,
+#             taskDefinition=task_definition['taskDefinition']['taskDefinitionArn'])
+#         yield client
+#
+#         # client.stop()
 
 
 @pytest.fixture(scope="session", autouse=True)

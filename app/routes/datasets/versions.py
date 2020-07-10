@@ -8,6 +8,9 @@ uploaded file. Based on the source file(s), users can create additional
 assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
+import sys
+import traceback
+from datetime import datetime
 from typing import List, Optional
 
 import botocore
@@ -35,9 +38,11 @@ from ...models.pydantic.versions import (
     VersionUpdateIn,
 )
 from ...routes import dataset_dependency, is_admin, version_dependency
+from ...settings.globals import TILE_CACHE_CLOUDFRONT_ID
+from ...tasks.aws_tasks import flush_cloudfront_cache
 from ...tasks.default_assets import create_default_asset
 from ...tasks.delete_assets import delete_all_assets
-from ...utils.aws import get_s3_client
+from ...utils.aws import get_cloudfront_client, get_s3_client
 from ...utils.path import split_s3_path
 
 router = APIRouter()
@@ -130,7 +135,13 @@ async def update_version(
     input_data = request.dict(exclude_none=True, by_alias=True)
 
     row: ORMVersion = await versions.update_version(dataset, version, **input_data)
-    # TODO: Need to clarify routine for when source_uri has changed. Append/ overwrite
+
+    # if version was tagged as `latest`
+    # make sure associated `latest` routes in tile cache cloud front distribution are invalidated
+    if input_data["is_latest"]:
+        flush_cloudfront_cache(
+            TILE_CACHE_CLOUDFRONT_ID, ["/_latest", f"/{dataset}/{version}/latest/*"]
+        )
 
     return await _version_response(dataset, version, row)
 

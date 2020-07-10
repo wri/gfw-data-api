@@ -48,3 +48,23 @@ def default_asset_type(source_type: str, creation_option: Dict[str, Any]) -> str
     else:
         raise NotImplementedError("Not a supported input source")
     return asset_type
+
+
+def is_database_asset(asset_type: str) -> bool:
+    return asset_type in [AssetType.geo_database_table, AssetType.database_table]
+
+
+def is_tile_cache_asset(asset_type: str) -> bool:
+    return asset_type in [
+        AssetType.dynamic_vector_tile_cache,
+        AssetType.static_vector_tile_cache,
+        AssetType.static_raster_tile_cache,
+    ]
+
+
+def is_default_asset(asset_type: str) -> bool:
+    return asset_type in [
+        AssetType.database_table,
+        AssetType.raster_tile_set,
+        AssetType.geo_database_table,
+    ]

@@ -5,7 +5,7 @@ from uuid import UUID
 
 from ..application import ContextEngine
 from ..crud import assets, versions
-from ..models.enum.assets import AssetType, default_asset_type
+from ..models.enum.assets import AssetType, default_asset_type, is_database_asset
 from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
 from ..models.pydantic.assets import AssetTaskCreate
@@ -125,10 +125,7 @@ async def _inject_file(file_obj: IO, s3_uri: str) -> ChangeLog:
 
 
 def _default_asset_uri(asset_type, dataset, version, creation_option=None):
-    if (
-        asset_type == AssetType.geo_database_table
-        or asset_type == AssetType.database_table
-    ):
+    if is_database_asset(asset_type):
         asset_uri = f"/{dataset}/{version}/features"
     # elif source_type == "raster":
     #     srid = creation_option[]

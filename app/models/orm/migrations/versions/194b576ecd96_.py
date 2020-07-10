@@ -56,7 +56,7 @@ def upgrade():
     op.execute(
         """UPDATE assets
                 SET creation_options = assets.creation_options || jsonb_build_object('source_uri', versions.source_uri) || jsonb_build_object('source_type', versions.source_type)
-            FROM versions WHERE assets.dataset = versions.dataset and assets.version = versions.version and assets.is_default = true;"""
+            FROM versions WHERE assets.dataset = versions.dataset AND assets.version = versions.version AND assets.is_default = true;"""
     )
 
     op.execute(
@@ -101,15 +101,22 @@ def downgrade():
 
     op.add_column(
         "versions",
-        sa.Column("source_uri", postgresql.ARRAY(sa.VARCHAR()), autoincrement=False),
-        nullable=True,
+        sa.Column(
+            "source_uri",
+            postgresql.ARRAY(sa.VARCHAR()),
+            autoincrement=False,
+            nullable=True,
+        ),
     )
 
     op.execute(
-        """UPDATE versions
-                SET source_type = assets.creation_options -> 'source_type',
-                source_uri = assets.creation_options -> 'source_uri'
-            FROM assets where assets.dataset = versions.dataset and assets.version = versions.version and assets.is_default = true;"""
+        """
+        UPDATE versions
+            SET source_type = co.source_type,
+                source_uri = co.source_uri
+            FROM assets,
+                jsonb_to_record(assets.creation_options) AS co(source_uri varchar[], source_type varchar)
+            WHERE assets.dataset = versions.dataset AND assets.version = versions.version AND assets.is_default = true;"""
     )
     op.execute(
         """UPDATE assets
@@ -129,9 +136,9 @@ def downgrade():
             FROM assets where assets.dataset = versions.dataset and assets.version = versions.version and assets.is_default = true;"""
     )
 
-    op.alter_column(
-        "versions", "source_type", existing_type=sa.VARCHAR(), nullable=False,
-    )
+    # op.alter_column(
+    #     "versions", "source_type", existing_type=sa.VARCHAR(), nullable=False,
+    # )
 
     op.alter_column(
         "assets",

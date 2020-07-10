@@ -21,7 +21,7 @@ from .routes.datasets import asset as version_asset
 from .routes.datasets import dataset, datasets, features, versions
 from .routes.geostore import geostore
 from .routes.sql import queries
-from .routes.tasks import tasks
+from .routes.tasks import task
 
 ################
 # LOGGING
@@ -152,7 +152,7 @@ for r in geostore_routers:
 # TASK API
 ###############
 
-task_routers = (tasks.router,)
+task_routers = (task.router,)
 for r in task_routers:
     app.include_router(r, prefix="/task")
 
@@ -167,7 +167,7 @@ tags_metadata = [
     {"name": "Assets", "description": asset.__doc__},
     {"name": "Query", "description": queries.__doc__},
     {"name": "Geostore", "description": geostore.__doc__},
-    {"name": "Tasks", "description": tasks.__doc__},
+    {"name": "Tasks", "description": task.__doc__},
 ]
 
 

@@ -42,6 +42,11 @@ class MockCloudfrontClient(object):
         }
 
 
+class MockECSClient(object):
+    def update_service(self, cluster, service, forceNewDeployment):
+        return {"service": {"serviceName": service}}
+
+
 async def create_dataset(dataset) -> None:
 
     # Create dataset record and dataset schema
