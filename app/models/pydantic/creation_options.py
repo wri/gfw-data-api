@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 from pydantic import BaseModel, Field
 from pydantic.types import PositiveInt
 
-from ..enum.assets import AssetType
+from ..enum.assets import AssetType, is_default_asset
 from ..enum.creation_options import (
     Delimiters,
     IndexType,
@@ -201,11 +201,7 @@ def creation_option_factory(
     source_type = creation_options.get("source_type", None)
 
     try:
-        if (
-            asset_type == AssetType.database_table
-            or asset_type == AssetType.raster_tile_set
-            or AssetType.geo_database_table
-        ) and source_type:
+        if is_default_asset(asset_type) and source_type:
             co: CreationOptions = source_creation_option_factory[source_type](
                 **creation_options
             )

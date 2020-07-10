@@ -30,7 +30,7 @@ class VersionCreateIn(BaseModel):
 class VersionUpdateIn(BaseModel):
     is_latest: Optional[bool]
     metadata: Optional[VersionMetadata]
-    creation_options: Optional[SourceCreationOptions]
+    # creation_options: Optional[SourceCreationOptions]
 
 
 class VersionResponse(Response):

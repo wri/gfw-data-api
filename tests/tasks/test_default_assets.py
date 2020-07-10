@@ -4,6 +4,7 @@ from uuid import UUID
 import pendulum
 import pytest
 import requests
+from mock import patch
 from pendulum.parsing.exceptions import ParserError
 
 from app.application import ContextEngine, db
@@ -17,15 +18,17 @@ from app.routes.tasks.tasks import (
 from app.tasks.default_assets import create_default_asset, append_default_asset
 from app.utils.aws import get_s3_client
 
-from .. import BUCKET, GEOJSON_NAME, PORT, SHP_NAME, TSV_NAME, TSV_PATH
+from .. import BUCKET, GEOJSON_NAME, PORT, SHP_NAME, TSV_NAME
 from ..utils import create_default_asset
+from . import MockECSClient
 from .. import BUCKET, GEOJSON_NAME, SHP_NAME, TSV_NAME, TSV_PATH, APPEND_TSV_NAME
 from . import check_callbacks, create_dataset, create_version, poll_jobs
 
 
 @pytest.mark.asyncio
-async def test_vector_source_asset(batch_client, async_client):
-
+@patch("app.tasks.aws_tasks.get_ecs_client")  # TODO use moto client
+async def test_vector_source_asset(ecs_client, batch_client, async_client):
+    ecs_client.return_value = MockECSClient()
     _, logs = batch_client
 
     ############################
@@ -88,18 +91,14 @@ async def test_vector_source_asset(batch_client, async_client):
 
 
 @pytest.mark.asyncio
-async def test_table_source_asset(batch_client, async_client):
-
+@patch("app.tasks.aws_tasks.get_ecs_client")  # TODO use moto client
+async def test_table_source_asset(ecs_client, batch_client, async_client):
+    ecs_client.return_value = MockECSClient()
     _, logs = batch_client
 
     ############################
     # Setup test
     ############################
-    #
-    # s3_client = get_s3_client()
-    #
-    # s3_client.create_bucket(Bucket=BUCKET)
-    # s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
 
     dataset = "table_test"
     version = "v202002.1"
@@ -263,7 +262,9 @@ async def test_table_source_asset(batch_client, async_client):
     reason="Something weird going on with how I'm creating virtual CSVs. Fix later."
 )
 @pytest.mark.asyncio
-async def test_table_source_asset_parallel(batch_client, async_client):
+@patch("app.tasks.aws_tasks.get_ecs_client")  # TODO use moto client
+async def test_table_source_asset_parallel(ecs_client, batch_client, async_client):
+    ecs_client.return_value = MockECSClient()
     _, logs = batch_client
 
     ############################

@@ -16,6 +16,7 @@ from fastapi.responses import ORJSONResponse
 
 from ...crud import assets, tasks
 from ...errors import ClientError, RecordNotFoundError
+from ...models.enum.assets import is_database_asset
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.tasks import Task as ORMTask
 from ...models.pydantic.assets import AssetResponse, AssetType, AssetUpdateIn
@@ -148,7 +149,7 @@ async def delete_asset(
             row.creation_options.col,
             row.creation_options.value,
         )
-    elif row.asset_type == AssetType.database_table:
+    elif is_database_asset(row.asset_type):
         background_tasks.add_task(delete_database_table, row.dataset, row.version)
     else:
         raise ClientError(

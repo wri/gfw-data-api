@@ -39,9 +39,12 @@ SERVICE_ACCOUNT_SECRET = json.loads(
 ENV = config("ENV", cast=str, default="dev")
 
 DATA_LAKE_BUCKET = config("DATA_LAKE_BUCKET", cast=str, default=None)
+
 TILE_CACHE_BUCKET = config("TILE_CACHE_BUCKET", cast=str, default=None)
 TILE_CACHE_CLOUDFRONT_ID = config("TILE_CACHE_CLOUDFRONT_ID", cast=str, default=None)
 TILE_CACHE_URL = config("TILE_CACHE_URL", cast=str, default=None)
+TILE_CACHE_CLUSTER = config("TILE_CACHE_CLUSTER", cast=str, default=None)
+TILE_CACHE_SERVICE = config("TILE_CACHE_CLUSTER", cast=str, default=None)
 
 READER_USERNAME: Optional[str] = config(
     "DB_USER_RO", cast=str, default=DB_READER_SECRET["username"]

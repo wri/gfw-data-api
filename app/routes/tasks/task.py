@@ -9,13 +9,15 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from botocore.exceptions import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
 from ...application import ContextEngine, db
 from ...crud import assets, tasks, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
-from ...models.enum.assets import AssetStatus
+from ...models.enum.assets import AssetStatus, is_database_asset, is_tile_cache_asset
 from ...models.enum.change_log import ChangeLogStatus
 from ...models.enum.versions import VersionStatus
 from ...models.orm.assets import Asset as ORMAsset
@@ -26,6 +28,11 @@ from ...models.pydantic.change_log import ChangeLog
 from ...models.pydantic.creation_options import DynamicVectorTileCacheCreationOptions
 from ...models.pydantic.metadata import FieldMetadata
 from ...models.pydantic.tasks import TaskCreateIn, TaskResponse, TaskUpdateIn
+from ...settings.globals import TILE_CACHE_CLUSTER, TILE_CACHE_SERVICE, TILE_CACHE_URL
+from ...tasks.assets import create_asset
+from ...tasks.aws_tasks import update_ecs_service
+from ...utils.aws import get_ecs_client
+from ...utils.tile_cache import redeploy_tile_cache_service
 from ...settings.globals import TILE_CACHE_URL
 from ...tasks.assets import put_asset
 from .. import is_service_account
@@ -190,14 +197,10 @@ async def _check_completed(asset_id: UUID):
             status=AssetStatus.saved,
             change_log=[status_change_log.dict(by_alias=True)],
         )
-
         # For database tables, fetch list of fields and their types from PostgreSQL
         # and add them to metadata object
         # Check if creation options specify to register a dynamic vector tile cache asset
-        if asset_row.asset_type in [
-            AssetType.database_table,
-            AssetType.geo_database_table,
-        ]:
+        if is_database_asset(asset_row.asset_type):
             asset_row = await _update_asset_field_metadata(
                 asset_row.dataset, asset_row.version, asset_id,
             )
@@ -216,6 +219,10 @@ async def _check_completed(asset_id: UUID):
                 status=VersionStatus.saved,
                 change_log=[status_change_log.dict(by_alias=True)],
             )
+
+        if is_tile_cache_asset(asset_row.asset_type):
+            # Force new deployment of tile cache service, to make sure new tile cache version is recognized
+            await redeploy_tile_cache_service(asset_id)
 
 
 def _all_finished(task_rows: List[ORMTask]) -> bool:

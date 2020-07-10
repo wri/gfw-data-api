@@ -3,7 +3,16 @@ from typing import Any, Dict, List, Optional
 
 from botocore.exceptions import ClientError
 
-from ..utils.aws import get_cloudfront_client, get_s3_client
+from ..utils.aws import get_cloudfront_client, get_ecs_client, get_s3_client
+
+
+def update_ecs_service(cluster: str, service: str) -> Dict[str, Any]:
+
+    ecs_client = get_ecs_client()
+    response = ecs_client.update_service(
+        cluster=cluster, service=service, forceNewDeployment=True
+    )
+    return response
 
 
 def delete_s3_objects(bucket: str, prefix: str,) -> int:
@@ -51,14 +60,14 @@ def expire_s3_objects(
     return _update_lifecycle_rule(bucket, rule)
 
 
-def flush_cloudfront_cache(cloudfront_id: str, path: str) -> Dict[str, Any]:
+def flush_cloudfront_cache(cloudfront_id: str, paths: List[str]) -> Dict[str, Any]:
     """Flush tile cache cloudfront cache for a given path."""
     client = get_cloudfront_client()
 
     response = client.create_invalidation(
         DistributionId=cloudfront_id,
         InvalidationBatch={
-            "Paths": {"Quantity": 1, "Items": [path]},
+            "Paths": {"Quantity": len(paths), "Items": paths},
             "CallerReference": str(datetime.timestamp(datetime.now())).replace(".", ""),
         },
     )

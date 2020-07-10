@@ -5,6 +5,8 @@ import pytest
 
 from app.models.pydantic.metadata import VersionMetadata
 from tests import BUCKET, SHP_NAME
+from tests.tasks import MockCloudfrontClient
+from tests.utils import create_default_asset
 
 payload = {
     "metadata": {
@@ -31,10 +33,9 @@ payload = {
 }
 
 
-# @patch("app.tasks.default_assets.create_default_asset", return_value=True)
-@patch("fastapi.BackgroundTasks.add_task", return_value=None)
 @pytest.mark.asyncio
-async def test_versions(mocked_task, async_client):
+@patch("app.tasks.aws_tasks.get_cloudfront_client")
+async def test_versions(mocked_cloudfront_client, async_client):
     """Test version path operations.
 
     We patch/ disable background tasks here, as they run asynchronously.
@@ -43,10 +44,7 @@ async def test_versions(mocked_task, async_client):
     dataset = "test"
     version = "v1.1.1"
 
-    response = await async_client.put(f"/dataset/{dataset}", data=json.dumps(payload))
-    assert response.status_code == 201
-    assert response.json()["data"]["metadata"] == payload["metadata"]
-    assert response.json()["data"]["versions"] == []
+    mocked_cloudfront_client.return_value = MockCloudfrontClient()
 
     version_payload = {
         "is_latest": True,
@@ -60,23 +58,27 @@ async def test_versions(mocked_task, async_client):
         "metadata": {},
     }
 
-    with patch("app.tasks.default_assets.create_default_asset", return_value=True):
-        response = await async_client.put(
-            f"/dataset/{dataset}/{version}", data=json.dumps(version_payload)
-        )
-    print(response.json())
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=version_payload,
+        async_client=async_client,
+        execute_batch_jobs=False,
+    )
+
+    response = await async_client.get(f"/dataset/{dataset}/{version}")
     version_data = response.json()
-    assert response.status_code == 202
+
+    assert version_data["data"]["is_latest"] is False
     assert version_data["data"]["dataset"] == dataset
     assert version_data["data"]["version"] == version
     assert version_data["data"]["metadata"] == VersionMetadata(**payload["metadata"])
-    assert mocked_task.called
-    response = await async_client.get(f"/dataset/{dataset}/{version}")
-    assert response.json()["data"]["version"] == "v1.1.1"
+    assert version_data["data"]["version"] == "v1.1.1"
 
     response = await async_client.patch(
         f"/dataset/{dataset}/{version}", json={"is_latest": True}
     )
+    print(response.json())
     assert response.status_code == 200
 
     # Check if the latest endpoint redirects us to v1.1.1
@@ -84,6 +86,8 @@ async def test_versions(mocked_task, async_client):
         f"/dataset/{dataset}/latest?test=test&test1=test1"
     )
     assert response.json()["data"]["version"] == "v1.1.1"
+
+    assert mocked_cloudfront_client.called
 
 
 @pytest.mark.asyncio
@@ -185,10 +189,15 @@ async def test_version_metadata(async_client):
 
 @pytest.mark.asyncio
 @patch("fastapi.BackgroundTasks.add_task", return_value=None)
-async def test_version_delete_protection(mocked_task, async_client):
+@patch("app.tasks.aws_tasks.get_cloudfront_client")
+async def test_version_delete_protection(
+    mocked_task, mocked_cloudfront_client, async_client
+):
     dataset = "test"
     version1 = "v1.1.1"
     version2 = "v1.1.2"
+
+    mocked_cloudfront_client.return_value = MockCloudfrontClient()
 
     await async_client.put(f"/dataset/{dataset}", data=json.dumps(payload))
 
@@ -225,13 +234,17 @@ async def test_version_delete_protection(mocked_task, async_client):
     response = await async_client.delete(f"/dataset/{dataset}/{version2}")
     assert response.status_code == 200
     assert mocked_task.called
+    assert mocked_cloudfront_client.called
 
 
 @pytest.mark.asyncio
 @patch("fastapi.BackgroundTasks.add_task", return_value=None)
-async def test_latest_middleware(mocked_task, async_client):
+@patch("app.tasks.aws_tasks.get_cloudfront_client")
+async def test_latest_middleware(mocked_task, mocked_cloudfront_client, async_client):
     """Test if middleware redirects to correct version when using `latest`
     version identifier."""
+
+    mocked_cloudfront_client.return_value = MockCloudfrontClient()
 
     dataset = "test"
     version = "v1.1.1"
@@ -275,4 +288,6 @@ async def test_latest_middleware(mocked_task, async_client):
     print(response.json())
     assert response.status_code == 200
     assert response.json()["data"]["version"] == version
+
     assert mocked_task.called
+    assert mocked_cloudfront_client.called
