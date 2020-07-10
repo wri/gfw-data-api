@@ -37,19 +37,12 @@ SHP_NAME = "test.shp.zip"
 SHP_PATH = os.path.join(os.path.dirname(__file__), "fixtures", SHP_NAME)
 
 BUCKET = "test-bucket"
+PORT = 9000
 
 SessionLocal: Optional[Session] = None
 
 
 class MemoryServer(BaseHTTPRequestHandler):
-
-    # client = None
-    #
-    # @classmethod
-    # def with_test_client(cls, client):
-    #     cls.client = client
-    #     return cls
-
     @property
     def requests_thus_far(self):
         return REQUESTS_THUS_FAR

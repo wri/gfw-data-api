@@ -31,7 +31,7 @@ async def dynamic_vector_tile_cache_asset(
 
     # My first walrus, yahoo!
     if orm_asset := _get_database_table_asset(orm_assets):
-        if _has_geom_wm(orm_asset.metadata) and _has_spatial_index(
+        if _has_geom_wm(orm_asset.fields) and _has_spatial_index(
             orm_asset.creation_options
         ):
             change_log = ChangeLog(
@@ -48,15 +48,15 @@ def _get_database_table_asset(assets: List[ORMAsset]) -> Optional[ORMAsset]:
     for asset in assets:
         if (
             asset.asset_type == AssetType.database_table
-            and asset.status == AssetStatus.saved
-        ):
+            or asset.asset_type == AssetType.geo_database_table
+        ) and asset.status == AssetStatus.saved:
             return asset
     return None
 
 
-def _has_geom_wm(metadata: Dict[str, Any]) -> bool:
+def _has_geom_wm(fields: List[Dict[str, Any]]) -> bool:
     """Check if geom_wm column is present."""
-    for field in metadata["fields"]:
+    for field in fields:
         if field["field_name"] == "geom_wm":
             return True
     return False

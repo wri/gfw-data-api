@@ -154,7 +154,7 @@ for r in geostore_routers:
 
 task_routers = (tasks.router,)
 for r in task_routers:
-    app.include_router(r, prefix="/tasks")
+    app.include_router(r, prefix="/task")
 
 #######################
 # OPENAPI Documentation
