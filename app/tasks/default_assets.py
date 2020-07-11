@@ -8,15 +8,16 @@ from ..crud import assets, versions
 from ..models.enum.assets import AssetType, default_asset_type, is_database_asset
 from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
+from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.assets import AssetTaskCreate
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import creation_option_factory
 from ..models.pydantic.metadata import asset_metadata_factory
 from ..utils.aws import get_s3_client
 from ..utils.path import split_s3_path
-from .assets import create_asset
+from .assets import put_asset
 from .raster_source_assets import raster_source_asset
-from .table_source_assets import table_source_asset
+from .table_source_assets import append_table_source_asset, table_source_asset
 from .vector_source_assets import vector_source_asset
 
 DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
@@ -25,6 +26,10 @@ DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
         SourceType.table: table_source_asset,
         SourceType.raster: raster_source_asset,
     }.items()
+)
+
+DEFAULT_APPEND_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
+    {SourceType.table: append_table_source_asset}.items()
 )
 
 
@@ -67,6 +72,29 @@ async def create_default_asset(
             raise
 
 
+async def append_default_asset(
+    dataset: str, version: str, input_data: Dict[str, Any], asset_id: UUID
+) -> None:
+    source_type = input_data["creation_options"]["source_type"]
+
+    try:
+        await put_asset(
+            source_type,
+            asset_id=asset_id,
+            dataset=dataset,
+            version=version,
+            input_data=input_data,
+            constructor=DEFAULT_APPEND_ASSET_PIPELINES,
+        )
+
+    # Make sure version status is set to `failed` in case there is an uncaught Exception
+
+    except Exception:
+        async with ContextEngine("WRITE"):
+            await versions.update_version(dataset, version, status="failed")
+        raise
+
+
 async def _create_default_asset(
     dataset: str, version: str, input_data: Dict[str, Any],
 ) -> UUID:
@@ -91,7 +119,7 @@ async def _create_default_asset(
     async with ContextEngine("WRITE"):
         new_asset = await assets.create_asset(**data.dict(by_alias=True))
 
-    await create_asset(
+    await put_asset(
         source_type,
         new_asset.asset_id,
         dataset=dataset,

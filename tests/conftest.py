@@ -10,24 +10,25 @@ from alembic.config import main
 from docker.models.containers import ContainerCollection
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from moto import mock_ecs
 
 from app.routes import is_admin, is_service_account
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
     AWS_REGION,
+    DATA_LAKE_BUCKET,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
-    TILE_CACHE_CLUSTER,
+    TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
-    TILE_CACHE_SERVICE,
 )
 
 from . import (
+    APPEND_TSV_NAME,
+    APPEND_TSV_PATH,
     BUCKET,
     GEOJSON_NAME,
     GEOJSON_PATH,
@@ -42,19 +43,6 @@ from . import (
     is_service_account_mocked,
     setup_clients,
 )
-
-# We overwrite endpoint_url directly in the app.
-# Keeping this around for now, just in case we want to revert back to fixtures.
-# @pytest.fixture(autouse=True)
-# def moto_s3():
-#     with patch(
-#         "app.utils.aws.get_s3_client",
-#         return_value=boto3.client(
-#             "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-#         ),
-#     ) as moto_s3:
-#         yield moto_s3
-
 
 # TODO Fixme
 # @pytest.fixture(scope="session", autouse=True)
@@ -204,17 +192,24 @@ def copy_fixtures():
     )
 
     s3_client.create_bucket(Bucket=BUCKET)
+    s3_client.create_bucket(Bucket=DATA_LAKE_BUCKET)
+    s3_client.create_bucket(Bucket=TILE_CACHE_BUCKET)
     s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
     s3_client.upload_file(SHP_PATH, BUCKET, SHP_NAME)
+    s3_client.upload_file(APPEND_TSV_PATH, BUCKET, APPEND_TSV_NAME)
 
     # upload a separate for each row so we can test running large numbers of sources in parallel
     reader = csv.DictReader(open(TSV_PATH, newline=""), delimiter="\t")
     for row in reader:
-        out = io.StringIO()
-        writer = csv.writer(out, delimiter="\t")
-        writer.writerow(reader.fieldnames)
-        writer.writerow(row.values())
+        out = io.StringIO(newline="")
+        writer = csv.DictWriter(out, delimiter="\t", fieldnames=reader.fieldnames)
+        writer.writeheader()
+        writer.writerow(row)
 
-        s3_client.upload_fileobj(out, BUCKET, f"test_{reader.line_num}.tsv")
+        s3_client.put_object(
+            Body=str.encode(out.getvalue()),
+            Bucket=BUCKET,
+            Key=f"test_{reader.line_num}.tsv",
+        )
         out.close()

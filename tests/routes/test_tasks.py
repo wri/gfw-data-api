@@ -5,7 +5,8 @@ from unittest.mock import patch
 import pytest
 
 from app.models.enum.assets import AssetType
-from tests.utils import create_default_asset
+from tests import BUCKET, SHP_NAME
+from tests.utils import create_default_asset, generate_uuid
 
 
 @pytest.mark.asyncio
@@ -19,9 +20,6 @@ async def test_tasks_success(async_client):
     # Add a dataset, version, and default asset
     dataset = "test"
     version = "v20200626"
-
-    def generate_uuid(*args, **kwargs):
-        return uuid.uuid4()
 
     asset = await create_default_asset(
         dataset, version, async_client=async_client, execute_batch_jobs=False

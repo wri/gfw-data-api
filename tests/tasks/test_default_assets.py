@@ -1,3 +1,4 @@
+import json
 from typing import List
 from uuid import UUID
 
@@ -11,16 +12,15 @@ from app.application import ContextEngine, db
 from app.crud import assets, tasks, versions
 from app.models.enum.assets import AssetStatus, AssetType
 from app.models.orm.geostore import Geostore
+from app.utils.aws import get_s3_client
 
-from .. import BUCKET, GEOJSON_NAME, PORT, SHP_NAME, TSV_NAME
-from ..utils import create_default_asset
+from .. import APPEND_TSV_NAME, BUCKET, GEOJSON_NAME, PORT, SHP_NAME, TSV_NAME, TSV_PATH
+from ..utils import create_default_asset, poll_jobs
 from . import MockECSClient
 
 
 @pytest.mark.asyncio
-@patch("app.tasks.aws_tasks.get_ecs_client")  # TODO use moto client
-async def test_vector_source_asset(ecs_client, batch_client, async_client):
-    ecs_client.return_value = MockECSClient()
+async def test_vector_source_asset(batch_client, async_client):
     _, logs = batch_client
 
     ############################
@@ -59,7 +59,7 @@ async def test_vector_source_asset(ecs_client, batch_client, async_client):
         )
         asset_id = asset["asset_id"]
 
-        await _check_version_status(dataset, version)
+        await _check_version_status(dataset, version, 3)
         await _check_asset_status(dataset, version, 1)
         await _check_task_status(asset_id, 7, "inherit_from_geostore")
 
@@ -83,9 +83,7 @@ async def test_vector_source_asset(ecs_client, batch_client, async_client):
 
 
 @pytest.mark.asyncio
-@patch("app.tasks.aws_tasks.get_ecs_client")  # TODO use moto client
-async def test_table_source_asset(ecs_client, batch_client, async_client):
-    ecs_client.return_value = MockECSClient()
+async def test_table_source_asset(batch_client, async_client):
     _, logs = batch_client
 
     ############################
@@ -161,7 +159,7 @@ async def test_table_source_asset(ecs_client, batch_client, async_client):
     )
     asset_id = asset["asset_id"]
 
-    await _check_version_status(dataset, version)
+    await _check_version_status(dataset, version, 3)
     await _check_asset_status(dataset, version, 1)
     await _check_task_status(asset_id, 14, "cluster_partitions_3")
 
@@ -208,24 +206,64 @@ async def test_table_source_asset(ecs_client, batch_client, async_client):
     )
     assert cluster_count == len(partition_schema)
 
+    ########################
+    # Append
+    #########################
 
+    requests.delete(f"http://localhost:{PORT}")
+
+    # Create default asset in mocked BATCH
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/append",
+        json={"source_uri": [f"s3://{BUCKET}/{APPEND_TSV_NAME}"]},
+    )
+    assert response.status_code == 200
+
+    response = await async_client.get(f"/dataset/{dataset}/{version}/change_log")
+    assert response.status_code == 200
+    tasks = json.loads(response.json()["data"][-1]["detail"])
+    task_ids = [task["job_id"] for task in tasks]
+    print(task_ids)
+
+    # make sure, all jobs completed
+    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
+
+    assert status == "saved"
+
+    await _check_version_status(dataset, version, 6)
+    await _check_asset_status(dataset, version, 2)
+
+    # The table should now have 101 rows after append
+    async with ContextEngine("READ"):
+        count = await db.scalar(
+            db.text(
+                f"""
+                    SELECT count(*)
+                        FROM "{dataset}"."{version}";"""
+            )
+        )
+
+    assert count == 101
+
+
+# @pytest.mark.skip(
+#     reason="Something weird going on with how I'm creating virtual CSVs. Fix later."
+# )
 @pytest.mark.asyncio
-@patch("app.tasks.aws_tasks.get_ecs_client")  # TODO use moto client
-async def test_table_source_asset_parallel(ecs_client, batch_client, async_client):
-    ecs_client.return_value = MockECSClient()
+async def test_table_source_asset_parallel(batch_client, async_client):
     _, logs = batch_client
 
     ############################
     # Setup test
     ############################
-    #
-    # s3_client = get_s3_client()
-    #
-    # s3_client.create_bucket(Bucket=BUCKET)
-    # s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
 
     dataset = "table_test"
     version = "v202002.1"
+
+    s3_client = get_s3_client()
+
+    for i in range(2, 101):
+        s3_client.upload_file(TSV_PATH, BUCKET, f"test_{i}.tsv")
 
     # define partition schema
     partition_schema = list()
@@ -294,7 +332,7 @@ async def test_table_source_asset_parallel(ecs_client, batch_client, async_clien
     )
     asset_id = asset["asset_id"]
 
-    await _check_version_status(dataset, version)
+    await _check_version_status(dataset, version, 3)
     await _check_asset_status(dataset, version, 1)
     await _check_task_status(asset_id, 26, "cluster_partitions_3")
 
@@ -334,7 +372,7 @@ async def test_table_source_asset_parallel(ecs_client, batch_client, async_clien
             )
         )
 
-    assert count == 99
+    assert count == 9900
     assert partition_count == len(partition_schema)
     assert index_count == partition_count * len(
         input_data["creation_options"]["indices"]
@@ -360,15 +398,13 @@ def _assert_fields(field_list, field_schema):
     assert count == len(field_schema)
 
 
-async def _check_version_status(dataset, version):
+async def _check_version_status(dataset, version, log_count):
     row = await versions.get_version(dataset, version)
 
-    # in this test we don't set the final version status to saved or failed
     assert row.status == "saved"
 
-    # in this test we only see the logs from background task, not from batch jobs
     print(f"TABLE SOURCE VERSION LOGS: {row.change_log}")
-    assert len(row.change_log) == 3
+    assert len(row.change_log) == log_count
     assert row.change_log[0]["message"] == "Successfully scheduled batch jobs"
 
 

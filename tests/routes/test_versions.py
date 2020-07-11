@@ -188,38 +188,18 @@ async def test_version_metadata(async_client):
 
 
 @pytest.mark.asyncio
-@patch("fastapi.BackgroundTasks.add_task", return_value=None)
 @patch("app.tasks.aws_tasks.get_cloudfront_client")
-async def test_version_delete_protection(
-    mocked_task, mocked_cloudfront_client, async_client
-):
+async def test_version_delete_protection(mocked_cloudfront_client, async_client):
     dataset = "test"
     version1 = "v1.1.1"
     version2 = "v1.1.2"
 
     mocked_cloudfront_client.return_value = MockCloudfrontClient()
 
-    await async_client.put(f"/dataset/{dataset}", data=json.dumps(payload))
-
-    version_payload = {
-        "metadata": payload["metadata"],
-        "creation_options": {
-            "source_type": "vector",
-            "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
-            "source_driver": "ESRI Shapefile",
-            "zipped": True,
-        },
-    }
-    with patch("app.tasks.default_assets.create_default_asset", return_value=True):
-        response = await async_client.put(
-            f"/dataset/{dataset}/{version1}", json=version_payload
-        )
-        assert response.status_code == 202
-
-        response = await async_client.put(
-            f"/dataset/{dataset}/{version2}", json=version_payload
-        )
-    assert response.status_code == 202
+    await create_default_asset(dataset, version1, async_client=async_client)
+    await create_default_asset(
+        dataset, version2, async_client=async_client, skip_dataset=True
+    )
 
     response = await async_client.patch(
         f"/dataset/{dataset}/{version2}", json={"is_latest": True}
@@ -233,14 +213,12 @@ async def test_version_delete_protection(
     await async_client.delete(f"/dataset/{dataset}/{version1}")
     response = await async_client.delete(f"/dataset/{dataset}/{version2}")
     assert response.status_code == 200
-    assert mocked_task.called
     assert mocked_cloudfront_client.called
 
 
 @pytest.mark.asyncio
-@patch("fastapi.BackgroundTasks.add_task", return_value=None)
 @patch("app.tasks.aws_tasks.get_cloudfront_client")
-async def test_latest_middleware(mocked_task, mocked_cloudfront_client, async_client):
+async def test_latest_middleware(mocked_cloudfront_client, async_client):
     """Test if middleware redirects to correct version when using `latest`
     version identifier."""
 
@@ -249,25 +227,7 @@ async def test_latest_middleware(mocked_task, mocked_cloudfront_client, async_cl
     dataset = "test"
     version = "v1.1.1"
 
-    response = await async_client.put(f"/dataset/{dataset}", data=json.dumps(payload))
-    print(response.json())
-    assert response.status_code == 201
-
-    version_payload = {
-        "metadata": payload["metadata"],
-        "creation_options": {
-            "source_type": "vector",
-            "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
-            "source_driver": "ESRI Shapefile",
-            "zipped": True,
-        },
-    }
-
-    response = await async_client.put(
-        f"/dataset/{dataset}/{version}", json=version_payload
-    )
-    print(response.json())
-    assert response.status_code == 202
+    await create_default_asset(dataset, version, async_client=async_client)
 
     response = await async_client.get(f"/dataset/{dataset}/{version}")
     print(response.json())
@@ -289,5 +249,4 @@ async def test_latest_middleware(mocked_task, mocked_cloudfront_client, async_cl
     assert response.status_code == 200
     assert response.json()["data"]["version"] == version
 
-    assert mocked_task.called
     assert mocked_cloudfront_client.called
