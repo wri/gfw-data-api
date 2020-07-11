@@ -5,10 +5,9 @@ from uuid import UUID
 
 from ..application import ContextEngine
 from ..crud import assets, versions
-from ..models.enum.assets import AssetType, default_asset_type, is_database_asset
+from ..models.enum.assets import default_asset_type, is_database_asset
 from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
-from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.assets import AssetTaskCreate
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import creation_option_factory

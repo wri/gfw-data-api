@@ -16,7 +16,6 @@ from ...models.pydantic.datasets import (
     Dataset,
     DatasetCreateIn,
     DatasetResponse,
-    DatasetsResponse,
     DatasetUpdateIn,
 )
 from ...routes import dataset_dependency, is_admin

@@ -2,9 +2,6 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from botocore.exceptions import ClientError
-from fastapi.logger import logger
-
 from ..application import ContextEngine
 from ..crud import assets
 from ..models.enum.assets import AssetStatus, is_database_asset
@@ -12,9 +9,7 @@ from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.creation_options import IndexType
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.pydantic.change_log import ChangeLog
-from ..settings.globals import TILE_CACHE_CLUSTER, TILE_CACHE_SERVICE
 from ..utils.tile_cache import redeploy_tile_cache_service
-from .aws_tasks import update_ecs_service
 
 
 async def dynamic_vector_tile_cache_asset(

@@ -16,7 +16,6 @@ from sqlalchemy.sql.elements import TextClause
 
 from app.application import db
 from app.crud import assets
-from app.models.pydantic.assets import AssetType
 from app.models.pydantic.features import FeaturesResponse
 from app.routes import dataset_dependency, version_dependency
 

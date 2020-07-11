@@ -5,16 +5,10 @@ from asyncpg import UniqueViolationError
 from fastapi.encoders import jsonable_encoder
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
-from ..models.enum.sources import SourceType
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
-from ..models.pydantic.creation_options import (
-    CreationOptions,
-    TableDrivers,
-    VectorDrivers,
-    creation_option_factory,
-)
+from ..models.pydantic.creation_options import CreationOptions, creation_option_factory
 from . import datasets, update_all_metadata, update_data, update_metadata, versions
 
 

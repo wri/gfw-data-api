@@ -5,7 +5,6 @@ Revises: db63f11927c2
 Create Date: 2020-07-08 01:33:48.295709
 """
 import sqlalchemy as sa
-import sqlalchemy_utils
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
