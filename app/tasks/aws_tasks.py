@@ -110,7 +110,7 @@ def _update_lifecycle_rule(bucket, rule) -> Dict[str, Any]:
     rules = _get_lifecycle_rules(bucket)
     rules.append(rule)
     response = client.put_bucket_lifecycle_configuration(
-        Bucket="string", LifecycleConfiguration={"Rules": rules}
+        Bucket=bucket, LifecycleConfiguration={"Rules": rules}
     )
     return response
 

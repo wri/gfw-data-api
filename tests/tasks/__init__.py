@@ -1,16 +1,12 @@
-import os
 from datetime import datetime
-from time import sleep
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List
 
-import requests
 from sqlalchemy.sql.ddl import CreateSchema
 
 from app.application import ContextEngine, db
 from app.crud import assets, datasets, versions
 from app.models.orm.assets import Asset as AssetORM
 from app.settings.globals import READER_USERNAME
-from app.utils.aws import get_batch_client
 
 KEY = "KEY"
 VALUE = "VALUE"

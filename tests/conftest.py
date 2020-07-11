@@ -10,24 +10,25 @@ from alembic.config import main
 from docker.models.containers import ContainerCollection
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from moto import mock_ecs
 
 from app.routes import is_admin, is_service_account
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
     AWS_REGION,
+    DATA_LAKE_BUCKET,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
-    TILE_CACHE_CLUSTER,
+    TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
-    TILE_CACHE_SERVICE,
 )
 
 from . import (
+    APPEND_TSV_NAME,
+    APPEND_TSV_PATH,
     BUCKET,
     GEOJSON_NAME,
     GEOJSON_PATH,
@@ -36,27 +37,12 @@ from . import (
     SHP_PATH,
     TSV_NAME,
     TSV_PATH,
-    APPEND_TSV_NAME,
-    APPEND_TSV_PATH,
     AWSMock,
     MemoryServer,
     is_admin_mocked,
     is_service_account_mocked,
     setup_clients,
 )
-
-# We overwrite endpoint_url directly in the app.
-# Keeping this around for now, just in case we want to revert back to fixtures.
-# @pytest.fixture(autouse=True)
-# def moto_s3():
-#     with patch(
-#         "app.utils.aws.get_s3_client",
-#         return_value=boto3.client(
-#             "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-#         ),
-#     ) as moto_s3:
-#         yield moto_s3
-
 
 # TODO Fixme
 # @pytest.fixture(scope="session", autouse=True)
@@ -206,6 +192,8 @@ def copy_fixtures():
     )
 
     s3_client.create_bucket(Bucket=BUCKET)
+    s3_client.create_bucket(Bucket=DATA_LAKE_BUCKET)
+    s3_client.create_bucket(Bucket=TILE_CACHE_BUCKET)
     s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
     s3_client.upload_file(SHP_PATH, BUCKET, SHP_NAME)
@@ -219,5 +207,9 @@ def copy_fixtures():
         writer.writeheader()
         writer.writerow(row)
 
-        s3_client.put_object(Body=str.encode(out.getvalue()), Bucket=BUCKET, Key=f"test_{reader.line_num}.tsv")
+        s3_client.put_object(
+            Body=str.encode(out.getvalue()),
+            Bucket=BUCKET,
+            Key=f"test_{reader.line_num}.tsv",
+        )
         out.close()

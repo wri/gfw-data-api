@@ -9,9 +9,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from botocore.exceptions import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Path
-from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
 from ...application import ContextEngine, db
@@ -28,13 +26,9 @@ from ...models.pydantic.change_log import ChangeLog
 from ...models.pydantic.creation_options import DynamicVectorTileCacheCreationOptions
 from ...models.pydantic.metadata import FieldMetadata
 from ...models.pydantic.tasks import TaskCreateIn, TaskResponse, TaskUpdateIn
-from ...settings.globals import TILE_CACHE_CLUSTER, TILE_CACHE_SERVICE, TILE_CACHE_URL
-from ...tasks.assets import create_asset
-from ...tasks.aws_tasks import update_ecs_service
-from ...utils.aws import get_ecs_client
-from ...utils.tile_cache import redeploy_tile_cache_service
 from ...settings.globals import TILE_CACHE_URL
 from ...tasks.assets import put_asset
+from ...utils.tile_cache import redeploy_tile_cache_service
 from .. import is_service_account
 from . import task_response
 

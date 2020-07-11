@@ -33,5 +33,9 @@ class VersionUpdateIn(BaseModel):
     # creation_options: Optional[SourceCreationOptions]
 
 
+class VersionAppendIn(BaseModel):
+    source_uri: List[str]
+
+
 class VersionResponse(Response):
     data: Version

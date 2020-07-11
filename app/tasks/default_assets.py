@@ -17,7 +17,7 @@ from ..utils.aws import get_s3_client
 from ..utils.path import split_s3_path
 from .assets import put_asset
 from .raster_source_assets import raster_source_asset
-from .table_source_assets import table_source_asset, append_table_source_asset
+from .table_source_assets import append_table_source_asset, table_source_asset
 from .vector_source_assets import vector_source_asset
 
 DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
@@ -29,10 +29,9 @@ DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
 )
 
 DEFAULT_APPEND_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
-    {
-        SourceType.table: append_table_source_asset,
-    }.items()
+    {SourceType.table: append_table_source_asset}.items()
 )
+
 
 async def create_default_asset(
     dataset: str, version: str, input_data: Dict[str, Any], file_obj: Optional[IO],
@@ -74,9 +73,9 @@ async def create_default_asset(
 
 
 async def append_default_asset(
-    dataset: str, version: str, input_data: ORMVersion, asset_id: str
-) -> UUID:
-    source_type = input_data["source_type"]
+    dataset: str, version: str, input_data: Dict[str, Any], asset_id: UUID
+) -> None:
+    source_type = input_data["creation_options"]["source_type"]
 
     try:
         await put_asset(

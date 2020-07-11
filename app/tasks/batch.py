@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -24,7 +25,12 @@ async def execute(jobs: List[Job],) -> ChangeLog:
     else:
         status = ChangeLogStatus.pending
         message = "Successfully scheduled batch jobs"
-        detail = f"Scheduled jobs: {scheduled_jobs}"
+        detail = json.dumps(
+            [
+                {"job_name": job_name, "job_id": str(job_id)}
+                for job_name, job_id in scheduled_jobs.items()
+            ]
+        )
     return ChangeLog(
         date_time=datetime.now(), status=status, message=message, detail=detail
     )

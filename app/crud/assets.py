@@ -68,6 +68,7 @@ async def get_assets_by_filter(
     if is_default is not None:
         query = query.where(ORMAsset.is_default == is_default)
 
+    query = query.order_by(ORMAsset.created_on)
     assets = await query.gino.all()
 
     return await _update_all_asset_metadata(assets)

@@ -11,37 +11,22 @@ based on the same version and do not know the processing history.
 
 
 from typing import Any, Dict, List, Optional
-from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
 
 from ...crud import assets
-from ...errors import ClientError, RecordAlreadyExistsError, RecordNotFoundError
+from ...errors import RecordAlreadyExistsError
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.pydantic.assets import (
     AssetCreateIn,
     AssetResponse,
     AssetsResponse,
     AssetType,
-    AssetUpdateIn,
 )
-from ...routes import (
-    DATASET_REGEX,
-    VERSION_REGEX,
-    dataset_dependency,
-    is_admin,
-    version_dependency,
-)
+from ...routes import dataset_dependency, is_admin, version_dependency
 from ...settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_URL
-from ...tasks.assets import create_asset
-from ...tasks.delete_assets import (
-    delete_database_table,
-    delete_dynamic_vector_tile_cache_assets,
-    delete_raster_tileset_assets,
-    delete_static_raster_tile_cache_assets,
-    delete_static_vector_tile_cache_assets,
-)
+from ...tasks.assets import put_asset
 from ..assets import asset_response, assets_response
 from . import verify_version_status
 
@@ -120,7 +105,7 @@ async def add_new_asset(
         raise HTTPException(status_code=501, detail=str(e))
 
     background_tasks.add_task(
-        create_asset, row.asset_type, row.asset_id, dataset, version, input_data
+        put_asset, row.asset_type, row.asset_id, dataset, version, input_data
     )
     response.headers["Location"] = f"/{dataset}/{version}/asset/{row.asset_id}"
     return await asset_response(row)

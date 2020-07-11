@@ -8,6 +8,7 @@ from mock import patch
 from app.crud import tasks
 from app.utils.aws import get_batch_client
 from tests import BUCKET, PORT, SHP_NAME
+from tests.tasks import MockECSClient
 
 generic_dataset_payload = {
     "metadata": {
@@ -166,6 +167,7 @@ async def check_callbacks(task_ids, async_client=None):
 
 
 async def forward_request(async_client, request):
+    # ecs_client.return_value = MockECSClient()
 
     client_request = {
         "PATCH": async_client.patch,
@@ -174,11 +176,13 @@ async def forward_request(async_client, request):
     }
 
     try:
-        response = await client_request[request["method"]](
-            request["path"], json=request["body"]
-        )
-        print(response.json())
-        assert response.status_code == 200
+        # TODO: use moto
+        with patch("app.tasks.aws_tasks.get_ecs_client", return_value=MockECSClient()):
+            response = await client_request[request["method"]](
+                request["path"], json=request["body"]
+            )
+            print(response.json())
+            assert response.status_code == 200
     except KeyError:
         raise NotImplementedError(
             f"Forwarding method {request['method']} not implemented"

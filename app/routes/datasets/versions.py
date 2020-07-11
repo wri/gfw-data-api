@@ -8,22 +8,16 @@ uploaded file. Based on the source file(s), users can create additional
 assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
-import sys
-import traceback
-from datetime import datetime
-from typing import List, Optional
-from copy import deepcopy
 
-import botocore
+from copy import deepcopy
+from typing import List, Optional
+
 from botocore.exceptions import ClientError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
 
-from ...crud import versions
-from ...crud.assets import get_assets
 from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
-from ...models.enum.assets import default_asset_type
 from ...models.enum.assets import AssetStatus
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
@@ -37,6 +31,7 @@ from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
 from ...models.pydantic.statistics import Stats, StatsResponse
 from ...models.pydantic.versions import (
     Version,
+    VersionAppendIn,
     VersionCreateIn,
     VersionResponse,
     VersionUpdateIn,
@@ -44,10 +39,9 @@ from ...models.pydantic.versions import (
 from ...routes import dataset_dependency, is_admin, version_dependency
 from ...settings.globals import TILE_CACHE_CLOUDFRONT_ID
 from ...tasks.aws_tasks import flush_cloudfront_cache
-from ...tasks.default_assets import create_default_asset
-from ...tasks.default_assets import create_default_asset, append_default_asset
+from ...tasks.default_assets import append_default_asset, create_default_asset
 from ...tasks.delete_assets import delete_all_assets
-from ...utils.aws import get_cloudfront_client, get_s3_client
+from ...utils.aws import get_s3_client
 from ...utils.path import split_s3_path
 
 router = APIRouter()
@@ -132,53 +126,62 @@ async def update_version(
 ):
     """Partially update a version of a given dataset.
 
-    When using PATCH and uploading files, this will overwrite the
-    existing source(s) and trigger a complete update of all managed
-    assets.
+    Update metadata or change latest tag
     """
 
     input_data = request.dict(exclude_none=True, by_alias=True)
 
-    if "source_uri" in input_data:
-        curr_version: ORMVersion = await versions.get_version(dataset, version)
-
-        #if curr_version.is_mutable:
-
-        # append
-        input_data["creation_options"] = curr_version.creation_options     # use same creation options for append
-        input_data["source_type"] = curr_version.source_type               # use same default asset type
-
-        assets: List[ORMAsset] = await get_assets(dataset, version)
-
-        for asset in assets:
-            if asset.asset_type == default_asset_type(curr_version.source_type):
-                default_asset: ORMAsset = asset
-
-        background_tasks.add_task(append_default_asset, dataset, version, input_data, default_asset.asset_id)
-
-        version_update_data = deepcopy(input_data)
-        version_update_data["source_uri"] += curr_version.source_uri
-        row: ORMVersion = await versions.update_version(dataset, version, **version_update_data)
-
-        # else:
-        #     # overwrite
-        #     raise HTTPException(
-        #         status_code=501,
-        #         detail="Not supported."
-        #                "Overwriting version sources is not supported",
-        #     )
-    else:
-        row: ORMVersion = await versions.update_version(dataset, version, **input_data)
     row: ORMVersion = await versions.update_version(dataset, version, **input_data)
 
     # if version was tagged as `latest`
     # make sure associated `latest` routes in tile cache cloud front distribution are invalidated
     if input_data["is_latest"]:
-        flush_cloudfront_cache(
-            TILE_CACHE_CLOUDFRONT_ID, ["/_latest", f"/{dataset}/{version}/latest/*"]
+        background_tasks.add_task(
+            flush_cloudfront_cache,
+            TILE_CACHE_CLOUDFRONT_ID,
+            ["/_latest", f"/{dataset}/{version}/latest/*"],
         )
 
     return await _version_response(dataset, version, row)
+
+
+@router.post(
+    "/{dataset}/{version}/append",
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+    response_model=VersionResponse,
+    deprecated=True,
+)
+async def append_to_version(
+    *,
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+    request: VersionAppendIn,
+    background_tasks: BackgroundTasks,
+    is_authorized: bool = Depends(is_admin),
+):
+    """Append new data to an existing (geo)database table.
+
+    Schema of input file must match or be a subset of previous input
+    files.
+    """
+
+    default_asset: ORMAsset = await assets.get_default_asset(dataset, version)
+
+    # For the background task, we only need the new source uri from the request
+    input_data = {"creation_options": deepcopy(default_asset.creation_options)}
+    input_data["creation_options"]["source_uri"] = request.source_uri
+    background_tasks.add_task(
+        append_default_asset, dataset, version, input_data, default_asset.asset_id
+    )
+
+    # We now want to append the new uris to the existing once and update the asset
+    update_data = {"creation_options": deepcopy(default_asset.creation_options)}
+    update_data["creation_options"]["source_uri"] += request.source_uri
+    await assets.update_asset(default_asset.asset_id, **update_data)
+
+    version_orm: ORMVersion = await versions.get_version(dataset, version)
+    return await _version_response(dataset, version, version_orm)
 
 
 @router.delete(
