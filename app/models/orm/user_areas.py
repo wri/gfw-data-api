@@ -14,7 +14,7 @@ class UserArea(Base):
     gfw_geostore_id = db.Column(db.UUID, primary_key=True)
     gfw_geojson = db.Column(db.TEXT)
     gfw_area__ha = db.Column(db.Numeric)
-    gfw_bbox = db.Column(db.Geometry("Polygon", 4326))
+    gfw_bbox = db.Column(db.ARRAY(db.Numeric))
 
     _userarea_gfw_geostore_id_idx = db.Index(
         "userarea_gfw_geostore_id_idx", "gfw_geostore_id", postgresql_using="hash"
