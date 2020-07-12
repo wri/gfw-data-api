@@ -132,7 +132,7 @@ for r in sql_routers:
 geostore_routers = (geostore.router,)
 
 for r in geostore_routers:
-    app.include_router(r, prefix="/geostore")
+    app.include_router(r)
 
 
 ###############
