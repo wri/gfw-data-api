@@ -1,11 +1,9 @@
 import json
-import uuid
 from unittest.mock import patch
 
 import pytest
 
 from app.models.enum.assets import AssetType
-from tests import BUCKET, SHP_NAME
 from tests.utils import create_default_asset, generate_uuid
 
 
@@ -237,3 +235,29 @@ async def test_tasks_failure(async_client):
     # Verify that the asset and version have been changed to state "failed"
     version_resp = await async_client.get(f"/dataset/{dataset}/{version}")
     assert version_resp.json()["data"]["status"] == "failed"
+
+
+@pytest.mark.asyncio
+async def test_fail_create_task(async_client):
+    change_log = [
+        {
+            "date_time": "2020-06-25 14:30:00",
+            "status": "success",
+            "message": "All good",
+            "detail": "None",
+        }
+    ]
+
+    asset_id = str(generate_uuid())
+    task_id = str(generate_uuid())
+    response = await async_client.put(
+        f"/task/{task_id}", json={"asset_id": asset_id, "change_log": change_log}
+    )
+    assert response.status_code == 400
+    assert response.json()["status"] == "failed"
+    assert response.json()["message"] == f"Asset {asset_id} does not exist."
+
+    response = await async_client.get(f"/task/{task_id}")
+    assert response.status_code == 404
+    assert response.json()["status"] == "failed"
+    assert response.json()["message"] == f"Task with task_id {task_id} does not exist."

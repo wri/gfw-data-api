@@ -8,11 +8,10 @@ uploaded file. Based on the source file(s), users can create additional
 assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
-
 from copy import deepcopy
 from typing import List, Optional
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ParamValidationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
 
@@ -166,6 +165,8 @@ async def append_to_version(
     files.
     """
 
+    _verify_source_file_access(request.dict()["source_uri"])
+
     default_asset: ORMAsset = await assets.get_default_asset(dataset, version)
 
     # For the background task, we only need the new source uri from the request
@@ -317,7 +318,7 @@ def _verify_source_file_access(s3_sources):
         try:
             bucket, key = split_s3_path(s3_source)
             s3_client.head_object(Bucket=bucket, Key=key)
-        except ClientError:
+        except (ClientError, ParamValidationError):
             invalid_sources.append(s3_source)
 
     if invalid_sources:

@@ -79,6 +79,176 @@ async def test_vector_source_asset(batch_client, async_client):
 
         await _check_dynamic_vector_tile_cache_status(dataset, version)
 
+        # Stats
+        # TODO: We currently don't compute stats, will need update this test once feature is available
+
+        response = await async_client.get(f"/dataset/{dataset}/{version}/stats")
+        assert response.status_code == 200
+        assert response.json()["data"] == {}
+
+        # Fields
+        response = await async_client.get(f"/dataset/{dataset}/{version}/fields")
+        assert response.status_code == 200
+        if i == 0:
+            assert response.json()["data"] == [
+                {
+                    "field_name": "gfw_fid",
+                    "field_alias": "gfw_fid",
+                    "field_description": None,
+                    "field_type": "integer",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                },
+                {
+                    "field_name": "fid",
+                    "field_alias": "fid",
+                    "field_description": None,
+                    "field_type": "numeric",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                },
+                {
+                    "field_name": "geom",
+                    "field_alias": "geom",
+                    "field_description": None,
+                    "field_type": "geometry",
+                    "is_feature_info": False,
+                    "is_filter": False,
+                },
+                {
+                    "field_name": "geom_wm",
+                    "field_alias": "geom_wm",
+                    "field_description": None,
+                    "field_type": "geometry",
+                    "is_feature_info": False,
+                    "is_filter": False,
+                },
+                {
+                    "field_name": "gfw_area__ha",
+                    "field_alias": "gfw_area__ha",
+                    "field_description": None,
+                    "field_type": "numeric",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                },
+                {
+                    "field_name": "gfw_geostore_id",
+                    "field_alias": "gfw_geostore_id",
+                    "field_description": None,
+                    "field_type": "uuid",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                },
+                {
+                    "field_name": "gfw_geojson",
+                    "field_alias": "gfw_geojson",
+                    "field_description": None,
+                    "field_type": "character varying",
+                    "is_feature_info": False,
+                    "is_filter": False,
+                },
+                {
+                    "field_name": "gfw_bbox",
+                    "field_alias": "gfw_bbox",
+                    "field_description": None,
+                    "field_type": "geometry",
+                    "is_feature_info": False,
+                    "is_filter": False,
+                },
+                {
+                    "field_name": "created_on",
+                    "field_alias": "created_on",
+                    "field_description": None,
+                    "field_type": "timestamp without time zone",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                },
+                {
+                    "field_name": "updated_on",
+                    "field_alias": "updated_on",
+                    "field_description": None,
+                    "field_type": "timestamp without time zone",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                },
+            ]
+        else:
+            # JSON file does not have fid field
+            assert response.json()["data"] == [
+                {
+                    "field_name": "gfw_fid",
+                    "field_alias": "gfw_fid",
+                    "field_description": None,
+                    "field_type": "integer",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                },
+                {
+                    "field_name": "geom",
+                    "field_alias": "geom",
+                    "field_description": None,
+                    "field_type": "geometry",
+                    "is_feature_info": False,
+                    "is_filter": False,
+                },
+                {
+                    "field_name": "geom_wm",
+                    "field_alias": "geom_wm",
+                    "field_description": None,
+                    "field_type": "geometry",
+                    "is_feature_info": False,
+                    "is_filter": False,
+                },
+                {
+                    "field_name": "gfw_area__ha",
+                    "field_alias": "gfw_area__ha",
+                    "field_description": None,
+                    "field_type": "numeric",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                },
+                {
+                    "field_name": "gfw_geostore_id",
+                    "field_alias": "gfw_geostore_id",
+                    "field_description": None,
+                    "field_type": "uuid",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                },
+                {
+                    "field_name": "gfw_geojson",
+                    "field_alias": "gfw_geojson",
+                    "field_description": None,
+                    "field_type": "character varying",
+                    "is_feature_info": False,
+                    "is_filter": False,
+                },
+                {
+                    "field_name": "gfw_bbox",
+                    "field_alias": "gfw_bbox",
+                    "field_description": None,
+                    "field_type": "geometry",
+                    "is_feature_info": False,
+                    "is_filter": False,
+                },
+                {
+                    "field_name": "created_on",
+                    "field_alias": "created_on",
+                    "field_description": None,
+                    "field_type": "timestamp without time zone",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                },
+                {
+                    "field_name": "updated_on",
+                    "field_alias": "updated_on",
+                    "field_description": None,
+                    "field_type": "timestamp without time zone",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                },
+            ]
+
         requests.delete(f"http://localhost:{PORT}")
 
 

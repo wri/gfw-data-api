@@ -3,8 +3,6 @@
 You can view a single tasks or all tasks associated with as specific
 asset. Only _service accounts_ can create or update tasks.
 """
-import sys
-import traceback
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -68,7 +66,7 @@ async def create_task(
     input_data = request.dict(exclude_none=True, by_alias=True)
     try:
         task_row = await tasks.create_task(task_id, **input_data)
-    except RecordAlreadyExistsError as e:
+    except (RecordAlreadyExistsError, RecordNotFoundError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     return task_response(task_row)
@@ -91,40 +89,33 @@ async def update_task(
     If the task has errored, or all tasks are complete, propagate status
     to asset and version rows.
     """
-    try:
 
-        input_data = request.dict(exclude_none=True, by_alias=True)
-        task_row = await tasks.update_task(task_id, **input_data)
+    input_data = request.dict(exclude_none=True, by_alias=True)
+    task_row = await tasks.update_task(task_id, **input_data)
 
-        asset_id = task_row.asset_id
+    asset_id = task_row.asset_id
 
-        status: Optional[str] = None
+    status: Optional[str] = None
 
-        # check if any of the change logs indicate failure
-        for change_log in request.change_log:
-            status = change_log.status
-            if change_log.status == ChangeLogStatus.failed:
-                break
+    # check if any of the change logs indicate failure
+    for change_log in request.change_log:
+        status = change_log.status
+        if change_log.status == ChangeLogStatus.failed:
+            break
 
-        if status and status == ChangeLogStatus.failed:
-            await _set_failed(task_id, asset_id)
+    if status and status == ChangeLogStatus.failed:
+        await _set_failed(task_id, asset_id)
 
-        elif status and status == ChangeLogStatus.success:
-            await _check_completed(asset_id)
+    elif status and status == ChangeLogStatus.success:
+        await _check_completed(asset_id)
 
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="change log status must be either `success` or `failed`",
-            )
-
-        return task_response(task_row)
-    except Exception:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
+    else:
         raise HTTPException(
-            status_code=500,
-            detail=repr(traceback.format_exception(exc_type, exc_value, exc_traceback)),
+            status_code=400,
+            detail="change log status must be either `success` or `failed`",
         )
+
+    return task_response(task_row)
 
 
 async def _set_failed(task_id: UUID, asset_id: UUID):

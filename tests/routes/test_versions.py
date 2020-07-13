@@ -6,7 +6,7 @@ import pytest
 from app.models.pydantic.metadata import VersionMetadata
 from tests import BUCKET, SHP_NAME
 from tests.tasks import MockCloudfrontClient
-from tests.utils import create_default_asset
+from tests.utils import create_dataset, create_default_asset, create_version
 
 payload = {
     "metadata": {
@@ -51,11 +51,10 @@ async def test_versions(mocked_cloudfront_client, async_client):
         "creation_options": {
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
-            "metadata": payload["metadata"],
             "source_driver": "ESRI Shapefile",
             "zipped": True,
         },
-        "metadata": {},
+        "metadata": payload["metadata"],
     }
 
     await create_default_asset(
@@ -75,6 +74,10 @@ async def test_versions(mocked_cloudfront_client, async_client):
     assert version_data["data"]["metadata"] == VersionMetadata(**payload["metadata"])
     assert version_data["data"]["version"] == "v1.1.1"
 
+    ###############
+    # Lastest Tag
+    ###############
+
     response = await async_client.patch(
         f"/dataset/{dataset}/{version}", json={"is_latest": True}
     )
@@ -86,6 +89,36 @@ async def test_versions(mocked_cloudfront_client, async_client):
         f"/dataset/{dataset}/latest?test=test&test1=test1"
     )
     assert response.json()["data"]["version"] == "v1.1.1"
+
+    ##################################################
+    # additional attributes coming from default asset
+    ##################################################
+
+    # Creation Options
+
+    version_creation_options = {
+        "source_driver": "ESRI Shapefile",
+        "source_type": "vector",
+        "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
+        "layers": None,
+        "zipped": True,
+        "indices": [
+            {"column_name": "geom", "index_type": "gist"},
+            {"column_name": "geom_wm", "index_type": "gist"},
+            {"column_name": "gfw_geostore_id", "index_type": "hash"},
+        ],
+        "create_dynamic_vector_tile_cache": True,
+    }
+
+    response = await async_client.get(f"/dataset/{dataset}/{version}/creation_options")
+    assert response.status_code == 200
+    assert response.json()["data"] == version_creation_options
+
+    # Change Log
+
+    response = await async_client.get(f"/dataset/{dataset}/{version}/change_log")
+    assert response.status_code == 200
+    assert len(response.json()["data"]) == 1
 
     assert mocked_cloudfront_client.called
 
@@ -250,3 +283,54 @@ async def test_latest_middleware(mocked_cloudfront_client, async_client):
     assert response.json()["data"]["version"] == version
 
     assert mocked_cloudfront_client.called
+
+
+@pytest.mark.asyncio
+async def test_invalid_source_uri(async_client):
+    """Test version path operations.
+
+    We patch/ disable background tasks here, as they run asynchronously.
+    Such tasks are tested separately in a different module
+    """
+    dataset = "test"
+    version = "v1.1.1"
+
+    source_uri = [
+        "s3://doesnotexist",
+        "s3://bucket/key",
+        "http://domain/file",
+        f"s3://{BUCKET}/{SHP_NAME}",
+    ]
+    version_payload = {
+        "is_latest": True,
+        "creation_options": {
+            "source_type": "vector",
+            "source_uri": source_uri,
+            "metadata": payload["metadata"],
+            "source_driver": "ESRI Shapefile",
+            "zipped": True,
+        },
+        "metadata": {},
+    }
+
+    await create_dataset(dataset, async_client, payload)
+    response = await async_client.put(
+        f"/dataset/{dataset}/{version}", json=version_payload
+    )
+    print(response.json())
+    assert response.status_code == 400
+    assert response.json()["status"] == "failed"
+    assert (
+        response.json()["message"]
+        == "Cannot access source files ['s3://doesnotexist', 's3://bucket/key', 'http://domain/file']"
+    )
+
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/append", json={"source_uri": source_uri}
+    )
+    assert response.status_code == 400
+    assert response.json()["status"] == "failed"
+    assert (
+        response.json()["message"]
+        == "Cannot access source files ['s3://doesnotexist', 's3://bucket/key', 'http://domain/file']"
+    )
