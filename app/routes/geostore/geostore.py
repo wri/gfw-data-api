@@ -6,10 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Path
 from fastapi.responses import ORJSONResponse
 
-from ...application import db
 from ...crud import geostore
-from ...models.orm.geostore import Geostore as ORMGeostore
-from ...models.pydantic.geostore import Geostore, GeostoreIn, GeostoreResponse
+from ...models.pydantic.geostore import GeostoreIn, GeostoreResponse
 from ...routes import dataset_dependency, version_dependency
 
 router = APIRouter()
