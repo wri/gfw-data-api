@@ -79,7 +79,14 @@ async def create_user_area(**data):
 
     sanitized_json = json.dumps(data, sort_keys=True)
 
-    geo_id = UUID(str(hashlib.md5(sanitized_json.encode("UTF-8")).hexdigest()))
+    # We could easily do this in Python but we want PostgreSQL's behavior
+    # to be the source of truth.
+    # geo_id = UUID(str(hashlib.md5(sanitized_json.encode("UTF-8")).hexdigest()))
+    geo_id = await db.scalar(
+        f"""
+        SELECT MD5('{sanitized_json}')::uuid;
+        """
+    )
 
     user_area: ORMUserArea = await ORMUserArea.create(
         gfw_geostore_id=geo_id,
