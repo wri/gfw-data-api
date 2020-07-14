@@ -19,7 +19,7 @@ router = APIRouter()
 async def add_new_geostore(
     *, request: GeostoreIn, response: ORJSONResponse,
 ):
-    """Add geostore feature to User geostore."""
+    """Add geostore feature to user area of geostore."""
 
     input_data = request.dict(exclude_none=True, by_alias=True)
 
@@ -54,4 +54,4 @@ async def get_geostore(
 
     Obtain geostore ID from feature attributes.
     """
-    return await geostore.get_particular_geostore(dataset, version, geostore_id)
+    return await geostore.get_geostore_by_version(dataset, version, geostore_id)

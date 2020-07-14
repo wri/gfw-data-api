@@ -1,4 +1,3 @@
-import hashlib
 import json
 import re
 from uuid import UUID
@@ -10,9 +9,10 @@ from app.models.pydantic.geostore import GeostoreOut
 
 
 async def get_user_area_geostore(geostore_id: UUID) -> GeostoreOut:
-    sql = f"""SELECT *
-    FROM geostore
-    WHERE gfw_geostore_id='{geostore_id}';"""
+    sql = f"""
+        SELECT *
+        FROM geostore
+        WHERE gfw_geostore_id='{geostore_id}';"""
 
     row = await db.first(sql)
     print(row)
@@ -23,10 +23,11 @@ async def get_user_area_geostore(geostore_id: UUID) -> GeostoreOut:
         raise RecordNotFoundError(f"Area with geostore_id {geostore_id} does not exist")
 
 
-async def get_particular_geostore(dataset, version, geostore_id) -> GeostoreOut:
-    sql = f"""SELECT *
-    FROM ONLY "{dataset}"."{version}"
-    WHERE geostore_id='{geostore_id}';"""
+async def get_geostore_by_version(dataset, version, geostore_id) -> GeostoreOut:
+    sql = f"""
+        SELECT *
+        FROM ONLY "{dataset}"."{version}"
+        WHERE geostore_id='{geostore_id}';"""
 
     row = db.first(sql)
     if row is not None:
@@ -43,15 +44,11 @@ async def create_user_area(**data):
     if not data["features"]:
         raise Exception
     features = data["features"]
-    features_string = f"""
-        ST_GeomFromGeoJSON(
-            '{json.dumps(features[0]["geometry"])}'
-        )
-    """
+    features_string = f"""ST_GeomFromGeoJSON('{json.dumps(features[0]["geometry"])}')"""
     for feature in features[1:]:
         features_string += [f", ST_GeomFromJSON({feature['geometry']})"]
 
-    sql_string = f"""
+    sql = f"""
         SELECT ST_SetSRID(
             ST_Envelope(
                 ST_Collect(
@@ -61,7 +58,7 @@ async def create_user_area(**data):
             4326
         )::Box2D;
     """
-    result = await db.scalar(sql_string)
+    result = await db.scalar(sql)
     bbox = [float(match) for match in re.findall(r"-?\d*\.\d+|-?\d+", result)]
 
     area = 0
@@ -77,20 +74,16 @@ async def create_user_area(**data):
         )
     area = area / 10000
 
-    sanitized_json = json.dumps(data, sort_keys=True)
+    sorted_json = json.dumps(data, sort_keys=True)
 
     # We could easily do this in Python but we want PostgreSQL's behavior
-    # to be the source of truth.
-    # geo_id = UUID(str(hashlib.md5(sanitized_json.encode("UTF-8")).hexdigest()))
-    geo_id = await db.scalar(
-        f"""
-        SELECT MD5('{sanitized_json}')::uuid;
-        """
-    )
+    # (if different) to be the source of truth.
+    # geo_id = UUID(str(hashlib.md5(sorted_json.encode("UTF-8")).hexdigest()))
+    geo_id = await db.scalar(f"SELECT MD5('{sorted_json}')::uuid;")
 
     user_area: ORMUserArea = await ORMUserArea.create(
         gfw_geostore_id=geo_id,
-        gfw_geojson=sanitized_json,
+        gfw_geojson=sorted_json,
         gfw_area__ha=area,
         gfw_bbox=bbox,
     )
