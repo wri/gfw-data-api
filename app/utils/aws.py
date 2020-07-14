@@ -23,3 +23,4 @@ def client_constructor(service: str, entrypoint_url=None):
 get_s3_client = client_constructor("s3", S3_ENTRYPOINT_URL)
 get_batch_client = client_constructor("batch")
 get_cloudfront_client = client_constructor("cloudfront")
+get_ecs_client = client_constructor("ecs")

@@ -8,20 +8,53 @@ variable "region" {
   type    = string
 }
 
-variable "container_name" { default = "gfw-data-api" }
-variable "container_port" { default = 80 }
-
-variable "log_level" {}
-
-variable "log_retention" { default = 30 }
-
-variable "desired_count" { default = 1 }
-variable "fargate_cpu" { default = 256 }
-variable "fargate_memory" { default = 2048 }
-variable "auto_scaling_cooldown" { default = 300 }
-variable "auto_scaling_max_capacity" { default = 15 }
-variable "auto_scaling_max_cpu_util" { default = 75 }
-variable "auto_scaling_min_capacity" { default = 1 }
-variable "key_pair" { default = "tmaschler_gfw" }
-variable "service_url" {}
-variable "git_sha" {}
+variable "container_name" {
+  default = "gfw-data-api"
+  type    = string
+}
+variable "container_port" {
+  default = 80
+  type    = number
+}
+variable "log_level" {
+  type = string
+}
+variable "log_retention" {
+  type    = number
+  default = 30
+}
+variable "desired_count" {
+  type = number
+}
+variable "fargate_cpu" {
+  type    = number
+  default = 256
+}
+variable "fargate_memory" {
+  type    = number
+  default = 2048
+}
+variable "auto_scaling_cooldown" {
+  type    = number
+  default = 300
+}
+variable "auto_scaling_max_capacity" {
+  type = number
+}
+variable "auto_scaling_max_cpu_util" {
+  type    = number
+  default = 75
+}
+variable "auto_scaling_min_capacity" {
+  type = number
+}
+variable "key_pair" {
+  type    = string
+  default = "tmaschler_gfw"
+}
+variable "service_url" {
+  type = string
+}
+variable "git_sha" {
+  type = string
+}

@@ -14,7 +14,7 @@ async def vector_source_asset(
     dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
 
-    source_uris: List[str] = input_data["source_uri"]
+    source_uris: List[str] = input_data["creation_options"]["source_uri"]
 
     if len(source_uris) != 1:
         raise AssertionError("Vector sources only support one input file")

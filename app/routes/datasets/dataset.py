@@ -16,27 +16,12 @@ from ...models.pydantic.datasets import (
     Dataset,
     DatasetCreateIn,
     DatasetResponse,
-    DatasetsResponse,
     DatasetUpdateIn,
 )
 from ...routes import dataset_dependency, is_admin
 from ...settings.globals import READER_USERNAME
 
 router = APIRouter()
-
-
-@router.get(
-    "/",
-    response_class=ORJSONResponse,
-    tags=["Datasets"],
-    response_model=DatasetsResponse,
-)
-async def get_datasets() -> DatasetsResponse:
-    """Get list of all datasets."""
-
-    data = await datasets.get_datasets()
-
-    return DatasetsResponse(data=data)
 
 
 @router.get(
@@ -94,7 +79,7 @@ async def create_dataset(
     tags=["Datasets"],
     response_model=DatasetResponse,
 )
-async def update_dataset_metadata(
+async def update_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
     request: DatasetUpdateIn,
@@ -146,7 +131,6 @@ async def delete_dataset(
 
 
 async def _dataset_response(dataset: str, orm: ORMDataset) -> DatasetResponse:
-
     _versions: List[Any] = await versions.get_version_names(dataset)
     data = Dataset.from_orm(orm).dict(by_alias=True)
     data["versions"] = [version[0] for version in _versions]

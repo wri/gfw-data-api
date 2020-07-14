@@ -1,7 +1,7 @@
 from typing import List
 from uuid import UUID
 
-from asyncpg import UniqueViolationError
+from asyncpg import ForeignKeyViolationError, UniqueViolationError
 from fastapi.encoders import jsonable_encoder
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
@@ -20,7 +20,7 @@ async def get_tasks(asset_id: UUID) -> List[ORMTask]:
 async def get_task(task_id: UUID) -> ORMTask:
     row: ORMTask = await ORMTask.get(task_id)
     if row is None:
-        raise RecordNotFoundError(f"Task with task_id {task_id} does not exist")
+        raise RecordNotFoundError(f"Task with task_id {task_id} does not exist.")
     return row
 
 
@@ -29,8 +29,9 @@ async def create_task(task_id: UUID, **data) -> ORMTask:
     try:
         new_task: ORMTask = await ORMTask.create(task_id=task_id, **jsonable_data)
     except UniqueViolationError:
-        raise RecordAlreadyExistsError(f"Task with task_id {task_id} already exists")
-
+        raise RecordAlreadyExistsError(f"Task with task_id {task_id} already exists.")
+    except ForeignKeyViolationError:
+        raise RecordNotFoundError(f"Asset {jsonable_data['asset_id']} does not exist.")
     return new_task
 
 
