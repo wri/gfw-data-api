@@ -23,7 +23,7 @@ async def redeploy_tile_cache_service(asset_id: UUID) -> None:
         )
     except ClientError as e:
         # Let's don't make this a blocker but make sure it gets logged in case something goes wrong
-        logger.exection(str(e))
+        logger.exception(str(e))
         ecs_change_log = ChangeLog(
             date_time=datetime.now(),
             status=ChangeLogStatus.failed,

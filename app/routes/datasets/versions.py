@@ -87,8 +87,7 @@ async def add_new_version(
 
     input_data = request.dict(exclude_none=True, by_alias=True)
 
-    creation_options = input_data["creation_options"]
-    del input_data["creation_options"]
+    creation_options = input_data.pop("creation_options")
 
     _verify_source_file_access(creation_options["source_uri"])
 
