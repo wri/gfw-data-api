@@ -15,8 +15,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
 
-from ...crud import assets
-from ...errors import RecordAlreadyExistsError
+from ...crud import assets, versions
+from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.pydantic.assets import (
     AssetCreateIn,
@@ -49,6 +49,11 @@ async def get_version_assets(
     is_default: Optional[bool] = Query(None),
 ):
     """Get all assets for a given dataset version."""
+
+    try:
+        await versions.get_version(dataset, version)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     data: List[ORMAsset] = await assets.get_assets_by_filter(
         dataset, version, asset_type, asset_uri, is_latest, is_default

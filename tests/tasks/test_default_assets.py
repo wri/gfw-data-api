@@ -251,6 +251,20 @@ async def test_vector_source_asset(batch_client, async_client):
 
         requests.delete(f"http://localhost:{PORT}")
 
+    response = await async_client.get(f"/asset/{asset_id}")
+    assert response.status_code == 200
+
+    response = await async_client.get("/dataset/different/v1.1.1/assets")
+    assert response.status_code == 400
+
+    response = await async_client.delete(f"/asset/{asset_id}")
+    assert response.status_code == 409
+    print(response.json())
+    assert (
+        response.json()["message"]
+        == "Deletion failed. You cannot delete a default asset. To delete a default asset you must delete the parent version."
+    )
+
 
 @pytest.mark.asyncio
 async def test_table_source_asset(batch_client, async_client):

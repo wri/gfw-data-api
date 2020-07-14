@@ -32,6 +32,17 @@ payload = {
     }
 }
 
+version_payload = {
+    "is_latest": True,
+    "creation_options": {
+        "source_type": "vector",
+        "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
+        "source_driver": "ESRI Shapefile",
+        "zipped": True,
+    },
+    "metadata": payload["metadata"],
+}
+
 
 @pytest.mark.asyncio
 @patch("app.tasks.aws_tasks.get_cloudfront_client")
@@ -45,17 +56,6 @@ async def test_versions(mocked_cloudfront_client, async_client):
     version = "v1.1.1"
 
     mocked_cloudfront_client.return_value = MockCloudfrontClient()
-
-    version_payload = {
-        "is_latest": True,
-        "creation_options": {
-            "source_type": "vector",
-            "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
-            "source_driver": "ESRI Shapefile",
-            "zipped": True,
-        },
-        "metadata": payload["metadata"],
-    }
 
     await create_default_asset(
         dataset,
@@ -333,4 +333,21 @@ async def test_invalid_source_uri(async_client):
     assert (
         response.json()["message"]
         == "Cannot access source files ['s3://doesnotexist', 's3://bucket/key', 'http://domain/file']"
+    )
+
+
+@pytest.mark.asyncio
+async def test_put_latest(async_client):
+
+    dataset = "test"
+    response = await async_client.put(f"/dataset/{dataset}", json=payload)
+    assert response.status_code == 201
+
+    response = await async_client.put(
+        f"/dataset/{dataset}/latest", json=version_payload
+    )
+    assert response.status_code == 400
+    assert (
+        response.json()["message"]
+        == "You must list version name explicitly for this operation."
     )

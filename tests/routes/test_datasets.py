@@ -74,7 +74,7 @@ async def test_datasets(async_client):
     assert response.status_code == 200
     assert response.json()["data"]["dataset"] == "test"
 
-    async with ContextEngine("WRITE"):
+    async with ContextEngine("READ"):
         rows = await db.all(
             f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{dataset}';"
         )
@@ -107,3 +107,10 @@ async def test_dataset_delete_protection(async_client):
         response = await async_client.delete(f"/dataset/{dataset}")
         assert response.status_code == 200
         assert mocked_task.called
+
+
+@pytest.mark.asyncio
+async def test_put_latest(async_client):
+    response = await async_client.put("/dataset/latest")
+    assert response.status_code == 400
+    assert response.json()["message"] == "Name `latest` is reserved for versions only."

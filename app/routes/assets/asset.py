@@ -15,7 +15,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 
 from ...crud import assets, tasks
-from ...errors import ClientError, RecordNotFoundError
+from ...errors import RecordNotFoundError
 from ...models.enum.assets import is_database_asset
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.tasks import Task as ORMTask
@@ -109,7 +109,7 @@ async def delete_asset(
         raise HTTPException(status_code=404, detail=str(e))
 
     if row.is_default:
-        raise ClientError(
+        raise HTTPException(
             status_code=409,
             detail="Deletion failed. You cannot delete a default asset. "
             "To delete a default asset you must delete the parent version.",
@@ -152,7 +152,7 @@ async def delete_asset(
     elif is_database_asset(row.asset_type):
         background_tasks.add_task(delete_database_table, row.dataset, row.version)
     else:
-        raise ClientError(
+        raise HTTPException(
             status_code=400,
             detail=f"Cannot delete asset of type {row.asset_type}. Not implemented.",
         )
