@@ -4,11 +4,12 @@ from app.tasks.aws_tasks import (
     delete_s3_objects,
     expire_s3_objects,
     flush_cloudfront_cache,
+    update_ecs_service,
 )
 from app.utils.aws import get_s3_client
 
 from .. import BUCKET, TSV_NAME, TSV_PATH
-from . import KEY, VALUE, MockCloudfrontClient, MockS3Client
+from . import KEY, VALUE, MockCloudfrontClient, MockECSClient, MockS3Client
 
 
 def test_delete_s3_objects():
@@ -73,7 +74,16 @@ def test_flush_cloudfront_cache(mock_client):
     mock_client.return_value = MockCloudfrontClient()
     # cloudfront_client = mock_client()
 
-    response = flush_cloudfront_cache("ID", TSV_NAME)
+    response = flush_cloudfront_cache("ID", [TSV_NAME])
 
     assert response["Invalidation"]["InvalidationBatch"]["Paths"]["Quantity"] == 1
     assert response["Invalidation"]["InvalidationBatch"]["Paths"]["Items"] == [TSV_NAME]
+
+
+@mock.patch("app.tasks.aws_tasks.get_ecs_client")  # TODO use moto client
+def test_update_ecs_service(mock_client):
+
+    mock_client.return_value = MockECSClient()
+    response = update_ecs_service("cluster", "service")
+
+    assert response["service"]["serviceName"] == "service"

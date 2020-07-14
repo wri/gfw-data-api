@@ -32,9 +32,7 @@ async def test_assets():
     # Add a dataset
     async with ContextEngine("WRITE"):
         new_dataset = await create_dataset(dataset_name)
-        new_version = await create_version(
-            dataset_name, version_name, source_type="table"
-        )
+        new_version = await create_version(dataset_name, version_name)
     assert new_dataset.dataset == dataset_name
     assert new_version.dataset == dataset_name
     assert new_version.version == version_name
@@ -148,13 +146,7 @@ async def test_assets():
     assert result == f"Could not find requested asset {_asset_id}"
 
     # It should be possible to update a dataset using a context engine
-    metadata = DatabaseTableMetadata(
-        title="Test Title",
-        tags=["tag1", "tag2"],
-        fields=[
-            {"field_name": "test", "field_type": "numeric", "is_feature_info": True}
-        ],
-    )
+    metadata = DatabaseTableMetadata(title="Test Title", tags=["tag1", "tag2"],)
     logs = ChangeLog(date_time=datetime.now(), status="pending", message="all good")
     async with ContextEngine("WRITE"):
         row = await update_asset(
@@ -164,16 +156,7 @@ async def test_assets():
         )
     assert row.metadata["title"] == "Test Title"
     assert row.metadata["tags"] == ["tag1", "tag2"]
-    assert row.metadata["fields"] == [
-        {
-            "field_name": "test",
-            "field_type": "numeric",
-            "is_feature_info": True,
-            "field_alias": None,
-            "field_description": None,
-            "is_filter": True,
-        }
-    ]
+
     assert row.change_log[0]["date_time"] == json.loads(logs.json())["date_time"]
     assert row.change_log[0]["status"] == logs.dict(by_alias=True)["status"]
     assert row.change_log[0]["message"] == logs.dict(by_alias=True)["message"]
@@ -203,24 +186,12 @@ async def test_assets_metadata():
 
     asset_metadata = {
         "title": "New Title",
-        "_fields": [
-            {
-                "field_name_": "Field",
-                "field_alias": "Field",
-                "field_description": "Field",
-                "field_type": "Var Char",
-                "is_feature_info": False,
-                "is_filter:": False,
-            }
-        ],
     }
 
     # Add a dataset
     async with ContextEngine("WRITE"):
         await create_dataset(dataset, metadata=dataset_metadata)
-        await create_version(
-            dataset, version, source_type="table", metadata=version_metadata
-        )
+        await create_version(dataset, version, metadata=version_metadata)
         new_asset = await create_asset(
             dataset,
             version,
@@ -233,16 +204,6 @@ async def test_assets_metadata():
         "title": "New Title",
         "subtitle": "New Subtitle",
         "version_number": version,
-        "_fields": [
-            {
-                "field_name_": "Field",
-                "field_alias": "Field",
-                "field_description": "Field",
-                "field_type": "Var Char",
-                "is_feature_info": False,
-                "is_filter:": False,
-            }
-        ],
     }
 
     asset_id = new_asset.asset_id
@@ -269,16 +230,6 @@ async def test_assets_metadata():
         "subtitle": "New Subtitle",
         "source": "Source",
         "version_number": version,
-        "_fields": [
-            {
-                "field_name_": "Field",
-                "field_alias": "Field",
-                "field_description": "Field",
-                "field_type": "Var Char",
-                "is_feature_info": False,
-                "is_filter:": False,
-            }
-        ],
     }
 
     async with ContextEngine("WRITE"):

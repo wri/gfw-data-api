@@ -5,19 +5,18 @@ from uuid import UUID
 
 from ..application import ContextEngine
 from ..crud import assets, versions
-from ..models.enum.assets import default_asset_type
+from ..models.enum.assets import default_asset_type, is_database_asset
 from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
-from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.assets import AssetTaskCreate
 from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.creation_options import asset_creation_option_factory
+from ..models.pydantic.creation_options import creation_option_factory
 from ..models.pydantic.metadata import asset_metadata_factory
 from ..utils.aws import get_s3_client
 from ..utils.path import split_s3_path
 from .assets import put_asset
 from .raster_source_assets import raster_source_asset
-from .table_source_assets import table_source_asset, append_table_source_asset
+from .table_source_assets import append_table_source_asset, table_source_asset
 from .vector_source_assets import vector_source_asset
 
 DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
@@ -29,16 +28,15 @@ DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
 )
 
 DEFAULT_APPEND_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
-    {
-        SourceType.table: append_table_source_asset,
-    }.items()
+    {SourceType.table: append_table_source_asset}.items()
 )
+
 
 async def create_default_asset(
     dataset: str, version: str, input_data: Dict[str, Any], file_obj: Optional[IO],
 ) -> UUID:
-    source_type = input_data["source_type"]
-    source_uri = input_data["source_uri"]
+
+    source_uri = input_data["creation_options"]["source_uri"]
     status = None
     log: Optional[ChangeLog] = None
 
@@ -62,7 +60,7 @@ async def create_default_asset(
     else:
         try:
             asset_id: UUID = await _create_default_asset(
-                source_type, dataset=dataset, version=version, input_data=input_data,
+                dataset=dataset, version=version, input_data=input_data,
             )
             return asset_id
         # Make sure version status is set to `failed` in case there is an uncaught Exception
@@ -74,9 +72,9 @@ async def create_default_asset(
 
 
 async def append_default_asset(
-    dataset: str, version: str, input_data: ORMVersion, asset_id: str
-) -> UUID:
-    source_type = input_data["source_type"]
+    dataset: str, version: str, input_data: Dict[str, Any], asset_id: UUID
+) -> None:
+    source_type = input_data["creation_options"]["source_type"]
 
     try:
         await put_asset(
@@ -97,16 +95,14 @@ async def append_default_asset(
 
 
 async def _create_default_asset(
-    source_type: str, dataset: str, version: str, input_data: Dict[str, Any],
+    dataset: str, version: str, input_data: Dict[str, Any],
 ) -> UUID:
-    asset_type = default_asset_type(source_type)
+    creation_option = input_data["creation_options"]
+    source_type = creation_option["source_type"]
+    asset_type = default_asset_type(source_type, creation_option)
     metadata = asset_metadata_factory(asset_type, input_data["metadata"])
-    asset_uri = _default_asset_uri(
-        source_type, dataset, version, input_data["creation_options"]
-    )
-    creation_options = asset_creation_option_factory(
-        source_type, asset_type, input_data["creation_options"]
-    )
+    asset_uri = _default_asset_uri(asset_type, dataset, version, creation_option)
+    creation_options = creation_option_factory(asset_type, creation_option)
 
     data = AssetTaskCreate(
         asset_type=asset_type,
@@ -155,8 +151,8 @@ async def _inject_file(file_obj: IO, s3_uri: str) -> ChangeLog:
     )
 
 
-def _default_asset_uri(source_type, dataset, version, creation_option=None):
-    if source_type == "table" or source_type == "vector":
+def _default_asset_uri(asset_type, dataset, version, creation_option=None):
+    if is_database_asset(asset_type):
         asset_uri = f"/{dataset}/{version}/features"
     # elif source_type == "raster":
     #     srid = creation_option[]

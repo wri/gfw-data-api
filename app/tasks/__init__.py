@@ -24,7 +24,7 @@ from ..settings.globals import (
 )
 
 report_vars: List = [
-    {"name": "STATUS_URL", "value": urljoin(API_URL, "tasks")},
+    {"name": "STATUS_URL", "value": urljoin(API_URL, "task")},
     {"name": "SERVICE_ACCOUNT_TOKEN", "value": SERVICE_ACCOUNT_TOKEN},
 ]
 

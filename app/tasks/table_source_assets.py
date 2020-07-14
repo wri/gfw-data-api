@@ -10,7 +10,6 @@ from ..models.pydantic.creation_options import (
     TableSourceCreationOptions,
 )
 from ..models.pydantic.jobs import Job, PostgresqlClientJob
-from ..routes.tasks.tasks import _get_field_metadata
 from ..settings.globals import CHUNK_SIZE
 from ..tasks import Callback, callback_constructor, writer_secrets
 from ..tasks.batch import BATCH_DEPENDENCY_LIMIT, execute
@@ -20,8 +19,11 @@ async def table_source_asset(
     dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
 
-    source_uris: List[str] = input_data["source_uri"]
     creation_options = TableSourceCreationOptions(**input_data["creation_options"])
+    if creation_options.source_uri:
+        source_uris: List[str] = creation_options.source_uri
+    else:
+        raise RuntimeError("No source URI provided.")
 
     callback: Callback = callback_constructor(asset_id)
 
@@ -191,8 +193,12 @@ async def table_source_asset(
 async def append_table_source_asset(
     dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
-    creation_options = TableSourceCreationOptions(**input_data["creation_options"])  # TODO get from row
-    source_uris: List[str] = input_data["source_uri"]
+
+    creation_options = TableSourceCreationOptions(**input_data["creation_options"])
+    if creation_options.source_uri:
+        source_uris: List[str] = creation_options.source_uri
+    else:
+        raise RuntimeError("Empty source uri list")
 
     callback: Callback = callback_constructor(asset_id)
 
@@ -207,8 +213,7 @@ async def append_table_source_asset(
     # limit, so break sources into chunks
     chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
     uri_chunks = [
-        source_uris[x: x + chunk_size]
-        for x in range(0, len(source_uris), chunk_size)
+        source_uris[x : x + chunk_size] for x in range(0, len(source_uris), chunk_size)
     ]
 
     for i, uri_chunk in enumerate(uri_chunks):
@@ -260,12 +265,7 @@ async def append_table_source_asset(
             ),
         )
 
-    log: ChangeLog = await execute(
-        [
-            *load_data_jobs,
-            *geometry_jobs,
-        ]
-    )
+    log: ChangeLog = await execute([*load_data_jobs, *geometry_jobs])
 
     return log
 

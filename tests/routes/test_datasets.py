@@ -1,6 +1,11 @@
 import json
 from unittest.mock import patch
 
+import pytest
+
+from app.application import ContextEngine, db
+from tests.utils import create_default_asset
+
 payload = {
     "metadata": {
         "title": "string",
@@ -26,82 +31,86 @@ payload = {
 }
 
 
-def test_datasets(client, db):
+@pytest.mark.asyncio
+async def test_datasets(async_client):
     """Basic test to check if empty data api response as expected."""
 
     dataset = "test"
 
-    response = client.get("/meta")
+    response = await async_client.get("/datasets")
     assert response.status_code == 200
     assert response.json() == {"data": [], "status": "success"}
 
-    response = client.put(f"/meta/{dataset}", data=json.dumps(payload))
+    response = await async_client.put(f"/dataset/{dataset}", data=json.dumps(payload))
     assert response.status_code == 201
     assert response.json()["data"]["metadata"] == payload["metadata"]
 
-    response = client.get("/meta")
+    response = await async_client.get("/datasets")
     assert response.status_code == 200
     assert len(response.json()["data"]) == 1
     assert response.json()["data"][0]["metadata"] == payload["metadata"]
 
-    response = client.get(f"/meta/{dataset}")
+    response = await async_client.get(f"/dataset/{dataset}")
     assert response.status_code == 200
     assert response.json()["data"]["metadata"] == payload["metadata"]
 
-    cursor = db.execute(
-        "SELECT schema_name FROM information_schema.schemata WHERE schema_name = :dataset;",
-        {"dataset": dataset},
-    )
-    rows = cursor.fetchall()
+    async with ContextEngine("READ"):
+        rows = await db.all(
+            f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{dataset}';"
+        )
+
     assert len(rows) == 1
 
     new_payload = {"metadata": {"title": "New Title"}}
-    response = client.patch(f"/meta/{dataset}", data=json.dumps(new_payload))
+    response = await async_client.patch(
+        f"/dataset/{dataset}", data=json.dumps(new_payload)
+    )
     assert response.status_code == 200
     assert response.json()["data"]["metadata"] != payload["metadata"]
     assert response.json()["data"]["metadata"]["title"] == "New Title"
     assert response.json()["data"]["metadata"]["subtitle"] == "string"
 
-    response = client.delete(f"/meta/{dataset}")
+    response = await async_client.delete(f"/dataset/{dataset}")
     assert response.status_code == 200
     assert response.json()["data"]["dataset"] == "test"
 
-    cursor = db.execute(
-        "SELECT schema_name FROM information_schema.schemata WHERE schema_name = :dataset;",
-        {"dataset": dataset},
-    )
-    rows = cursor.fetchall()
+    async with ContextEngine("READ"):
+        rows = await db.all(
+            f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{dataset}';"
+        )
     assert len(rows) == 0
 
-    response = client.get("/meta")
+    response = await async_client.get("/datasets")
     assert response.status_code == 200
     assert response.json() == {"data": [], "status": "success"}
 
 
-@patch("fastapi.BackgroundTasks.add_task", return_value=None)
-def test_dataset_delete_protection(mocked_task, client):
+@pytest.mark.asyncio
+async def test_dataset_delete_protection(async_client):
     dataset = "test"
-    version = "v1.1.1"
+    version = "v20200626"
 
-    client.put(f"/meta/{dataset}", data=json.dumps(payload))
+    await create_default_asset(
+        dataset, version, async_client=async_client, execute_batch_jobs=False
+    )
 
-    version_payload = {
-        "is_latest": True,
-        "source_type": "vector",
-        "source_uri": ["s3://some/path"],
-        "metadata": payload["metadata"],
-        "creation_options": {"src_driver": "ESRI Shapefile", "zipped": True},
-    }
+    with patch("fastapi.BackgroundTasks.add_task", return_value=None) as mocked_task:
 
-    # with patch("app.tasks.default_assets.create_default_asset", return_value=True) as mock_asset:
-    client.put(f"/meta/{dataset}/{version}", data=json.dumps(version_payload))
+        # You should not be able to delete datasets while there are still versions
+        # You will need to delete the version first
+        response = await async_client.delete(f"/dataset/{dataset}")
+        assert response.status_code == 409
 
-    response = client.delete(f"/meta/{dataset}")
+        response = await async_client.delete(f"/dataset/{dataset}/{version}")
+        assert response.status_code == 200
 
-    assert response.status_code == 409
+        response = await async_client.delete(f"/dataset/{dataset}")
+        assert response.status_code == 200
+        assert mocked_task.called
 
-    client.delete(f"/meta/{dataset}/{version}")
-    response = client.delete(f"/meta/{dataset}")
 
-    assert response.status_code == 200
-    assert mocked_task.called
+@pytest.mark.asyncio
+async def test_put_latest(async_client):
+    response = await async_client.put("/dataset/latest")
+    assert response.status_code == 400
+    assert response.json()["message"] == "Name `latest` is reserved for versions only."
