@@ -3,6 +3,7 @@ geometries in the datastore."""
 
 from uuid import UUID
 
+from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, Depends, Path
 from fastapi.responses import ORJSONResponse
 
@@ -23,7 +24,11 @@ async def add_new_geostore(
 
     input_data = request.dict(exclude_none=True, by_alias=True)
 
-    new_user_area = await geostore.create_user_area(**input_data)
+    try:
+        new_user_area = await geostore.create_user_area(**input_data)
+    except UniqueViolationError:
+        # FIXME: What to do here? Return success or failure?
+        raise
 
     return GeostoreResponse(data=new_user_area)
 
