@@ -1,6 +1,5 @@
 """Explore data entries for a given dataset version using standard SQL."""
-import sys
-import traceback
+
 from typing import Any, Dict, List
 from urllib.parse import unquote
 

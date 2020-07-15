@@ -78,6 +78,15 @@ async def test_vector_source_asset(batch_client, async_client):
 
         await _check_dynamic_vector_tile_cache_status(dataset, version)
 
+        # Queries
+
+        response = await async_client.get(
+            f"/dataset/{dataset}/{version}/query?sql=select count(*) from mytable;"
+        )
+        assert response.status_code == 200
+        assert len(response.json()["data"]) == 1
+        assert response.json()["data"][0]["count"] == 1
+
         # Stats
         # TODO: We currently don't compute stats, will need update this test once feature is available
 

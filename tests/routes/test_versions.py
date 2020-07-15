@@ -124,41 +124,39 @@ async def test_versions(mocked_cloudfront_client, async_client):
     # Query
 
     response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=SELECT * from version; DELETE FROM version;"
+        f"/dataset/{dataset}/{version}/query?sql=SELECT%20%2A%20from%20version%3B%20DELETE%20FROM%20version%3B"
     )
     print(response.json())
     assert response.status_code == 400
-    assert len(response.json()["message"]) == "Must use exactly one SQL statement."
+    assert response.json()["message"] == "Must use exactly one SQL statement."
 
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=DELETE FROM version;"
     )
     print(response.json())
     assert response.status_code == 400
-    assert len(response.json()["message"]) == "Must use SELECT statements only."
+    assert response.json()["message"] == "Must use SELECT statements only."
 
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=WITH t as (select 1) SELECT * FROM version;"
     )
     print(response.json())
     assert response.status_code == 400
-    assert len(response.json()["message"]) == "Must not have WITH clause."
+    assert response.json()["message"] == "Must not have WITH clause."
 
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM version, version2;"
     )
     print(response.json())
     assert response.status_code == 400
-    assert (
-        len(response.json()["message"]) == "Must list exactly one table in FROM clause."
-    )
+    assert response.json()["message"] == "Must list exactly one table in FROM clause."
 
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM (select * from a) as b;"
     )
     print(response.json())
     assert response.status_code == 400
-    assert len(response.json()["message"]) == "Must not use sub queries."
+    assert response.json()["message"] == "Must not use sub queries."
 
     assert mocked_cloudfront_client.called
 
