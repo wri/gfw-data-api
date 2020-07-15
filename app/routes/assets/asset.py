@@ -27,7 +27,7 @@ from ...models.pydantic.creation_options import (
     creation_option_factory,
 )
 from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
-from ...models.pydantic.statistics import Stats, StatsResponse
+from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.tasks import TasksResponse
 from ...routes import is_admin
 from ...tasks.delete_assets import (
@@ -211,7 +211,7 @@ async def get_creation_options(asset_id: UUID = Path(...)):
 )
 async def get_stats(asset_id: UUID = Path(...)):
     asset = await assets.get_asset(asset_id)
-    stats: Stats = Stats(**asset.stats)
+    stats: Stats = stats_factory(asset.asset_type, **asset.stats)
     return StatsResponse(data=stats)
 
 

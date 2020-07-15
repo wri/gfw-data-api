@@ -171,7 +171,7 @@ tags_metadata = [
 ]
 
 
-def custom_openapi(openapi_prefix: str = ""):
+def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
 
@@ -180,7 +180,6 @@ def custom_openapi(openapi_prefix: str = ""):
         version="0.1.0",
         description="Use GFW DATA API to explore, manage and access data.",
         routes=app.routes,
-        openapi_prefix=openapi_prefix,
     )
 
     openapi_schema["tags"] = tags_metadata

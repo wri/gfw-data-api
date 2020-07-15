@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 from pydantic import BaseModel, Field
 
 from ..enum.assets import AssetType
+from ..enum.pg_types import PGType
 from .responses import Response
 
 
@@ -10,7 +11,7 @@ class FieldMetadata(BaseModel):
     field_name_: str = Field(..., alias="field_name")
     field_alias: Optional[str]
     field_description: Optional[str]
-    field_type: str
+    field_type: PGType
     is_feature_info: bool = True
     is_filter: bool = True
 

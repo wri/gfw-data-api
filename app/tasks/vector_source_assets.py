@@ -112,13 +112,17 @@ async def vector_source_asset(
             )
         )
 
-    inherit_geostore_job = PostgresqlClientJob(
-        job_name="inherit_from_geostore",
-        command=["inherit_geostore.sh", "-d", dataset, "-v", version],
-        parents=[job.job_name for job in index_jobs],
-        environment=job_env,
-        callback=callback,
-    )
+    inherit_geostore_jobs = list()
+    if creation_options.add_to_geostore:
+
+        inherit_geostore_job = PostgresqlClientJob(
+            job_name="inherit_from_geostore",
+            command=["inherit_geostore.sh", "-d", dataset, "-v", version],
+            parents=[job.job_name for job in index_jobs],
+            environment=job_env,
+            callback=callback,
+        )
+        inherit_geostore_jobs.append(inherit_geostore_job)
 
     log: ChangeLog = await execute(
         [
@@ -126,7 +130,7 @@ async def vector_source_asset(
             *load_vector_data_jobs,
             gfw_attribute_job,
             *index_jobs,
-            inherit_geostore_job,
+            *inherit_geostore_jobs,
         ]
     )
 

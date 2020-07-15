@@ -9,11 +9,10 @@ from ..enum.creation_options import (
     Delimiters,
     IndexType,
     PartitionType,
-    PGType,
     TableDrivers,
     TileStrategy,
-    VectorDrivers,
 )
+from ..enum.pg_types import PGType
 from ..enum.sources import SourceType
 from .responses import Response
 
@@ -73,18 +72,12 @@ class FieldType(BaseModel):
     field_type: PGType = Field(..., description="Type of field (PostgreSQL type).")
 
 
-# TODO: we currently ignore src_driver and zipped field
-#  decide whether to keep these fields or to remove them entirely
 class VectorSourceCreationOptions(BaseModel):
-    source_driver: VectorDrivers = Field(
-        ..., description="Driver of source file. Must be an OGR driver"
-    )
     source_type: SourceType = SourceType.vector
     source_uri: Optional[List[str]] = None
     layers: Optional[List[str]] = Field(
-        None, description="List of input layers. Only required for .gdb and .gpkg"
+        None, description="List of input layers. Only required for .gdb and .gpkg."
     )
-    zipped: bool = Field(..., description="Indicate if source file is zipped")
 
     indices: List[Index] = Field(
         [
@@ -98,6 +91,10 @@ class VectorSourceCreationOptions(BaseModel):
         True,
         description="By default, vector sources will implicitly create a dynamic vector tile cache. "
         "Disable this option by setting value to `false`",
+    )
+    add_to_geostore: bool = Field(
+        True,
+        description="Include features to geostore, to make geometries searchable via geostore endpoint.",
     )
 
 

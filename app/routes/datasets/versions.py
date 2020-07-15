@@ -27,7 +27,7 @@ from ...models.pydantic.creation_options import (
     creation_option_factory,
 )
 from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
-from ...models.pydantic.statistics import Stats, StatsResponse
+from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.versions import (
     Version,
     VersionAppendIn,
@@ -272,7 +272,7 @@ async def get_stats(
     version: str = Depends(version_dependency),
 ):
     asset = await assets.get_default_asset(dataset, version)
-    stats: Stats = Stats(**asset.stats)
+    stats: Stats = stats_factory(asset.asset_type, **asset.stats)
     return StatsResponse(data=stats)
 
 
