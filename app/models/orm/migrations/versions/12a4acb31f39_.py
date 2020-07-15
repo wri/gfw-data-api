@@ -42,7 +42,6 @@ def upgrade():
         unique=False,
         postgresql_using="hash",
     )
-    # pass
 
 
 def downgrade():
