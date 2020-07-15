@@ -1,4 +1,6 @@
 # GFW Data API
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwri%2Fgfw-data-api.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwri%2Fgfw-data-api?ref=badge_shield)
+
 High-performance Async REST API, in Python. FastAPI + GINO + Uvicorn (powered by PostgreSQL).
 
 ## Get Started
@@ -42,3 +44,7 @@ _NOTE: You must have PostgreSQL running locally._
 * **Alembic:** Handles database migrations. Compatible with GINO.
 * **SQLAlchemy_Utils:** Provides essential handles & datatypes. Compatible with GINO.
 * **PostgreSQL:** Robust, fully-featured, scalable, open-source.
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwri%2Fgfw-data-api.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwri%2Fgfw-data-api?ref=badge_large)
