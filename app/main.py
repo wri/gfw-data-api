@@ -18,9 +18,8 @@ from .middleware import redirect_latest, set_db_mode
 from .routes import security
 from .routes.assets import asset, assets
 from .routes.datasets import asset as version_asset
-from .routes.datasets import dataset, datasets, features, versions
+from .routes.datasets import dataset, datasets, features, queries, versions
 from .routes.geostore import geostore
-from .routes.sql import queries
 from .routes.tasks import task
 
 ################
@@ -105,6 +104,7 @@ dataset_routers = (
     versions.router,
     features.router,
     version_asset.router,
+    queries.router,
 )
 
 for r in dataset_routers:
@@ -119,24 +119,14 @@ app.include_router(assets.router, prefix="/assets")
 app.include_router(asset.router, prefix="/asset")
 
 
-###############
-# FEATURE API
-###############
-
-
-feature_routers = (features.router,)
-
-for r in feature_routers:
-    app.include_router(r, prefix="/features")
-
-###############
-# SQL API
-###############
-
-sql_routers = (queries.router,)
-
-for r in sql_routers:
-    app.include_router(r, prefix="/sql")
+# ###############
+# # SQL API
+# ###############
+#
+# sql_routers = (queries.router,)
+#
+# for r in sql_routers:
+#     app.include_router(r, prefix="/sql")
 
 ###############
 # GEOSTORE API

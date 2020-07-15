@@ -8,7 +8,7 @@ assets are only loosely linked to a dataset version and users must
 cannot rely on full integrity. We can only assume that unmanaged are
 based on the same version and do not know the processing history.
 """
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path
@@ -211,7 +211,7 @@ async def get_creation_options(asset_id: UUID = Path(...)):
 )
 async def get_stats(asset_id: UUID = Path(...)):
     asset = await assets.get_asset(asset_id)
-    stats: Stats = stats_factory(asset.asset_type, **asset.stats)
+    stats: Optional[Stats] = stats_factory(asset.asset_type, **asset.stats)
     return StatsResponse(data=stats)
 
 

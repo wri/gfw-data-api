@@ -34,6 +34,7 @@ shapely = "*"
 pyproj = "*"
 geojson = "*"
 aenum = "*"
+pglast = "*"
 
 [requires]
 python_version = "3.8"

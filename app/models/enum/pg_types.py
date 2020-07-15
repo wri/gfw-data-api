@@ -31,6 +31,7 @@ class PGDateType(str, Enum):
     __doc__ = "Date PostgreSQL data types"
     date = "date"
     timestamp = "timestamp"
+    timestamp_wtz = "timestamp without time zone"
 
 
 class PGGeometryType(str, Enum):

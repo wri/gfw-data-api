@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "6beb1448dcafec569cd0626fa5fd86b9cc6308cd7ab8e9c8ac998cb7279f6b5e"
+            "sha256": "8a58bdf95682a7af4d59a510337695b86c98310fb417592b47686c34a833dcc6"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -318,6 +318,29 @@
             ],
             "index": "pypi",
             "version": "==3.2.2"
+        },
+        "pglast": {
+            "hashes": [
+                "sha256:06a76ce8d1bffd067311047c90861fd8b80e21c11042195e552aacfd2dc9a403",
+                "sha256:15d017e2334d3fb423841ca4bd4b7b8b2d199cab7e9bc1f26d47b2538026c3ba",
+                "sha256:4a17288eeac69125034d6d62d6543b093b1cdc5977f79db1a7c83924daba9ace",
+                "sha256:4d17f72be5c0627a876841e46bb25fb09bc16d2224bd8ce434993f1b042e91ba",
+                "sha256:57005e737c249bad8f2d4a309c8bd02a41bb6ad582529630b1c67836162db60c",
+                "sha256:5e71142f12fe23236d19249afb0d117be0f80c48217d48ae86f7b00f87ac9257",
+                "sha256:5f9e58f2a5870e96d2a782a2743115ac45a8e7fd4e5f0d54ccd235b1da21c3a7",
+                "sha256:93a6f79c1762e0d6a37a29fcb6934f72c9fd4150f6a88a67fa6981297448b13a",
+                "sha256:96ab4584ef5497c34239cdab71bb6e335e2c541a4f072a5af796964391d51b7e",
+                "sha256:a83dfc506572abdf89d9558e43bca2786e9f6425b128860976c5f34c5b85bb13",
+                "sha256:b5d6a105928d2285e43afb87d638ada844ed8933cc306c23a3c095684f3d3af4",
+                "sha256:c72086651d344a1fefb7ee6c1c35c7db02754db33c444bb4d467d43a4839b0a7",
+                "sha256:c72ef822707b0a5f20292e100148bfbf7478029bf0c205f1a05ce5b9ad3aeeaf",
+                "sha256:c9acddf2c560b1df5202126ccf0445846304d941fb42d4db34a05885d52002ca",
+                "sha256:cb66f59bc38253d138420b562c57cc74be01966cf7f1caae9154879054d7dfd8",
+                "sha256:d4af139ecfdf48ea85883ae2c8442d9236f8477596c9354b037568a0ad2b6782",
+                "sha256:ec4a42831c248278111894e6b76436b5979defd911776a668b51025d79801300"
+            ],
+            "index": "pypi",
+            "version": "==1.12"
         },
         "psycopg2-binary": {
             "hashes": [

@@ -109,10 +109,10 @@ Stats = Union[TableStats, RasterStats]
 
 
 class StatsResponse(Response):
-    data: Stats
+    data: Optional[Stats]
 
 
-def stats_factory(asset_type: str, input_data: Dict[str, Any]) -> Stats:
+def stats_factory(asset_type: str, input_data: Dict[str, Any]) -> Optional[Stats]:
     stats_constructor: Dict[str, Type[Stats]] = {
         AssetType.database_table: TableStats,
         AssetType.geo_database_table: TableStats,
@@ -123,6 +123,9 @@ def stats_factory(asset_type: str, input_data: Dict[str, Any]) -> Stats:
         AssetType.geopackage: TableStats,
         AssetType.raster_tile_set: RasterStats,
     }
+
+    if not input_data:
+        return None
 
     try:
         return stats_constructor[asset_type](**input_data)

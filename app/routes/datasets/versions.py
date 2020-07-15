@@ -271,8 +271,9 @@ async def get_stats(
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
 ):
+    """Retrieve Asset Statistics."""
     asset = await assets.get_default_asset(dataset, version)
-    stats: Stats = stats_factory(asset.asset_type, **asset.stats)
+    stats: Optional[Stats] = stats_factory(asset.asset_type, asset.stats)
     return StatsResponse(data=stats)
 
 

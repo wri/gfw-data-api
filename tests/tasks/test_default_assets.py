@@ -37,7 +37,6 @@ async def test_vector_source_asset(batch_client, async_client):
                 "source_type": "vector",
                 "source_uri": [f"s3://{BUCKET}/{source}"],
                 "source_driver": "GeoJSON",
-                "zipped": False,
                 "create_dynamic_vector_tile_cache": True,
             },
             "metadata": {},
@@ -83,8 +82,9 @@ async def test_vector_source_asset(batch_client, async_client):
         # TODO: We currently don't compute stats, will need update this test once feature is available
 
         response = await async_client.get(f"/dataset/{dataset}/{version}/stats")
+        print(response.json())
         assert response.status_code == 200
-        assert response.json()["data"] == {}
+        assert response.json()["data"] is None
 
         # Fields
         response = await async_client.get(f"/dataset/{dataset}/{version}/fields")

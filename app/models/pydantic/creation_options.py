@@ -11,6 +11,7 @@ from ..enum.creation_options import (
     PartitionType,
     TableDrivers,
     TileStrategy,
+    VectorDrivers,
 )
 from ..enum.pg_types import PGType
 from ..enum.sources import SourceType
@@ -73,6 +74,9 @@ class FieldType(BaseModel):
 
 
 class VectorSourceCreationOptions(BaseModel):
+    source_driver: VectorDrivers = Field(
+        ..., description="Driver of source file. Must be an OGR driver"
+    )
     source_type: SourceType = SourceType.vector
     source_uri: Optional[List[str]] = None
     layers: Optional[List[str]] = Field(
