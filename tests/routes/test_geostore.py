@@ -159,4 +159,4 @@ async def test_dataset_version_geostore(async_client, batch_client):
     resp_all_by_ver = await async_client.get(f"/dataset/{dataset}/{version}/geostores")
     print(f"ALL GEOSTORES BY VERSION RESPONSE: {resp_all_by_ver.json()}")
 
-    assert 1 == 2
+    # assert 1 == 2
