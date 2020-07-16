@@ -26,6 +26,13 @@ class FeatureCollection(BaseModel):
 
 class Geostore(Base):
     gfw_geostore_id: UUID
+    gfw_geojson: str
+    gfw_area__ha: float
+    gfw_bbox: List[float]
+
+
+class GeostoreHydrated(Base):
+    gfw_geostore_id: UUID
     gfw_geojson: FeatureCollection
     gfw_area__ha: float
     gfw_bbox: List[float]
@@ -35,12 +42,5 @@ class GeostoreIn(FeatureCollection):
     pass
 
 
-class GeostoreOut(Base):
-    gfw_geostore_id: UUID
-    gfw_geojson: str
-    gfw_area__ha: float
-    gfw_bbox: List[float]
-
-
 class GeostoreResponse(Response):
-    data: GeostoreOut
+    data: GeostoreHydrated

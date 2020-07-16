@@ -3,12 +3,11 @@ geometries in the datastore."""
 
 from uuid import UUID
 
-from asyncpg.exceptions import UniqueViolationError
 from fastapi import APIRouter, Depends, Path
 from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
-from ...models.pydantic.geostore import GeostoreIn, GeostoreResponse
+from ...models.pydantic.geostore import GeostoreHydrated, GeostoreIn, GeostoreResponse
 from ...routes import dataset_dependency, version_dependency
 
 router = APIRouter()
@@ -24,11 +23,7 @@ async def add_new_geostore(
 
     input_data = request.dict(exclude_none=True, by_alias=True)
 
-    try:
-        new_user_area = await geostore.create_user_area(**input_data)
-    except UniqueViolationError:
-        # FIXME: What to do here? Return success or failure?
-        raise
+    new_user_area: GeostoreHydrated = await geostore.create_user_area(**input_data)
 
     return GeostoreResponse(data=new_user_area)
 
@@ -39,7 +34,7 @@ async def add_new_geostore(
 async def get_geostore_root(*, geostore_id: UUID = Path(..., title="geostore_id")):
     """Retrieve GeoJSON representation for a given geostore ID of any
     dataset."""
-    result = await geostore.get_user_area_geostore(geostore_id)
+    result: GeostoreHydrated = await geostore.get_user_area_geostore(geostore_id)
     return GeostoreResponse(data=result)
 
 
@@ -59,4 +54,7 @@ async def get_geostore(
 
     Obtain geostore ID from feature attributes.
     """
-    return await geostore.get_geostore_by_version(dataset, version, geostore_id)
+    result: GeostoreHydrated = await geostore.get_geostore_by_version(
+        dataset, version, geostore_id
+    )
+    return GeostoreResponse(data=result)
