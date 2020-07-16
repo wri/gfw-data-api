@@ -1,7 +1,6 @@
 import json
 import logging
 import sys
-import traceback
 
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.logger import logger
@@ -9,12 +8,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.requests import Request
-from fastapi.responses import JSONResponse, ORJSONResponse
+from fastapi.responses import ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.errors import http_error_handler
-from app.settings.globals import ENV
 
 from .application import app
 from .middleware import redirect_latest, set_db_mode
