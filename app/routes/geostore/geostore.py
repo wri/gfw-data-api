@@ -14,7 +14,10 @@ router = APIRouter()
 
 
 @router.post(
-    "/geostore", response_class=ORJSONResponse,
+    "/geostore",
+    response_class=ORJSONResponse,
+    response_model=GeostoreResponse,
+    status_code=201,
 )
 async def add_new_geostore(
     *, request: GeostoreIn, response: ORJSONResponse,
