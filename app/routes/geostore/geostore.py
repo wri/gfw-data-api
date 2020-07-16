@@ -1,6 +1,7 @@
 """Retrieve a geometry using its md5 hash for a given dataset, user defined
 geometries in the datastore."""
 
+from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path
@@ -32,7 +33,36 @@ async def add_new_geostore(
 
 
 @router.get(
-    "/geostore/{geostore_id}", response_class=ORJSONResponse, tags=["Geostore"],
+    "/geostores", response_class=ORJSONResponse, tags=["Geostore"],
+)
+async def get_all_geostores():
+    """Retrieve all geostores, for debugging."""
+    result: List[GeostoreHydrated] = await geostore.get_all_geostores()
+    return [GeostoreResponse(data=record) for record in result]
+
+
+@router.get(
+    "/dataset/{dataset}/{version}/geostores",
+    response_class=ORJSONResponse,
+    tags=["Geostore"],
+)
+async def get_all_geostores_by_version(
+    *,
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+):
+    """Retrieve all geostores, for debugging."""
+    result: List[GeostoreHydrated] = await geostore.get_all_geostores_by_version(
+        dataset, version
+    )
+    return [GeostoreResponse(data=record) for record in result]
+
+
+@router.get(
+    "/geostore/{geostore_id}",
+    response_class=ORJSONResponse,
+    response_model=GeostoreResponse,
+    tags=["Geostore"],
 )
 async def get_geostore_root(*, geostore_id: UUID = Path(..., title="geostore_id")):
     """Retrieve GeoJSON representation for a given geostore ID of any
@@ -42,8 +72,9 @@ async def get_geostore_root(*, geostore_id: UUID = Path(..., title="geostore_id"
 
 
 @router.get(
-    "/{dataset}/{version}/geostore/{geostore_id}",
+    "/dataset/{dataset}/{version}/geostore/{geostore_id}",
     response_class=ORJSONResponse,
+    response_model=GeostoreResponse,
     tags=["Geostore"],
 )
 async def get_geostore(

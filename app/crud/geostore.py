@@ -1,4 +1,5 @@
 import json
+from typing import List
 from uuid import UUID
 
 from asyncpg.exceptions import UniqueViolationError
@@ -9,6 +10,47 @@ from app.application import db
 from app.errors import BadRequestError, RecordNotFoundError
 from app.models.orm.user_areas import UserArea as ORMUserArea
 from app.models.pydantic.geostore import Feature, Geometry, Geostore, GeostoreHydrated
+
+
+async def get_all_geostores() -> List[GeostoreHydrated]:
+    sql = db.text(
+        """
+        SELECT *
+        FROM geostore;
+        """
+    )
+
+    rows = await db.all(sql)
+    geostores = []
+
+    for row in rows:
+        geo: Geostore = Geostore.from_orm(row)
+        geostores.append(hydrate_geostore(geo))
+
+    return geostores
+
+
+async def get_all_geostores_by_version(dataset, version) -> List[GeostoreHydrated]:
+    sql = db.text(
+        """
+        SELECT *
+        FROM ONLY ":dataset".":version";
+    """
+    )
+    bind_vals = {
+        "dataset": f"{dataset}",
+        "version": f"{version}",
+    }
+    sql = sql.bindparams(**bind_vals)
+
+    rows = await db.all(sql)
+    geostores = []
+
+    for row in rows:
+        geo: Geostore = Geostore.from_orm(row)
+        geostores.append(hydrate_geostore(geo))
+
+    return geostores
 
 
 async def get_user_area_geostore(geostore_id: UUID) -> GeostoreHydrated:
