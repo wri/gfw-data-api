@@ -10,7 +10,7 @@ based on the same version and do not know the processing history.
 """
 
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
@@ -91,9 +91,7 @@ async def add_new_asset(
     await verify_version_status(dataset, version)
 
     try:
-        asset_uri = get_asset_uri(
-            dataset, version, input_data["asset_type"], input_data["creation_options"]
-        )
+        asset_uri = get_asset_uri(dataset, version, input_data["asset_type"])
     except NotImplementedError:
         raise HTTPException(
             status_code=501,
@@ -116,9 +114,7 @@ async def add_new_asset(
     return await asset_response(row)
 
 
-def get_asset_uri(
-    dataset: str, version: str, asset_type: str, creation_options: Dict[str, Any]
-) -> str:
+def get_asset_uri(dataset: str, version: str, asset_type: str) -> str:
     uri_constructor = {
         AssetType.dynamic_vector_tile_cache: f"https://{TILE_CACHE_URL}/{dataset}/{version}/dynamic/{{z}}/{{x}}/{{y}}.pbf",
         AssetType.static_vector_tile_cache: f"https://{TILE_CACHE_URL}/{dataset}/{version}/default/{{z}}/{{x}}/{{y}}.pbf",

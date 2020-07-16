@@ -1,16 +1,10 @@
-from typing import Any
+import sys
+import traceback
 
+from fastapi import HTTPException
+from fastapi.responses import ORJSONResponse
 
-class ClientError(Exception):
-    def __init__(self, status_code: int, detail: Any):
-        self.status_code = status_code
-        self.detail = detail
-
-
-class ServerError(Exception):
-    def __init__(self, status_code: int, detail: Any):
-        self.status_code = status_code
-        self.detail = detail
+from app.settings.globals import ENV
 
 
 class TooManyRetriesError(RecursionError):
@@ -29,3 +23,31 @@ class RecordAlreadyExistsError(Exception):
 
 class BadRequestError(Exception):
     pass
+
+
+class BadResponseError(Exception):
+    pass
+
+
+class InvalidResponseError(Exception):
+    pass
+
+
+class UnauthorizedError(Exception):
+    pass
+
+
+def http_error_handler(exc: HTTPException) -> ORJSONResponse:
+
+    message = exc.detail
+    if exc.status_code < 500:
+        status = "failed"
+    else:
+        status = "error"
+        # In dev and test print full traceback of internal server errors
+        if ENV == "test" or ENV == "dev":
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            message = traceback.format_exception(exc_type, exc_value, exc_traceback)
+    return ORJSONResponse(
+        status_code=exc.status_code, content={"status": status, "message": message}
+    )

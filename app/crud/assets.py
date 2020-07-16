@@ -161,7 +161,6 @@ def _validate_creation_options(**data) -> Dict[str, Any]:
     if "creation_options" in data.keys() and "asset_type" in data.keys():
         asset_type = data["asset_type"]
         creation_options = data["creation_options"]
-
         co_model: CreationOptions = creation_option_factory(
             asset_type, creation_options
         )

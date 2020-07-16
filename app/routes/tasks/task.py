@@ -241,7 +241,6 @@ async def _get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]
         metadata.field_alias = metadata.field_name_
         field_metadata.append(metadata.dict(by_alias=True))
 
-    print("FIELD METADATA", field_metadata)
     return field_metadata
 
 
