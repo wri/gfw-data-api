@@ -1,7 +1,8 @@
 import pytest
 from fastapi import HTTPException
 
-from app.routes import is_admin, is_service_account, who_am_i
+from app.routes import is_admin, is_service_account
+from app.utils.rw_api import who_am_i
 
 
 @pytest.mark.asyncio
@@ -28,8 +29,9 @@ async def test_is_service_account():
     assert message == "Unauthorized"
 
 
-def test_who_am_i():
-    response = who_am_i("my_fake_token")
+@pytest.mark.asyncio
+async def test_who_am_i():
+    response = await who_am_i("my_fake_token")
     assert response.status_code == 401
 
 

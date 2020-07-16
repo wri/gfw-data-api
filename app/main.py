@@ -1,6 +1,7 @@
 import json
 import logging
 import sys
+import traceback
 
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.logger import logger
@@ -8,12 +9,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.requests import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.errors import http_error_handler
+from app.settings.globals import ENV
+
 from .application import app
-from .errors import ClientError, ServerError
 from .middleware import redirect_latest, set_db_mode
 from .routes import security
 from .routes.assets import asset, assets
@@ -36,34 +39,20 @@ sys.path.extend(["./"])
 ################
 
 
-@app.exception_handler(ClientError)
-async def client_error_handler(request: Request, exc: ClientError):
-    return JSONResponse(
-        status_code=exc.status_code, content={"status": "failed", "data": exc.detail}
-    )
-
-
-@app.exception_handler(ServerError)
-async def server_error_handler(request: Request, exc: ServerError):
-    return JSONResponse(
-        status_code=exc.status_code, content={"status": "error", "message": exc.detail}
-    )
-
-
 @app.exception_handler(HTTPException)
-async def httpexception_error_handler(request: Request, exc: HTTPException):
-    if exc.status_code < 500:
-        status = "failed"
-    else:
-        status = "error"
-    return JSONResponse(
-        status_code=exc.status_code, content={"status": status, "message": exc.detail}
-    )
+async def httpexception_error_handler(
+    request: Request, exc: HTTPException
+) -> ORJSONResponse:
+    """Use JSEND protocol for HTTP execptions."""
+    return http_error_handler(exc)
 
 
 @app.exception_handler(RequestValidationError)
-async def rve_error_handler(request: Request, exc: RequestValidationError):
-    return JSONResponse(
+async def rve_error_handler(
+    request: Request, exc: RequestValidationError
+) -> ORJSONResponse:
+    """Use JSEND protocol for validation errors."""
+    return ORJSONResponse(
         status_code=422, content={"status": "failed", "message": json.loads(exc.json())}
     )
 

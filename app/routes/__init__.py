@@ -1,10 +1,9 @@
-import requests
 from fastapi import Depends, HTTPException, Path
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
-from requests import Response
+from httpx import Response
 
-from app.settings.globals import ENV
+from ..utils.rw_api import who_am_i
 
 DATASET_REGEX = r"^[a-z][a-z0-9_-]{2,}$"
 VERSION_REGEX = r"^v\d{1,8}\.?\d{1,3}\.?\d{1,3}$|^latest$"
@@ -40,7 +39,7 @@ async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
     User must be ADMIN for gfw app
     """
 
-    response = who_am_i(token)
+    response: Response = await who_am_i(token)
 
     if response.status_code == 401 or not (
         response.json()["role"] == "ADMIN"
@@ -58,7 +57,7 @@ async def is_service_account(token: str = Depends(oauth2_scheme)) -> bool:
     User must be service account with email gfw-sync@wri.org
     """
 
-    response = who_am_i(token)
+    response: Response = await who_am_i(token)
 
     if response.status_code == 401 or not (
         response.json()["email"] == "gfw-sync@wri.org"
@@ -68,26 +67,3 @@ async def is_service_account(token: str = Depends(oauth2_scheme)) -> bool:
         raise HTTPException(status_code=401, detail="Unauthorized")
     else:
         return True
-
-
-def who_am_i(token) -> Response:
-    """Call GFW API to get token's identity."""
-
-    if ENV == "dev":
-        prefix = "staging"
-    else:
-        prefix = ENV
-
-    headers = {"Authorization": f"Bearer {token}"}
-    url = f"https://{prefix}-api.globalforestwatch.org/auth/check-logged"
-    response: Response = requests.get(url, headers=headers)
-
-    if response.status_code != 200 and response.status_code != 401:
-        logger.warning(
-            f"Failed to authorize user. Server responded with response code: {response.status_code} and message: {response.text}"
-        )
-        raise HTTPException(
-            status_code=500, detail="Call to authorization server failed"
-        )
-
-    return response

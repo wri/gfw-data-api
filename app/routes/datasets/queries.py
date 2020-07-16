@@ -1,7 +1,8 @@
 """Explore data entries for a given dataset version using standard SQL."""
-
-from typing import Any, Dict, List
+import json
+from typing import Any, Dict, List, Optional
 from urllib.parse import unquote
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
@@ -12,9 +13,11 @@ from pglast.printer import RawStream
 
 from app.application import ContextEngine, db
 from app.crud import versions
-from app.errors import RecordNotFoundError
+from app.errors import BadResponseError, InvalidResponseError, RecordNotFoundError
+from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.responses import Response
 from app.routes import dataset_dependency, version_dependency
+from app.utils import rw_api
 
 router = APIRouter()
 
@@ -30,7 +33,10 @@ async def query_dataset(
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
     sql: str = Query(..., title="SQL query"),
-    # geostore_id: Optional[UUID] = Query(None, title="Geostore ID")
+    geostore_id: Optional[UUID] = Query(None, title="Geostore ID"),
+    geostore_origin: GeostoreOrigin = Query(
+        GeostoreOrigin.gfw, title="Origin service of geostore ID"
+    ),
 ):
     """Execute a read ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -61,8 +67,12 @@ async def query_dataset(
         "relname"
     ] = version
 
+    if geostore_id:
+        parsed = await _add_geostore_filter(parsed, geostore_id, geostore_origin)
+
     # convert back to text
     sql = RawStream()(Node(parsed))
+
     async with ContextEngine("READ"):
         response = await db.all(sql)
 
@@ -102,3 +112,44 @@ def _no_subqueries(parsed: List[Dict[str, Any]]) -> None:
     )
     if sub_query:
         raise HTTPException(status_code=400, detail="Must not use sub queries.")
+
+
+async def _add_geostore_filter(parsed_sql, geostore_id: UUID, geostore_origin: str):
+    geometry = await _get_geostore_geometry(geostore_id, geostore_origin)
+
+    # make empty select statement with where clause including filter
+    # this way we can later parse it as AST
+    intersect_filter = f"SELECT WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON('{json.dumps(geometry)}'),4326))"
+
+    # combine the two where clauses
+    parsed_filter = parse_sql(intersect_filter)
+    filter_where = parsed_filter[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"]
+    sql_where = parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"].get("whereClause", None)
+
+    if sql_where:
+        parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = {
+            "BoolExpr": {"boolop": 0, "args": [sql_where, filter_where]}
+        }
+    else:
+        parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = filter_where
+
+    return parsed_sql
+
+
+async def _get_geostore_geometry(geostore_id: UUID, geostore_origin: str):
+    geostore_constructor = {
+        # GeostoreOrigin.gfw: geostore.get_geostore_geometry,
+        GeostoreOrigin.rw: rw_api.get_geostore_geometry
+    }
+
+    try:
+        return await geostore_constructor[geostore_origin](geostore_id)
+    except KeyError:
+        raise HTTPException(
+            status_code=501,
+            detail=f"Geostore origin {geostore_origin} not fully implemented.",
+        )
+    except InvalidResponseError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except BadResponseError as e:
+        raise HTTPException(status_code=400, detail=str(e))

@@ -35,6 +35,8 @@ pyproj = "*"
 geojson = "*"
 aenum = "*"
 pglast = "*"
+async-lru = "*"
+httpx = "*"
 
 [requires]
 python_version = "3.8"

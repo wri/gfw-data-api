@@ -14,7 +14,17 @@ from app.models.enum.assets import AssetStatus, AssetType
 from app.models.orm.geostore import Geostore
 from app.utils.aws import get_s3_client
 
-from .. import APPEND_TSV_NAME, BUCKET, GEOJSON_NAME, PORT, SHP_NAME, TSV_NAME, TSV_PATH
+from .. import (
+    APPEND_TSV_NAME,
+    BUCKET,
+    GEOJSON_NAME,
+    GEOJSON_PATH,
+    GEOJSON_PATH2,
+    PORT,
+    SHP_NAME,
+    TSV_NAME,
+    TSV_PATH,
+)
 from ..utils import create_default_asset, poll_jobs
 from . import MockECSClient
 
@@ -86,6 +96,30 @@ async def test_vector_source_asset(batch_client, async_client):
         assert response.status_code == 200
         assert len(response.json()["data"]) == 1
         assert response.json()["data"][0]["count"] == 1
+
+        with open(GEOJSON_PATH, "r") as geojson, patch(
+            "app.utils.rw_api.get_geostore_geometry",
+            return_value=json.load(geojson)["features"][0]["geometry"],
+        ):
+            response = await async_client.get(
+                f"/dataset/{dataset}/{version}/query?sql=SELECT count(*) FROM mytable&geostore_id=17076d5ea9f214a5bdb68cc40433addb&geostore_origin=rw"
+            )
+        print(response.json())
+        assert response.status_code == 200
+        assert len(response.json()["data"]) == 1
+        assert response.json()["data"][0]["count"] == 1
+
+        with open(GEOJSON_PATH2, "r") as geojson, patch(
+            "app.utils.rw_api.get_geostore_geometry",
+            return_value=json.load(geojson)["features"][0]["geometry"],
+        ):
+            response = await async_client.get(
+                f"/dataset/{dataset}/{version}/query?sql=SELECT count(*) FROM mytable&geostore_id=17076d5ea9f214a5bdb68cc40433addb&geostore_origin=rw"
+            )
+        print(response.json())
+        assert response.status_code == 200
+        assert len(response.json()["data"]) == 1
+        assert response.json()["data"][0]["count"] == 0
 
         # Stats
         # TODO: We currently don't compute stats, will need update this test once feature is available

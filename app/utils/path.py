@@ -23,7 +23,6 @@ def is_zipped(s3_uri: str) -> bool:
 
     try:
         header = client.head_object(Bucket=bucket, Key=key)
-        print(header["ContentType"])
         # TODO: moto does not return the correct ContenType so have to go for the ext
         if header["ContentType"] == "application/x-zip-compressed" or ext == ".zip":
             return True
