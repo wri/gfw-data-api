@@ -156,3 +156,39 @@ async def test_dataset_version_geostore(async_client, batch_client):
         "status": "failed",
         "message": f'Area with gfw_geostore_id {second_sample_geojson_hash} does not exist in "{dataset}"."{version}"',
     }
+
+
+@pytest.mark.asyncio
+async def test_user_area_geostore_bad_requests(async_client, batch_client):
+    # Try POSTing a geostore with no features, multiple features
+    bad_payload_1 = {"type": "FeatureCollection", "features": []}
+    bad_payload_2 = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "MultiPolygon",
+                    "coordinates": [[[[8, 51], [11, 55], [12, 49], [8, 51]]]],
+                },
+            },
+            {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "MultiPolygon",
+                    "coordinates": [[[[8, 51], [11, 55], [12, 49], [8, 51]]]],
+                },
+            },
+        ],
+    }
+    expected_message = "Please submit one and only one feature per request"
+
+    post_resp = await async_client.post("/geostore", json=bad_payload_1)
+    assert post_resp.status_code == 400
+    assert post_resp.json()["message"] == expected_message
+
+    post_resp = await async_client.post("/geostore", json=bad_payload_2)
+    assert post_resp.status_code == 400
+    assert post_resp.json()["message"] == expected_message
