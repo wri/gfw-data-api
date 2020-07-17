@@ -73,7 +73,6 @@ async def test_dataset_version_geostore(async_client, batch_client):
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{source}"],
             "source_driver": "GeoJSON",
-            "zipped": False,
             "create_dynamic_vector_tile_cache": True,
         },
         "metadata": {},

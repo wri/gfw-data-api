@@ -3,18 +3,17 @@ geometries in the datastore."""
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Path
 from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
 from ...models.pydantic.geostore import GeostoreHydrated, GeostoreIn, GeostoreResponse
-from ...routes import dataset_dependency, version_dependency
 
 router = APIRouter()
 
 
 @router.post(
-    "/geostore",
+    "/",
     response_class=ORJSONResponse,
     response_model=GeostoreResponse,
     status_code=201,
@@ -32,7 +31,7 @@ async def add_new_geostore(
 
 
 @router.get(
-    "/geostore/{geostore_id}",
+    "/{geostore_id}",
     response_class=ORJSONResponse,
     response_model=GeostoreResponse,
     tags=["Geostore"],
@@ -41,27 +40,4 @@ async def get_geostore_root(*, geostore_id: UUID = Path(..., title="geostore_id"
     """Retrieve GeoJSON representation for a given geostore ID of any
     dataset."""
     result: GeostoreHydrated = await geostore.get_geostore_from_anywhere(geostore_id)
-    return GeostoreResponse(data=result)
-
-
-@router.get(
-    "/dataset/{dataset}/{version}/geostore/{geostore_id}",
-    response_class=ORJSONResponse,
-    response_model=GeostoreResponse,
-    tags=["Geostore"],
-)
-async def get_geostore_by_version(
-    *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
-    geostore_id: UUID = Path(..., title="geostore_id"),
-):
-    """Retrieve GeoJSON representation for a given geostore ID of a dataset
-    version.
-
-    Obtain geostore ID from feature attributes.
-    """
-    result: GeostoreHydrated = await geostore.get_geostore_by_version(
-        dataset, version, geostore_id
-    )
     return GeostoreResponse(data=result)

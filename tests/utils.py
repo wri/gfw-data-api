@@ -58,7 +58,7 @@ async def create_version(
 ) -> Dict[str, Any]:
 
     resp = await async_client.put(f"/dataset/{dataset}/{version}", json=payload)
-    print(resp.json())
+    print(f"CREATE_VERSION RESPONSE: {resp.json()}")
     assert resp.json()["status"] == "success"
 
     return resp.json()["data"]
