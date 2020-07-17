@@ -1,7 +1,6 @@
 """Retrieve a geometry using its md5 hash for a given dataset, user defined
 geometries in the datastore."""
 
-from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path
@@ -32,34 +31,6 @@ async def add_new_geostore(
     return GeostoreResponse(data=new_user_area)
 
 
-# Uncomment for debugging purposes only:
-#
-# @router.get(
-#     "/geostores", response_class=ORJSONResponse, tags=["Geostore"],
-# )
-# async def get_all_geostores():
-#     """Retrieve all geostores, for debugging."""
-#     result: List[GeostoreHydrated] = await geostore.get_all_geostores()
-#     return [GeostoreResponse(data=record) for record in result]
-#
-#
-# @router.get(
-#     "/dataset/{dataset}/{version}/geostores",
-#     response_class=ORJSONResponse,
-#     tags=["Geostore"],
-# )
-# async def get_all_geostores_by_version(
-#     *,
-#     dataset: str = Depends(dataset_dependency),
-#     version: str = Depends(version_dependency),
-# ):
-#     """Retrieve all geostores, for debugging."""
-#     result: List[GeostoreHydrated] = await geostore.get_all_geostores_by_version(
-#         dataset, version
-#     )
-#     return [GeostoreResponse(data=record) for record in result]
-
-
 @router.get(
     "/geostore/{geostore_id}",
     response_class=ORJSONResponse,
@@ -69,7 +40,7 @@ async def add_new_geostore(
 async def get_geostore_root(*, geostore_id: UUID = Path(..., title="geostore_id")):
     """Retrieve GeoJSON representation for a given geostore ID of any
     dataset."""
-    result: GeostoreHydrated = await geostore.get_user_area_geostore(geostore_id)
+    result: GeostoreHydrated = await geostore.get_geostore_from_anywhere(geostore_id)
     return GeostoreResponse(data=result)
 
 
@@ -79,7 +50,7 @@ async def get_geostore_root(*, geostore_id: UUID = Path(..., title="geostore_id"
     response_model=GeostoreResponse,
     tags=["Geostore"],
 )
-async def get_geostore(
+async def get_geostore_by_version(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),

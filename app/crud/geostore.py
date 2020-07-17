@@ -11,45 +11,8 @@ from app.errors import BadRequestError, RecordNotFoundError
 from app.models.orm.user_areas import UserArea as ORMUserArea
 from app.models.pydantic.geostore import Feature, Geometry, Geostore, GeostoreHydrated
 
-# Uncomment for debugging purposes only:
-#
-# async def get_all_geostores() -> List[GeostoreHydrated]:
-#     sql = db.text(
-#         """
-#         SELECT *
-#         FROM geostore;
-#         """
-#     )
-#
-#     rows = await db.all(sql)
-#     geostores = []
-#
-#     for row in rows:
-#         geo: Geostore = Geostore.from_orm(row)
-#         geostores.append(hydrate_geostore(geo))
-#
-#     return geostores
-#
-#
-# async def get_all_geostores_by_version(dataset, version) -> List[GeostoreHydrated]:
-#     # sql = db.text(
-#     #     f"""
-#     #     SELECT *
-#     #     FROM ONLY "{dataset}"."{version}";
-#     #     """
-#     # )
-#
-#     rows = await db.all(sql)
-#     geostores = []
-#
-#     for row in rows:
-#         geo: Geostore = Geostore.from_orm(row)
-#         geostores.append(hydrate_geostore(geo))
-#
-#     return geostores
 
-
-async def get_user_area_geostore(geostore_id: UUID) -> GeostoreHydrated:
+async def get_geostore_from_anywhere(geostore_id: UUID) -> GeostoreHydrated:
     sql = db.text(
         """
         SELECT *
@@ -145,7 +108,7 @@ async def create_user_area(**data) -> GeostoreHydrated:
         geo: Geostore = Geostore.from_orm(user_area)
         ret_val = hydrate_geostore(geo)
     except UniqueViolationError:
-        ret_val = await get_user_area_geostore(geo_id)
+        ret_val = await get_geostore_from_anywhere(geo_id)
 
     return ret_val
 
