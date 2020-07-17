@@ -5,23 +5,33 @@ from uuid import UUID
 from asyncpg.exceptions import UniqueViolationError
 from geojson import Feature as geoFeature
 from geojson import FeatureCollection as geoFeatureCollection
+from sqlalchemy import Column, Table
+from sqlalchemy.sql import Select
+from sqlalchemy.sql.elements import TextClause
 
 from app.application import db
 from app.errors import BadRequestError, RecordNotFoundError
 from app.models.orm.user_areas import UserArea as ORMUserArea
 from app.models.pydantic.geostore import Feature, Geometry, Geostore, GeostoreHydrated
 
+GEOSTORE_COLUMNS: List[Column] = [
+    db.column("gfw_geostore_id"),
+    db.column("gfw_geojson"),
+    db.column("gfw_bbox"),
+    db.column("gfw_area__ha"),
+    db.column("created_on"),
+    db.column("updated_on"),
+]
+
 
 async def get_geostore_from_anywhere(geostore_id: UUID) -> GeostoreHydrated:
-    sql = db.text(
-        """
-        SELECT *
-        FROM geostore
-        WHERE gfw_geostore_id=:geostore_id;
-        """
-    )
+    src_table: Table = db.table("geostore")
+
+    where_clause: TextClause = db.text("gfw_geostore_id=:geostore_id")
     bind_vals = {"geostore_id": f"{geostore_id}"}
-    sql = sql.bindparams(**bind_vals)
+    where_clause = where_clause.bindparams(**bind_vals)
+
+    sql: Select = db.select(GEOSTORE_COLUMNS).select_from(src_table).where(where_clause)
 
     row = await db.first(sql)
 
@@ -36,15 +46,14 @@ async def get_geostore_from_anywhere(geostore_id: UUID) -> GeostoreHydrated:
 
 
 async def get_geostore_by_version(dataset, version, geostore_id) -> GeostoreHydrated:
-    sql = db.text(
-        f"""
-        SELECT *
-        FROM ONLY "{dataset}"."{version}"
-        WHERE gfw_geostore_id=:geostore_id;
-        """
-    )
+    src_table: Table = db.table(version)
+    src_table.schema = dataset
+
+    where_clause: TextClause = db.text("gfw_geostore_id=:geostore_id")
     bind_vals = {"geostore_id": f"{geostore_id}"}
-    sql = sql.bindparams(**bind_vals)
+    where_clause = where_clause.bindparams(**bind_vals)
+
+    sql: Select = db.select(GEOSTORE_COLUMNS).select_from(src_table).where(where_clause)
 
     row = await db.first(sql)
     if row is None:
