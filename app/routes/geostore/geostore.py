@@ -32,6 +32,8 @@ async def add_new_geostore(
     return GeostoreResponse(data=new_user_area)
 
 
+# Uncomment for debugging purposes only:
+#
 # @router.get(
 #     "/geostores", response_class=ORJSONResponse, tags=["Geostore"],
 # )

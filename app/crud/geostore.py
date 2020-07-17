@@ -11,6 +11,7 @@ from app.errors import BadRequestError, RecordNotFoundError
 from app.models.orm.user_areas import UserArea as ORMUserArea
 from app.models.pydantic.geostore import Feature, Geometry, Geostore, GeostoreHydrated
 
+# Uncomment for debugging purposes only:
 #
 # async def get_all_geostores() -> List[GeostoreHydrated]:
 #     sql = db.text(
@@ -31,27 +32,12 @@ from app.models.pydantic.geostore import Feature, Geometry, Geostore, GeostoreHy
 #
 #
 # async def get_all_geostores_by_version(dataset, version) -> List[GeostoreHydrated]:
-#     sql = db.text(
-#         """
-#         SELECT *
-#         FROM ONLY ":dataset".":version";
-#         """
-#     )
-#     bind_vals = {
-#         "dataset": f"{dataset}",
-#         "version": f"{version}",
-#     }
-#     sql = sql.bindparams(**bind_vals)
-#
-#     print(str(f"BIND_SQL: {sql}"))
-#
 #     # sql = db.text(
 #     #     f"""
 #     #     SELECT *
 #     #     FROM ONLY "{dataset}"."{version}";
 #     #     """
 #     # )
-#     # print(f"EXPLICIT_SQL: {sql}")
 #
 #     rows = await db.all(sql)
 #     geostores = []
