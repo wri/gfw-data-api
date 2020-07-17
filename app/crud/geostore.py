@@ -57,8 +57,6 @@ async def get_geostore_by_version(dataset, version, geostore_id) -> GeostoreHydr
 
 
 async def create_user_area(**data) -> GeostoreHydrated:
-    # FIXME: Check the SRID of each feature, transform if necessary
-
     if len(data["features"]) != 1:
         raise BadRequestError("Please submit one and only one feature per request")
 
@@ -70,7 +68,6 @@ async def create_user_area(**data) -> GeostoreHydrated:
         f"SELECT ST_AsGeoJSON(ST_GeomFromGeoJSON('{geometry_str}')::geometry);"
     )
 
-    # FIXME: The following could be far more elegant
     bbox = await db.scalar(
         f"""
         SELECT ARRAY[
