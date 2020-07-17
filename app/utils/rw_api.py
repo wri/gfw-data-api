@@ -62,11 +62,13 @@ async def login(user_name: str, password: str) -> str:
     headers = {"Content-Type": "application/json"}
     payload = {"email": user_name, "password": password}
 
+    prefix = _env_prefix()
+
     logger.debug(
         f"Requesting Bearer token from GFW production API for user {user_name}"
     )
 
-    url = "https://production-api.globalforestwatch.org/auth/login"
+    url = f"https://{prefix}-api.globalforestwatch.org/auth/login"
 
     async with AsyncClient() as client:
         response: HTTPXResponse = await client.post(url, json=payload, headers=headers)

@@ -58,7 +58,7 @@ data "template_file" "postgres_container_properties" {
     hardULimit     = 1024
     softULimit     = 1024
     tile_cache     = "gfw-tiles${local.bucket_suffix}"
-
+    data_lake      = "gfw-data-lake${local.bucket_suffix}"
   }
 }
 
@@ -74,7 +74,7 @@ data "template_file" "gdal_container_properties" {
     hardULimit     = 1024
     softULimit     = 1024
     tile_cache     = "gfw-tiles${local.bucket_suffix}"
-
+    data_lake      = "gfw-data-lake${local.bucket_suffix}"
   }
 }
 
@@ -90,6 +90,7 @@ data "template_file" "tile_cache_container_properties" {
     hardULimit     = 1024
     softULimit     = 1024
     tile_cache     = "gfw-tiles${local.bucket_suffix}"
+    data_lake      = "gfw-data-lake${local.bucket_suffix}"
 
   }
 }
