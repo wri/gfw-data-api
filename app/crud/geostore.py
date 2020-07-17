@@ -11,46 +11,56 @@ from app.errors import BadRequestError, RecordNotFoundError
 from app.models.orm.user_areas import UserArea as ORMUserArea
 from app.models.pydantic.geostore import Feature, Geometry, Geostore, GeostoreHydrated
 
-
-async def get_all_geostores() -> List[GeostoreHydrated]:
-    sql = db.text(
-        """
-        SELECT *
-        FROM geostore;
-        """
-    )
-
-    rows = await db.all(sql)
-    geostores = []
-
-    for row in rows:
-        geo: Geostore = Geostore.from_orm(row)
-        geostores.append(hydrate_geostore(geo))
-
-    return geostores
-
-
-async def get_all_geostores_by_version(dataset, version) -> List[GeostoreHydrated]:
-    sql = db.text(
-        """
-        SELECT *
-        FROM ONLY ":dataset".":version";
-    """
-    )
-    bind_vals = {
-        "dataset": f"{dataset}",
-        "version": f"{version}",
-    }
-    sql = sql.bindparams(**bind_vals)
-
-    rows = await db.all(sql)
-    geostores = []
-
-    for row in rows:
-        geo: Geostore = Geostore.from_orm(row)
-        geostores.append(hydrate_geostore(geo))
-
-    return geostores
+#
+# async def get_all_geostores() -> List[GeostoreHydrated]:
+#     sql = db.text(
+#         """
+#         SELECT *
+#         FROM geostore;
+#         """
+#     )
+#
+#     rows = await db.all(sql)
+#     geostores = []
+#
+#     for row in rows:
+#         geo: Geostore = Geostore.from_orm(row)
+#         geostores.append(hydrate_geostore(geo))
+#
+#     return geostores
+#
+#
+# async def get_all_geostores_by_version(dataset, version) -> List[GeostoreHydrated]:
+#     sql = db.text(
+#         """
+#         SELECT *
+#         FROM ONLY ":dataset".":version";
+#         """
+#     )
+#     bind_vals = {
+#         "dataset": f"{dataset}",
+#         "version": f"{version}",
+#     }
+#     sql = sql.bindparams(**bind_vals)
+#
+#     print(str(f"BIND_SQL: {sql}"))
+#
+#     # sql = db.text(
+#     #     f"""
+#     #     SELECT *
+#     #     FROM ONLY "{dataset}"."{version}";
+#     #     """
+#     # )
+#     # print(f"EXPLICIT_SQL: {sql}")
+#
+#     rows = await db.all(sql)
+#     geostores = []
+#
+#     for row in rows:
+#         geo: Geostore = Geostore.from_orm(row)
+#         geostores.append(hydrate_geostore(geo))
+#
+#     return geostores
 
 
 async def get_user_area_geostore(geostore_id: UUID) -> GeostoreHydrated:
@@ -59,7 +69,7 @@ async def get_user_area_geostore(geostore_id: UUID) -> GeostoreHydrated:
         SELECT *
         FROM geostore
         WHERE gfw_geostore_id=:geostore_id;
-    """
+        """
     )
     bind_vals = {"geostore_id": f"{geostore_id}"}
     sql = sql.bindparams(**bind_vals)
@@ -78,24 +88,21 @@ async def get_user_area_geostore(geostore_id: UUID) -> GeostoreHydrated:
 
 async def get_geostore_by_version(dataset, version, geostore_id) -> GeostoreHydrated:
     sql = db.text(
-        """
+        f"""
         SELECT *
-        FROM ONLY ":dataset".":version"
-        WHERE geostore_id=:geostore_id;
-    """
+        FROM ONLY "{dataset}"."{version}"
+        WHERE gfw_geostore_id=:geostore_id;
+        """
     )
-    bind_vals = {
-        "dataset": f"{dataset}",
-        "geostore_id": f"{geostore_id}",
-        "version": f"{version}",
-    }
+    bind_vals = {"geostore_id": f"{geostore_id}"}
     sql = sql.bindparams(**bind_vals)
 
-    row = db.first(sql)
+    row = await db.first(sql)
     if row is None:
         raise RecordNotFoundError(
             f'Area with gfw_geostore_id {geostore_id} does not exist in "{dataset}"."{version}"'
         )
+
     geo: Geostore = Geostore.from_orm(row)
     return hydrate_geostore(geo)
 

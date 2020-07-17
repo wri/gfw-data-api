@@ -32,30 +32,30 @@ async def add_new_geostore(
     return GeostoreResponse(data=new_user_area)
 
 
-@router.get(
-    "/geostores", response_class=ORJSONResponse, tags=["Geostore"],
-)
-async def get_all_geostores():
-    """Retrieve all geostores, for debugging."""
-    result: List[GeostoreHydrated] = await geostore.get_all_geostores()
-    return [GeostoreResponse(data=record) for record in result]
-
-
-@router.get(
-    "/dataset/{dataset}/{version}/geostores",
-    response_class=ORJSONResponse,
-    tags=["Geostore"],
-)
-async def get_all_geostores_by_version(
-    *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
-):
-    """Retrieve all geostores, for debugging."""
-    result: List[GeostoreHydrated] = await geostore.get_all_geostores_by_version(
-        dataset, version
-    )
-    return [GeostoreResponse(data=record) for record in result]
+# @router.get(
+#     "/geostores", response_class=ORJSONResponse, tags=["Geostore"],
+# )
+# async def get_all_geostores():
+#     """Retrieve all geostores, for debugging."""
+#     result: List[GeostoreHydrated] = await geostore.get_all_geostores()
+#     return [GeostoreResponse(data=record) for record in result]
+#
+#
+# @router.get(
+#     "/dataset/{dataset}/{version}/geostores",
+#     response_class=ORJSONResponse,
+#     tags=["Geostore"],
+# )
+# async def get_all_geostores_by_version(
+#     *,
+#     dataset: str = Depends(dataset_dependency),
+#     version: str = Depends(version_dependency),
+# ):
+#     """Retrieve all geostores, for debugging."""
+#     result: List[GeostoreHydrated] = await geostore.get_all_geostores_by_version(
+#         dataset, version
+#     )
+#     return [GeostoreResponse(data=record) for record in result]
 
 
 @router.get(
