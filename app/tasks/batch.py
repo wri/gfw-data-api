@@ -17,7 +17,6 @@ BATCH_DEPENDENCY_LIMIT = 14
 async def execute(jobs: List[Job],) -> ChangeLog:
     try:
         scheduled_jobs = await schedule(jobs)
-        print(f"SCHEDULED JOBS: {scheduled_jobs}")
     except TooManyRetriesError as e:
         status = ChangeLogStatus.failed
         message = e.message

@@ -38,7 +38,6 @@ generic_version_payload = {
     "metadata": {},
     "creation_options": {
         "source_driver": "ESRI Shapefile",
-        "zipped": True,
         "source_type": "vector",
         "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
     },

@@ -5,12 +5,10 @@ from http.server import BaseHTTPRequestHandler
 from typing import List, Optional
 
 import boto3
-from fastapi.testclient import TestClient
 from moto import mock_batch, mock_ec2, mock_ecs, mock_iam, mock_logs
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.main import app as data_api
 from app.settings.globals import (
     AWS_REGION,
     WRITER_DBNAME,
@@ -32,6 +30,9 @@ APPEND_TSV_PATH = os.path.join(os.path.dirname(__file__), "fixtures", APPEND_TSV
 
 GEOJSON_NAME = "test.geojson"
 GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "fixtures", GEOJSON_NAME)
+
+GEOJSON_NAME2 = "test2.geojson"
+GEOJSON_PATH2 = os.path.join(os.path.dirname(__file__), "fixtures", GEOJSON_NAME2)
 
 SHP_NAME = "test.shp.zip"
 SHP_PATH = os.path.join(os.path.dirname(__file__), "fixtures", SHP_NAME)

@@ -14,10 +14,10 @@ from shapely.geometry import Point
 from shapely.ops import transform
 from sqlalchemy.sql.elements import TextClause
 
-from app.application import db
-from app.crud import assets
-from app.models.pydantic.features import FeaturesResponse
-from app.routes import dataset_dependency, version_dependency
+from ...application import db
+from ...crud import assets
+from ...models.pydantic.features import FeaturesResponse
+from ...routes import dataset_dependency, version_dependency
 
 router = APIRouter()
 
@@ -66,11 +66,20 @@ async def get_features_by_location(dataset, version, lat, lng, zoom):
         .select_from(t)
         .where(filter_intersects("geom", str(geometry)))
     )
-    print(str(sql))
-    # print(str(geometry))
+
     features = await db.all(sql)
 
     return features
+
+
+def filter_intersects(field, geometry) -> TextClause:
+    f = db.text(
+        f"ST_Intersects({field}, ST_SetSRID(ST_GeomFromGeoJSON(:geometry),4326))"
+    )
+    value = {"geometry": f"{geometry}"}
+    f = f.bindparams(**value)
+
+    return f
 
 
 def geodesic_point_buffer(lat, lng, zoom):
@@ -121,19 +130,8 @@ def _get_buffer_distance(zoom: int) -> Optional[int]:
     return zoom_buffer[zoom]
 
 
-def filter_intersects(field, geometry) -> TextClause:
-    f = db.text(
-        f"ST_Intersects({field}, ST_SetSRID(ST_GeomFromGeoJSON(:geometry),4326))"
-    )
-    value = {"geometry": f"{geometry}"}
-    f = f.bindparams(**value)
-
-    return f
-
-
 async def get_fields(dataset, version):
     asset = await assets.get_default_asset(dataset, version)
-    print(asset.fields)
     return asset.fields
 
 

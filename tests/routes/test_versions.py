@@ -38,7 +38,6 @@ version_payload = {
         "source_type": "vector",
         "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
         "source_driver": "ESRI Shapefile",
-        "zipped": True,
     },
     "metadata": payload["metadata"],
 }
@@ -101,13 +100,13 @@ async def test_versions(mocked_cloudfront_client, async_client):
         "source_type": "vector",
         "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
         "layers": None,
-        "zipped": True,
         "indices": [
             {"column_name": "geom", "index_type": "gist"},
             {"column_name": "geom_wm", "index_type": "gist"},
             {"column_name": "gfw_geostore_id", "index_type": "hash"},
         ],
         "create_dynamic_vector_tile_cache": True,
+        "add_to_geostore": True,
     }
 
     response = await async_client.get(f"/dataset/{dataset}/{version}/creation_options")
@@ -119,6 +118,45 @@ async def test_versions(mocked_cloudfront_client, async_client):
     response = await async_client.get(f"/dataset/{dataset}/{version}/change_log")
     assert response.status_code == 200
     assert len(response.json()["data"]) == 1
+
+    assert mocked_cloudfront_client.called
+
+    # Query
+
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=SELECT%20%2A%20from%20version%3B%20DELETE%20FROM%20version%3B"
+    )
+    print(response.json())
+    assert response.status_code == 400
+    assert response.json()["message"] == "Must use exactly one SQL statement."
+
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=DELETE FROM version;"
+    )
+    print(response.json())
+    assert response.status_code == 400
+    assert response.json()["message"] == "Must use SELECT statements only."
+
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=WITH t as (select 1) SELECT * FROM version;"
+    )
+    print(response.json())
+    assert response.status_code == 400
+    assert response.json()["message"] == "Must not have WITH clause."
+
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM version, version2;"
+    )
+    print(response.json())
+    assert response.status_code == 400
+    assert response.json()["message"] == "Must list exactly one table in FROM clause."
+
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM (select * from a) as b;"
+    )
+    print(response.json())
+    assert response.status_code == 400
+    assert response.json()["message"] == "Must not use sub queries."
 
     assert mocked_cloudfront_client.called
 

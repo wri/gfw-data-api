@@ -1,14 +1,14 @@
 from datetime import datetime
 from uuid import UUID
 
+from botocore.exceptions import ClientError
 from fastapi.logger import logger
 
-from app.crud import assets
-from app.errors import ClientError
-from app.models.enum.change_log import ChangeLogStatus
-from app.models.pydantic.change_log import ChangeLog
-from app.settings.globals import TILE_CACHE_CLUSTER, TILE_CACHE_SERVICE
-from app.tasks.aws_tasks import update_ecs_service
+from ..crud import assets
+from ..models.enum.change_log import ChangeLogStatus
+from ..models.pydantic.change_log import ChangeLog
+from ..settings.globals import TILE_CACHE_CLUSTER, TILE_CACHE_SERVICE
+from ..tasks.aws_tasks import update_ecs_service
 
 
 async def redeploy_tile_cache_service(asset_id: UUID) -> None:
