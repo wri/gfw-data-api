@@ -26,7 +26,6 @@ from .. import (
     TSV_PATH,
 )
 from ..utils import create_default_asset, poll_jobs
-from . import MockECSClient
 
 
 @pytest.mark.asyncio
@@ -186,7 +185,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "field_name": "gfw_geojson",
                     "field_alias": "gfw_geojson",
                     "field_description": None,
-                    "field_type": "character varying",
+                    "field_type": "text",
                     "is_feature_info": False,
                     "is_filter": False,
                 },
@@ -194,7 +193,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "field_name": "gfw_bbox",
                     "field_alias": "gfw_bbox",
                     "field_description": None,
-                    "field_type": "geometry",
+                    "field_type": "ARRAY",
                     "is_feature_info": False,
                     "is_filter": False,
                 },
@@ -262,7 +261,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "field_name": "gfw_geojson",
                     "field_alias": "gfw_geojson",
                     "field_description": None,
-                    "field_type": "character varying",
+                    "field_type": "text",
                     "is_feature_info": False,
                     "is_filter": False,
                 },
@@ -270,7 +269,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "field_name": "gfw_bbox",
                     "field_alias": "gfw_bbox",
                     "field_description": None,
-                    "field_type": "geometry",
+                    "field_type": "ARRAY",
                     "is_feature_info": False,
                     "is_filter": False,
                 },
