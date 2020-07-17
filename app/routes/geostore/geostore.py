@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
-from ...errors import RecordNotFoundError
+from ...errors import BadRequestError, RecordNotFoundError
 from ...models.pydantic.geostore import GeostoreHydrated, GeostoreIn, GeostoreResponse
 
 router = APIRouter()
@@ -26,7 +26,10 @@ async def add_new_geostore(
 
     input_data = request.dict(exclude_none=True, by_alias=True)
 
-    new_user_area: GeostoreHydrated = await geostore.create_user_area(**input_data)
+    try:
+        new_user_area: GeostoreHydrated = await geostore.create_user_area(**input_data)
+    except BadRequestError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     return GeostoreResponse(data=new_user_area)
 
