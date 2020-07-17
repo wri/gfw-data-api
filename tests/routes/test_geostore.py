@@ -20,7 +20,7 @@ async def test_user_area_geostore(async_client):
     assert resp.status_code == 404
     assert resp.json() == {
         "status": "failed",
-        "data": f"Area with gfw_geostore_id {expected_goestore_id} does not exist",
+        "message": f"Area with gfw_geostore_id {expected_goestore_id} does not exist",
     }
 
     payload = {
@@ -154,5 +154,5 @@ async def test_dataset_version_geostore(async_client, batch_client):
     assert get_resp.status_code == 404
     assert get_resp.json() == {
         "status": "failed",
-        "data": f'Area with gfw_geostore_id {second_sample_geojson_hash} does not exist in "{dataset}"."{version}"',
+        "message": f'Area with gfw_geostore_id {second_sample_geojson_hash} does not exist in "{dataset}"."{version}"',
     }

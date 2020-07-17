@@ -3,10 +3,11 @@ geometries in the datastore."""
 
 from uuid import UUID
 
-from fastapi import APIRouter, Path
+from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
+from ...errors import RecordNotFoundError
 from ...models.pydantic.geostore import GeostoreHydrated, GeostoreIn, GeostoreResponse
 
 router = APIRouter()
@@ -39,5 +40,11 @@ async def add_new_geostore(
 async def get_geostore_root(*, geostore_id: UUID = Path(..., title="geostore_id")):
     """Retrieve GeoJSON representation for a given geostore ID of any
     dataset."""
-    result: GeostoreHydrated = await geostore.get_geostore_from_anywhere(geostore_id)
+    try:
+        result: GeostoreHydrated = await geostore.get_geostore_from_anywhere(
+            geostore_id
+        )
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
     return GeostoreResponse(data=result)
