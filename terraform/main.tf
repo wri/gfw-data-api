@@ -84,11 +84,15 @@ module "fargate_autoscaling" {
   auto_scaling_min_capacity = var.auto_scaling_min_capacity
   acm_certificate_arn       = var.environment == "dev" ? null : data.terraform_remote_state.core.outputs.acm_certificate
   security_group_ids        = [data.terraform_remote_state.core.outputs.postgresql_security_group_id]
-  task_role_policies        = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn, aws_iam_policy.run_batch_jobs.arn, aws_iam_policy.s3_read_only.arn]
+  task_role_policies        = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
+    aws_iam_policy.run_batch_jobs.arn,
+    aws_iam_policy.s3_read_only.arn,
+    data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_policy_update_policy_arn,
+    data.terraform_remote_state.tile_cache.outputs.ecs_update_service_policy_arn]
   task_execution_role_policies = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
-  data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_policy_arn]
+    data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_policy_arn]
   container_definition = data.template_file.container_definition.rendered
 
 }

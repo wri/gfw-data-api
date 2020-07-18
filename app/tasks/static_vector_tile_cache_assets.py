@@ -12,7 +12,7 @@ from ..models.pydantic.creation_options import (
 from ..models.pydantic.jobs import GdalPythonExportJob, TileCacheJob
 from ..models.pydantic.metadata import asset_metadata_factory
 from ..settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_JOB_QUEUE
-from . import callback_constructor, reader_secrets
+from . import callback_constructor, reader_secrets, report_vars
 from .batch import execute
 
 
@@ -103,12 +103,15 @@ async def static_vector_tile_cache_asset(
         str(creation_options.max_zoom),
         "-t",
         creation_options.tile_strategy,
+        "-I",
+        "default",
     ]
 
     create_vector_tile_cache = TileCacheJob(
         job_name="create_vector_tile_cache",
         command=command,
         parents=[export_ndjson.job_name],
+        environment=report_vars,
         callback=callback_constructor(asset_id),
     )
 

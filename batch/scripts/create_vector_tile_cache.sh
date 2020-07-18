@@ -26,12 +26,12 @@ continuous) # Continuous polygon features
   ;;
 esac
 
-echo "Fetch NDJSON data from Data Lake"
-aws s3 cp "${SOURCE}" "${DATASET}"
+echo "Fetch NDJSON data from Data Lake ${SRC} -> ${DATASET}"
+aws s3 cp "${SRC}" "${DATASET}"
 
 echo "Build Tile Cache"
 # shellcheck disable=SC2086
-tippecanoe -Z"${MINZOOM}" -z"${MAXZOOM}" -e tilecache --${STRATEGY} --extend-zooms-if-still-dropping -P -n "${DATASET}" ${DATASET}
+tippecanoe -Z"${MIN_ZOOM}" -z"${MAX_ZOOM}" -e tilecache --"${STRATEGY}" --extend-zooms-if-still-dropping -P -n "${DATASET}" "${DATASET}"
 
 echo "Upload tiles to S3"
-tileputty tilecache --bucket "${TILE_CACHE}" --layer "${DATASET}" --version "${VERSION}" --ext pbf --option "${IMPLEMENTATION}""
+tileputty tilecache --bucket "${TILE_CACHE}" --dataset "${DATASET}" --version "${VERSION}" --implementation "${IMPLEMENTATION}"

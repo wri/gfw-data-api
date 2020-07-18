@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.settings.globals import (
     AWS_REGION,
+    DATA_LAKE_BUCKET,
+    TILE_CACHE_BUCKET,
     WRITER_DBNAME,
     WRITER_HOST,
     WRITER_PASSWORD,
@@ -202,7 +204,10 @@ class AWSMock(object):
                 "environment": [
                     {"name": "AWS_ACCESS_KEY_ID", "value": "testing"},
                     {"name": "AWS_SECRET_ACCESS_KEY", "value": "testing"},
+                    {"name": "ENDPOINT_URL", "value": "http://motoserver:5000"},
                     {"name": "DEBUG", "value": "1"},
+                    {"name": "TILE_CACHE", "value": TILE_CACHE_BUCKET},
+                    {"name": "DATA_LAKE", "value": DATA_LAKE_BUCKET},
                 ],
                 "volumes": [
                     {

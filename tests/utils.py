@@ -148,6 +148,8 @@ async def check_callbacks(task_ids, async_client=None):
     get_resp = requests.get(f"http://localhost:{PORT}")
     req_list = get_resp.json()["requests"]
 
+    print("REQUEST", req_list)
+    print("TASKS", task_ids)
     assert len(req_list) == len(task_ids)
 
     task_path = [f"/task/{taskid}" for taskid in task_ids]
