@@ -27,6 +27,7 @@ from .. import (
     TSV_PATH,
 )
 from ..utils import create_default_asset, poll_jobs
+from . import MockECSClient
 
 
 @pytest.mark.asyncio
