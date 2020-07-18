@@ -5,6 +5,7 @@ from aenum import Enum, extend_enum
 
 class PGOtherType(str, Enum):
     __doc__ = "Other PostgreSQL data types"
+    array = "ARRAY"
     boolean = "boolean"
     jsonb = "jsonb"
     time = "time"
