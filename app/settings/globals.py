@@ -9,11 +9,15 @@ from ..models.pydantic.database import DatabaseURL
 
 
 def _remove_revision(arn: str) -> str:
+    """Remove revision number from batch job description arn."""
     arn_items = arn.split(":")
     revision = arn_items.pop()
-    if isinstance(revision, int):
+    try:
+        # Check if revision is a number
+        int(revision)
         return ":".join(arn_items)
-    else:
+    except (ValueError, TypeError):
+        # if not, this means that there was no revision number in first place and we can use the input
         return arn
 
 
