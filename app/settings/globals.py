@@ -10,8 +10,11 @@ from ..models.pydantic.database import DatabaseURL
 
 def _remove_revision(arn: str) -> str:
     arn_items = arn.split(":")
-    arn_items.pop()
-    return ":".join(arn_items)
+    revision = arn_items.pop()
+    if isinstance(revision, int):
+        return ":".join(arn_items)
+    else:
+        return arn
 
 
 # Read .env file, if exists
