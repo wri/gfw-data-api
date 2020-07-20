@@ -80,19 +80,19 @@ locals {
   # so that the task can access any
 
   aurora_job_definition_arn_list =  split(":",module.batch_job_queues.aurora_job_definition)
-  aurora_job_definition_arn_list_short = slice(arn_list, 0, length(local.aurora_job_definition_arn_list)-2)
+  aurora_job_definition_arn_list_short = slice(local.aurora_job_definition_arn_list, 0, length(local.aurora_job_definition_arn_list)-2)
   aurora_job_definition_new_arn  = join(":", concat(local.aurora_job_definition_arn_list_short + ["*"]))
 
   data_lake_job_definition_arn_list =  split(":",module.batch_job_queues.data_lake_job_definition)
-  data_lake_job_definition_arn_list_short = slice(arn_list, 0, length(local.data_lake_job_definition_arn_list)-2)
+  data_lake_job_definition_arn_list_short = slice(local.aurora_job_definition_arn_list, 0, length(local.data_lake_job_definition_arn_list)-2)
   data_lake_job_definition_new_arn  = join(":", concat(local.data_lake_job_definition_arn_list_short + ["*"]))
 
   tile_cache_job_definition_arn_list =  split(":",module.batch_job_queues.tile_cache_job_definition)
-  tile_cache_job_definition_arn_list_short = slice(arn_list, 0, length(local.tile_cache_job_definition_arn_list)-2)
+  tile_cache_job_definition_arn_list_short = slice(local.aurora_job_definition_arn_list, 0, length(local.tile_cache_job_definition_arn_list)-2)
   tile_cache_job_definition_new_arn  = join(":", concat(local.tile_cache_job_definition_arn_list_short + ["*"]))
 
   pixetl_job_definition_arn_list =  split(":",data.terraform_remote_state.pixetl.outputs.job_definition_arn)
-  pixetl_job_definition_arn_list_short = slice(arn_list, 0, length(local.pixetl_job_definition_arn_list)-2)
+  pixetl_job_definition_arn_list_short = slice(local.aurora_job_definition_arn_list, 0, length(local.pixetl_job_definition_arn_list)-2)
   pixetl_job_definition_new_arn  = join(":", concat(local.pixetl_job_definition_arn_list_short + ["*"]))
 }
 
