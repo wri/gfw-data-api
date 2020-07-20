@@ -74,16 +74,38 @@ data "template_file" "container_definition" {
   }
 }
 
+//locals {
+//
+//  # trying very inelegantly to replace the batch job definition revision number with a wildcard,
+//  # so that the task can access any
+//
+//  aurora_job_definition_arn_list =  split(":",module.batch_job_queues.aurora_job_definition)
+//  aurora_job_definition_arn_list_short = slice(local.aurora_job_definition_arn_list, 0, length(local.aurora_job_definition_arn_list)-2)
+//  aurora_job_definition_new_arn  = join(":", concat(local.aurora_job_definition_arn_list_short + ["*"]))
+//
+//  data_lake_job_definition_arn_list =  split(":",module.batch_job_queues.data_lake_job_definition)
+//  data_lake_job_definition_arn_list_short = slice(local.aurora_job_definition_arn_list, 0, length(local.data_lake_job_definition_arn_list)-2)
+//  data_lake_job_definition_new_arn  = join(":", concat(local.data_lake_job_definition_arn_list_short + ["*"]))
+//
+//  tile_cache_job_definition_arn_list =  split(":",module.batch_job_queues.tile_cache_job_definition)
+//  tile_cache_job_definition_arn_list_short = slice(local.aurora_job_definition_arn_list, 0, length(local.tile_cache_job_definition_arn_list)-2)
+//  tile_cache_job_definition_new_arn  = join(":", concat(local.tile_cache_job_definition_arn_list_short + ["*"]))
+//
+//  pixetl_job_definition_arn_list =  split(":",data.terraform_remote_state.pixetl.outputs.job_definition_arn)
+//  pixetl_job_definition_arn_list_short = slice(local.aurora_job_definition_arn_list, 0, length(local.pixetl_job_definition_arn_list)-2)
+//  pixetl_job_definition_new_arn  = join(":", concat(local.pixetl_job_definition_arn_list_short + ["*"]))
+//}
+
 data "template_file" "task_batch_policy" {
   template = file("${path.root}/templates/batch_policy.json.tmpl")
   vars = {
-    aurora_job_definition_arn     = module.batch_job_queues.aurora_job_definition
+    aurora_job_definition_arn     = module.batch_job_queues.aurora_job_definition #local.aurora_job_definition_new_arn
     aurora_job_queue_arn          = module.batch_job_queues.aurora_job_queue
-    data_lake_job_definition_arn  = module.batch_job_queues.data_lake_job_definition
+    data_lake_job_definition_arn  = module.batch_job_queues.data_lake_job_definition # local.data_lake_job_definition_new_arn
     data_lake_job_queue_arn       = module.batch_job_queues.data_lake_job_queue
-    tile_cache_job_definition_arn = module.batch_job_queues.tile_cache_job_definition
+    tile_cache_job_definition_arn = module.batch_job_queues.tile_cache_job_definition # local.tile_cache_job_definition_new_arn
     tile_cache_job_queue_arn      = module.batch_job_queues.tile_cache_job_queue
-    pixetl_job_definition_arn     = data.terraform_remote_state.pixetl.outputs.job_definition_arn
+    pixetl_job_definition_arn     = data.terraform_remote_state.pixetl.outputs.job_definition_arn # local.pixetl_job_definition_new_arn
     pixetl_job_queue_arn          = data.terraform_remote_state.pixetl.outputs.job_queue_arn
   }
 }
