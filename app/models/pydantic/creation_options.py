@@ -4,17 +4,18 @@ from typing import Any, Dict, List, Optional, Type, Union
 from pydantic import BaseModel, Field
 from pydantic.types import PositiveInt
 
-from ..enum.assets import AssetType
+from ..enum.assets import AssetType, is_default_asset
 from ..enum.creation_options import (
     Delimiters,
     IndexType,
     PartitionType,
-    PGType,
     TableDrivers,
     TileStrategy,
     VectorDrivers,
 )
+from ..enum.pg_types import PGType
 from ..enum.sources import SourceType
+from .responses import Response
 
 COLUMN_REGEX = r"^[a-z][a-zA-Z0-9_-]{2,}$"
 PARTITION_SUFFIX_REGEX = r"^[a-z0-9_-]{3,}$"
@@ -72,16 +73,16 @@ class FieldType(BaseModel):
     field_type: PGType = Field(..., description="Type of field (PostgreSQL type).")
 
 
-# TODO: we currently ignore src_driver and zipped field
-#  decide whether to keep these fields or to remove them entirely
 class VectorSourceCreationOptions(BaseModel):
-    src_driver: VectorDrivers = Field(
+    source_driver: VectorDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
     )
-    zipped: bool = Field(..., description="Indicate if source file is zipped")
+    source_type: SourceType = SourceType.vector
+    source_uri: Optional[List[str]] = None
     layers: Optional[List[str]] = Field(
-        None, description="List of input layers. Only required for .gdb and .gpkg"
+        None, description="List of input layers. Only required for .gdb and .gpkg."
     )
+
     indices: List[Index] = Field(
         [
             Index(index_type="gist", column_name="geom"),
@@ -95,12 +96,19 @@ class VectorSourceCreationOptions(BaseModel):
         description="By default, vector sources will implicitly create a dynamic vector tile cache. "
         "Disable this option by setting value to `false`",
     )
+    add_to_geostore: bool = Field(
+        True,
+        description="Include features to geostore, to make geometries searchable via geostore endpoint.",
+    )
 
 
 class TableSourceCreationOptions(BaseModel):
-    src_driver: TableDrivers = Field(..., description="Driver of input file.")
-    delimiter: Delimiters = Field(..., description="Delimiter used in input file")
+    source_driver: TableDrivers = Field(..., description="Driver of input file.")
+    source_type: SourceType = SourceType.table
+    source_uri: Optional[List[str]] = None
     has_header: bool = Field(True, description="Input file has header. Must be true")
+    delimiter: Delimiters = Field(..., description="Delimiter used in input file")
+
     latitude: Optional[str] = Field(
         None, description="Column with latitude coordinate", regex=COLUMN_REGEX
     )
@@ -159,7 +167,7 @@ class NdjsonCreationOptions(BaseModel):
     pass
 
 
-SourceCreationOptions = Union[VectorSourceCreationOptions, TableSourceCreationOptions]
+SourceCreationOptions = Union[TableSourceCreationOptions, VectorSourceCreationOptions]
 
 OtherCreationOptions = Union[
     StaticVectorTileCacheCreationOptions,
@@ -170,8 +178,12 @@ OtherCreationOptions = Union[
 CreationOptions = Union[SourceCreationOptions, OtherCreationOptions]
 
 
-def asset_creation_option_factory(
-    source_type: Optional[str], asset_type: str, creation_options: Dict[str, Any]
+class CreationOptionsResponse(Response):
+    data: CreationOptions
+
+
+def creation_option_factory(
+    asset_type: str, creation_options: Dict[str, Any]
 ) -> CreationOptions:
     """Create Asset Creation Option based on asset or source type."""
 
@@ -187,11 +199,10 @@ def asset_creation_option_factory(
         AssetType.ndjson: NdjsonCreationOptions,
     }
 
+    source_type = creation_options.get("source_type", None)
+
     try:
-        if (
-            asset_type == AssetType.database_table
-            or asset_type == AssetType.raster_tile_set
-        ) and source_type:
+        if is_default_asset(asset_type) and source_type:
             co: CreationOptions = source_creation_option_factory[source_type](
                 **creation_options
             )

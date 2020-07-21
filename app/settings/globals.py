@@ -7,6 +7,20 @@ from starlette.datastructures import Secret
 
 from ..models.pydantic.database import DatabaseURL
 
+#
+# def _remove_revision(arn: str) -> str:
+#     """Remove revision number from batch job description arn."""
+#     arn_items = arn.split(":")
+#     revision = arn_items.pop()
+#     try:
+#         # Check if revision is a number
+#         int(revision)
+#         return ":".join(arn_items)
+#     except (ValueError, TypeError):
+#         # if not, this means that there was no revision number in first place and we can use the input
+#         return arn
+
+
 # Read .env file, if exists
 p: Path = Path(__file__).parents[2] / ".env"
 config: Config = Config(p if p.exists() else None)
@@ -39,9 +53,12 @@ SERVICE_ACCOUNT_SECRET = json.loads(
 ENV = config("ENV", cast=str, default="dev")
 
 DATA_LAKE_BUCKET = config("DATA_LAKE_BUCKET", cast=str, default=None)
+
 TILE_CACHE_BUCKET = config("TILE_CACHE_BUCKET", cast=str, default=None)
 TILE_CACHE_CLOUDFRONT_ID = config("TILE_CACHE_CLOUDFRONT_ID", cast=str, default=None)
 TILE_CACHE_URL = config("TILE_CACHE_URL", cast=str, default=None)
+TILE_CACHE_CLUSTER = config("TILE_CACHE_CLUSTER", cast=str, default=None)
+TILE_CACHE_SERVICE = config("TILE_CACHE_SERVICE", cast=str, default=None)
 
 READER_USERNAME: Optional[str] = config(
     "DB_USER_RO", cast=str, default=DB_READER_SECRET["username"]

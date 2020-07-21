@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -16,7 +17,6 @@ BATCH_DEPENDENCY_LIMIT = 14
 async def execute(jobs: List[Job],) -> ChangeLog:
     try:
         scheduled_jobs = await schedule(jobs)
-        print(f"SCHEDULED JOBS: {scheduled_jobs}")
     except TooManyRetriesError as e:
         status = ChangeLogStatus.failed
         message = e.message
@@ -24,7 +24,12 @@ async def execute(jobs: List[Job],) -> ChangeLog:
     else:
         status = ChangeLogStatus.pending
         message = "Successfully scheduled batch jobs"
-        detail = f"Scheduled jobs: {scheduled_jobs}"
+        detail = json.dumps(
+            [
+                {"job_name": job_name, "job_id": str(job_id)}
+                for job_name, job_id in scheduled_jobs.items()
+            ]
+        )
     return ChangeLog(
         date_time=datetime.now(), status=status, message=message, detail=detail
     )

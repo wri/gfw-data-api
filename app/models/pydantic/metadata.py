@@ -3,13 +3,15 @@ from typing import Any, Dict, List, Optional, Type, Union
 from pydantic import BaseModel, Field
 
 from ..enum.assets import AssetType
+from ..enum.pg_types import PGType
+from .responses import Response
 
 
 class FieldMetadata(BaseModel):
     field_name_: str = Field(..., alias="field_name")
     field_alias: Optional[str]
     field_description: Optional[str]
-    field_type: str
+    field_type: PGType
     is_feature_info: bool = True
     is_filter: bool = True
 
@@ -78,7 +80,7 @@ class RasterTileSetMetadata(VersionMetadata):
 class StaticVectorTileCacheMetadata(VersionMetadata):
     min_zoom: Optional[int]
     max_zoom: Optional[int]
-    fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
+    # fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
     # TODO: default symbology/ legend
 
 
@@ -88,7 +90,8 @@ class DynamicVectorTileCacheMetadata(StaticVectorTileCacheMetadata):
 
 
 class DatabaseTableMetadata(VersionMetadata):
-    fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
+    # fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
+    pass
 
 
 class VectorFileMetadata(VersionMetadata):
@@ -104,6 +107,10 @@ AssetMetadata = Union[
 ]
 
 
+class FieldMetadataResponse(Response):
+    data: List[FieldMetadata]
+
+
 def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMetadata:
     """Create Pydantic Asset Metadata class based on asset type."""
     metadata_factory: Dict[str, Type[AssetMetadata]] = {
@@ -111,6 +118,7 @@ def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMe
         AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheMetadata,
         AssetType.raster_tile_set: RasterTileSetMetadata,
         AssetType.database_table: DatabaseTableMetadata,
+        AssetType.geo_database_table: DatabaseTableMetadata,
         AssetType.ndjson: VectorFileMetadata,
     }
     if asset_type in metadata_factory.keys():

@@ -46,6 +46,7 @@ class PGType(str, Enum):
     character_varying = "character varying"
     date = "date"
     double_precision = "double precision"
+    geometry = "geometry"
     integer = "integer"
     jsonb = "jsonb"
     numeric = "numeric"

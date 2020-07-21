@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from uuid import UUID
 
 from ..crud import assets
@@ -7,12 +7,12 @@ from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import (
     StaticVectorTileCacheCreationOptions,
-    asset_creation_option_factory,
+    creation_option_factory,
 )
 from ..models.pydantic.jobs import GdalPythonExportJob, TileCacheJob
 from ..models.pydantic.metadata import asset_metadata_factory
 from ..settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_JOB_QUEUE
-from . import callback_constructor, reader_secrets
+from . import callback_constructor, reader_secrets, report_vars
 from .batch import execute
 
 
@@ -25,8 +25,8 @@ async def static_vector_tile_cache_asset(
     # Update asset metadata
     #######################
 
-    creation_options = asset_creation_option_factory(
-        None, AssetType.static_vector_tile_cache, input_data["creation_options"]
+    creation_options = creation_option_factory(
+        AssetType.static_vector_tile_cache, input_data["creation_options"]
     )
 
     await assets.update_asset(
@@ -103,12 +103,15 @@ async def static_vector_tile_cache_asset(
         str(creation_options.max_zoom),
         "-t",
         creation_options.tile_strategy,
+        "-I",
+        "default",
     ]
 
     create_vector_tile_cache = TileCacheJob(
         job_name="create_vector_tile_cache",
         command=command,
         parents=[export_ndjson.job_name],
+        environment=report_vars,
         callback=callback_constructor(asset_id),
     )
 
@@ -131,20 +134,13 @@ async def _get_field_attributes(
     available fields and use intersection.
     """
 
-    orm_assets: List[ORMAsset] = await assets.get_assets(dataset, version)
+    default_asset: ORMAsset = await assets.get_default_asset(dataset, version)
 
-    fields: Optional[List[Dict[str, str]]] = None
-    for asset in orm_assets:
-        if asset.is_default:
-            fields = asset.metadata["fields"]
-            break
+    fields: List[Dict[str, str]] = default_asset.fields
 
-    if fields:
-        field_attributes: List[Dict[str, Any]] = [
-            field for field in fields if field["is_feature_info"]
-        ]
-    else:
-        raise RuntimeError("No default asset found.")
+    field_attributes: List[Dict[str, Any]] = [
+        field for field in fields if field["is_feature_info"]
+    ]
 
     if creation_options.field_attributes:
         field_attributes = [

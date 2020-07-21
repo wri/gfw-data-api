@@ -14,7 +14,7 @@ async def vector_source_asset(
     dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
 
-    source_uris: List[str] = input_data["source_uri"]
+    source_uris: List[str] = input_data["creation_options"]["source_uri"]
 
     if len(source_uris) != 1:
         raise AssertionError("Vector sources only support one input file")
@@ -112,13 +112,17 @@ async def vector_source_asset(
             )
         )
 
-    inherit_geostore_job = PostgresqlClientJob(
-        job_name="inherit_from_geostore",
-        command=["inherit_geostore.sh", "-d", dataset, "-v", version],
-        parents=[job.job_name for job in index_jobs],
-        environment=job_env,
-        callback=callback,
-    )
+    inherit_geostore_jobs = list()
+    if creation_options.add_to_geostore:
+
+        inherit_geostore_job = PostgresqlClientJob(
+            job_name="inherit_from_geostore",
+            command=["inherit_geostore.sh", "-d", dataset, "-v", version],
+            parents=[job.job_name for job in index_jobs],
+            environment=job_env,
+            callback=callback,
+        )
+        inherit_geostore_jobs.append(inherit_geostore_job)
 
     log: ChangeLog = await execute(
         [
@@ -126,7 +130,7 @@ async def vector_source_asset(
             *load_vector_data_jobs,
             gfw_attribute_job,
             *index_jobs,
-            inherit_geostore_job,
+            *inherit_geostore_jobs,
         ]
     )
 

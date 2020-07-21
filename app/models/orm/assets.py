@@ -11,9 +11,11 @@ class Asset(Base):
     status = db.Column(db.String, nullable=False, default="pending")
     is_managed = db.Column(db.Boolean, nullable=False, default=True)
     is_default = db.Column(db.Boolean, nullable=False, default=False)
-    creation_options = db.Column(db.JSONB, default=dict())
-    metadata = db.Column(db.JSONB, default=dict())
-    change_log = db.Column(db.ARRAY(db.JSONB), default=list())
+    creation_options = db.Column(db.JSONB, nullable=False, default=dict())
+    metadata = db.Column(db.JSONB, nullable=False, default=dict())
+    fields = db.Column(db.JSONB, nullable=False, default=list())
+    stats = db.Column(db.JSONB, nullable=False, default=dict())
+    change_log = db.Column(db.ARRAY(db.JSONB), nullable=False, default=list())
 
     fk = db.ForeignKeyConstraint(
         ["dataset", "version"],

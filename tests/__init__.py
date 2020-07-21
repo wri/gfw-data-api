@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.settings.globals import (
     AWS_REGION,
+    DATA_LAKE_BUCKET,
+    TILE_CACHE_BUCKET,
     WRITER_DBNAME,
     WRITER_HOST,
     WRITER_PASSWORD,
@@ -31,10 +33,14 @@ APPEND_TSV_PATH = os.path.join(os.path.dirname(__file__), "fixtures", APPEND_TSV
 GEOJSON_NAME = "test.geojson"
 GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "fixtures", GEOJSON_NAME)
 
+GEOJSON_NAME2 = "test2.geojson"
+GEOJSON_PATH2 = os.path.join(os.path.dirname(__file__), "fixtures", GEOJSON_NAME2)
+
 SHP_NAME = "test.shp.zip"
 SHP_PATH = os.path.join(os.path.dirname(__file__), "fixtures", SHP_NAME)
 
 BUCKET = "test-bucket"
+PORT = 9000
 
 SessionLocal: Optional[Session] = None
 
@@ -65,30 +71,64 @@ class MemoryServer(BaseHTTPRequestHandler):
         self.requests_thus_far = []
 
     def do_PUT(self):
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps({"foo": "bar"}).encode("utf-8"))
+        """Forward PUT request to Test Client and buffer requests in
+        request_thus_far property."""
 
         content_length = int(self.headers["Content-Length"])
         put_data = self.rfile.read(content_length)
-
+        request = json.loads(str(put_data.decode("utf-8")))
         self.requests_thus_far.append(
-            {"path": str(self.path), "body": json.loads(str(put_data.decode("utf-8")))}
+            {"method": "PUT", "path": str(self.path), "body": request}
         )
+
+        # response = self.client.put(self.path, data=json.dumps(request))
+        response = {
+            "data": {"response": "This is a mocked response"},
+            "status": "success",
+        }
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(str(response).encode("utf-8"))
 
     def do_PATCH(self):
+        content_length = int(self.headers["Content-Length"])
+        put_data = self.rfile.read(content_length)
+        request = json.loads(str(put_data.decode("utf-8")))
+        self.requests_thus_far.append(
+            {"method": "PATCH", "path": str(self.path), "body": request}
+        )
+
+        # response = self.client.patch(self.path, json=request)
+        response = {
+            "data": {"response": "This is a mocked response"},
+            "status": "success",
+        }
+
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        self.wfile.write(json.dumps({"foo": "bar"}).encode("utf-8"))
+        self.wfile.write(str(response).encode("utf-8"))
 
+    def do_POST(self):
         content_length = int(self.headers["Content-Length"])
         put_data = self.rfile.read(content_length)
-
+        request = json.loads(str(put_data.decode("utf-8")))
         self.requests_thus_far.append(
-            {"path": str(self.path), "body": json.loads(str(put_data.decode("utf-8")))}
+            {"method": "POST", "path": str(self.path), "body": request}
         )
+
+        # response = self.client.post(self.path, data=json.dumps(request))
+        response = {
+            "data": {"response": "This is a mocked response"},
+            "status": "success",
+        }
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(str(response).encode("utf-8"))
 
 
 class AWSMock(object):
@@ -164,7 +204,10 @@ class AWSMock(object):
                 "environment": [
                     {"name": "AWS_ACCESS_KEY_ID", "value": "testing"},
                     {"name": "AWS_SECRET_ACCESS_KEY", "value": "testing"},
+                    {"name": "ENDPOINT_URL", "value": "http://motoserver:5000"},
                     {"name": "DEBUG", "value": "1"},
+                    {"name": "TILE_CACHE", "value": TILE_CACHE_BUCKET},
+                    {"name": "DATA_LAKE", "value": DATA_LAKE_BUCKET},
                 ],
                 "volumes": [
                     {

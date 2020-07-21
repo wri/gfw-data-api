@@ -1,10 +1,10 @@
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse, RedirectResponse
 
 from .application import ContextEngine
 from .crud.versions import get_latest_version
-from .errors import BadRequestError, RecordNotFoundError
+from .errors import BadRequestError, RecordNotFoundError, http_error_handler
 
 
 async def set_db_mode(request: Request, call_next):
@@ -26,8 +26,8 @@ async def redirect_latest(request: Request, call_next):
     """Redirect all GET requests using latest version to actual version
     number."""
 
-    try:
-        if request.method == "GET" and "latest" in request.url.path:
+    if request.method == "GET" and "latest" in request.url.path:
+        try:
             path_items = request.url.path.split("/")
 
             i = 0
@@ -40,26 +40,29 @@ async def redirect_latest(request: Request, call_next):
             path_items[i] = await get_latest_version(path_items[i - 1])
             url = "/".join(path_items)
             return RedirectResponse(url=f"{url}?{request.query_params}")
-        else:
-            response = await call_next(request)
-            return response
 
-    except BadRequestError as e:
-        return ORJSONResponse(
-            status_code=400, content={"status": "failed", "data": str(e)}
-        )
+        except BadRequestError as e:
+            return ORJSONResponse(
+                status_code=400, content={"status": "failed", "message": str(e)}
+            )
 
-    except RecordNotFoundError as e:
-        return ORJSONResponse(
-            status_code=404, content={"status": "failed", "data": str(e)}
-        )
+        except RecordNotFoundError as e:
+            return ORJSONResponse(
+                status_code=404, content={"status": "failed", "message": str(e)}
+            )
 
-    except Exception as e:
-        logger.exception(str(e))
-        return ORJSONResponse(
-            status_code=500,
-            content={
-                "status": "error",
-                "data": "Internal Server Error. Could not process request.",
-            },
-        )
+        except HTTPException as e:
+            return http_error_handler(e)
+
+        except Exception as e:
+            logger.exception(str(e))
+            return ORJSONResponse(
+                status_code=500,
+                content={
+                    "status": "error",
+                    "message": "Internal Server Error. Could not process request.",
+                },
+            )
+    else:
+        response = await call_next(request)
+        return response

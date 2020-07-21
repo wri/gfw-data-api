@@ -5,7 +5,8 @@ from functools import partial
 from typing import DefaultDict, Optional
 
 import pyproj
-from fastapi import APIRouter, Depends, Query
+from asyncpg import UndefinedTableError
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
 from geojson import Point as geoPoint
 from geojson import Polygon as geoPolygon
@@ -15,14 +16,15 @@ from sqlalchemy.sql.elements import TextClause
 
 from ...application import db
 from ...crud import assets
-from ...models.pydantic.assets import AssetType
 from ...models.pydantic.features import FeaturesResponse
 from ...routes import dataset_dependency, version_dependency
 
 router = APIRouter()
 
 
-@router.get("/{dataset}/{version}", response_class=ORJSONResponse)
+@router.get(
+    "/{dataset}/{version}/features", response_class=ORJSONResponse, tags=["Versions"]
+)
 async def get_features(
     *,
     dataset: str = Depends(dataset_dependency),
@@ -33,7 +35,15 @@ async def get_features(
 ):
     """Retrieve list of features Add optional spatial filter using a point
     buffer (for info tool)."""
-    feature_rows = await get_features_by_location(dataset, version, lat, lng, z)
+
+    try:
+        feature_rows = await get_features_by_location(dataset, version, lat, lng, z)
+    except UndefinedTableError:
+        raise HTTPException(
+            status_code=501,
+            detail=f"Endpoint not implement for {dataset}.{version}."
+            "Not a table or vector asset.",
+        )
 
     return await _features_response(feature_rows)
 
@@ -60,6 +70,16 @@ async def get_features_by_location(dataset, version, lat, lng, zoom):
     features = await db.all(sql)
 
     return features
+
+
+def filter_intersects(field, geometry) -> TextClause:
+    f = db.text(
+        f"ST_Intersects({field}, ST_SetSRID(ST_GeomFromGeoJSON(:geometry),4326))"
+    )
+    value = {"geometry": f"{geometry}"}
+    f = f.bindparams(**value)
+
+    return f
 
 
 def geodesic_point_buffer(lat, lng, zoom):
@@ -110,25 +130,9 @@ def _get_buffer_distance(zoom: int) -> Optional[int]:
     return zoom_buffer[zoom]
 
 
-def filter_intersects(field, geometry) -> TextClause:
-    f = db.text(
-        f"ST_Intersects({field}, ST_SetSRID(ST_GeomFromGeoJSON(:geometry),4326))"
-    )
-    value = {"geometry": f"{geometry}"}
-    f = f.bindparams(**value)
-
-    return f
-
-
 async def get_fields(dataset, version):
-    rows = await assets.get_assets(dataset, version)
-    fields = []
-    for row in rows:
-        if row.asset_type == AssetType.database_table:
-            fields = row.metadata["fields"]
-            break
-
-    return fields
+    asset = await assets.get_default_asset(dataset, version)
+    return asset.fields
 
 
 async def _features_response(rows) -> FeaturesResponse:

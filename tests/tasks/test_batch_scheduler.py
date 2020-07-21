@@ -1,11 +1,7 @@
-from typing import Any, Awaitable, Dict, Optional
-from uuid import UUID
-
 import pytest
 
 import app.tasks.batch as batch
-from app.application import ContextEngine
-from app.crud import assets, tasks
+from app.crud import tasks
 from app.models.pydantic.jobs import (
     GdalPythonExportJob,
     GdalPythonImportJob,
@@ -22,7 +18,8 @@ from app.settings.globals import (
 from app.tasks import callback_constructor
 
 from .. import BUCKET, GEOJSON_NAME
-from . import check_callbacks, create_asset, poll_jobs
+from ..utils import poll_jobs
+from . import create_asset
 
 writer_secrets = [
     {"name": "PGPASSWORD", "value": str(WRITER_PASSWORD)},
@@ -37,7 +34,7 @@ writer_secrets = [
     reason="This is just to make sure that the batch scheduler works. Only run when in doubt."
 )
 @pytest.mark.asyncio
-async def test_batch_scheduler(batch_client, httpd):
+async def test_batch_scheduler(batch_client, httpd, async_client):
 
     _, logs = batch_client
     httpd_port = httpd.server_port
@@ -117,7 +114,5 @@ async def test_batch_scheduler(batch_client, httpd):
     task_ids = [str(task.task_id) for task in tasks_rows]
 
     # make sure, all jobs completed
-    status = await poll_jobs(task_ids)
+    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
     assert status == "saved"
-
-    check_callbacks(task_ids, httpd.server_port)

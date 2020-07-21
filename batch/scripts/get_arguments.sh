@@ -86,6 +86,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      -I|--implementation)
+      IMPLEMENTATION="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -l|--source_layer)
       SRC_LAYER="$2"
       shift # past argument

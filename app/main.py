@@ -8,19 +8,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.requests import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.errors import http_error_handler
+
 from .application import app
-from .errors import ClientError, ServerError
 from .middleware import redirect_latest, set_db_mode
 from .routes import security
-from .routes.features import features
-from .routes.geostore import geostore
-from .routes.meta import assets, datasets, versions
-from .routes.sql import queries
-from .routes.tasks import tasks
+from .routes.assets import asset, assets
+from .routes.datasets import asset as version_asset
+from .routes.datasets import dataset, datasets, features, geostore, queries, versions
+from .routes.geostore import geostore as geostore_top
+from .routes.tasks import task
 
 ################
 # LOGGING
@@ -36,34 +37,20 @@ sys.path.extend(["./"])
 ################
 
 
-@app.exception_handler(ClientError)
-async def client_error_handler(request: Request, exc: ClientError):
-    return JSONResponse(
-        status_code=exc.status_code, content={"status": "failed", "data": exc.detail}
-    )
-
-
-@app.exception_handler(ServerError)
-async def server_error_handler(request: Request, exc: ServerError):
-    return JSONResponse(
-        status_code=exc.status_code, content={"status": "error", "message": exc.detail}
-    )
-
-
 @app.exception_handler(HTTPException)
-async def httpexception_error_handler(request: Request, exc: HTTPException):
-    if exc.status_code < 500:
-        status = "failed"
-    else:
-        status = "error"
-    return JSONResponse(
-        status_code=exc.status_code, content={"status": status, "message": exc.detail}
-    )
+async def httpexception_error_handler(
+    request: Request, exc: HTTPException
+) -> ORJSONResponse:
+    """Use JSEND protocol for HTTP execptions."""
+    return http_error_handler(exc)
 
 
 @app.exception_handler(RequestValidationError)
-async def rve_error_handler(request: Request, exc: RequestValidationError):
-    return JSONResponse(
+async def rve_error_handler(
+    request: Request, exc: RequestValidationError
+) -> ORJSONResponse:
+    """Use JSEND protocol for validation errors."""
+    return ORJSONResponse(
         status_code=422, content={"status": "failed", "message": json.loads(exc.json())}
     )
 
@@ -94,42 +81,46 @@ app.add_middleware(
 app.include_router(security.router, tags=["Authentication"])
 
 ###############
-# META API
+# DATASET API
 ###############
 
-meta_routers = (
-    datasets.router,
+app.include_router(datasets.router, prefix="/datasets")
+
+dataset_routers = (
+    dataset.router,
     versions.router,
-    assets.router,
+    features.router,
+    geostore.router,
+    version_asset.router,
+    queries.router,
 )
 
-for r in meta_routers:
-    app.include_router(r, prefix="/meta")
+for r in dataset_routers:
+    app.include_router(r, prefix="/dataset")
+
 
 ###############
-# FEATURE API
+# ASSET API
 ###############
 
+app.include_router(assets.router, prefix="/assets")
+app.include_router(asset.router, prefix="/asset")
 
-feature_routers = (features.router,)
 
-for r in feature_routers:
-    app.include_router(r, prefix="/features")
-
-###############
-# SQL API
-###############
-
-sql_routers = (queries.router,)
-
-for r in sql_routers:
-    app.include_router(r, prefix="/sql")
+# ###############
+# # SQL API
+# ###############
+#
+# sql_routers = (queries.router,)
+#
+# for r in sql_routers:
+#     app.include_router(r, prefix="/sql")
 
 ###############
 # GEOSTORE API
 ###############
 
-geostore_routers = (geostore.router,)
+geostore_routers = (geostore_top.router,)
 
 for r in geostore_routers:
     app.include_router(r, prefix="/geostore")
@@ -139,9 +130,9 @@ for r in geostore_routers:
 # TASK API
 ###############
 
-task_routers = (tasks.router,)
+task_routers = (task.router,)
 for r in task_routers:
-    app.include_router(r, prefix="/tasks")
+    app.include_router(r, prefix="/task")
 
 #######################
 # OPENAPI Documentation
@@ -151,15 +142,14 @@ for r in task_routers:
 tags_metadata = [
     {"name": "Dataset", "description": datasets.__doc__},
     {"name": "Version", "description": versions.__doc__},
-    {"name": "Assets", "description": assets.__doc__},
-    {"name": "Features", "description": features.__doc__},
+    {"name": "Assets", "description": asset.__doc__},
     {"name": "Query", "description": queries.__doc__},
     {"name": "Geostore", "description": geostore.__doc__},
-    {"name": "Tasks", "description": tasks.__doc__},
+    {"name": "Tasks", "description": task.__doc__},
 ]
 
 
-def custom_openapi(openapi_prefix: str = ""):
+def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
 
@@ -168,15 +158,13 @@ def custom_openapi(openapi_prefix: str = ""):
         version="0.1.0",
         description="Use GFW DATA API to explore, manage and access data.",
         routes=app.routes,
-        openapi_prefix=openapi_prefix,
     )
 
     openapi_schema["tags"] = tags_metadata
     openapi_schema["info"]["x-logo"] = {"url": "/static/gfw-data-api.png"}
     openapi_schema["x-tagGroups"] = [
-        {"name": "Meta API", "tags": ["Datasets", "Versions", "Assets"]},
+        {"name": "Dataset API", "tags": ["Datasets", "Versions", "Assets"]},
         {"name": "Geostore API", "tags": ["Geostore"]},
-        {"name": "Feature API", "tags": ["Features"]},
         {"name": "SQL API", "tags": ["Query"]},
         {"name": "Task API", "tags": ["Tasks"]},
     ]

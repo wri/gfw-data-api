@@ -26,11 +26,11 @@ class ContextualGino(Gino):
         try:
             e = CURRENT_ENGINE.get()
             bind = e.result()
-            logger.info(f"Set bind to {bind.repr(color=True)}")
+            logger.debug(f"Set bind to {bind.repr(color=True)}")
             return bind
         except LookupError:
             # not in a request
-            logger.info("Not in a request, using default bind")
+            logger.debug("Not in a request, using default bind")
             return self._bind
 
     @bind.setter

@@ -58,13 +58,13 @@ generate_payload()
     "date_time": "$AFTER",
     "status": "$STATUS",
     "message": "$MESSAGE",
-    "detail": "$DETAIL"
+    "detail": "$DETAIL:(-10000)"
   }]
 }
 EOF
 }
 
-echo PAYLOAD: "$(generate_payload)"
+echo "$(generate_payload)"
 
 curl -s -X PATCH -H "${HEADERS}" -d "$(generate_payload)" "${URL}"
 

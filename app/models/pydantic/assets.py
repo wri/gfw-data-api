@@ -5,7 +5,6 @@ from pydantic import BaseModel
 
 from ..enum.assets import AssetStatus, AssetType
 from .base import Base
-from .change_log import ChangeLog
 from .creation_options import CreationOptions
 from .metadata import AssetMetadata
 from .responses import Response
@@ -19,9 +18,9 @@ class Asset(Base):
     asset_uri: str
     status: AssetStatus = AssetStatus.pending
     is_managed: bool
-    creation_options: CreationOptions
+    # creation_options: CreationOptions
     metadata: AssetMetadata
-    change_log: List[ChangeLog]
+    # change_log: List[ChangeLog]
 
 
 class AssetCreateIn(BaseModel):
