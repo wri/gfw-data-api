@@ -5,7 +5,7 @@ from uuid import UUID
 
 from ..application import ContextEngine
 from ..crud import assets, versions
-from ..models.enum.assets import default_asset_type, is_database_asset
+from ..models.enum.assets import default_asset_type
 from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
 from ..models.pydantic.assets import AssetTaskCreate
@@ -13,7 +13,7 @@ from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import creation_option_factory
 from ..models.pydantic.metadata import asset_metadata_factory
 from ..utils.aws import get_s3_client
-from ..utils.path import split_s3_path
+from ..utils.path import get_asset_uri, split_s3_path
 from .assets import put_asset
 from .raster_source_assets import raster_source_asset
 from .table_source_assets import append_table_source_asset, table_source_asset
@@ -101,7 +101,7 @@ async def _create_default_asset(
     source_type = creation_option["source_type"]
     asset_type = default_asset_type(source_type, creation_option)
     metadata = asset_metadata_factory(asset_type, input_data["metadata"])
-    asset_uri = _default_asset_uri(asset_type, dataset, version, creation_option)
+    asset_uri = get_asset_uri(dataset, version, asset_type, creation_option)
     creation_options = creation_option_factory(asset_type, creation_option)
 
     data = AssetTaskCreate(
@@ -149,15 +149,3 @@ async def _inject_file(file_obj: IO, s3_uri: str) -> ChangeLog:
     return ChangeLog(
         date_time=datetime.now(), status=status, message=message, detail=detail
     )
-
-
-def _default_asset_uri(asset_type, dataset, version, creation_option=None):
-    if is_database_asset(asset_type):
-        asset_uri = f"/{dataset}/{version}/features"
-    # elif source_type == "raster":
-    #     srid = creation_option[]
-    #     asset_uri = f"s3://{DATA_LAKE_BUCKET_NAME}/{dataset}/{version}/raster/{srid}/{size}/{col}/{value}/geotiff/{tile_id}.tif"
-    else:
-        raise NotImplementedError("Not a supported default input source")
-
-    return asset_uri
