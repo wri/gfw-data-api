@@ -121,7 +121,7 @@ module "batch_aurora_writer" {
 
 module "batch_data_lake_writer" {
   source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.2.4"
-  ecs_role_policy_arns = [aws_iam_policy.s3_read_only.arn
+  ecs_role_policy_arns = [aws_iam_policy.s3_read_only.arn,
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_write_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
