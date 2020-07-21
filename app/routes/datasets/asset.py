@@ -25,8 +25,8 @@ from ...models.pydantic.assets import (
     AssetType,
 )
 from ...routes import dataset_dependency, is_admin, version_dependency
-from ...settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_URL
 from ...tasks.assets import put_asset
+from ...utils.path import get_asset_uri
 from ..assets import asset_response, assets_response
 from . import verify_version_status
 
@@ -112,25 +112,3 @@ async def add_new_asset(
     )
     response.headers["Location"] = f"/{dataset}/{version}/asset/{row.asset_id}"
     return await asset_response(row)
-
-
-def get_asset_uri(dataset: str, version: str, asset_type: str) -> str:
-    uri_constructor = {
-        AssetType.dynamic_vector_tile_cache: f"https://{TILE_CACHE_URL}/{dataset}/{version}/dynamic/{{z}}/{{x}}/{{y}}.pbf",
-        AssetType.static_vector_tile_cache: f"https://{TILE_CACHE_URL}/{dataset}/{version}/default/{{z}}/{{x}}/{{y}}.pbf",
-        AssetType.static_raster_tile_cache: f"https://{TILE_CACHE_URL}/{dataset}/{version}/default/{{z}}/{{x}}/{{y}}.png",
-        AssetType.shapefile: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{dataset}.shp.zip",
-        AssetType.ndjson: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{dataset}.ndjson",
-        AssetType.csv: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{dataset}.csv",
-        AssetType.tsv: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{dataset}.tsv",
-        AssetType.geopackage: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{dataset}.gpkg",
-    }
-
-    try:
-        uri = uri_constructor[asset_type]
-    except KeyError:
-        raise NotImplementedError(
-            f"URI constructor for asset type {asset_type} not implemented"
-        )
-
-    return uri
