@@ -11,7 +11,8 @@ from ..models.pydantic.creation_options import (
 )
 from ..models.pydantic.jobs import GdalPythonExportJob, TileCacheJob
 from ..models.pydantic.metadata import asset_metadata_factory
-from ..settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_JOB_QUEUE
+from ..settings.globals import TILE_CACHE_JOB_QUEUE
+from ..utils.path import get_asset_uri
 from . import callback_constructor, reader_secrets, report_vars
 from .batch import execute
 
@@ -50,7 +51,7 @@ async def static_vector_tile_cache_asset(
 
     metadata = asset_metadata_factory(AssetType.ndjson, _metadata)
 
-    ndjson_uri = f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/epsg:4326/{dataset}_{version}.ndjson"
+    ndjson_uri = get_asset_uri(dataset, version, AssetType.ndjson)
 
     ndjson_asset: ORMAsset = await assets.create_asset(
         dataset,
