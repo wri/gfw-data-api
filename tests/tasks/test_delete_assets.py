@@ -2,7 +2,10 @@ import pytest
 
 from app.application import ContextEngine, db
 from app.settings.globals import DATA_LAKE_BUCKET
-from app.tasks.delete_assets import delete_database_table, delete_raster_tileset_assets
+from app.tasks.delete_assets import (
+    delete_database_table_asset,
+    delete_raster_tileset_assets,
+)
 from app.utils.aws import get_s3_client
 from tests import TSV_PATH
 
@@ -48,7 +51,7 @@ async def test_delete_database_table():
         assert len(rows) == 1
 
         # test if function drops table
-        await delete_database_table(dataset, version)
+        await delete_database_table_asset(dataset, version)
 
         rows = await db.all(f"select * from pg_tables where schemaname='{dataset}';")
         assert len(rows) == 0

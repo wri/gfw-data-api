@@ -111,6 +111,12 @@ resource "aws_iam_role_policy_attachment" "s3_write_data-lake" {
   policy_arn = var.s3_write_data-lake_arn
 }
 
+resource "aws_iam_role_policy_attachment" "s3_write_tile_cache" {
+  role       = aws_iam_role.aws_ecs_service_role.name
+  policy_arn = var.s3_write_tile-cache_arn
+}
+
+
 resource "aws_iam_role_policy" "test_policy" {
   name   = substr("${var.project}-ecs_service_role_assume${var.name_suffix}", 0, 64)
   role   = aws_iam_role.aws_ecs_service_role.name
@@ -135,7 +141,10 @@ resource "aws_iam_role_policy_attachment" "s3_write_data-lake_clone" {
   policy_arn = var.s3_write_data-lake_arn
 }
 
-
+resource "aws_iam_role_policy_attachment" "s3_write_tile_cache_clone" {
+  role       = aws_iam_role.aws_ecs_service_role_clone.name
+  policy_arn = var.s3_write_tile-cache_arn
+}
 
 data "template_file" "iam_trust_entity" {
   template = file("${path.root}/templates/iam_trust_entity.json.tmpl")

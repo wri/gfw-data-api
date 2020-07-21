@@ -16,7 +16,7 @@ from fastapi.responses import ORJSONResponse
 
 from ...crud import assets, tasks
 from ...errors import RecordNotFoundError
-from ...models.enum.assets import is_database_asset
+from ...models.enum.assets import is_database_asset, is_single_file_asset
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.tasks import Task as ORMTask
 from ...models.pydantic.assets import AssetResponse, AssetType, AssetUpdateIn
@@ -31,9 +31,10 @@ from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.tasks import TasksResponse
 from ...routes import is_admin
 from ...tasks.delete_assets import (
-    delete_database_table,
+    delete_database_table_asset,
     delete_dynamic_vector_tile_cache_assets,
     delete_raster_tileset_assets,
+    delete_single_file_asset,
     delete_static_raster_tile_cache_assets,
     delete_static_vector_tile_cache_assets,
 )
@@ -150,7 +151,9 @@ async def delete_asset(
             row.creation_options.value,
         )
     elif is_database_asset(row.asset_type):
-        background_tasks.add_task(delete_database_table, row.dataset, row.version)
+        background_tasks.add_task(delete_database_table_asset, row.dataset, row.version)
+    elif is_single_file_asset(row.asset_type):
+        background_tasks.add_task(delete_single_file_asset, row.asset_uri)
     else:
         raise HTTPException(
             status_code=400,
