@@ -54,6 +54,16 @@ def is_database_asset(asset_type: str) -> bool:
     return asset_type in [AssetType.geo_database_table, AssetType.database_table]
 
 
+def is_single_file_asset(asset_type: str) -> bool:
+    return asset_type in [
+        AssetType.geopackage,
+        AssetType.ndjson,
+        AssetType.shapefile,
+        AssetType.csv,
+        AssetType.tsv,
+    ]
+
+
 def is_tile_cache_asset(asset_type: str) -> bool:
     return asset_type in [
         AssetType.dynamic_vector_tile_cache,

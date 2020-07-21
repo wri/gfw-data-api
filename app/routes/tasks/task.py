@@ -91,7 +91,10 @@ async def update_task(
     """
 
     input_data = request.dict(exclude_none=True, by_alias=True)
-    task_row = await tasks.update_task(task_id, **input_data)
+    try:
+        task_row = await tasks.update_task(task_id, **input_data)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     asset_id = task_row.asset_id
 
@@ -129,7 +132,7 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
         date_time=now,
         status=ChangeLogStatus.failed,
         message="One or more tasks failed.",
-        detail=f"Check task /meta/tasks/{task_id} for more detail",
+        detail=f"Check /task/{task_id} for more detail",
     )
 
     asset_row: ORMAsset = await assets.update_asset(

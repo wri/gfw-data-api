@@ -9,6 +9,7 @@ from ..utils.aws import get_cloudfront_client, get_ecs_client, get_s3_client
 def update_ecs_service(cluster: str, service: str) -> Dict[str, Any]:
 
     ecs_client = get_ecs_client()
+
     response = ecs_client.update_service(
         cluster=cluster, service=service, forceNewDeployment=True
     )

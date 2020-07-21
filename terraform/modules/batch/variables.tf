@@ -8,5 +8,6 @@ variable "postgres_repository_url" { type = string }
 variable "tile_cache_repository_url" { type = string }
 variable "environment" { type = string }
 variable "s3_write_data-lake_arn" { type = string }
+variable "s3_write_tile-cache_arn" { type = string }
 variable "reader_secret_arn" { type = string }
 variable "writer_secret_arn" { type = string }

@@ -4,11 +4,12 @@ from ..settings.globals import (
     TILE_CACHE_BUCKET,
     TILE_CACHE_CLOUDFRONT_ID,
 )
+from ..utils.path import split_s3_path
 from .aws_tasks import delete_s3_objects, expire_s3_objects, flush_cloudfront_cache
 
 
 async def delete_all_assets(dataset: str, version: str) -> None:
-    await delete_database_table(dataset, version)
+    await delete_database_table_asset(dataset, version)
     delete_s3_objects(DATA_LAKE_BUCKET, f"{dataset}/{version}/")
     expire_s3_objects(TILE_CACHE_BUCKET, f"{dataset}/{version}/")
     flush_cloudfront_cache(TILE_CACHE_CLOUDFRONT_ID, [f"{dataset}/{version}/*"])
@@ -52,6 +53,11 @@ async def delete_raster_tileset_assets(
     )
 
 
-async def delete_database_table(dataset, version):
+async def delete_database_table_asset(dataset: str, version: str) -> None:
     async with ContextEngine("WRITE"):
         await db.status(f"""DROP TABLE IF EXISTS "{dataset}"."{version}" CASCADE;""")
+
+
+async def delete_single_file_asset(uri: str):
+    bucket, key = split_s3_path(uri)
+    delete_s3_objects(bucket, key)

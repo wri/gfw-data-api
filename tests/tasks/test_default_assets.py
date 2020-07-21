@@ -689,6 +689,16 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
     print(resp)
     assert resp["KeyCount"] == 8
 
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/assets?asset_type=ndjson"
+    )
+    assert response.status_code == 200
+    assert len(response.json()["data"]) == 1
+    asset_id = response.json()["data"][0]["asset_id"]
+
+    response = await async_client.delete(f"/asset/{asset_id}")
+    assert response.status_code == 200
+
 
 def _assert_fields(field_list, field_schema):
     count = 0
