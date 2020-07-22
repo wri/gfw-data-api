@@ -105,7 +105,7 @@ async def static_vector_tile_cache_asset(
         "-t",
         creation_options.tile_strategy,
         "-I",
-        "default",
+        creation_options.implementation,
     ]
 
     create_vector_tile_cache = TileCacheJob(
