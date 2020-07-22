@@ -129,7 +129,7 @@ async def delete_asset(
             delete_static_vector_tile_cache_assets,
             row.dataset,
             row.version,
-            row.creation_options.implementation,
+            row.creation_options["implementation"],
         )
 
     elif row.asset_type == AssetType.static_raster_tile_cache:
@@ -137,7 +137,7 @@ async def delete_asset(
             delete_static_raster_tile_cache_assets,
             row.dataset,
             row.version,
-            row.creation_options.implementation,
+            row.creation_options["implementation"],
         )
 
     elif row.asset_type == AssetType.raster_tile_set:
