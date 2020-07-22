@@ -65,8 +65,8 @@ def get_asset_uri(
         AssetType.geopackage: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/epsg:4326/{dataset}_{version}{dataset}.gpkg",
         AssetType.csv: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/text/{dataset}_{version}.csv",
         AssetType.tsv: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/text/{dataset}_{version}.tsv",
-        AssetType.geo_database_table: f"{API_URL}/{dataset}/{version}/query",
-        AssetType.database_table: f"{API_URL}/{dataset}/{version}/query",
+        AssetType.geo_database_table: f"{API_URL}/dataset/{dataset}/{version}/query",
+        AssetType.database_table: f"{API_URL}/dataset/{dataset}/{version}/query",
         AssetType.raster_tile_set: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/{srid}/{size}/{col}/{value}/geotiff/{{tile_id}}.tif",
     }
 

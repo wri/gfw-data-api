@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..enum.versions import VersionStatus
 from .base import Base
@@ -21,14 +21,29 @@ class Version(Base):
 
 
 class VersionCreateIn(BaseModel):
-    metadata: VersionMetadata
-    creation_options: SourceCreationOptions
+    metadata: Optional[VersionMetadata] = Field(
+        None,
+        description="Version metadata. Version will inherit metadata from dataset. "
+        "You will only need to add fields which you want to add or overwrite.",
+    )
+    creation_options: SourceCreationOptions = Field(
+        ...,
+        description="Creation option to specify how default asset for version should be created.",
+    )
 
 
 class VersionUpdateIn(BaseModel):
-    is_latest: Optional[bool]
-    metadata: Optional[VersionMetadata]
-    # creation_options: Optional[SourceCreationOptions]
+    is_latest: Optional[bool] = Field(
+        None,
+        description="Indicate if the current version should be tagged `latest`. "
+        "This will cause redirects from {dataset}/latest to {dataset}/{current_version}."
+        "When tagging a version to `latest` any other version currently tagged `latest` will be untagged.",
+    )
+    metadata: Optional[VersionMetadata] = Field(
+        None,
+        description="Version metadata. Version will inherit metadata from dataset. "
+        "You will only need to add fields which you want to add or overwrite.",
+    )
 
 
 class VersionAppendIn(BaseModel):
