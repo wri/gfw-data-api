@@ -29,12 +29,14 @@ async def get_features(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
-    lat: float = Query(None, title="Latitude", ge=-90, le=90),
-    lng: float = Query(None, title="Longitude", ge=-180, le=180),
-    z: int = Query(None, title="Zoom level", ge=0, le=22),
+    lat: float = Query(..., title="Latitude", ge=-90, le=90),
+    lng: float = Query(..., title="Longitude", ge=-180, le=180),
+    z: int = Query(..., title="Zoom level", ge=0, le=22),
 ):
-    """Retrieve list of features Add optional spatial filter using a point
-    buffer (for info tool)."""
+    """Retrieve list of features for a given spatial location.
+
+    Search radius various decreases for higher zoom levels.
+    """
 
     try:
         feature_rows = await get_features_by_location(dataset, version, lat, lng, z)

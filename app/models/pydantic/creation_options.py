@@ -14,7 +14,7 @@ from ..enum.creation_options import (
     VectorDrivers,
 )
 from ..enum.pg_types import PGType
-from ..enum.sources import SourceType
+from ..enum.sources import SourceType, TableSourceType, VectorSourceType
 from .responses import Response
 
 COLUMN_REGEX = r"^[a-z][a-zA-Z0-9_-]{2,}$"
@@ -74,11 +74,15 @@ class FieldType(BaseModel):
 
 
 class VectorSourceCreationOptions(BaseModel):
+    source_type: VectorSourceType = Field(..., description="Source type of input file.")
     source_driver: VectorDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
     )
-    source_type: SourceType = SourceType.vector
-    source_uri: Optional[List[str]] = None
+    source_uri: List[str] = Field(
+        ...,
+        description="List of input files. Vector source layers can only have one list item. "
+        "Must be a s3:// url.",
+    )
     layers: Optional[List[str]] = Field(
         None, description="List of input layers. Only required for .gdb and .gpkg."
     )
@@ -103,9 +107,11 @@ class VectorSourceCreationOptions(BaseModel):
 
 
 class TableSourceCreationOptions(BaseModel):
-    source_driver: TableDrivers = Field(..., description="Driver of input file.")
-    source_type: SourceType = SourceType.table
-    source_uri: Optional[List[str]] = None
+    source_type: TableSourceType
+    source_driver: TableDrivers
+    source_uri: List[str] = Field(
+        ..., description="List of input files. Must be a list of s3:// urls"
+    )
     has_header: bool = Field(True, description="Input file has header. Must be true")
     delimiter: Delimiters = Field(..., description="Delimiter used in input file")
 

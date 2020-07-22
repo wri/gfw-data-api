@@ -18,15 +18,13 @@ class Asset(Base):
     asset_uri: str
     status: AssetStatus = AssetStatus.pending
     is_managed: bool
-    # creation_options: CreationOptions
     metadata: AssetMetadata
-    # change_log: List[ChangeLog]
 
 
 class AssetCreateIn(BaseModel):
     asset_type: AssetType
     asset_uri: Optional[str]
-    is_managed: bool
+    is_managed: bool = True
     creation_options: CreationOptions
     metadata: Optional[AssetMetadata]
 
@@ -40,7 +38,7 @@ class AssetTaskCreate(BaseModel):
     dataset: str
     version: str
     asset_uri: Optional[str]
-    is_managed: bool
+    is_managed: bool = True
     is_default: bool = False
     creation_options: CreationOptions
     metadata: Optional[AssetMetadata]
