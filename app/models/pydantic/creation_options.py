@@ -167,6 +167,12 @@ class StaticVectorTileCacheCreationOptions(BaseModel):
         description="`discontinuous` corresponds to `drop-densest-as-needed` and"
         "`continuous` corresponds to `coalesce-densest-as-needed`",
     )
+    implementation: str = Field(
+        "default",
+        description="Name space to use for static tile cache. "
+        "This will be part of the URI and will "
+        "allow to create multiple static tile caches per version,",
+    )
 
 
 class NdjsonCreationOptions(BaseModel):
