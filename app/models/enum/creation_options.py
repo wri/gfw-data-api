@@ -2,11 +2,13 @@ from enum import Enum
 
 
 class TableDrivers(str, Enum):
+    __doc__ = "Driver of input file."
     text = "text"
     # json = "json" # TODO: need to implement this eventually
 
 
 class VectorDrivers(str, Enum):
+    __doc__ = "Vector source driver of input file"
     csv = "CSV"
     esrijson = "ESRIJSON"
     file_gdb = "FileGDB"
@@ -17,6 +19,7 @@ class VectorDrivers(str, Enum):
 
 
 class Delimiters(str, Enum):
+    __doc__ = "Delimiter used to separate columns in input text file"
     comma = ","
     tab = "\t"
     pipe = "|"
@@ -24,12 +27,18 @@ class Delimiters(str, Enum):
 
 
 class IndexType(str, Enum):
+    __doc__ = "Index type"
     gist = "gist"
     btree = "btree"
     hash = "hash"
 
 
 class TileStrategy(str, Enum):
+    __doc__ = (
+        "Tile strategy for generating vector tiles. "
+        "Use `continuous` when working with are mostly adjacent polygon files, "
+        "use `discontinuous` when working with polygons feature which are mostly not adjacent"
+    )
     continuous = "continuous"
     discontinuous = "discontinuous"
 
