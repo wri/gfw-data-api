@@ -10,7 +10,6 @@ from ..models.pydantic.creation_options import (
     creation_option_factory,
 )
 from ..models.pydantic.jobs import GdalPythonExportJob, TileCacheJob
-from ..models.pydantic.metadata import asset_metadata_factory
 from ..settings.globals import TILE_CACHE_JOB_QUEUE
 from ..utils.path import get_asset_uri
 from . import callback_constructor, reader_secrets, report_vars
@@ -30,26 +29,22 @@ async def static_vector_tile_cache_asset(
         AssetType.static_vector_tile_cache, input_data["creation_options"]
     )
 
+    field_attributes: List[Dict[str, Any]] = await _get_field_attributes(
+        dataset, version, creation_options
+    )
+
     await assets.update_asset(
         asset_id,
         metadata={
             "min_zoom": creation_options.min_zoom,
             "max_zoom": creation_options.max_zoom,
         },
+        fields=field_attributes,
     )
 
     ############################
     # Create NDJSON asset as side effect
     ############################
-
-    field_attributes: List[Dict[str, Any]] = await _get_field_attributes(
-        dataset, version, creation_options
-    )
-
-    _metadata = input_data.get("metadata", {})
-    _metadata["fields"] = field_attributes
-
-    metadata = asset_metadata_factory(AssetType.ndjson, _metadata)
 
     ndjson_uri = get_asset_uri(dataset, version, AssetType.ndjson)
 
@@ -58,7 +53,7 @@ async def static_vector_tile_cache_asset(
         version,
         asset_type=AssetType.ndjson,
         asset_uri=ndjson_uri,
-        metadata=metadata,
+        fields=field_attributes,
     )
 
     ############################
@@ -142,12 +137,10 @@ async def _get_field_attributes(
     field_attributes: List[Dict[str, Any]] = [
         field for field in fields if field["is_feature_info"]
     ]
-
     if creation_options.field_attributes:
         field_attributes = [
             field
             for field in field_attributes
             if field["field_name"] in creation_options.field_attributes
         ]
-
     return field_attributes
