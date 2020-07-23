@@ -47,7 +47,7 @@ class GdalPythonImportJob(Job):
     job_queue = AURORA_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
     vcpus = 1
-    memory = 96000
+    memory = 5000
     attempts = 1
     attempt_duration_seconds = 7500
 
@@ -59,7 +59,7 @@ class GdalPythonExportJob(Job):
     job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
     vcpus = 1
-    memory = 2500
+    memory = 15000
     attempts = 1
     attempt_duration_seconds = 7500
 
