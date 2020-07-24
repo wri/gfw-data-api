@@ -10,7 +10,7 @@ from ..models.pydantic.creation_options import (
     TableSourceCreationOptions,
 )
 from ..models.pydantic.jobs import Job, PostgresqlClientJob
-from ..settings.globals import CHUNK_SIZE
+from ..settings.globals import AURORA_JOB_QUEUE_FAST, CHUNK_SIZE
 from ..tasks import Callback, callback_constructor, writer_secrets
 from ..tasks.batch import BATCH_DEPENDENCY_LIMIT, execute
 
@@ -234,6 +234,7 @@ async def append_table_source_asset(
 
         load_data_jobs.append(
             PostgresqlClientJob(
+                job_queue=AURORA_JOB_QUEUE_FAST,
                 job_name=f"load_data_{i}",
                 command=command,
                 environment=job_env,
@@ -247,7 +248,8 @@ async def append_table_source_asset(
     if creation_options.latitude and creation_options.longitude:
         geometry_jobs.append(
             PostgresqlClientJob(
-                job_name="add_point_geometry",
+                job_queue=AURORA_JOB_QUEUE_FAST,
+                job_name="update_point_geometry",
                 command=[
                     "update_point_geometry.sh",
                     "-d",

@@ -61,6 +61,7 @@ data "template_file" "container_definition" {
 
     aurora_job_definition     = module.batch_job_queues.aurora_job_definition
     aurora_job_queue          = module.batch_job_queues.aurora_job_queue
+    aurora_job_queue_fast     = module.batch_job_queues.aurora_job_queue_fast
     data_lake_job_definition  = module.batch_job_queues.data_lake_job_definition
     data_lake_job_queue       = module.batch_job_queues.data_lake_job_queue
     tile_cache_job_definition = module.batch_job_queues.tile_cache_job_definition
@@ -79,6 +80,7 @@ data "template_file" "task_batch_policy" {
   vars = {
     aurora_job_definition_arn     = module.batch_job_queues.aurora_job_definition
     aurora_job_queue_arn          = module.batch_job_queues.aurora_job_queue
+    aurora_job_queue_fast_arn     = module.batch_job_queues.aurora_job_queue_fast
     data_lake_job_definition_arn  = module.batch_job_queues.data_lake_job_definition
     data_lake_job_queue_arn       = module.batch_job_queues.data_lake_job_queue
     tile_cache_job_definition_arn = module.batch_job_queues.tile_cache_job_definition
