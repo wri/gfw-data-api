@@ -34,6 +34,7 @@ services:
       - TILE_CACHE_JOB_DEFINITION=tile_cache_jd
       - PIXETL_JOB_DEFINITION=pixetl_jd
       - AURORA_JOB_QUEUE=aurora_jq
+      - AURORA_JOB_QUEUE_FAST=aurora_fast_jq
       - DATA_LAKE_JOB_QUEUE=data_lake_jq
       - DATA_LAKE_BUCKET=data_lake_bucket
       - TILE_CACHE_BUCKET=tile_cache_bucket

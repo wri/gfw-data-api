@@ -16,6 +16,13 @@ resource "aws_batch_job_queue" "aurora" {
   depends_on           = [var.aurora_compute_environment_arn]
 }
 
+resource "aws_batch_job_queue" "aurora_fast" {
+  name                 = "${var.project}-aurora-job-queue_fast${var.name_suffix}"
+  state                = "ENABLED"
+  priority             = 10
+  compute_environments = [var.aurora_compute_environment_arn]
+  depends_on           = [var.aurora_compute_environment_arn]
+}
 
 resource "aws_batch_job_definition" "data_lake" {
   name                 = "${var.project}-data-lake${var.name_suffix}"
