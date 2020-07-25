@@ -14,6 +14,7 @@ from httpx import AsyncClient
 from app.routes import is_admin, is_service_account
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
+    AURORA_JOB_QUEUE_FAST,
     AWS_REGION,
     DATA_LAKE_BUCKET,
     DATA_LAKE_JOB_QUEUE,
@@ -93,6 +94,9 @@ def batch_client():
     pixetl_env = aws_mock.add_compute_environment("pixetl", subnet_id, sg_id, iam_arn)
 
     aws_mock.add_job_queue(AURORA_JOB_QUEUE, aurora_writer_env["computeEnvironmentArn"])
+    aws_mock.add_job_queue(
+        AURORA_JOB_QUEUE_FAST, aurora_writer_env["computeEnvironmentArn"]
+    )
     aws_mock.add_job_queue(DATA_LAKE_JOB_QUEUE, s3_writer_env["computeEnvironmentArn"])
     aws_mock.add_job_queue(TILE_CACHE_JOB_QUEUE, s3_writer_env["computeEnvironmentArn"])
     aws_mock.add_job_queue(PIXETL_JOB_QUEUE, pixetl_env["computeEnvironmentArn"])
