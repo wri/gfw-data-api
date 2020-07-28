@@ -109,56 +109,60 @@ async def delete_asset(
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    if row.is_default:
-        raise HTTPException(
-            status_code=409,
-            detail="Deletion failed. You cannot delete a default asset. "
-            "To delete a default asset you must delete the parent version.",
-        )
+    # only delete managed assets
+    if row.is_managed:
+        if row.is_default:
+            raise HTTPException(
+                status_code=409,
+                detail="Deletion failed. You cannot delete a default asset. "
+                "To delete a default asset you must delete the parent version.",
+            )
 
-    if row.asset_type == AssetType.dynamic_vector_tile_cache:
-        background_tasks.add_task(
-            delete_dynamic_vector_tile_cache_assets,
-            row.dataset,
-            row.version,
-            row.creation_options.implementation,
-        )
+        if row.asset_type == AssetType.dynamic_vector_tile_cache:
+            background_tasks.add_task(
+                delete_dynamic_vector_tile_cache_assets,
+                row.dataset,
+                row.version,
+                row.creation_options.implementation,
+            )
 
-    elif row.asset_type == AssetType.static_vector_tile_cache:
-        background_tasks.add_task(
-            delete_static_vector_tile_cache_assets,
-            row.dataset,
-            row.version,
-            row.creation_options["implementation"],
-        )
+        elif row.asset_type == AssetType.static_vector_tile_cache:
+            background_tasks.add_task(
+                delete_static_vector_tile_cache_assets,
+                row.dataset,
+                row.version,
+                row.creation_options["implementation"],
+            )
 
-    elif row.asset_type == AssetType.static_raster_tile_cache:
-        background_tasks.add_task(
-            delete_static_raster_tile_cache_assets,
-            row.dataset,
-            row.version,
-            row.creation_options["implementation"],
-        )
+        elif row.asset_type == AssetType.static_raster_tile_cache:
+            background_tasks.add_task(
+                delete_static_raster_tile_cache_assets,
+                row.dataset,
+                row.version,
+                row.creation_options["implementation"],
+            )
 
-    elif row.asset_type == AssetType.raster_tile_set:
-        background_tasks.add_task(
-            delete_raster_tileset_assets,
-            row.dataset,
-            row.version,
-            row.creation_options.srid,
-            row.creation_options.size,
-            row.creation_options.col,
-            row.creation_options.value,
-        )
-    elif is_database_asset(row.asset_type):
-        background_tasks.add_task(delete_database_table_asset, row.dataset, row.version)
-    elif is_single_file_asset(row.asset_type):
-        background_tasks.add_task(delete_single_file_asset, row.asset_uri)
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot delete asset of type {row.asset_type}. Not implemented.",
-        )
+        elif row.asset_type == AssetType.raster_tile_set:
+            background_tasks.add_task(
+                delete_raster_tileset_assets,
+                row.dataset,
+                row.version,
+                row.creation_options.srid,
+                row.creation_options.size,
+                row.creation_options.col,
+                row.creation_options.value,
+            )
+        elif is_database_asset(row.asset_type):
+            background_tasks.add_task(
+                delete_database_table_asset, row.dataset, row.version
+            )
+        elif is_single_file_asset(row.asset_type):
+            background_tasks.add_task(delete_single_file_asset, row.asset_uri)
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot delete asset of type {row.asset_type}. Not implemented.",
+            )
 
     row = await assets.delete_asset(asset_id)
 
