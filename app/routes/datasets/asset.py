@@ -8,8 +8,7 @@ assets are only loosely linked to a dataset version and users must
 cannot rely on full integrity. We can only assume that unmanaged are
 based on the same version and do not know the processing history.
 """
-
-
+from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
@@ -17,6 +16,7 @@ from fastapi.responses import ORJSONResponse
 
 from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
+from ...models.enum.change_log import ChangeLogStatus
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.pydantic.assets import (
     AssetCreateIn,
@@ -24,6 +24,7 @@ from ...models.pydantic.assets import (
     AssetsResponse,
     AssetType,
 )
+from ...models.pydantic.change_log import ChangeLog
 from ...routes import dataset_dependency, is_admin, version_dependency
 from ...tasks.assets import put_asset
 from ...utils.path import get_asset_uri
@@ -107,8 +108,26 @@ async def add_new_asset(
     except NotImplementedError as e:
         raise HTTPException(status_code=501, detail=str(e))
 
-    background_tasks.add_task(
-        put_asset, row.asset_type, row.asset_id, dataset, version, input_data
-    )
+    # Run asset pipeline in background task for managed assets
+    if request.is_managed:
+        background_tasks.add_task(
+            put_asset, row.asset_type, row.asset_id, dataset, version, input_data
+        )
+    # Unmanaged assets are simply added and NOT validated.
+    # TODO: come up with a plan on how to validate the different unmanaged assets on registration
+    else:
+        log = ChangeLog(
+            date_time=datetime.now(),
+            status=ChangeLogStatus.success,
+            message=f"Created unmanaged asset {row.asset_id} with URI {row.asset_uri}.",
+        )
+        row = await assets.update_asset(
+            row.asset_id, status="saved", change_log=[log.dict(by_alias=True)]
+        )
+        await versions.update_version(
+            dataset, version, change_log=[log.dict(by_alias=True)]
+        )
+        response.status_code = 201
+
     response.headers["Location"] = f"/{dataset}/{version}/asset/{row.asset_id}"
     return await asset_response(row)
