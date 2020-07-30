@@ -87,6 +87,7 @@ async def query_dataset(
     _only_one_from_table(parsed)
     _no_subqueries(parsed)
     _no_forbidden_functions(parsed)
+    _no_forbidden_value_functions(parsed)
 
     # always overwrite the table name with the current dataset version name, to make sure no other table is queried
     parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
