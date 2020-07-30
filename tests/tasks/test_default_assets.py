@@ -123,6 +123,11 @@ async def test_vector_source_asset(batch_client, async_client):
         assert response.json()["data"][0]["count"] == 0
 
         response = await async_client.get(
+            f"/dataset/{dataset}/{version}/query?sql=select current_catalog from mytable;"
+        )
+        assert response.status_code == 400
+
+        response = await async_client.get(
             f"/dataset/{dataset}/{version}/query?sql=select version() from mytable;"
         )
         assert response.status_code == 400

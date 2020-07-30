@@ -1,11 +1,8 @@
 # https://www.postgresql.org/docs/11/functions-info.html#FUNCTIONS-INFO-SESSION-TABLE
 session_information_functions = [
-    "current_catalog",
     "current_query",
-    "current_role",
     "current_schema",
     "current_schemas",
-    "current_user",
     "inet_client_addr",
     "inet_client_port",
     "inet_server_addr",
@@ -22,9 +19,16 @@ session_information_functions = [
     "pg_postmaster_start_time",
     "pg_safe_snapshot_blocking_pids",
     "pg_trigger_depth",
+    "version",
+]
+
+session_information_value_functions = [
+    "current_catalog",
+    "current_role",
+    "current_schema",
+    "current_user",
     "session_user",
     "user",
-    "version",
 ]
 
 # https://www.postgresql.org/docs/11/functions-info.html#FUNCTIONS-INFO-ACCESS-TABLE
@@ -87,7 +91,7 @@ system_catalog_information_functions = [
     "pg_tablespace_databases",
     "pg_tablespace_location",
     "pg_typeof",
-    "collation",
+    "pg_collation_for",
     "to_regclass",
     "to_regproc",
     "to_regprocedure",

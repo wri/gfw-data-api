@@ -40,6 +40,7 @@ from ...models.enum.pg_sys_functions import (
     object_information_and_addressing_functions,
     schema_visibility_inquiry_functions,
     session_information_functions,
+    session_information_value_functions,
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
@@ -150,7 +151,8 @@ def _no_subqueries(parsed: List[Dict[str, Any]]) -> None:
 
 
 def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
-    functions = _get_functions(parsed)
+    functions = _get_item_value("FuncCall", parsed)
+
     forbidden_function_list = [
         configuration_settings_functions,
         server_signaling_functions,
@@ -178,38 +180,51 @@ def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
     ]
 
     for f in functions:
-        function_name = f["funcname"][0]["String"]["str"]
+        function_names = f["funcname"]
+        for fn in function_names:
+            function_name = fn["String"]["str"]
 
-        # block functions which start with `pg_` or `_`
-        if function_name[:3] == "pg_" or function_name[:1] == "_":
-            raise HTTPException(
-                status_code=400,
-                detail="Use of admin, system or private functions is not allowed.",
-            )
-
-        # Also block any other banished functions
-        for forbidden_functions in forbidden_function_list:
-            if function_name in forbidden_functions:
+            # block functions which start with `pg_` or `_`
+            if function_name[:3] == "pg_" or function_name[:1] == "_":
                 raise HTTPException(
                     status_code=400,
                     detail="Use of admin, system or private functions is not allowed.",
                 )
 
+            # Also block any other banished functions
+            for forbidden_functions in forbidden_function_list:
+                if function_name in forbidden_functions:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Use of admin, system or private functions is not allowed.",
+                    )
 
-def _get_functions(parsed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+
+def _no_forbidden_value_functions(parsed: List[Dict[str, Any]]) -> None:
+    value_functions = _get_item_value("SQLValueFunction", parsed)
+    if value_functions:
+        raise HTTPException(
+            status_code=400, detail="Use of sql value functions is not allowed.",
+        )
+
+
+def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Return all functions in an AST."""
     # loop through statement recursively and yield all functions
-    def find_functions(d):
+    def walk_dict(d):
         for k, v in d.items():
-            if k == "FuncCall":
+            if k == key:
                 yield v
             if isinstance(v, dict):
-                yield from find_functions(v)
+                yield from walk_dict(v)
             elif isinstance(v, list):
                 for _v in v:
-                    yield from find_functions(_v)
+                    yield from walk_dict(_v)
 
-    return list(find_functions(parsed[0]))
+    values: List[Dict[str, Any]] = list()
+    for p in parsed:
+        values += list(walk_dict(p))
+    return values
 
 
 async def _add_geostore_filter(parsed_sql, geostore_id: UUID, geostore_origin: str):
