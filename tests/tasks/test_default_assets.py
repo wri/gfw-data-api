@@ -122,6 +122,51 @@ async def test_vector_source_asset(batch_client, async_client):
         assert len(response.json()["data"]) == 1
         assert response.json()["data"][0]["count"] == 0
 
+        response = await async_client.get(
+            f"/dataset/{dataset}/{version}/query?sql=select version() from mytable;"
+        )
+        assert response.status_code == 400
+
+        response = await async_client.get(
+            f"/dataset/{dataset}/{version}/query?sql=select has_any_column_privilege() from mytable;"
+        )
+        assert response.status_code == 400
+
+        response = await async_client.get(
+            f"/dataset/{dataset}/{version}/query?sql=select format_type() from mytable;"
+        )
+        assert response.status_code == 400
+
+        response = await async_client.get(
+            f"/dataset/{dataset}/{version}/query?sql=select col_description() from mytable;"
+        )
+        assert response.status_code == 400
+
+        response = await async_client.get(
+            f"/dataset/{dataset}/{version}/query?sql=select txid_current() from mytable;"
+        )
+        assert response.status_code == 400
+
+        response = await async_client.get(
+            f"/dataset/{dataset}/{version}/query?sql=select current_setting() from mytable;"
+        )
+        assert response.status_code == 400
+
+        response = await async_client.get(
+            f"/dataset/{dataset}/{version}/query?sql=select pg_cancel_backend() from mytable;"
+        )
+        assert response.status_code == 400
+
+        response = await async_client.get(
+            f"/dataset/{dataset}/{version}/query?sql=select brin_summarize_new_values() from mytable;"
+        )
+        assert response.status_code == 400
+
+        response = await async_client.get(
+            f"/dataset/{dataset}/{version}/query?sql=select doesnotexist() from mytable;"
+        )
+        assert response.status_code == 400
+
         # Stats
         # TODO: We currently don't compute stats, will need update this test once feature is available
 
