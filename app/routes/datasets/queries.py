@@ -12,7 +12,7 @@ from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
 
-from ...application import ContextEngine, db
+from ...application import db
 from ...crud import versions
 from ...errors import BadResponseError, InvalidResponseError, RecordNotFoundError
 from ...models.enum.geostore import GeostoreOrigin
@@ -40,7 +40,6 @@ from ...models.enum.pg_sys_functions import (
     object_information_and_addressing_functions,
     schema_visibility_inquiry_functions,
     session_information_functions,
-    session_information_value_functions,
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
