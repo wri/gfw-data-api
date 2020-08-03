@@ -1,0 +1,1 @@
+{"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[10.0, 10.0], [20.0, 10.0], [20.0, 0.0], [10.0, 0.0], [10.0, 10.0]]]}, "properties": {"name": "/vsis3/gfw-data-lake-test/whrc_aboveground_biomass_stock_2000/v201911/raster/epsg-4326/10/40000/Mg_ha-1/10N_010E.tif"}}]}
