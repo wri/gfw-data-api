@@ -4,7 +4,7 @@ FROM globalforestwatch/data-api-tippecanoe:1.1.2
 COPY ./batch/scripts/ /opt/scripts/
 COPY ./batch/python/ /opt/python/
 
-# make sure scripts are excecutable
+# make sure scripts are executable
 RUN chmod +x -R /opt/scripts/
 RUN chmod +x -R /opt/python/
 
