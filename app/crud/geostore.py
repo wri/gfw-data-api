@@ -79,7 +79,7 @@ async def create_user_area(**data) -> GeostoreHydrated:
     sql = sql.bindparams(**bind_vals)
     sanitized_json = await db.scalar(sql)
 
-    bbox = await db.scalar(
+    bbox: List[float] = await db.scalar(
         f"""
         SELECT ARRAY[
             ST_XMin(ST_Envelope(ST_GeomFromGeoJSON('{sanitized_json}')::geometry)),
@@ -90,7 +90,7 @@ async def create_user_area(**data) -> GeostoreHydrated:
         """
     )
 
-    area = await db.scalar(
+    area: float = await db.scalar(
         f"""
         SELECT ST_Area(
             ST_GeomFromGeoJSON(
@@ -104,7 +104,7 @@ async def create_user_area(**data) -> GeostoreHydrated:
     # We could easily do this in Python but we want PostgreSQL's behavior
     # (if different) to be the source of truth.
     # geo_id = UUID(str(hashlib.md5(feature_json.encode("UTF-8")).hexdigest()))
-    geo_id = await db.scalar(f"SELECT MD5('{sanitized_json}')::uuid;")
+    geo_id: UUID = await db.scalar(f"SELECT MD5('{sanitized_json}')::uuid;")
 
     try:
         user_area = await ORMUserArea.create(
