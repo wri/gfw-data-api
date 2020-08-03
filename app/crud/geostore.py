@@ -71,11 +71,13 @@ async def create_user_area(**data) -> GeostoreHydrated:
 
     # Sanitize the JSON by doing a round-trip with Postgres. We want the sort
     # order, whitespace, etc. to match what would be saved via other means
-    # (in particular, via add_gfw_fields.sh)
+    # (in particular, via batch/scripts/add_gfw_fields.sh)
     geometry_str = json.dumps(data["features"][0]["geometry"])
-    sanitized_json = await db.scalar(
-        f"SELECT ST_AsGeoJSON(ST_GeomFromGeoJSON('{geometry_str}')::geometry);"
-    )
+
+    sql = db.text("SELECT ST_AsGeoJSON(ST_GeomFromGeoJSON(:geo)::geometry);")
+    bind_vals = {"geo": geometry_str}
+    sql = sql.bindparams(**bind_vals)
+    sanitized_json = await db.scalar(sql)
 
     bbox = await db.scalar(
         f"""
