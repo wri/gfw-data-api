@@ -198,6 +198,7 @@ def copy_fixtures():
     s3_client.create_bucket(Bucket=BUCKET)
     s3_client.create_bucket(Bucket=DATA_LAKE_BUCKET)
     s3_client.create_bucket(Bucket=TILE_CACHE_BUCKET)
+    s3_client.upload_file(GEOJSON_PATH, TILE_CACHE_BUCKET, "tiles.geojson")  # FIXME
     s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
     s3_client.upload_file(SHP_PATH, BUCKET, SHP_NAME)

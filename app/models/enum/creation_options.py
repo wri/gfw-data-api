@@ -1,6 +1,11 @@
 from enum import Enum
 
 
+class RasterDrivers(str, Enum):
+    __doc__ = "Raster source driver of input file"
+    geojson = "GeoJSON"
+
+
 class TableDrivers(str, Enum):
     __doc__ = "Driver of input file."
     text = "text"

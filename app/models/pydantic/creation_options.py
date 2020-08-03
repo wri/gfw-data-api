@@ -9,12 +9,18 @@ from ..enum.creation_options import (
     Delimiters,
     IndexType,
     PartitionType,
+    RasterDrivers,
     TableDrivers,
     TileStrategy,
     VectorDrivers,
 )
 from ..enum.pg_types import PGType
-from ..enum.sources import SourceType, TableSourceType, VectorSourceType
+from ..enum.sources import (
+    RasterSourceType,
+    SourceType,
+    TableSourceType,
+    VectorSourceType,
+)
 from .responses import Response
 
 COLUMN_REGEX = r"^[a-z][a-zA-Z0-9_-]{2,}$"
@@ -71,6 +77,26 @@ class Partitions(BaseModel):
 class FieldType(BaseModel):
     field_name: str = Field(..., description="Name of field", regex=COLUMN_REGEX)
     field_type: PGType = Field(..., description="Type of field (PostgreSQL type).")
+
+
+class RasterSourceCreationOptions(BaseModel):
+    source_type: RasterSourceType = Field(..., description="Source type of input file.")
+    source_driver: RasterDrivers = Field(
+        ..., description="Driver of source file. Must be an OGR driver"
+    )
+    source_uri: List[str] = Field(
+        ..., description="List of input files. Must be a s3:// url.",
+    )
+    # FIXME: Make these enums. Any way to do without duplicating code from pixETL?
+    pixel_meaning: str
+    data_type: str  # Make an enum from dict in data_type.py
+    nbits: Optional[int]
+    no_data: Optional[int]
+    grid: str  # Make an enum?
+    rasterize_method: Optional[str]  # Optional[RasterizeMethod]
+    resampling: Optional[str]  # Optional[ResamplingMethod]
+    calc: Optional[str]
+    order: Optional[str]  # Optional[Order]
 
 
 class VectorSourceCreationOptions(BaseModel):
@@ -179,7 +205,9 @@ class NdjsonCreationOptions(BaseModel):
     pass
 
 
-SourceCreationOptions = Union[TableSourceCreationOptions, VectorSourceCreationOptions]
+SourceCreationOptions = Union[
+    RasterSourceCreationOptions, TableSourceCreationOptions, VectorSourceCreationOptions
+]
 
 OtherCreationOptions = Union[
     StaticVectorTileCacheCreationOptions,
@@ -202,7 +230,7 @@ def creation_option_factory(
     source_creation_option_factory: Dict[str, Type[SourceCreationOptions]] = {
         SourceType.vector: VectorSourceCreationOptions,
         SourceType.table: TableSourceCreationOptions,
-        # SourceType.raster: RasterSourceCreationOptions
+        SourceType.raster: RasterSourceCreationOptions,
     }
 
     creation_options_factory: Dict[str, Type[OtherCreationOptions]] = {

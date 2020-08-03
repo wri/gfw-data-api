@@ -4,9 +4,9 @@ from unittest.mock import patch
 import pytest
 
 from app.models.pydantic.metadata import VersionMetadata
-from tests import BUCKET, SHP_NAME
+from tests import BUCKET, SHP_NAME, TILE_CACHE_BUCKET
 from tests.tasks import MockCloudfrontClient
-from tests.utils import create_dataset, create_default_asset, create_version
+from tests.utils import create_dataset, create_default_asset
 
 payload = {
     "metadata": {
@@ -74,7 +74,7 @@ async def test_versions(mocked_cloudfront_client, async_client):
     assert version_data["data"]["version"] == "v1.1.1"
 
     ###############
-    # Lastest Tag
+    # Latest Tag
     ###############
 
     response = await async_client.patch(
@@ -389,3 +389,134 @@ async def test_put_latest(async_client):
         response.json()["message"]
         == "You must list version name explicitly for this operation."
     )
+
+
+@pytest.mark.asyncio
+@patch("app.tasks.aws_tasks.get_cloudfront_client")
+async def test_version_put_raster(mocked_cloudfront_client, async_client):
+    """Test version path operations.
+
+    We patch/ disable background tasks here, as they run asynchronously.
+    Such tasks are tested separately in a different module
+    """
+    dataset = "test"
+    version = "v1.1.1"
+
+    raster_version_payload = {
+        "is_latest": True,
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [f"s3://{TILE_CACHE_BUCKET}/tiles.geojson"],  # FIXME
+            "source_driver": "GeoJSON",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "10/40000",
+        },
+        "metadata": payload["metadata"],
+    }
+
+    mocked_cloudfront_client.return_value = MockCloudfrontClient()
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=False,
+    )
+
+    # response = await async_client.get(f"/dataset/{dataset}/{version}")
+    # version_data = response.json()
+    #
+    # assert version_data["data"]["is_latest"] is False
+    # assert version_data["data"]["dataset"] == dataset
+    # assert version_data["data"]["version"] == version
+    # assert version_data["data"]["metadata"] == VersionMetadata(**payload["metadata"])
+    # assert version_data["data"]["version"] == "v1.1.1"
+    #
+    # ###############
+    # # Latest Tag
+    # ###############
+    #
+    # response = await async_client.patch(
+    #     f"/dataset/{dataset}/{version}", json={"is_latest": True}
+    # )
+    # print(response.json())
+    # assert response.status_code == 200
+    #
+    # # Check if the latest endpoint redirects us to v1.1.1
+    # response = await async_client.get(
+    #     f"/dataset/{dataset}/latest?test=test&test1=test1"
+    # )
+    # assert response.json()["data"]["version"] == "v1.1.1"
+    #
+    # ##################################################
+    # # additional attributes coming from default asset
+    # ##################################################
+    #
+    # # Creation Options
+    #
+    # version_creation_options = {
+    #     "source_driver": "ESRI Shapefile",
+    #     "source_type": "vector",
+    #     "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
+    #     "layers": None,
+    #     "indices": [
+    #         {"column_name": "geom", "index_type": "gist"},
+    #         {"column_name": "geom_wm", "index_type": "gist"},
+    #         {"column_name": "gfw_geostore_id", "index_type": "hash"},
+    #     ],
+    #     "create_dynamic_vector_tile_cache": True,
+    #     "add_to_geostore": True,
+    # }
+    #
+    # response = await async_client.get(f"/dataset/{dataset}/{version}/creation_options")
+    # assert response.status_code == 200
+    # assert response.json()["data"] == version_creation_options
+    #
+    # # Change Log
+    #
+    # response = await async_client.get(f"/dataset/{dataset}/{version}/change_log")
+    # assert response.status_code == 200
+    # assert len(response.json()["data"]) == 1
+    #
+    # assert mocked_cloudfront_client.called
+    #
+    # # Query
+    #
+    # response = await async_client.get(
+    #     f"/dataset/{dataset}/{version}/query?sql=SELECT%20%2A%20from%20version%3B%20DELETE%20FROM%20version%3B"
+    # )
+    # print(response.json())
+    # assert response.status_code == 400
+    # assert response.json()["message"] == "Must use exactly one SQL statement."
+    #
+    # response = await async_client.get(
+    #     f"/dataset/{dataset}/{version}/query?sql=DELETE FROM version;"
+    # )
+    # print(response.json())
+    # assert response.status_code == 400
+    # assert response.json()["message"] == "Must use SELECT statements only."
+    #
+    # response = await async_client.get(
+    #     f"/dataset/{dataset}/{version}/query?sql=WITH t as (select 1) SELECT * FROM version;"
+    # )
+    # print(response.json())
+    # assert response.status_code == 400
+    # assert response.json()["message"] == "Must not have WITH clause."
+    #
+    # response = await async_client.get(
+    #     f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM version, version2;"
+    # )
+    # print(response.json())
+    # assert response.status_code == 400
+    # assert response.json()["message"] == "Must list exactly one table in FROM clause."
+    #
+    # response = await async_client.get(
+    #     f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM (select * from a) as b;"
+    # )
+    # print(response.json())
+    # assert response.status_code == 400
+    # assert response.json()["message"] == "Must not use sub queries."
+    #
+    # assert mocked_cloudfront_client.called
