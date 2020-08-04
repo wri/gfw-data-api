@@ -87,7 +87,7 @@ class RasterSourceCreationOptions(BaseModel):
     source_uri: List[str] = Field(
         ..., description="List of input files. Must be a s3:// url.",
     )
-    # FIXME: Make these enums. Any way to do without duplicating code from pixETL?
+    # FIXME: Make these enums. Any way to do so without duplicating code from pixETL?
     pixel_meaning: str
     data_type: str  # Make an enum from dict in data_type.py
     nbits: Optional[int]
@@ -97,6 +97,7 @@ class RasterSourceCreationOptions(BaseModel):
     resampling: Optional[str]  # Optional[ResamplingMethod]
     calc: Optional[str]
     order: Optional[str]  # Optional[Order]
+    subset: Optional[str]
 
 
 class VectorSourceCreationOptions(BaseModel):

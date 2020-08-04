@@ -131,6 +131,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      --subset)
+      SUBSET="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -t|--tile_strategy)
       TILE_STRATEGY="$2"
       shift # past argument

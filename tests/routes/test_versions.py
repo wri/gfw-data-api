@@ -422,7 +422,7 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
         version,
         version_payload=raster_version_payload,
         async_client=async_client,
-        execute_batch_jobs=False,
+        execute_batch_jobs=True,
     )
 
     # response = await async_client.get(f"/dataset/{dataset}/{version}")
