@@ -52,8 +52,8 @@ async def raster_source_asset(
         json.dumps(jsonable_encoder(creation_options)),
     ]
 
-    if creation_options.subset:
-        command += ["--subset", creation_options.subset]
+    if creation_options.get("subset"):
+        command += ["--subset", creation_options["subset"]]
 
     create_raster_tile_set_job = PixETLJob(
         job_name="create_raster_tile_set",
