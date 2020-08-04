@@ -526,6 +526,18 @@ async def test_table_source_asset(batch_client, async_client):
 
     assert count == 101
 
+    # The table should now have no empty geometries
+    async with ContextEngine("READ"):
+        count = await db.scalar(
+            db.text(
+                f"""
+                    SELECT count(*)
+                        FROM "{dataset}"."{version}" WHERE geom IS NULL;"""
+            )
+        )
+
+    assert count == 0
+
 
 # @pytest.mark.skip(
 #     reason="Something weird going on with how I'm creating virtual CSVs. Fix later."
