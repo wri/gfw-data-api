@@ -1,25 +1,81 @@
 """Explore data entries for a given dataset version (vector and tabular data
 only) in a classic RESTful way."""
-from collections import defaultdict
-from functools import partial
-from typing import DefaultDict, Optional
 
+from functools import partial
+from typing import Any, Dict, List
+
+import pendulum
 import pyproj
 from asyncpg import UndefinedTableError
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
-from geojson import Point as geoPoint
 from geojson import Polygon as geoPolygon
 from shapely.geometry import Point
 from shapely.ops import transform
+from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import TextClause
 
 from ...application import db
 from ...crud import assets
+from ...models.orm.assets import Asset as ORMAsset
 from ...models.pydantic.features import FeaturesResponse
 from ...routes import dataset_dependency, version_dependency
 
 router = APIRouter()
+
+DATE_REGEX = "^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$"  # mypy: ignore
+VERSION_REGEX = r"^v\d{1,8}\.?\d{1,3}\.?\d{1,3}$|^latest$"
+
+
+def default_start():
+    now = pendulum.now()
+    return now.subtract(weeks=1).to_date_string()
+
+
+def default_end():
+    now = pendulum.now()
+    return now.to_date_string()
+
+
+@router.get(
+    "/nasa_viirs_fire_alerts/{version}/features",
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+)
+async def get_nasa_viirs_fire_alerts_features(
+    *,
+    version: str = Depends(version_dependency),
+    lat: float = Query(..., title="Latitude", ge=-90, le=90),
+    lng: float = Query(..., title="Longitude", ge=-180, le=180),
+    z: int = Query(..., title="Zoom level", ge=0, le=22),
+    start_date: str = Query(
+        default_start(),
+        regex=DATE_REGEX,
+        description="Only show alerts for given date and after",
+    ),
+    end_date: str = Query(
+        default_end(),
+        regex=DATE_REGEX,
+        description="Only show alerts until given date. End date cannot be in the future.",
+    ),
+):
+    """Retrieve list of features for a given spatial location.
+
+    Search radius various decreases for higher zoom levels.
+    """
+    dataset: str = "nasa_viirs_fire_alerts"
+    try:
+        feature_rows = await get_features_by_location_and_dates(
+            dataset, version, lat, lng, z, start_date, end_date
+        )
+    except UndefinedTableError:
+        raise HTTPException(
+            status_code=501,
+            detail=f"Endpoint not implement for {dataset}.{version}."
+            "Not a table or vector asset.",
+        )
+
+    return await _features_response(feature_rows)
 
 
 @router.get(
@@ -50,28 +106,37 @@ async def get_features(
     return await _features_response(feature_rows)
 
 
-async def get_features_by_location(dataset, version, lat, lng, zoom):
-    t = db.table(version)
-    t.schema = dataset
+async def get_features_by_location(dataset, version, lat, lng, zoom) -> List[Any]:
+    sql: Select = await _get_features_by_location_sql(dataset, version, lat, lng, zoom)
+    features = await db.all(sql)
 
-    geometry = geodesic_point_buffer(lat, lng, zoom)
+    return features
 
-    all_columns = await get_fields(dataset, version)
-    feature_columns = [
-        db.column(field["field_name"])
-        for field in all_columns
-        if field["is_feature_info"]
-    ]
 
-    sql = (
-        db.select(feature_columns)
-        .select_from(t)
-        .where(filter_intersects("geom", str(geometry)))
-    )
+async def get_features_by_location_and_dates(
+    dataset: str,
+    version: str,
+    lat: float,
+    lng: float,
+    zoom: int,
+    start_date: str,
+    end_date: str,
+) -> List[Any]:
+    sql: Select = await _get_features_by_location_sql(dataset, version, lat, lng, zoom)
+    sql = sql.where(date_filter("alert__date", start_date, end_date))
 
     features = await db.all(sql)
 
     return features
+
+
+def date_filter(date_field: str, start_date: str, end_date: str) -> TextClause:
+    f: TextClause = db.text(
+        f"{date_field} BETWEEN TO_TIMESTAMP(:start_date,'YYYY-MM-DD') AND TO_TIMESTAMP(:end_date,'YYYY-MM-DD')"
+    )
+    values: Dict[str, Any] = {"start_date": start_date, "end_date": end_date}
+    f = f.bindparams(**values)
+    return f
 
 
 def filter_intersects(field, geometry) -> TextClause:
@@ -84,60 +149,100 @@ def filter_intersects(field, geometry) -> TextClause:
     return f
 
 
-def geodesic_point_buffer(lat, lng, zoom):
+def geodesic_point_buffer(lat: float, lng: float, zoom: int) -> geoPolygon:
     """Return either a point at or polygon surrounding provided latitude and
     longitude (depending on zoom level) as geoJSON see
     https://gis.stackexchange.com/questions/289044/creating-buffer-circle-x-
     kilometers-from-point-using-python."""
-    buffer_distance = _get_buffer_distance(zoom)
+    buffer_distance: float = _get_buffer_distance(zoom)
 
-    if buffer_distance:
-        proj_wgs84 = pyproj.Proj(init="epsg:4326")
-        # Azimuthal equidistant projection
-        aeqd_proj = "+proj=aeqd +lat_0={lat} +lon_0={lon} +x_0=0 +y_0=0"
-        project = partial(
-            pyproj.transform,
-            pyproj.Proj(aeqd_proj.format(lat=lat, lon=lng)),
-            proj_wgs84,
-        )
-        buf = Point(0, 0).buffer(buffer_distance)  # distance in metres
-
-        coord_list = transform(project, buf).exterior.coords[:]
-        geojson_geometry = geoPolygon([coord_list])
-    else:
-        geojson_geometry = geoPoint((lat, lng))
-
-    return geojson_geometry
-
-
-def _get_buffer_distance(zoom: int) -> Optional[int]:
-    # FIXME: Couldn't get the exact match to work, so setting a buffer
-    # distance of 1m for zoom levels >9.
-    # zoom_buffer: DefaultDict[int, Optional[int]] = defaultdict(lambda: None)
-    zoom_buffer: DefaultDict[int, Optional[int]] = defaultdict(lambda: 1)
-    zoom_buffer.update(
-        {
-            0: 10000,
-            1: 5000,
-            2: 2500,
-            3: 1250,
-            4: 600,
-            5: 300,
-            6: 150,
-            7: 80,
-            8: 40,
-            9: 20,
-        }
+    proj_wgs84 = pyproj.Proj(init="epsg:4326")
+    # Azimuthal equidistant projection
+    aeqd_proj = "+proj=aeqd +lat_0={lat} +lon_0={lon} +x_0=0 +y_0=0"
+    project = partial(
+        pyproj.transform, pyproj.Proj(aeqd_proj.format(lat=lat, lon=lng)), proj_wgs84,
     )
-    return zoom_buffer[zoom]
+    buf: int = Point(0, 0).buffer(buffer_distance)  # distance in metres
+
+    coord_list = transform(project, buf).exterior.coords[:]
+
+    return geoPolygon([coord_list])
 
 
-async def get_fields(dataset, version):
-    asset = await assets.get_default_asset(dataset, version)
+async def _get_fields(dataset: str, version: str) -> List[Dict[str, Any]]:
+    asset: ORMAsset = await assets.get_default_asset(dataset, version)
     return asset.fields
+
+
+def _get_buffer_distance(zoom: int) -> float:
+    """Returns a search buffer based on the precision of the current zoom
+    level."""
+
+    # Precision of vector tiles for different zoom levels
+    # https://github.com/mapbox/tippecanoe#zoom-levels
+    precision: Dict[int, float] = {
+        0: 10000,
+        1: 5000,
+        2: 2500,
+        3: 1250,
+        4: 600,
+        5: 300,
+        6: 150,
+        7: 80,
+        8: 40,
+        9: 20,
+        10: 10,
+        11: 5,
+        12: 2,
+        13: 1,
+        14: 0.5,
+        15: 0.25,
+        16: 0.15,
+        17: 0.08,
+        18: 0.04,
+        19: 0.02,
+        20: 0.01,
+        21: 0.005,
+        22: 0.0025,
+    }
+
+    # Multiplying precision by factor 50 seems to give a good balance between
+    # being able to identify a feature on the map
+    # and not selecting too many adjacent features at the same time
+    scale_factor: int = 50
+
+    try:
+        search_buffer: float = precision[zoom] * scale_factor
+    except KeyError:
+        raise HTTPException(status_code=400, detail="Zoom level out of range")
+    return search_buffer
 
 
 async def _features_response(rows) -> FeaturesResponse:
     """Serialize ORM response."""
     data = list(rows)
     return FeaturesResponse(data=data)
+
+
+async def _get_features_by_location_sql(
+    dataset: str, version: str, lat: float, lng: float, zoom: int
+) -> Select:
+    t = db.table(version)
+    t.schema = dataset
+
+    geometry = geodesic_point_buffer(lat, lng, zoom)
+
+    all_columns = await _get_fields(dataset, version)
+    feature_columns = [
+        db.column(field["field_name"])
+        for field in all_columns
+        if field["is_feature_info"]
+    ]
+
+    sql: Select = (
+        db.select(feature_columns)
+        .select_from(t)
+        .where(filter_intersects("geom", str(geometry)))
+    )
+
+    return sql
