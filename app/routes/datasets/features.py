@@ -169,8 +169,14 @@ def geodesic_point_buffer(lat: float, lng: float, zoom: int) -> geoPolygon:
     return geoPolygon([coord_list])
 
 
+async def _get_fields(dataset: str, version: str) -> List[Dict[str, Any]]:
+    asset: ORMAsset = await assets.get_default_asset(dataset, version)
+    return asset.fields
+
+
 def _get_buffer_distance(zoom: int) -> float:
-    """Returns a."""
+    """Returns a search buffer based on the precision of the current zoom
+    level."""
 
     # Precision of vector tiles for different zoom levels
     # https://github.com/mapbox/tippecanoe#zoom-levels
@@ -200,16 +206,16 @@ def _get_buffer_distance(zoom: int) -> float:
         22: 0.0025,
     }
 
+    # Multiplying precision by factor 50 seems to give a good balance between
+    # being able to identify a feature on the map
+    # and not selecting too many adjacent features at the same time
+    scale_factor: int = 50
+
     try:
-        search_buffer = precision[zoom] * 100
+        search_buffer: float = precision[zoom] * scale_factor
     except KeyError:
         raise HTTPException(status_code=400, detail="Zoom level out of range")
     return search_buffer
-
-
-async def get_fields(dataset: str, version: str) -> List[Dict[str, Any]]:
-    asset: ORMAsset = await assets.get_default_asset(dataset, version)
-    return asset.fields
 
 
 async def _features_response(rows) -> FeaturesResponse:
@@ -226,7 +232,7 @@ async def _get_features_by_location_sql(
 
     geometry = geodesic_point_buffer(lat, lng, zoom)
 
-    all_columns = await get_fields(dataset, version)
+    all_columns = await _get_fields(dataset, version)
     feature_columns = [
         db.column(field["field_name"])
         for field in all_columns
