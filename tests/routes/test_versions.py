@@ -399,6 +399,10 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
     We patch/ disable background tasks here, as they run asynchronously.
     Such tasks are tested separately in a different module
     """
+    import boto3
+
+    boto3.DEFAULT_SESSION = None
+
     dataset = "test"
     version = "v1.1.1"
 
@@ -411,6 +415,7 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
             "data_type": "uint16",
             "pixel_meaning": "percent",
             "grid": "10/40000",
+            "resampling": "nearest",  # Remove, figure out why it then breaks
         },
         "metadata": payload["metadata"],
     }
