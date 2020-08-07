@@ -19,6 +19,16 @@ data "terraform_remote_state" "pixetl" {
   }
 }
 
+# import gfw-raster-analysis-lambda state
+data "terraform_remote_state" "raster_analysis_lambda" {
+  backend = "s3"
+  config = {
+    bucket = local.tf_state_bucket
+    region = "us-east-1"
+    key    = "wri__gfw_raster_analysis_lambda.tfstate"
+  }
+}
+
 
 # import tile_cache state
 # This might cause a chicken/ egg problem on new deployments.
@@ -68,6 +78,8 @@ data "template_file" "container_definition" {
     tile_cache_job_queue      = module.batch_job_queues.tile_cache_job_queue
     pixetl_job_definition     = data.terraform_remote_state.pixetl.outputs.job_definition_arn
     pixetl_job_queue          = data.terraform_remote_state.pixetl.outputs.job_queue_arn
+
+    raster_analysis_lambda_name = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_lambda_name
 
     service_url          = local.service_url
     api_token_secret_arn = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
