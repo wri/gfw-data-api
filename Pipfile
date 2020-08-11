@@ -37,6 +37,7 @@ aenum = "*"
 pglast = "*"
 async-lru = "*"
 httpx = "*"
+pendulum = "*"
 
 [requires]
 python_version = "3.8"
