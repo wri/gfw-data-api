@@ -299,20 +299,22 @@ tiles = [
 ]
 
 intersection: TextClause = text(
-    """ST_Intersection(
-            t.geom,
-            g.geom)"""
+    """ST_MakeValid(
+            ST_SimplifyPreserveTopology(
+                ST_Intersection(
+                    t.geom,
+                    g.geom),
+                0.0001)
+            )"""
 )
 
 intersection_geom: TextClause = text(
-    f"""ST_MakeValid(
-            ST_SimplifyPreserveTopology(
-                CASE
-                    WHEN ST_GeometryType({str(intersection)}) = 'ST_GeometryCollection'::text
-                        THEN ST_CollectionExtract({str(intersection)}, 3)
-                    ELSE  {str(intersection)}
-                END, 0.0001)
-        )"""
+    f"""CASE
+            WHEN ST_GeometryType({str(intersection)}) = 'ST_GeometryCollection'::text
+                THEN ST_CollectionExtract({str(intersection)}, 3)
+            ELSE {str(intersection)}
+        END
+    )"""
 )
 
 intersect_filter: TextClause = text(
