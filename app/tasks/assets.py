@@ -9,7 +9,6 @@ from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
-from . import static_vector_1x1_assets
 from .dynamic_vector_tile_cache_assets import dynamic_vector_tile_cache_asset
 from .static_vector_1x1_assets import static_vector_1x1_asset
 from .static_vector_tile_cache_assets import static_vector_tile_cache_asset

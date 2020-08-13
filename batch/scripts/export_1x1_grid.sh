@@ -13,4 +13,4 @@ ME=$(basename "$0")
 echo "PYTHON: Create 1x1 grid files"
 export_1x1_grid.py -d "$DATASET" -v "$VERSION" -C "$COLUMN_NAMES"
 
-echo *.tmp | xargs cat >> "${DATASET}_${VERSION}_1x1.tsv"
+echo ./*.tmp | xargs cat >> "${DATASET}_${VERSION}_1x1.tsv"

@@ -5,10 +5,7 @@ from ..crud import assets
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.creation_options import (
-    StaticVectorTileCacheCreationOptions,
-    creation_option_factory,
-)
+from ..models.pydantic.creation_options import creation_option_factory
 from ..models.pydantic.jobs import GdalPythonExportJob, TileCacheJob
 from ..settings.globals import TILE_CACHE_JOB_QUEUE
 from ..utils.fields import get_field_attributes
