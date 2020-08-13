@@ -10,7 +10,7 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
-echo "PYTHON: Create TSV files"
-create_partitions.py -d "$DATASET" -v "$VERSION" -C "$COLUMN_NAMES"
+echo "PYTHON: Create 1x1 grid files"
+export_1x1_grid.py -d "$DATASET" -v "$VERSION" -C "$COLUMN_NAMES"
 
 echo *.tmp | xargs cat >> "${DATASET}_${VERSION}_1x1.tsv"

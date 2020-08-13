@@ -122,6 +122,7 @@ def stats_factory(asset_type: str, input_data: Dict[str, Any]) -> Optional[Stats
         AssetType.ndjson: TableStats,
         AssetType.geopackage: TableStats,
         AssetType.raster_tile_set: RasterStats,
+        AssetType.grid_1x1: TableStats,
     }
 
     if not input_data:

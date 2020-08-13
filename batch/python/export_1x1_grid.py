@@ -314,7 +314,7 @@ intersection_geom: TextClause = text(
                 THEN ST_CollectionExtract({str(intersection)}, 3)
             ELSE {str(intersection)}
         END
-    )"""
+    """
 )
 
 intersect_filter: TextClause = text(
@@ -338,7 +338,8 @@ def get_sql(dataset, version, fields, grid_id, tcl, glad):
     geom_column = literal_column(str(intersection_geom)).label("geom")
     tcl_column = literal_column(str(tcl)).label("tcl")
     glad_column = literal_column(str(glad)).label("glad")
-    columns = [column(field) for field in fields]
+    nested_columns = [field.split(",") for field in fields]
+    columns = [column(c) for columns in nested_columns for c in columns]
 
     sql = (
         select(columns + [tcl_column, glad_column, geom_column])
@@ -380,7 +381,7 @@ async def run(loop, dataset, version, fields):
         )
         print(result)
 
-    no_concurrent = 20
+    no_concurrent = 1
     dltasks = set()
 
     for i, tile in enumerate(tiles):

@@ -22,6 +22,7 @@ class AssetType(str, Enum):
     ndjson = "ndjson"
     csv = "csv"
     tsv = "tsv"
+    grid_1x1 = "1x1 grid"
     # esri_map_service = "ESRI Map Service"
     # esri_feature_service = "ESRI Feature Service"
     # esri_image_service = "ESRI Image Service"
@@ -61,6 +62,7 @@ def is_single_file_asset(asset_type: str) -> bool:
         AssetType.shapefile,
         AssetType.csv,
         AssetType.tsv,
+        AssetType.grid_1x1,
     ]
 
 
