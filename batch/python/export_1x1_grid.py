@@ -13,6 +13,7 @@ PGHOST = os.environ.get("PGHOST", None)
 PGPORT = os.environ.get("PGPORT", None)
 PGDATABASE = os.environ.get("PGDATABASE", None)
 PGUSER = os.environ.get("PGUSER", None)
+MAX_TASKS = os.environ.get("MAX_TASKS", 1)
 
 tiles = [
     ("00N_000E", True, True),
@@ -381,17 +382,17 @@ async def run(loop, dataset, version, fields):
         )
         print(result)
 
-    no_concurrent = 1
-    dltasks = set()
+    max_tasks = MAX_TASKS
+    tasks = set()
 
     for i, tile in enumerate(tiles):
-        if len(dltasks) >= no_concurrent:
+        if len(tasks) >= max_tasks:
             # Wait for some download to finish before adding a new one
-            _done, dltasks = await asyncio.wait(
-                dltasks, return_when=asyncio.FIRST_COMPLETED
+            _done, tasks = await asyncio.wait(
+                tasks, return_when=asyncio.FIRST_COMPLETED
             )
-        dltasks.add(loop.create_task(copy_tiles(i, tile)))
-    await asyncio.wait(dltasks)
+        tasks.add(loop.create_task(copy_tiles(i, tile)))
+    await asyncio.wait(tasks)
 
 
 if __name__ == "__main__":
