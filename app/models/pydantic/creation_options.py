@@ -175,6 +175,14 @@ class StaticVectorTileCacheCreationOptions(BaseModel):
     )
 
 
+class StaticVector1x1GridCreationOptions(BaseModel):
+    field_attributes: Optional[List[str]] = Field(
+        None,
+        description="Field attributes to include in vector tiles. "
+        "If left blank, all fields marked as `is_feature_info` will be included.",
+    )
+
+
 class NdjsonCreationOptions(BaseModel):
     pass
 
@@ -183,6 +191,7 @@ SourceCreationOptions = Union[TableSourceCreationOptions, VectorSourceCreationOp
 
 OtherCreationOptions = Union[
     StaticVectorTileCacheCreationOptions,
+    StaticVector1x1GridCreationOptions,
     DynamicVectorTileCacheCreationOptions,
     NdjsonCreationOptions,
 ]
@@ -209,6 +218,7 @@ def creation_option_factory(
         AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheCreationOptions,
         AssetType.static_vector_tile_cache: StaticVectorTileCacheCreationOptions,
         AssetType.ndjson: NdjsonCreationOptions,
+        AssetType.grid_1x1: StaticVector1x1GridCreationOptions,
     }
 
     source_type = creation_options.get("source_type", None)

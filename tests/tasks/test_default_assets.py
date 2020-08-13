@@ -758,7 +758,49 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
     assert len(response.json()["data"]) == 1
     asset_id = response.json()["data"][0]["asset_id"]
 
+    # response = await async_client.delete(f"/asset/{asset_id}")
+    # assert response.status_code == 200
+
+    ###########
+    # 1x1 Grid
+    ###########
+    ### Create static tile cache asset
+    requests.delete(f"http://localhost:{PORT}")
+
+    input_data = {
+        "asset_type": "1x1 grid",
+        "is_managed": True,
+        "creation_options": {},
+    }
+
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/assets", json=input_data
+    )
+
+    print(response.json())
+    assert response.status_code == 202
+    asset_id = response.json()["data"]["asset_id"]
+
+    # get tasks id from change log and wait until finished
+    response = await async_client.get(f"/asset/{asset_id}/change_log")
+
+    assert response.status_code == 200
+    tasks = json.loads(response.json()["data"][-1]["detail"])
+    task_ids = [task["job_id"] for task in tasks]
+    print(task_ids)
+
+    # make sure, all jobs completed
+    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
+    assert status == "saved"
+
+    response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    assert response.status_code == 200
+
+    # there should be 4 assets now (geodatabase table, dynamic vector tile cache, ndjson and static vector tile cache)
+    assert len(response.json()["data"]) == 5
+
     response = await async_client.delete(f"/asset/{asset_id}")
+    print(response.json())
     assert response.status_code == 200
 
 

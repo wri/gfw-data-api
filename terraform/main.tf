@@ -153,4 +153,5 @@ module "batch_job_queues" {
   s3_write_tile-cache_arn            = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_write_policy_arn
   reader_secret_arn                  = data.terraform_remote_state.core.outputs.secrets_postgresql-reader_arn
   writer_secret_arn                  = data.terraform_remote_state.core.outputs.secrets_postgresql-writer_arn
+  aurora_max_vcpus                   = local.aurora_max_vcpus
 }
