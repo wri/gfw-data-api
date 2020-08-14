@@ -1,4 +1,3 @@
-import hashlib
 import io
 import json
 from typing import Any, Dict, List
@@ -127,21 +126,26 @@ async def static_vector_tile_cache_asset(
     ######################
 
     root_template = _get_vector_tile_root_json(dataset, version, creation_options)
-    tile_server_template = _get_vector_tile_server(dataset, version, creation_options)
+    tile_server_template = await _get_vector_tile_server(
+        dataset, version, asset_id, creation_options
+    )
 
-    root_file = io.StringIO(json.dumps(root_template))
-    tile_server_file = io.StringIO(json.dumps(tile_server_template))
+    root_file = io.BytesIO(json.dumps(root_template).encode("utf-8"))
+    tile_server_file = io.BytesIO(json.dumps(tile_server_template).encode("utf-8"))
+    args = {"ContentType": "application/json", "CacheControl": "max-age=31536000"}
 
     client = get_s3_client()
     client.upload_fileobj(
         root_file,
         TILE_CACHE_BUCKET,
         f"{dataset}/{version}/{creation_options.implementation}/root.json",
+        ExtraArgs=args,
     )
     client.upload_fileobj(
         tile_server_file,
         TILE_CACHE_BUCKET,
         f"{dataset}/{version}/{creation_options.implementation}/VectorTileServer",
+        ExtraArgs=args,
     )
 
     return log
@@ -163,12 +167,16 @@ def _get_vector_tile_root_json(
     return root_template
 
 
-def _get_vector_tile_server(
+async def _get_vector_tile_server(
     dataset: str,
     version: str,
+    asset_id: UUID,
     creation_options: StaticVectorTileCacheCreationOptions,
-    levels=1,
 ) -> Dict[str, Any]:
+
+    asset: ORMAsset = await assets.get_asset(asset_id)
+    metadata: Dict[str, Any] = asset.metadata
+
     resolution = 78271.51696401172
     scale = 295829355.45453244
     _min = -20037508.342787
@@ -181,22 +189,17 @@ def _get_vector_tile_server(
         "ymax": _max,
         "spatialReference": spatial_reference,
     }
-    name = f"{dataset} - {version} - default"
-
-    levels_down = list()
-    for i in range(levels):
-        levels_down.append("..")
-
-    prefix = "/".join(levels_down)
 
     response = {
         "currentVersion": 10.7,
-        "name": name,
-        "copyrightText": "",
+        "name": metadata["title"],
+        "copyrightText": metadata["citation"],
         "capabilities": "TilesOnly",
         "type": "indexedVector",
         "defaultStyles": "resources/styles",
-        "tiles": [prefix + "/{z}/{x}/{y}.pbf"],
+        "tiles": [
+            f"{TILE_CACHE_URL}/{dataset}/{version}/{creation_options.implementation}/{{z}}/{{x}}/{{y}}.pbf"
+        ],
         "exportTilesAllowed": False,
         "initialExtent": extent,
         "fullExtent": extent,
@@ -228,6 +231,6 @@ def _get_vector_tile_server(
                 "storageInfo": {"packetSize": 128, "storageFormat": "compactV2"}
             },
         },
-        "serviceItemId": hashlib.md5(name.encode()).hexdigest(),
+        "serviceItemId": str(asset_id),
     }
     return response
