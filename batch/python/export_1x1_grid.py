@@ -13,7 +13,7 @@ PGHOST = os.environ.get("PGHOST", None)
 PGPORT = os.environ.get("PGPORT", None)
 PGDATABASE = os.environ.get("PGDATABASE", None)
 PGUSER = os.environ.get("PGUSER", None)
-MAX_TASKS = os.environ.get("MAX_TASKS", 1)
+MAX_TASKS = int(os.environ.get("MAX_TASKS", 1))
 
 tiles = [
     ("00N_000E", True, True),
