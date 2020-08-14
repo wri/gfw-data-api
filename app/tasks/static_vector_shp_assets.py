@@ -1,23 +1,15 @@
-import io
-import json
 from typing import Any, Dict, List
 from uuid import UUID
 
 from ..crud import assets
 from ..models.enum.creation_options import VectorDrivers
-from ..models.orm.assets import Asset as ORMAsset
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.creation_options import (
-    StaticVectorTileCacheCreationOptions,
-    creation_option_factory,
-)
-from ..models.pydantic.jobs import GdalPythonExportJob, TileCacheJob
-from ..settings.globals import TILE_CACHE_BUCKET, TILE_CACHE_JOB_QUEUE, TILE_CACHE_URL
-from ..utils.aws import get_s3_client
+from ..models.pydantic.creation_options import creation_option_factory
+from ..models.pydantic.jobs import GdalPythonExportJob
 from ..utils.fields import get_field_attributes
 from ..utils.path import get_asset_uri
-from . import callback_constructor, reader_secrets, report_vars
+from . import callback_constructor, reader_secrets
 from .batch import execute
 
 
