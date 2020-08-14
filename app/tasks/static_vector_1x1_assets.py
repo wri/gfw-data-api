@@ -10,6 +10,7 @@ from app.settings.globals import DATA_LAKE_JOB_QUEUE
 from app.tasks import callback_constructor, reader_secrets
 from app.tasks.batch import execute
 from app.utils.fields import get_field_attributes
+from app.utils.path import get_asset_uri
 
 
 async def static_vector_1x1_asset(
@@ -29,6 +30,8 @@ async def static_vector_1x1_asset(
         dataset, version, creation_options
     )
 
+    grid_1x1_uri = get_asset_uri(dataset, version, AssetType.grid_1x1)
+
     await assets.update_asset(
         asset_id, fields=field_attributes,
     )
@@ -46,6 +49,8 @@ async def static_vector_1x1_asset(
         version,
         "-C",
         ",".join([field["field_name"] for field in field_attributes]),
+        "-T",
+        grid_1x1_uri,
     ]
 
     export_1x1_grid = PostgresqlClientJob(
