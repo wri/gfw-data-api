@@ -4,7 +4,7 @@ import pytest
 import requests
 from mock import patch
 
-from app.settings.globals import TILE_CACHE_BUCKET
+from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.utils.aws import get_s3_client
 
 from .. import BUCKET, PORT, SHP_NAME
@@ -107,8 +107,22 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
     assert len(response.json()["data"]) == 1
     asset_id = response.json()["data"][0]["asset_id"]
 
+    # Check if file is in data lake
+    resp = s3_client.list_objects_v2(
+        Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
+    )
+    print(resp)
+    assert resp["KeyCount"] == 1
+
     response = await async_client.delete(f"/asset/{asset_id}")
     assert response.status_code == 200
+
+    # Check if file was deleted
+    resp = s3_client.list_objects_v2(
+        Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
+    )
+    print(resp)
+    assert resp["KeyCount"] == 0
 
     ###########
     # 1x1 Grid
@@ -148,6 +162,20 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
     # there should be 4 assets now (geodatabase table, dynamic vector tile cache and static vector tile cache (already deleted ndjson)
     assert len(response.json()["data"]) == 4
 
+    # Check if file is in tile cache
+    resp = s3_client.list_objects_v2(
+        Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
+    )
+    print(resp)
+    assert resp["KeyCount"] == 1
+
     response = await async_client.delete(f"/asset/{asset_id}")
     print(response.json())
     assert response.status_code == 200
+
+    # Check if file was deleted
+    resp = s3_client.list_objects_v2(
+        Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
+    )
+    print(resp)
+    assert resp["KeyCount"] == 0
