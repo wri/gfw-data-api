@@ -4,12 +4,16 @@ import threading
 from http.server import HTTPServer
 
 import boto3
+import numpy
 import pytest
+import rasterio
 import requests
+from affine import Affine
 from alembic.config import main
 from docker.models.containers import ContainerCollection
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+from rasterio.crs import CRS
 
 from app.routes import is_admin, is_service_account
 from app.settings.globals import (
@@ -112,7 +116,7 @@ def batch_client():
         "client"
     ]
 
-    # aws_mock.print_logs()
+    aws_mock.print_logs()
     aws_mock.stop_services()
 
 
@@ -188,7 +192,7 @@ def flush_request_list(httpd):
     requests.delete(f"http://localhost:{httpd.server_port}")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="session")
 def copy_fixtures():
     # Upload file to mocked S3 bucket
     s3_client = boto3.client(
@@ -198,7 +202,29 @@ def copy_fixtures():
     s3_client.create_bucket(Bucket=BUCKET)
     s3_client.create_bucket(Bucket=DATA_LAKE_BUCKET)
     s3_client.create_bucket(Bucket=TILE_CACHE_BUCKET)
-    s3_client.upload_file(GEOJSON_PATH, TILE_CACHE_BUCKET, "tiles.geojson")  # FIXME
+
+    dataset_profile = {
+        "driver": "GTiff",
+        "nodata": 0,
+        "dtype": rasterio.uint16,
+        "count": 1,
+        "width": 100,
+        "height": 100,
+        "blockxsize": 100,
+        "blockysize": 100,
+        "crs": CRS.from_epsg(4326),
+        "transform": Affine(0.01, 0, 1, 0, -0.01, 1),
+    }
+    with rasterio.Env():
+        with rasterio.open("01N_001E.tif", "w", **dataset_profile) as dst:
+            dummy_data = numpy.ones((100, 100), rasterio.uint16)
+            dst.write(dummy_data.astype(rasterio.uint16), 1)
+
+    s3_client.upload_file("01N_001E.tif", TILE_CACHE_BUCKET, "01N_001E.tif")  # FIXME
+    s3_client.upload_file(
+        "tests/fixtures/tiles.geojson", TILE_CACHE_BUCKET, "tiles.geojson"
+    )  # FIXME
+
     s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
     s3_client.upload_file(SHP_PATH, BUCKET, SHP_NAME)

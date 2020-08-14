@@ -415,7 +415,12 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
             "data_type": "uint16",
             "pixel_meaning": "percent",
             "grid": "10/40000",
-            "resampling": "nearest",  # Remove, figure out why it then breaks
+            "resampling": "nearest",  # FIXME: Remove, figure out why it then breaks
+            # "nbits": 7,
+            "no_data": 0,
+            # "calc": None,
+            # "order": None,
+            "subset": "01N_001E",
         },
         "metadata": payload["metadata"],
     }
@@ -429,6 +434,8 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
         async_client=async_client,
         execute_batch_jobs=True,
     )
+
+    assert 1 == 2
 
     # response = await async_client.get(f"/dataset/{dataset}/{version}")
     # version_data = response.json()
