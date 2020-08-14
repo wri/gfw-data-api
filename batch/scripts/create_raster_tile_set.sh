@@ -11,7 +11,9 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
-# FIXME: Add subset to command line if $SUBSET is set
-
 echo "Build Raster Tile Set and upload to S3"
-pixetl --dataset "${DATASET}" --version "${VERSION}" "${JSON}"
+if [ -z "${SUBSET}" ]; then
+  pixetl --dataset "${DATASET}" --version "${VERSION}" "${JSON}"
+else
+  pixetl --dataset "${DATASET}" --version "${VERSION}" --subset "${SUBSET}" "${JSON}"
+fi
