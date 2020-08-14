@@ -7,6 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import RasterSourceCreationOptions
 from ..models.pydantic.jobs import PixETLJob
+from ..settings.globals import ENV, S3_ENTRYPOINT_URL
 from . import Callback, callback_constructor, writer_secrets
 from .batch import execute
 
@@ -30,17 +31,21 @@ async def raster_source_asset(
         **input_data["creation_options"]
     ).dict()
     creation_options["source_uri"] = source_uri
-
-    from logging import getLogger
-
-    # logger = getLogger("SERIOUSBUSINESS")
-    # logger.error(f"CREATION OPTIONS: {jsonable_encoder(creation_options)}")
+    subset = creation_options.pop("subset")
+    layer_def = json.dumps(jsonable_encoder(creation_options))
 
     callback: Callback = callback_constructor(asset_id)
 
-    job_env = writer_secrets + [{"name": "ASSET_ID", "value": str(asset_id)}]
+    job_env = writer_secrets + [
+        {"name": "ENV", "value": ENV},
+        {"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL},
+    ]
 
+    # from logging import getLogger
+    # logger = getLogger("SERIOUSBUSINESS")
+    # logger.error(f"CREATION OPTIONS: {jsonable_encoder(creation_options)}")
     # logger.error(f"ENV: {job_env}")
+    # logger.error(f"JSON ARG: {layer_def}")
 
     command = [
         "create_raster_tile_set.sh",
@@ -49,11 +54,11 @@ async def raster_source_asset(
         "-v",
         version,
         "-j",
-        json.dumps(jsonable_encoder(creation_options)),
+        layer_def,
     ]
 
-    if creation_options.get("subset"):
-        command += ["--subset", creation_options["subset"]]
+    if subset:
+        command += ["--subset", subset]
 
     create_raster_tile_set_job = PixETLJob(
         job_name="create_raster_tile_set",
