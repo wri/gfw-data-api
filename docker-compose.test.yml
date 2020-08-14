@@ -12,6 +12,7 @@ services:
       - ./tests:/app/tests
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
+      - ENV=test
       - DB_HOST=test_database
       - DATABASE=_test
       - DB_USER=gfw
