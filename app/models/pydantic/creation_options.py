@@ -181,7 +181,7 @@ class StaticVectorTileCacheCreationOptions(BaseModel):
     )
 
 
-class StaticVector1x1GridCreationOptions(BaseModel):
+class StaticVectorFileCreationOptions(BaseModel):
     field_attributes: Optional[List[str]] = Field(
         None,
         description="Field attributes to include in vector tiles. "
@@ -189,17 +189,12 @@ class StaticVector1x1GridCreationOptions(BaseModel):
     )
 
 
-class NdjsonCreationOptions(BaseModel):
-    pass
-
-
 SourceCreationOptions = Union[TableSourceCreationOptions, VectorSourceCreationOptions]
 
 OtherCreationOptions = Union[
     StaticVectorTileCacheCreationOptions,
-    StaticVector1x1GridCreationOptions,
+    StaticVectorFileCreationOptions,
     DynamicVectorTileCacheCreationOptions,
-    NdjsonCreationOptions,
 ]
 
 CreationOptions = Union[SourceCreationOptions, OtherCreationOptions]
@@ -223,8 +218,10 @@ def creation_option_factory(
     creation_options_factory: Dict[str, Type[OtherCreationOptions]] = {
         AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheCreationOptions,
         AssetType.static_vector_tile_cache: StaticVectorTileCacheCreationOptions,
-        AssetType.ndjson: NdjsonCreationOptions,
-        AssetType.grid_1x1: StaticVector1x1GridCreationOptions,
+        AssetType.ndjson: StaticVectorFileCreationOptions,
+        AssetType.grid_1x1: StaticVectorFileCreationOptions,
+        AssetType.shapefile: StaticVectorFileCreationOptions,
+        AssetType.geopackage: StaticVectorFileCreationOptions,
     }
 
     source_type = creation_options.get("source_type", None)

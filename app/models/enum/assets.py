@@ -17,7 +17,7 @@ class AssetType(str, Enum):
     raster_tile_set = "Raster tile set"
     database_table = "Database table"
     geo_database_table = "Geo database table"
-    shapefile = "Shapefile"
+    shapefile = "ESRI Shapefile"
     geopackage = "Geopackage"
     ndjson = "ndjson"
     csv = "csv"

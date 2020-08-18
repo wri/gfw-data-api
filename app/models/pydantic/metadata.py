@@ -121,6 +121,8 @@ def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMe
         AssetType.geo_database_table: DatabaseTableMetadata,
         AssetType.ndjson: VectorFileMetadata,
         AssetType.grid_1x1: VectorFileMetadata,
+        AssetType.shapefile: VectorFileMetadata,
+        AssetType.geopackage: VectorFileMetadata,
     }
     if asset_type in metadata_factory.keys():
         md: AssetMetadata = metadata_factory[asset_type](**metadata)

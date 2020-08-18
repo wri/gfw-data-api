@@ -179,3 +179,59 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
     )
     print(resp)
     assert resp["KeyCount"] == 0
+
+    ###########
+    # Shapefile export
+    ###########
+
+    requests.delete(f"http://localhost:{PORT}")
+
+    input_data = {
+        "asset_type": "ESRI Shapefile",
+        "is_managed": True,
+        "creation_options": {},
+    }
+
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/assets", json=input_data
+    )
+
+    print(response.json())
+    assert response.status_code == 202
+    asset_id = response.json()["data"]["asset_id"]
+
+    # get tasks id from change log and wait until finished
+    response = await async_client.get(f"/asset/{asset_id}/change_log")
+
+    assert response.status_code == 200
+    tasks = json.loads(response.json()["data"][-1]["detail"])
+    task_ids = [task["job_id"] for task in tasks]
+    print(task_ids)
+
+    # make sure, all jobs completed
+    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
+    assert status == "saved"
+
+    response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    assert response.status_code == 200
+
+    # there should be 4 assets now (geodatabase table, dynamic vector tile cache and static vector tile cache (already deleted ndjson. 1x1 grid)
+    assert len(response.json()["data"]) == 4
+
+    # Check if file is in tile cache
+    resp = s3_client.list_objects_v2(
+        Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
+    )
+    print(resp)
+    assert resp["KeyCount"] == 1
+
+    response = await async_client.delete(f"/asset/{asset_id}")
+    print(response.json())
+    assert response.status_code == 200
+
+    # Check if file was deleted
+    resp = s3_client.list_objects_v2(
+        Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
+    )
+    print(resp)
+    assert resp["KeyCount"] == 0
