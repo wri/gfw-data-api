@@ -58,7 +58,7 @@ generate_payload()
     "date_time": "$AFTER",
     "status": "$STATUS",
     "message": "$MESSAGE",
-    "detail": "$DETAIL:(-10000)"
+    "detail": "${DETAIL:(-10000)}"
   }]
 }
 EOF

@@ -1,4 +1,4 @@
-FROM globalforestwatch/data-api-tippecanoe:1.1.2
+FROM globalforestwatch/data-api-tippecanoe:1.1.3
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/

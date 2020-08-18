@@ -66,6 +66,7 @@ data "template_file" "postgres_container_properties" {
     softULimit     = 1024
     tile_cache     = "gfw-tiles${local.bucket_suffix}"
     data_lake      = "gfw-data-lake${local.bucket_suffix}"
+    max_tasks      = var.aurora_max_vcpus
   }
 }
 
@@ -82,6 +83,7 @@ data "template_file" "gdal_container_properties" {
     softULimit     = 1024
     tile_cache     = "gfw-tiles${local.bucket_suffix}"
     data_lake      = "gfw-data-lake${local.bucket_suffix}"
+    max_tasks      = var.aurora_max_vcpus
   }
 }
 
@@ -98,7 +100,7 @@ data "template_file" "tile_cache_container_properties" {
     softULimit     = 1024
     tile_cache     = "gfw-tiles${local.bucket_suffix}"
     data_lake      = "gfw-data-lake${local.bucket_suffix}"
-
+    max_tasks      = var.aurora_max_vcpus
   }
 }
 

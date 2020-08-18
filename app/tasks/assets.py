@@ -10,17 +10,20 @@ from ..models.enum.sources import SourceType
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
 from .dynamic_vector_tile_cache_assets import dynamic_vector_tile_cache_asset
+from .static_vector_1x1_assets import static_vector_1x1_asset
+from .static_vector_shp_assets import static_vector_shp_asset
 from .static_vector_tile_cache_assets import static_vector_tile_cache_asset
 
 ASSET_PIPELINES: FrozenSet[AssetType] = frozenset(
     {
-        # AssetType.shapefile: shapefile_asset,
+        AssetType.shapefile: static_vector_shp_asset,
         # AssetType.geopackage: geopackage_asset,
         # AssetType.ndjson: ndjson_asset,
         # AssetType.csv: csv_asset,
         # AssetType.tsv: tsv_asset,
         AssetType.dynamic_vector_tile_cache: dynamic_vector_tile_cache_asset,
         AssetType.static_vector_tile_cache: static_vector_tile_cache_asset,
+        AssetType.grid_1x1: static_vector_1x1_asset,
         # AssetType.vector_tile_cache: vector_tile_cache_asset,
         # AssetType.raster_tile_cache: raster_tile_cache_asset,
         # AssetType.dynamic_raster_tile_cache: dynamic_raster_tile_cache_asset,
