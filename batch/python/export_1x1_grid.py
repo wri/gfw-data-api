@@ -321,6 +321,12 @@ intersect_filter: TextClause = text(
 
 
 def extract_polygon(geometry: TextClause) -> TextClause:
+    """Extracting geometries from collection in postgis is buggy.
+
+    There were often still some remaining Geometry colletions persents.
+    Keeping this function around, but will use a postprocessing step
+    using pandas and shapely instead.
+    """
     return text(
         f"""
             CASE
@@ -347,13 +353,7 @@ def get_sql(
 ) -> Select:
     """Generate SQL statement."""
 
-    # Extracting polygon twice here due to some weired behavior observed in Aurora 11.6/ PostGIS 2.5
-    # Albeit extracting the polygons from intersection, there were still some remaining geometry collections left.
-    # When trying to reproduce, the function would return inconsistent results
-    # (either Geometry Collections or Multipolygons) for the same geometry
-    geom_column = literal_column(
-        str(extract_polygon(extract_polygon(intersection)))
-    ).label("geom")
+    geom_column = literal_column(str(intersection)).label("geom")
     tcl_column = literal_column(str(tcl)).label("tcl")
     glad_column = literal_column(str(glad)).label("glad")
     nested_columns = [field.split(",") for field in fields]

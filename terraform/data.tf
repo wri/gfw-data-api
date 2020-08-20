@@ -72,6 +72,11 @@ data "template_file" "container_definition" {
     service_url          = local.service_url
     api_token_secret_arn = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
 
+    depends_on  = [module.batch_job_queues.aurora_job_definition,
+      module.batch_job_queues.data_lake_job_definition,
+      module.batch_job_queues.tile_cache_job_definition,
+      data.terraform_remote_state.pixetl.outputs.job_definition_arn]
+
   }
 }
 
@@ -88,6 +93,10 @@ data "template_file" "task_batch_policy" {
     pixetl_job_definition_arn     = data.terraform_remote_state.pixetl.outputs.job_definition_arn
     pixetl_job_queue_arn          = data.terraform_remote_state.pixetl.outputs.job_queue_arn
   }
+  depends_on  = [module.batch_job_queues.aurora_job_definition,
+      module.batch_job_queues.data_lake_job_definition,
+      module.batch_job_queues.tile_cache_job_definition,
+      data.terraform_remote_state.pixetl.outputs.job_definition_arn]
 }
 
 data "local_file" "iam_s3_read_only" {
