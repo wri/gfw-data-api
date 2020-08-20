@@ -59,13 +59,13 @@ data "template_file" "container_definition" {
     tile_cache_cluster       = data.terraform_remote_state.tile_cache.outputs.tile_cache_cluster
     tile_cache_service       = data.terraform_remote_state.tile_cache.outputs.tile_cache_service
 
-    aurora_job_definition     = module.batch_job_queues.aurora_job_definition
-    aurora_job_queue          = module.batch_job_queues.aurora_job_queue
-    aurora_job_queue_fast     = module.batch_job_queues.aurora_job_queue_fast
-    data_lake_job_definition  = module.batch_job_queues.data_lake_job_definition
-    data_lake_job_queue       = module.batch_job_queues.data_lake_job_queue
-    tile_cache_job_definition = module.batch_job_queues.tile_cache_job_definition
-    tile_cache_job_queue      = module.batch_job_queues.tile_cache_job_queue
+    aurora_job_definition     = module.batch_job_queues.aurora_job_definition_arn
+    aurora_job_queue          = module.batch_job_queues.aurora_job_queue_arn
+    aurora_job_queue_fast     = module.batch_job_queues.aurora_job_queue_fast_arn
+    data_lake_job_definition  = module.batch_job_queues.data_lake_job_definition_arn
+    data_lake_job_queue       = module.batch_job_queues.data_lake_job_queue_arn
+    tile_cache_job_definition = module.batch_job_queues.tile_cache_job_definition_arn
+    tile_cache_job_queue      = module.batch_job_queues.tile_cache_job_queue_arn
     pixetl_job_definition     = data.terraform_remote_state.pixetl.outputs.job_definition_arn
     pixetl_job_queue          = data.terraform_remote_state.pixetl.outputs.job_queue_arn
 
@@ -74,8 +74,7 @@ data "template_file" "container_definition" {
 
     depends_on  = [module.batch_job_queues.aurora_job_definition,
       module.batch_job_queues.data_lake_job_definition,
-      module.batch_job_queues.tile_cache_job_definition,
-      data.terraform_remote_state.pixetl.outputs.job_definition_arn]
+      module.batch_job_queues.tile_cache_job_definition]
 
   }
 }
@@ -83,20 +82,19 @@ data "template_file" "container_definition" {
 data "template_file" "task_batch_policy" {
   template = file("${path.root}/templates/batch_policy.json.tmpl")
   vars = {
-    aurora_job_definition_arn     = module.batch_job_queues.aurora_job_definition
-    aurora_job_queue_arn          = module.batch_job_queues.aurora_job_queue
-    aurora_job_queue_fast_arn     = module.batch_job_queues.aurora_job_queue_fast
-    data_lake_job_definition_arn  = module.batch_job_queues.data_lake_job_definition
-    data_lake_job_queue_arn       = module.batch_job_queues.data_lake_job_queue
-    tile_cache_job_definition_arn = module.batch_job_queues.tile_cache_job_definition
-    tile_cache_job_queue_arn      = module.batch_job_queues.tile_cache_job_queue
+    aurora_job_definition_arn     = module.batch_job_queues.aurora_job_definition_arn
+    aurora_job_queue_arn          = module.batch_job_queues.aurora_job_queue_arn
+    aurora_job_queue_fast_arn     = module.batch_job_queues.aurora_job_queue_fast_arn
+    data_lake_job_definition_arn  = module.batch_job_queues.data_lake_job_definition_arn
+    data_lake_job_queue_arn       = module.batch_job_queues.data_lake_job_queue_arn
+    tile_cache_job_definition_arn = module.batch_job_queues.tile_cache_job_definition_arn
+    tile_cache_job_queue_arn      = module.batch_job_queues.tile_cache_job_queue_arn
     pixetl_job_definition_arn     = data.terraform_remote_state.pixetl.outputs.job_definition_arn
     pixetl_job_queue_arn          = data.terraform_remote_state.pixetl.outputs.job_queue_arn
   }
   depends_on  = [module.batch_job_queues.aurora_job_definition,
       module.batch_job_queues.data_lake_job_definition,
-      module.batch_job_queues.tile_cache_job_definition,
-      data.terraform_remote_state.pixetl.outputs.job_definition_arn]
+      module.batch_job_queues.tile_cache_job_definition]
 }
 
 data "local_file" "iam_s3_read_only" {
