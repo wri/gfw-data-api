@@ -399,9 +399,9 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
     We patch/ disable background tasks here, as they run asynchronously.
     Such tasks are tested separately in a different module
     """
-    import boto3
+    # import boto3
 
-    boto3.DEFAULT_SESSION = None
+    # boto3.DEFAULT_SESSION = None
 
     dataset = "test"
     version = "v1.1.1"
@@ -410,17 +410,19 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
         "is_latest": True,
         "creation_options": {
             "source_type": "raster",
-            "source_uri": [f"s3://{TILE_CACHE_BUCKET}/tiles.geojson"],  # FIXME
+            "source_uri": [
+                f"s3://gfw-data-lake-test/{dataset}/{version}/raw/tiles.geojson"
+            ],  # FIXME
             "source_driver": "GeoJSON",
             "data_type": "uint16",
             "pixel_meaning": "percent",
             "grid": "10/40000",
             "resampling": "nearest",  # FIXME: Remove, figure out why it then breaks
             # "nbits": 7,
-            "no_data": 0,
+            # "no_data": 0,
             # "calc": None,
             # "order": None,
-            "subset": "01N_001E",
+            "subset": "10N_000E",
         },
         "metadata": payload["metadata"],
     }

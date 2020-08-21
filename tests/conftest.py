@@ -203,6 +203,9 @@ def copy_fixtures():
     s3_client.create_bucket(Bucket=DATA_LAKE_BUCKET)
     s3_client.create_bucket(Bucket=TILE_CACHE_BUCKET)
 
+    # FIXME: Factor this out, or put in test_version.py
+    RAW_TILE_SET_PREFIX = "test/v1.1.1/raw"
+    s3_client.create_bucket(Bucket="gfw-data-lake-test")
     dataset_profile = {
         "driver": "GTiff",
         "nodata": 0,
@@ -216,14 +219,21 @@ def copy_fixtures():
         "transform": Affine(0.01, 0, 1, 0, -0.01, 1),
     }
     with rasterio.Env():
-        with rasterio.open("01N_001E.tif", "w", **dataset_profile) as dst:
+        with rasterio.open("0000000000-0000000000.tif", "w", **dataset_profile) as dst:
             dummy_data = numpy.ones((100, 100), rasterio.uint16)
             dst.write(dummy_data.astype(rasterio.uint16), 1)
 
-    s3_client.upload_file("01N_001E.tif", TILE_CACHE_BUCKET, "01N_001E.tif")  # FIXME
     s3_client.upload_file(
-        "tests/fixtures/tiles.geojson", TILE_CACHE_BUCKET, "tiles.geojson"
+        "0000000000-0000000000.tif",
+        "gfw-data-lake-test",
+        f"{RAW_TILE_SET_PREFIX}/0000000000-0000000000.tif",
     )  # FIXME
+    s3_client.upload_file(
+        "tests/fixtures/tiles.geojson",
+        "gfw-data-lake-test",
+        f"{RAW_TILE_SET_PREFIX}/tiles.geojson",
+    )  # FIXME
+    #
 
     s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
@@ -231,16 +241,16 @@ def copy_fixtures():
     s3_client.upload_file(APPEND_TSV_PATH, BUCKET, APPEND_TSV_NAME)
 
     # upload a separate for each row so we can test running large numbers of sources in parallel
-    reader = csv.DictReader(open(TSV_PATH, newline=""), delimiter="\t")
-    for row in reader:
-        out = io.StringIO(newline="")
-        writer = csv.DictWriter(out, delimiter="\t", fieldnames=reader.fieldnames)
-        writer.writeheader()
-        writer.writerow(row)
-
-        s3_client.put_object(
-            Body=str.encode(out.getvalue()),
-            Bucket=BUCKET,
-            Key=f"test_{reader.line_num}.tsv",
-        )
-        out.close()
+    # reader = csv.DictReader(open(TSV_PATH, newline=""), delimiter="\t")
+    # for row in reader:
+    #     out = io.StringIO(newline="")
+    #     writer = csv.DictWriter(out, delimiter="\t", fieldnames=reader.fieldnames)
+    #     writer.writeheader()
+    #     writer.writerow(row)
+    #
+    #     s3_client.put_object(
+    #         Body=str.encode(out.getvalue()),
+    #         Bucket=BUCKET,
+    #         Key=f"test_{reader.line_num}.tsv",
+    #     )
+    #     out.close()
