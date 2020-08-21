@@ -238,6 +238,22 @@ async def test_vector_source_asset(batch_client, async_client):
                     "is_feature_info": False,
                     "is_filter": False,
                 },
+                {
+                    "field_name": "created_on",
+                    "field_alias": "created_on",
+                    "field_description": None,
+                    "field_type": "timestamp without time zone",
+                    "is_feature_info": False,
+                    "is_filter": False,
+                },
+                {
+                    "field_name": "updated_on",
+                    "field_alias": "updated_on",
+                    "field_description": None,
+                    "field_type": "timestamp without time zone",
+                    "is_feature_info": False,
+                    "is_filter": False,
+                },
             ]
         else:
             # JSON file does not have fid field
