@@ -24,7 +24,7 @@ async def get_field_attributes(
     ]
 
     if (
-        "field_attributes" in creation_options.fields
+        "field_attributes" in creation_options.__fields__
         and creation_options.field_attributes
     ):
         field_attributes = [
