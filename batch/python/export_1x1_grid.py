@@ -3,9 +3,12 @@
 import argparse
 import asyncio
 import os
+from asyncio import AbstractEventLoop
+from typing import List, Set, Tuple
 
 import asyncpg
 from sqlalchemy import Table, column, literal_column, select, table, text
+from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import TextClause
 
 PGPASSWORD = os.environ.get("PGPASSWORD", None)
@@ -15,7 +18,7 @@ PGDATABASE = os.environ.get("PGDATABASE", None)
 PGUSER = os.environ.get("PGUSER", None)
 MAX_TASKS = int(os.environ.get("MAX_TASKS", 1))
 
-tiles = [
+tiles: List[Tuple[str, bool, bool]] = [
     ("00N_000E", True, True),
     ("00N_010E", True, True),
     ("00N_020E", True, True),
@@ -309,14 +312,6 @@ intersection: TextClause = text(
             )"""
 )
 
-intersection_geom: TextClause = text(
-    f"""CASE
-            WHEN ST_GeometryType({str(intersection)}) = 'ST_GeometryCollection'::text
-                THEN ST_CollectionExtract({str(intersection)}, 3)
-            ELSE {str(intersection)}
-        END
-    """
-)
 
 intersect_filter: TextClause = text(
     """ST_Intersects(
@@ -325,24 +320,46 @@ intersect_filter: TextClause = text(
 )
 
 
+def extract_polygon(geometry: TextClause) -> TextClause:
+    """Extracting geometries from collection in postgis is buggy.
+
+    There were often still some remaining Geometry colletions persents.
+    Keeping this function around, but will use a postprocessing step
+    using pandas and shapely instead.
+    """
+    return text(
+        f"""
+            CASE
+            WHEN ST_GeometryType({str(geometry)}) = 'ST_GeometryCollection'::text
+                THEN ST_CollectionExtract({str(geometry)}, 3)
+            ELSE {str(geometry)}
+            END
+            """
+    )
+
+
 def grid_filter(grid_id: str) -> TextClause:
     return text(f"""gfw_grid_10x10_id = '{grid_id}'""")
 
 
-def src_table(dataset, version) -> Table:
+def src_table(dataset: str, version: str) -> Table:
     src_table: Table = table(version)
     src_table.schema = dataset
     return src_table
 
 
-def get_sql(dataset, version, fields, grid_id, tcl, glad):
-    geom_column = literal_column(str(intersection_geom)).label("geom")
+def get_sql(
+    dataset: str, version: str, fields: List[str], grid_id: str, tcl: bool, glad: bool
+) -> Select:
+    """Generate SQL statement."""
+
+    geom_column = literal_column(str(intersection)).label("geom")
     tcl_column = literal_column(str(tcl)).label("tcl")
     glad_column = literal_column(str(glad)).label("glad")
     nested_columns = [field.split(",") for field in fields]
     columns = [column(c) for columns in nested_columns for c in columns]
 
-    sql = (
+    sql: Select = (
         select(columns + [tcl_column, glad_column, geom_column])
         .select_from(src_table(dataset, version).alias("t"))
         .select_from(table("gfw_grid_1x1").alias("g"))
@@ -354,8 +371,10 @@ def get_sql(dataset, version, fields, grid_id, tcl, glad):
     return sql
 
 
-async def run(loop, dataset, version, fields):
-    async def copy_tiles(i, tile):
+async def run(
+    loop: AbstractEventLoop, dataset: str, version: str, fields: List[str]
+) -> None:
+    async def copy_tiles(i: int, tile: Tuple[str, bool, bool]) -> None:
         if i == 0:
             output = f"{dataset}_{version}_1x1.tsv"
             header = True
@@ -363,9 +382,9 @@ async def run(loop, dataset, version, fields):
             output = f"{dataset}_{version}_1x1_part_{i}.tmp"
             header = False
 
-        grid_id = tile[0]
-        tcl = tile[1]
-        glad = tile[2]
+        grid_id: str = tile[0]
+        tcl: bool = tile[1]
+        glad: bool = tile[2]
         con = await asyncpg.connect(
             user=PGUSER,
             database=PGDATABASE,
@@ -382,8 +401,8 @@ async def run(loop, dataset, version, fields):
         )
         print(result)
 
-    max_tasks = MAX_TASKS
-    tasks = set()
+    max_tasks: int = MAX_TASKS
+    tasks: Set = set()
 
     for i, tile in enumerate(tiles):
         if len(tasks) >= max_tasks:
@@ -403,5 +422,5 @@ if __name__ == "__main__":
         "--column_names", "-C", type=str, nargs="+", help="Column names to include"
     )
     args = parser.parse_args()
-    loop = asyncio.get_event_loop()
+    loop: AbstractEventLoop = asyncio.get_event_loop()
     loop.run_until_complete(run(loop, args.dataset, args.version, args.column_names))
