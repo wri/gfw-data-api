@@ -13,7 +13,7 @@ ME=$(basename "$0")
 
 # If in testing env, emulate bootstrapping performed in prod. env by supplying /tmp/READY
 if [ "$ENV" = "test" ]; then
-  touch $JOB_ID/READY
+  touch /tmp/READY
   export AWS_S3_ENDPOINT=http://motoserver:5000
   export AWS_HTTPS=NO
   export AWS_VIRTUAL_HOSTING=NO
