@@ -243,16 +243,16 @@ async def test_vector_source_asset(batch_client, async_client):
                     "field_alias": "created_on",
                     "field_description": None,
                     "field_type": "timestamp without time zone",
-                    "is_feature_info": True,
-                    "is_filter": True,
+                    "is_feature_info": False,
+                    "is_filter": False,
                 },
                 {
                     "field_name": "updated_on",
                     "field_alias": "updated_on",
                     "field_description": None,
                     "field_type": "timestamp without time zone",
-                    "is_feature_info": True,
-                    "is_filter": True,
+                    "is_feature_info": False,
+                    "is_filter": False,
                 },
             ]
         else:
@@ -319,16 +319,16 @@ async def test_vector_source_asset(batch_client, async_client):
                     "field_alias": "created_on",
                     "field_description": None,
                     "field_type": "timestamp without time zone",
-                    "is_feature_info": True,
-                    "is_filter": True,
+                    "is_feature_info": False,
+                    "is_filter": False,
                 },
                 {
                     "field_name": "updated_on",
                     "field_alias": "updated_on",
                     "field_description": None,
                     "field_type": "timestamp without time zone",
-                    "is_feature_info": True,
-                    "is_filter": True,
+                    "is_feature_info": False,
+                    "is_filter": False,
                 },
             ]
 
