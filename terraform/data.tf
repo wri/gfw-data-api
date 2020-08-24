@@ -25,7 +25,7 @@ data "terraform_remote_state" "raster_analysis_lambda" {
   config = {
     bucket = local.tf_state_bucket
     region = "us-east-1"
-    key    = "wri__gfw_raster_analysis_lambda.tfstate"
+    key    = "wri__gfw-raster-analysis-lambda.tfstate"
   }
 }
 
