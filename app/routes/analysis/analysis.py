@@ -16,17 +16,17 @@ router = APIRouter()
 
 
 @router.get(
-    "/analysis",
+    "/analysis/raster",
     response_class=ORJSONResponse,
     response_model=Response,
     tags=["Query"],
 )
-async def analysis(
+async def raster_analysis(
     *,
-    geostore_id: Optional[UUID] = Query(None, title="Geostore ID"),
-    group_by: Optional[List[str]] = Query([], title="Group By"),
-    filters: Optional[List[str]] = Query([], title="Filters"),
-    sum: Optional[List[str]] = Query([], title="Sum"),
+    geostore_id: UUID = Query(None, title="Geostore ID"),
+    group_by: Optional[List[str]] = Query([], title="Group By Layers"),
+    filters: Optional[List[str]] = Query([], title="Filter Layers"),
+    sum: Optional[List[str]] = Query([], title="Sum Layers"),
     start_date: Optional[str] =  Query(None, title="Start Date"),
     end_date: Optional[str] =  Query(None, title="End Date"),
     geostore_origin: GeostoreOrigin = Query(

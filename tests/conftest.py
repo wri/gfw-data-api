@@ -25,6 +25,7 @@ from app.settings.globals import (
     TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
+    RASTER_ANALYSIS_LAMBDA_NAME
 )
 
 from . import (
