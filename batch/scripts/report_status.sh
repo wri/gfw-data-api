@@ -58,7 +58,7 @@ generate_payload()
     "date_time": "$AFTER",
     "status": "$STATUS",
     "message": "$MESSAGE",
-    "detail": "$DETAIL:(-10000)"
+    "detail": "${DETAIL:(-10000)}"
   }]
 }
 EOF
@@ -67,6 +67,15 @@ EOF
 echo "$(generate_payload)"
 
 curl -s -X PATCH -H "${HEADERS}" -d "$(generate_payload)" "${URL}"
+
+
+# Try to clean up to free space for potential other batch jobs on the same node
+set +e
+pushd /tmp
+WORK_DIR="/tmp/$AWS_BATCH_JOB_ID"
+rm -R "$WORK_DIR"
+set -e
+
 
 if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
     exit 0

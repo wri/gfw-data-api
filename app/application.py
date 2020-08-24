@@ -79,10 +79,10 @@ class ContextEngine(object):
     async def get_engine(method: str) -> GinoEngine:
         """Select the database connection depending on request method."""
         if method.upper() == "WRITE":
-            logger.info("Use write engine")
+            logger.debug("Use write engine")
             engine: GinoEngine = WRITE_ENGINE
         else:
-            logger.info("Use read engine")
+            logger.debug("Use read engine")
             engine = READ_ENGINE
         return engine
 
@@ -97,11 +97,11 @@ async def startup_event():
     WRITE_ENGINE = await create_engine(
         WRITE_DATABASE_CONFIG.url, max_size=5, min_size=1
     )
-    logger.debug(
+    logger.info(
         f"Database connection pool for write operation created: {WRITE_ENGINE.repr(color=True)}"
     )
     READ_ENGINE = await create_engine(DATABASE_CONFIG.url, max_size=10, min_size=5)
-    logger.debug(
+    logger.info(
         f"Database connection pool for read operation created: {READ_ENGINE.repr(color=True)}"
     )
 

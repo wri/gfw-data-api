@@ -134,6 +134,7 @@ async def test_tasks_success(async_client):
             "min_zoom": 0,
             "max_zoom": 9,
             "tile_strategy": "discontinuous",
+            "layer_style": [],
         },
     }
     with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
