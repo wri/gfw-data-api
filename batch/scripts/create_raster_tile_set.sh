@@ -11,13 +11,9 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
-# If in testing env, emulate bootstrapping performed in prod. env by supplying /tmp/READY
-if [ "$ENV" = "test" ]; then
-  touch /tmp/READY
-  export AWS_S3_ENDPOINT=http://motoserver:5000
-  export AWS_HTTPS=NO
-  export AWS_VIRTUAL_HOSTING=NO
-fi
+# in get_arguments.sh we call pushd to jump into the batchID subfolder
+# pixETL expects /tmp as workdir and will make attempt to create subfolder itself
+popd
 
 echo "Build Raster Tile Set and upload to S3"
 if [ -z "${SUBSET}" ]; then

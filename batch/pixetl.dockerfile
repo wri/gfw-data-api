@@ -8,13 +8,8 @@ COPY ./batch/python/ /opt/python/
 RUN chmod +x -R /opt/scripts/
 RUN chmod +x -R /opt/python/
 
-RUN ln -s /usr/bin/python3 /usr/bin/python
-
 ENV PATH="/opt/scripts:${PATH}"
 ENV PATH="/opt/python:${PATH}"
-
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
 
 WORKDIR /tmp
 

@@ -208,19 +208,31 @@ class AWSMock(object):
                     {"name": "DEBUG", "value": "1"},
                     {"name": "TILE_CACHE", "value": TILE_CACHE_BUCKET},
                     {"name": "DATA_LAKE", "value": DATA_LAKE_BUCKET},
+                    {"name": "AWS_HTTPS", "value": "NO"},
+                    {"name": "AWS_VIRTUAL_HOSTING", "value": "FALSE"},
+                    {"name": "GDAL_DISABLE_READDIR_ON_OPEN", "value": "YES"},
                 ],
                 "volumes": [
                     {
                         "host": {"sourcePath": f"{ROOT}/tests/fixtures/aws"},
                         "name": "aws",
-                    }
+                    },
+                    {
+                        "host": {"sourcePath": f"{ROOT}/tests/fixtures/tmp"},
+                        "name": "tmp",
+                    },
                 ],
                 "mountPoints": [
                     {
                         "sourceVolume": "aws",
                         "containerPath": "/root/.aws",
                         "readOnly": True,
-                    }
+                    },
+                    {
+                        "sourceVolume": "tmp",
+                        "containerPath": "/tmp",
+                        "readOnly": False,
+                    },
                 ],
             },
         )

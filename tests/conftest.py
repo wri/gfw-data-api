@@ -1,5 +1,5 @@
-import csv
-import io
+import os
+import shutil
 import threading
 from http.server import HTTPServer
 
@@ -254,3 +254,22 @@ def copy_fixtures():
     #         Key=f"test_{reader.line_num}.tsv",
     #     )
     #     out.close()
+
+
+@pytest.fixture(autouse=True)
+async def tmp_folder():
+    """Create TMP dir."""
+
+    curr_dir = os.path.dirname(__file__)
+    tmp_dir = os.path.join(curr_dir, "fixtures", "tmp")
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    ready = os.path.join(tmp_dir, "READY")
+
+    # Create zerobytes READY file
+    with open(ready, "w"):
+        pass
+    yield
+
+    # clean up
+    shutil.rmtree(tmp_dir)

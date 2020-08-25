@@ -416,13 +416,13 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
             "source_driver": "GeoJSON",
             "data_type": "uint16",
             "pixel_meaning": "percent",
-            "grid": "10/40000",
+            "grid": "90/27008",
             "resampling": "nearest",  # FIXME: Remove, figure out why it then breaks
             # "nbits": 7,
             # "no_data": 0,
             # "calc": None,
             # "order": None,
-            "subset": "10N_000E",
+            "subset": "90N_000E",
         },
         "metadata": payload["metadata"],
     }
