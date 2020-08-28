@@ -78,7 +78,7 @@ data "template_file" "container_definition" {
     tile_cache_job_queue = module.batch_job_queues.tile_cache_job_queue_arn
     pixetl_job_definition = data.terraform_remote_state.pixetl.outputs.job_definition_arn
     pixetl_job_queue = data.terraform_remote_state.pixetl.outputs.job_queue_arn
-    raster_analysis_lambda_name = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_lambda_name
+    raster_analysis_lambda_name = data.terraform_remote_state.raster_analysis_lambda.outputs.tiled_analysis_lambda_name
     service_url          = local.service_url
     api_token_secret_arn = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
   }
@@ -109,4 +109,8 @@ data "template_file" "task_batch_policy" {
 
 data "local_file" "iam_s3_read_only" {
   filename = "${path.root}/templates/iam_s3_read_only.json"
+}
+
+data "local_file" "iam_lambda_invoke" {
+  filename = "${path.root}/templates/lambda_invoke_policy.json"
 }

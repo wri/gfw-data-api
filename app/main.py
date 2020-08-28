@@ -22,6 +22,7 @@ from .routes.datasets import asset as version_asset
 from .routes.datasets import dataset, datasets, features, geostore, queries, versions
 from .routes.geostore import geostore as geostore_top
 from .routes.tasks import task
+from .routes.analysis import analysis
 
 ################
 # LOGGING
@@ -134,6 +135,10 @@ task_routers = (task.router,)
 for r in task_routers:
     app.include_router(r, prefix="/task")
 
+analysis_routers = (analysis.router,)
+for r in analysis_routers:
+    app.include_router(r, prefix="/analysis")
+
 #######################
 # OPENAPI Documentation
 #######################
@@ -146,6 +151,7 @@ tags_metadata = [
     {"name": "Query", "description": queries.__doc__},
     {"name": "Geostore", "description": geostore.__doc__},
     {"name": "Tasks", "description": task.__doc__},
+    {"name": "Analysis", "description": analysis.__doc__},
 ]
 
 
@@ -167,6 +173,7 @@ def custom_openapi():
         {"name": "Geostore API", "tags": ["Geostore"]},
         {"name": "SQL API", "tags": ["Query"]},
         {"name": "Task API", "tags": ["Tasks"]},
+        {"name": "Analysis API", "tags": ["Analysis"]},
     ]
 
     app.openapi_schema = openapi_schema

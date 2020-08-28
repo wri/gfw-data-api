@@ -1,42 +1,44 @@
 """Explore data entries for a given dataset version using standard SQL."""
 import json
 from typing import List, Optional
-import boto3
 from uuid import UUID
 
 from fastapi import APIRouter, Query
 from fastapi.responses import ORJSONResponse
-from ..datasets.queries import _get_geostore_geometry
+
+from app.errors import InvalidResponseError
+from app.models.enum.analysis import RasterLayer
+from app.utils.geostore import get_geostore_geometry
 
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.pydantic.responses import Response
 from app.settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
+from app.utils.aws import get_lambda_client
 
 router = APIRouter()
 
 
 @router.get(
-    "/analysis/raster",
+    "/raster",
     response_class=ORJSONResponse,
     response_model=Response,
     tags=["Query"],
 )
 async def raster_analysis(
     *,
-    geostore_id: UUID = Query(None, title="Geostore ID"),
-    group_by: Optional[List[str]] = Query([], title="Group By Layers"),
-    filters: Optional[List[str]] = Query([], title="Filter Layers"),
-    sum: Optional[List[str]] = Query([], title="Sum Layers"),
-    start_date: Optional[str] =  Query(None, title="Start Date"),
-    end_date: Optional[str] =  Query(None, title="End Date"),
-    geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.rw, title="Origin service of geostore ID"
-    )
+    geostore_id: UUID,
+    geostore_origin: GeostoreOrigin = Query(GeostoreOrigin.rw,
+        title="Origin service of geostore ID"
+    ),
+    group_by: Optional[List[RasterLayer]] = Query([], title="Group By Layers"),
+    filters: Optional[List[RasterLayer]] = Query([], title="Filter Layers"),
+    sum: Optional[List[RasterLayer]] = Query([], title="Sum Layers"),
+    start_date: Optional[str] = Query(None, title="Start Date"),
+    end_date: Optional[str] = Query(None, title="End Date")
 ):
-    geometry = await _get_geostore_geometry(geostore_id, geostore_origin)
+    geometry = await get_geostore_geometry(geostore_id, geostore_origin)
 
-    lambda_client = boto3.client("lambda")
-    lambda_payload = {
+    payload = {
         "geometry": geometry,
         "group_by": group_by,
         "filters": filters,
@@ -45,10 +47,16 @@ async def raster_analysis(
         "end_date": end_date
     }
 
-    response = lambda_client.invoke(
+    response = get_lambda_client().invoke(
         FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
         InvocationType="RequestResponse",
-        Payload=bytes(json.dumps(lambda_payload), "utf-8"),
+        Payload=bytes(json.dumps(payload), "utf-8"),
     )
 
-    return Response(data=response)
+    response_payload = json.loads(response['Payload'].read().decode())
+
+    if response_payload['statusCode'] != 200:
+        raise InvalidResponseError(f"Raster analysis returned status code {response_payload['statusCode']}, {response_payload['body']['message']}")
+
+    response_data = response_payload['body']['data']
+    return Response(data=response_data)
