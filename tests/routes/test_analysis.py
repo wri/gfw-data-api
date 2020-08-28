@@ -29,7 +29,7 @@ def analysis_lambda_client():
 async def test_raster_analysis__success(async_client, analysis_lambda_client):
     """Basic test to check if lambda is successfully called and returns response correctly."""
     response = await async_client.get(
-        "/analysis/raster?geostore_id=02ca2fbafa2d818aa3d1b974a581fbd0&group_by=umd_tree_cover_loss__year&filters=is__umd_regional_primary_forest_2001&filters=umd_tree_cover_density_2000__30&sum=area__ha"
+        f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=umd_tree_cover_loss__year&filters=is__umd_regional_primary_forest_2001&filters=umd_tree_cover_density_2000__30&sum=area__ha"
     )
 
     assert response.status_code == 200
@@ -41,12 +41,12 @@ async def test_raster_analysis__success(async_client, analysis_lambda_client):
 async def test_raster_analysis__bad_params(async_client, analysis_lambda_client):
     """Basic test to check if empty data api response as expected."""
     response = await async_client.get(
-        f"/analysis/raster?geostore_id={SAMPLE_GEOSTORE_ID}&group_by=not_umd_tree_cover_loss__year"
+        f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=not_umd_tree_cover_loss__year"
     )
     assert response.status_code == 422
 
     response = await async_client.get(
-        f"/analysis/raster?geostore_id={SAMPLE_GEOSTORE_ID}&filters=umd_tree_cover_density_2000__100"
+        f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&filters=umd_tree_cover_density_2000__100"
     )
     assert response.status_code == 422
 
@@ -56,7 +56,7 @@ async def test_raster_analysis__lambda_error(async_client, analysis_lambda_clien
     """Basic test to check if empty data api response as expected."""
     with pytest.raises(InvalidResponseError):
         await async_client.get(
-            f"/analysis/raster?geostore_id={SAMPLE_GEOSTORE_ID}&group_by=umd_tree_cover_loss__year&start_date=failme"
+            f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=umd_tree_cover_loss__year&start_date=failme"
         )
 
 

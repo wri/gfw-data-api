@@ -1,9 +1,9 @@
-"""Explore data entries for a given dataset version using standard SQL."""
+"""Run analysis on registered datasets."""
 import json
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Path
 from fastapi.responses import ORJSONResponse
 
 from app.errors import InvalidResponseError
@@ -19,15 +19,15 @@ router = APIRouter()
 
 
 @router.get(
-    "/raster",
+    "/zonal/{geostore_id}",
     response_class=ORJSONResponse,
     response_model=Response,
-    tags=["Query"],
+    tags=["Analysis"],
 )
-async def raster_analysis(
+async def zonal_statistics(
     *,
-    geostore_id: UUID,
-    geostore_origin: GeostoreOrigin = Query(GeostoreOrigin.rw,
+    geostore_id: UUID = Path(..., title="Geostore ID"),
+    geostore_origin: GeostoreOrigin = Query(GeostoreOrigin.gfw,
         title="Origin service of geostore ID"
     ),
     group_by: Optional[List[RasterLayer]] = Query([], title="Group By Layers"),
@@ -36,6 +36,7 @@ async def raster_analysis(
     start_date: Optional[str] = Query(None, title="Start Date"),
     end_date: Optional[str] = Query(None, title="End Date")
 ):
+    """Calculate zonal statistics on any registered raster layers in a geostore."""
     geometry = await get_geostore_geometry(geostore_id, geostore_origin)
 
     payload = {
