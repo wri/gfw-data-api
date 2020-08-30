@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from app.models.pydantic.metadata import VersionMetadata
-from tests import BUCKET, SHP_NAME, TILE_CACHE_BUCKET
+from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
 from tests.tasks import MockCloudfrontClient
 from tests.utils import create_dataset, create_default_asset
 
@@ -394,25 +394,20 @@ async def test_put_latest(async_client):
 @pytest.mark.asyncio
 @patch("app.tasks.aws_tasks.get_cloudfront_client")
 async def test_version_put_raster(mocked_cloudfront_client, async_client):
-    """Test version path operations.
-
-    We patch/ disable background tasks here, as they run asynchronously.
-    Such tasks are tested separately in a different module
-    """
-    # import boto3
-
-    # boto3.DEFAULT_SESSION = None
+    """Test raster source version operations."""
 
     dataset = "test"
     version = "v1.1.1"
+
+    #
 
     raster_version_payload = {
         "is_latest": True,
         "creation_options": {
             "source_type": "raster",
             "source_uri": [
-                f"s3://gfw-data-lake-test/{dataset}/{version}/raw/tiles.geojson"
-            ],  # FIXME
+                f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raw/tiles.geojson"
+            ],
             "source_driver": "GeoJSON",
             "data_type": "uint16",
             "pixel_meaning": "percent",
@@ -422,6 +417,7 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
             # "no_data": 0,
             # "calc": None,
             # "order": None,
+            "overwrite": True,
             "subset": "90N_000E",
         },
         "metadata": payload["metadata"],

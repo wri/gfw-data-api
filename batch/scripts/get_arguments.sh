@@ -116,6 +116,10 @@ do
       shift # past argument
       shift # past value
       ;;
+      --overwrite)
+      OVERWRITE="TRUE"
+      shift # past argument
+      ;;
       -p|--partition_type)
       PARTITION_TYPE="$2"
       shift # past argument

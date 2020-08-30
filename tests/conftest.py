@@ -1,3 +1,5 @@
+import csv
+import io
 import os
 import shutil
 import threading
@@ -203,9 +205,8 @@ def copy_fixtures():
     s3_client.create_bucket(Bucket=DATA_LAKE_BUCKET)
     s3_client.create_bucket(Bucket=TILE_CACHE_BUCKET)
 
-    # FIXME: Factor this out, or put in test_version.py
+    # FIXME: Factor this out, or put in test_versions.py
     RAW_TILE_SET_PREFIX = "test/v1.1.1/raw"
-    s3_client.create_bucket(Bucket="gfw-data-lake-test")
     dataset_profile = {
         "driver": "GTiff",
         "nodata": 0,
@@ -225,15 +226,14 @@ def copy_fixtures():
 
     s3_client.upload_file(
         "0000000000-0000000000.tif",
-        "gfw-data-lake-test",
+        DATA_LAKE_BUCKET,
         f"{RAW_TILE_SET_PREFIX}/0000000000-0000000000.tif",
-    )  # FIXME
+    )
     s3_client.upload_file(
         "tests/fixtures/tiles.geojson",
-        "gfw-data-lake-test",
+        DATA_LAKE_BUCKET,
         f"{RAW_TILE_SET_PREFIX}/tiles.geojson",
-    )  # FIXME
-    #
+    )
 
     s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
@@ -241,19 +241,30 @@ def copy_fixtures():
     s3_client.upload_file(APPEND_TSV_PATH, BUCKET, APPEND_TSV_NAME)
 
     # upload a separate for each row so we can test running large numbers of sources in parallel
-    # reader = csv.DictReader(open(TSV_PATH, newline=""), delimiter="\t")
-    # for row in reader:
-    #     out = io.StringIO(newline="")
-    #     writer = csv.DictWriter(out, delimiter="\t", fieldnames=reader.fieldnames)
-    #     writer.writeheader()
-    #     writer.writerow(row)
+    reader = csv.DictReader(open(TSV_PATH, newline=""), delimiter="\t")
+    for row in reader:
+        out = io.StringIO(newline="")
+        writer = csv.DictWriter(out, delimiter="\t", fieldnames=reader.fieldnames)
+        writer.writeheader()
+        writer.writerow(row)
+
+        s3_client.put_object(
+            Body=str.encode(out.getvalue()),
+            Bucket=BUCKET,
+            Key=f"test_{reader.line_num}.tsv",
+        )
+        out.close()
+
+    # yield
     #
-    #     s3_client.put_object(
-    #         Body=str.encode(out.getvalue()),
-    #         Bucket=BUCKET,
-    #         Key=f"test_{reader.line_num}.tsv",
-    #     )
-    #     out.close()
+    # s3_resource = boto3.resource(
+    #     "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+    # )
+    # for test_bucket in (BUCKET, DATA_LAKE_BUCKET, TILE_CACHE_BUCKET):
+    #     bucket = s3_resource.Bucket(test_bucket)
+    #     for key in bucket.objects.all():
+    #         key.delete()
+    #     bucket.delete()
 
 
 @pytest.fixture(autouse=True)

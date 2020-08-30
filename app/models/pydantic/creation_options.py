@@ -15,6 +15,7 @@ from ..enum.creation_options import (
     VectorDrivers,
 )
 from ..enum.pg_types import PGType
+from ..enum.pixetl import DataType, Grid, Order, RasterizeMethod, ResamplingMethod
 from ..enum.sources import (
     RasterSourceType,
     SourceType,
@@ -85,18 +86,18 @@ class RasterSourceCreationOptions(BaseModel):
         ..., description="Driver of source file. Must be an OGR driver"
     )
     source_uri: List[str] = Field(
-        ..., description="List of input files. Must be a s3:// url.",
+        ..., description="List of input files. Must be an s3:// url.",
     )
-    # FIXME: Make these enums. Any way to do so without duplicating code from pixETL?
     pixel_meaning: str
-    data_type: str  # Make an enum from dict in data_type.py
+    data_type: DataType
     nbits: Optional[int]
     no_data: Optional[int]
-    grid: str  # Make an enum?
-    rasterize_method: Optional[str]  # Optional[RasterizeMethod]
-    resampling: Optional[str]  # Optional[ResamplingMethod]
+    grid: Grid
+    rasterize_method: Optional[RasterizeMethod]
+    resampling: Optional[ResamplingMethod]
     calc: Optional[str]
-    order: Optional[str]  # Optional[Order]
+    order: Optional[Order]
+    overwrite: Optional[bool]
     subset: Optional[str]
 
 

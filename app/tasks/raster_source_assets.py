@@ -24,6 +24,10 @@ async def raster_source_asset(
         raise AssertionError("source_uri must contain a URI to an input file in S3")
     source_uri = source_uris[0]
 
+    # from logging import getLogger
+    # logger = getLogger("SERIOUSBUSINESS")
+    # logger.error(f"CREATION OPTIONS: {jsonable_encoder(input_data)}")
+
     # Put in a Pydantic model for validation, but then turn into a dict so we
     # can re-define source_uri as a str instead of a List[str] to make pixETL
     # happy
@@ -31,6 +35,7 @@ async def raster_source_asset(
         **input_data["creation_options"]
     ).dict()
     creation_options["source_uri"] = source_uri
+    overwrite = creation_options.pop("overwrite")
     subset = creation_options.pop("subset")
     layer_def = json.dumps(jsonable_encoder(creation_options))
 
@@ -56,6 +61,9 @@ async def raster_source_asset(
         "-j",
         layer_def,
     ]
+
+    if overwrite:
+        command += ["--overwrite"]
 
     if subset:
         command += ["--subset", subset]
