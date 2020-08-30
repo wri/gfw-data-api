@@ -1,3 +1,5 @@
+import io
+import json
 from typing import Any, Dict, List
 from uuid import UUID
 
@@ -10,7 +12,9 @@ from ..models.pydantic.creation_options import (
     creation_option_factory,
 )
 from ..models.pydantic.jobs import GdalPythonExportJob, TileCacheJob
-from ..settings.globals import TILE_CACHE_JOB_QUEUE
+from ..settings.globals import TILE_CACHE_BUCKET, TILE_CACHE_JOB_QUEUE, TILE_CACHE_URL
+from ..utils.aws import get_s3_client
+from ..utils.fields import get_field_attributes
 from ..utils.path import get_asset_uri
 from . import callback_constructor, reader_secrets, report_vars
 from .batch import execute
@@ -29,7 +33,7 @@ async def static_vector_tile_cache_asset(
         AssetType.static_vector_tile_cache, input_data["creation_options"]
     )
 
-    field_attributes: List[Dict[str, Any]] = await _get_field_attributes(
+    field_attributes: List[Dict[str, Any]] = await get_field_attributes(
         dataset, version, creation_options
     )
 
@@ -117,30 +121,116 @@ async def static_vector_tile_cache_asset(
 
     log: ChangeLog = await execute([export_ndjson, create_vector_tile_cache])
 
+    ######################
+    # Generate ESRI Vector Tile Cache Server and root.json
+    ######################
+
+    root_template = _get_vector_tile_root_json(dataset, version, creation_options)
+    tile_server_template = await _get_vector_tile_server(
+        dataset, version, asset_id, creation_options
+    )
+
+    root_file = io.BytesIO(json.dumps(root_template).encode("utf-8"))
+    tile_server_file = io.BytesIO(json.dumps(tile_server_template).encode("utf-8"))
+    args = {"ContentType": "application/json", "CacheControl": "max-age=31536000"}
+
+    client = get_s3_client()
+    client.upload_fileobj(
+        root_file,
+        TILE_CACHE_BUCKET,
+        f"{dataset}/{version}/{creation_options.implementation}/root.json",
+        ExtraArgs=args,
+    )
+    client.upload_fileobj(
+        tile_server_file,
+        TILE_CACHE_BUCKET,
+        f"{dataset}/{version}/{creation_options.implementation}/VectorTileServer",
+        ExtraArgs=args,
+    )
+
     return log
 
 
-async def _get_field_attributes(
+def _get_vector_tile_root_json(
     dataset: str, version: str, creation_options: StaticVectorTileCacheCreationOptions
-) -> List[Dict[str, Any]]:
-    """Get field attribute list from creation options.
+) -> Dict[str, Any]:
+    root_template = {
+        "version": 8,
+        "sources": {
+            f"{dataset}": {
+                "type": "vector",
+                "url": f"{TILE_CACHE_URL}/{dataset}/{version}/{creation_options.implementation}/VectorTileServer",
+            }
+        },
+        "layers": creation_options.layer_style,
+    }
+    return root_template
 
-    If no attribute list provided, use all fields from DB table, marked
-    as `is_feature_info`. Otherwise compare to provide list with
-    available fields and use intersection.
-    """
 
-    default_asset: ORMAsset = await assets.get_default_asset(dataset, version)
+async def _get_vector_tile_server(
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    creation_options: StaticVectorTileCacheCreationOptions,
+) -> Dict[str, Any]:
 
-    fields: List[Dict[str, str]] = default_asset.fields
+    asset: ORMAsset = await assets.get_asset(asset_id)
+    metadata: Dict[str, Any] = asset.metadata
 
-    field_attributes: List[Dict[str, Any]] = [
-        field for field in fields if field["is_feature_info"]
-    ]
-    if creation_options.field_attributes:
-        field_attributes = [
-            field
-            for field in field_attributes
-            if field["field_name"] in creation_options.field_attributes
-        ]
-    return field_attributes
+    resolution = 78271.51696401172
+    scale = 295829355.45453244
+    _min = -20037508.342787
+    _max = 20037508.342787
+    spatial_reference = {"wkid": 102100, "latestWkid": 3857}
+    extent = {
+        "xmin": _min,
+        "ymin": _min,
+        "xmax": _max,
+        "ymax": _max,
+        "spatialReference": spatial_reference,
+    }
+
+    response = {
+        "currentVersion": 10.7,
+        "name": metadata["title"],
+        "copyrightText": metadata["citation"],
+        "capabilities": "TilesOnly",
+        "type": "indexedVector",
+        "defaultStyles": "resources/styles",
+        "tiles": [
+            f"{TILE_CACHE_URL}/{dataset}/{version}/{creation_options.implementation}/{{z}}/{{x}}/{{y}}.pbf"
+        ],
+        "exportTilesAllowed": False,
+        "initialExtent": extent,
+        "fullExtent": extent,
+        "minScale": 0,
+        "maxScale": 0,
+        "tileInfo": {
+            "rows": 512,
+            "cols": 512,
+            "dpi": 96,
+            "format": "pbf",
+            "origin": {"x": _min, "y": _max},
+            "spatialReference": spatial_reference,
+            "lods": [
+                {
+                    "level": i,
+                    "resolution": resolution / (2 ** i),
+                    "scale": scale / (2 ** i),
+                }
+                for i in range(creation_options.min_zoom, creation_options.max_zoom + 1)
+            ],
+        },
+        "maxzoom": 22,
+        "minLOD": creation_options.min_zoom,
+        "maxLOD": creation_options.max_zoom,
+        "resourceInfo": {
+            "styleVersion": 8,
+            "tileCompression": "gzip",
+            "cacheInfo": {
+                "storageInfo": {"packetSize": 128, "storageFormat": "compactV2"}
+            },
+        },
+        "serviceItemId": str(asset_id),
+    }
+    return response

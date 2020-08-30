@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from botocore.exceptions import ClientError
+from fastapi.logger import logger
 
 from ..utils.aws import get_cloudfront_client, get_ecs_client, get_s3_client
 
@@ -10,6 +11,7 @@ def update_ecs_service(cluster: str, service: str) -> Dict[str, Any]:
 
     ecs_client = get_ecs_client()
 
+    logger.debug("Reload tile cache service")
     response = ecs_client.update_service(
         cluster=cluster, service=service, forceNewDeployment=True
     )
@@ -35,12 +37,18 @@ def delete_s3_objects(bucket: str, prefix: str,) -> int:
             # flush once aws limit reached
             if len(delete_us["Objects"]) >= 1000:
                 count += len(delete_us["Objects"])
+                logger.debug(
+                    f"Delete {len(delete_us['Objects'])} objects in bucker {bucket} with prefix {prefix}"
+                )
                 client.delete_objects(Bucket=bucket, Delete=delete_us)
                 delete_us = dict(Objects=[])
 
     # flush rest
     if len(delete_us["Objects"]):
         count += len(delete_us["Objects"])
+        logger.debug(
+            f"Delete {len(delete_us['Objects'])} objects in bucket {bucket} with prefix {prefix}"
+        )
         client.delete_objects(Bucket=bucket, Delete=delete_us)
 
     return count
@@ -110,6 +118,7 @@ def _update_lifecycle_rule(bucket, rule) -> Dict[str, Any]:
     client = get_s3_client()
     rules = _get_lifecycle_rules(bucket)
     rules.append(rule)
+    logger.debug(f"Add lifecylce configuration rule {rules} to bucket {bucket}")
     response = client.put_bucket_lifecycle_configuration(
         Bucket=bucket, LifecycleConfiguration={"Rules": rules}
     )
