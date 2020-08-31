@@ -25,7 +25,7 @@ from app.settings.globals import (
     TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
-    RASTER_ANALYSIS_LAMBDA_NAME
+    RASTER_ANALYSIS_LAMBDA_NAME,
 )
 
 from . import (
@@ -218,3 +218,23 @@ def copy_fixtures():
             Key=f"test_{reader.line_num}.tsv",
         )
         out.close()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def lambda_client():
+    services = ["lambda", "iam", "logs"]
+    aws_mock = AWSMock(*services)
+
+    resp = aws_mock.mocked_services["iam"]["client"].create_role(
+        RoleName="TestRole", AssumeRolePolicyDocument="some_policy"
+    )
+    iam_arn = resp["Role"]["Arn"]
+
+    def create_lambda(func_str):
+        aws_mock.create_lambda_function(
+            func_str, RASTER_ANALYSIS_LAMBDA_NAME, "lambda_function.lambda_handler", "python3.7", iam_arn
+        )
+
+    yield create_lambda
+
+    aws_mock.stop_services()

@@ -111,6 +111,9 @@ data "local_file" "iam_s3_read_only" {
   filename = "${path.root}/templates/iam_s3_read_only.json"
 }
 
-data "local_file" "iam_lambda_invoke" {
-  filename = "${path.root}/templates/lambda_invoke_policy.json"
+data "template_file" "iam_lambda_invoke" {
+  template = "${path.root}/templates/lambda_invoke_policy.json"
+  vars = {
+    lambda_arn = data.terraform_remote_state.raster_analysis_lambda.raster_analysis_lambda_arn
+  }
 }

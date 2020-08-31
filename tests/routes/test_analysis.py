@@ -1,35 +1,18 @@
 import pytest
 
 from app.errors import InvalidResponseError
-from tests import AWSMock
-
-TEST_FUNCTION_NAME = "test_raster_analysis"
-
-
-@pytest.fixture(scope="session", autouse=True)
-def analysis_lambda_client():
-    services = ["lambda", "iam", "logs"]
-    aws_mock = AWSMock(*services)
-
-    resp = aws_mock.mocked_services["iam"]["client"].create_role(
-        RoleName="TestRole", AssumeRolePolicyDocument="some_policy"
-    )
-    iam_arn = resp["Role"]["Arn"]
-
-    aws_mock.create_lambda_function(
-        FUNC_STR, TEST_FUNCTION_NAME, "lambda_function.lambda_handler", "python3.7", iam_arn
-    )
-
-    yield aws_mock.mocked_services["lambda"]["client"]
-
-    aws_mock.stop_services()
+from app.settings.globals import (
+    RASTER_ANALYSIS_LAMBDA_NAME,
+)
 
 
 @pytest.mark.asyncio
-async def test_raster_analysis__success(async_client, analysis_lambda_client):
+async def test_raster_analysis__success(async_client, lambda_client):
     """Basic test to check if lambda is successfully called and returns response correctly."""
+    lambda_client(FUNC_STR)
+
     response = await async_client.get(
-        f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=umd_tree_cover_loss__year&filters=is__umd_regional_primary_forest_2001&filters=umd_tree_cover_density_2000__30&sum=area__ha"
+        f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=umd_tree_cover_loss__year&filters=is__umd_regional_primary_forest_2001&filters=umd_tree_cover_density_2000__30&sum=area__ha&start_date=2001"
     )
 
     assert response.status_code == 200
@@ -38,8 +21,10 @@ async def test_raster_analysis__success(async_client, analysis_lambda_client):
 
 
 @pytest.mark.asyncio
-async def test_raster_analysis__bad_params(async_client, analysis_lambda_client):
+async def test_raster_analysis__bad_params(async_client, lambda_client):
     """Basic test to check if empty data api response as expected."""
+    lambda_client(FUNC_STR)
+
     response = await async_client.get(
         f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=not_umd_tree_cover_loss__year"
     )
@@ -50,13 +35,19 @@ async def test_raster_analysis__bad_params(async_client, analysis_lambda_client)
     )
     assert response.status_code == 422
 
+    response = await async_client.get(
+        f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=umd_tree_cover_loss__year&sum=area__ha&start_date=01-01-2020"
+    )
+    assert response.status_code == 422
 
 @pytest.mark.asyncio
-async def test_raster_analysis__lambda_error(async_client, analysis_lambda_client):
+async def test_raster_analysis__lambda_error(async_client, lambda_client):
     """Basic test to check if empty data api response as expected."""
+    lambda_client(FAIL_FUNC_STR)
+
     with pytest.raises(InvalidResponseError):
         await async_client.get(
-            f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=umd_tree_cover_loss__year&start_date=failme"
+            f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=umd_tree_cover_loss__year"
         )
 
 
@@ -163,15 +154,6 @@ SAMPLE_RESPONSE = [
 
 FUNC_STR = f"""
 def lambda_handler(event, context):
-    if event["start_date"] == "failme":
-        return {{
-            "statusCode": 500,
-            "body": {{
-                "status": "failed",
-                "message": "Failure"
-            }}
-        }}
-        
     assert event["geometry"] == {SAMPLE_GEOM}
     assert event["group_by"] == ["umd_tree_cover_loss__year"]
     assert set(event["filters"]) == set(["is__umd_regional_primary_forest_2001", "umd_tree_cover_density_2000__30"])
@@ -184,5 +166,16 @@ def lambda_handler(event, context):
             "data": {SAMPLE_RESPONSE}
         }}
     }}
+"""
+
+FAIL_FUNC_STR = """
+def lambda_handler(event, context):
+    return {
+        "statusCode": 500,
+        "body": {
+            "status": "failed",
+            "message": "Failure"
+        }
+    }
 """
 
