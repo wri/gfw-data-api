@@ -60,3 +60,7 @@ def extract(
         return new_geom.wkb_hex
     else:
         return geometry.wkb_hex
+
+
+if __name__ == "__main__":
+    cli()
