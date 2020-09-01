@@ -14,7 +14,7 @@ jobs:
         ENV: production
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_production }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_production }}
-        AWS_REGION: ${{ secrets.aws_region_production }}}
+        AWS_REGION: ${{ secrets.aws_region_production }}
       run: ./scripts/infra plan -w ${{ github.base_ref }}
     - name: Plan staging
       if: success() && contains(github.base_ref, 'develop')
