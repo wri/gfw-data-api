@@ -1,4 +1,4 @@
-from aenum import Enum
+from enum import Enum
 
 
 class RasterLayer(str, Enum):

@@ -33,8 +33,8 @@ async def zonal_statistics(
     group_by: Optional[List[RasterLayer]] = Query([], title="Group By Layers"),
     filters: Optional[List[RasterLayer]] = Query([], title="Filter Layers"),
     sum: Optional[List[RasterLayer]] = Query([], title="Sum Layers"),
-    start_date: Optional[str] = Query(None, title="Start Date"),
-    end_date: Optional[str] = Query(None, title="End Date")
+    start_date: Optional[str] = Query(None, title="Start Date", regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",),
+    end_date: Optional[str] = Query(None, title="End Date", regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",)
 ):
     """Calculate zonal statistics on any registered raster layers in a geostore."""
     geometry = await get_geostore_geometry(geostore_id, geostore_origin)
@@ -57,7 +57,7 @@ async def zonal_statistics(
     response_payload = json.loads(response['Payload'].read().decode())
 
     if response_payload['statusCode'] != 200:
-        raise InvalidResponseError(f"Raster analysis returned status code {response_payload['statusCode']}, {response_payload['body']['message']}")
+        raise InvalidResponseError(f"Raster analysis returned status code {response_payload['statusCode']}")
 
     response_data = response_payload['body']['data']
     return Response(data=response_data)
