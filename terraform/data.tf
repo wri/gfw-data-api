@@ -22,10 +22,12 @@ data "terraform_remote_state" "pixetl" {
 # import gfw-raster-analysis-lambda state
 data "terraform_remote_state" "raster_analysis_lambda" {
   backend = "s3"
+  workspace = var.lambda_analysis_workspace
   config = {
     bucket = local.tf_state_bucket
     region = "us-east-1"
     key    = "wri__gfw-raster-analysis-lambda.tfstate"
+
   }
 }
 
@@ -111,9 +113,13 @@ data "local_file" "iam_s3_read_only" {
   filename = "${path.root}/templates/iam_s3_read_only.json"
 }
 
-data "template_file" "iam_lambda_invoke" {
-  template = "${path.root}/templates/lambda_invoke_policy.json.tmpl"
-  vars = {
-    lambda_arn = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_lambda_arn
-  }
+//data "template_file" "iam_lambda_invoke" {
+//  template = "${path.root}/templates/lambda_invoke_policy.json.tmpl"
+//  vars = {
+//    lambda_arn = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_lambda_arn
+//  }
+//}
+
+data "local_file" "iam_lambda_invoke" {
+  filename = "${path.root}/templates/lambda_invoke_policy.json.tmpl"
 }

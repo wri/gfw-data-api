@@ -4,7 +4,7 @@
 *.idea*
 
 #MyPy
-.mypy_cache
+.mypy_cache/*
 
 # Docker Files
 docker-compose.dev.yml

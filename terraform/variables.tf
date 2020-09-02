@@ -58,3 +58,6 @@ variable "service_url" {
 variable "git_sha" {
   type = string
 }
+variable "lambda_analysis_workspace" {
+  type = string
+}
