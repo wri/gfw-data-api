@@ -32,7 +32,7 @@ async def zonal_statistics(
     ),
     group_by: Optional[List[RasterLayer]] = Query([], title="Group By Layers"),
     filters: Optional[List[RasterLayer]] = Query([], title="Filter Layers"),
-    sum: Optional[List[RasterLayer]] = Query([], title="Sum Layers"),
+    sum_layers: Optional[List[RasterLayer]] = Query([], alias="sum", title="Sum Layers"),
     start_date: Optional[str] = Query(None, title="Start Date", regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",),
     end_date: Optional[str] = Query(None, title="End Date", regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",)
 ):
@@ -43,7 +43,7 @@ async def zonal_statistics(
         "geometry": geometry,
         "group_by": group_by,
         "filters": filters,
-        "sum": sum,
+        "sum": sum_layers,
         "start_date": start_date,
         "end_date": end_date
     }
