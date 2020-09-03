@@ -33,8 +33,8 @@ async def zonal_statistics(
     sum_layers: List[RasterLayer] = Query(..., alias="sum", title="Sum Layers"),
     group_by: Optional[List[RasterLayer]] = Query([], title="Group By Layers"),
     filters: Optional[List[RasterLayer]] = Query([], title="Filter Layers"),
-    start_date: Optional[str] = Query(None, title="Start Date", regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",),
-    end_date: Optional[str] = Query(None, title="End Date", regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",)
+    start_date: Optional[str] = Query(None, title="Start Date", description="Must be either year or YYYY-MM-DD date format.", regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",),
+    end_date: Optional[str] = Query(None, title="End Date", description="Must be either year or YYYY-MM-DD date format.", regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",)
 ):
     """Calculate zonal statistics on any registered raster layers in a geostore."""
     geometry = await get_geostore_geometry(geostore_id, geostore_origin)
