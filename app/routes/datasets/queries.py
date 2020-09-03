@@ -14,7 +14,7 @@ from pglast.printer import RawStream
 
 from ...application import db
 from ...crud import versions
-from ...errors import BadResponseError, InvalidResponseError, RecordNotFoundError
+from ...errors import RecordNotFoundError
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pg_admin_functions import (
     advisory_lock_functions,
@@ -44,7 +44,7 @@ from ...models.enum.pg_sys_functions import (
     transaction_ids_and_snapshots,
 )
 from ...models.pydantic.responses import Response
-from ...utils import rw_api
+from ...utils.geostore import get_geostore_geometry
 from .. import dataset_dependency, version_dependency
 
 router = APIRouter()
@@ -228,7 +228,7 @@ def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, An
 
 
 async def _add_geostore_filter(parsed_sql, geostore_id: UUID, geostore_origin: str):
-    geometry = await _get_geostore_geometry(geostore_id, geostore_origin)
+    geometry = await get_geostore_geometry(geostore_id, geostore_origin)
 
     # make empty select statement with where clause including filter
     # this way we can later parse it as AST
@@ -248,21 +248,3 @@ async def _add_geostore_filter(parsed_sql, geostore_id: UUID, geostore_origin: s
 
     return parsed_sql
 
-
-async def _get_geostore_geometry(geostore_id: UUID, geostore_origin: str):
-    geostore_constructor = {
-        # GeostoreOrigin.gfw: geostore.get_geostore_geometry,
-        GeostoreOrigin.rw: rw_api.get_geostore_geometry
-    }
-
-    try:
-        return await geostore_constructor[geostore_origin](geostore_id)
-    except KeyError:
-        raise HTTPException(
-            status_code=501,
-            detail=f"Geostore origin {geostore_origin} not fully implemented.",
-        )
-    except InvalidResponseError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    except BadResponseError as e:
-        raise HTTPException(status_code=400, detail=str(e))
