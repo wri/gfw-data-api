@@ -3,7 +3,7 @@ import json
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Path
+from fastapi import APIRouter, Query, Path, HTTPException
 from fastapi.responses import ORJSONResponse
 
 from app.errors import InvalidResponseError
@@ -30,9 +30,9 @@ async def zonal_statistics(
     geostore_origin: GeostoreOrigin = Query(GeostoreOrigin.gfw,
         title="Origin service of geostore ID"
     ),
+    sum_layers: List[RasterLayer] = Query(..., alias="sum", title="Sum Layers"),
     group_by: Optional[List[RasterLayer]] = Query([], title="Group By Layers"),
     filters: Optional[List[RasterLayer]] = Query([], title="Filter Layers"),
-    sum_layers: Optional[List[RasterLayer]] = Query([], alias="sum", title="Sum Layers"),
     start_date: Optional[str] = Query(None, title="Start Date", regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",),
     end_date: Optional[str] = Query(None, title="End Date", regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",)
 ):
