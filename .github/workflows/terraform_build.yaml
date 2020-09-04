@@ -26,7 +26,7 @@ jobs:
         ENV: production
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_production }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_production }}
-        AWS_DEFAULT_REGION: ${{ secrets.aws_region_production }}
+        AWS_REGION: ${{ secrets.aws_region_production }}
       run: |
         ./scripts/infra plan -w ${{ github.ref }}
         ./scripts/infra apply
@@ -37,7 +37,7 @@ jobs:
         ENV: staging
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_staging }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_staging }}
-        AWS_DEFAULT_REGION: ${{ secrets.aws_region_staging }}
+        AWS_REGION: ${{ secrets.aws_region_staging }}
       run: |
         ./scripts/infra plan -w ${{ github.ref }}
         ./scripts/infra apply
@@ -48,7 +48,7 @@ jobs:
         ENV: dev
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_dev }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_dev }}
-        AWS_DEFAULT_REGION: ${{ secrets.aws_region_dev }}
+        AWS_REGION: ${{ secrets.aws_region_dev }}
       run: |
         ./scripts/infra plan -w ${{ github.ref }}
         ./scripts/infra apply

@@ -1,11 +1,13 @@
 import contextlib
+import io
 import json
 import os
+import zipfile
 from http.server import BaseHTTPRequestHandler
 from typing import List, Optional
 
 import boto3
-from moto import mock_batch, mock_ec2, mock_ecs, mock_iam, mock_logs
+from moto import mock_batch, mock_ec2, mock_ecs, mock_iam, mock_lambda, mock_logs
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -138,6 +140,7 @@ class AWSMock(object):
         "ecs": mock_ecs,
         "ec2": mock_ec2,
         "logs": mock_logs,
+        "lambda": mock_lambda,
     }
 
     def __init__(self, *services):
@@ -235,6 +238,23 @@ class AWSMock(object):
                     },
                 ],
             },
+        )
+
+    def create_lambda_function(
+        self, func_str, lambda_name, handler_name, runtime, role
+    ):
+        zip_output = io.BytesIO()
+        zip_file = zipfile.ZipFile(zip_output, "w", zipfile.ZIP_DEFLATED)
+        zip_file.writestr("lambda_function.py", func_str)
+        zip_file.close()
+        zip_output.seek(0)
+
+        return self.mocked_services["lambda"]["client"].create_function(
+            Code={"ZipFile": zip_output.read()},
+            FunctionName=lambda_name,
+            Handler=handler_name,
+            Runtime=runtime,
+            Role=role,
         )
 
     def print_logs(self):

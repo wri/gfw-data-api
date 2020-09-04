@@ -28,6 +28,7 @@ from app.settings.globals import (
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
+    RASTER_ANALYSIS_LAMBDA_NAME,
     TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
@@ -284,3 +285,27 @@ async def tmp_folder():
 
     # clean up
     shutil.rmtree(tmp_dir)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def lambda_client():
+    services = ["lambda", "iam", "logs"]
+    aws_mock = AWSMock(*services)
+
+    resp = aws_mock.mocked_services["iam"]["client"].create_role(
+        RoleName="TestRole", AssumeRolePolicyDocument="some_policy"
+    )
+    iam_arn = resp["Role"]["Arn"]
+
+    def create_lambda(func_str):
+        aws_mock.create_lambda_function(
+            func_str,
+            RASTER_ANALYSIS_LAMBDA_NAME,
+            "lambda_function.lambda_handler",
+            "python3.7",
+            iam_arn,
+        )
+
+    yield create_lambda
+
+    aws_mock.stop_services()

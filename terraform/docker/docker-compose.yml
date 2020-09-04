@@ -1,7 +1,7 @@
 version: "3.7"
 services:
   terraform:
-    image: globalforestwatch/terraform:1.1.1
+    image: globalforestwatch/terraform:1.2.1
     volumes:
       - ../../:/usr/local/src
       - $HOME/.aws:/root/.aws:ro
@@ -10,6 +10,6 @@ services:
       - ENV
       - AWS_ACCESS_KEY_ID
       - AWS_SECRET_ACCESS_KEY
-      - AWS_DEFAULT_REGION
+      - AWS_REGION
     working_dir: /usr/local/src
     entrypoint: infra
