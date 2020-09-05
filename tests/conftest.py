@@ -113,7 +113,7 @@ def batch_client():
         POSTGRESQL_CLIENT_JOB_DEFINITION, "batch_postgresql-client_test"
     )
     aws_mock.add_job_definition(TILE_CACHE_JOB_DEFINITION, "batch_tile_cache_test")
-    aws_mock.add_job_definition(PIXETL_JOB_DEFINITION, "pixetl_test")
+    aws_mock.add_job_definition(PIXETL_JOB_DEFINITION, "pixetl_test", mount_tmp=True)
 
     yield aws_mock.mocked_services["batch"]["client"], aws_mock.mocked_services["logs"][
         "client"

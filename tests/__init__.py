@@ -195,49 +195,46 @@ class AWSMock(object):
             computeEnvironmentOrder=[{"order": 123, "computeEnvironment": env_arn}],
         )
 
-    def add_job_definition(self, job_definition_name, docker_image):
+    def add_job_definition(self, job_definition_name, docker_image, mount_tmp=False):
+        container_properties = {
+            "image": f"{docker_image}:latest",
+            "vcpus": 1,
+            "memory": 128,
+            "environment": [
+                {"name": "AWS_ACCESS_KEY_ID", "value": "testing"},
+                {"name": "AWS_SECRET_ACCESS_KEY", "value": "testing"},
+                {"name": "ENDPOINT_URL", "value": "http://motoserver:5000"},
+                {"name": "DEBUG", "value": "1"},
+                {"name": "TILE_CACHE", "value": TILE_CACHE_BUCKET},
+                {"name": "DATA_LAKE", "value": DATA_LAKE_BUCKET},
+                {"name": "AWS_HTTPS", "value": "NO"},
+                {"name": "AWS_VIRTUAL_HOSTING", "value": "FALSE"},
+                {"name": "GDAL_DISABLE_READDIR_ON_OPEN", "value": "YES"},
+            ],
+            "volumes": [
+                {"host": {"sourcePath": f"{ROOT}/tests/fixtures/aws"}, "name": "aws"},
+            ],
+            "mountPoints": [
+                {
+                    "sourceVolume": "aws",
+                    "containerPath": "/root/.aws",
+                    "readOnly": True,
+                },
+            ],
+        }
+
+        if mount_tmp:
+            container_properties["volumes"].append(
+                {"host": {"sourcePath": f"{ROOT}/tests/fixtures/tmp"}, "name": "tmp"}
+            )
+            container_properties["mountPoints"].append(
+                {"sourceVolume": "tmp", "containerPath": "/tmp", "readOnly": False}
+            )
 
         return self.mocked_services["batch"]["client"].register_job_definition(
             jobDefinitionName=job_definition_name,
             type="container",
-            containerProperties={
-                "image": f"{docker_image}:latest",
-                "vcpus": 1,
-                "memory": 128,
-                "environment": [
-                    {"name": "AWS_ACCESS_KEY_ID", "value": "testing"},
-                    {"name": "AWS_SECRET_ACCESS_KEY", "value": "testing"},
-                    {"name": "ENDPOINT_URL", "value": "http://motoserver:5000"},
-                    {"name": "DEBUG", "value": "1"},
-                    {"name": "TILE_CACHE", "value": TILE_CACHE_BUCKET},
-                    {"name": "DATA_LAKE", "value": DATA_LAKE_BUCKET},
-                    {"name": "AWS_HTTPS", "value": "NO"},
-                    {"name": "AWS_VIRTUAL_HOSTING", "value": "FALSE"},
-                    {"name": "GDAL_DISABLE_READDIR_ON_OPEN", "value": "YES"},
-                ],
-                "volumes": [
-                    {
-                        "host": {"sourcePath": f"{ROOT}/tests/fixtures/aws"},
-                        "name": "aws",
-                    },
-                    {
-                        "host": {"sourcePath": f"{ROOT}/tests/fixtures/tmp"},
-                        "name": "tmp",
-                    },
-                ],
-                "mountPoints": [
-                    {
-                        "sourceVolume": "aws",
-                        "containerPath": "/root/.aws",
-                        "readOnly": True,
-                    },
-                    {
-                        "sourceVolume": "tmp",
-                        "containerPath": "/tmp",
-                        "readOnly": False,
-                    },
-                ],
-            },
+            containerProperties=container_properties,
         )
 
     def create_lambda_function(
