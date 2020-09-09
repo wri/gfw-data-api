@@ -1,9 +1,9 @@
 """Run analysis on registered datasets."""
 import json
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Path, HTTPException
+from fastapi import APIRouter, Query, Path
 from fastapi.responses import ORJSONResponse
 
 from app.errors import InvalidResponseError
@@ -12,8 +12,9 @@ from app.utils.geostore import get_geostore_geometry
 
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.pydantic.responses import Response
+from ...models.pydantic.analysis import ZonalAnalysisRequestIn
 from app.settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
-from app.utils.aws import get_lambda_client
+import aioboto3
 
 router = APIRouter()
 
@@ -38,7 +39,43 @@ async def zonal_statistics(
 ):
     """Calculate zonal statistics on any registered raster layers in a geostore."""
     geometry = await get_geostore_geometry(geostore_id, geostore_origin)
+    return await _zonal_statics(
+        geometry,
+        sum_layers,
+        group_by,
+        filters,
+        start_date,
+        end_date,
+    )
 
+
+@router.post(
+    "/zonal",
+    response_class=ORJSONResponse,
+    response_model=Response,
+    tags=["Analysis"],
+)
+async def zonal_statistics(
+    request: ZonalAnalysisRequestIn
+):
+    return await _zonal_statics(
+        request.geometry,
+        request.sum,
+        request.group_by,
+        request.filters,
+        request.start_date,
+        request.end_date,
+    )
+
+
+async def _zonal_statics(
+    geometry: Dict[str, Any],
+    sum_layers: List[RasterLayer],
+    group_by: Optional[List[RasterLayer]],
+    filters: Optional[List[RasterLayer]],
+    start_date: Optional[str],
+    end_date: Optional[str],
+):
     payload = {
         "geometry": geometry,
         "group_by": group_by,
@@ -48,16 +85,18 @@ async def zonal_statistics(
         "end_date": end_date
     }
 
-    response = get_lambda_client().invoke(
-        FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
-        InvocationType="RequestResponse",
-        Payload=bytes(json.dumps(payload), "utf-8"),
-    )
+    async with aioboto3.client("lambda") as lambda_client:
+        response = await lambda_client.invoke(
+            FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
+            InvocationType="RequestResponse",
+            Payload=bytes(json.dumps(payload), "utf-8"),
+        )
 
-    response_payload = json.loads(response['Payload'].read().decode())
+        response_payload = await response['Payload'].read()
+        response_payload = json.loads(response_payload.decode())
 
-    if response_payload['statusCode'] != 200:
-        raise InvalidResponseError(f"Raster analysis returned status code {response_payload['statusCode']}")
+        if response_payload['statusCode'] != 200:
+            raise InvalidResponseError(f"Raster analysis returned status code {response_payload['statusCode']}")
 
-    response_data = response_payload['body']['data']
-    return Response(data=response_data)
+        response_data = response_payload['body']['data']
+        return Response(data=response_data)
