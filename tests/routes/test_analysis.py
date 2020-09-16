@@ -1,9 +1,37 @@
 import pytest
+import json
+import asyncio
 
 from app.errors import InvalidResponseError
 from app.settings.globals import (
-    RASTER_ANALYSIS_LAMBDA_NAME,
+    RASTER_ANALYSIS_LAMBDA_NAME
 )
+from app.utils.aws import get_lambda_client
+import app.routes.analysis.analysis as analysis
+
+
+# Workaroud because of this bug with aiobotocore: https://github.com/aio-libs/aiobotocore/issues/755
+# It's not working correctly with moto, so need to monkeypatch the lambda invoke to be synchronous
+# during tests
+@pytest.yield_fixture(scope='session')
+def event_loop(request):
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest.fixture(autouse=True)
+def patch_invoke(monkeypatch):
+    async def mock_invoke(payload):
+        response = get_lambda_client().invoke(
+            FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
+            InvocationType="RequestResponse",
+            Payload=bytes(json.dumps(payload), "utf-8"),
+        )
+
+        return response['Payload'].read()
+
+    monkeypatch.setattr(analysis, "_invoke_lambda", mock_invoke)
 
 
 @pytest.mark.asyncio
@@ -40,6 +68,7 @@ async def test_raster_analysis__bad_params(async_client, lambda_client):
     )
     assert response.status_code == 422
 
+
 @pytest.mark.asyncio
 async def test_raster_analysis__lambda_error(async_client, lambda_client):
     """Basic test to check if empty data api response as expected."""
@@ -47,7 +76,7 @@ async def test_raster_analysis__lambda_error(async_client, lambda_client):
 
     with pytest.raises(InvalidResponseError):
         await async_client.get(
-            f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=umd_tree_cover_loss__year"
+            f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=umd_tree_cover_loss__year&filters=is__umd_regional_primary_forest_2001&filters=umd_tree_cover_density_2000__30&sum=area__ha&start_date=2001"
         )
 
 

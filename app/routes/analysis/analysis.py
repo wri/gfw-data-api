@@ -13,7 +13,7 @@ from app.utils.geostore import get_geostore_geometry
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.pydantic.responses import Response
 from ...models.pydantic.analysis import ZonalAnalysisRequestIn
-from app.settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
+from app.settings.globals import RASTER_ANALYSIS_LAMBDA_NAME, AWS_REGION
 import aioboto3
 
 router = APIRouter()
@@ -85,18 +85,22 @@ async def _zonal_statics(
         "end_date": end_date
     }
 
-    async with aioboto3.client("lambda") as lambda_client:
+    response_payload_encoded = await _invoke_lambda(payload)
+    response_payload = json.loads(response_payload_encoded.decode())
+
+    if response_payload['statusCode'] != 200:
+        raise InvalidResponseError(f"Raster analysis returned status code {response_payload['statusCode']}")
+
+    response_data = response_payload['body']['data']
+    return Response(data=response_data)
+
+
+async def _invoke_lambda(payload):
+    async with aioboto3.client("lambda", region_name=AWS_REGION) as lambda_client:
         response = await lambda_client.invoke(
             FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
             InvocationType="RequestResponse",
             Payload=bytes(json.dumps(payload), "utf-8"),
         )
 
-        response_payload = await response['Payload'].read()
-        response_payload = json.loads(response_payload.decode())
-
-        if response_payload['statusCode'] != 200:
-            raise InvalidResponseError(f"Raster analysis returned status code {response_payload['statusCode']}")
-
-        response_data = response_payload['body']['data']
-        return Response(data=response_data)
+        return await response['Payload'].read()
