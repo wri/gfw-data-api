@@ -1,8 +1,11 @@
-from unittest.mock import patch
-
 import pytest
+import requests
 
-from tests.utils import create_default_asset
+from app.crud import tasks
+from app.settings.globals import DATA_LAKE_BUCKET
+from tests.conftest import flush_request_list
+from tests.tasks import MockCloudfrontClient
+from tests.utils import create_default_asset, poll_jobs
 
 
 @pytest.mark.asyncio
@@ -71,3 +74,128 @@ async def test_assets(async_client):
     assert create_asset_resp.json()["message"] == (
         "Version status is `failed`. Cannot add any assets."
     )
+
+
+@pytest.mark.asyncio
+async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
+    """"""
+    _, logs = batch_client
+
+    # Add a dataset, version, and default asset
+    dataset = "test"
+    version = "v1.1.1"
+
+    asset = await create_default_asset(
+        dataset, version, async_client=async_client, execute_batch_jobs=True
+    )
+    asset_id = asset["asset_id"]
+
+    # Verify that the asset and version are in state "saved"
+    version_resp = await async_client.get(f"/dataset/{dataset}/{version}")
+    assert version_resp.json()["data"]["status"] == "saved"
+
+    asset_resp = await async_client.get(f"/asset/{asset_id}")
+    assert asset_resp.json()["data"]["status"] == "saved"
+
+    # Flush requests list so we're starting fresh
+    requests.delete(f"http://localhost:{httpd.server_port}")
+
+    # Try adding a non-default raster asset
+    asset_payload = {
+        "asset_type": "Raster tile set",
+        "asset_uri": "http://www.aclu.org",
+        "is_managed": False,
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [
+                f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raw/tiles.geojson"
+            ],
+            "source_driver": "GeoJSON",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            "overwrite": True,
+            "subset": "90N_000E",
+        },
+        # "metadata": payload["metadata"],
+    }
+
+    create_asset_resp = await async_client.post(
+        f"/dataset/{dataset}/{version}/assets", json=asset_payload
+    )
+    resp_json = create_asset_resp.json()
+    assert resp_json["status"] == "success"
+    assert resp_json["data"]["status"] == "pending"
+    asset_id = resp_json["data"]["asset_id"]
+
+    # wait until batch jobs are done.
+    tasks_rows = await tasks.get_tasks(asset_id)
+    task_ids = [str(task.task_id) for task in tasks_rows]
+    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
+    assert status == "saved"
+
+    # asset_resp = await async_client.get(f"/asset/{asset_id}")
+    # assert asset_resp.json()["data"]["status"] == "saved"
+    # new_asset_id = asset_resp
+
+
+@pytest.mark.asyncio
+async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
+    """"""
+    _, logs = batch_client
+
+    # Add a dataset, version, and default asset
+    dataset = "test_vector"
+    version = "v1.1.1"
+
+    asset = await create_default_asset(
+        dataset, version, async_client=async_client, execute_batch_jobs=True
+    )
+    asset_id = asset["asset_id"]
+
+    # Verify that the asset and version are in state "saved"
+    version_resp = await async_client.get(f"/dataset/{dataset}/{version}")
+    assert version_resp.json()["data"]["status"] == "saved"
+
+    asset_resp = await async_client.get(f"/asset/{asset_id}")
+    assert asset_resp.json()["data"]["status"] == "saved"
+
+    # Flush requests list so we're starting fresh
+    requests.delete(f"http://localhost:{httpd.server_port}")
+
+    # Try adding a non-default vector asset
+    asset_payload = {
+        "asset_type": "Raster tile set",
+        "asset_uri": "http://www.osnews.com",
+        "is_managed": False,
+        "creation_options": {
+            "source_type": "vector",
+            # "source_uri": [
+            #     f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raw/tiles.geojson"
+            # ],
+            "source_driver": "GeoJSON",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            "overwrite": True,
+            "subset": "90N_000E",
+            # "foo": "sigh"
+        },
+        # "metadata": payload["metadata"],
+    }
+
+    create_asset_resp = await async_client.post(
+        f"/dataset/{dataset}/{version}/assets", json=asset_payload
+    )
+    resp_json = create_asset_resp.json()
+    assert resp_json["status"] == "success"
+    assert resp_json["data"]["status"] == "pending"
+    asset_id = resp_json["data"]["asset_id"]
+
+    # # wait until batch jobs are done.
+    tasks_rows = await tasks.get_tasks(asset_id)
+    task_ids = [str(task.task_id) for task in tasks_rows]
+    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
+    assert status == "saved"

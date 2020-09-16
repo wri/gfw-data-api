@@ -5,7 +5,12 @@ from urllib.parse import urlparse
 from botocore.exceptions import ClientError
 
 from app.models.enum.assets import AssetType
-from app.settings.globals import API_URL, DATA_LAKE_BUCKET, TILE_CACHE_URL
+from app.settings.globals import (
+    API_URL,
+    DATA_LAKE_BUCKET,
+    TILE_CACHE_BUCKET,
+    TILE_CACHE_URL,
+)
 from app.utils.aws import get_s3_client
 
 
@@ -25,7 +30,7 @@ def is_zipped(s3_uri: str) -> bool:
 
     try:
         header = client.head_object(Bucket=bucket, Key=key)
-        # TODO: moto does not return the correct ContenType so have to go for the ext
+        # TODO: moto does not return the correct ContentType so have to go for the ext
         if header["ContentType"] == "application/x-zip-compressed" or ext == ".zip":
             return True
     except (KeyError, ClientError):
@@ -51,10 +56,11 @@ def get_asset_uri(
 
     if not creation_options:
         creation_options = {}
-    srid = creation_options.get("srid", None)
-    size = creation_options.get("size", None)
-    col = creation_options.get("col", None)
-    value = creation_options.get("value", None)
+    srid = creation_options.get("srid", "epsg-4326")
+    # size = creation_options.get("size", None)
+    # col = creation_options.get("col", None)
+    grid = creation_options.get("grid", None)
+    value = creation_options.get("pixel_meaning", None)
 
     uri_constructor: Dict[str, str] = {
         AssetType.dynamic_vector_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/dynamic/{{z}}/{{x}}/{{y}}.pbf",
@@ -68,7 +74,7 @@ def get_asset_uri(
         AssetType.tsv: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/text/{dataset}_{version}.tsv",
         AssetType.geo_database_table: f"{API_URL}/dataset/{dataset}/{version}/query",
         AssetType.database_table: f"{API_URL}/dataset/{dataset}/{version}/query",
-        AssetType.raster_tile_set: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/{srid}/{size}/{col}/{value}/geotiff/{{tile_id}}.tif",
+        AssetType.raster_tile_set: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/{srid}/{grid}/{value}/geotiff/{{tile_id}}.tif",
     }
 
     try:

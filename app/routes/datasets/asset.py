@@ -10,9 +10,10 @@ based on the same version and do not know the processing history.
 """
 
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import ORJSONResponse
 
 from ...crud import assets, versions
@@ -73,7 +74,8 @@ async def add_new_asset(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
-    request: AssetCreateIn,
+    # request: AssetCreateIn,
+    request: Dict[str, Any],
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
     response: ORJSONResponse,
@@ -86,7 +88,14 @@ async def add_new_asset(
     link to.
     """
 
-    input_data = request.dict(exclude_none=True, by_alias=True)
+    # input_data = request.dict(exclude_none=True, by_alias=True)
+    input_data = request
+
+    from logging import getLogger
+
+    logger = getLogger("SERIOUSBUSINESS")
+    # logger.error(f"ADD_NEW_ASSET class: {type(request)}")
+    logger.error(f"ADD_NEW_ASSET input_data: {jsonable_encoder(input_data)}")
 
     await verify_version_status(dataset, version)
 
@@ -94,7 +103,12 @@ async def add_new_asset(
         await verify_asset_dependencies(dataset, version, input_data["asset_type"])
 
     try:
-        asset_uri = get_asset_uri(dataset, version, input_data["asset_type"])
+        asset_uri = get_asset_uri(
+            dataset,
+            version,
+            input_data["asset_type"],
+            input_data.get("creation_options"),
+        )
     except NotImplementedError:
         raise HTTPException(
             status_code=501,

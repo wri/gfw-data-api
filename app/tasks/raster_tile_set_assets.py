@@ -4,30 +4,35 @@ from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
 
-from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.creation_options import AnyRasterTileSetCreationOptions
-from ..models.pydantic.jobs import PixETLJob
-from ..settings.globals import ENV, S3_ENTRYPOINT_URL
-from . import Callback, callback_constructor, writer_secrets
-from .batch import execute
+from app.models.enum.sources import RasterSourceType
+from app.models.pydantic.change_log import ChangeLog
+from app.models.pydantic.creation_options import AnyRasterTileSetCreationOptions
+from app.models.pydantic.jobs import PixETLJob
+from app.settings.globals import ENV, S3_ENTRYPOINT_URL
+from app.tasks import Callback, callback_constructor, writer_secrets
+from app.tasks.batch import execute
 
 
-async def raster_source_asset(
+async def raster_tile_set_asset(
     dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
 
     from logging import getLogger
 
     logger = getLogger("SERIOUSBUSINESS")
-    logger.error(f"RASTER SOURCE ASSET INPUT DATA: {jsonable_encoder(input_data)}")
+    logger.error(f"INPUT DATA: {jsonable_encoder(input_data)}")
 
     # pixETL does not currently support combining multiple inputs
-    source_uris: List[str] = input_data["creation_options"]["source_uri"]
+    source_uris: List[str] = input_data["creation_options"].get("source_uri", [])
     if len(source_uris) > 1:
         raise AssertionError("Raster sources only support one input file")
     elif len(source_uris) == 0:
-        raise AssertionError("source_uri must contain a URI to an input file in S3")
-    source_uri = source_uris[0]
+        if input_data["creation_options"]["source_type"] == RasterSourceType.raster:
+            raise AssertionError("source_uri must contain a URI to an input file in S3")
+        else:
+            source_uri = None
+    else:
+        source_uri = source_uris[0]
 
     # Put in a Pydantic model for validation, but then turn into a dict so we
     # can re-define source_uri as a str instead of a List[str] to make pixETL
@@ -49,9 +54,9 @@ async def raster_source_asset(
 
     # from logging import getLogger
     # logger = getLogger("SERIOUSBUSINESS")
-    # logger.error(f"CREATION OPTIONS: {jsonable_encoder(creation_options)}")
-    # logger.error(f"ENV: {job_env}")
-    # logger.error(f"JSON ARG: {layer_def}")
+    logger.error(f"CREATION OPTIONS: {jsonable_encoder(creation_options)}")
+    logger.error(f"ENV: {job_env}")
+    logger.error(f"JSON ARG: {layer_def}")
 
     command = [
         "create_raster_tile_set.sh",
