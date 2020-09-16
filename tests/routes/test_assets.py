@@ -104,7 +104,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     asset_payload = {
         "asset_type": "Raster tile set",
         "asset_uri": "http://www.aclu.org",
-        "is_managed": False,
+        "is_managed": True,
         "creation_options": {
             "source_type": "raster",
             "source_uri": [
@@ -171,30 +171,26 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
         "is_managed": False,
         "creation_options": {
             "source_type": "vector",
-            # "source_uri": [
-            #     f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raw/tiles.geojson"
-            # ],
             "source_driver": "GeoJSON",
             "data_type": "uint16",
-            "pixel_meaning": "percent",
+            "pixel_meaning": "gfw_fid",
             "grid": "90/27008",
             "resampling": "nearest",
             "overwrite": True,
             "subset": "90N_000E",
-            # "foo": "sigh"
         },
-        # "metadata": payload["metadata"],
     }
 
     create_asset_resp = await async_client.post(
         f"/dataset/{dataset}/{version}/assets", json=asset_payload
     )
     resp_json = create_asset_resp.json()
+    # assert resp_json["data"] == "foo"
     assert resp_json["status"] == "success"
     assert resp_json["data"]["status"] == "pending"
     asset_id = resp_json["data"]["asset_id"]
 
-    # # wait until batch jobs are done.
+    # wait until batch jobs are done.
     tasks_rows = await tasks.get_tasks(asset_id)
     task_ids = [str(task.task_id) for task in tasks_rows]
     status = await poll_jobs(task_ids, logs=logs, async_client=async_client)

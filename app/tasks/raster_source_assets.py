@@ -8,7 +8,7 @@ from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import AnyRasterTileSetCreationOptions
 from ..models.pydantic.jobs import PixETLJob
 from ..settings.globals import ENV, S3_ENTRYPOINT_URL
-from . import Callback, callback_constructor, writer_secrets
+from . import Callback, callback_constructor, reader_secrets
 from .batch import execute
 
 
@@ -42,7 +42,7 @@ async def raster_source_asset(
 
     callback: Callback = callback_constructor(asset_id)
 
-    job_env = writer_secrets + [
+    job_env = reader_secrets + [
         {"name": "ENV", "value": ENV},
         {"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL},
     ]
