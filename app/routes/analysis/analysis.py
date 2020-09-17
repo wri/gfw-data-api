@@ -1,20 +1,19 @@
 """Run analysis on registered datasets."""
 import json
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Path
+import aioboto3
+from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
-from app.errors import InvalidResponseError
-from app.models.enum.analysis import RasterLayer
-from app.utils.geostore import get_geostore_geometry
-
+from ...models.enum.analysis import RasterLayer
 from ...models.enum.geostore import GeostoreOrigin
-from ...models.pydantic.responses import Response
 from ...models.pydantic.analysis import ZonalAnalysisRequestIn
-from app.settings.globals import RASTER_ANALYSIS_LAMBDA_NAME, AWS_REGION
-import aioboto3
+from ...models.pydantic.responses import Response
+from ...settings.globals import AWS_REGION, RASTER_ANALYSIS_LAMBDA_NAME
+from ...utils.geostore import get_geostore_geometry
 
 router = APIRouter()
 
@@ -32,8 +31,8 @@ async def zonal_statistics(
         title="Origin service of geostore ID"
     ),
     sum_layers: List[RasterLayer] = Query(..., alias="sum", title="Sum Layers"),
-    group_by: Optional[List[RasterLayer]] = Query([], title="Group By Layers"),
-    filters: Optional[List[RasterLayer]] = Query([], title="Filter Layers"),
+    group_by: List[RasterLayer] = Query([], title="Group By Layers"),
+    filters: List[RasterLayer] = Query([], title="Filter Layers"),
     start_date: Optional[str] = Query(None, title="Start Date", description="Must be either year or YYYY-MM-DD date format.", regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",),
     end_date: Optional[str] = Query(None, title="End Date", description="Must be either year or YYYY-MM-DD date format.", regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",)
 ):
@@ -71,8 +70,8 @@ async def zonal_statistics(
 async def _zonal_statics(
     geometry: Dict[str, Any],
     sum_layers: List[RasterLayer],
-    group_by: Optional[List[RasterLayer]],
-    filters: Optional[List[RasterLayer]],
+    group_by: List[RasterLayer],
+    filters: List[RasterLayer],
     start_date: Optional[str],
     end_date: Optional[str],
 ):
@@ -89,7 +88,8 @@ async def _zonal_statics(
     response_payload = json.loads(response_payload_encoded.decode())
 
     if response_payload['statusCode'] != 200:
-        raise InvalidResponseError(f"Raster analysis returned status code {response_payload['statusCode']}")
+        logger.error(f"Raster analysis lambda returned status code {response_payload['statusCode']}")
+        raise HTTPException(500, "Raster analysis geoprocessor experienced an error. See logs.")
 
     response_data = response_payload['body']['data']
     return Response(data=response_data)
