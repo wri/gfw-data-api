@@ -228,21 +228,6 @@ class AWSMock(object):
             },
         )
 
-    def create_lambda_function(self, func_str, lambda_name, handler_name, runtime, role):
-        zip_output = io.BytesIO()
-        zip_file = zipfile.ZipFile(zip_output, "w", zipfile.ZIP_DEFLATED)
-        zip_file.writestr("lambda_function.py", func_str)
-        zip_file.close()
-        zip_output.seek(0)
-
-        return self.mocked_services["lambda"]["client"].create_function(
-            Code={'ZipFile': zip_output.read()},
-            FunctionName=lambda_name,
-            Handler=handler_name,
-            Runtime=runtime,
-            Role=role,
-        )
-
     def print_logs(self):
         resp = self.mocked_services["logs"]["client"].describe_log_streams(
             logGroupName=LOG_GROUP
