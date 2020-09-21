@@ -74,10 +74,10 @@ async def test_raster_analysis__lambda_error(async_client, lambda_client):
     """Basic test to check if empty data api response as expected."""
     lambda_client(FAIL_FUNC_STR)
 
-    with pytest.raises(InvalidResponseError):
-        await async_client.get(
-            f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=umd_tree_cover_loss__year&filters=is__umd_regional_primary_forest_2001&filters=umd_tree_cover_density_2000__30&sum=area__ha&start_date=2001"
-        )
+    response = await async_client.get(
+        f"/analysis/zonal/{SAMPLE_GEOSTORE_ID}?geostore_origin=rw&group_by=umd_tree_cover_loss__year&filters=is__umd_regional_primary_forest_2001&filters=umd_tree_cover_density_2000__30&sum=area__ha&start_date=2001"
+    )
+    assert response.status_code == 500
 
 
 SAMPLE_GEOSTORE_ID = "02ca2fbafa2d818aa3d1b974a581fbd0"
