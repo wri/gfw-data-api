@@ -4,7 +4,12 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import unquote
 from uuid import UUID
 
-from asyncpg import InsufficientPrivilegeError, UndefinedFunctionError
+from asyncpg import (
+    InsufficientPrivilegeError,
+    QueryCanceledError,
+    UndefinedColumnError,
+    UndefinedFunctionError,
+)
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
 from pglast import printers  # noqa
@@ -104,6 +109,7 @@ async def query_dataset(
     sql = RawStream()(Node(parsed))
 
     try:
+        await db.status("SET statement_timeout = 58000;")
         response = await db.all(sql)
     except InsufficientPrivilegeError:
         raise HTTPException(
@@ -111,6 +117,13 @@ async def query_dataset(
         )
     except UndefinedFunctionError:
         raise HTTPException(status_code=400, detail="Bad request. Unknown function.")
+    except UndefinedColumnError as e:
+        raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
+    except QueryCanceledError:
+        raise HTTPException(
+            status_code=524,
+            detail="A timeout occurred while processing the request. Request canceled.",
+        )
 
     return Response(data=response)
 
@@ -247,4 +260,3 @@ async def _add_geostore_filter(parsed_sql, geostore_id: UUID, geostore_origin: s
         parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = filter_where
 
     return parsed_sql
-
