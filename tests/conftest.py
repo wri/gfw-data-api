@@ -3,6 +3,7 @@ import io
 import os
 import shutil
 import threading
+import zipfile
 from http.server import HTTPServer
 
 import boto3
@@ -298,12 +299,18 @@ def lambda_client():
     iam_arn = resp["Role"]["Arn"]
 
     def create_lambda(func_str):
-        aws_mock.create_lambda_function(
-            func_str,
-            RASTER_ANALYSIS_LAMBDA_NAME,
-            "lambda_function.lambda_handler",
-            "python3.7",
-            iam_arn,
+        zip_output = io.BytesIO()
+        zip_file = zipfile.ZipFile(zip_output, "w", zipfile.ZIP_DEFLATED)
+        zip_file.writestr("lambda_function.py", func_str)
+        zip_file.close()
+        zip_output.seek(0)
+
+        return aws_mock.mocked_services["lambda"]["client"].create_function(
+            Code={"ZipFile": zip_output.read()},
+            FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
+            Handler="lambda_function.lambda_handler",
+            Runtime="python3.7",
+            Role=iam_arn,
         )
 
     yield create_lambda
