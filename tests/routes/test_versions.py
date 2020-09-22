@@ -1,9 +1,12 @@
 import json
 from unittest.mock import patch
 
+import boto3
 import pytest
+from botocore.exceptions import ClientError
 
 from app.models.pydantic.metadata import VersionMetadata
+from app.settings.globals import AWS_REGION
 from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
 from tests.tasks import MockCloudfrontClient
 from tests.utils import create_dataset, create_default_asset
@@ -35,6 +38,7 @@ payload = {
 version_payload = {
     "is_latest": True,
     "creation_options": {
+        # "v": "VectorSource",
         "source_type": "vector",
         "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
         "source_driver": "ESRI Shapefile",
@@ -107,6 +111,7 @@ async def test_versions(mocked_cloudfront_client, async_client):
         ],
         "create_dynamic_vector_tile_cache": True,
         "add_to_geostore": True,
+        "zipped": None,
     }
 
     response = await async_client.get(f"/dataset/{dataset}/{version}/creation_options")
@@ -173,7 +178,7 @@ async def test_version_metadata(async_client):
     dataset_metadata = {"title": "Title", "subtitle": "Subtitle"}
 
     response = await async_client.put(
-        f"/dataset/{dataset}", data=json.dumps({"metadata": dataset_metadata})
+        f"/dataset/{dataset}", json={"metadata": dataset_metadata}
     )
 
     result_metadata = {
@@ -199,6 +204,7 @@ async def test_version_metadata(async_client):
     }
 
     assert response.status_code == 201
+
     assert response.json()["data"]["metadata"] == result_metadata
 
     version_metadata = {"subtitle": "New Subtitle", "version_number": version}
@@ -215,7 +221,7 @@ async def test_version_metadata(async_client):
 
     with patch("app.tasks.default_assets.create_default_asset", return_value=True):
         response = await async_client.put(
-            f"/dataset/{dataset}/{version}", data=json.dumps(version_payload)
+            f"/dataset/{dataset}/{version}", json=version_payload
         )
 
     result_metadata = {
@@ -344,11 +350,10 @@ async def test_invalid_source_uri(async_client):
         "creation_options": {
             "source_type": "vector",
             "source_uri": source_uri,
-            "metadata": payload["metadata"],
             "source_driver": "ESRI Shapefile",
             "zipped": True,
         },
-        "metadata": {},
+        "metadata": payload["metadata"],
     }
 
     await create_dataset(dataset, async_client, payload)
@@ -399,7 +404,29 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
     dataset = "test"
     version = "v1.1.1"
 
-    #
+    s3_client = boto3.client(
+        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+    )
+
+    pixetl_output_files = [
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/90N_000E.tif",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/90N_000E.tif",
+    ]
+
+    for key in pixetl_output_files:
+        s3_client.delete_object(Bucket="gfw-data-lake-test", Key=key)
+
+    for key in pixetl_output_files:
+        try:
+            s3_client.head_object(Bucket="gfw-data-lake-test", Key=key)
+        except ClientError:
+            pass
+        else:
+            raise AssertionError(f"Key {key} exists!")
 
     raster_version_payload = {
         "is_latest": True,
@@ -433,100 +460,8 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
         execute_batch_jobs=True,
     )
 
-    assert 1 == 2
-
-    # response = await async_client.get(f"/dataset/{dataset}/{version}")
-    # version_data = response.json()
-    #
-    # assert version_data["data"]["is_latest"] is False
-    # assert version_data["data"]["dataset"] == dataset
-    # assert version_data["data"]["version"] == version
-    # assert version_data["data"]["metadata"] == VersionMetadata(**payload["metadata"])
-    # assert version_data["data"]["version"] == "v1.1.1"
-    #
-    # ###############
-    # # Latest Tag
-    # ###############
-    #
-    # response = await async_client.patch(
-    #     f"/dataset/{dataset}/{version}", json={"is_latest": True}
-    # )
-    # print(response.json())
-    # assert response.status_code == 200
-    #
-    # # Check if the latest endpoint redirects us to v1.1.1
-    # response = await async_client.get(
-    #     f"/dataset/{dataset}/latest?test=test&test1=test1"
-    # )
-    # assert response.json()["data"]["version"] == "v1.1.1"
-    #
-    # ##################################################
-    # # additional attributes coming from default asset
-    # ##################################################
-    #
-    # # Creation Options
-    #
-    # version_creation_options = {
-    #     "source_driver": "ESRI Shapefile",
-    #     "source_type": "vector",
-    #     "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
-    #     "layers": None,
-    #     "indices": [
-    #         {"column_name": "geom", "index_type": "gist"},
-    #         {"column_name": "geom_wm", "index_type": "gist"},
-    #         {"column_name": "gfw_geostore_id", "index_type": "hash"},
-    #     ],
-    #     "create_dynamic_vector_tile_cache": True,
-    #     "add_to_geostore": True,
-    # }
-    #
-    # response = await async_client.get(f"/dataset/{dataset}/{version}/creation_options")
-    # assert response.status_code == 200
-    # assert response.json()["data"] == version_creation_options
-    #
-    # # Change Log
-    #
-    # response = await async_client.get(f"/dataset/{dataset}/{version}/change_log")
-    # assert response.status_code == 200
-    # assert len(response.json()["data"]) == 1
-    #
-    # assert mocked_cloudfront_client.called
-    #
-    # # Query
-    #
-    # response = await async_client.get(
-    #     f"/dataset/{dataset}/{version}/query?sql=SELECT%20%2A%20from%20version%3B%20DELETE%20FROM%20version%3B"
-    # )
-    # print(response.json())
-    # assert response.status_code == 400
-    # assert response.json()["message"] == "Must use exactly one SQL statement."
-    #
-    # response = await async_client.get(
-    #     f"/dataset/{dataset}/{version}/query?sql=DELETE FROM version;"
-    # )
-    # print(response.json())
-    # assert response.status_code == 400
-    # assert response.json()["message"] == "Must use SELECT statements only."
-    #
-    # response = await async_client.get(
-    #     f"/dataset/{dataset}/{version}/query?sql=WITH t as (select 1) SELECT * FROM version;"
-    # )
-    # print(response.json())
-    # assert response.status_code == 400
-    # assert response.json()["message"] == "Must not have WITH clause."
-    #
-    # response = await async_client.get(
-    #     f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM version, version2;"
-    # )
-    # print(response.json())
-    # assert response.status_code == 400
-    # assert response.json()["message"] == "Must list exactly one table in FROM clause."
-    #
-    # response = await async_client.get(
-    #     f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM (select * from a) as b;"
-    # )
-    # print(response.json())
-    # assert response.status_code == 400
-    # assert response.json()["message"] == "Must not use sub queries."
-    #
-    # assert mocked_cloudfront_client.called
+    for key in pixetl_output_files:
+        try:
+            s3_client.head_object(Bucket="gfw-data-lake-test", Key=key)
+        except ClientError:
+            raise AssertionError(f"Key {key} doesn't exist!")

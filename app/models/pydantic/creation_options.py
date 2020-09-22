@@ -1,7 +1,6 @@
 from datetime import date
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Literal, Optional, Type, Union
 
-from fastapi.encoders import jsonable_encoder
 from pydantic import AnyUrl, BaseModel, Field
 from pydantic.types import PositiveInt
 
@@ -17,12 +16,7 @@ from ..enum.creation_options import (
 )
 from ..enum.pg_types import PGType
 from ..enum.pixetl import DataType, Grid, Order, RasterizeMethod, ResamplingMethod
-from ..enum.sources import (
-    RasterSourceType,
-    SourceType,
-    TableSourceType,
-    VectorSourceType,
-)
+from ..enum.sources import SourceType
 from .responses import Response
 
 COLUMN_REGEX = r"^[a-z][a-zA-Z0-9_-]{2,}$"
@@ -81,16 +75,7 @@ class FieldType(BaseModel):
     field_type: PGType = Field(..., description="Type of field (PostgreSQL type).")
 
 
-class AnyRasterTileSetCreationOptions(BaseModel):
-    source_type: Union[RasterSourceType, VectorSourceType] = Field(
-        ..., description="Source type of input file."
-    )
-    source_driver: Union[RasterDrivers, VectorDrivers] = Field(
-        ..., description="Driver of source file. Must be an OGR driver"
-    )
-    source_uri: Optional[List[AnyUrl]] = Field(
-        description="List of input files. Must be s3:// URLs.",
-    )
+class RasterTileSetAssetCreationOptions(BaseModel):
     pixel_meaning: str
     data_type: DataType
     nbits: Optional[int]
@@ -107,8 +92,22 @@ class AnyRasterTileSetCreationOptions(BaseModel):
         extra = "forbid"
 
 
+class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
+    source_type: Literal["raster"]
+    source_driver: RasterDrivers = Field(
+        ..., description="Driver of source file. Must be an OGR driver"
+    )
+    source_uri: Optional[List[AnyUrl]] = Field(
+        # source_uri: List[str] = Field(
+        description="List of input files. Must be s3:// URLs.",
+    )
+
+    # class Config:
+    #     extra = "forbid"
+
+
 class VectorSourceCreationOptions(BaseModel):
-    source_type: VectorSourceType = Field(..., description="Source type of input file.")
+    source_type: Literal["vector"]
     source_driver: VectorDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
     )
@@ -139,12 +138,14 @@ class VectorSourceCreationOptions(BaseModel):
         description="Include features to geostore, to make geometries searchable via geostore endpoint.",
     )
 
+    zipped: Optional[bool]
+
     class Config:
         extra = "forbid"
 
 
 class TableSourceCreationOptions(BaseModel):
-    source_type: TableSourceType
+    source_type: Literal["table"]
     source_driver: TableDrivers
     source_uri: List[str] = Field(
         ..., description="List of input files. Must be a list of s3:// urls"
@@ -239,13 +240,13 @@ class StaticVectorFileCreationOptions(BaseModel):
 
 
 SourceCreationOptions = Union[
-    AnyRasterTileSetCreationOptions,
+    RasterTileSetSourceCreationOptions,
     TableSourceCreationOptions,
     VectorSourceCreationOptions,
 ]
 
 OtherCreationOptions = Union[
-    AnyRasterTileSetCreationOptions,
+    RasterTileSetAssetCreationOptions,
     StaticVectorTileCacheCreationOptions,
     StaticVectorFileCreationOptions,
     DynamicVectorTileCacheCreationOptions,
@@ -263,16 +264,10 @@ def creation_option_factory(
 ) -> CreationOptions:
     """Create Asset Creation Option based on asset or source type."""
 
-    from logging import getLogger
-
-    logger = getLogger("SERIOUSBUSINESS")
-    logger.error(f"ASSET_TYPE: {asset_type}")
-    logger.error(f"CREATION_OPTIONS: {jsonable_encoder(creation_options)}")
-
     source_creation_option_factory: Dict[str, Type[SourceCreationOptions]] = {
         SourceType.vector: VectorSourceCreationOptions,
         SourceType.table: TableSourceCreationOptions,
-        SourceType.raster: AnyRasterTileSetCreationOptions,
+        SourceType.raster: RasterTileSetSourceCreationOptions,
     }
 
     creation_options_factory: Dict[str, Type[OtherCreationOptions]] = {
@@ -282,17 +277,13 @@ def creation_option_factory(
         AssetType.grid_1x1: StaticVectorFileCreationOptions,
         AssetType.shapefile: StaticVectorFileCreationOptions,
         AssetType.geopackage: StaticVectorFileCreationOptions,
-        AssetType.raster_tile_set: AnyRasterTileSetCreationOptions,
+        AssetType.raster_tile_set: RasterTileSetAssetCreationOptions,
     }
 
     source_type = creation_options.get("source_type", None)
 
     try:
-        if asset_type == AssetType.raster_tile_set:
-            co: CreationOptions = creation_options_factory[asset_type](
-                **creation_options
-            )
-        elif is_default_asset(asset_type) and source_type:
+        if is_default_asset(asset_type) and source_type:
             co = source_creation_option_factory[source_type](**creation_options)
         else:
             co = creation_options_factory[asset_type](**creation_options)

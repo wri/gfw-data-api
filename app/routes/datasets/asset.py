@@ -87,13 +87,18 @@ async def add_new_asset(
     If the asset is not managed, you need to specify an Asset URI to
     link to.
     """
+    from logging import getLogger
+
+    logger = getLogger("SERIOUSBUSINESS")
+
+    input_model = AssetType(request["asset_type"])
+    logger.error(f"Input model is of type {input_model.name}")
+
+    # FIXME: How to go from asset_type to model that we want to validate against?
 
     # input_data = request.dict(exclude_none=True, by_alias=True)
     input_data = request
 
-    from logging import getLogger
-
-    logger = getLogger("SERIOUSBUSINESS")
     # logger.error(f"ADD_NEW_ASSET class: {type(request)}")
     logger.error(f"ADD_NEW_ASSET input_data: {jsonable_encoder(input_data)}")
 

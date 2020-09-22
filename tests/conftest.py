@@ -195,7 +195,7 @@ def flush_request_list(httpd):
     requests.delete(f"http://localhost:{httpd.server_port}")
 
 
-@pytest.fixture(autouse=True, scope="session")
+@pytest.fixture(autouse=True)
 def copy_fixtures():
     # Upload file to mocked S3 bucket
     s3_client = boto3.client(

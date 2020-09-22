@@ -1,10 +1,10 @@
+import boto3
 import pytest
 import requests
+from botocore.exceptions import ClientError
 
 from app.crud import tasks
-from app.settings.globals import DATA_LAKE_BUCKET
-from tests.conftest import flush_request_list
-from tests.tasks import MockCloudfrontClient
+from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET
 from tests.utils import create_default_asset, poll_jobs
 
 
@@ -85,6 +85,30 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     dataset = "test"
     version = "v1.1.1"
 
+    s3_client = boto3.client(
+        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+    )
+
+    pixetl_output_files = [
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/gdal-geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/gdal-geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/gdal-geotiff/90N_000E.tif",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/geotiff/90N_000E.tif",
+    ]
+
+    for key in pixetl_output_files:
+        s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+
+    for key in pixetl_output_files:
+        try:
+            s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+        except ClientError:
+            pass
+        else:
+            raise AssertionError(f"Key {key} exists!")
+
     asset = await create_default_asset(
         dataset, version, async_client=async_client, execute_batch_jobs=True
     )
@@ -106,19 +130,18 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
         "asset_uri": "http://www.aclu.org",
         "is_managed": True,
         "creation_options": {
-            "source_type": "raster",
-            "source_uri": [
-                f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raw/tiles.geojson"
-            ],
-            "source_driver": "GeoJSON",
+            # "source_type": "raster",
+            # "source_uri": [
+            #     f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raw/tiles.geojson"
+            # ],
+            # "source_driver": "GeoJSON",
             "data_type": "uint16",
-            "pixel_meaning": "percent",
+            "pixel_meaning": "gfw_fid",
             "grid": "90/27008",
             "resampling": "nearest",
             "overwrite": True,
             "subset": "90N_000E",
         },
-        # "metadata": payload["metadata"],
     }
 
     create_asset_resp = await async_client.post(
@@ -135,9 +158,14 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
     assert status == "saved"
 
-    # asset_resp = await async_client.get(f"/asset/{asset_id}")
-    # assert asset_resp.json()["data"]["status"] == "saved"
-    # new_asset_id = asset_resp
+    asset_resp = await async_client.get(f"/asset/{asset_id}")
+    assert asset_resp.json()["data"]["status"] == "saved"
+
+    for key in pixetl_output_files:
+        try:
+            s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+        except ClientError:
+            raise AssertionError(f"Key {key} doesn't exist!")
 
 
 @pytest.mark.asyncio
@@ -148,6 +176,30 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     # Add a dataset, version, and default asset
     dataset = "test_vector"
     version = "v1.1.1"
+
+    s3_client = boto3.client(
+        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+    )
+
+    pixetl_output_files = [
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/gdal-geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/gdal-geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/gdal-geotiff/90N_000E.tif",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/geotiff/90N_000E.tif",
+    ]
+
+    for key in pixetl_output_files:
+        s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+
+    for key in pixetl_output_files:
+        try:
+            s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+        except ClientError:
+            pass
+        else:
+            raise AssertionError(f"Key {key} exists!")
 
     asset = await create_default_asset(
         dataset, version, async_client=async_client, execute_batch_jobs=True
@@ -168,10 +220,10 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     asset_payload = {
         "asset_type": "Raster tile set",
         "asset_uri": "http://www.osnews.com",
-        "is_managed": False,
+        "is_managed": True,
         "creation_options": {
-            "source_type": "vector",
-            "source_driver": "GeoJSON",
+            # "source_type": "vector",
+            # "source_driver": "GeoJSON",
             "data_type": "uint16",
             "pixel_meaning": "gfw_fid",
             "grid": "90/27008",
@@ -185,7 +237,6 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
         f"/dataset/{dataset}/{version}/assets", json=asset_payload
     )
     resp_json = create_asset_resp.json()
-    # assert resp_json["data"] == "foo"
     assert resp_json["status"] == "success"
     assert resp_json["data"]["status"] == "pending"
     asset_id = resp_json["data"]["asset_id"]
@@ -195,3 +246,12 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     task_ids = [str(task.task_id) for task in tasks_rows]
     status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
     assert status == "saved"
+
+    asset_resp = await async_client.get(f"/asset/{asset_id}")
+    assert asset_resp.json()["data"]["status"] == "saved"
+
+    for key in pixetl_output_files:
+        try:
+            s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+        except ClientError:
+            raise AssertionError(f"Key {key} doesn't exist!")

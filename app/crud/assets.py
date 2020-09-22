@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
 from asyncpg import UniqueViolationError
@@ -43,7 +43,7 @@ async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
 async def get_assets_by_filter(
     dataset: Optional[str] = None,
     version: Optional[str] = None,
-    asset_type: Optional[str] = None,
+    asset_type: Optional[Union[str, List[str]]] = None,
     asset_uri: Optional[str] = None,
     is_latest: Optional[bool] = None,
     is_default: Optional[bool] = None,
@@ -54,7 +54,10 @@ async def get_assets_by_filter(
     if version is not None:
         query = query.where(ORMAsset.version == version)
     if asset_type is not None:
-        query = query.where(ORMAsset.asset_type == asset_type)
+        if type(asset_type) == list:
+            query = query.where(ORMAsset.asset_type.in_(asset_type))
+        else:
+            query = query.where(ORMAsset.asset_type == asset_type)
     if asset_uri is not None:
         query = query.where(ORMAsset.asset_uri == asset_uri)
     if is_latest is not None:
