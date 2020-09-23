@@ -120,12 +120,10 @@ def batch_client():
         "client"
     ]
 
-    aws_mock.print_logs()
+    # aws_mock.print_logs()
     aws_mock.stop_services()
 
 
-#
-#
 # @pytest.fixture(scope="session", autouse=True)
 # def db():
 #     """Acquire a database session for a test and make sure the connection gets
@@ -135,8 +133,8 @@ def batch_client():
 #     """
 #     with contextlib.ExitStack() as stack:
 #         yield stack.enter_context(session())
-#
-#
+
+
 @pytest.fixture(autouse=True)
 def client():
     """Set up a clean database before running a test Run all migrations before
@@ -256,17 +254,6 @@ def copy_fixtures():
             Key=f"test_{reader.line_num}.tsv",
         )
         out.close()
-
-    # yield
-    #
-    # s3_resource = boto3.resource(
-    #     "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-    # )
-    # for test_bucket in (BUCKET, DATA_LAKE_BUCKET, TILE_CACHE_BUCKET):
-    #     bucket = s3_resource.Bucket(test_bucket)
-    #     for key in bucket.objects.all():
-    #         key.delete()
-    #     bucket.delete()
 
 
 @pytest.fixture(autouse=True)

@@ -38,7 +38,6 @@ payload = {
 version_payload = {
     "is_latest": True,
     "creation_options": {
-        # "v": "VectorSource",
         "source_type": "vector",
         "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
         "source_driver": "ESRI Shapefile",
@@ -419,14 +418,6 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
 
     for key in pixetl_output_files:
         s3_client.delete_object(Bucket="gfw-data-lake-test", Key=key)
-
-    for key in pixetl_output_files:
-        try:
-            s3_client.head_object(Bucket="gfw-data-lake-test", Key=key)
-        except ClientError:
-            pass
-        else:
-            raise AssertionError(f"Key {key} exists!")
 
     raster_version_payload = {
         "is_latest": True,

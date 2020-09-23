@@ -34,26 +34,26 @@ async def test_assets(async_client):
         "asset_uri": "http://www.slashdot.org",
         "is_managed": False,
         "creation_options": {
-            "zipped": False,
-            "src_driver": "GeoJSON",
+            # "zipped": False,
+            # "source_driver": "GeoJSON",
             "delimiter": ",",
         },
     }
     create_asset_resp = await async_client.post(
         f"/dataset/{dataset}/{version}/assets", json=asset_payload
     )
-    assert create_asset_resp.json()["status"] == "failed"
     assert create_asset_resp.json()["message"] == (
         "Version status is currently `pending`. "
         "Please retry once version is in status `saved`"
     )
+    assert create_asset_resp.json()["status"] == "failed"
 
     # Now add a task changelog of status "failed" which should make the
     # version status "failed". Try to add a non-default asset again, which
     # should fail as well but with a different explanation.
     get_resp = await async_client.get(f"/asset/{asset_id}/tasks")
-    tasks = get_resp.json()["data"]
-    sample_task_id = tasks[0]["task_id"]
+    task_list = get_resp.json()["data"]
+    sample_task_id = task_list[0]["task_id"]
     patch_payload = {
         "change_log": [
             {
@@ -101,14 +101,6 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     for key in pixetl_output_files:
         s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
 
-    for key in pixetl_output_files:
-        try:
-            s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
-        except ClientError:
-            pass
-        else:
-            raise AssertionError(f"Key {key} exists!")
-
     asset = await create_default_asset(
         dataset, version, async_client=async_client, execute_batch_jobs=True
     )
@@ -130,11 +122,6 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
         "asset_uri": "http://www.aclu.org",
         "is_managed": True,
         "creation_options": {
-            # "source_type": "raster",
-            # "source_uri": [
-            #     f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raw/tiles.geojson"
-            # ],
-            # "source_driver": "GeoJSON",
             "data_type": "uint16",
             "pixel_meaning": "gfw_fid",
             "grid": "90/27008",
@@ -193,14 +180,6 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     for key in pixetl_output_files:
         s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
 
-    for key in pixetl_output_files:
-        try:
-            s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
-        except ClientError:
-            pass
-        else:
-            raise AssertionError(f"Key {key} exists!")
-
     asset = await create_default_asset(
         dataset, version, async_client=async_client, execute_batch_jobs=True
     )
@@ -222,8 +201,6 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
         "asset_uri": "http://www.osnews.com",
         "is_managed": True,
         "creation_options": {
-            # "source_type": "vector",
-            # "source_driver": "GeoJSON",
             "data_type": "uint16",
             "pixel_meaning": "gfw_fid",
             "grid": "90/27008",
