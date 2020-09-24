@@ -1,4 +1,5 @@
 from datetime import date
+from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Type, Union
 
 from pydantic import AnyUrl, BaseModel, Field
@@ -144,12 +145,7 @@ class VectorSourceCreationOptions(BaseModel):
         extra = "forbid"
 
 
-class TableSourceCreationOptions(BaseModel):
-    source_type: Literal["table"]
-    source_driver: TableDrivers
-    source_uri: List[str] = Field(
-        ..., description="List of input files. Must be a list of s3:// urls"
-    )
+class TableAssetCreationOptions(BaseModel):
     has_header: bool = Field(True, description="Input file has header. Must be true")
     delimiter: Delimiters = Field(..., description="Delimiter used in input file")
 
@@ -173,12 +169,20 @@ class TableSourceCreationOptions(BaseModel):
     create_dynamic_vector_tile_cache: bool = Field(
         True,
         description="By default, table sources will implicitly create a dynamic vector tile cache "
-        "when geographic columns are present"
+        "when geographic columns are present. "
         "Disable this option by setting value to `false`",
     )
 
     class Config:
         extra = "forbid"
+
+
+class TableSourceCreationOptions(TableAssetCreationOptions):
+    source_type: Literal["table"]
+    source_driver: TableDrivers
+    source_uri: List[str] = Field(
+        ..., description="List of input files. Must be a list of s3:// urls"
+    )
 
 
 class DynamicVectorTileCacheCreationOptions(BaseModel):
@@ -250,6 +254,7 @@ OtherCreationOptions = Union[
     StaticVectorTileCacheCreationOptions,
     StaticVectorFileCreationOptions,
     DynamicVectorTileCacheCreationOptions,
+    TableAssetCreationOptions,
 ]
 
 CreationOptions = Union[SourceCreationOptions, OtherCreationOptions]
@@ -259,34 +264,36 @@ class CreationOptionsResponse(Response):
     data: CreationOptions
 
 
+SourceCreationOptionsLookup: Dict[str, Type[SourceCreationOptions]] = {
+    SourceType.vector: VectorSourceCreationOptions,
+    SourceType.table: TableSourceCreationOptions,
+    SourceType.raster: RasterTileSetSourceCreationOptions,
+}
+
+AssetCreationOptionsLookup: Dict[str, Type[OtherCreationOptions]] = {
+    AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheCreationOptions,
+    AssetType.static_vector_tile_cache: StaticVectorTileCacheCreationOptions,
+    AssetType.ndjson: StaticVectorFileCreationOptions,
+    AssetType.grid_1x1: StaticVectorFileCreationOptions,
+    AssetType.shapefile: StaticVectorFileCreationOptions,
+    AssetType.geopackage: StaticVectorFileCreationOptions,
+    AssetType.raster_tile_set: RasterTileSetAssetCreationOptions,
+    AssetType.database_table: TableAssetCreationOptions,
+}
+
+
 def creation_option_factory(
     asset_type: str, creation_options: Dict[str, Any]
 ) -> CreationOptions:
     """Create Asset Creation Option based on asset or source type."""
 
-    source_creation_option_factory: Dict[str, Type[SourceCreationOptions]] = {
-        SourceType.vector: VectorSourceCreationOptions,
-        SourceType.table: TableSourceCreationOptions,
-        SourceType.raster: RasterTileSetSourceCreationOptions,
-    }
-
-    creation_options_factory: Dict[str, Type[OtherCreationOptions]] = {
-        AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheCreationOptions,
-        AssetType.static_vector_tile_cache: StaticVectorTileCacheCreationOptions,
-        AssetType.ndjson: StaticVectorFileCreationOptions,
-        AssetType.grid_1x1: StaticVectorFileCreationOptions,
-        AssetType.shapefile: StaticVectorFileCreationOptions,
-        AssetType.geopackage: StaticVectorFileCreationOptions,
-        AssetType.raster_tile_set: RasterTileSetAssetCreationOptions,
-    }
-
     source_type = creation_options.get("source_type", None)
 
     try:
         if is_default_asset(asset_type) and source_type:
-            co = source_creation_option_factory[source_type](**creation_options)
+            co = SourceCreationOptionsLookup[source_type](**creation_options)
         else:
-            co = creation_options_factory[asset_type](**creation_options)
+            co = AssetCreationOptionsLookup[asset_type](**creation_options)
     except KeyError:
         raise NotImplementedError(
             f"Asset creation options factory for type {asset_type} and source {source_type} not implemented"
