@@ -400,8 +400,8 @@ async def test_put_latest(async_client):
 async def test_version_put_raster(mocked_cloudfront_client, async_client):
     """Test raster source version operations."""
 
-    dataset = "test"
-    version = "v1.1.1"
+    dataset = "test_version_put_raster"
+    version = "v1.0.0"
 
     s3_client = boto3.client(
         "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
@@ -423,18 +423,12 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
         "is_latest": True,
         "creation_options": {
             "source_type": "raster",
-            "source_uri": [
-                f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raw/tiles.geojson"
-            ],
+            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
             "source_driver": "GeoJSON",
             "data_type": "uint16",
             "pixel_meaning": "percent",
             "grid": "90/27008",
-            "resampling": "nearest",  # FIXME: Remove, figure out why it then breaks
-            # "nbits": 7,
-            # "no_data": 0,
-            # "calc": None,
-            # "order": None,
+            "resampling": "nearest",
             "overwrite": True,
             "subset": "90N_000E",
         },

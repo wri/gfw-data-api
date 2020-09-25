@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Any, Dict, List, Literal, Optional, Type, Union
 
-from pydantic import AnyUrl, BaseModel, Field
+from pydantic import BaseModel, Field
 from pydantic.types import PositiveInt
 
 from ..enum.assets import AssetType, is_default_asset
@@ -97,7 +97,7 @@ class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
     source_driver: RasterDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
     )
-    source_uri: Optional[List[AnyUrl]] = Field(
+    source_uri: Optional[List[str]] = Field(
         description="List of input files. Must be s3:// URLs.",
     )
 

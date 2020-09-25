@@ -34,7 +34,7 @@ async def raster_tile_set_asset(
 
     if default_asset.creation_options["source_type"] == "raster":
         creation_options["source_type"] = "raster"
-        creation_options["source_uri"] = default_asset.creation_options["source_uri"]
+        creation_options["source_uri"] = default_asset.creation_options["source_uri"][0]
     elif default_asset.creation_options["source_type"] == "vector":
         creation_options["source_type"] = "vector"
     else:
