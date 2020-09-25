@@ -8,8 +8,8 @@ from enum import Enum
 
 class DataType(str, Enum):
     boolean = "boolean"
-    uint = "uint"
-    int = "int"
+    uint8 = "uint8"
+    int8 = "int8"
     uint16 = "uint16"
     int16 = "int16"
     uint32 = "uint32"

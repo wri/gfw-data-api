@@ -10,7 +10,7 @@ based on the same version and do not know the processing history.
 """
 
 
-from typing import Any, Dict, List, Optional, Type
+from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
@@ -18,11 +18,11 @@ from fastapi.responses import ORJSONResponse
 from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.assets import Asset as ORMAsset
-from ...models.pydantic.assets import AssetResponse, AssetsResponse, AssetType
-from ...models.pydantic.creation_options import (
-    AssetCreationOptionsLookup,
-    CreationOptions,
-    OtherCreationOptions,
+from ...models.pydantic.assets import (
+    AssetCreateIn,
+    AssetResponse,
+    AssetsResponse,
+    AssetType,
 )
 from ...routes import dataset_dependency, is_admin, version_dependency
 from ...tasks.assets import put_asset
@@ -73,8 +73,7 @@ async def add_new_asset(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
-    request: Dict[str, Any],
-    # request: AssetCreateIn,
+    request: AssetCreateIn,
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
     response: ORJSONResponse,
@@ -86,38 +85,8 @@ async def add_new_asset(
     If the asset is not managed, you need to specify an Asset URI to
     link to.
     """
-    from logging import getLogger
 
-    logger = getLogger("SERIOUSBUSINESS")
-    logger.error(f"ASSET_TYPE: {request.get('asset_type')}")
-
-    # FIXME: Put this in a try/except block for non-existing AssetTypes
-    input_model: AssetType = AssetType(request.get("asset_type"))
-    logger.error(f"INPUT_MODEL: {input_model}")
-
-    co_model: Optional[Type[OtherCreationOptions]] = AssetCreationOptionsLookup.get(
-        input_model, None
-    )
-    logger.error(f"CO_MODEL: {co_model}")
-    logger.error(f"CO_MODEL_TYPE: {type(co_model)}")
-
-    if co_model is None:
-        raise HTTPException(
-            status_code=501,
-            detail=f"Procedure for creating asset type {request.get('asset_type')} not implemented",
-        )
-    raw_co = request.get("creation_options", {})
-    logger.error(f"RAW_CREATION_OPTIONS: {raw_co}")
-
-    # validated_co_model: Dict[str, Any] = co_model(**(request.get("creation_options", {}))).dict(
-    validated_co_model = co_model(**raw_co)
-    logger.error(f"VALIDATED_CREATION_OPTIONS_MODEL: {validated_co_model}")
-
-    validated_co_dict = validated_co_model.dict(exclude_none=True, by_alias=True)
-    logger.error(f"VALIDATED_CREATION_OPTIONS_DICT: {validated_co_dict}")
-
-    input_data = request
-    input_data["creation_options"] = validated_co_dict
+    input_data = request.dict(exclude_none=True, by_alias=True)
 
     await verify_version_status(dataset, version)
 

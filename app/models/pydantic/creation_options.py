@@ -1,5 +1,4 @@
 from datetime import date
-from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Type, Union
 
 from pydantic import AnyUrl, BaseModel, Field
@@ -99,12 +98,8 @@ class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
         ..., description="Driver of source file. Must be an OGR driver"
     )
     source_uri: Optional[List[AnyUrl]] = Field(
-        # source_uri: List[str] = Field(
         description="List of input files. Must be s3:// URLs.",
     )
-
-    # class Config:
-    #     extra = "forbid"
 
 
 class VectorSourceCreationOptions(BaseModel):
