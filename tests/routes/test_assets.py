@@ -1,7 +1,10 @@
+from time import sleep
+
 import boto3
 import pytest
 import requests
 from botocore.exceptions import ClientError
+from mock import patch
 
 from app.crud import tasks
 from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET
@@ -84,7 +87,17 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     # Add a dataset, version, and default asset
     dataset = "test_auxiliary_raster_asset"
     version = "v1.0.0"
+    primary_grid = "90/27008"
     auxiliary_grid = "90/9984"
+
+    with patch("fastapi.BackgroundTasks.add_task", return_value=None):
+        try:
+            bs = await async_client.delete(f"/dataset/{dataset}/{version}")
+            print(f"BS: {bs.json()}")
+            bs2 = await async_client.delete(f"/dataset/{dataset}")
+            print(f"BS2: {bs2.json()}")
+        except Exception:
+            pass
 
     s3_client = boto3.client(
         "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
@@ -110,7 +123,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
             "source_driver": "GeoJSON",
             "data_type": "uint16",
             "pixel_meaning": "percent",
-            "grid": "90/27008",
+            "grid": primary_grid,
             "resampling": "nearest",
             "overwrite": True,
             "subset": "90N_000E",
@@ -134,6 +147,8 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     assert asset_resp.json()["data"]["status"] == "saved"
 
     # Flush requests list so we're starting fresh
+    # But sleep a moment for any stragglers to come in
+    sleep(3)
     requests.delete(f"http://localhost:{httpd.server_port}")
 
     # Try adding a non-default raster asset
@@ -173,6 +188,12 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
             s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
         except ClientError:
             raise AssertionError(f"Key {key} doesn't exist!")
+
+    # FIXME: Delete the asset or PostgreSQL throws an error downgrading
+    # all the migrations. Find a better solution (such as squashing the
+    # migrations). If this test fails for other reasons this step won't
+    # happen, probably causing subsequent runs to fail. Oye.
+    _ = await async_client.delete(f"/asset/{asset_id}")
 
 
 @pytest.mark.asyncio

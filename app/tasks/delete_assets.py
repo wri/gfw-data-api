@@ -46,10 +46,15 @@ async def delete_static_raster_tile_cache_assets(
 
 
 async def delete_raster_tileset_assets(
-    dataset: str, version: str, srid: str, size: int, col: int, value: str
+    # dataset: str, version: str, srid: str, size: int, col: int, value: str
+    # dataset: str, version: str, srid: str, grid: str, value: str
+    dataset: str,
+    version: str,
+    grid: str,
+    value: str,
 ) -> None:
     delete_s3_objects(
-        DATA_LAKE_BUCKET, f"{dataset}/{version}/raster/{srid}/{size}/{col}/{value}"
+        DATA_LAKE_BUCKET, f"{dataset}/{version}/raster/epsg-4326/{grid}/{value}"
     )
 
 

@@ -205,7 +205,6 @@ def copy_fixtures():
     s3_client.create_bucket(Bucket=DATA_LAKE_BUCKET)
     s3_client.create_bucket(Bucket=TILE_CACHE_BUCKET)
 
-    # FIXME: Factor this out, or put in test_versions.py
     RAW_TILE_SET_PREFIX = "test/v1.1.1/raw"
     dataset_profile = {
         "driver": "GTiff",

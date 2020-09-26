@@ -40,7 +40,7 @@ class AssetTaskCreate(BaseModel):
     asset_uri: Optional[str]
     is_managed: bool = True
     is_default: bool = False
-    creation_options: CreationOptions
+    creation_options: CreationOptions  # should this also be OtherCreationOptions?
     metadata: Optional[AssetMetadata]
 
 
