@@ -146,9 +146,9 @@ async def delete_asset(
             delete_raster_tileset_assets,
             row.dataset,
             row.version,
-            # row.creation_options.srid,
-            # row.creation_options.size,
-            # row.creation_options.col,
+            row.creation_options.get(
+                "srid", "epsg-4326"
+            ),  # FIXME: Not actually part of model
             row.creation_options["grid"],
             row.creation_options["pixel_meaning"],
         )

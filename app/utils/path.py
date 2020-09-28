@@ -5,12 +5,7 @@ from urllib.parse import urlparse
 from botocore.exceptions import ClientError
 
 from app.models.enum.assets import AssetType
-from app.settings.globals import (
-    API_URL,
-    DATA_LAKE_BUCKET,
-    TILE_CACHE_BUCKET,
-    TILE_CACHE_URL,
-)
+from app.settings.globals import API_URL, DATA_LAKE_BUCKET, TILE_CACHE_URL
 from app.utils.aws import get_s3_client
 
 
@@ -56,9 +51,9 @@ def get_asset_uri(
 
     if not creation_options:
         creation_options = {}
-    srid = creation_options.get("srid", "epsg-4326")
-    # size = creation_options.get("size", None)
-    # col = creation_options.get("col", None)
+    srid = creation_options.get(
+        "srid", "epsg-4326"
+    )  # FIXME: Not actually part of model
     grid = creation_options.get("grid", None)
     value = creation_options.get("pixel_meaning", None)
 
