@@ -151,7 +151,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     sleep(3)
     requests.delete(f"http://localhost:{httpd.server_port}")
 
-    # Try adding a non-default raster asset
+    # Try adding a non-default raster tile asset based on the default
     asset_payload = {
         "asset_type": "Raster tile set",
         "asset_uri": "http://www.aclu.org",
@@ -234,9 +234,12 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     assert asset_resp.json()["data"]["status"] == "saved"
 
     # Flush requests list so we're starting fresh
+    # But sleep a moment for any stragglers to come in
+    sleep(3)
     requests.delete(f"http://localhost:{httpd.server_port}")
 
-    # Try adding a non-default vector asset
+    # Try adding a non-default raster tile set asset based on the default
+    # vector asset
     asset_payload = {
         "asset_type": "Raster tile set",
         "asset_uri": "http://www.osnews.com",
@@ -275,59 +278,65 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
             raise AssertionError(f"Key {key} doesn't exist!")
 
 
-# @pytest.mark.asyncio
-# async def test_asset_bad_requests(async_client, batch_client, httpd):
-#     """"""
-#     _, logs = batch_client
-#
-#     # Add a dataset, version, and default asset
-#     dataset = "bad"
-#     version = "v1.1.1"
-#
-#     asset = await create_default_asset(
-#         dataset, version, async_client=async_client, execute_batch_jobs=True
-#     )
-#     asset_id = asset["asset_id"]
-#
-#     # Verify that the asset and version are in state "saved"
-#     version_resp = await async_client.get(f"/dataset/{dataset}/{version}")
-#     assert version_resp.json()["data"]["status"] == "saved"
-#
-#     asset_resp = await async_client.get(f"/asset/{asset_id}")
-#     assert asset_resp.json()["data"]["status"] == "saved"
-#
-#     # Flush requests list so we're starting fresh
-#     requests.delete(f"http://localhost:{httpd.server_port}")
-#
-#     # Try adding a non-default vector asset with an extra field
-#     asset_payload = {
-#         "asset_type": "Raster tile set",
-#         "asset_uri": "http://www.osnews.com",
-#         "is_managed": True,
-#         "foo": "foo",
-#         "creation_options": {
-#             "data_type": "uint16",
-#             "pixel_meaning": "gfw_fid",
-#             "grid": "90/27008",
-#             "resampling": "nearest",
-#             "overwrite": True,
-#             "subset": "90N_000E",
-#         },
-#     }
-#
-#     create_asset_resp = await async_client.post(
-#         f"/dataset/{dataset}/{version}/assets", json=asset_payload
-#     )
-#     resp_json = create_asset_resp.json()
-#     assert resp_json["status"] == "success"
-#     assert resp_json["data"]["status"] == "pending"
-#     asset_id = resp_json["data"]["asset_id"]
-#
-#     # wait until batch jobs are done.
-#     tasks_rows = await tasks.get_tasks(asset_id)
-#     task_ids = [str(task.task_id) for task in tasks_rows]
-#     status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
-#     assert status == "saved"
-#
-#     asset_resp = await async_client.get(f"/asset/{asset_id}")
-#     assert asset_resp.json()["data"]["status"] == "saved"
+@pytest.mark.asyncio
+async def test_asset_bad_requests(async_client, batch_client, httpd):
+    """"""
+    _, logs = batch_client
+
+    # Add a dataset, version, and default asset
+    dataset = "test_bad_requests"
+    version = "v1.1.1"
+
+    _ = await create_default_asset(
+        dataset, version, async_client=async_client, execute_batch_jobs=False
+    )
+
+    # Flush requests list so we're starting fresh
+    # But sleep a moment for any stragglers to come in
+    sleep(3)
+    requests.delete(f"http://localhost:{httpd.server_port}")
+
+    # Try adding a non-default raster tile set asset with an extra field "foo"
+    asset_payload = {
+        "asset_type": "Raster tile set",
+        "asset_uri": "http://www.osnews.com",
+        "is_managed": True,
+        "foo": "foo",  # The extra field
+        "creation_options": {
+            "data_type": "uint16",
+            "pixel_meaning": "gfw_fid",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            "overwrite": True,
+            "subset": "90N_000E",
+        },
+    }
+    create_asset_resp = await async_client.post(
+        f"/dataset/{dataset}/{version}/assets", json=asset_payload
+    )
+    resp_json = create_asset_resp.json()
+    assert resp_json["status"] == "failed"
+    assert resp_json["message"] == [
+        {
+            "loc": ["body", "foo"],
+            "msg": "extra fields not permitted",
+            "type": "value_error.extra",
+        }
+    ]
+
+    # Try adding a non-default raster tile set asset missing the
+    # "creation_options" field (and toss the extra "foo" field from before)
+    del asset_payload["foo"]
+    del asset_payload["creation_options"]
+    create_asset_resp = await async_client.post(
+        f"/dataset/{dataset}/{version}/assets", json=asset_payload
+    )
+    resp_json = create_asset_resp.json()
+    assert resp_json["status"] == "failed"
+    assert resp_json["message"] == [
+        {
+            "loc": ["body", "creation_options"],
+            "msg": "field required",
+            "type": "value_error.missing",
+        }
+    ]
