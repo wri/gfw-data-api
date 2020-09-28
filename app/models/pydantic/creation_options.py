@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Any, Dict, List, Literal, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from pydantic import BaseModel, Field
 from pydantic.types import PositiveInt
@@ -16,7 +16,12 @@ from ..enum.creation_options import (
 )
 from ..enum.pg_types import PGType
 from ..enum.pixetl import DataType, Grid, Order, RasterizeMethod, ResamplingMethod
-from ..enum.sources import SourceType
+from ..enum.sources import (
+    RasterSourceType,
+    SourceType,
+    TableSourceType,
+    VectorSourceType,
+)
 from .responses import Response
 
 COLUMN_REGEX = r"^[a-z][a-zA-Z0-9_-]{2,}$"
@@ -93,7 +98,7 @@ class RasterTileSetAssetCreationOptions(BaseModel):
 
 
 class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
-    source_type: Literal["raster"]
+    source_type: RasterSourceType
     source_driver: RasterDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
     )
@@ -103,7 +108,7 @@ class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
 
 
 class VectorSourceCreationOptions(BaseModel):
-    source_type: Literal["vector"]
+    source_type: VectorSourceType
     source_driver: VectorDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
     )
@@ -173,7 +178,7 @@ class TableAssetCreationOptions(BaseModel):
 
 
 class TableSourceCreationOptions(TableAssetCreationOptions):
-    source_type: Literal["table"]
+    source_type: TableSourceType
     source_driver: TableDrivers
     source_uri: List[str] = Field(
         ..., description="List of input files. Must be a list of s3:// urls"
