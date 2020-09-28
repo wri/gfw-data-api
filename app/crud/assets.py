@@ -54,7 +54,7 @@ async def get_assets_by_filter(
     if version is not None:
         query = query.where(ORMAsset.version == version)
     if asset_type is not None:
-        if type(asset_type) == list:
+        if isinstance(asset_type, list):
             query = query.where(ORMAsset.asset_type.in_(asset_type))
         else:
             query = query.where(ORMAsset.asset_type == asset_type)
