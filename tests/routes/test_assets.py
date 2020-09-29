@@ -36,11 +36,7 @@ async def test_assets(async_client):
         "asset_type": "Database table",
         "asset_uri": "http://www.slashdot.org",
         "is_managed": False,
-        "creation_options": {
-            # "zipped": False,
-            # "source_driver": "GeoJSON",
-            "delimiter": ",",
-        },
+        "creation_options": {"delimiter": ","},
     }
     create_asset_resp = await async_client.post(
         f"/dataset/{dataset}/{version}/assets", json=asset_payload
@@ -120,7 +116,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
         "creation_options": {
             "source_type": "raster",
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
-            "source_driver": "GeoJSON",
+            "source_driver": "GeoTIFF",
             "data_type": "uint16",
             "pixel_meaning": "percent",
             "grid": primary_grid,

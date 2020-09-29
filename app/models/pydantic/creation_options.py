@@ -291,7 +291,9 @@ def creation_option_factory(
 
     try:
         if is_default_asset(asset_type) and source_type:
-            co = SourceCreationOptionsLookup[source_type](**creation_options)
+            co: CreationOptions = SourceCreationOptionsLookup[source_type](
+                **creation_options
+            )
         else:
             co = AssetCreationOptionsLookup[asset_type](**creation_options)
     except KeyError:

@@ -42,8 +42,12 @@ async def verify_asset_dependencies(dataset, version, asset_type):
         ],
     }
     try:
+        parent_type = asset_dependencies[asset_type]
+        if not isinstance(parent_type, list):
+            parent_type = [parent_type]
+
         orm_assets: List[ORMAsset] = await assets.get_assets_by_filter(
-            dataset, version, asset_dependencies[asset_type]
+            dataset, version, parent_type
         )
         exists = False
         for asset in orm_assets:

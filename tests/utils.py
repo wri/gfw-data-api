@@ -88,6 +88,7 @@ async def create_default_asset(
 
     # Verify that a record for the default asset was created
     resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    # print(f"ASSET RESP: {resp.json()}")
     assert len(resp.json()["data"]) == 1
     assert resp.json()["status"] == "success"
 
