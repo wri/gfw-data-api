@@ -270,17 +270,19 @@ async def _register_dynamic_vector_tile_cache(
     default_asset: ORMAsset = await assets.get_default_asset(
         dataset, version,
     )
-    creation_options = DynamicVectorTileCacheCreationOptions()
     create_dynamic_vector_tile_cache: Optional[
         bool
     ] = default_asset.creation_options.get("create_dynamic_vector_tile_cache", None)
+
+    creation_options = DynamicVectorTileCacheCreationOptions()
+    creation_options.field_attributes = default_asset.fields
+
     if create_dynamic_vector_tile_cache:
         data = AssetCreateIn(
             asset_type=AssetType.dynamic_vector_tile_cache,
             asset_uri=f"{TILE_CACHE_URL}/{dataset}/{version}/dynamic/{{z}}/{{x}}/{{y}}.pbf",
             is_managed=True,
             creation_options=creation_options.dict(by_alias=True),
-            fields=default_asset.fields,
             metadata={
                 "min_zoom": creation_options.min_zoom,
                 "max_zoom": creation_options.max_zoom,

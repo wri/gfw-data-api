@@ -110,7 +110,6 @@ async def test_versions(mocked_cloudfront_client, async_client):
         ],
         "create_dynamic_vector_tile_cache": True,
         "add_to_geostore": True,
-        "zipped": None,
     }
 
     response = await async_client.get(f"/dataset/{dataset}/{version}/creation_options")
@@ -214,7 +213,6 @@ async def test_version_metadata(async_client):
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
             "source_driver": "ESRI Shapefile",
-            "zipped": True,
         },
     }
 
@@ -350,7 +348,6 @@ async def test_invalid_source_uri(async_client):
             "source_type": "vector",
             "source_uri": source_uri,
             "source_driver": "ESRI Shapefile",
-            "zipped": True,
         },
         "metadata": payload["metadata"],
     }

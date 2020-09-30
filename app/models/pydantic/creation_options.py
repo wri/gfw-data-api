@@ -98,7 +98,7 @@ class RasterTileSetAssetCreationOptions(BaseModel):
 
 
 class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
-    source_type: RasterSourceType
+    source_type: RasterSourceType = Field(..., description="Source type of input file.")
     source_driver: RasterDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
     )
@@ -108,7 +108,7 @@ class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
 
 
 class VectorSourceCreationOptions(BaseModel):
-    source_type: VectorSourceType
+    source_type: VectorSourceType = Field(..., description="Source type of input file.")
     source_driver: VectorDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
     )
@@ -138,8 +138,6 @@ class VectorSourceCreationOptions(BaseModel):
         True,
         description="Include features to geostore, to make geometries searchable via geostore endpoint.",
     )
-
-    zipped: Optional[bool]
 
     class Config:
         extra = "forbid"
@@ -178,7 +176,7 @@ class TableAssetCreationOptions(BaseModel):
 
 
 class TableSourceCreationOptions(TableAssetCreationOptions):
-    source_type: TableSourceType
+    source_type: TableSourceType = Field(..., description="Source type of input file.")
     source_driver: TableDrivers
     source_uri: List[str] = Field(
         ..., description="List of input files. Must be a list of s3:// urls"
@@ -191,6 +189,11 @@ class DynamicVectorTileCacheCreationOptions(BaseModel):
     )
     max_zoom: int = Field(
         22, description="Maximum zoom level of tile cache", ge=0, le=22
+    )
+    field_attributes: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="Field attributes to include in vector tiles. "
+        "If left blank, all fields marked as `is_feature_info` will be included.",
     )
 
     class Config:
@@ -250,10 +253,10 @@ SourceCreationOptions = Union[
 ]
 
 OtherCreationOptions = Union[
-    RasterTileSetAssetCreationOptions,
     StaticVectorTileCacheCreationOptions,
     StaticVectorFileCreationOptions,
     DynamicVectorTileCacheCreationOptions,
+    RasterTileSetAssetCreationOptions,
     TableAssetCreationOptions,
 ]
 

@@ -185,10 +185,8 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
         except ClientError:
             raise AssertionError(f"Key {key} doesn't exist!")
 
-    # FIXME: Delete the asset or PostgreSQL throws an error downgrading
-    # all the migrations. Find a better solution (such as squashing the
-    # migrations). If this test fails for other reasons this step won't
-    # happen, probably causing subsequent runs to fail. Oye.
+    # Delete the asset or PostgreSQL throws an error downgrading
+    # all the migrations.
     _ = await async_client.delete(f"/asset/{asset_id}")
 
 

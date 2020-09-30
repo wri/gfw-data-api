@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -26,12 +26,10 @@ class AssetCreateIn(BaseModel):
     asset_uri: Optional[str]
     is_managed: bool = True
     creation_options: OtherCreationOptions
-    fields_value: Optional[List[Dict[str, Any]]]
     metadata: Optional[AssetMetadata]
 
     class Config:
         extra = "forbid"
-        fields = {"fields_value": {"alias": "fields"}}
 
 
 class AssetUpdateIn(BaseModel):
