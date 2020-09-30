@@ -15,7 +15,7 @@ from ..models.pydantic.metadata import asset_metadata_factory
 from ..utils.aws import get_s3_client
 from ..utils.path import get_asset_uri, split_s3_path
 from .assets import put_asset
-from .raster_source_assets import raster_source_asset
+from .raster_tile_set_assets import raster_tile_set_asset
 from .table_source_assets import append_table_source_asset, table_source_asset
 from .vector_source_assets import vector_source_asset
 
@@ -23,7 +23,7 @@ DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
     {
         SourceType.vector: vector_source_asset,
         SourceType.table: table_source_asset,
-        SourceType.raster: raster_source_asset,
+        SourceType.raster: raster_tile_set_asset,
     }.items()
 )
 

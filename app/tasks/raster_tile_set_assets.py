@@ -1,12 +1,15 @@
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
 
 from app.crud.assets import get_default_asset
 from app.models.pydantic.change_log import ChangeLog
-from app.models.pydantic.creation_options import RasterTileSetAssetCreationOptions
+from app.models.pydantic.creation_options import (
+    RasterTileSetAssetCreationOptions,
+    RasterTileSetSourceCreationOptions,
+)
 from app.models.pydantic.jobs import PixETLJob
 from app.settings.globals import ENV, S3_ENTRYPOINT_URL
 from app.tasks import Callback, callback_constructor, writer_secrets
@@ -17,30 +20,34 @@ async def raster_tile_set_asset(
     dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
 
-    # When being created as an auxiliary asset, creation_options["source_uri"] should
-    # never be populated. We will generate one for pixETL based on the default asset,
+    # If being created as a source (default) asset, creation_options["source_uri"]
+    # will be a list. When being created as an auxiliary asset, it will be None.
+    # In the latter case we will generate one for pixETL based on the default asset,
     # below.
-    source_uris: List[str] = input_data["creation_options"].get("source_uri")
-    if source_uris is not None:
-        raise AssertionError(
-            "Specifying a source_uri when adding auxiliary raster tile set assets is currently unsupported."
-        )
+    source_uris: Optional[List[str]] = input_data["creation_options"].get("source_uri")
+    if source_uris is None:
+        creation_options = RasterTileSetAssetCreationOptions(
+            **input_data["creation_options"]
+        ).dict(exclude_none=True, by_alias=True)
 
-    creation_options = RasterTileSetAssetCreationOptions(
-        **input_data["creation_options"]
-    ).dict()
+        default_asset = await get_default_asset(dataset, version)
 
-    default_asset = await get_default_asset(dataset, version)
-
-    if default_asset.creation_options["source_type"] == "raster":
-        creation_options["source_type"] = "raster"
-        creation_options["source_uri"] = default_asset.creation_options["source_uri"][0]
-    elif default_asset.creation_options["source_type"] == "vector":
-        creation_options["source_type"] = "vector"
+        if default_asset.creation_options["source_type"] == "raster":
+            creation_options["source_type"] = "raster"
+            creation_options["source_uri"] = default_asset.creation_options[
+                "source_uri"
+            ][0]
+        elif default_asset.creation_options["source_type"] == "vector":
+            creation_options["source_type"] = "vector"
     else:
-        raise AssertionError(
-            f"Default asset has source_type of {default_asset.creation_options['source_type']}"
-        )
+        if len(source_uris) > 1:
+            raise AssertionError("Raster assets currently only support one input file")
+        elif len(source_uris) == 0:
+            raise AssertionError("source_uri must contain a URI to an input file in S3")
+        creation_options = RasterTileSetSourceCreationOptions(
+            **input_data["creation_options"]
+        ).dict(exclude_none=True, by_alias=True)
+        creation_options["source_uri"] = source_uris[0]
 
     overwrite = creation_options.pop("overwrite")
     subset = creation_options.pop("subset")
