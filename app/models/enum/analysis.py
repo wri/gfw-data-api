@@ -13,7 +13,7 @@ class RasterLayer(str, Enum):
     whrc_aboveground_biomass_stock_2000__Mg_ha_1 = "whrc_aboveground_biomass_stock_2000__Mg_ha-1"
     tsc_tree_cover_loss_drivers__type = "tsc_tree_cover_loss_drivers__type"
     gfw_plantations__type = "gfw_plantations__type"
-    wdpa_protected_areas__class = "wdpa_protected_areas__class"
+    wdpa_protected_areas__iucn_cat = "wdpa_protected_areas__iucn_ca"
     esa_land_cover_2015__class = "esa_land_cover_2015__class"
     umd_glad_alerts__isoweek = "umd_glad_alerts__isoweek"
     umd_glad_alerts__date = "umd_glad_alerts__date"
