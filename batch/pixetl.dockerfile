@@ -4,7 +4,7 @@ FROM globalforestwatch/pixetl:latest
 COPY ./batch/scripts/ /opt/scripts/
 COPY ./batch/python/ /opt/python/
 
-RUN ln -s /usr/bin/python3 /usr/bin/python
+RUN ln -f -s /usr/bin/python3 /usr/bin/python
 
 # make sure scripts are executable
 RUN chmod +x -R /opt/scripts/
