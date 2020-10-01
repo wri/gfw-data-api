@@ -10,7 +10,7 @@ class RasterLayer(str, Enum):
     umd_tree_cover_loss__year = "umd_tree_cover_loss__year"
     is__umd_regional_primary_forest_2001 = "is__umd_regional_primary_forest_2001"
     is__umd_tree_cover_gain = "is__umd_tree_cover_gain"
-    whrc_aboveground_biomass_stock_2000__Mg = "whrc_aboveground_biomass_stock_2000__Mg"
+    whrc_aboveground_biomass_stock_2000__Mg_ha_1 = "whrc_aboveground_biomass_stock_2000__Mg_ha-1"
     tsc_tree_cover_loss_drivers__type = "tsc_tree_cover_loss_drivers__type"
     gfw_plantations__type = "gfw_plantations__type"
     wdpa_protected_areas__class = "wdpa_protected_areas__class"
