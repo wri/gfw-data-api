@@ -10,20 +10,24 @@ class RasterLayer(str, Enum):
     umd_tree_cover_loss__year = "umd_tree_cover_loss__year"
     is__umd_regional_primary_forest_2001 = "is__umd_regional_primary_forest_2001"
     is__umd_tree_cover_gain = "is__umd_tree_cover_gain"
-    whrc_aboveground_biomass_stock_2000__Mg_ha_1 = "whrc_aboveground_biomass_stock_2000__Mg_ha-1"
+    whrc_aboveground_biomass_stock_2000__Mg_ha_1 = (
+        "whrc_aboveground_biomass_stock_2000__Mg_ha-1"
+    )
     tsc_tree_cover_loss_drivers__type = "tsc_tree_cover_loss_drivers__type"
     gfw_plantations__type = "gfw_plantations__type"
     wdpa_protected_areas__iucn_cat = "wdpa_protected_areas__iucn_cat"
     esa_land_cover_2015__class = "esa_land_cover_2015__class"
     umd_glad_alerts__isoweek = "umd_glad_alerts__isoweek"
     umd_glad_alerts__date = "umd_glad_alerts__date"
-    is__birdlife_alliance_for_zero_extinction_sites = "is__birdlife_alliance_for_zero_extinction_sites"
+    is__birdlife_alliance_for_zero_extinction_sites = (
+        "is__birdlife_alliance_for_zero_extinction_sites"
+    )
     is__gmw_mangroves_1996 = "is__gmw_mangroves_1996"
     is__gmw_mangroves_2016 = "is__gmw_mangroves_2016"
     ifl_intact_forest_landscapes__year = "ifl_intact_forest_landscapes__year"
     is__gfw_tiger_landscapes = "is__gfw_tiger_landscapes"
     is__landmark_land_rights = "is__landmark_land_rights"
-    is__gfw_land_rights =  "gfw_land_rights"
+    is__gfw_land_rights = "gfw_land_rights"
     is__birdlife_key_biodiversity_areas = "is__birdlife_key_biodiversity_areas"
     is__gfw_mining = "is__gfw_mining"
     is__gfw_peatlands = "is__gfw_peatlands"
@@ -51,5 +55,3 @@ class RasterLayer(str, Enum):
     umd_tree_cover_density_2010__30 = "umd_tree_cover_density_2010__30"
     umd_tree_cover_density_2010__50 = "umd_tree_cover_density_2010__50"
     umd_tree_cover_density_2010__75 = "umd_tree_cover_density_2010__75"
-
-

@@ -1,12 +1,12 @@
 import csv
 import io
 import threading
+import zipfile
 from http.server import HTTPServer
 
 import boto3
 import pytest
 import requests
-import zipfile
 from alembic.config import main
 from docker.models.containers import ContainerCollection
 from fastapi.testclient import TestClient
@@ -23,10 +23,10 @@ from app.settings.globals import (
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
+    RASTER_ANALYSIS_LAMBDA_NAME,
     TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
-    RASTER_ANALYSIS_LAMBDA_NAME,
 )
 
 from . import (
@@ -239,7 +239,7 @@ def lambda_client():
         zip_output.seek(0)
 
         return aws_mock.mocked_services["lambda"]["client"].create_function(
-            Code={'ZipFile': zip_output.read()},
+            Code={"ZipFile": zip_output.read()},
             FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
             Handler="lambda_function.lambda_handler",
             Runtime="python3.7",

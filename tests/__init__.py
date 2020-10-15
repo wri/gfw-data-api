@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler
 from typing import List, Optional
 
 import boto3
-from moto import mock_batch, mock_ec2, mock_ecs, mock_iam, mock_logs, mock_lambda
+from moto import mock_batch, mock_ec2, mock_ecs, mock_iam, mock_lambda, mock_logs
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
