@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 
-from app.errors import InvalidResponseError, BadResponseError
+from app.errors import BadResponseError, InvalidResponseError
 from app.models.enum.geostore import GeostoreOrigin
 from app.utils import rw_api
 

@@ -8,9 +8,17 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
+# Get geometry type of current table
+echo "PSQL: Get geometry type"
+GEOMETRY_TYPE=$(psql -X -A -t -c "SELECT type
+                                    FROM geometry_columns
+                                    WHERE f_table_schema = '${DATASET}'
+                                      AND f_table_name = '${VERSION}'
+                                      AND f_geometry_column = '${GEOMETRY_NAME}';")
+
 # Add GFW specific layers
 echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". Add GFW columns"
-psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN ${GEOMETRY_NAME}_wm geometry(MultiPolygon,3857);
+psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN ${GEOMETRY_NAME}_wm geometry(${GEOMETRY_TYPE},3857);
          ALTER TABLE \"$DATASET\".\"$VERSION\" ALTER COLUMN ${GEOMETRY_NAME}_wm SET STORAGE EXTERNAL;
          ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN gfw_area__ha NUMERIC;
          ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN gfw_geostore_id UUID;
@@ -21,7 +29,7 @@ psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN ${GEOMETRY_NAME}_wm ge
 
 # Update GFW columns
 echo "PSQL: UPDATE \"$DATASET\".\"$VERSION\". Set GFW attributes"
-psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET ${GEOMETRY_NAME}_wm = ST_Transform($GEOMETRY_NAME, 3857),
+psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET ${GEOMETRY_NAME}_wm = ST_Transform(ST_Force2D($GEOMETRY_NAME), 3857),
                                       gfw_area__ha = ST_Area($GEOMETRY_NAME::geography)/10000,
                                       gfw_geostore_id = md5(ST_asgeojson($GEOMETRY_NAME))::uuid,
                                       gfw_geojson = ST_asGeojson($GEOMETRY_NAME),
