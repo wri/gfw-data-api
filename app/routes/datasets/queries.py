@@ -247,4 +247,3 @@ async def _add_geostore_filter(parsed_sql, geostore_id: UUID, geostore_origin: s
         parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = filter_where
 
     return parsed_sql
-
