@@ -6,7 +6,6 @@ from uuid import UUID
 
 from asyncpg import (
     InsufficientPrivilegeError,
-    QueryCanceledError,
     UndefinedColumnError,
     UndefinedFunctionError,
 )
@@ -109,7 +108,6 @@ async def query_dataset(
     sql = RawStream()(Node(parsed))
 
     try:
-        await db.status("SET statement_timeout = 58000;")
         response = await db.all(sql)
     except InsufficientPrivilegeError:
         raise HTTPException(
@@ -119,12 +117,6 @@ async def query_dataset(
         raise HTTPException(status_code=400, detail="Bad request. Unknown function.")
     except UndefinedColumnError as e:
         raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
-    except QueryCanceledError:
-        raise HTTPException(
-            status_code=524,
-            detail="A timeout occurred while processing the request. Request canceled.",
-        )
-
     return Response(data=response)
 
 
