@@ -1,7 +1,7 @@
 import json
 import logging
 import sys
-from asyncio.exceptions import TimeoutError
+from asyncio.exceptions import TimeoutError as AsyncTimeoutError
 
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.logger import logger
@@ -39,8 +39,10 @@ sys.path.extend(["./"])
 ################
 
 
-@app.exception_handler(TimeoutError)
-async def timeout_error_handler(request: Request, exc: TimeoutError) -> ORJSONResponse:
+@app.exception_handler(AsyncTimeoutError)
+async def timeout_error_handler(
+    request: Request, exc: AsyncTimeoutError
+) -> ORJSONResponse:
     """Use JSEND protocol for validation errors."""
     return ORJSONResponse(
         status_code=524,
