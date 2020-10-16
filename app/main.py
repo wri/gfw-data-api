@@ -17,12 +17,12 @@ from app.errors import http_error_handler
 from .application import app
 from .middleware import redirect_latest, set_db_mode
 from .routes import security
+from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.datasets import asset as version_asset
 from .routes.datasets import dataset, datasets, features, geostore, queries, versions
 from .routes.geostore import geostore as geostore_top
 from .routes.tasks import task
-from .routes.analysis import analysis
 
 ################
 # LOGGING
