@@ -71,13 +71,15 @@ async def create_user_area(**data) -> GeostoreHydrated:
 
     # Sanitize the JSON by doing a round-trip with Postgres. We want the sort
     # order, whitespace, etc. to match what would be saved via other means
-    # (in particular, via add_gfw_fields.sh)
+    # (in particular, via batch/scripts/add_gfw_fields.sh)
     geometry_str = json.dumps(data["features"][0]["geometry"])
-    sanitized_json = await db.scalar(
-        f"SELECT ST_AsGeoJSON(ST_GeomFromGeoJSON('{geometry_str}')::geometry);"
-    )
 
-    bbox = await db.scalar(
+    sql = db.text("SELECT ST_AsGeoJSON(ST_GeomFromGeoJSON(:geo)::geometry);")
+    bind_vals = {"geo": geometry_str}
+    sql = sql.bindparams(**bind_vals)
+    sanitized_json = await db.scalar(sql)
+
+    bbox: List[float] = await db.scalar(
         f"""
         SELECT ARRAY[
             ST_XMin(ST_Envelope(ST_GeomFromGeoJSON('{sanitized_json}')::geometry)),
@@ -88,7 +90,7 @@ async def create_user_area(**data) -> GeostoreHydrated:
         """
     )
 
-    area = await db.scalar(
+    area: float = await db.scalar(
         f"""
         SELECT ST_Area(
             ST_GeomFromGeoJSON(
@@ -102,7 +104,7 @@ async def create_user_area(**data) -> GeostoreHydrated:
     # We could easily do this in Python but we want PostgreSQL's behavior
     # (if different) to be the source of truth.
     # geo_id = UUID(str(hashlib.md5(feature_json.encode("UTF-8")).hexdigest()))
-    geo_id = await db.scalar(f"SELECT MD5('{sanitized_json}')::uuid;")
+    geo_id: UUID = await db.scalar(f"SELECT MD5('{sanitized_json}')::uuid;")
 
     try:
         user_area = await ORMUserArea.create(
