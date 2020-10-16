@@ -16,12 +16,12 @@ ME=$(basename "$0")
 popd
 
 echo "Build Raster Tile Set and upload to S3"
-if [ ! -z "${OVERWRITE}" ]; then
+if [ -n "${OVERWRITE}" ]; then
   OVERWRITE_ARG="--overwrite"
 fi
 
-if [ ! -z "${SUBSET}" ]; then
-  SUBSET_ARG="--subset ${SUBSET}"
+if [ -n "${SUBSET}" ]; then
+  SUBSET_ARG=(--subset "${SUBSET}")
 fi
 
-pixetl --dataset "${DATASET}" --version "${VERSION}" ${OVERWRITE_ARG} ${SUBSET_ARG} "${JSON}"
+pixetl --dataset "${DATASET}" --version "${VERSION}" "${OVERWRITE_ARG}" "${SUBSET_ARG[@]}" "${JSON}"

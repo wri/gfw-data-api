@@ -1,6 +1,7 @@
 import json
 import logging
 import sys
+from asyncio.exceptions import TimeoutError as AsyncTimeoutError
 
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.logger import logger
@@ -36,6 +37,20 @@ sys.path.extend(["./"])
 ################
 # ERRORS
 ################
+
+
+@app.exception_handler(AsyncTimeoutError)
+async def timeout_error_handler(
+    request: Request, exc: AsyncTimeoutError
+) -> ORJSONResponse:
+    """Use JSEND protocol for validation errors."""
+    return ORJSONResponse(
+        status_code=524,
+        content={
+            "status": "error",
+            "message": "A timeout occurred while processing the request. Request canceled.",
+        },
+    )
 
 
 @app.exception_handler(HTTPException)
@@ -107,15 +122,6 @@ for r in dataset_routers:
 app.include_router(assets.router, prefix="/assets")
 app.include_router(asset.router, prefix="/asset")
 
-
-# ###############
-# # SQL API
-# ###############
-#
-# sql_routers = (queries.router,)
-#
-# for r in sql_routers:
-#     app.include_router(r, prefix="/sql")
 
 ###############
 # GEOSTORE API

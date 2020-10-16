@@ -130,3 +130,4 @@ SERVICE_ACCOUNT_TOKEN = config(
 )
 
 S3_ENTRYPOINT_URL = config("S3_ENTRYPOINT_URL", cast=str, default=None)
+SQL_REQUEST_TIMEOUT = 58

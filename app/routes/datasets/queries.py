@@ -4,7 +4,11 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import unquote
 from uuid import UUID
 
-from asyncpg import InsufficientPrivilegeError, UndefinedFunctionError
+from asyncpg import (
+    InsufficientPrivilegeError,
+    UndefinedColumnError,
+    UndefinedFunctionError,
+)
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
 from pglast import printers  # noqa
@@ -111,7 +115,8 @@ async def query_dataset(
         )
     except UndefinedFunctionError:
         raise HTTPException(status_code=400, detail="Bad request. Unknown function.")
-
+    except UndefinedColumnError as e:
+        raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
     return Response(data=response)
 
 

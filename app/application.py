@@ -7,7 +7,11 @@ from fastapi.logger import logger
 from gino import create_engine
 from gino_starlette import Gino, GinoEngine
 
-from .settings.globals import DATABASE_CONFIG, WRITE_DATABASE_CONFIG
+from .settings.globals import (
+    DATABASE_CONFIG,
+    SQL_REQUEST_TIMEOUT,
+    WRITE_DATABASE_CONFIG,
+)
 
 # Set the current engine using a ContextVar to assure
 # that the correct connection is used during concurrent requests
@@ -100,7 +104,12 @@ async def startup_event():
     logger.info(
         f"Database connection pool for write operation created: {WRITE_ENGINE.repr(color=True)}"
     )
-    READ_ENGINE = await create_engine(DATABASE_CONFIG.url, max_size=10, min_size=5)
+    READ_ENGINE = await create_engine(
+        DATABASE_CONFIG.url,
+        max_size=10,
+        min_size=5,
+        command_timeout=SQL_REQUEST_TIMEOUT,
+    )
     logger.info(
         f"Database connection pool for read operation created: {READ_ENGINE.repr(color=True)}"
     )

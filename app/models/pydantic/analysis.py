@@ -1,9 +1,8 @@
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from ..enum.analysis import RasterLayer
-from .geostore import Geometry
 
 
 class ZonalAnalysisRequestIn(BaseModel):
