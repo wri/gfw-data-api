@@ -21,7 +21,7 @@ for uri in "${SRC[@]}"; do
   FIELDS=$(aws s3 cp "${uri}" - | head -1)
   set -e
 
-  FIELDS=$(sed -e $'s/\\t/,/g' -e 's/^/"/;s/$/"/' -e 's/,/","/g' -e 's/\r$//' <<< $FIELDS)
+  FIELDS=$(sed -e $'s/\\t/,/g' -e 's/^/"/;s/$/"/' -e 's/,/","/g' -e 's/\r$//' <<< "$FIELDS")
   FIELDS="($FIELDS)"
 
   aws s3 cp "${uri}" - | sed -e 's/\r$//' | psql -c "COPY \"$DATASET\".\"$VERSION\" $FIELDS FROM STDIN WITH (FORMAT CSV, DELIMITER '$DELIMITER', HEADER)"

@@ -24,4 +24,4 @@ if [ ! -z "${SUBSET}" ]; then
   SUBSET_ARG="--subset ${SUBSET}"
 fi
 
-pixetl --dataset "${DATASET}" --version "${VERSION}" ${OVERWRITE_ARG} ${SUBSET_ARG} "${JSON}"
+pixetl --dataset "${DATASET}" --version "${VERSION}" "${OVERWRITE_ARG}" "${SUBSET_ARG}" "${JSON}"
