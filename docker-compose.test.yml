@@ -12,6 +12,7 @@ services:
       - ./tests:/app/tests
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
+      - ENV=test
       - DB_HOST=test_database
       - DATABASE=_test
       - DB_USER=gfw
@@ -36,8 +37,8 @@ services:
       - AURORA_JOB_QUEUE=aurora_jq
       - AURORA_JOB_QUEUE_FAST=aurora_fast_jq
       - DATA_LAKE_JOB_QUEUE=data_lake_jq
-      - DATA_LAKE_BUCKET=data_lake_bucket
-      - TILE_CACHE_BUCKET=tile_cache_bucket
+      - DATA_LAKE_BUCKET=gfw-data-lake-test
+      - TILE_CACHE_BUCKET=gfw-tile-cache-test
       - TILE_CACHE_CLOUDFRONT_ID=tile_cache_cloudfrond_id
       - TILE_CACHE_JOB_QUEUE=tile_cache_jq
       - TILE_CACHE_URL=https://tiles.globalforestwatch.org

@@ -43,7 +43,7 @@ async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
 async def get_assets_by_filter(
     dataset: Optional[str] = None,
     version: Optional[str] = None,
-    asset_type: Optional[str] = None,
+    asset_types: Optional[List[str]] = None,
     asset_uri: Optional[str] = None,
     is_latest: Optional[bool] = None,
     is_default: Optional[bool] = None,
@@ -53,8 +53,8 @@ async def get_assets_by_filter(
         query = query.where(ORMAsset.dataset == dataset)
     if version is not None:
         query = query.where(ORMAsset.version == version)
-    if asset_type is not None:
-        query = query.where(ORMAsset.asset_type == asset_type)
+    if asset_types:
+        query = query.where(ORMAsset.asset_type.in_(asset_types))
     if asset_uri is not None:
         query = query.where(ORMAsset.asset_uri == asset_uri)
     if is_latest is not None:

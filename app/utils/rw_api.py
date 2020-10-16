@@ -84,7 +84,7 @@ async def login(user_name: str, password: str) -> str:
 
 def _env_prefix() -> str:
     """Set RW environment."""
-    if ENV == "dev":
+    if ENV in ("dev", "test"):
         prefix = "staging"
     else:
         prefix = ENV

@@ -55,8 +55,13 @@ async def get_version_assets(
     except RecordNotFoundError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    if asset_type is not None:
+        a_t: Optional[List[str]] = [asset_type]
+    else:
+        a_t = None
+
     data: List[ORMAsset] = await assets.get_assets_by_filter(
-        dataset, version, asset_type, asset_uri, is_latest, is_default
+        dataset, version, a_t, asset_uri, is_latest, is_default
     )
 
     return await assets_response(data)
@@ -94,7 +99,12 @@ async def add_new_asset(
         await verify_asset_dependencies(dataset, version, input_data["asset_type"])
 
     try:
-        asset_uri = get_asset_uri(dataset, version, input_data["asset_type"])
+        asset_uri = get_asset_uri(
+            dataset,
+            version,
+            input_data["asset_type"],
+            input_data.get("creation_options"),
+        )
     except NotImplementedError:
         raise HTTPException(
             status_code=501,

@@ -121,7 +121,7 @@ async def delete_asset(
             delete_dynamic_vector_tile_cache_assets,
             row.dataset,
             row.version,
-            row.creation_options.implementation,
+            row.creation_options["implementation"],
         )
 
     elif row.asset_type == AssetType.static_vector_tile_cache:
@@ -141,14 +141,16 @@ async def delete_asset(
         )
 
     elif row.asset_type == AssetType.raster_tile_set:
+
         background_tasks.add_task(
             delete_raster_tileset_assets,
             row.dataset,
             row.version,
-            row.creation_options.srid,
-            row.creation_options.size,
-            row.creation_options.col,
-            row.creation_options.value,
+            row.creation_options.get(
+                "srid", "epsg-4326"
+            ),  # FIXME: Not actually part of model
+            row.creation_options["grid"],
+            row.creation_options["pixel_meaning"],
         )
     elif is_database_asset(row.asset_type):
         background_tasks.add_task(delete_database_table_asset, row.dataset, row.version)

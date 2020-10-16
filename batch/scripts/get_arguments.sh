@@ -91,6 +91,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      -j|--json)
+      JSON="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -l|--source_layer)
       SRC_LAYER="$2"
       shift # past argument
@@ -111,6 +116,10 @@ do
       shift # past argument
       shift # past value
       ;;
+      --overwrite)
+      OVERWRITE="TRUE"
+      shift # past argument
+      ;;
       -p|--partition_type)
       PARTITION_TYPE="$2"
       shift # past argument
@@ -123,6 +132,11 @@ do
       ;;
       -s|--source)
       SRC+=("$2")
+      shift # past argument
+      shift # past value
+      ;;
+      --subset)
+      SUBSET="$2"
       shift # past argument
       shift # past value
       ;;

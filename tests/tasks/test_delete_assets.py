@@ -16,22 +16,21 @@ async def test_delete_raster_tileset_assets():
     dataset = "test_delete_raster_tileset"
     version = "table"
     srid = "epsg-4326"
-    size = 10
-    col = 40000
+    grid = "10/40000"
     value = "year"
 
     for i in range(0, 10):
         s3_client.upload_file(
             TSV_PATH,
             DATA_LAKE_BUCKET,
-            f"{dataset}/{version}/raster/{srid}/{size}/{col}/{value}/test_{i}.tsv",
+            f"{dataset}/{version}/raster/{srid}/{grid}/{value}/test_{i}.tsv",
         )
 
     response = s3_client.list_objects_v2(Bucket=DATA_LAKE_BUCKET, Prefix=dataset)
 
     assert response["KeyCount"] == 10
 
-    await delete_raster_tileset_assets(dataset, version, srid, size, col, value)
+    await delete_raster_tileset_assets(dataset, version, srid, grid, value)
 
     response = s3_client.list_objects_v2(Bucket=DATA_LAKE_BUCKET, Prefix=dataset)
     assert response["KeyCount"] == 0

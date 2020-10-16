@@ -31,7 +31,6 @@ echo "Fetch NDJSON data from Data Lake ${SRC} -> ${DATASET}"
 aws s3 cp "${SRC}" "${DATASET}"
 
 echo "Build Tile Cache"
-# shellcheck disable=SC2086
 tippecanoe -Z"${MIN_ZOOM}" -z"${MAX_ZOOM}" -e tilecache --"${STRATEGY}" --extend-zooms-if-still-dropping -P -n "${DATASET}" "${DATASET}"
 
 echo "Upload tiles to S3"
