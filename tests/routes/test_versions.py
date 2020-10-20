@@ -447,3 +447,38 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
             s3_client.head_object(Bucket="gfw-data-lake-test", Key=key)
         except ClientError:
             raise AssertionError(f"Key {key} doesn't exist!")
+
+
+@pytest.mark.asyncio
+@patch("app.tasks.aws_tasks.get_cloudfront_client")
+async def test_version_put_raster_bug_fixes(mocked_cloudfront_client, async_client):
+    """Test bug fixes for raster source version operations."""
+
+    dataset = "test_version_put_raster_minimal_args"
+    version = "v1.0.0"
+
+    raster_version_payload = {
+        "is_latest": True,
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_driver": "GeoTIFF",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            # "overwrite": True,  # Leave these out to test bug fix
+            # "subset": "90N_000E",  # Leave these out to test bug fix
+        },
+        # "metadata": payload["metadata"],  # Leave these out to test bug fix
+    }
+
+    mocked_cloudfront_client.return_value = MockCloudfrontClient()
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=True,
+    )
