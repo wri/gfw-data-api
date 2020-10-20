@@ -49,16 +49,15 @@ async def raster_tile_set_asset(
         ).dict(exclude_none=True, by_alias=True)
         creation_options["source_uri"] = source_uris[0]
 
-    overwrite = creation_options.pop("overwrite")
-    subset = creation_options.pop("subset")
+    overwrite = creation_options.pop("overwrite", None)
+    subset = creation_options.pop("subset", None)
     layer_def = json.dumps(jsonable_encoder(creation_options))
 
     callback: Callback = callback_constructor(asset_id)
 
-    job_env = writer_secrets + [
-        {"name": "ENV", "value": ENV},
-        {"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL},
-    ]
+    job_env = writer_secrets + [{"name": "ENV", "value": ENV}]
+    if S3_ENTRYPOINT_URL:
+        job_env = job_env + [{"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL}]
 
     command = [
         "create_raster_tile_set.sh",

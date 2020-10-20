@@ -5,7 +5,7 @@ set -e
 # requires arguments
 # -d | --dataset
 # -v | --version
-# -j | --json  # FIXME: Use -l? Or -s?
+# -j | --json
 # --subset
 
 ME=$(basename "$0")
@@ -24,4 +24,7 @@ if [ -n "${SUBSET}" ]; then
   SUBSET_ARG=(--subset "${SUBSET}")
 fi
 
-pixetl --dataset "${DATASET}" --version "${VERSION}" "${OVERWRITE_ARG}" "${SUBSET_ARG[@]}" "${JSON}"
+# Leave ${OVERWRITE_ARG} un-quoted in the following line, as quoting it seems
+# to break things when $OVERWRITE is undefined. Perhaps it is interpreted as
+# an argument consisting of a null string?
+pixetl --dataset "${DATASET}" --version "${VERSION}" ${OVERWRITE_ARG} "${SUBSET_ARG[@]}" "${JSON}"
