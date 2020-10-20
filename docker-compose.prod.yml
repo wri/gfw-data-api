@@ -13,7 +13,6 @@ services:
       - ./app:/app/app
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      - ENV=production
       - DB_HOST=database
       - DATABASE=geostore
       - DB_USER=gfw
