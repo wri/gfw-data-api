@@ -19,7 +19,8 @@ ME=$(basename "$0")
 echo "OGR2OGR: Export table \"${DATASET}\".\"${VERSION}\" using format ${FORMAT}"
 echo "Export columns $COLUMN_NAMES"
 ogr2ogr -f "$FORMAT" "$LOCAL_FILE" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=$PGDATABASE user=$PGUSER" \
-      -sql "SELECT $COLUMN_NAMES, $GEOMETRY_NAME FROM \"${DATASET}\".\"${VERSION}\" $WHERE" -geomfield "${GEOMETRY_NAME}"
+      -sql "SELECT $COLUMN_NAMES, $GEOMETRY_NAME FROM \"${DATASET}\".\"${VERSION}\" $WHERE" -geomfield "${GEOMETRY_NAME}" \
+      -lco FID="$FID_NAME"
 
 if [ "${ZIPPED}" == "True" ]; then
   BASE_NAME="${LOCAL_FILE%.*}"

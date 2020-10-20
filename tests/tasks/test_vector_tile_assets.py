@@ -4,6 +4,7 @@ import pytest
 import requests
 from mock import patch
 
+from app.models.enum.assets import AssetType
 from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.utils.aws import get_s3_client
 
@@ -181,57 +182,62 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
     assert resp["KeyCount"] == 0
 
     ###########
-    # Shapefile export
+    # Vector file export
     ###########
 
-    requests.delete(f"http://localhost:{PORT}")
+    asset_types = [AssetType.shapefile, AssetType.geopackage]
+    for asset_type in asset_types:
+        response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+        current_asset_count = len(response.json()["data"])
 
-    input_data = {
-        "asset_type": "ESRI Shapefile",
-        "is_managed": True,
-        "creation_options": {},
-    }
+        requests.delete(f"http://localhost:{PORT}")
 
-    response = await async_client.post(
-        f"/dataset/{dataset}/{version}/assets", json=input_data
-    )
+        input_data = {
+            "asset_type": asset_type,
+            "is_managed": True,
+            "creation_options": {},
+        }
 
-    print(response.json())
-    assert response.status_code == 202
-    asset_id = response.json()["data"]["asset_id"]
+        response = await async_client.post(
+            f"/dataset/{dataset}/{version}/assets", json=input_data
+        )
 
-    # get tasks id from change log and wait until finished
-    response = await async_client.get(f"/asset/{asset_id}/change_log")
+        print(response.json())
+        assert response.status_code == 202
+        asset_id = response.json()["data"]["asset_id"]
 
-    assert response.status_code == 200
-    tasks = json.loads(response.json()["data"][-1]["detail"])
-    task_ids = [task["job_id"] for task in tasks]
-    print(task_ids)
+        # get tasks id from change log and wait until finished
+        response = await async_client.get(f"/asset/{asset_id}/change_log")
 
-    # make sure, all jobs completed
-    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
-    assert status == "saved"
+        assert response.status_code == 200
+        tasks = json.loads(response.json()["data"][-1]["detail"])
+        task_ids = [task["job_id"] for task in tasks]
+        print(task_ids)
 
-    response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
-    assert response.status_code == 200
+        # make sure, all jobs completed
+        status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
+        assert status == "saved"
 
-    # there should be 4 assets now (geodatabase table, dynamic vector tile cache and static vector tile cache (already deleted ndjson. 1x1 grid)
-    assert len(response.json()["data"]) == 4
+        response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+        assert response.status_code == 200
 
-    # Check if file is in tile cache
-    resp = s3_client.list_objects_v2(
-        Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
-    )
-    print(resp)
-    assert resp["KeyCount"] == 1
+        # there should be one more asset than before this test
+        assert len(response.json()["data"]) == current_asset_count + 1
 
-    response = await async_client.delete(f"/asset/{asset_id}")
-    print(response.json())
-    assert response.status_code == 200
+        # Check if file is in data lake
+        resp = s3_client.list_objects_v2(
+            Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
+        )
+        print(resp)
+        assert resp["KeyCount"] == 1
 
-    # Check if file was deleted
-    resp = s3_client.list_objects_v2(
-        Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
-    )
-    print(resp)
-    assert resp["KeyCount"] == 0
+        response = await async_client.delete(f"/asset/{asset_id}")
+        print(response.json())
+        assert response.status_code == 200
+
+        # Check if file was deleted
+        resp = s3_client.list_objects_v2(
+            Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
+        )
+        print(resp)
+        assert resp["KeyCount"] == 0

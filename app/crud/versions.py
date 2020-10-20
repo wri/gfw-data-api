@@ -1,6 +1,6 @@
 from typing import Any, List, Optional
 
-from asyncpg import UniqueViolationError
+from asyncpg import ForeignKeyViolationError, UniqueViolationError
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.datasets import Dataset as ORMDataset
@@ -57,7 +57,11 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
         )
     except UniqueViolationError:
         raise RecordAlreadyExistsError(
-            f"Version with name {dataset}.{version} already exists"
+            f"Version with name {dataset}.{version} already exists."
+        )
+    except ForeignKeyViolationError:
+        raise RecordNotFoundError(
+            f"Cannot create version. Dataset with name {dataset} does not exist."
         )
     d: ORMDataset = await datasets.get_dataset(dataset)
 

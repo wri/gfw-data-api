@@ -28,7 +28,6 @@ echo GREP EXIT CODE: $GREP_EXIT_CODE
 # But we still want to know if the var was set
 ESC_COMMAND=$(json_escape "$*")
 
-ESC_OUTPUT=$(echo "$OUTPUT" | tail -n 200)  # Curl complains if arg list is too long
 ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^AWS_SECRET_ACCESS_KEY.*$/AWS_SECRET_ACCESS_KEY=\*\*\*/') # pragma: allowlist secret
 ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^AWS_ACCESS_KEY_ID.*$/AWS_ACCESS_KEY_ID=\*\*\*/')
 ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^PGPASSWORD.*$/PGPASSWORD=\*\*\*/')  # pragma: allowlist secret
@@ -46,7 +45,7 @@ if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
 else
     STATUS="failed"
     MESSAGE="Command [ $ESC_COMMAND ] encountered errors"
-    DETAIL="$ESC_OUTPUT"
+    DETAIL=${ESC_OUTPUT:(-1000)} # crop output length to be able to send using CURL
 fi
 
 AFTER=$(date '+%Y-%m-%d %H:%M:%S')
@@ -59,7 +58,7 @@ generate_payload()
     "date_time": "$AFTER",
     "status": "$STATUS",
     "message": "$MESSAGE",
-    "detail": "${DETAIL:(-10000)}"
+    "detail": "$DETAIL"
   }]
 }
 EOF

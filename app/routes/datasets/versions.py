@@ -95,7 +95,7 @@ async def add_new_version(
         new_version: ORMVersion = await versions.create_version(
             dataset, version, **input_data
         )
-    except RecordAlreadyExistsError as e:
+    except (RecordAlreadyExistsError, RecordNotFoundError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     input_data["creation_options"] = creation_options

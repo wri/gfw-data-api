@@ -12,13 +12,13 @@ from ..models.pydantic.change_log import ChangeLog
 from .dynamic_vector_tile_cache_assets import dynamic_vector_tile_cache_asset
 from .raster_tile_set_assets import raster_tile_set_asset
 from .static_vector_1x1_assets import static_vector_1x1_asset
-from .static_vector_shp_assets import static_vector_shp_asset
+from .static_vector_file_assets import static_vector_file_asset
 from .static_vector_tile_cache_assets import static_vector_tile_cache_asset
 
 ASSET_PIPELINES: FrozenSet[AssetType] = frozenset(
     {
-        AssetType.shapefile: static_vector_shp_asset,
-        # AssetType.geopackage: geopackage_asset,
+        AssetType.shapefile: static_vector_file_asset,
+        AssetType.geopackage: static_vector_file_asset,
         # AssetType.ndjson: ndjson_asset,
         # AssetType.csv: csv_asset,
         # AssetType.tsv: tsv_asset,

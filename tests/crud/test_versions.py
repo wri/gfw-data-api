@@ -67,7 +67,7 @@ async def test_versions():
             result = str(e)
 
         assert (
-            result == f"Version with name {dataset_name}.{version_name} already exists"
+            result == f"Version with name {dataset_name}.{version_name} already exists."
         )
 
     # There should be an entry now
