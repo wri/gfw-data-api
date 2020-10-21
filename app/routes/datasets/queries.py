@@ -3,6 +3,7 @@ import json
 from typing import Any, Dict, List, Optional
 from urllib.parse import unquote
 from uuid import UUID
+import time
 
 from asyncpg import (
     InsufficientPrivilegeError,
@@ -73,18 +74,25 @@ async def query_dataset(
     """Execute a read ONLY SQL query on the given dataset version (if
     implemented)."""
 
+    start = time.time()
     # make sure version exists
     try:
         await versions.get_version(dataset, version)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=400, detail=(str(e)))
+    end = time.time()
+    print(f"Get Version: {end - start}")
 
+    start = time.time()
     # parse and validate SQL statement
     try:
         parsed = parse_sql(unquote(sql))
     except ParseError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    end = time.time()
+    print(f"Parse SQL: {end - start}")
 
+    start = time.time()
     _has_only_one_statement(parsed)
     _is_select_statement(parsed)
     _has_no_with_clause(parsed)
@@ -92,6 +100,8 @@ async def query_dataset(
     _no_subqueries(parsed)
     _no_forbidden_functions(parsed)
     _no_forbidden_value_functions(parsed)
+    end = time.time()
+    print(f"Check SQL: {end - start}")
 
     # always overwrite the table name with the current dataset version name, to make sure no other table is queried
     parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
@@ -101,12 +111,19 @@ async def query_dataset(
         "relname"
     ] = version
 
+    start = time.time()
     if geostore_id:
         parsed = await _add_geostore_filter(parsed, geostore_id, geostore_origin)
+    end = time.time()
+    print(f"Add Geostore Filer: {end - start}")
 
     # convert back to text
+    start = time.time()
     sql = RawStream()(Node(parsed))
+    end = time.time()
+    print(f"Convert SQL to text: {end - start}")
 
+    start = time.time()
     try:
         response = await db.all(sql)
     except InsufficientPrivilegeError:
@@ -117,6 +134,9 @@ async def query_dataset(
         raise HTTPException(status_code=400, detail="Bad request. Unknown function.")
     except UndefinedColumnError as e:
         raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
+    end = time.time()
+    print(f"DB Query: {end - start}")
+
     return Response(data=response)
 
 
