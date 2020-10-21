@@ -55,7 +55,10 @@ async def raster_tile_set_asset(
 
     callback: Callback = callback_constructor(asset_id)
 
-    job_env = writer_secrets + [{"name": "ENV", "value": ENV}]
+    job_env = writer_secrets + [
+        {"name": "ENV", "value": ENV},
+        {"name": "DEBUG", "value": "TRUE"},
+    ]
     if S3_ENTRYPOINT_URL:
         job_env = job_env + [{"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL}]
 
