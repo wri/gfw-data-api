@@ -86,7 +86,7 @@ data "template_file" "container_definition" {
   }
     depends_on  = [module.batch_job_queues.aurora_job_definition,
       module.batch_job_queues.data_lake_job_definition,
-      module.batch_job_queues.tile_cache_job_definition
+      module.batch_job_queues.tile_cache_job_definition,
       module.batch_job_queues.pixetl_job_definition]
 
 
@@ -107,7 +107,7 @@ data "template_file" "task_batch_policy" {
   }
   depends_on  = [module.batch_job_queues.aurora_job_definition,
       module.batch_job_queues.data_lake_job_definition,
-      module.batch_job_queues.tile_cache_job_definition
+      module.batch_job_queues.tile_cache_job_definition,
       module.batch_job_queues.pixetl_job_definition]
 }
 
