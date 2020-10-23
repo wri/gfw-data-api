@@ -101,6 +101,22 @@ data "template_file" "gdal_container_properties" {
   }
 }
 
+data "template_file" "pixetl_container_properties" {
+  template = file("${path.root}/templates/container_properties.json.tmpl")
+  vars = {
+    image_url      = var.pixetl_repository_url
+    environment    = var.environment
+    job_role_arn   = aws_iam_role.aws_ecs_service_role.arn
+    clone_role_arn = aws_iam_role.aws_ecs_service_role_clone.arn
+    cpu            = 1
+    memory         = 480
+    hardULimit     = 1024
+    softULimit     = 1024
+    data_lake      = "gfw-data-lake${local.bucket_suffix}"
+    max_tasks      = var.aurora_max_vcpus
+  }
+}
+
 data "template_file" "tile_cache_container_properties" {
   template = file("${path.root}/templates/container_properties.json.tmpl")
   vars = {

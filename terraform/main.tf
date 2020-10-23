@@ -148,11 +148,13 @@ module "batch_job_queues" {
   source                             = "./modules/batch"
   aurora_compute_environment_arn     = module.batch_aurora_writer.arn
   data_lake_compute_environment_arn  = module.batch_data_lake_writer.arn
+  pixetl_compute_environment_arn     = module.batch_data_lake_writer.arn
   tile_cache_compute_environment_arn = module.batch_data_lake_writer.arn
   environment                        = var.environment
   name_suffix                        = local.name_suffix
   project                            = local.project
   gdal_repository_url                = "${module.batch_gdal_python_image.repository_url}:latest"
+  pixetl_repository_url              = "${module.batch_pixetl_image.repository_url}:latest"
   postgres_repository_url            = "${module.batch_postgresql_client_image.repository_url}:latest"
   tile_cache_repository_url          = "${module.batch_tile_cache_image.repository_url}:latest"
   s3_write_data-lake_arn             = data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn

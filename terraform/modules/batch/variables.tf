@@ -6,6 +6,7 @@ variable "tile_cache_compute_environment_arn" { type = string }
 variable "pixetl_compute_environment_arn" { type = string }
 variable "gdal_repository_url" { type = string }
 variable "postgres_repository_url" { type = string }
+variable "pixetl_repository_url" { type = string }
 variable "tile_cache_repository_url" { type = string }
 variable "environment" { type = string }
 variable "s3_write_data-lake_arn" { type = string }
