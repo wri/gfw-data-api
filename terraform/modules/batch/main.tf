@@ -112,6 +112,7 @@ data "template_file" "pixetl_container_properties" {
     memory         = 480
     hardULimit     = 1024
     softULimit     = 1024
+    tile_cache     = "gfw-tiles${local.bucket_suffix}"
     data_lake      = "gfw-data-lake${local.bucket_suffix}"
     max_tasks      = var.aurora_max_vcpus
   }
