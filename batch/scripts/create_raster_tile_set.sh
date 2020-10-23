@@ -31,4 +31,6 @@ fi
 
 ARG_ARRAY+=("${JSON}")
 
-pixetl "${ARG_ARRAY[@]}"
+# pixetl "${ARG_ARRAY[@]}"
+echo "Why won't you work, damn it?"
+ls -al
