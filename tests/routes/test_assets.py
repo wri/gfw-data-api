@@ -194,11 +194,11 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     asset_resp = await async_client.get(f"/asset/{asset_id}")
     assert asset_resp.json()["data"]["status"] == "saved"
 
-    # for key in pixetl_output_files:
-    #     try:
-    #         s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
-    #     except ClientError:
-    #         raise AssertionError(f"Key {key} doesn't exist!")
+    for key in pixetl_output_files:
+        try:
+            s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+        except ClientError:
+            raise AssertionError(f"Key {key} doesn't exist!")
 
     # Delete the asset or PostgreSQL throws an error downgrading
     # all the migrations.
@@ -287,11 +287,11 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     asset_resp = await async_client.get(f"/asset/{asset_id}")
     assert asset_resp.json()["data"]["status"] == "saved"
 
-    # for key in pixetl_output_files:
-    #     try:
-    #         s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
-    #     except ClientError:
-    #         raise AssertionError(f"Key {key} doesn't exist!")
+    for key in pixetl_output_files:
+        try:
+            s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+        except ClientError:
+            raise AssertionError(f"Key {key} doesn't exist!")
 
 
 @pytest.mark.asyncio

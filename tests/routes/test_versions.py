@@ -442,11 +442,11 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
         execute_batch_jobs=True,
     )
 
-    # for key in pixetl_output_files:
-    #     try:
-    #         s3_client.head_object(Bucket="gfw-data-lake-test", Key=key)
-    #     except ClientError:
-    #         raise AssertionError(f"Key {key} doesn't exist!")
+    for key in pixetl_output_files:
+        try:
+            s3_client.head_object(Bucket="gfw-data-lake-test", Key=key)
+        except ClientError:
+            raise AssertionError(f"Key {key} doesn't exist!")
 
 
 @pytest.mark.asyncio

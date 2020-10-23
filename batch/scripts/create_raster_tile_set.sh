@@ -6,7 +6,10 @@ set -e
 # -d | --dataset
 # -v | --version
 # -j | --json
+
+# optional arguments
 # --subset
+# --overwrite
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"

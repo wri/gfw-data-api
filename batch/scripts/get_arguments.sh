@@ -15,11 +15,15 @@ if [[ -n "${DEBUG}" ]]; then
   echo "$ME $*"
   echo
 
-  echo "--------------"
-  echo "AWS CONFIG:"
-  echo "--------------"
-#  cat /root/.aws/config
-  echo
+  if [[ -f /root/.aws/config ]]; then
+    echo "--------------"
+    echo "AWS CONFIG:"
+    echo "--------------"
+    cat /root/.aws/config
+    echo
+  else
+    echo "No AWS config found"
+  fi
 
   echo "--------------"
   echo "ENVIRONMENT VARIABLES:"
