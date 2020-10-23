@@ -18,7 +18,7 @@ if [[ -n "${DEBUG}" ]]; then
   echo "--------------"
   echo "AWS CONFIG:"
   echo "--------------"
-  cat /root/.aws/config
+#  cat /root/.aws/config
   echo
 
   echo "--------------"
