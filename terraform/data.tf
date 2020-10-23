@@ -8,16 +8,15 @@ data "terraform_remote_state" "core" {
   }
 }
 
-
-# import pixetl state
-data "terraform_remote_state" "pixetl" {
-  backend = "s3"
-  config = {
-    bucket = local.tf_state_bucket
-    region = "us-east-1"
-    key    = "wri__gfw_pixetl.tfstate"
-  }
-}
+//# import pixetl state
+//data "terraform_remote_state" "pixetl" {
+//  backend = "s3"
+//  config = {
+//    bucket = local.tf_state_bucket
+//    region = "us-east-1"
+//    key    = "wri__gfw_pixetl.tfstate"
+//  }
+//}
 
 # import gfw-raster-analysis-lambda state
 data "terraform_remote_state" "raster_analysis_lambda" {
@@ -27,10 +26,8 @@ data "terraform_remote_state" "raster_analysis_lambda" {
     bucket = local.tf_state_bucket
     region = "us-east-1"
     key    = "wri__gfw-raster-analysis-lambda.tfstate"
-
   }
 }
-
 
 # import tile_cache state
 # This might cause a chicken/ egg problem on new deployments.

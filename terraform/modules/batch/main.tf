@@ -125,10 +125,12 @@ data "template_file" "tile_cache_container_properties" {
     environment    = var.environment
     job_role_arn   = aws_iam_role.aws_ecs_service_role.arn
     clone_role_arn = aws_iam_role.aws_ecs_service_role_clone.arn
-    cpu            = 1
-    memory         = 480
+    cpu            = 48
+    memory         = 380000
     hardULimit     = 1024
     softULimit     = 1024
+//    maxSwap        = 600000
+//    swappiness     = 60
     tile_cache     = "gfw-tiles${local.bucket_suffix}"
     data_lake      = "gfw-data-lake${local.bucket_suffix}"
     max_tasks      = var.aurora_max_vcpus
