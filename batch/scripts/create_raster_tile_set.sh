@@ -31,6 +31,5 @@ fi
 
 ARG_ARRAY+=("${JSON}")
 
-# pixetl "${ARG_ARRAY[@]}"
-echo "Why won't you work, damn it?"
-ls -al
+# Run pixetl with the array of arguments
+pixetl "${ARG_ARRAY[@]}"

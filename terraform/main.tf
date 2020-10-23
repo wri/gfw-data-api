@@ -40,6 +40,15 @@ module "batch_gdal_python_image" {
   docker_filename = "gdal-python.dockerfile"
 }
 
+# Docker image for PixETL Batch jobs
+module "batch_pixetl_image" {
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.3.0"
+  image_name      = lower("${local.project}-pixetl${local.name_suffix}")
+  root_dir        = "${path.root}/../"
+  docker_path     = "batch"
+  docker_filename = "pixetl.dockerfile"
+}
+
 # Docker image for PostgreSQL Client Batch jobs
 module "batch_postgresql_client_image" {
   source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.3.0"

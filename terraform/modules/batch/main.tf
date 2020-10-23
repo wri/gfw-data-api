@@ -38,6 +38,20 @@ resource "aws_batch_job_queue" "data_lake" {
   depends_on           = [var.data_lake_compute_environment_arn]
 }
 
+resource "aws_batch_job_definition" "pixetl" {
+  name                 = "${var.project}-pixetl${var.name_suffix}"
+  type                 = "container"
+  container_properties = data.template_file.pixetl_container_properties.rendered
+}
+
+resource "aws_batch_job_queue" "pixetl" {
+  name                 = "${var.project}-pixetl-job-queue${var.name_suffix}"
+  state                = "ENABLED"
+  priority             = 1
+  compute_environments = [var.pixetl_compute_environment_arn]
+  depends_on           = [var.pixetl_compute_environment_arn]
+}
+
 
 resource "aws_batch_job_definition" "tile_cache" {
   name                 = "${var.project}-tile_cache${var.name_suffix}"
