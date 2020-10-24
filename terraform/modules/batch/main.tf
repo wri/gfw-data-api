@@ -38,6 +38,20 @@ resource "aws_batch_job_queue" "data_lake" {
   depends_on           = [var.data_lake_compute_environment_arn]
 }
 
+resource "aws_batch_job_definition" "pixetl" {
+  name                 = "${var.project}-pixetl${var.name_suffix}"
+  type                 = "container"
+  container_properties = data.template_file.pixetl_container_properties.rendered
+}
+
+resource "aws_batch_job_queue" "pixetl" {
+  name                 = "${var.project}-pixetl-job-queue${var.name_suffix}"
+  state                = "ENABLED"
+  priority             = 1
+  compute_environments = [var.pixetl_compute_environment_arn]
+  depends_on           = [var.pixetl_compute_environment_arn]
+}
+
 
 resource "aws_batch_job_definition" "tile_cache" {
   name                 = "${var.project}-tile_cache${var.name_suffix}"
@@ -81,6 +95,26 @@ data "template_file" "gdal_container_properties" {
     memory         = 480
     hardULimit     = 1024
     softULimit     = 1024
+    tile_cache     = "gfw-tiles${local.bucket_suffix}"
+    data_lake      = "gfw-data-lake${local.bucket_suffix}"
+    max_tasks      = var.aurora_max_vcpus
+  }
+}
+
+data "template_file" "pixetl_container_properties" {
+  template = file("${path.root}/templates/container_properties.json.tmpl")
+  vars = {
+    image_url      = var.pixetl_repository_url
+    environment    = var.environment
+    job_role_arn   = aws_iam_role.aws_ecs_service_role.arn
+    clone_role_arn = aws_iam_role.aws_ecs_service_role_clone.arn
+    gcs_key_secret_arn = var.gcs_secret
+    cpu            = 48
+    memory         = 380000
+    hardULimit     = 1024
+    softULimit     = 1024
+//    maxSwap        = 600000
+//    swappiness     = 60
     tile_cache     = "gfw-tiles${local.bucket_suffix}"
     data_lake      = "gfw-data-lake${local.bucket_suffix}"
     max_tasks      = var.aurora_max_vcpus
@@ -133,7 +167,7 @@ resource "aws_iam_role_policy" "test_policy" {
 }
 
 
-## Clone role, and allow orginal to assume clone. -> Needed to get credentials for GDALWarp
+## Clone role, and allow original to assume clone. -> Needed to get credentials for GDALWarp
 
 resource "aws_iam_role" "aws_ecs_service_role_clone" {
   name               = substr("${var.project}-ecs_service_role_clone${var.name_suffix}", 0, 64)

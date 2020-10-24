@@ -18,6 +18,13 @@ async def test_assets(async_client):
     dataset = "test"
     version = "v20200626"
 
+    with patch("fastapi.BackgroundTasks.add_task", return_value=None):
+        try:
+            _ = await async_client.delete(f"/dataset/{dataset}/{version}")
+            _ = await async_client.delete(f"/dataset/{dataset}")
+        except Exception:
+            pass
+
     asset = await create_default_asset(
         dataset, version, async_client=async_client, execute_batch_jobs=False
     )
@@ -73,6 +80,14 @@ async def test_assets(async_client):
     assert create_asset_resp.json()["message"] == (
         "Version status is `failed`. Cannot add any assets."
     )
+
+    # Clean up
+    with patch("fastapi.BackgroundTasks.add_task", return_value=None):
+        try:
+            _ = await async_client.delete(f"/dataset/{dataset}/{version}")
+            _ = await async_client.delete(f"/dataset/{dataset}")
+        except Exception:
+            pass
 
 
 @pytest.mark.asyncio
@@ -198,6 +213,13 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     # Add a dataset, version, and default asset
     dataset = "test_vector"
     version = "v1.1.1"
+
+    with patch("fastapi.BackgroundTasks.add_task", return_value=None):
+        try:
+            _ = await async_client.delete(f"/dataset/{dataset}/{version}")
+            _ = await async_client.delete(f"/dataset/{dataset}")
+        except Exception:
+            pass
 
     s3_client = boto3.client(
         "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"

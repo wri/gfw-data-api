@@ -8,17 +8,6 @@ data "terraform_remote_state" "core" {
   }
 }
 
-
-# import pixetl state
-data "terraform_remote_state" "pixetl" {
-  backend = "s3"
-  config = {
-    bucket = local.tf_state_bucket
-    region = "us-east-1"
-    key    = "wri__gfw_pixetl.tfstate"
-  }
-}
-
 # import gfw-raster-analysis-lambda state
 data "terraform_remote_state" "raster_analysis_lambda" {
   backend = "s3"
@@ -27,10 +16,8 @@ data "terraform_remote_state" "raster_analysis_lambda" {
     bucket = local.tf_state_bucket
     region = "us-east-1"
     key    = "wri__gfw-raster-analysis-lambda.tfstate"
-
   }
 }
-
 
 # import tile_cache state
 # This might cause a chicken/ egg problem on new deployments.
@@ -78,15 +65,16 @@ data "template_file" "container_definition" {
     data_lake_job_queue = module.batch_job_queues.data_lake_job_queue_arn
     tile_cache_job_definition = module.batch_job_queues.tile_cache_job_definition_arn
     tile_cache_job_queue = module.batch_job_queues.tile_cache_job_queue_arn
-    pixetl_job_definition = data.terraform_remote_state.pixetl.outputs.job_definition_arn
-    pixetl_job_queue = data.terraform_remote_state.pixetl.outputs.job_queue_arn
+    pixetl_job_definition = module.batch_job_queues.pixetl_job_definition_arn
+    pixetl_job_queue = module.batch_job_queues.pixetl_job_queue_arn
     raster_analysis_lambda_name = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_lambda_name
     service_url          = local.service_url
     api_token_secret_arn = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
   }
     depends_on  = [module.batch_job_queues.aurora_job_definition,
       module.batch_job_queues.data_lake_job_definition,
-      module.batch_job_queues.tile_cache_job_definition]
+      module.batch_job_queues.tile_cache_job_definition,
+      module.batch_job_queues.pixetl_job_definition]
 
 
 }
@@ -101,12 +89,13 @@ data "template_file" "task_batch_policy" {
     data_lake_job_queue_arn       = module.batch_job_queues.data_lake_job_queue_arn
     tile_cache_job_definition_arn = module.batch_job_queues.tile_cache_job_definition_arn
     tile_cache_job_queue_arn      = module.batch_job_queues.tile_cache_job_queue_arn
-    pixetl_job_definition_arn     = data.terraform_remote_state.pixetl.outputs.job_definition_arn
-    pixetl_job_queue_arn          = data.terraform_remote_state.pixetl.outputs.job_queue_arn
+    pixetl_job_definition_arn     = module.batch_job_queues.pixetl_job_definition_arn
+    pixetl_job_queue_arn          = module.batch_job_queues.pixetl_job_queue_arn
   }
   depends_on  = [module.batch_job_queues.aurora_job_definition,
       module.batch_job_queues.data_lake_job_definition,
-      module.batch_job_queues.tile_cache_job_definition]
+      module.batch_job_queues.tile_cache_job_definition,
+      module.batch_job_queues.pixetl_job_definition]
 }
 
 data "local_file" "iam_s3_read_only" {
