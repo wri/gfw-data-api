@@ -108,6 +108,7 @@ data "template_file" "pixetl_container_properties" {
     environment    = var.environment
     job_role_arn   = aws_iam_role.aws_ecs_service_role.arn
     clone_role_arn = aws_iam_role.aws_ecs_service_role_clone.arn
+    gcs_key_secret_arn = var.gcs_secret
     cpu            = 48
     memory         = 380000
     hardULimit     = 1024
@@ -166,7 +167,7 @@ resource "aws_iam_role_policy" "test_policy" {
 }
 
 
-## Clone role, and allow orginal to assume clone. -> Needed to get credentials for GDALWarp
+## Clone role, and allow original to assume clone. -> Needed to get credentials for GDALWarp
 
 resource "aws_iam_role" "aws_ecs_service_role_clone" {
   name               = substr("${var.project}-ecs_service_role_clone${var.name_suffix}", 0, 64)

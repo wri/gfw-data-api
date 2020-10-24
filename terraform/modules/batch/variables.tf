@@ -14,3 +14,4 @@ variable "s3_write_tile-cache_arn" { type = string }
 variable "reader_secret_arn" { type = string }
 variable "writer_secret_arn" { type = string }
 variable "aurora_max_vcpus" { type = number }
+variable "gcs_secret" { type = string }

@@ -162,4 +162,5 @@ module "batch_job_queues" {
   reader_secret_arn                  = data.terraform_remote_state.core.outputs.secrets_postgresql-reader_arn
   writer_secret_arn                  = data.terraform_remote_state.core.outputs.secrets_postgresql-writer_arn
   aurora_max_vcpus                   = local.aurora_max_vcpus
+  gcs_secret                         = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
 }
