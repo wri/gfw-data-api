@@ -1,6 +1,7 @@
 import json
 import logging
 import sys
+from asyncio.exceptions import TimeoutError as AsyncTimeoutError
 
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.logger import logger
@@ -17,6 +18,7 @@ from app.errors import http_error_handler
 from .application import app
 from .middleware import redirect_latest, set_db_mode
 from .routes import security
+from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.datasets import asset as version_asset
 from .routes.datasets import dataset, datasets, features, geostore, queries, versions
@@ -35,6 +37,20 @@ sys.path.extend(["./"])
 ################
 # ERRORS
 ################
+
+
+@app.exception_handler(AsyncTimeoutError)
+async def timeout_error_handler(
+    request: Request, exc: AsyncTimeoutError
+) -> ORJSONResponse:
+    """Use JSEND protocol for validation errors."""
+    return ORJSONResponse(
+        status_code=524,
+        content={
+            "status": "error",
+            "message": "A timeout occurred while processing the request. Request canceled.",
+        },
+    )
 
 
 @app.exception_handler(HTTPException)
@@ -107,15 +123,6 @@ app.include_router(assets.router, prefix="/assets")
 app.include_router(asset.router, prefix="/asset")
 
 
-# ###############
-# # SQL API
-# ###############
-#
-# sql_routers = (queries.router,)
-#
-# for r in sql_routers:
-#     app.include_router(r, prefix="/sql")
-
 ###############
 # GEOSTORE API
 ###############
@@ -134,6 +141,10 @@ task_routers = (task.router,)
 for r in task_routers:
     app.include_router(r, prefix="/task")
 
+analysis_routers = (analysis.router,)
+for r in analysis_routers:
+    app.include_router(r, prefix="/analysis")
+
 #######################
 # OPENAPI Documentation
 #######################
@@ -146,6 +157,7 @@ tags_metadata = [
     {"name": "Query", "description": queries.__doc__},
     {"name": "Geostore", "description": geostore.__doc__},
     {"name": "Tasks", "description": task.__doc__},
+    {"name": "Analysis", "description": analysis.__doc__},
 ]
 
 
@@ -167,6 +179,7 @@ def custom_openapi():
         {"name": "Geostore API", "tags": ["Geostore"]},
         {"name": "SQL API", "tags": ["Query"]},
         {"name": "Task API", "tags": ["Tasks"]},
+        {"name": "Analysis API", "tags": ["Analysis"]},
     ]
 
     app.openapi_schema = openapi_schema

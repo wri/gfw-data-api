@@ -1,15 +1,22 @@
 import csv
 import io
+import os
+import shutil
 import threading
+import zipfile
 from http.server import HTTPServer
 
 import boto3
+import numpy
 import pytest
+import rasterio
 import requests
+from affine import Affine
 from alembic.config import main
 from docker.models.containers import ContainerCollection
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+from rasterio.crs import CRS
 
 from app.routes import is_admin, is_service_account
 from app.settings.globals import (
@@ -22,6 +29,7 @@ from app.settings.globals import (
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
+    RASTER_ANALYSIS_LAMBDA_NAME,
     TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
@@ -106,7 +114,7 @@ def batch_client():
         POSTGRESQL_CLIENT_JOB_DEFINITION, "batch_postgresql-client_test"
     )
     aws_mock.add_job_definition(TILE_CACHE_JOB_DEFINITION, "batch_tile_cache_test")
-    aws_mock.add_job_definition(PIXETL_JOB_DEFINITION, "pixetl_test")
+    aws_mock.add_job_definition(PIXETL_JOB_DEFINITION, "pixetl_test", mount_tmp=True)
 
     yield aws_mock.mocked_services["batch"]["client"], aws_mock.mocked_services["logs"][
         "client"
@@ -116,8 +124,6 @@ def batch_client():
     aws_mock.stop_services()
 
 
-#
-#
 # @pytest.fixture(scope="session", autouse=True)
 # def db():
 #     """Acquire a database session for a test and make sure the connection gets
@@ -127,8 +133,8 @@ def batch_client():
 #     """
 #     with contextlib.ExitStack() as stack:
 #         yield stack.enter_context(session())
-#
-#
+
+
 @pytest.fixture(autouse=True)
 def client():
     """Set up a clean database before running a test Run all migrations before
@@ -198,6 +204,36 @@ def copy_fixtures():
     s3_client.create_bucket(Bucket=BUCKET)
     s3_client.create_bucket(Bucket=DATA_LAKE_BUCKET)
     s3_client.create_bucket(Bucket=TILE_CACHE_BUCKET)
+
+    RAW_TILE_SET_PREFIX = "test/v1.1.1/raw"
+    dataset_profile = {
+        "driver": "GTiff",
+        "nodata": 0,
+        "dtype": rasterio.uint16,
+        "count": 1,
+        "width": 100,
+        "height": 100,
+        "blockxsize": 100,
+        "blockysize": 100,
+        "crs": CRS.from_epsg(4326),
+        "transform": Affine(0.01, 0, 1, 0, -0.01, 1),
+    }
+    with rasterio.Env():
+        with rasterio.open("0000000000-0000000000.tif", "w", **dataset_profile) as dst:
+            dummy_data = numpy.ones((100, 100), rasterio.uint16)
+            dst.write(dummy_data.astype(rasterio.uint16), 1)
+
+    s3_client.upload_file(
+        "0000000000-0000000000.tif",
+        DATA_LAKE_BUCKET,
+        f"{RAW_TILE_SET_PREFIX}/0000000000-0000000000.tif",
+    )
+    s3_client.upload_file(
+        "tests/fixtures/tiles.geojson",
+        DATA_LAKE_BUCKET,
+        f"{RAW_TILE_SET_PREFIX}/tiles.geojson",
+    )
+
     s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
     s3_client.upload_file(SHP_PATH, BUCKET, SHP_NAME)
@@ -217,3 +253,52 @@ def copy_fixtures():
             Key=f"test_{reader.line_num}.tsv",
         )
         out.close()
+
+
+@pytest.fixture(autouse=True)
+async def tmp_folder():
+    """Create TMP dir."""
+
+    curr_dir = os.path.dirname(__file__)
+    tmp_dir = os.path.join(curr_dir, "fixtures", "tmp")
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    ready = os.path.join(tmp_dir, "READY")
+
+    # Create zerobytes READY file
+    with open(ready, "w"):
+        pass
+    yield
+
+    # clean up
+    shutil.rmtree(tmp_dir)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def lambda_client():
+    services = ["lambda", "iam", "logs"]
+    aws_mock = AWSMock(*services)
+
+    resp = aws_mock.mocked_services["iam"]["client"].create_role(
+        RoleName="TestRole", AssumeRolePolicyDocument="some_policy"
+    )
+    iam_arn = resp["Role"]["Arn"]
+
+    def create_lambda(func_str):
+        zip_output = io.BytesIO()
+        zip_file = zipfile.ZipFile(zip_output, "w", zipfile.ZIP_DEFLATED)
+        zip_file.writestr("lambda_function.py", func_str)
+        zip_file.close()
+        zip_output.seek(0)
+
+        return aws_mock.mocked_services["lambda"]["client"].create_function(
+            Code={"ZipFile": zip_output.read()},
+            FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
+            Handler="lambda_function.lambda_handler",
+            Runtime="python3.7",
+            Role=iam_arn,
+        )
+
+    yield create_lambda
+
+    aws_mock.stop_services()

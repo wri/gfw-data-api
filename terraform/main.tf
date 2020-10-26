@@ -40,6 +40,15 @@ module "batch_gdal_python_image" {
   docker_filename = "gdal-python.dockerfile"
 }
 
+# Docker image for PixETL Batch jobs
+module "batch_pixetl_image" {
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.3.0"
+  image_name      = lower("${local.project}-pixetl${local.name_suffix}")
+  root_dir        = "${path.root}/../"
+  docker_path     = "batch"
+  docker_filename = "pixetl.dockerfile"
+}
+
 # Docker image for PostgreSQL Client Batch jobs
 module "batch_postgresql_client_image" {
   source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.3.0"
@@ -81,6 +90,7 @@ module "fargate_autoscaling" {
   task_role_policies = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     aws_iam_policy.run_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
+    aws_iam_policy.lambda_invoke.arn,
     data.terraform_remote_state.tile_cache.outputs.ecs_update_service_policy_arn,
     data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_full_access_policy_arn,
     data.terraform_remote_state.tile_cache.outputs.cloudfront_invalidation_policy_arn
@@ -138,11 +148,13 @@ module "batch_job_queues" {
   source                             = "./modules/batch"
   aurora_compute_environment_arn     = module.batch_aurora_writer.arn
   data_lake_compute_environment_arn  = module.batch_data_lake_writer.arn
+  pixetl_compute_environment_arn     = module.batch_data_lake_writer.arn
   tile_cache_compute_environment_arn = module.batch_data_lake_writer.arn
   environment                        = var.environment
   name_suffix                        = local.name_suffix
   project                            = local.project
   gdal_repository_url                = "${module.batch_gdal_python_image.repository_url}:latest"
+  pixetl_repository_url              = "${module.batch_pixetl_image.repository_url}:latest"
   postgres_repository_url            = "${module.batch_postgresql_client_image.repository_url}:latest"
   tile_cache_repository_url          = "${module.batch_tile_cache_image.repository_url}:latest"
   s3_write_data-lake_arn             = data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn
@@ -150,4 +162,5 @@ module "batch_job_queues" {
   reader_secret_arn                  = data.terraform_remote_state.core.outputs.secrets_postgresql-reader_arn
   writer_secret_arn                  = data.terraform_remote_state.core.outputs.secrets_postgresql-writer_arn
   aurora_max_vcpus                   = local.aurora_max_vcpus
+  gcs_secret                         = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
 }

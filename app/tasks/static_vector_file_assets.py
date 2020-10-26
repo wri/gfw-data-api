@@ -13,17 +13,32 @@ from . import callback_constructor, reader_secrets
 from .batch import execute
 
 
-async def static_vector_shp_asset(
+async def static_vector_file_asset(
     dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
-    """Create Vector tile cache and NDJSON file as intermediate data."""
+    """Export Vector data to different file formats."""
+
+    options = {
+        AssetType.shapefile: {
+            "driver": VectorDrivers.shp,
+            "extension": "shp",
+            "zipped": True,
+        },
+        AssetType.geopackage: {
+            "driver": VectorDrivers.gpkg,
+            "extension": "gpkg",
+            "zipped": False,
+        },
+    }
 
     #######################
     # Update asset metadata
     #######################
 
+    asset_type = input_data["asset_type"]
+
     creation_options = creation_option_factory(
-        AssetType.shapefile, input_data["creation_options"]
+        asset_type, input_data["creation_options"]
     )
 
     field_attributes: List[Dict[str, Any]] = await get_field_attributes(
@@ -34,13 +49,13 @@ async def static_vector_shp_asset(
         asset_id, fields=field_attributes,
     )
 
-    shp_uri = get_asset_uri(dataset, version, AssetType.shapefile)
+    uri = get_asset_uri(dataset, version, asset_type)
 
     ############################
     # Define jobs
     ############################
 
-    # Export Shapefile
+    # Export Vector Data
     command: List[str] = [
         "export_vector_data.sh",
         "-d",
@@ -48,15 +63,15 @@ async def static_vector_shp_asset(
         "-v",
         version,
         "-f",
-        f"{dataset}_{version}.shp",
+        f"{dataset}_{version}.{options[asset_type]['extension']}",
         "-F",
-        VectorDrivers.shp,
+        options[asset_type]["driver"],
         "-T",
-        shp_uri,
+        uri,
         "-C",
         ",".join([field["field_name"] for field in field_attributes]),
         "-X",
-        str(True),
+        str(options[asset_type]["zipped"]),
     ]
 
     export_shp = GdalPythonExportJob(

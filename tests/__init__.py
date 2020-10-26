@@ -1,11 +1,13 @@
 import contextlib
+import io
 import json
 import os
+import zipfile
 from http.server import BaseHTTPRequestHandler
 from typing import List, Optional
 
 import boto3
-from moto import mock_batch, mock_ec2, mock_ecs, mock_iam, mock_logs
+from moto import mock_batch, mock_ec2, mock_ecs, mock_iam, mock_lambda, mock_logs
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -138,6 +140,7 @@ class AWSMock(object):
         "ecs": mock_ecs,
         "ec2": mock_ec2,
         "logs": mock_logs,
+        "lambda": mock_lambda,
     }
 
     def __init__(self, *services):
@@ -192,37 +195,63 @@ class AWSMock(object):
             computeEnvironmentOrder=[{"order": 123, "computeEnvironment": env_arn}],
         )
 
-    def add_job_definition(self, job_definition_name, docker_image):
+    def add_job_definition(self, job_definition_name, docker_image, mount_tmp=False):
+        container_properties = {
+            "image": f"{docker_image}:latest",
+            "vcpus": 1,
+            "memory": 128,
+            "environment": [
+                {"name": "AWS_ACCESS_KEY_ID", "value": "testing"},
+                {"name": "AWS_SECRET_ACCESS_KEY", "value": "testing"},
+                {"name": "ENDPOINT_URL", "value": "http://motoserver:5000"},
+                {"name": "DEBUG", "value": "1"},
+                {"name": "TILE_CACHE", "value": TILE_CACHE_BUCKET},
+                {"name": "DATA_LAKE", "value": DATA_LAKE_BUCKET},
+                {"name": "AWS_HTTPS", "value": "NO"},
+                {"name": "AWS_VIRTUAL_HOSTING", "value": "FALSE"},
+                {"name": "GDAL_DISABLE_READDIR_ON_OPEN", "value": "YES"},
+            ],
+            "volumes": [
+                {"host": {"sourcePath": f"{ROOT}/tests/fixtures/aws"}, "name": "aws"},
+            ],
+            "mountPoints": [
+                {
+                    "sourceVolume": "aws",
+                    "containerPath": "/root/.aws",
+                    "readOnly": True,
+                },
+            ],
+        }
+
+        if mount_tmp:
+            container_properties["volumes"].append(
+                {"host": {"sourcePath": f"{ROOT}/tests/fixtures/tmp"}, "name": "tmp"}
+            )
+            container_properties["mountPoints"].append(
+                {"sourceVolume": "tmp", "containerPath": "/tmp", "readOnly": False}
+            )
 
         return self.mocked_services["batch"]["client"].register_job_definition(
             jobDefinitionName=job_definition_name,
             type="container",
-            containerProperties={
-                "image": f"{docker_image}:latest",
-                "vcpus": 1,
-                "memory": 128,
-                "environment": [
-                    {"name": "AWS_ACCESS_KEY_ID", "value": "testing"},
-                    {"name": "AWS_SECRET_ACCESS_KEY", "value": "testing"},
-                    {"name": "ENDPOINT_URL", "value": "http://motoserver:5000"},
-                    {"name": "DEBUG", "value": "1"},
-                    {"name": "TILE_CACHE", "value": TILE_CACHE_BUCKET},
-                    {"name": "DATA_LAKE", "value": DATA_LAKE_BUCKET},
-                ],
-                "volumes": [
-                    {
-                        "host": {"sourcePath": f"{ROOT}/tests/fixtures/aws"},
-                        "name": "aws",
-                    }
-                ],
-                "mountPoints": [
-                    {
-                        "sourceVolume": "aws",
-                        "containerPath": "/root/.aws",
-                        "readOnly": True,
-                    }
-                ],
-            },
+            containerProperties=container_properties,
+        )
+
+    def create_lambda_function(
+        self, func_str, lambda_name, handler_name, runtime, role
+    ):
+        zip_output = io.BytesIO()
+        zip_file = zipfile.ZipFile(zip_output, "w", zipfile.ZIP_DEFLATED)
+        zip_file.writestr("lambda_function.py", func_str)
+        zip_file.close()
+        zip_output.seek(0)
+
+        return self.mocked_services["lambda"]["client"].create_function(
+            Code={"ZipFile": zip_output.read()},
+            FunctionName=lambda_name,
+            Handler=handler_name,
+            Runtime=runtime,
+            Role=role,
         )
 
     def print_logs(self):

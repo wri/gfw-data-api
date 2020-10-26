@@ -88,7 +88,6 @@ async def add_new_version(
     input_data = request.dict(exclude_none=True, by_alias=True)
 
     creation_options = input_data.pop("creation_options")
-
     _verify_source_file_access(creation_options["source_uri"])
 
     # Register version with DB
@@ -96,7 +95,7 @@ async def add_new_version(
         new_version: ORMVersion = await versions.create_version(
             dataset, version, **input_data
         )
-    except RecordAlreadyExistsError as e:
+    except (RecordAlreadyExistsError, RecordNotFoundError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     input_data["creation_options"] = creation_options

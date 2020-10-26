@@ -15,11 +15,15 @@ if [[ -n "${DEBUG}" ]]; then
   echo "$ME $*"
   echo
 
-  echo "--------------"
-  echo "AWS CONFIG:"
-  echo "--------------"
-  cat /root/.aws/config
-  echo
+  if [[ -f /root/.aws/config ]]; then
+    echo "--------------"
+    echo "AWS CONFIG:"
+    echo "--------------"
+    cat /root/.aws/config
+    echo
+  else
+    echo "No AWS config found"
+  fi
 
   echo "--------------"
   echo "ENVIRONMENT VARIABLES:"
@@ -91,6 +95,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      -j|--json)
+      JSON="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -l|--source_layer)
       SRC_LAYER="$2"
       shift # past argument
@@ -111,6 +120,10 @@ do
       shift # past argument
       shift # past value
       ;;
+      --overwrite)
+      OVERWRITE="TRUE"
+      shift # past argument
+      ;;
       -p|--partition_type)
       PARTITION_TYPE="$2"
       shift # past argument
@@ -123,6 +136,11 @@ do
       ;;
       -s|--source)
       SRC+=("$2")
+      shift # past argument
+      shift # past value
+      ;;
+      --subset)
+      SUBSET="$2"
       shift # past argument
       shift # past value
       ;;

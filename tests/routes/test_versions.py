@@ -1,12 +1,15 @@
 import json
 from unittest.mock import patch
 
+import boto3
 import pytest
+from botocore.exceptions import ClientError
 
 from app.models.pydantic.metadata import VersionMetadata
-from tests import BUCKET, SHP_NAME
+from app.settings.globals import AWS_REGION
+from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
 from tests.tasks import MockCloudfrontClient
-from tests.utils import create_dataset, create_default_asset, create_version
+from tests.utils import create_dataset, create_default_asset
 
 payload = {
     "metadata": {
@@ -74,7 +77,7 @@ async def test_versions(mocked_cloudfront_client, async_client):
     assert version_data["data"]["version"] == "v1.1.1"
 
     ###############
-    # Lastest Tag
+    # Latest Tag
     ###############
 
     response = await async_client.patch(
@@ -173,7 +176,7 @@ async def test_version_metadata(async_client):
     dataset_metadata = {"title": "Title", "subtitle": "Subtitle"}
 
     response = await async_client.put(
-        f"/dataset/{dataset}", data=json.dumps({"metadata": dataset_metadata})
+        f"/dataset/{dataset}", json={"metadata": dataset_metadata}
     )
 
     result_metadata = {
@@ -199,6 +202,7 @@ async def test_version_metadata(async_client):
     }
 
     assert response.status_code == 201
+
     assert response.json()["data"]["metadata"] == result_metadata
 
     version_metadata = {"subtitle": "New Subtitle", "version_number": version}
@@ -209,13 +213,12 @@ async def test_version_metadata(async_client):
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
             "source_driver": "ESRI Shapefile",
-            "zipped": True,
         },
     }
 
     with patch("app.tasks.default_assets.create_default_asset", return_value=True):
         response = await async_client.put(
-            f"/dataset/{dataset}/{version}", data=json.dumps(version_payload)
+            f"/dataset/{dataset}/{version}", json=version_payload
         )
 
     result_metadata = {
@@ -344,11 +347,9 @@ async def test_invalid_source_uri(async_client):
         "creation_options": {
             "source_type": "vector",
             "source_uri": source_uri,
-            "metadata": payload["metadata"],
             "source_driver": "ESRI Shapefile",
-            "zipped": True,
         },
-        "metadata": {},
+        "metadata": payload["metadata"],
     }
 
     await create_dataset(dataset, async_client, payload)
@@ -388,4 +389,96 @@ async def test_put_latest(async_client):
     assert (
         response.json()["message"]
         == "You must list version name explicitly for this operation."
+    )
+
+
+@pytest.mark.asyncio
+@patch("app.tasks.aws_tasks.get_cloudfront_client")
+async def test_version_put_raster(mocked_cloudfront_client, async_client):
+    """Test raster source version operations."""
+
+    dataset = "test_version_put_raster"
+    version = "v1.0.0"
+
+    s3_client = boto3.client(
+        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+    )
+
+    pixetl_output_files = [
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/90N_000E.tif",
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/90N_000E.tif",
+    ]
+
+    for key in pixetl_output_files:
+        s3_client.delete_object(Bucket="gfw-data-lake-test", Key=key)
+
+    raster_version_payload = {
+        "is_latest": True,
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_driver": "GeoTIFF",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            "overwrite": True,
+            "subset": "90N_000E",
+        },
+        "metadata": payload["metadata"],
+    }
+
+    mocked_cloudfront_client.return_value = MockCloudfrontClient()
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=True,
+    )
+
+    for key in pixetl_output_files:
+        try:
+            s3_client.head_object(Bucket="gfw-data-lake-test", Key=key)
+        except ClientError:
+            raise AssertionError(f"Key {key} doesn't exist!")
+
+
+@pytest.mark.asyncio
+@patch("app.tasks.aws_tasks.get_cloudfront_client")
+async def test_version_put_raster_bug_fixes(mocked_cloudfront_client, async_client):
+    """Test bug fixes for raster source version operations."""
+
+    dataset = "test_version_put_raster_minimal_args"
+    version = "v1.0.0"
+
+    raster_version_payload = {
+        "is_latest": True,
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_driver": "GeoTIFF",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            # "overwrite": True,  # Leave these out to test bug fix
+            # "subset": "90N_000E",  # Leave these out to test bug fix
+        },
+        # "metadata": payload["metadata"],  # Leave these out to test bug fix
+    }
+
+    mocked_cloudfront_client.return_value = MockCloudfrontClient()
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=True,
     )

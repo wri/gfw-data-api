@@ -29,8 +29,13 @@ async def get_assets(
     if (dataset and not version) or (version and not dataset):
         raise HTTPException(status_code=400, detail="Must provide dataset and version")
 
+    if asset_type is not None:
+        a_t: Optional[List[str]] = [asset_type]
+    else:
+        a_t = None
+
     data: List[ORMAsset] = await assets.get_assets_by_filter(
-        dataset, version, asset_type, asset_uri, is_latest, is_default
+        dataset, version, a_t, asset_uri, is_latest, is_default
     )
 
     return await assets_response(list(data))
