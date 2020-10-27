@@ -48,17 +48,23 @@ from ...models.enum.pg_sys_functions import (
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
-from ...models.pydantic.responses import Response
+# from ...models.pydantic.responses import Response
+from fastapi.responses import Response
+
 from ...utils.geostore import get_geostore_geometry
 from .. import dataset_dependency, version_dependency
+
+from fastapi.encoders import jsonable_encoder
+import decimal
+import orjson
 
 router = APIRouter()
 
 
 @router.get(
     "/{dataset}/{version}/query",
-    response_class=ORJSONResponse,
-    response_model=Response,
+    # response_class=ORJSONResponse,
+    # response_model=Response,
     tags=["Query"],
 )
 async def query_dataset(
@@ -74,25 +80,18 @@ async def query_dataset(
     """Execute a read ONLY SQL query on the given dataset version (if
     implemented)."""
 
-    start = time.time()
     # make sure version exists
     try:
         await versions.get_version(dataset, version)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=400, detail=(str(e)))
-    end = time.time()
-    print(f"Get Version: {end - start}")
 
-    start = time.time()
     # parse and validate SQL statement
     try:
         parsed = parse_sql(unquote(sql))
     except ParseError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    end = time.time()
-    print(f"Parse SQL: {end - start}")
 
-    start = time.time()
     _has_only_one_statement(parsed)
     _is_select_statement(parsed)
     _has_no_with_clause(parsed)
@@ -100,8 +99,6 @@ async def query_dataset(
     _no_subqueries(parsed)
     _no_forbidden_functions(parsed)
     _no_forbidden_value_functions(parsed)
-    end = time.time()
-    print(f"Check SQL: {end - start}")
 
     # always overwrite the table name with the current dataset version name, to make sure no other table is queried
     parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
@@ -111,17 +108,11 @@ async def query_dataset(
         "relname"
     ] = version
 
-    start = time.time()
     if geostore_id:
         parsed = await _add_geostore_filter(parsed, geostore_id, geostore_origin)
-    end = time.time()
-    print(f"Add Geostore Filer: {end - start}")
 
     # convert back to text
-    start = time.time()
     sql = RawStream()(Node(parsed))
-    end = time.time()
-    print(f"Convert SQL to text: {end - start}")
 
     start = time.time()
     try:
@@ -137,7 +128,29 @@ async def query_dataset(
     end = time.time()
     print(f"DB Query: {end - start}")
 
-    return Response(data=response)
+    def default(obj):
+        if isinstance(obj, decimal.Decimal):
+            return str(obj)
+        raise TypeError
+
+    # bypass default fastapi encoding pipeline and explicitly serialize with ORJSON for speed
+    start = time.time()
+    # data = jsonable_encoder(response)
+    data = [dict(row) for row in response]
+    end = time.time()
+    print(f"To Dict: {end - start}")
+
+    result = {
+        "data": data,
+        "status": "success"
+    }
+
+    start = time.time()
+    rendered = orjson.dumps(result, default=default)
+    end = time.time()
+    print(f"Serialize response: {end - start}")
+
+    return Response(content=rendered, media_type="application/json")
 
 
 def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
