@@ -67,6 +67,14 @@ class RasterTable(BaseModel):
     description: str
 
 
+class RasterTileCacheMetadata(VersionMetadata):
+    min_zoom: Optional[int]  # FIXME: Should this really be optional?
+    max_zoom: Optional[
+        int
+    ]  # FIXME: Making required causes exception as it's never set. Find out why
+    # TODO: More?
+
+
 class RasterTileSetMetadata(VersionMetadata):
     # Raster Files/ Raster Tilesets
     raster_statistics: Optional[Dict[str, Any]]
@@ -102,6 +110,7 @@ AssetMetadata = Union[
     DatabaseTableMetadata,
     StaticVectorTileCacheMetadata,
     DynamicVectorTileCacheMetadata,
+    RasterTileCacheMetadata,
     RasterTileSetMetadata,
     VectorFileMetadata,
 ]
@@ -116,6 +125,7 @@ def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMe
     metadata_factory: Dict[str, Type[AssetMetadata]] = {
         AssetType.static_vector_tile_cache: StaticVectorTileCacheMetadata,
         AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheMetadata,
+        AssetType.raster_tile_cache: RasterTileCacheMetadata,
         AssetType.raster_tile_set: RasterTileSetMetadata,
         AssetType.database_table: DatabaseTableMetadata,
         AssetType.geo_database_table: DatabaseTableMetadata,

@@ -183,6 +183,24 @@ class TableSourceCreationOptions(TableAssetCreationOptions):
     )
 
 
+class RasterTileCacheAssetCreationOptions(BaseModel):
+    min_zoom: int = Field(
+        0, description="Minimum zoom level of tile cache", ge=0, le=22
+    )
+    max_zoom: int = Field(
+        22, description="Maximum zoom level of tile cache", ge=0, le=22
+    )
+    max_static_zoom: int = Field(
+        9, description="Maximum zoom level to pregenerate tiles for", ge=0, le=22
+    )
+    use_intensity: bool = Field(
+        False, description="Generate and use intensity layer (for GLAD/RADD)",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
 class DynamicVectorTileCacheCreationOptions(BaseModel):
     min_zoom: int = Field(
         0, description="Minimum zoom level of tile cache", ge=0, le=22
@@ -256,6 +274,7 @@ OtherCreationOptions = Union[
     StaticVectorTileCacheCreationOptions,
     StaticVectorFileCreationOptions,
     DynamicVectorTileCacheCreationOptions,
+    RasterTileCacheAssetCreationOptions,
     RasterTileSetAssetCreationOptions,
     TableAssetCreationOptions,
 ]
@@ -281,6 +300,7 @@ AssetCreationOptionsLookup: Dict[str, Type[OtherCreationOptions]] = {
     AssetType.shapefile: StaticVectorFileCreationOptions,
     AssetType.geopackage: StaticVectorFileCreationOptions,
     AssetType.raster_tile_set: RasterTileSetAssetCreationOptions,
+    AssetType.raster_tile_cache: RasterTileCacheAssetCreationOptions,
     AssetType.database_table: TableAssetCreationOptions,
 }
 

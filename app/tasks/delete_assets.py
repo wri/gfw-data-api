@@ -34,9 +34,10 @@ async def delete_static_vector_tile_cache_assets(
     )
 
 
-async def delete_static_raster_tile_cache_assets(
+async def delete_raster_tile_cache_assets(
     dataset: str, version: str, implementation: str = "default"
 ) -> None:
+    # FIXME: Delete auxiliary S3 objects too (intensity tile set, etc.)?
     expire_s3_objects(
         TILE_CACHE_BUCKET, f"{dataset}/{version}/{implementation}/", "format", "png"
     )

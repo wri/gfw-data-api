@@ -33,9 +33,9 @@ from ...routes import is_admin
 from ...tasks.delete_assets import (
     delete_database_table_asset,
     delete_dynamic_vector_tile_cache_assets,
+    delete_raster_tile_cache_assets,
     delete_raster_tileset_assets,
     delete_single_file_asset,
-    delete_static_raster_tile_cache_assets,
     delete_static_vector_tile_cache_assets,
 )
 from ..assets import asset_response
@@ -132,9 +132,9 @@ async def delete_asset(
             row.creation_options["implementation"],
         )
 
-    elif row.asset_type == AssetType.static_raster_tile_cache:
+    elif row.asset_type == AssetType.raster_tile_cache:
         background_tasks.add_task(
-            delete_static_raster_tile_cache_assets,
+            delete_raster_tile_cache_assets,
             row.dataset,
             row.version,
             row.creation_options["implementation"],

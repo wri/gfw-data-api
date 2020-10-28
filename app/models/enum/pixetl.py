@@ -38,7 +38,7 @@ class Order(str, Enum):
 
 
 class RasterizeMethod(str, Enum):
-    _count = "count"
+    count_ = "count"
     value = "value"
 
 

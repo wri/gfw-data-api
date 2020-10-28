@@ -13,7 +13,7 @@ class AssetStatus(str, Enum):
 class AssetType(str, Enum):
     dynamic_vector_tile_cache = "Dynamic vector tile cache"
     static_vector_tile_cache = "Static vector tile cache"
-    static_raster_tile_cache = "Static raster tile cache"
+    raster_tile_cache = "Raster tile cache"
     raster_tile_set = "Raster tile set"
     database_table = "Database table"
     geo_database_table = "Geo database table"
@@ -70,7 +70,7 @@ def is_tile_cache_asset(asset_type: str) -> bool:
     return asset_type in [
         AssetType.dynamic_vector_tile_cache,
         AssetType.static_vector_tile_cache,
-        AssetType.static_raster_tile_cache,
+        AssetType.raster_tile_cache,
     ]
 
 

@@ -60,7 +60,7 @@ def get_asset_uri(
     uri_constructor: Dict[str, str] = {
         AssetType.dynamic_vector_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/dynamic/{{z}}/{{x}}/{{y}}.pbf",
         AssetType.static_vector_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/default/{{z}}/{{x}}/{{y}}.pbf",
-        AssetType.static_raster_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/default/{{z}}/{{x}}/{{y}}.png",
+        AssetType.raster_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/default/{{z}}/{{x}}/{{y}}.png",
         AssetType.shapefile: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/epsg-4326/{dataset}_{version}.shp.zip",
         AssetType.ndjson: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/epsg-4326/{dataset}_{version}.ndjson",
         AssetType.grid_1x1: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/epsg-4326/{dataset}_{version}_1x1.tsv",

@@ -29,7 +29,7 @@ async def verify_asset_dependencies(dataset, version, asset_type):
     asset_dependencies = {
         AssetType.dynamic_vector_tile_cache: AssetType.geo_database_table,
         AssetType.static_vector_tile_cache: AssetType.geo_database_table,
-        AssetType.static_raster_tile_cache: AssetType.raster_tile_set,
+        AssetType.raster_tile_cache: AssetType.raster_tile_set,
         AssetType.shapefile: AssetType.geo_database_table,
         AssetType.ndjson: AssetType.geo_database_table,
         AssetType.grid_1x1: AssetType.geo_database_table,

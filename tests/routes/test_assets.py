@@ -41,7 +41,6 @@ async def test_assets(async_client):
     # is still in "pending" status
     asset_payload = {
         "asset_type": "Database table",
-        "asset_uri": "http://www.slashdot.org",
         "is_managed": False,
         "creation_options": {"delimiter": ","},
     }
@@ -103,10 +102,8 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
 
     with patch("fastapi.BackgroundTasks.add_task", return_value=None):
         try:
-            bs = await async_client.delete(f"/dataset/{dataset}/{version}")
-            print(f"BS: {bs.json()}")
-            bs2 = await async_client.delete(f"/dataset/{dataset}")
-            print(f"BS2: {bs2.json()}")
+            _ = await async_client.delete(f"/dataset/{dataset}/{version}")
+            _ = await async_client.delete(f"/dataset/{dataset}")
         except Exception:
             pass
 
@@ -165,7 +162,6 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     # Try adding a non-default raster tile asset based on the default
     asset_payload = {
         "asset_type": "Raster tile set",
-        "asset_uri": "http://www.aclu.org",
         "is_managed": True,
         "creation_options": {
             "data_type": "uint16",
@@ -315,7 +311,6 @@ async def test_asset_bad_requests(async_client, batch_client, httpd):
     # Try adding a non-default raster tile set asset with an extra field "foo"
     asset_payload = {
         "asset_type": "Raster tile set",
-        "asset_uri": "http://www.osnews.com",
         "is_managed": True,
         "foo": "foo",  # The extra field
         "creation_options": {
@@ -356,3 +351,104 @@ async def test_asset_bad_requests(async_client, batch_client, httpd):
             "type": "value_error.missing",
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
+    """"""
+    _, logs = batch_client
+
+    # Add a dataset, version, and default asset
+    dataset = "test_raster_tile_cache_asset"
+    version = "v1.0.0"
+    primary_grid = "90/27008"
+
+    with patch("fastapi.BackgroundTasks.add_task", return_value=None):
+        try:
+            _ = await async_client.delete(f"/dataset/{dataset}/{version}")
+            _ = await async_client.delete(f"/dataset/{dataset}")
+        except Exception:
+            pass
+
+    s3_client = boto3.client(
+        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+    )
+
+    pixetl_output_files = [
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/90N_000E.tif",
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/90N_000E.tif",
+    ]
+
+    for key in pixetl_output_files:
+        s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+
+    raster_version_payload = {
+        "is_latest": True,
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_driver": "GeoTIFF",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": primary_grid,
+            "resampling": "nearest",
+            "overwrite": True,
+            # "subset": "90N_000E",
+        },
+        "metadata": {},
+    }
+    asset = await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=True,
+    )
+    asset_id = asset["asset_id"]
+
+    # Verify that the asset and version are in state "saved"
+    version_resp = await async_client.get(f"/dataset/{dataset}/{version}")
+    assert version_resp.json()["data"]["status"] == "saved"
+
+    asset_resp = await async_client.get(f"/asset/{asset_id}")
+    assert asset_resp.json()["data"]["status"] == "saved"
+
+    # Flush requests list so we're starting fresh
+    # But sleep a moment for any stragglers to come in
+    sleep(3)
+    requests.delete(f"http://localhost:{httpd.server_port}")
+
+    # Add a raster tile cache asset based on the raster tile set
+    asset_payload = {
+        "asset_type": "Raster tile cache",
+        "is_managed": True,
+        "creation_options": {"min_zoom": 0, "max_zoom": 8, "use_intensity": False},
+    }
+
+    create_asset_resp = await async_client.post(
+        f"/dataset/{dataset}/{version}/assets", json=asset_payload
+    )
+    resp_json = create_asset_resp.json()
+    # assert "sdfsd" == resp_json
+    assert resp_json["status"] == "success"
+    assert resp_json["data"]["status"] == "pending"
+    asset_id = resp_json["data"]["asset_id"]
+
+    # wait until batch jobs are done.
+    tasks_rows = await tasks.get_tasks(asset_id)
+    task_ids = [str(task.task_id) for task in tasks_rows]
+    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
+    assert status == "saved"
+
+    asset_resp = await async_client.get(f"/asset/{asset_id}")
+    assert asset_resp.json()["data"]["status"] == "saved"
+
+    for key in pixetl_output_files:
+        try:
+            s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+        except ClientError:
+            raise AssertionError(f"Key {key} doesn't exist!")
