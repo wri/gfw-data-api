@@ -426,7 +426,12 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     asset_payload = {
         "asset_type": "Raster tile cache",
         "is_managed": True,
-        "creation_options": {"min_zoom": 0, "max_zoom": 8, "use_intensity": False},
+        "creation_options": {
+            "min_zoom": 0,
+            "max_zoom": 14,
+            "max_static_zoom": 8,
+            "use_intensity": True,
+        },
     }
 
     create_asset_resp = await async_client.post(
