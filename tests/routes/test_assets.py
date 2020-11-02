@@ -381,6 +381,12 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/tiles.geojson",
         f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/90N_000E.tif",
         f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/90N_000E.tif",
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/gdal-geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/gdal-geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/gdal-geotiff/90N_000E.tif",
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/geotiff/90N_000E.tif",
     ]
 
     for key in pixetl_output_files:
@@ -393,7 +399,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
             "source_driver": "GeoTIFF",
             "data_type": "uint16",
-            "pixel_meaning": "percent",
+            "pixel_meaning": "date_conf",
             "grid": primary_grid,
             "resampling": "nearest",
             "overwrite": True,
@@ -438,7 +444,6 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         f"/dataset/{dataset}/{version}/assets", json=asset_payload
     )
     resp_json = create_asset_resp.json()
-    # assert "sdfsd" == resp_json
     assert resp_json["status"] == "success"
     assert resp_json["data"]["status"] == "pending"
     asset_id = resp_json["data"]["asset_id"]

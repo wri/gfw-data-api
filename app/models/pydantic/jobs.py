@@ -84,3 +84,14 @@ class PixETLJob(Job):
     memory = 350000
     attempts = 2
     attempt_duration_seconds = 9600
+
+
+class BuildRGBJob(Job):
+    """Use for combining date_conf and intensity assets using buildrgb."""
+
+    job_queue = DATA_LAKE_JOB_QUEUE
+    job_definition = GDAL_PYTHON_JOB_DEFINITION
+    vcpus = 1
+    memory = 15000
+    attempts = 1
+    attempt_duration_seconds = 7500
