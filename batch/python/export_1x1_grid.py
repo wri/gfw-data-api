@@ -7,7 +7,6 @@ from asyncio import AbstractEventLoop
 from typing import List, Set, Tuple
 
 import asyncpg
-from retrying import retry
 from sqlalchemy import Table, column, literal_column, select, table, text
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import TextClause
