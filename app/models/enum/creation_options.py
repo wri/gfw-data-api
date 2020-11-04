@@ -41,11 +41,13 @@ class IndexType(str, Enum):
 class TileStrategy(str, Enum):
     __doc__ = (
         "Tile strategy for generating vector tiles. "
-        "Use `continuous` when working with are mostly adjacent polygon files, "
-        "use `discontinuous` when working with polygons feature which are mostly not adjacent"
+        "Use `continuous` when working with are mostly adjacent polygon files."
+        "Use `discontinuous` when working with polygons feature which are mostly not adjacent"
+        "Use `keep_all` if you don't want features to be removed at all. This might lead to larger tiles."
     )
     continuous = "continuous"
     discontinuous = "discontinuous"
+    keep_all = "keep_all"
 
 
 class PartitionType(str, Enum):
