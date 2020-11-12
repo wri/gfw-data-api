@@ -1,3 +1,4 @@
+import json
 from time import sleep
 
 import boto3
@@ -363,8 +364,28 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     version = "v1.0.0"
     primary_grid = "90/27008"
 
+    # with patch("fastapi.BackgroundTasks.add_task", return_value=None):
+    #     try:
+    #         _ = await async_client.delete(f"/dataset/{dataset}/{version}")
+    #         _ = await async_client.delete(f"/dataset/{dataset}")
+    #     except Exception:
+    #         pass
+
+    print("CLEANING UP")
+
     with patch("fastapi.BackgroundTasks.add_task", return_value=None):
         try:
+            print("GETTING ASSETS")
+            resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+            print(f"GET ASSETS RESP: {json.dumps(resp.json(), indent=2)}")
+            for asset in resp.json()["data"]:
+                print(f"DELETING ASSET {asset['asset_id']}")
+                try:
+                    _ = await async_client.delete(
+                        f"/dataset/{dataset}/{version}/{asset['asset_id']}"
+                    )
+                except Exception:
+                    pass
             _ = await async_client.delete(f"/dataset/{dataset}/{version}")
             _ = await async_client.delete(f"/dataset/{dataset}")
         except Exception:
@@ -381,12 +402,19 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/tiles.geojson",
         f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/90N_000E.tif",
         f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/90N_000E.tif",
-        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/gdal-geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/gdal-geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/gdal-geotiff/90N_000E.tif",
-        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/geotiff/90N_000E.tif",
+        "{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/extent.geojson",
+        "{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/tiles.geojson",
+        "{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/000R_000C.tif",
+        # f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/gdal-geotiff/tiles.geojson",
+        # f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/tiles.geojson",
+        # f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/gdal-geotiff/tiles.geojson",
+        # f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/gdal-geotiff/000R_000C.tif",
+        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/gdal-geotiff/extent.geojson",
+        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/geotiff/extent.geojson",
+        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/gdal-geotiff/tiles.geojson",
+        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/geotiff/tiles.geojson",
+        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/gdal-geotiff/90N_000E.tif",
+        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/geotiff/90N_000E.tif",
     ]
 
     for key in pixetl_output_files:
@@ -407,6 +435,8 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         },
         "metadata": {},
     }
+    print("FINISHED CLEANING UP")
+
     asset = await create_default_asset(
         dataset,
         version,
@@ -428,7 +458,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     sleep(3)
     requests.delete(f"http://localhost:{httpd.server_port}")
 
-    # Add a raster tile cache asset based on the raster tile set
+    # Add a tile cache asset based on the raster tile set
     asset_payload = {
         "asset_type": "Raster tile cache",
         "is_managed": True,
@@ -438,6 +468,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
             "max_static_zoom": 8,
             "use_intensity": True,
         },
+        "metadata": {},
     }
 
     create_asset_resp = await async_client.post(
@@ -462,3 +493,28 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
             s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
         except ClientError:
             raise AssertionError(f"Key {key} doesn't exist!")
+
+    # Clean up so teardown doesn't break
+    # with patch("fastapi.BackgroundTasks.add_task", return_value=None):
+    try:
+        print("GETTING DATASETS")
+        resp = await async_client.get("/datasets")
+        print(f"GET DATASETS RESP: {json.dumps(resp.json(), indent=2)}")
+
+        print("GETTING ASSETS")
+        resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+        print(f"GET ASSETS RESP: {json.dumps(resp.json(), indent=2)}")
+        for asset in resp.json()["data"]:
+            print(f"DELETING ASSET {asset['asset_id']}")
+            try:
+                _ = await async_client.delete(
+                    f"/dataset/{dataset}/{version}/{asset['asset_id']}"
+                )
+            except Exception:
+                pass
+        _ = await async_client.delete(f"/dataset/{dataset}/{version}")
+        _ = await async_client.delete(f"/dataset/{dataset}")
+    except Exception:
+        pass
+
+    assert 1 == 2
