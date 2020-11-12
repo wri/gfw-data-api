@@ -156,3 +156,4 @@ async def check_dynamic_vector_tile_cache_status(dataset, version):
     assert rows[0].asset_type == AssetType.geo_database_table
     assert rows[1].asset_type == AssetType.dynamic_vector_tile_cache
     assert rows[1].status == AssetStatus.saved
+    assert rows[0].fields == rows[1].fields

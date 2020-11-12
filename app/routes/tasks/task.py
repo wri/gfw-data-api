@@ -292,7 +292,10 @@ async def _register_dynamic_vector_tile_cache(
         try:
             async with ContextEngine("WRITE"):
                 asset_orm = await assets.create_asset(
-                    dataset, version, **data.dict(by_alias=True)
+                    dataset,
+                    version,
+                    fields=default_asset.fields,
+                    **data.dict(by_alias=True),
                 )
 
         except Exception as e:
