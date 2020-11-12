@@ -265,7 +265,7 @@ async def tmp_folder():
 
     ready = os.path.join(tmp_dir, "READY")
 
-    # Create zerobytes READY file
+    # Create zero bytes READY file
     with open(ready, "w"):
         pass
     yield
