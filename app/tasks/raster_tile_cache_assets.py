@@ -9,8 +9,11 @@ from app.crud.assets import create_asset, get_default_asset
 from app.models.enum.assets import AssetType
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.change_log import ChangeLog
-from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
-from app.models.pydantic.jobs import PixETLJob
+from app.models.pydantic.creation_options import (
+    RasterTileSetAssetCreationOptions,
+    RasterTileSetSourceCreationOptions,
+)
+from app.models.pydantic.jobs import BuildRGBJob, Job, PixETLJob
 from app.settings.globals import ENV, PIXETL_CORES, PIXETL_MAX_MEM, S3_ENTRYPOINT_URL
 from app.tasks import Callback, callback_constructor, writer_secrets
 from app.tasks.batch import execute
@@ -29,101 +32,6 @@ if S3_ENTRYPOINT_URL:
     ]
 
 
-async def _run_pixetl(
-    dataset: str,
-    version: str,
-    co: Dict[str, Any],
-    job_name: str,
-    callback: Callback,
-    parents: Optional[List[str]] = None,
-):
-    # FIXME: Create an Asset in the DB to track intensity asset in S3
-    # FIXME: See if "intensity" asset already exists first
-
-    co["source_uri"] = co.pop("source_uri")[0]
-    overwrite = co.pop("overwrite", False)  # FIXME: Think about this value some more
-    subset = co.pop("subset", None)
-
-    command = [
-        "run_pixetl.sh",
-        "-d",
-        dataset,
-        "-v",
-        version,
-        "-j",
-        json.dumps(jsonable_encoder(co)),
-    ]
-
-    if overwrite:
-        command += ["--overwrite"]
-
-    if subset:
-        command += ["--subset", subset]
-
-    pixetl_job_id = PixETLJob(
-        job_name=job_name,
-        command=command,
-        environment=job_env,
-        callback=callback,
-        parents=parents,
-    )
-
-    return pixetl_job_id
-
-
-async def _reproject_to_web_mercator(
-    dataset: str,
-    version: str,
-    source_creation_options: Dict[str, Any],
-    min_zoom: int,
-    max_zoom: int,
-    parents: Optional[List[str]],
-) -> List[PixETLJob]:
-    job_list = []
-
-    for zoom_level in range(min_zoom, max_zoom):
-        # Sanitize creation_options
-        co = copy.deepcopy(source_creation_options)
-        source_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, co)
-        co["srid"] = "epsg-3857"
-        co["source_uri"] = [source_uri.replace("{tile_id}.tif", "tiles.geojson")]
-        co["calc"] = None
-        co["grid"] = f"zoom_{zoom_level}"
-        co["resampling"] = "med"
-        co["overwrite"] = True  # FIXME: Think about this some more
-
-        asset_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, co)
-
-        del co["srid"]
-
-        co_obj = RasterTileSetSourceCreationOptions(**co)
-
-        # Create an asset record
-        asset_options = AssetCreateIn(
-            asset_type=AssetType.raster_tile_set,
-            asset_uri=asset_uri,
-            is_managed=True,
-            creation_options=co_obj,
-            metadata={},
-        ).dict(by_alias=True)
-
-        wm_asset_record = await create_asset(dataset, version, **asset_options)
-        print(f"ZOOM LEVEL {zoom_level} REPROJECTION ASSET CREATED")
-
-        zoom_level_job = await _run_pixetl(
-            dataset,
-            version,
-            wm_asset_record.creation_options,
-            f"zoom_level_{zoom_level}_{co['pixel_meaning']}_reprojection",
-            callback_constructor(wm_asset_record.asset_id),
-            parents,
-        )
-        job_list.append(zoom_level_job)
-        print(f"ZOOM LEVEL {zoom_level} REPROJECTION JOB CREATED")
-
-    return job_list
-
-
 async def raster_tile_cache_asset(
     dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
@@ -140,7 +48,7 @@ async def raster_tile_cache_asset(
 
     # callback: Callback = callback_constructor(asset_id)
 
-    job_list = []
+    job_list: List[Job] = []
 
     # For GLAD/RADD, create intensity asset with pixetl and merge with
     # existing date_conf layer to form a new asset
@@ -223,17 +131,25 @@ async def raster_tile_cache_asset(
         # loop later
         for co in (copy.deepcopy(date_conf_co), intensity_co.dict(by_alias=True)):
             more_jobs = await _reproject_to_web_mercator(
-                dataset,
-                version,
-                co,
-                min_zoom,
-                max_static_zoom,
-                [intensity_job.job_name],
+                dataset, version, co, min_zoom, max_static_zoom, [intensity_job],
             )
             job_list += more_jobs
         print("REPROJECTION JOBS CREATED")
 
-        # FIXME: Now merge the tiles
+        # Now merge the date_conf and intensity tiles for each zoom level to
+        # create the final raster tile set asset
+
+        # Create merged asset record
+        merge_jobs = await _merge_intensity_and_date_conf(
+            dataset,
+            version,
+            copy.deepcopy(date_conf_co),
+            intensity_co.dict(by_alias=True),
+            min_zoom,
+            max_static_zoom,
+            job_list,
+        )
+        job_list += merge_jobs
 
         # FIXME: build_rgb created the merged tiles but not tiles.geojson or extent.geojson
         # Create those now with pixetl's source_prep?
@@ -250,3 +166,181 @@ async def raster_tile_cache_asset(
     log: ChangeLog = await execute(job_list)
 
     return log
+
+
+async def _run_pixetl(
+    dataset: str,
+    version: str,
+    co: Dict[str, Any],
+    job_name: str,
+    callback: Callback,
+    parents: Optional[List[Job]] = None,
+):
+    # FIXME: Create an Asset in the DB to track intensity asset in S3
+    # FIXME: See if "intensity" asset already exists first
+
+    co["source_uri"] = co.pop("source_uri")[0]
+    overwrite = co.pop("overwrite", False)  # FIXME: Think about this value some more
+    subset = co.pop("subset", None)
+
+    command = [
+        "run_pixetl.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+        "-j",
+        json.dumps(jsonable_encoder(co)),
+    ]
+
+    if overwrite:
+        command += ["--overwrite"]
+
+    if subset:
+        command += ["--subset", subset]
+
+    pixetl_job_id = PixETLJob(
+        job_name=job_name,
+        command=command,
+        environment=job_env,
+        callback=callback,
+        parents=[parent.job_name for parent in parents] if parents else None,
+    )
+
+    return pixetl_job_id
+
+
+async def _reproject_to_web_mercator(
+    dataset: str,
+    version: str,
+    source_creation_options: Dict[str, Any],
+    min_zoom: int,
+    max_zoom: int,
+    parents: Optional[List[Job]],
+) -> List[Job]:
+    job_list: List[Job] = []
+
+    for zoom_level in range(min_zoom, max_zoom):
+        # Sanitize creation_options
+        co = copy.deepcopy(source_creation_options)
+        source_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, co)
+        co["srid"] = "epsg-3857"
+        co["source_uri"] = [source_uri.replace("{tile_id}.tif", "tiles.geojson")]
+        co["calc"] = None
+        co["grid"] = f"zoom_{zoom_level}"
+        co["resampling"] = "med"
+        co["overwrite"] = True  # FIXME: Think about this some more
+
+        asset_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, co)
+
+        del co["srid"]
+
+        co_obj = RasterTileSetSourceCreationOptions(**co)
+
+        # Create an asset record
+        asset_options = AssetCreateIn(
+            asset_type=AssetType.raster_tile_set,
+            asset_uri=asset_uri,
+            is_managed=True,
+            creation_options=co_obj,
+            metadata={},
+        ).dict(by_alias=True)
+
+        wm_asset_record = await create_asset(dataset, version, **asset_options)
+        print(f"ZOOM LEVEL {zoom_level} REPROJECTION ASSET CREATED")
+
+        zoom_level_job = await _run_pixetl(
+            dataset,
+            version,
+            wm_asset_record.creation_options,
+            f"zoom_level_{zoom_level}_{co['pixel_meaning']}_reprojection",
+            callback_constructor(wm_asset_record.asset_id),
+            parents=parents,
+        )
+        job_list.append(zoom_level_job)
+        print(f"ZOOM LEVEL {zoom_level} REPROJECTION JOB CREATED")
+
+    return job_list
+
+
+async def _merge_intensity_and_date_conf(
+    dataset: str,
+    version: str,
+    date_conf_co: Dict[str, Any],
+    intensity_co: Dict[str, Any],
+    min_zoom: int,
+    max_zoom: int,
+    parents: List[Job],
+):
+    # BLAH BLAH BLAH
+    merge_intensity_jobs: List[Job] = []
+
+    for zoom_level in range(min_zoom, max_zoom):
+        # Sanitize creation_options
+
+        d_c_co = copy.deepcopy(date_conf_co)
+        d_c_co["srid"] = "epsg-3857"
+        d_c_co["grid"] = f"zoom_{zoom_level}"
+        date_conf_uri = get_asset_uri(
+            dataset, version, AssetType.raster_tile_set, d_c_co
+        ).replace("{tile_id}.tif", "tiles.geojson")
+
+        i_co = copy.deepcopy(intensity_co)
+        i_co["srid"] = "epsg-3857"
+        i_co["grid"] = f"zoom_{zoom_level}"
+        intensity_uri = get_asset_uri(
+            dataset, version, AssetType.raster_tile_set, i_co
+        ).replace("{tile_id}.tif", "tiles.geojson")
+
+        c_co = copy.deepcopy(intensity_co)
+        c_co["srid"] = "epsg-3857"
+        c_co["grid"] = f"zoom_{zoom_level}"
+        c_co["pixel_meaning"] = "combined"  # FIXME: Think about this some more
+        asset_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, c_co)
+
+        del c_co["source_uri"]
+        del c_co["source_driver"]
+        del c_co["source_type"]
+        del c_co["srid"]
+
+        co_obj = RasterTileSetAssetCreationOptions(**c_co)
+
+        print(f"ATTEMPTING TO CREATE MERGED ASSET WITH THESE CREATION OPTIONS: {c_co}")
+
+        # Create an asset record
+        asset_options = AssetCreateIn(
+            asset_type=AssetType.raster_tile_set,
+            asset_uri=asset_uri,
+            is_managed=True,
+            creation_options=co_obj,
+            metadata={},
+        ).dict(by_alias=True)
+
+        wm_asset_record = await create_asset(dataset, version, **asset_options)
+        print(
+            f"ZOOM LEVEL {zoom_level} MERGED ASSET CREATED WITH ASSET_ID {wm_asset_record.asset_id}"
+        )
+
+        command = [
+            "merge_intensity.sh",
+            "-d",
+            dataset,
+            "-v",
+            version,
+            date_conf_uri,
+            intensity_uri,
+            asset_uri.replace("{tile_id}.tif", "tiles.geojson"),
+        ]
+
+        callback = callback_constructor(wm_asset_record.asset_id)
+
+        merge_intensity_job = BuildRGBJob(
+            job_name="merge_intensity_and_date_conf_assets",
+            command=command,
+            environment=job_env,
+            callback=callback,
+            parents=[parent.job_name for parent in parents],
+        )
+        merge_intensity_jobs += [merge_intensity_job]
+
+    return merge_intensity_jobs

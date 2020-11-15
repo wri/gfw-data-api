@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import json
 import os
 import subprocess
@@ -10,7 +12,7 @@ import click
 AWS_REGION = "us-east-1"
 
 
-def get_s3_client(aws_region=AWS_REGION, endpoint_url=None):
+def get_s3_client(aws_region=AWS_REGION, endpoint_url=os.environ["AWS_S3_ENDPOINT"]):
     return boto3.client("s3", region_name=aws_region, endpoint_url=endpoint_url)
 
 
@@ -80,7 +82,8 @@ def output_file_name(coordinates: str):
 )
 @click.argument("date_conf_uri", type=str)
 @click.argument("intensity_uri", type=str)
-def hello(dataset, version, date_conf_uri, intensity_uri):
+@click.argument("destination_uri", type=str)
+def hello(dataset, version, date_conf_uri, intensity_uri, destination_uri):
     print(f"Date/Confirmation status URI: {date_conf_uri}")
     print(f"Intensity URI: {intensity_uri}")
 
@@ -95,25 +98,37 @@ def hello(dataset, version, date_conf_uri, intensity_uri):
         bucket, key = get_s3_path_parts(input_pair[1])
         response = s3_client.get_object(Bucket=bucket, Key=key)
         tiles_geojson: dict = json.loads(response["Body"].read().decode("utf-8"))
+        # print(f"TILES.GEOJSON: {json.dumps(tiles_geojson, indent=2)}")
         for feature in tiles_geojson["features"]:
-            serialized_coords: str = json.dumps(feature["coordinates"])
-            geo_to_filenames[serialized_coords][input_pair[1]] = feature["properties"][
-                "name"
-            ]
+            serialized_coords: str = json.dumps(feature["geometry"]["coordinates"])
+            blah = geo_to_filenames.get(serialized_coords, {})
+            file_name = feature["properties"]["name"].replace("/vsis3/", "s3://")
+            if not blah:
+                blah[input_pair[0]] = file_name
+                geo_to_filenames[serialized_coords] = blah
+            else:
+                geo_to_filenames[serialized_coords][input_pair[0]] = file_name
 
     # Verify that all coordinates have associated files in both date/conf and
     # intensity tile sets
     # FIXME: Don't assert, just use those tiles with files in both datasets
+    print(f"GEO_TO_FILENAMES: {json.dumps(geo_to_filenames, indent=2)}")
     for coordinate_set in geo_to_filenames.values():
-        assert coordinate_set.get(d_c_f_n) is not None
-        assert coordinate_set.get(i_f_n) is not None
+        print(f"COORD_SET: {coordinate_set}")
+        # assert coordinate_set.get(d_c_f_n) is not None
+        # assert coordinate_set.get(i_f_n) is not None
 
     for k, v in geo_to_filenames.items():
         # FIXME: Generate output filename based on coordinates
         # FIXME: Where to get prefix? What to call it? Hard-code as "combined" for now
         output_uri = v[i_f_n].replace("intensity", "combined")
+        print("About to operate on:")
+        print(f"date_conf file: {v[d_c_f_n]}")
+        print(f"intensity file: {v[i_f_n]}")
+        print(f"outout file: {output_uri}")
 
         process_rasters(v[d_c_f_n], v[i_f_n], output_uri)
+    # FIXME: Create extent.geojson and tiles.geojson for the combined tiles. Or do back in raster tile cache asset code?
 
 
 if __name__ == "__main__":
