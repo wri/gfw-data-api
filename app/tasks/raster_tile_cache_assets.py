@@ -77,7 +77,7 @@ async def _reproject_to_web_mercator(
     source_creation_options: Dict[str, Any],
     min_zoom: int,
     max_zoom: int,
-    parents: Optional[List[PixETLJob]],
+    parents: Optional[List[str]],
 ) -> List[PixETLJob]:
     job_list = []
 
@@ -85,18 +85,23 @@ async def _reproject_to_web_mercator(
         # Sanitize creation_options
         co = copy.deepcopy(source_creation_options)
         source_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, co)
+        co["srid"] = "epsg-3857"
         co["source_uri"] = [source_uri.replace("{tile_id}.tif", "tiles.geojson")]
         co["calc"] = None
         co["grid"] = f"zoom_{zoom_level}"
         co["resampling"] = "med"
         co["overwrite"] = True  # FIXME: Think about this some more
 
+        asset_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, co)
+
+        del co["srid"]
+
         co_obj = RasterTileSetSourceCreationOptions(**co)
 
         # Create an asset record
         asset_options = AssetCreateIn(
             asset_type=AssetType.raster_tile_set,
-            asset_uri=f"something_{zoom_level}",  # FIXME: Should be None, but DB doesn't allow
+            asset_uri=asset_uri,
             is_managed=True,
             creation_options=co_obj,
             metadata={},
@@ -105,13 +110,13 @@ async def _reproject_to_web_mercator(
         wm_asset_record = await create_asset(dataset, version, **asset_options)
         print(f"ZOOM LEVEL {zoom_level} REPROJECTION ASSET CREATED")
 
-        callback = callback_constructor(wm_asset_record.asset_id)
         zoom_level_job = await _run_pixetl(
             dataset,
             version,
             wm_asset_record.creation_options,
-            f"zoom_level_{zoom_level}_reprojection",
-            callback,
+            f"zoom_level_{zoom_level}_{co['pixel_meaning']}_reprojection",
+            callback_constructor(wm_asset_record.asset_id),
+            parents,
         )
         job_list.append(zoom_level_job)
         print(f"ZOOM LEVEL {zoom_level} REPROJECTION JOB CREATED")
@@ -126,14 +131,14 @@ async def raster_tile_cache_asset(
     min_zoom = input_data["creation_options"]["min_zoom"]
     max_zoom = input_data["creation_options"]["max_zoom"]
     # FIXME: Make sure max_static < max_zoom, or something
-    # max_static_zoom = input_data["creation_options"]["max_static_zoom"]
+    max_static_zoom = input_data["creation_options"]["max_static_zoom"]
     assert min_zoom <= max_zoom  # FIXME: Raise appropriate exception
 
     # What is needed to create a raster tile cache?
     # Should default asset be a raster tile set? Is it enough that
     # ANY ASSET is a raster tile set?
 
-    callback: Callback = callback_constructor(asset_id)
+    # callback: Callback = callback_constructor(asset_id)
 
     job_list = []
 
@@ -181,7 +186,12 @@ async def raster_tile_cache_asset(
         # Create intensity asset record in DB
         asset_options = AssetCreateIn(
             asset_type=AssetType.raster_tile_set,
-            asset_uri="http://www.slashdot.org",  # FIXME: Should be None, but DB doesn't allow
+            asset_uri=get_asset_uri(
+                dataset,
+                version,
+                AssetType.raster_tile_set,
+                intensity_co.dict(by_alias=True),
+            ),
             is_managed=True,
             creation_options=intensity_co,
             metadata={},
@@ -202,17 +212,25 @@ async def raster_tile_cache_asset(
             version,
             intensity_asset_record.creation_options,
             "create_intensity",
-            callback,
+            callback_constructor(intensity_asset_record.asset_id),
         )
         job_list.append(intensity_job)
         print("INTENSITY JOB CREATED")
 
         # Re-project date_conf and intensity to web mercator with pixetl
-        # for co in (date_conf_co, intensity_co):
-        more_jobs = await _reproject_to_web_mercator(
-            dataset, version, date_conf_co, 0, 1, None,  # min_zoom,  # max_static_zoom,
-        )
-        job_list += more_jobs
+        # Note that technically the date_conf reprojection jobs don't need
+        # to depend on the intensity job, think about separating this for
+        # loop later
+        for co in (copy.deepcopy(date_conf_co), intensity_co.dict(by_alias=True)):
+            more_jobs = await _reproject_to_web_mercator(
+                dataset,
+                version,
+                co,
+                min_zoom,
+                max_static_zoom,
+                [intensity_job.job_name],
+            )
+            job_list += more_jobs
         print("REPROJECTION JOBS CREATED")
 
         # FIXME: Now merge the tiles
