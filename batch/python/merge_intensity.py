@@ -48,19 +48,13 @@ def process_rasters(date_conf_uri, intensity_uri, output_uri):
             local_output_path,
         ]
         print(f"Running command: {cmd_arg_list}")
-        # FIXME: Just touch the output file for now
-        subprocess.CompletedProcess = subprocess.run(
-            ["touch", local_output_path], capture_output=True, check=True, text=True
+        _: subprocess.CompletedProcess = subprocess.run(
+            cmd_arg_list, capture_output=True, check=True, text=True
         )
-        # proc_obj: subprocess.CompletedProcess = subprocess.run(
-        #     cmd_arg_list,
-        #     capture_output=True,
-        #     check=True,
-        #     text=True
-        # )
-        # Do some checking for errors and whatnot
 
-        # Upload resulting output file to... where?
+        # FIXME: Do some checking for errors and whatnot
+
+        # Upload resulting output file to S3
         bucket, key = get_s3_path_parts(output_uri)
 
         print(f"Uploading {local_output_path} to {output_uri}...")
