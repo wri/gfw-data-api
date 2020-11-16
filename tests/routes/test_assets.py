@@ -364,38 +364,6 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     version = "v1.0.0"
     primary_grid = "90/27008"
 
-    # with patch("fastapi.BackgroundTasks.add_task", return_value=None):
-    #     try:
-    #         _ = await async_client.delete(f"/dataset/{dataset}/{version}")
-    #         _ = await async_client.delete(f"/dataset/{dataset}")
-    #     except Exception:
-    #         pass
-
-    print("CLEANING UP")
-
-    # Clean up so teardown doesn't break
-    with patch("fastapi.BackgroundTasks.add_task", return_value=None):
-        try:
-            print("GETTING DATASETS")
-            resp = await async_client.get("/datasets")
-            print(f"GET DATASETS RESP: {json.dumps(resp.json(), indent=2)}")
-
-            print("GETTING ASSETS")
-            resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
-            print(f"GET ASSETS RESP: {json.dumps(resp.json(), indent=2)}")
-            for asset in resp.json()["data"]:
-                print(f"DELETING ASSET {asset['asset_id']}")
-                try:
-                    _ = await async_client.delete(
-                        f"/dataset/{dataset}/{version}/{asset['asset_id']}"
-                    )
-                except Exception:
-                    print(f"Exception deleting asset {asset['asset_id']}")
-            _ = await async_client.delete(f"/dataset/{dataset}/{version}")
-            _ = await async_client.delete(f"/dataset/{dataset}")
-        except Exception:
-            pass
-
     s3_client = boto3.client(
         "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
     )
@@ -407,30 +375,21 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/tiles.geojson",
         f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/90N_000E.tif",
         f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/90N_000E.tif",
-        "{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/extent.geojson",
-        "{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/tiles.geojson",
-        "{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/000R_000C.tif",
-        "{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/extent.geojson",
-        "{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/tiles.geojson",
-        "{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/000R_000C.tif",
-        # f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/gdal-geotiff/tiles.geojson",
-        # f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/tiles.geojson",
-        # f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/gdal-geotiff/tiles.geojson",
-        # f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/gdal-geotiff/000R_000C.tif",
-        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/gdal-geotiff/extent.geojson",
-        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/geotiff/extent.geojson",
-        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/gdal-geotiff/tiles.geojson",
-        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/geotiff/tiles.geojson",
-        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/gdal-geotiff/90N_000E.tif",
-        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/combined/geotiff/90N_000E.tif",
+        f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/000R_000C.tif",
+        f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/000R_000C.tif",
+        # f"{dataset}/{version}/raster/epsg-3857/zoom_0/combined/geotiff/extent.geojson",
+        # f"{dataset}/{version}/raster/epsg-3857/zoom_0/combined/geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-3857/zoom_0/combined/geotiff/000R_000C.tif",
     ]
 
     for key in pixetl_output_files:
         s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
 
     print("FINISHED CLEANING UP")
-
-    sleep(4)
 
     raster_version_payload = {
         "is_latest": True,
@@ -443,7 +402,6 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
             "grid": primary_grid,
             "resampling": "nearest",
             "overwrite": True,
-            # "subset": "90N_000E",
         },
         "metadata": {},
     }
@@ -468,7 +426,6 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     # But sleep a moment for any stragglers to come in
     sleep(3)
     requests.delete(f"http://localhost:{httpd.server_port}")
-    sleep(3)
 
     # Add a tile cache asset based on the raster tile set
     asset_payload = {
@@ -489,6 +446,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     resp_json = create_asset_resp.json()
     assert resp_json["status"] == "success"
     assert resp_json["data"]["status"] == "pending"
+
     tile_cache_asset_id = resp_json["data"]["asset_id"]
 
     # # Checking the status of all the tasks turns out to be a bit of a pain,
@@ -497,16 +455,10 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     # # asset winds-up as "saved" within a reasonable amount of time
     # # resp = await async_client.get(f"/asset/{tile_cache_asset_id}")
     # # status = resp.json()["data"]["status"]
-    # #
-    # # attempts = 100
-    # # while attempts > 0 and status != "failed" and status != "saved":
-    # #     sleep(1)
-    # #     resp = await async_client.get(f"/asset/{tile_cache_asset_id}")
-    # #     status = resp.json()["data"]["status"]
-    # #     attempts -= 1
     # # assert status == "saved"
 
-    # get task ids for all created assets (except the default one)
+    # Get task ids for all created assets (except the default one)
+    # FIXME: Also except the one for the tile cache asset, as we're not creating it yet
     task_ids = []
     assets_response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
     for asset in assets_response.json()["data"]:
@@ -519,38 +471,15 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
 
     print(f"All found task ids: {task_ids}")
 
-    # wait until all batch jobs are done.
+    # Wait until all batch jobs are done.
     status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
     assert status == "saved"
 
     # # asset_resp = await async_client.get(f"/asset/{tile_cache_asset_id}")
     # # assert asset_resp.json()["data"]["status"] == "saved"
-    #
-    # for key in pixetl_output_files:
-    #     try:
-    #         s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
-    #     except ClientError:
-    #         raise AssertionError(f"Key {key} doesn't exist!")
-    #
-    # # Clean up so teardown doesn't break
-    # # with patch("fastapi.BackgroundTasks.add_task", return_value=None):
-    # try:
-    #     print("GETTING DATASETS")
-    #     resp = await async_client.get("/datasets")
-    #     print(f"GET DATASETS RESP: {json.dumps(resp.json(), indent=2)}")
-    #
-    #     print("GETTING ASSETS")
-    #     resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
-    #     print(f"GET ASSETS RESP: {json.dumps(resp.json(), indent=2)}")
-    #     for asset in resp.json()["data"]:
-    #         print(f"DELETING ASSET {asset['asset_id']}")
-    #         try:
-    #             _ = await async_client.delete(
-    #                 f"/dataset/{dataset}/{version}/{asset['asset_id']}"
-    #             )
-    #         except Exception:
-    #             pass
-    #     _ = await async_client.delete(f"/dataset/{dataset}/{version}")
-    #     _ = await async_client.delete(f"/dataset/{dataset}")
-    # except Exception:
-    #     pass
+
+    for key in pixetl_output_files:
+        try:
+            s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+        except ClientError:
+            raise AssertionError(f"Key {key} doesn't exist!")
