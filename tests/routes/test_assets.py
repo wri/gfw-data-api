@@ -359,7 +359,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     """"""
     _, logs = batch_client
 
-    # Add a dataset, version, and default asset
+    # Add a dataset, version, and default (raster tile set) asset
     dataset = "test_raster_tile_cache_asset"
     version = "v1.0.0"
     primary_grid = "90/27008"
@@ -449,15 +449,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
 
     tile_cache_asset_id = resp_json["data"]["asset_id"]
 
-    # # Checking the status of all the tasks turns out to be a bit of a pain,
-    # # and in theory the functionality of tasks finishing leading to a "saved"
-    # # status is tested elsewhere. Therefore, just make sure the tile cache
-    # # asset winds-up as "saved" within a reasonable amount of time
-    # # resp = await async_client.get(f"/asset/{tile_cache_asset_id}")
-    # # status = resp.json()["data"]["status"]
-    # # assert status == "saved"
-
-    # Get task ids for all created assets (except the default one)
+    # Get a list of tasks for all created assets (except the default one)
     # FIXME: Also except the one for the tile cache asset, as we're not creating it yet
     task_ids = []
     assets_response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
@@ -475,9 +467,11 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
     assert status == "saved"
 
-    # # asset_resp = await async_client.get(f"/asset/{tile_cache_asset_id}")
-    # # assert asset_resp.json()["data"]["status"] == "saved"
+    # Finally, make sure the raster tile cache asset is in "saved" state
+    # asset_resp = await async_client.get(f"/asset/{tile_cache_asset_id}")
+    # assert asset_resp.json()["data"]["status"] == "saved"
 
+    # Oh, and make sure all files got uploaded to S3 along the way
     for key in pixetl_output_files:
         try:
             s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
