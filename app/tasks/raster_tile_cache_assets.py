@@ -13,7 +13,7 @@ from app.models.pydantic.creation_options import (
     RasterTileSetAssetCreationOptions,
     RasterTileSetSourceCreationOptions,
 )
-from app.models.pydantic.jobs import BuildRGBJob, Job, PixETLJob
+from app.models.pydantic.jobs import BuildRGBJob, GDAL2TilesJob, Job, PixETLJob
 from app.settings.globals import ENV, PIXETL_CORES, PIXETL_MAX_MEM, S3_ENTRYPOINT_URL
 from app.tasks import Callback, callback_constructor, writer_secrets
 from app.tasks.batch import execute
@@ -154,14 +154,25 @@ async def raster_tile_cache_asset(
         # FIXME: build_rgb created the merged tiles but not tiles.geojson or extent.geojson
         # Create those now with pixetl's source_prep?
 
+        # Actually create the tile cache using gdal2tiles
+        print("Now create the tile cache using gdal2tiles...")
+        tile_cache_jobs = await _create_tile_cache(
+            dataset,
+            version,
+            input_data["creation_options"],
+            intensity_co.dict(by_alias=True),
+            min_zoom,
+            max_static_zoom,
+            callback_constructor(asset_id),
+            job_list,
+        )
+        job_list += tile_cache_jobs
+
         print("Yup, made it here")
         print(f"JOB LIST LENGTH SO FAR: {len(job_list)}")
         for job in job_list:
             print(f"JOB: {job.job_name}")
             print(f"  PARENTS: {job.parents}")
-
-    # Actually create the tile cache using gdal2tiles
-    print("Now create the tile cache using gdal2tiles...")
 
     log: ChangeLog = await execute(job_list)
 
@@ -176,7 +187,6 @@ async def _run_pixetl(
     callback: Callback,
     parents: Optional[List[Job]] = None,
 ):
-    # FIXME: Create an Asset in the DB to track intensity asset in S3
     # FIXME: See if "intensity" asset already exists first
 
     co["source_uri"] = co.pop("source_uri")[0]
@@ -344,3 +354,56 @@ async def _merge_intensity_and_date_conf(
         merge_intensity_jobs += [merge_intensity_job]
 
     return merge_intensity_jobs
+
+
+async def _create_tile_cache(
+    dataset: str,
+    version: str,
+    r_t_c_creation_options: Dict[str, Any],
+    r_t_s_creation_options: Dict[str, Any],
+    min_zoom: int,
+    max_zoom: int,
+    callback: Callback,
+    parents: List[Job],
+):
+    # BLAH BLAH BLAH
+    tile_cache_jobs: List[Job] = []
+
+    for zoom_level in range(min_zoom, max_zoom):
+        # Sanitize creation_options
+
+        co = copy.deepcopy(r_t_s_creation_options)
+        co["srid"] = "epsg-3857"
+        co["grid"] = f"zoom_{zoom_level}"
+        asset_uri = get_asset_uri(
+            dataset, version, AssetType.raster_tile_set, co
+        ).replace("intensity", "combined")
+
+        tile_cache_uri = get_asset_uri(
+            dataset, version, AssetType.raster_tile_cache, r_t_c_creation_options
+        )  # .replace("{tile_id}.tif", "tiles.geojson")
+
+        print(
+            f"CREATING TILE CACHE JOB FOR ZOOM LEVEL {zoom_level} MERGED ASSET WITH ASSET_URI {asset_uri}"
+        )
+
+        command = [
+            "raster_tile_cache.sh",
+            "-d",
+            dataset,
+            "-v",
+            version,
+            asset_uri,
+            tile_cache_uri,
+        ]
+
+        tile_cache_job = GDAL2TilesJob(
+            job_name=f"generate_tile_cache_zoom_{zoom_level}",
+            command=command,
+            environment=job_env,
+            callback=callback,
+            parents=[parent.job_name for parent in parents],
+        )
+        tile_cache_jobs += [tile_cache_job]
+
+    return tile_cache_jobs

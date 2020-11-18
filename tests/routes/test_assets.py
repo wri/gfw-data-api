@@ -1,4 +1,3 @@
-import json
 from time import sleep
 
 import boto3
@@ -450,12 +449,11 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     tile_cache_asset_id = resp_json["data"]["asset_id"]
 
     # Get a list of tasks for all created assets (except the default one)
-    # FIXME: Also except the one for the tile cache asset, as we're not creating it yet
     task_ids = []
     assets_response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
     for asset in assets_response.json()["data"]:
         asset_id = asset["asset_id"]
-        if asset_id != tile_cache_asset_id and asset_id != default_asset_id:
+        if asset_id != default_asset_id:
             tasks_resp = await async_client.get(f"/asset/{asset_id}/tasks")
             for task in tasks_resp.json()["data"]:
                 task_ids += [task["task_id"]]
@@ -468,8 +466,8 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     assert status == "saved"
 
     # Finally, make sure the raster tile cache asset is in "saved" state
-    # asset_resp = await async_client.get(f"/asset/{tile_cache_asset_id}")
-    # assert asset_resp.json()["data"]["status"] == "saved"
+    asset_resp = await async_client.get(f"/asset/{tile_cache_asset_id}")
+    assert asset_resp.json()["data"]["status"] == "saved"
 
     # Oh, and make sure all files got uploaded to S3 along the way
     for key in pixetl_output_files:
