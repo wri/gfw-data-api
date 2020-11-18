@@ -153,19 +153,19 @@ def client():
         datasets_resp = client.get("/datasets")
         for ds in datasets_resp.json()["data"]:
             ds_id = ds["dataset"]
-            for version in ds["versions"]:
-                assets_resp = client.get(f"/dataset/{ds_id}/{version}/assets")
-                for asset in assets_resp.json()["data"]:
-                    print(f"DELETING ASSET {asset['asset_id']}")
-                    try:
-                        _ = client.delete(
-                            f"/dataset/{ds_id}/{version}/{asset['asset_id']}"
-                        )
-                        _ = client.delete(f"/dataset/{ds_id}/{version}")
-                        _ = client.delete(f"/dataset/{ds_id}")
-                    except Exception:
-                        print(f"Exception deleting asset {asset['asset_id']}")
-    sleep(2)
+            if ds.get("versions") is not None:
+                for version in ds["versions"]:
+                    assets_resp = client.get(f"/dataset/{ds_id}/{version}/assets")
+                    for asset in assets_resp.json()["data"]:
+                        print(f"DELETING ASSET {asset['asset_id']}")
+                        try:
+                            _ = client.delete(
+                                f"/dataset/{ds_id}/{version}/{asset['asset_id']}"
+                            )
+                            _ = client.delete(f"/dataset/{ds_id}/{version}")
+                            _ = client.delete(f"/dataset/{ds_id}")
+                        except Exception:
+                            print(f"Exception deleting asset {asset['asset_id']}")
 
     app.dependency_overrides = {}
     main(["--raiseerr", "downgrade", "base"])
