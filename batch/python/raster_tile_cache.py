@@ -1,16 +1,11 @@
 #!/usr/bin/env python
 
-import json
 import os
 import subprocess
 from tempfile import TemporaryDirectory
-from typing import Dict
 
 import boto3
 import click
-
-# from fastapi.encoders import jsonable_encoder
-
 
 AWS_REGION = "us-east-1"
 
@@ -24,50 +19,6 @@ def get_s3_path_parts(s3url):
     bucket = just_path.split("/")[0]
     key = "/".join(just_path.split("/")[1:])
     return bucket, key
-
-
-# def process_rasters(tile_set_asset_uri, destination_uri):
-#     s3_client = get_s3_client()
-#
-#     # Download both files into a temporary directory
-#     with TemporaryDirectory() as temp_dir:
-#         local_date_conf_path = os.path.join(temp_dir, "date_conf.tiff")
-#         local_intensity_path = os.path.join(temp_dir, "intensity.tiff")
-#         local_output_path = os.path.join(temp_dir, "output.tiff")
-#
-#         print(f"Downloading {date_conf_uri} to {local_date_conf_path}")
-#         bucket, key = get_s3_path_parts(date_conf_uri)
-#         s3_client.download_file(bucket, key, local_date_conf_path)
-#
-#         print(f"Downloading {intensity_uri} to {local_intensity_path}")
-#         bucket, key = get_s3_path_parts(intensity_uri)
-#         s3_client.download_file(bucket, key, local_intensity_path)
-#
-#         # Run through build_rgb.cpp
-#         cmd_arg_list = [
-#             "build_rgb",
-#             local_date_conf_path,
-#             local_intensity_path,
-#             local_output_path,
-#         ]
-#         print(f"Running command: {cmd_arg_list}")
-#         _: subprocess.CompletedProcess = subprocess.run(
-#             cmd_arg_list, capture_output=True, check=True, text=True
-#         )
-#
-#         # FIXME: Do some checking for errors and whatnot
-#
-#         # Upload resulting output file to S3
-#         bucket, key = get_s3_path_parts(output_uri)
-#
-#         print(f"Uploading {local_output_path} to {output_uri}...")
-#         s3_client.upload_file(local_output_path, bucket, key)
-#     return
-
-
-def output_file_name(coordinates: str):
-    # Construct an output file name based on a tile's coordinates
-    pass
 
 
 @click.command()
@@ -117,24 +68,10 @@ def hello(dataset, version, tile_set_asset_uri, destination_uri):
                         ]
                         print(f"Running command: {cmd_arg_list}")
                         proc: subprocess.CompletedProcess = subprocess.run(
-                            cmd_arg_list,
-                            capture_output=True,
-                            check=False,
-                            text=True
-                            # cmd_arg_list, capture_output=True, check=True, text=True
+                            cmd_arg_list, capture_output=True, check=False, text=True
                         )
                         print(proc.stdout)
                         print(proc.stderr)
-
-                        # cmd_arg_list = [
-                        #     "ls",
-                        #     "/".join([tiles_dir, "0"]),
-                        # ]
-                        # proc: subprocess.CompletedProcess = subprocess.run(
-                        #     cmd_arg_list, capture_output=True, check=False, text=True
-                        #     # cmd_arg_list, capture_output=True, check=True, text=True
-                        # )
-                        # print(proc.stdout)
 
                         cmd_arg_list = [
                             "ls",
@@ -142,11 +79,7 @@ def hello(dataset, version, tile_set_asset_uri, destination_uri):
                             tiles_dir,
                         ]
                         proc: subprocess.CompletedProcess = subprocess.run(
-                            cmd_arg_list,
-                            capture_output=True,
-                            check=False,
-                            text=True
-                            # cmd_arg_list, capture_output=True, check=True, text=True
+                            cmd_arg_list, capture_output=True, check=False, text=True
                         )
                         print(proc.stdout)
 
@@ -161,4 +94,3 @@ def hello(dataset, version, tile_set_asset_uri, destination_uri):
 
 if __name__ == "__main__":
     hello()
-    exit(1)
