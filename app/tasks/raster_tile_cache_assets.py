@@ -402,6 +402,8 @@ async def _create_tile_cache(
             dataset,
             "-v",
             version,
+            "--zoom_level",
+            zoom_level,
             asset_uri,
             tile_cache_uri,
         ]

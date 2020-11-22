@@ -28,9 +28,14 @@ def get_s3_path_parts(s3url):
 @click.option(
     "-v", "--version", type=str, required=True, help="Version of dataset to process"
 )
+@click.option(
+    "--zoom_level", type=int, required=True, help="Zoom level to generate tiles for"
+)
 @click.argument("tile_set_asset_uri", type=str)
 @click.argument("destination_uri", type=str)
-def raster_tile_cache(dataset, version, tile_set_asset_uri, destination_uri):
+def raster_tile_cache(
+    dataset, version, tile_set_asset_uri, destination_uri, zoom_level
+):
     print(f"Raster tile set asset URI: {tile_set_asset_uri}")
     print(f"Destination URI: {destination_uri}")
 
@@ -39,13 +44,16 @@ def raster_tile_cache(dataset, version, tile_set_asset_uri, destination_uri):
     bucket, key = get_s3_path_parts(tile_set_asset_uri)
     prefix = key.replace("{tile_id}.tif", "")
     resp = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    # print(json.dumps(jsonable_encoder(resp), indent=2))
     # FIXME: Download all files, gdalbuildvrt VRT and process the VRT
 
-    if resp["KeyCount"] > 0:
+    if resp["KeyCount"] == 0:
+        print("ERROR: No files found in S3!")
+        return 1
+    else:
         for obj in resp["Contents"]:
             remote_key = str(obj["Key"])
-            if remote_key.endswith(".tif"):
+            if remote_key.endswith(".tif"):  # FIXME: Add case insensitivity?
+                print(f"Found remote TIFF: {remote_key}")
                 with TemporaryDirectory() as dl_dir:
                     local_tiff_path = os.path.join(dl_dir, "raster.tif")
                     remote_tiff_path = remote_key  # "/".join([prefix, remote_key])
@@ -59,7 +67,7 @@ def raster_tile_cache(dataset, version, tile_set_asset_uri, destination_uri):
                     with TemporaryDirectory() as tiles_dir:
                         cmd_arg_list = [
                             "gdal2tiles.py",
-                            "--zoom=0",  # FIXME: Specify actual zoom level
+                            f"--zoom={zoom_level}",
                             "--s_srs",
                             "EPSG:3857",
                             "--resampling=near",
@@ -97,4 +105,4 @@ def raster_tile_cache(dataset, version, tile_set_asset_uri, destination_uri):
 
 
 if __name__ == "__main__":
-    raster_tile_cache()
+    exit(raster_tile_cache())

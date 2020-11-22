@@ -5,6 +5,7 @@ set -e
 # requires arguments
 # -d | --dataset
 # -v | --version
+# --zoom_level
 
 # and positional arguments
 # asset_uri
@@ -15,4 +16,4 @@ ME=$(basename "$0")
 
 echo "Generate raster tile cache with GDAL2Tiles and upload to S3"
 
-raster_tile_cache.py -d "${DATASET}" -v "${VERSION}" "${POSITIONAL[@]}"
+raster_tile_cache.py -d "${DATASET}" -v "${VERSION}" --zoom_level "${ZOOM_LEVEL}" "${POSITIONAL[@]}"

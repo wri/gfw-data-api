@@ -62,11 +62,6 @@ def process_rasters(date_conf_uri, intensity_uri, output_uri):
     return
 
 
-def output_file_name(coordinates: str):
-    # Construct an output file name based on a tile's coordinates
-    pass
-
-
 @click.command()
 @click.option(
     "-d", "--dataset", type=str, required=True, help="Name of dataset to process"
@@ -95,8 +90,8 @@ def merge_intensity(dataset, version, date_conf_uri, intensity_uri, destination_
         # print(f"TILES.GEOJSON: {json.dumps(tiles_geojson, indent=2)}")
         for feature in tiles_geojson["features"]:
             serialized_coords: str = json.dumps(feature["geometry"]["coordinates"])
-            blah = geo_to_filenames.get(serialized_coords, {})
             file_name = feature["properties"]["name"].replace("/vsis3/", "s3://")
+            blah = geo_to_filenames.get(serialized_coords, {})
             if not blah:
                 blah[input_pair[0]] = file_name
                 geo_to_filenames[serialized_coords] = blah
@@ -130,4 +125,4 @@ def merge_intensity(dataset, version, date_conf_uri, intensity_uri, destination_
 
 
 if __name__ == "__main__":
-    merge_intensity()
+    exit(merge_intensity())
