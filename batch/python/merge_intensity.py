@@ -77,7 +77,7 @@ def output_file_name(coordinates: str):
 @click.argument("date_conf_uri", type=str)
 @click.argument("intensity_uri", type=str)
 @click.argument("destination_uri", type=str)
-def hello(dataset, version, date_conf_uri, intensity_uri, destination_uri):
+def merge_intensity(dataset, version, date_conf_uri, intensity_uri, destination_uri):
     print(f"Date/Confirmation status URI: {date_conf_uri}")
     print(f"Intensity URI: {intensity_uri}")
 
@@ -103,29 +103,31 @@ def hello(dataset, version, date_conf_uri, intensity_uri, destination_uri):
             else:
                 geo_to_filenames[serialized_coords][input_pair[0]] = file_name
 
-    # Verify that all coordinates have associated files in both date/conf and
-    # intensity tile sets
-    # FIXME: Don't assert, just use those tiles with files in both datasets
     print(f"GEO_TO_FILENAMES: {json.dumps(geo_to_filenames, indent=2)}")
-    for coordinate_set in geo_to_filenames.values():
-        print(f"COORD_SET: {coordinate_set}")
-        # assert coordinate_set.get(d_c_f_n) is not None
-        # assert coordinate_set.get(i_f_n) is not None
 
+    # Only use coordinates that have associated files in both date/conf and
+    # intensity tile sets.
     for k, v in geo_to_filenames.items():
-        # FIXME: Generate output filename based on coordinates
-        # FIXME: Where to get prefix? What to call it? Hard-code as "combined" for now
-        output_uri = v[i_f_n].replace(
-            "intensity", "combined"
-        )  # FIXME: Append filename to passed prefix
-        print("About to operate on:")
-        print(f"date_conf file: {v[d_c_f_n]}")
-        print(f"intensity file: {v[i_f_n]}")
-        print(f"outout file: {output_uri}")
+        if v.get(d_c_f_n) is None:
+            print(f"No date_conf raster file for coordinates {k}... Skipping")
+            continue
+        elif v.get(i_f_n) is None:
+            print(f"No intensity raster file for coordinates {k}... Skipping")
+            continue
+        else:
+            # FIXME: Generate output filename based on coordinates
+            # FIXME: Where to get prefix? What to call it? Hard-code as "combined" for now
+            output_uri = v[i_f_n].replace(
+                "intensity", "combined"
+            )  # FIXME: Append filename to passed prefix
+            print("About to operate on:")
+            print(f"date_conf file: {v[d_c_f_n]}")
+            print(f"intensity file: {v[i_f_n]}")
+            print(f"output file: {output_uri}")
 
-        process_rasters(v[d_c_f_n], v[i_f_n], output_uri)
+            process_rasters(v[d_c_f_n], v[i_f_n], output_uri)
     # FIXME: Create extent.geojson and tiles.geojson for the combined tiles. Or do back in raster tile cache asset code?
 
 
 if __name__ == "__main__":
-    hello()
+    merge_intensity()

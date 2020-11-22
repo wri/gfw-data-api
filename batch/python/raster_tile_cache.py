@@ -30,7 +30,7 @@ def get_s3_path_parts(s3url):
 )
 @click.argument("tile_set_asset_uri", type=str)
 @click.argument("destination_uri", type=str)
-def hello(dataset, version, tile_set_asset_uri, destination_uri):
+def raster_tile_cache(dataset, version, tile_set_asset_uri, destination_uri):
     print(f"Raster tile set asset URI: {tile_set_asset_uri}")
     print(f"Destination URI: {destination_uri}")
 
@@ -97,4 +97,4 @@ def hello(dataset, version, tile_set_asset_uri, destination_uri):
 
 
 if __name__ == "__main__":
-    hello()
+    raster_tile_cache()
