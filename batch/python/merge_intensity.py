@@ -9,10 +9,10 @@ from typing import Dict
 import boto3
 import click
 
-AWS_REGION = "us-east-1"
 
-
-def get_s3_client(aws_region=AWS_REGION, endpoint_url=os.environ["AWS_S3_ENDPOINT"]):
+def get_s3_client(
+    aws_region=os.environ["AWS_REGION"], endpoint_url=os.environ["AWS_S3_ENDPOINT"]
+):
     return boto3.client("s3", region_name=aws_region, endpoint_url=endpoint_url)
 
 
@@ -115,7 +115,9 @@ def hello(dataset, version, date_conf_uri, intensity_uri, destination_uri):
     for k, v in geo_to_filenames.items():
         # FIXME: Generate output filename based on coordinates
         # FIXME: Where to get prefix? What to call it? Hard-code as "combined" for now
-        output_uri = v[i_f_n].replace("intensity", "combined")
+        output_uri = v[i_f_n].replace(
+            "intensity", "combined"
+        )  # FIXME: Append filename to passed prefix
         print("About to operate on:")
         print(f"date_conf file: {v[d_c_f_n]}")
         print(f"intensity file: {v[i_f_n]}")

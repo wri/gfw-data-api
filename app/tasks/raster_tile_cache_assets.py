@@ -14,12 +14,19 @@ from app.models.pydantic.creation_options import (
     RasterTileSetSourceCreationOptions,
 )
 from app.models.pydantic.jobs import BuildRGBJob, GDAL2TilesJob, Job, PixETLJob
-from app.settings.globals import ENV, PIXETL_CORES, PIXETL_MAX_MEM, S3_ENTRYPOINT_URL
+from app.settings.globals import (
+    AWS_REGION,
+    ENV,
+    PIXETL_CORES,
+    PIXETL_MAX_MEM,
+    S3_ENTRYPOINT_URL,
+)
 from app.tasks import Callback, callback_constructor, writer_secrets
 from app.tasks.batch import execute
 from app.utils.path import get_asset_uri
 
 job_env = writer_secrets + [
+    {"name": "AWS_REGION", "value": AWS_REGION},
     {"name": "ENV", "value": ENV},
     {"name": "CORES", "value": PIXETL_CORES},
     {"name": "MAX_MEM", "value": PIXETL_MAX_MEM},
@@ -152,7 +159,7 @@ async def raster_tile_cache_asset(
         job_list += merge_jobs
 
         # FIXME: build_rgb created the merged tiles but not tiles.geojson or extent.geojson
-        # Create those now with pixetl's source_prep?
+        # Create those now with pixetl's pixetl_prep?
 
         # Actually create the tile cache using gdal2tiles
         print("Now create the tile cache using gdal2tiles...")
@@ -239,7 +246,7 @@ async def _reproject_to_web_mercator(
         co["calc"] = None
         co["grid"] = f"zoom_{zoom_level}"
         co["resampling"] = "med"
-        co["overwrite"] = True  # FIXME: Think about this some more
+        co["overwrite"] = True  # FIXME: Grab from date_conf, default to False
 
         asset_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, co)
 
@@ -339,7 +346,9 @@ async def _merge_intensity_and_date_conf(
             version,
             date_conf_uri,
             intensity_uri,
-            asset_uri.replace("{tile_id}.tif", "tiles.geojson"),
+            asset_uri.replace(
+                "{tile_id}.tif", "tiles.geojson"
+            ),  # FIXME: Pass in prefix instead
         ]
 
         callback = callback_constructor(wm_asset_record.asset_id)

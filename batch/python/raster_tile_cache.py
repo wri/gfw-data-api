@@ -7,10 +7,10 @@ from tempfile import TemporaryDirectory
 import boto3
 import click
 
-AWS_REGION = "us-east-1"
 
-
-def get_s3_client(aws_region=AWS_REGION, endpoint_url=os.environ["AWS_S3_ENDPOINT"]):
+def get_s3_client(
+    aws_region=os.environ["AWS_REGION"], endpoint_url=os.environ["AWS_S3_ENDPOINT"]
+):
     return boto3.client("s3", region_name=aws_region, endpoint_url=endpoint_url)
 
 
@@ -40,6 +40,8 @@ def hello(dataset, version, tile_set_asset_uri, destination_uri):
     prefix = key.replace("{tile_id}.tif", "")
     resp = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
     # print(json.dumps(jsonable_encoder(resp), indent=2))
+    # FIXME: Download all files, gdalbuildvrt VRT and process the VRT
+
     if resp["KeyCount"] > 0:
         for obj in resp["Contents"]:
             remote_key = str(obj["Key"])
@@ -57,11 +59,11 @@ def hello(dataset, version, tile_set_asset_uri, destination_uri):
                     with TemporaryDirectory() as tiles_dir:
                         cmd_arg_list = [
                             "gdal2tiles.py",
-                            "--zoom=0-1",
+                            "--zoom=0",  # FIXME: Specify actual zoom level
                             "--s_srs",
                             "EPSG:3857",
                             "--resampling=near",
-                            "--processes=1",
+                            "--processes=1",  # FIXME: Pass in pixetl cores value? Or similar
                             "--xyz",
                             local_tiff_path,
                             tiles_dir,
@@ -84,6 +86,8 @@ def hello(dataset, version, tile_set_asset_uri, destination_uri):
                         print(proc.stdout)
 
                         # FIXME: Do some checking for errors and whatnot
+
+                        # FIXME: Use tileputty to upload tile cache
 
                         # # Upload resulting output file to S3
                         # bucket, key = get_s3_path_parts(output_uri)
