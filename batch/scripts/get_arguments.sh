@@ -154,6 +154,12 @@ do
       shift # past argument
       shift # past value
       ;;
+      --target_bucket)
+      TARGET_BUCKET="$2"
+      shift # past argument
+      shift # past value
+      ;;
+
       -v|--version)
       VERSION="$2"
       shift # past argument

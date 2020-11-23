@@ -5,6 +5,7 @@ set -e
 # requires arguments
 # -d | --dataset
 # -v | --version
+# --target_bucket
 # --zoom_level
 
 # and positional arguments
@@ -13,6 +14,6 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
-echo "Generate raster tile cache with GDAL2Tiles and upload to S3"
+echo "Generate raster tile cache with GDAL2Tiles and upload to target S3 bucket"
 
-raster_tile_cache.py -d "${DATASET}" -v "${VERSION}" --zoom_level "${ZOOM_LEVEL}" "${POSITIONAL[@]}"
+raster_tile_cache.py -d "${DATASET}" -v "${VERSION}" --target_bucket "${TARGET_BUCKET}" --zoom_level "${ZOOM_LEVEL}" "${POSITIONAL[@]}"

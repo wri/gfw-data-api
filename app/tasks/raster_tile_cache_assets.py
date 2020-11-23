@@ -20,6 +20,7 @@ from app.settings.globals import (
     PIXETL_CORES,
     PIXETL_MAX_MEM,
     S3_ENTRYPOINT_URL,
+    TILE_CACHE_BUCKET,
 )
 from app.tasks import Callback, callback_constructor, writer_secrets
 from app.tasks.batch import execute
@@ -395,6 +396,8 @@ async def _create_tile_cache(
             dataset,
             "-v",
             version,
+            "--target_bucket",
+            TILE_CACHE_BUCKET,
             "--zoom_level",
             str(zoom_level),
             asset_prefix,

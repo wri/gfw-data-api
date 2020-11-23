@@ -476,3 +476,5 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
             s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
         except ClientError:
             raise AssertionError(f"Key {key} doesn't exist!")
+
+    # FIXME: Make sure files made it into the tile cache bucket as well!
