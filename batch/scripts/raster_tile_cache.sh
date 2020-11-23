@@ -8,8 +8,7 @@ set -e
 # --zoom_level
 
 # and positional arguments
-# asset_uri
-# tile_cache_uri
+# asset_prefix
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"

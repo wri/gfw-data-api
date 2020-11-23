@@ -382,7 +382,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/000R_000C.tif",
         # f"{dataset}/{version}/raster/epsg-3857/zoom_0/combined/geotiff/extent.geojson",
         # f"{dataset}/{version}/raster/epsg-3857/zoom_0/combined/geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-3857/zoom_0/combined/geotiff/000R_000C.tif",
+        f"{dataset}/{version}/raster/epsg-3857/zoom_0/rgb_encoded/geotiff/000R_000C.tif",
     ]
 
     for key in pixetl_output_files:
@@ -431,9 +431,10 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         "asset_type": "Raster tile cache",
         "is_managed": True,
         "creation_options": {
+            # "source_asset_id": default_asset_id,
             "min_zoom": 0,
             "max_zoom": 14,
-            "max_static_zoom": 1,
+            "max_static_zoom": 2,
             "use_intensity": True,
         },
         "metadata": {},
@@ -448,7 +449,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
 
     tile_cache_asset_id = resp_json["data"]["asset_id"]
 
-    # Get a list of tasks for all created assets (except the default one)
+    # Check the status of all tasks (except the default one which has already been checked)
     task_ids = []
     assets_response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
     for asset in assets_response.json()["data"]:

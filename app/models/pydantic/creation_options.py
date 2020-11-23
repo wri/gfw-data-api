@@ -193,7 +193,7 @@ class RasterTileCacheAssetCreationOptions(BaseModel):
     max_static_zoom: int = Field(
         9, description="Maximum zoom level to pregenerate tiles for", ge=0, le=22
     )
-    use_intensity: bool = Field(
+    use_intensity: bool = Field(  # FIXME: Use color_map
         False, description="Generate and use intensity layer (for GLAD/RADD)",
     )
 

@@ -36,6 +36,7 @@ if S3_ENTRYPOINT_URL:
     job_env = job_env + [
         {"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL},
         {"name": "AWS_ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
+        {"name": "ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
     ]
 
 
@@ -349,7 +350,7 @@ async def _merge_intensity_and_date_conf(
         callback = callback_constructor(wm_asset_record.asset_id)
 
         merge_intensity_job = BuildRGBJob(
-            job_name="merge_intensity_and_date_conf_assets",
+            job_name=f"merge_intensity_zoom_{zoom_level}",
             command=command,
             environment=job_env,
             callback=callback,
@@ -379,28 +380,24 @@ async def _create_tile_cache(
         co = copy.deepcopy(r_t_s_creation_options)
         co["srid"] = "epsg-3857"
         co["grid"] = f"zoom_{zoom_level}"
-        asset_uri = get_asset_uri(
+        co["pixel_meaning"] = "rgb_encoded"
+        asset_prefix = get_asset_uri(
             dataset, version, AssetType.raster_tile_set, co
-        ).replace("intensity", "combined")
-
-        tile_cache_uri = get_asset_uri(
-            dataset, version, AssetType.raster_tile_cache, r_t_c_creation_options
-        )  # .replace("{tile_id}.tif", "tiles.geojson")
+        ).rsplit("/", 1)[0]
 
         print(
-            f"CREATING TILE CACHE JOB FOR ZOOM LEVEL {zoom_level} MERGED ASSET WITH ASSET_URI {asset_uri}"
+            f"CREATING TILE CACHE JOB FOR ZOOM LEVEL {zoom_level} WITH PREFIX {asset_prefix}"
         )
 
-        command = [
+        command: List[str] = [
             "raster_tile_cache.sh",
             "-d",
             dataset,
             "-v",
             version,
             "--zoom_level",
-            zoom_level,
-            asset_uri,
-            tile_cache_uri,
+            str(zoom_level),
+            asset_prefix,
         ]
 
         tile_cache_job = GDAL2TilesJob(

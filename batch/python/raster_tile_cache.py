@@ -31,24 +31,20 @@ def get_s3_path_parts(s3url):
 @click.option(
     "--zoom_level", type=int, required=True, help="Zoom level to generate tiles for"
 )
-@click.argument("tile_set_asset_uri", type=str)
-@click.argument("destination_uri", type=str)
-def raster_tile_cache(
-    dataset, version, tile_set_asset_uri, destination_uri, zoom_level
-):
-    print(f"Raster tile set asset URI: {tile_set_asset_uri}")
-    print(f"Destination URI: {destination_uri}")
+@click.argument("tile_set_prefix", type=str)
+def raster_tile_cache(dataset, version, zoom_level, tile_set_prefix):
+    print(f"Raster tile set asset prefix: {tile_set_prefix}")
 
     s3_client = get_s3_client()
 
-    bucket, key = get_s3_path_parts(tile_set_asset_uri)
-    prefix = key.replace("{tile_id}.tif", "")
+    bucket, prefix = get_s3_path_parts(tile_set_prefix)
     resp = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+
     # FIXME: Download all files, gdalbuildvrt VRT and process the VRT
 
     if resp["KeyCount"] == 0:
         print("ERROR: No files found in S3!")
-        return 1
+        raise Exception(f"No files found in tile set prefix {tile_set_prefix}")
     else:
         for obj in resp["Contents"]:
             remote_key = str(obj["Key"])
@@ -86,12 +82,14 @@ def raster_tile_cache(
                         cmd_arg_list = [
                             "ls",
                             "-al",
-                            tiles_dir,
+                            "/".join([tiles_dir, "0", "0"]),
                         ]
+                        print(f"Running command: {cmd_arg_list}")
                         proc: subprocess.CompletedProcess = subprocess.run(
                             cmd_arg_list, capture_output=True, check=False, text=True
                         )
                         print(proc.stdout)
+                        print(proc.stderr)
 
                         # FIXME: Do some checking for errors and whatnot
 
@@ -105,4 +103,4 @@ def raster_tile_cache(
 
 
 if __name__ == "__main__":
-    exit(raster_tile_cache())
+    raster_tile_cache()
