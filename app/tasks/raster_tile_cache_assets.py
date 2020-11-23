@@ -5,8 +5,9 @@ from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
 
-from app.crud.assets import create_asset, get_default_asset
+from app.crud.assets import create_asset, get_asset, get_default_asset
 from app.models.enum.assets import AssetType
+from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import (
@@ -47,31 +48,31 @@ async def raster_tile_cache_asset(
     # Argument validation
     min_zoom = input_data["creation_options"]["min_zoom"]
     max_zoom = input_data["creation_options"]["max_zoom"]
-    # FIXME: Make sure max_static < max_zoom, or something
     max_static_zoom = input_data["creation_options"]["max_static_zoom"]
+
     assert min_zoom <= max_zoom  # FIXME: Raise appropriate exception
-
-    # What is needed to create a raster tile cache?
-    # Should default asset be a raster tile set? Is it enough that
-    # ANY ASSET is a raster tile set?
-
-    # callback: Callback = callback_constructor(asset_id)
+    assert max_static_zoom <= max_zoom  # FIXME: Raise appropriate exception
 
     job_list: List[Job] = []
 
+    # source_asset_id is currently required. Could perhaps make it optional
+    # in the case that the default asset is the only raster tile set.
+    source_asset: ORMAsset = await get_asset(
+        input_data["creation_options"]["source_asset_id"]
+    )
+
+    # We should require that the source asset be of the same dataset
+    # and version as the tile cache, right?
+    assert source_asset.dataset == dataset  # FIXME: Raise appropriate exception
+    assert source_asset.version == version  # FIXME: Raise appropriate exception
+
     # For GLAD/RADD, create intensity asset with pixetl and merge with
-    # existing date_conf layer to form a new asset
+    # existing date_conf layer to form a new "rgb_encoded" asset
     if input_data["creation_options"]["use_intensity"]:
 
-        # FIXME: Possible that the raster tile set is not the default asset?
-        # tile_sets = get_assets_by_filter(
-        #     dataset=dataset, version=version, asset_types=[AssetType.raster_tile_set]
-        # )
-
         # Get the creation options from the original date_conf asset
-        default_asset = await get_default_asset(dataset, version)
         date_conf_co = RasterTileSetSourceCreationOptions(
-            **default_asset.creation_options
+            **source_asset.creation_options
         ).dict(by_alias=True)
         print(f"DATE_CONF CREATION OPTIONS: {json.dumps(date_conf_co, indent=2)}")
 
@@ -168,7 +169,6 @@ async def raster_tile_cache_asset(
         tile_cache_jobs = await _create_tile_cache(
             dataset,
             version,
-            input_data["creation_options"],
             intensity_co.dict(by_alias=True),
             min_zoom,
             max_static_zoom,
@@ -365,7 +365,6 @@ async def _merge_intensity_and_date_conf(
 async def _create_tile_cache(
     dataset: str,
     version: str,
-    r_t_c_creation_options: Dict[str, Any],
     r_t_s_creation_options: Dict[str, Any],
     min_zoom: int,
     max_zoom: int,

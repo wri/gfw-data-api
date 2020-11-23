@@ -190,12 +190,15 @@ class RasterTileCacheAssetCreationOptions(BaseModel):
     max_zoom: int = Field(
         22, description="Maximum zoom level of tile cache", ge=0, le=22
     )
+    # FIXME: Should we make the max_static_zoom upper limit lower to avoid DOS?
     max_static_zoom: int = Field(
         9, description="Maximum zoom level to pregenerate tiles for", ge=0, le=22
     )
-    use_intensity: bool = Field(  # FIXME: Use color_map
+    # FIXME: Use symbology
+    use_intensity: bool = Field(
         False, description="Generate and use intensity layer (for GLAD/RADD)",
     )
+    source_asset_id: str
 
     class Config:
         extra = "forbid"

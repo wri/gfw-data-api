@@ -423,7 +423,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
 
     # Flush requests list so we're starting fresh
     # But sleep a moment for any stragglers to come in
-    sleep(3)
+    sleep(2)
     requests.delete(f"http://localhost:{httpd.server_port}")
 
     # Add a tile cache asset based on the raster tile set
@@ -431,7 +431,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         "asset_type": "Raster tile cache",
         "is_managed": True,
         "creation_options": {
-            # "source_asset_id": default_asset_id,
+            "source_asset_id": default_asset_id,
             "min_zoom": 0,
             "max_zoom": 14,
             "max_static_zoom": 2,
