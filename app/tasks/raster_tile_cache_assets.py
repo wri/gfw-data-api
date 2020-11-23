@@ -312,8 +312,9 @@ async def _merge_intensity_and_date_conf(
         c_co = copy.deepcopy(intensity_co)
         c_co["srid"] = "epsg-3857"
         c_co["grid"] = f"zoom_{zoom_level}"
-        c_co["pixel_meaning"] = "combined"  # FIXME: Think about this some more
+        c_co["pixel_meaning"] = "rgb_encoded"
         asset_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, c_co)
+        merged_asset_prefix = asset_uri.rsplit("/", 1)[0]
 
         del c_co["source_uri"]
         del c_co["source_driver"]
@@ -340,15 +341,9 @@ async def _merge_intensity_and_date_conf(
 
         command = [
             "merge_intensity.sh",
-            "-d",
-            dataset,
-            "-v",
-            version,
             date_conf_uri,
             intensity_uri,
-            asset_uri.replace(
-                "{tile_id}.tif", "tiles.geojson"
-            ),  # FIXME: Pass in prefix instead
+            merged_asset_prefix,
         ]
 
         callback = callback_constructor(wm_asset_record.asset_id)

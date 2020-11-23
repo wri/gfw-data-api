@@ -10,6 +10,61 @@ import boto3
 import click
 
 
+@click.command()
+@click.argument("date_conf_uri", type=str)
+@click.argument("intensity_uri", type=str)
+@click.argument("destination_prefix", type=str)
+def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
+    print(f"Date/Confirmation status URI: {date_conf_uri}")
+    print(f"Intensity URI: {intensity_uri}")
+    print(f"Destination prefix: {destination_prefix}")
+
+    s3_client = get_s3_client()
+
+    geo_to_filenames: Dict[str, Dict[str, str]] = dict()
+
+    # Get the tiles.geojsons and map coordinates to geoTIFFs
+    d_c_f_n = "date_conf_file_name"
+    i_f_n = "intensity_file_name"
+    for input_pair in ((d_c_f_n, date_conf_uri), (i_f_n, intensity_uri)):
+        bucket, key = get_s3_path_parts(input_pair[1])
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        tiles_geojson: dict = json.loads(response["Body"].read().decode("utf-8"))
+        # print(f"TILES.GEOJSON: {json.dumps(tiles_geojson, indent=2)}")
+
+        for feature in tiles_geojson["features"]:
+            serialized_coords: str = json.dumps(feature["geometry"]["coordinates"])
+            file_name = feature["properties"]["name"].replace("/vsis3/", "s3://")
+            file_names_dict = geo_to_filenames.get(serialized_coords, {})
+            if not file_names_dict:
+                file_names_dict[input_pair[0]] = file_name
+                geo_to_filenames[serialized_coords] = file_names_dict
+            else:
+                geo_to_filenames[serialized_coords][input_pair[0]] = file_name
+
+    print(f"GEO_TO_FILENAMES: {json.dumps(geo_to_filenames, indent=2)}")
+
+    # Only use coordinates that have associated files in both date/conf and
+    # intensity tile sets.
+    for k, v in geo_to_filenames.items():
+        date_conf_uri = v.get(d_c_f_n)
+        intensity_uri = v.get(i_f_n)
+        if date_conf_uri is None:
+            print(f"No date/conf raster file for coordinates {k}... Skipping")
+            continue
+        elif intensity_uri is None:
+            print(f"No intensity raster file for coordinates {k}... Skipping")
+            continue
+        else:
+            output_uri = "/".join([destination_prefix, intensity_uri.rsplit("/", 1)[1]])
+            print("About to operate on:")
+            print(f"date_conf file: {date_conf_uri}")
+            print(f"intensity file: {intensity_uri}")
+            print(f"output file: {output_uri}")
+
+            process_rasters(date_conf_uri, intensity_uri, output_uri)
+
+
 def get_s3_client(
     aws_region=os.environ["AWS_REGION"], endpoint_url=os.environ["AWS_S3_ENDPOINT"]
 ):
@@ -60,68 +115,6 @@ def process_rasters(date_conf_uri, intensity_uri, output_uri):
         print(f"Uploading {local_output_path} to {output_uri}...")
         s3_client.upload_file(local_output_path, bucket, key)
     return
-
-
-@click.command()
-@click.option(
-    "-d", "--dataset", type=str, required=True, help="Name of dataset to process"
-)
-@click.option(
-    "-v", "--version", type=str, required=True, help="Version of dataset to process"
-)
-@click.argument("date_conf_uri", type=str)
-@click.argument("intensity_uri", type=str)
-@click.argument("destination_uri", type=str)
-def merge_intensity(dataset, version, date_conf_uri, intensity_uri, destination_uri):
-    print(f"Date/Confirmation status URI: {date_conf_uri}")
-    print(f"Intensity URI: {intensity_uri}")
-
-    geo_to_filenames: Dict[str, Dict[str, str]] = dict()
-
-    s3_client = get_s3_client()
-
-    # Get the tiles.geojsons and map coordinates to geoTIFFs
-    d_c_f_n = "date_conf_file_name"
-    i_f_n = "intensity_file_name"
-    for input_pair in ((d_c_f_n, date_conf_uri), (i_f_n, intensity_uri)):
-        bucket, key = get_s3_path_parts(input_pair[1])
-        response = s3_client.get_object(Bucket=bucket, Key=key)
-        tiles_geojson: dict = json.loads(response["Body"].read().decode("utf-8"))
-        # print(f"TILES.GEOJSON: {json.dumps(tiles_geojson, indent=2)}")
-        for feature in tiles_geojson["features"]:
-            serialized_coords: str = json.dumps(feature["geometry"]["coordinates"])
-            file_name = feature["properties"]["name"].replace("/vsis3/", "s3://")
-            blah = geo_to_filenames.get(serialized_coords, {})
-            if not blah:
-                blah[input_pair[0]] = file_name
-                geo_to_filenames[serialized_coords] = blah
-            else:
-                geo_to_filenames[serialized_coords][input_pair[0]] = file_name
-
-    print(f"GEO_TO_FILENAMES: {json.dumps(geo_to_filenames, indent=2)}")
-
-    # Only use coordinates that have associated files in both date/conf and
-    # intensity tile sets.
-    for k, v in geo_to_filenames.items():
-        if v.get(d_c_f_n) is None:
-            print(f"No date_conf raster file for coordinates {k}... Skipping")
-            continue
-        elif v.get(i_f_n) is None:
-            print(f"No intensity raster file for coordinates {k}... Skipping")
-            continue
-        else:
-            # FIXME: Generate output filename based on coordinates
-            # FIXME: Where to get prefix? What to call it? Hard-code as "combined" for now
-            output_uri = v[i_f_n].replace(
-                "intensity", "combined"
-            )  # FIXME: Append filename to passed prefix
-            print("About to operate on:")
-            print(f"date_conf file: {v[d_c_f_n]}")
-            print(f"intensity file: {v[i_f_n]}")
-            print(f"output file: {output_uri}")
-
-            process_rasters(v[d_c_f_n], v[i_f_n], output_uri)
-    # FIXME: Create extent.geojson and tiles.geojson for the combined tiles. Or do back in raster tile cache asset code?
 
 
 if __name__ == "__main__":
