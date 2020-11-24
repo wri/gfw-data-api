@@ -425,7 +425,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
             "source_asset_id": default_asset_id,
             "min_zoom": 0,
             "max_zoom": 14,
-            "max_static_zoom": 2,
+            "max_static_zoom": 3,
             "symbology": {"color_map": {"type": "date_conf_intensity"}},
         },
         "metadata": {},
