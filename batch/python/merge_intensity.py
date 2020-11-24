@@ -9,6 +9,20 @@ from typing import Dict
 import boto3
 import click
 
+AWS_REGION = os.environ.get("AWS_REGION")
+AWS_S3_ENDPOINT = os.environ.get("AWS_S3_ENDPOINT")
+
+
+def get_s3_client(aws_region=AWS_REGION, endpoint_url=AWS_S3_ENDPOINT):
+    return boto3.client("s3", region_name=aws_region, endpoint_url=endpoint_url)
+
+
+def get_s3_path_parts(s3url):
+    just_path = s3url.split("s3://")[1]
+    bucket = just_path.split("/")[0]
+    key = "/".join(just_path.split("/")[1:])
+    return bucket, key
+
 
 @click.command()
 @click.argument("date_conf_uri", type=str)
@@ -63,20 +77,6 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
             print(f"output file: {output_uri}")
 
             process_rasters(date_conf_uri, intensity_uri, output_uri)
-
-
-def get_s3_client(
-    aws_region=os.environ.get("AWS_REGION"),
-    endpoint_url=os.environ.get("AWS_S3_ENDPOINT"),
-):
-    return boto3.client("s3", region_name=aws_region, endpoint_url=endpoint_url)
-
-
-def get_s3_path_parts(s3url):
-    just_path = s3url.split("s3://")[1]
-    bucket = just_path.split("/")[0]
-    key = "/".join(just_path.split("/")[1:])
-    return bucket, key
 
 
 def process_rasters(date_conf_uri, intensity_uri, output_uri):
