@@ -5,8 +5,9 @@ from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
 
-from app.crud.assets import create_asset, get_asset, get_default_asset
+from app.crud.assets import create_asset, get_asset
 from app.models.enum.assets import AssetType
+from app.models.enum.pixetl import ResamplingMethod
 from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.change_log import ChangeLog
@@ -27,7 +28,10 @@ from app.tasks import Callback, callback_constructor, writer_secrets
 from app.tasks.batch import execute
 from app.utils.path import get_asset_uri
 
-job_env = writer_secrets + [
+INTENSITY_PIXEL_MEANING = "intensity"
+RGB_ENCODED_PIXEL_MEANING = "rgb_encoded"
+
+JOB_ENV = writer_secrets + [
     {"name": "AWS_REGION", "value": AWS_REGION},
     {"name": "ENV", "value": ENV},
     {"name": "CORES", "value": PIXETL_CORES},
@@ -35,7 +39,9 @@ job_env = writer_secrets + [
 ]
 
 if S3_ENTRYPOINT_URL:
-    job_env = job_env + [
+    # FIXME: Why all these? Because different programs (tileputty,
+    # pixetl, gdal* use different vars. See about consolidating.
+    JOB_ENV = JOB_ENV + [
         {"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL},
         {"name": "AWS_ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
         {"name": "ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
@@ -53,10 +59,16 @@ async def raster_tile_cache_asset(
     assert min_zoom <= max_zoom  # FIXME: Raise appropriate exception
     assert max_static_zoom <= max_zoom  # FIXME: Raise appropriate exception
 
+    # FIXME: Remove this when implementing standard tile cache code path:
+    if not input_data["creation_options"]["use_intensity"]:
+        raise NotImplementedError(
+            "Raster tile cache currently only implemented for GLAD/RADD pipeline"
+        )
+
     job_list: List[Job] = []
 
     # source_asset_id is currently required. Could perhaps make it optional
-    # in the case that the default asset is the only raster tile set.
+    # in the case that the default asset is the only one.
     source_asset: ORMAsset = await get_asset(
         input_data["creation_options"]["source_asset_id"]
     )
@@ -66,87 +78,75 @@ async def raster_tile_cache_asset(
     assert source_asset.dataset == dataset  # FIXME: Raise appropriate exception
     assert source_asset.version == version  # FIXME: Raise appropriate exception
 
+    # Re-project the original asset to web-mercator (as new assets)
+    # Get the creation options from the original raster tile set asset
+    source_asset_co = RasterTileSetSourceCreationOptions(
+        **source_asset.creation_options
+    ).dict(by_alias=True)
+
+    # Reset calc to prevent it from interfering with new derivative assets
+    # and set source_uri from whatever it is to refer to the raster tile set
+    # copy in the data lake
+    source_asset_co["calc"] = None
+    source_source_uri = get_asset_uri(
+        dataset, version, AssetType.raster_tile_set, source_asset_co
+    ).replace("{tile_id}.tif", "tiles.geojson")
+    source_asset_co["source_uri"] = [source_source_uri]
+
+    # print(f"SOURCE ASSET CREATION OPTIONS: {json.dumps(date_conf_co, indent=2)}")
+
+    source_reprojection_jobs = await _reproject_to_web_mercator(
+        dataset,
+        version,
+        copy.deepcopy(source_asset_co),
+        min_zoom,
+        max_static_zoom,
+        None,
+    )
+    job_list += source_reprojection_jobs
+    print("SOURCE ASSET REPROJECTION JOBS CREATED")
+
     # For GLAD/RADD, create intensity asset with pixetl and merge with
-    # existing date_conf layer to form a new "rgb_encoded" asset
+    # existing date/conf layer to form a new RGB_ENCODED_PIXEL_MEANING asset
     if input_data["creation_options"]["use_intensity"]:
 
-        # Get the creation options from the original date_conf asset
-        date_conf_co = RasterTileSetSourceCreationOptions(
-            **source_asset.creation_options
-        ).dict(by_alias=True)
-        print(f"DATE_CONF CREATION OPTIONS: {json.dumps(date_conf_co, indent=2)}")
-
         # Create intensity asset from date_conf asset creation options
-        intensity_co = RasterTileSetSourceCreationOptions(
+        # No need for a WGS84 copy, so go right to web-mercator
+        date_conf_co = copy.deepcopy(source_asset_co)
+        intensity_source_uri = get_asset_uri(
+            dataset, version, AssetType.raster_tile_set, date_conf_co
+        ).replace("{tile_id}.tif", "tiles.geojson")
+
+        intensity_co_dict = {
+            **date_conf_co,
             **{
-                "source_driver": date_conf_co["source_driver"],
-                "source_type": "raster",
-                "source_uri": [
-                    get_asset_uri(
-                        dataset, version, AssetType.raster_tile_set, date_conf_co
-                    ).replace("{tile_id}.tif", "tiles.geojson")
-                ],
-                "pixel_meaning": "intensity",
-                "resampling": "med",
+                "source_uri": [intensity_source_uri],
+                "pixel_meaning": INTENSITY_PIXEL_MEANING,
+                "resampling": ResamplingMethod.med,
                 "calc": "(A>0)*55",
-                "data_type": date_conf_co["data_type"],
                 "grid": date_conf_co["grid"],
-                "nbits": date_conf_co["nbits"],
-                "no_data": date_conf_co["no_data"],
                 "overwrite": True,
-                "subset": date_conf_co["subset"],
-            }
-        )
+            },
+        }
+
+        intensity_co = RasterTileSetSourceCreationOptions(**intensity_co_dict)
         print(
-            f"INTENSITY CREATION OPTIONS: {json.dumps(intensity_co.dict(by_alias=True), indent=2)}"
+            "INTENSITY ASSET CREATION OPTIONS: "
+            f"{json.dumps(intensity_co.dict(by_alias=True), indent=2)}"
         )
 
-        # Create intensity asset record in DB
-        asset_options = AssetCreateIn(
-            asset_type=AssetType.raster_tile_set,
-            asset_uri=get_asset_uri(
-                dataset,
-                version,
-                AssetType.raster_tile_set,
-                intensity_co.dict(by_alias=True),
-            ),
-            is_managed=True,
-            creation_options=intensity_co,
-            metadata={},
-        ).dict(by_alias=True)
-        intensity_asset_record = await create_asset(dataset, version, **asset_options)
-        print("INTENSITY ASSET CREATED")
-
-        # DEBUGGING:
-        intensity_asset_record_co = RasterTileSetSourceCreationOptions(
-            **intensity_asset_record.creation_options
-        ).dict(by_alias=True, exclude_none=True)
-        print(
-            f"INTENSITY_CO AS STORED IN RECORD: {json.dumps(intensity_asset_record_co, indent=2)}"
-        )
-
-        intensity_job = await _run_pixetl(
+        intensity_reprojection_jobs = await _reproject_to_web_mercator(
             dataset,
             version,
-            intensity_asset_record.creation_options,
-            "create_intensity",
-            callback_constructor(intensity_asset_record.asset_id),
+            intensity_co.dict(by_alias=True),
+            min_zoom,
+            max_static_zoom,
+            None,
         )
-        job_list.append(intensity_job)
-        print("INTENSITY JOB CREATED")
+        job_list += intensity_reprojection_jobs
+        print("INTENSITY REPROJECTION JOBS CREATED")
 
-        # Re-project date_conf and intensity to web mercator with pixetl
-        # Note that technically the date_conf reprojection jobs don't need
-        # to depend on the intensity job, think about separating this for
-        # loop later
-        for co in (copy.deepcopy(date_conf_co), intensity_co.dict(by_alias=True)):
-            more_jobs = await _reproject_to_web_mercator(
-                dataset, version, co, min_zoom, max_static_zoom, [intensity_job],
-            )
-            job_list += more_jobs
-        print("REPROJECTION JOBS CREATED")
-
-        # Now merge the date_conf and intensity tiles for each zoom level to
+        # Now merge the date/conf and intensity tiles for each zoom level to
         # create the final raster tile set asset
 
         # Create merged asset record
@@ -173,7 +173,7 @@ async def raster_tile_cache_asset(
             min_zoom,
             max_static_zoom,
             callback_constructor(asset_id),
-            job_list,
+            merge_jobs,
         )
         job_list += tile_cache_jobs
 
@@ -196,8 +196,6 @@ async def _run_pixetl(
     callback: Callback,
     parents: Optional[List[Job]] = None,
 ):
-    # FIXME: See if "intensity" asset already exists first
-
     co["source_uri"] = co.pop("source_uri")[0]
     overwrite = co.pop("overwrite", False)  # FIXME: Think about this value some more
     subset = co.pop("subset", None)
@@ -221,7 +219,7 @@ async def _run_pixetl(
     pixetl_job_id = PixETLJob(
         job_name=job_name,
         command=command,
-        environment=job_env,
+        environment=JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents] if parents else None,
     )
@@ -242,10 +240,7 @@ async def _reproject_to_web_mercator(
     for zoom_level in range(min_zoom, max_zoom):
         # Sanitize creation_options
         co = copy.deepcopy(source_creation_options)
-        source_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, co)
         co["srid"] = "epsg-3857"
-        co["source_uri"] = [source_uri.replace("{tile_id}.tif", "tiles.geojson")]
-        co["calc"] = None
         co["grid"] = f"zoom_{zoom_level}"
         co["resampling"] = "med"
         co["overwrite"] = True  # FIXME: Grab from date_conf, default to False
@@ -314,7 +309,7 @@ async def _merge_intensity_and_date_conf(
         c_co = copy.deepcopy(intensity_co)
         c_co["srid"] = "epsg-3857"
         c_co["grid"] = f"zoom_{zoom_level}"
-        c_co["pixel_meaning"] = "rgb_encoded"
+        c_co["pixel_meaning"] = RGB_ENCODED_PIXEL_MEANING
         asset_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, c_co)
         merged_asset_prefix = asset_uri.rsplit("/", 1)[0]
 
@@ -353,7 +348,7 @@ async def _merge_intensity_and_date_conf(
         merge_intensity_job = BuildRGBJob(
             job_name=f"merge_intensity_zoom_{zoom_level}",
             command=command,
-            environment=job_env,
+            environment=JOB_ENV,
             callback=callback,
             parents=[parent.job_name for parent in parents],
         )
@@ -380,7 +375,7 @@ async def _create_tile_cache(
         co = copy.deepcopy(r_t_s_creation_options)
         co["srid"] = "epsg-3857"
         co["grid"] = f"zoom_{zoom_level}"
-        co["pixel_meaning"] = "rgb_encoded"
+        co["pixel_meaning"] = RGB_ENCODED_PIXEL_MEANING
         asset_prefix = get_asset_uri(
             dataset, version, AssetType.raster_tile_set, co
         ).rsplit("/", 1)[0]
@@ -405,7 +400,7 @@ async def _create_tile_cache(
         tile_cache_job = GDAL2TilesJob(
             job_name=f"generate_tile_cache_zoom_{zoom_level}",
             command=command,
-            environment=job_env,
+            environment=JOB_ENV,
             callback=callback,
             parents=[parent.job_name for parent in parents],
         )

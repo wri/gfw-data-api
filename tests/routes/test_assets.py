@@ -368,12 +368,12 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     )
 
     pixetl_output_files = [
-        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/90N_000E.tif",
-        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/90N_000E.tif",
+        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/extent.geojson",
+        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/extent.geojson",
+        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/tiles.geojson",
+        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/tiles.geojson",
+        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/90N_000E.tif",
+        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/90N_000E.tif",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/extent.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/tiles.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/000R_000C.tif",
