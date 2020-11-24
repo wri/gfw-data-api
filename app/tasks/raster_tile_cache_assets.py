@@ -39,10 +39,10 @@ JOB_ENV = writer_secrets + [
 ]
 
 if S3_ENTRYPOINT_URL:
-    # FIXME: Why all these? Because different programs (tileputty,
-    # pixetl, gdal*) use different vars. See about consolidating.
+    # FIXME: Why all these? Because different programs (boto,
+    # pixetl, gdal*) use different vars.
     JOB_ENV = JOB_ENV + [
-        {"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL},
+        # {"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL},
         {"name": "AWS_ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
         {"name": "ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
     ]

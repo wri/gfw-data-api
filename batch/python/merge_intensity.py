@@ -10,10 +10,10 @@ import boto3
 import click
 
 AWS_REGION = os.environ.get("AWS_REGION")
-AWS_S3_ENDPOINT = os.environ.get("AWS_S3_ENDPOINT")
+AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
 
 
-def get_s3_client(aws_region=AWS_REGION, endpoint_url=AWS_S3_ENDPOINT):
+def get_s3_client(aws_region=AWS_REGION, endpoint_url=AWS_ENDPOINT_URL):
     return boto3.client("s3", region_name=aws_region, endpoint_url=endpoint_url)
 
 
