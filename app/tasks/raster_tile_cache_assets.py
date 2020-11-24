@@ -172,10 +172,14 @@ async def raster_tile_cache_asset(
 
         # Actually create the tile cache using gdal2tiles
         print("Now create the tile cache using gdal2tiles...")
+        tile_cache_co = intensity_co.dict(by_alias=True)
+        tile_cache_co["pixel_meaning"] = RGB_ENCODED_PIXEL_MEANING
+        tile_cache_co["srid"] = "epsg-3857"
+
         tile_cache_jobs = await _create_tile_cache(
             dataset,
             version,
-            intensity_co.dict(by_alias=True),
+            tile_cache_co,
             min_zoom,
             max_static_zoom,
             callback_constructor(asset_id),
@@ -243,16 +247,18 @@ async def _reproject_to_web_mercator(
 ) -> List[Job]:
     job_list: List[Job] = []
 
-    for zoom_level in range(min_zoom, max_zoom):
-        # Sanitize creation_options
-        co = copy.deepcopy(source_creation_options)
-        co["srid"] = "epsg-3857"
+    # Processing chokes on large datasets if we go directly to low
+    # zoom levels, so start at the highest and work our way back
+
+    co = copy.deepcopy(source_creation_options)
+    co["resampling"] = "med"
+    co["overwrite"] = co.get("overwrite", False)
+    co["srid"] = "epsg-3857"
+
+    for zoom_level in reversed(range(min_zoom, max_zoom)):
         co["grid"] = f"zoom_{zoom_level}"
-        co["resampling"] = "med"
-        co["overwrite"] = True  # FIXME: Grab from date_conf, default to False
 
         asset_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, co)
-
         del co["srid"]
 
         co_obj = RasterTileSetSourceCreationOptions(**co)
@@ -265,7 +271,6 @@ async def _reproject_to_web_mercator(
             creation_options=co_obj,
             metadata={},
         ).dict(by_alias=True)
-
         wm_asset_record = await create_asset(dataset, version, **asset_options)
         print(f"ZOOM LEVEL {zoom_level} REPROJECTION ASSET CREATED")
 
@@ -275,10 +280,16 @@ async def _reproject_to_web_mercator(
             wm_asset_record.creation_options,
             f"zoom_level_{zoom_level}_{co['pixel_meaning']}_reprojection",
             callback_constructor(wm_asset_record.asset_id),
-            parents=parents,
+            parents=(parents + job_list) if parents else job_list,
         )
         job_list.append(zoom_level_job)
         print(f"ZOOM LEVEL {zoom_level} REPROJECTION JOB CREATED")
+
+        co["srid"] = "epsg-3857"
+        source_uri = get_asset_uri(
+            dataset, version, AssetType.raster_tile_set, co
+        ).replace("{tile_id}.tif", "tiles.geojson")
+        co["source_uri"] = [source_uri]
 
     return job_list
 
@@ -292,7 +303,6 @@ async def _merge_intensity_and_date_conf(
     max_zoom: int,
     parents: List[Job],
 ):
-    # BLAH BLAH BLAH
     merge_intensity_jobs: List[Job] = []
 
     for zoom_level in range(min_zoom, max_zoom):
@@ -372,16 +382,13 @@ async def _create_tile_cache(
     callback: Callback,
     parents: List[Job],
 ):
-    # BLAH BLAH BLAH
     tile_cache_jobs: List[Job] = []
 
     for zoom_level in range(min_zoom, max_zoom):
         # Sanitize creation_options
 
         co = copy.deepcopy(r_t_s_creation_options)
-        co["srid"] = "epsg-3857"
         co["grid"] = f"zoom_{zoom_level}"
-        co["pixel_meaning"] = RGB_ENCODED_PIXEL_MEANING
         asset_prefix = get_asset_uri(
             dataset, version, AssetType.raster_tile_set, co
         ).rsplit("/", 1)[0]
