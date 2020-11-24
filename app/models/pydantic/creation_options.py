@@ -23,6 +23,7 @@ from ..enum.sources import (
     VectorSourceType,
 )
 from .responses import Response
+from .symbology import Symbology
 
 COLUMN_REGEX = r"^[a-z][a-zA-Z0-9_-]{2,}$"
 PARTITION_SUFFIX_REGEX = r"^[a-z0-9_-]{3,}$"
@@ -192,12 +193,9 @@ class RasterTileCacheAssetCreationOptions(BaseModel):
     )
     # FIXME: Should we make the max_static_zoom upper limit lower to avoid DOS?
     max_static_zoom: int = Field(
-        9, description="Maximum zoom level to pregenerate tiles for", ge=0, le=22
+        9, description="Maximum zoom level to pre-generate tiles for", ge=0, le=22
     )
-    # FIXME: Use symbology
-    use_intensity: bool = Field(
-        False, description="Generate and use intensity layer (for GLAD/RADD)",
-    )
+    symbology: Symbology
     source_asset_id: str
 
     class Config:

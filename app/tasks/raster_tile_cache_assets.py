@@ -40,7 +40,7 @@ JOB_ENV = writer_secrets + [
 
 if S3_ENTRYPOINT_URL:
     # FIXME: Why all these? Because different programs (tileputty,
-    # pixetl, gdal* use different vars. See about consolidating.
+    # pixetl, gdal*) use different vars. See about consolidating.
     JOB_ENV = JOB_ENV + [
         {"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL},
         {"name": "AWS_ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
@@ -60,7 +60,10 @@ async def raster_tile_cache_asset(
     assert max_static_zoom <= max_zoom  # FIXME: Raise appropriate exception
 
     # FIXME: Remove this when implementing standard tile cache code path:
-    if not input_data["creation_options"]["use_intensity"]:
+    if (
+        input_data["creation_options"]["symbology"]["color_map"]["type"]
+        != "date_conf_intensity"
+    ):
         raise NotImplementedError(
             "Raster tile cache currently only implemented for GLAD/RADD pipeline"
         )
@@ -108,7 +111,10 @@ async def raster_tile_cache_asset(
 
     # For GLAD/RADD, create intensity asset with pixetl and merge with
     # existing date/conf layer to form a new RGB_ENCODED_PIXEL_MEANING asset
-    if input_data["creation_options"]["use_intensity"]:
+    if (
+        input_data["creation_options"]["symbology"]["color_map"]["type"]
+        == "date_conf_intensity"
+    ):
 
         # Create intensity asset from date_conf asset creation options
         # No need for a WGS84 copy, so go right to web-mercator
