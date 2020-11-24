@@ -66,7 +66,8 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
 
 
 def get_s3_client(
-    aws_region=os.environ["AWS_REGION"], endpoint_url=os.environ["AWS_S3_ENDPOINT"]
+    aws_region=os.environ.get("AWS_REGION"),
+    endpoint_url=os.environ.get("AWS_S3_ENDPOINT"),
 ):
     return boto3.client("s3", region_name=aws_region, endpoint_url=endpoint_url)
 
