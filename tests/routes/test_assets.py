@@ -368,20 +368,12 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     )
 
     pixetl_output_files = [
-        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/extent.geojson",
-        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/extent.geojson",
-        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/tiles.geojson",
-        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/tiles.geojson",
-        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/gdal-geotiff/90N_000E.tif",
-        # f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/intensity/geotiff/90N_000E.tif",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/extent.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/tiles.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/000R_000C.tif",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/extent.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/tiles.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/000R_000C.tif",
-        # f"{dataset}/{version}/raster/epsg-3857/zoom_0/combined/geotiff/extent.geojson",
-        # f"{dataset}/{version}/raster/epsg-3857/zoom_0/combined/geotiff/tiles.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/rgb_encoded/geotiff/000R_000C.tif",
     ]
 
@@ -397,6 +389,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
             "source_driver": "GeoTIFF",
             "data_type": "uint16",
+            "no_data": 0,
             "pixel_meaning": "date_conf",
             "grid": primary_grid,
             "resampling": "nearest",
@@ -422,8 +415,6 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     assert asset_resp.json()["data"]["status"] == "saved"
 
     # Flush requests list so we're starting fresh
-    # But sleep a moment for any stragglers to come in
-    sleep(2)
     requests.delete(f"http://localhost:{httpd.server_port}")
 
     # Add a tile cache asset based on the raster tile set
