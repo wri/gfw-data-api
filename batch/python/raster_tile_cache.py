@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 
 import boto3
 import click
+from tileputty.upload_tiles import upload_tiles
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
@@ -78,8 +79,8 @@ def raster_tile_cache(
             f"--zoom={zoom_level}",
             "--s_srs",
             "EPSG:3857",
-            "--resampling=bilinear",
-            "--processes=1",  # FIXME: Pass in cores value?
+            "--resampling=near",
+            f"--processes={os.environ.get('CORES', os.cpu_count())}",
             "--xyz",
             vrt_path,
             tiles_dir,
@@ -92,25 +93,14 @@ def raster_tile_cache(
         print(proc.stderr)
         proc.check_returncode()
 
-        cmd_arg_list = [
-            "tileputty",
-            "--bucket",
-            target_bucket,
-            "--dataset",
-            dataset,
-            "--version",
-            version,
-            "--implementation",
-            implementation,
+        print("Uploading tiles using TilePutty")
+        upload_tiles(
             tiles_dir,
-        ]
-        print(f"Running command: {cmd_arg_list}")
-        proc: subprocess.CompletedProcess = subprocess.run(
-            cmd_arg_list, capture_output=True, check=False, text=True
+            dataset,
+            version,
+            bucket=target_bucket,
+            implementation=implementation,
         )
-        print(proc.stdout)
-        print(proc.stderr)
-        proc.check_returncode()
 
 
 if __name__ == "__main__":

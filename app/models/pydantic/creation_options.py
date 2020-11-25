@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 from pydantic import BaseModel, Field, root_validator
 from pydantic.types import PositiveInt
 
+from ...settings.globals import PIXETL_DEFAULT_RESAMPLING
 from ..enum.assets import AssetType, is_default_asset
 from ..enum.creation_options import (
     Delimiters,
@@ -87,10 +88,10 @@ class RasterTileSetAssetCreationOptions(BaseModel):
     nbits: Optional[int]
     no_data: Optional[int]
     rasterize_method: Optional[RasterizeMethod]
-    resampling: Optional[ResamplingMethod]
+    resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
     calc: Optional[str]
     order: Optional[Order]
-    overwrite: Optional[bool]
+    overwrite: bool = False
     subset: Optional[str]
     grid: Grid
 
