@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
 
@@ -22,4 +22,7 @@ class RGBA(BaseModel):
 
 class Symbology(BaseModel):
     type: ColorMapType
-    colormap: Dict[Union[int, float], RGBA]
+    colormap: Optional[Dict[Union[int, float], RGBA]]
+
+    class Config:
+        extra = "forbid"

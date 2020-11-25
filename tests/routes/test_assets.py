@@ -405,7 +405,6 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         f"/dataset/{dataset}/{version}/assets", json=asset_payload
     )
     resp_json = create_asset_resp.json()
-    print(resp_json)
     assert resp_json["status"] == "success"
     assert resp_json["data"]["status"] == "pending"
 

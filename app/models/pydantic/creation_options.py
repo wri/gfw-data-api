@@ -216,7 +216,7 @@ class TileCacheBaseModel(BaseModel):
         extra = "forbid"
 
 
-class RasterTileCacheAssetCreationOptions(TileCacheBaseModel):
+class RasterTileCacheCreationOptions(TileCacheBaseModel):
     # FIXME: Should we make the max_static_zoom upper limit lower to avoid DOS?
     max_static_zoom: int = Field(
         9, description="Maximum zoom level to pre-generate tiles for", ge=0, le=22
@@ -284,8 +284,8 @@ SourceCreationOptions = Union[
 OtherCreationOptions = Union[
     StaticVectorTileCacheCreationOptions,
     StaticVectorFileCreationOptions,
+    RasterTileCacheCreationOptions,
     DynamicVectorTileCacheCreationOptions,
-    RasterTileCacheAssetCreationOptions,
     RasterTileSetAssetCreationOptions,
     TableAssetCreationOptions,
 ]
@@ -311,7 +311,7 @@ AssetCreationOptionsLookup: Dict[str, Type[OtherCreationOptions]] = {
     AssetType.shapefile: StaticVectorFileCreationOptions,
     AssetType.geopackage: StaticVectorFileCreationOptions,
     AssetType.raster_tile_set: RasterTileSetAssetCreationOptions,
-    AssetType.raster_tile_cache: RasterTileCacheAssetCreationOptions,
+    AssetType.raster_tile_cache: RasterTileCacheCreationOptions,
     AssetType.database_table: TableAssetCreationOptions,
 }
 
