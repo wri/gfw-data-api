@@ -71,6 +71,7 @@ def raster_tile_cache(
         )
         print(proc.stdout)
         print(proc.stderr)
+        proc.check_returncode()
 
         cmd_arg_list = [
             "gdal2tiles.py",
@@ -78,7 +79,7 @@ def raster_tile_cache(
             "--s_srs",
             "EPSG:3857",
             "--resampling=bilinear",
-            "--processes=1",  # FIXME: Pass in pixetl cores value? Or similar
+            "--processes=1",  # FIXME: Pass in cores value?
             "--xyz",
             vrt_path,
             tiles_dir,
@@ -89,6 +90,7 @@ def raster_tile_cache(
         )
         print(proc.stdout)
         print(proc.stderr)
+        proc.check_returncode()
 
         cmd_arg_list = [
             "tileputty",
@@ -108,8 +110,7 @@ def raster_tile_cache(
         )
         print(proc.stdout)
         print(proc.stderr)
-
-        # FIXME: Do some checking for errors and whatnot
+        proc.check_returncode()
 
 
 if __name__ == "__main__":

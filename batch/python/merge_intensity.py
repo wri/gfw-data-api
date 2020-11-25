@@ -104,11 +104,12 @@ def process_rasters(date_conf_uri, intensity_uri, output_uri):
             local_output_path,
         ]
         print(f"Running command: {cmd_arg_list}")
-        _: subprocess.CompletedProcess = subprocess.run(
-            cmd_arg_list, capture_output=True, check=True, text=True
+        proc: subprocess.CompletedProcess = subprocess.run(
+            cmd_arg_list, capture_output=True, check=False, text=True
         )
-
-        # FIXME: Do some checking for errors and whatnot
+        print(proc.stdout)
+        print(proc.stderr)
+        proc.check_returncode()
 
         # Upload resulting output file to S3
         bucket, key = get_s3_path_parts(output_uri)
