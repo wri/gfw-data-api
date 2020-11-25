@@ -42,7 +42,6 @@ if S3_ENTRYPOINT_URL:
     # FIXME: Why all these? Because different programs (boto,
     # pixetl, gdal*) use different vars.
     JOB_ENV = JOB_ENV + [
-        # {"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL},
         {"name": "AWS_ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
         {"name": "ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
     ]
@@ -91,6 +90,7 @@ async def raster_tile_cache_asset(
     # and set source_uri from whatever it is to refer to the raster tile set
     # copy in the data lake
     source_asset_co["calc"] = None
+    source_asset_co["resampling"] = ResamplingMethod.med
     source_source_uri = get_asset_uri(
         dataset, version, AssetType.raster_tile_set, source_asset_co
     ).replace("{tile_id}.tif", "tiles.geojson")
@@ -132,6 +132,7 @@ async def raster_tile_cache_asset(
                 "calc": "(A>0)*55",
                 "grid": date_conf_co["grid"],
                 "overwrite": True,
+                "no_data": None,
             },
         }
 
@@ -167,7 +168,7 @@ async def raster_tile_cache_asset(
         )
         job_list += merge_jobs
 
-        # FIXME: build_rgb created the merged tiles but not tiles.geojson or extent.geojson
+        # FIXME: build_rgb created the merged rasters but not tiles.geojson or extent.geojson
         # Create those now with pixetl's pixetl_prep?
 
         # Actually create the tile cache using gdal2tiles
@@ -206,9 +207,10 @@ async def _run_pixetl(
     callback: Callback,
     parents: Optional[List[Job]] = None,
 ):
-    co["source_uri"] = co.pop("source_uri")[0]
-    overwrite = co.pop("overwrite", False)  # FIXME: Think about this value some more
-    subset = co.pop("subset", None)
+    co_copy = copy.deepcopy(co)
+    co_copy["source_uri"] = co_copy.pop("source_uri")[0]
+    overwrite = co_copy.pop("overwrite", False)
+    subset = co_copy.pop("subset", None)
 
     command = [
         "run_pixetl.sh",
@@ -217,7 +219,7 @@ async def _run_pixetl(
         "-v",
         version,
         "-j",
-        json.dumps(jsonable_encoder(co)),
+        json.dumps(jsonable_encoder(co_copy)),
     ]
 
     if overwrite:
@@ -245,7 +247,7 @@ async def _reproject_to_web_mercator(
     max_zoom: int,
     parents: Optional[List[Job]],
 ) -> List[Job]:
-    job_list: List[Job] = []
+    reprojection_jobs: List[Job] = []
 
     # Processing chokes on large datasets if we go directly to low
     # zoom levels, so start at the highest and work our way back
@@ -280,9 +282,9 @@ async def _reproject_to_web_mercator(
             wm_asset_record.creation_options,
             f"zoom_level_{zoom_level}_{co['pixel_meaning']}_reprojection",
             callback_constructor(wm_asset_record.asset_id),
-            parents=(parents + job_list) if parents else job_list,
+            parents=(parents + reprojection_jobs) if parents else reprojection_jobs,
         )
-        job_list.append(zoom_level_job)
+        reprojection_jobs.append(zoom_level_job)
         print(f"ZOOM LEVEL {zoom_level} REPROJECTION JOB CREATED")
 
         co["srid"] = "epsg-3857"
@@ -291,7 +293,7 @@ async def _reproject_to_web_mercator(
         ).replace("{tile_id}.tif", "tiles.geojson")
         co["source_uri"] = [source_uri]
 
-    return job_list
+    return reprojection_jobs
 
 
 async def _merge_intensity_and_date_conf(

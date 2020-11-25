@@ -57,8 +57,8 @@ def raster_tile_cache(dataset, version, zoom_level, target_bucket, tile_set_pref
             print(f"Converting to GDAL path {gdal_path}")
             tiff_paths.append(gdal_path)
 
-    with TemporaryDirectory() as temp_dir:
-        vrt_path = os.path.join(temp_dir, "index.vrt")
+    with TemporaryDirectory() as vrt_dir, TemporaryDirectory() as tiles_dir:
+        vrt_path = os.path.join(vrt_dir, "index.vrt")
         cmd_arg_list = ["gdalbuildvrt", vrt_path, *tiff_paths]
         print(f"Running command: {cmd_arg_list}")
         proc: subprocess.CompletedProcess = subprocess.run(
@@ -67,43 +67,42 @@ def raster_tile_cache(dataset, version, zoom_level, target_bucket, tile_set_pref
         print(proc.stdout)
         print(proc.stderr)
 
-        with TemporaryDirectory() as tiles_dir:
-            cmd_arg_list = [
-                "gdal2tiles.py",
-                f"--zoom={zoom_level}",
-                "--s_srs",
-                "EPSG:3857",
-                "--resampling=near",
-                "--processes=1",  # FIXME: Pass in pixetl cores value? Or similar
-                "--xyz",
-                vrt_path,
-                tiles_dir,
-            ]
-            print(f"Running command: {cmd_arg_list}")
-            proc: subprocess.CompletedProcess = subprocess.run(
-                cmd_arg_list, capture_output=True, check=False, text=True,
-            )
-            print(proc.stdout)
-            print(proc.stderr)
+        cmd_arg_list = [
+            "gdal2tiles.py",
+            f"--zoom={zoom_level}",
+            "--s_srs",
+            "EPSG:3857",
+            "--resampling=bilinear",
+            "--processes=1",  # FIXME: Pass in pixetl cores value? Or similar
+            "--xyz",
+            vrt_path,
+            tiles_dir,
+        ]
+        print(f"Running command: {cmd_arg_list}")
+        proc: subprocess.CompletedProcess = subprocess.run(
+            cmd_arg_list, capture_output=True, check=False, text=True,
+        )
+        print(proc.stdout)
+        print(proc.stderr)
 
-            cmd_arg_list = [
-                "tileputty",
-                "--bucket",
-                target_bucket,
-                "--dataset",
-                dataset,
-                "--version",
-                version,
-                tiles_dir,
-            ]
-            print(f"Running command: {cmd_arg_list}")
-            proc: subprocess.CompletedProcess = subprocess.run(
-                cmd_arg_list, capture_output=True, check=False, text=True
-            )
-            print(proc.stdout)
-            print(proc.stderr)
+        cmd_arg_list = [
+            "tileputty",
+            "--bucket",
+            target_bucket,
+            "--dataset",
+            dataset,
+            "--version",
+            version,
+            tiles_dir,
+        ]
+        print(f"Running command: {cmd_arg_list}")
+        proc: subprocess.CompletedProcess = subprocess.run(
+            cmd_arg_list, capture_output=True, check=False, text=True
+        )
+        print(proc.stdout)
+        print(proc.stderr)
 
-            # FIXME: Do some checking for errors and whatnot
+        # FIXME: Do some checking for errors and whatnot
 
 
 if __name__ == "__main__":
