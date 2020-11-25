@@ -21,6 +21,7 @@ from app.settings.globals import (
     AWS_REGION,
     ENV,
     PIXETL_CORES,
+    PIXETL_DEFAULT_RESAMPLING,
     PIXETL_MAX_MEM,
     S3_ENTRYPOINT_URL,
     TILE_CACHE_BUCKET,
@@ -83,27 +84,27 @@ async def raster_tile_cache_asset(
     # Get the creation options from the original raster tile set asset
     source_asset_co = RasterTileSetSourceCreationOptions(
         **source_asset.creation_options
-    ).dict(by_alias=True)
+    )
 
     # Reset calc to prevent it from interfering with new derivative assets
     # and set source_uri from whatever it is to refer to the raster tile set
     # copy in the data lake
-    source_asset_co["calc"] = None
-    source_asset_co["resampling"] = ResamplingMethod.med
+    source_asset_co.calc = None
+    source_asset_co.resampling = ResamplingMethod.med
     source_source_uri = get_asset_uri(
-        dataset, version, AssetType.raster_tile_set, source_asset_co
+        dataset, version, AssetType.raster_tile_set, source_asset_co.dict(by_alias=True)
     ).replace("{tile_id}.tif", "tiles.geojson")
-    source_asset_co["source_uri"] = [source_source_uri]
+    source_asset_co.source_uri = [source_source_uri]
 
     # print(f"SOURCE ASSET CREATION OPTIONS: {json.dumps(date_conf_co, indent=2)}")
 
     source_reprojection_jobs = await _reproject_to_web_mercator(
         dataset,
         version,
-        copy.deepcopy(source_asset_co),
+        source_asset_co,
         min_zoom,
-        max_static_zoom,
-        None,
+        max_zoom,
+        max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
     )
     job_list += source_reprojection_jobs
     print("SOURCE ASSET REPROJECTION JOBS CREATED")
@@ -114,20 +115,22 @@ async def raster_tile_cache_asset(
 
         # Create intensity asset from date_conf asset creation options
         # No need for a WGS84 copy, so go right to web-mercator
-        date_conf_co = copy.deepcopy(source_asset_co)
+        # date_conf_co_dict = source_asset_co.dict(by_alias=True)
         intensity_source_uri = get_asset_uri(
-            dataset, version, AssetType.raster_tile_set, date_conf_co
+            dataset,
+            version,
+            AssetType.raster_tile_set,
+            source_asset_co.dict(by_alias=True),
         ).replace("{tile_id}.tif", "tiles.geojson")
 
         intensity_co_dict = {
-            **date_conf_co,
+            **source_asset_co.dict(by_alias=True),
             **{
                 "source_uri": [intensity_source_uri],
                 "pixel_meaning": INTENSITY_PIXEL_MEANING,
-                "resampling": ResamplingMethod.med,
-                "calc": "(A>0)*55",
-                "grid": date_conf_co["grid"],
-                "overwrite": True,
+                "resampling": ResamplingMethod.bilinear,
+                "calc": None,
+                "grid": source_asset_co.grid,
                 "no_data": None,
             },
         }
@@ -141,10 +144,11 @@ async def raster_tile_cache_asset(
         intensity_reprojection_jobs = await _reproject_to_web_mercator(
             dataset,
             version,
-            intensity_co.dict(by_alias=True),
+            intensity_co,
             min_zoom,
-            max_static_zoom,
-            None,
+            max_zoom,
+            max_zoom_calc="(A>0)*55",
+            max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
         )
         job_list += intensity_reprojection_jobs
         print("INTENSITY REPROJECTION JOBS CREATED")
@@ -156,10 +160,10 @@ async def raster_tile_cache_asset(
         merge_jobs = await _merge_intensity_and_date_conf(
             dataset,
             version,
-            copy.deepcopy(date_conf_co),
-            intensity_co.dict(by_alias=True),
+            source_asset_co,
+            intensity_co,
             min_zoom,
-            max_static_zoom,
+            max_zoom,
             job_list,
         )
         job_list += merge_jobs
@@ -233,26 +237,31 @@ async def _run_pixetl(
 async def _reproject_to_web_mercator(
     dataset: str,
     version: str,
-    source_creation_options: Dict[str, Any],
+    source_creation_options: RasterTileSetSourceCreationOptions,
     min_zoom: int,
     max_zoom: int,
-    parents: Optional[List[Job]],
+    parents: Optional[List[Job]] = None,
+    max_zoom_resampling: Optional[str] = None,
+    max_zoom_calc: Optional[str] = None,
 ) -> List[Job]:
     reprojection_jobs: List[Job] = []
 
     # Processing chokes on large datasets if we go directly to low
     # zoom levels, so start at the highest and work our way back
 
-    co = copy.deepcopy(source_creation_options)
-    co["resampling"] = "med"
-    co["overwrite"] = co.get("overwrite", False)
-    co["srid"] = "epsg-3857"
+    co = source_creation_options.dict(by_alias=True)
 
-    for zoom_level in reversed(range(min_zoom, max_zoom)):
+    for zoom_level in range(max_zoom, min_zoom - 1, -1):
+
         co["grid"] = f"zoom_{zoom_level}"
+        if zoom_level == max_zoom and max_zoom_calc:
+            co["calc"] = max_zoom_calc
+        if zoom_level == max_zoom and max_zoom_resampling:
+            co["resampling"] = max_zoom_resampling
 
-        asset_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, co)
-        del co["srid"]
+        asset_uri = get_asset_uri(
+            dataset, version, AssetType.raster_tile_set, co, "epsg:3857"
+        )
 
         co_obj = RasterTileSetSourceCreationOptions(**co)
 
@@ -278,11 +287,10 @@ async def _reproject_to_web_mercator(
         reprojection_jobs.append(zoom_level_job)
         print(f"ZOOM LEVEL {zoom_level} REPROJECTION JOB CREATED")
 
-        co["srid"] = "epsg-3857"
-        source_uri = get_asset_uri(
-            dataset, version, AssetType.raster_tile_set, co
-        ).replace("{tile_id}.tif", "tiles.geojson")
-        co["source_uri"] = [source_uri]
+        # Update creation option for the next iteration of for loop
+        co["source_uri"] = [asset_uri.replace("{tile_id}.tif", "tiles.geojson")]
+        co["calc"] = source_creation_options.calc
+        co["resampling"] = source_creation_options.resampling
 
     return reprojection_jobs
 
@@ -290,8 +298,8 @@ async def _reproject_to_web_mercator(
 async def _merge_intensity_and_date_conf(
     dataset: str,
     version: str,
-    date_conf_co: Dict[str, Any],
-    intensity_co: Dict[str, Any],
+    date_conf_co: RasterTileSetSourceCreationOptions,
+    intensity_co: RasterTileSetSourceCreationOptions,
     min_zoom: int,
     max_zoom: int,
     parents: List[Job],
@@ -301,42 +309,43 @@ async def _merge_intensity_and_date_conf(
     for zoom_level in range(min_zoom, max_zoom):
         # Sanitize creation_options
 
-        d_c_co = copy.deepcopy(date_conf_co)
-        d_c_co["srid"] = "epsg-3857"
-        d_c_co["grid"] = f"zoom_{zoom_level}"
+        date_conf_co = date_conf_co.dict(by_alias=True)
+        date_conf_co["grid"] = f"zoom_{zoom_level}"
         date_conf_uri = get_asset_uri(
-            dataset, version, AssetType.raster_tile_set, d_c_co
+            dataset, version, AssetType.raster_tile_set, date_conf_co, "epsg:3857"
         ).replace("{tile_id}.tif", "tiles.geojson")
 
-        i_co = copy.deepcopy(intensity_co)
-        i_co["srid"] = "epsg-3857"
-        i_co["grid"] = f"zoom_{zoom_level}"
+        intensity_co_dict = intensity_co.dict(by_alias=True)
+        intensity_co_dict["grid"] = f"zoom_{zoom_level}"
         intensity_uri = get_asset_uri(
-            dataset, version, AssetType.raster_tile_set, i_co
+            dataset, version, AssetType.raster_tile_set, intensity_co_dict, "epsg:3857"
         ).replace("{tile_id}.tif", "tiles.geojson")
 
-        c_co = copy.deepcopy(intensity_co)
-        c_co["srid"] = "epsg-3857"
-        c_co["grid"] = f"zoom_{zoom_level}"
-        c_co["pixel_meaning"] = RGB_ENCODED_PIXEL_MEANING
-        asset_uri = get_asset_uri(dataset, version, AssetType.raster_tile_set, c_co)
-        merged_asset_prefix = asset_uri.rsplit("/", 1)[0]
+        encoded_co_dict = intensity_co.dict(by_alias=True)
+        encoded_co_dict["grid"] = f"zoom_{zoom_level}"
+        encoded_co_dict["pixel_meaning"] = RGB_ENCODED_PIXEL_MEANING
 
-        del c_co["source_uri"]
-        del c_co["source_driver"]
-        del c_co["source_type"]
-        del c_co["srid"]
+        asset_uri = get_asset_uri(
+            dataset, version, AssetType.raster_tile_set, encoded_co_dict, "epsg:3857"
+        )
+        encoded_asset_prefix = asset_uri.rsplit("/", 1)[0]
 
-        co_obj = RasterTileSetAssetCreationOptions(**c_co)
+        del encoded_co_dict["source_uri"]
+        del encoded_co_dict["source_driver"]
+        del encoded_co_dict["source_type"]
 
-        print(f"ATTEMPTING TO CREATE MERGED ASSET WITH THESE CREATION OPTIONS: {c_co}")
+        encoded_co = RasterTileSetAssetCreationOptions(**encoded_co_dict)
+
+        print(
+            f"ATTEMPTING TO CREATE MERGED ASSET WITH THESE CREATION OPTIONS: {encoded_co_dict}"
+        )
 
         # Create an asset record
         asset_options = AssetCreateIn(
             asset_type=AssetType.raster_tile_set,
             asset_uri=asset_uri,
             is_managed=True,
-            creation_options=co_obj,
+            creation_options=encoded_co,
             metadata={},
         ).dict(by_alias=True)
 
@@ -349,7 +358,7 @@ async def _merge_intensity_and_date_conf(
             "merge_intensity.sh",
             date_conf_uri,
             intensity_uri,
-            merged_asset_prefix,
+            encoded_asset_prefix,
         ]
 
         callback = callback_constructor(wm_asset_record.asset_id)
