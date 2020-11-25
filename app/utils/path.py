@@ -47,13 +47,14 @@ def get_asset_uri(
     version: str,
     asset_type: str,
     creation_options: Optional[Dict[str, Any]] = None,
+    srid: str = "epsg:4326",
 ) -> str:
+
+    srid = srid.replace(":", "-")
 
     if not creation_options:
         creation_options = {}
-    srid = creation_options.get(
-        "srid", "epsg-4326"
-    )  # FIXME: Not actually part of model
+
     grid = creation_options.get("grid", None)
     value = creation_options.get("pixel_meaning", None)
 
@@ -61,10 +62,10 @@ def get_asset_uri(
         AssetType.dynamic_vector_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/dynamic/{{z}}/{{x}}/{{y}}.pbf",
         AssetType.static_vector_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/default/{{z}}/{{x}}/{{y}}.pbf",
         AssetType.raster_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/default/{{z}}/{{x}}/{{y}}.png",
-        AssetType.shapefile: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/epsg-4326/{dataset}_{version}.shp.zip",
-        AssetType.ndjson: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/epsg-4326/{dataset}_{version}.ndjson",
-        AssetType.grid_1x1: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/epsg-4326/{dataset}_{version}_1x1.tsv",
-        AssetType.geopackage: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/epsg-4326/{dataset}_{version}.gpkg",
+        AssetType.shapefile: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{srid}/{dataset}_{version}.shp.zip",
+        AssetType.ndjson: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{srid}/{dataset}_{version}.ndjson",
+        AssetType.grid_1x1: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{srid}/{dataset}_{version}_1x1.tsv",
+        AssetType.geopackage: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{srid}/{dataset}_{version}.gpkg",
         AssetType.csv: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/text/{dataset}_{version}.csv",
         AssetType.tsv: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/text/{dataset}_{version}.tsv",
         AssetType.geo_database_table: f"{API_URL}/dataset/{dataset}/{version}/query",
