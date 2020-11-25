@@ -30,13 +30,18 @@ def get_s3_path_parts(s3url):
     "-v", "--version", type=str, required=True, help="Version of dataset to process"
 )
 @click.option(
+    "-I", "--implementation", type=str, required=True, help="Namespace for tile cache"
+)
+@click.option(
     "--target_bucket", type=str, required=True, help="S3 Bucket to upload tile cache to"
 )
 @click.option(
     "--zoom_level", type=int, required=True, help="Zoom level to generate tiles for"
 )
 @click.argument("tile_set_prefix", type=str)
-def raster_tile_cache(dataset, version, zoom_level, target_bucket, tile_set_prefix):
+def raster_tile_cache(
+    dataset, version, zoom_level, implementation, target_bucket, tile_set_prefix
+):
     print(f"Raster tile set asset prefix: {tile_set_prefix}")
 
     s3_client = get_s3_client()
@@ -93,6 +98,8 @@ def raster_tile_cache(dataset, version, zoom_level, target_bucket, tile_set_pref
             dataset,
             "--version",
             version,
+            "--implementation",
+            implementation,
             tiles_dir,
         ]
         print(f"Running command: {cmd_arg_list}")

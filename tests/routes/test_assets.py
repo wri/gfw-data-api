@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 from mock import patch
 
 from app.crud import tasks
-from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET
+from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from tests.utils import create_default_asset, poll_jobs
 
 
@@ -367,7 +367,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
     )
 
-    pixetl_output_files = [
+    pixetl_output_files = (
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/extent.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/tiles.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/000R_000C.tif",
@@ -375,10 +375,13 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/tiles.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/000R_000C.tif",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/rgb_encoded/geotiff/000R_000C.tif",
-    ]
-
+    )
     for key in pixetl_output_files:
         s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+
+    tile_cache_files = (f"{dataset}/{version}/foosball/0/0/0.png",)
+    for key in tile_cache_files:
+        s3_client.delete_object(Bucket=TILE_CACHE_BUCKET, Key=key)
 
     print("FINISHED CLEANING UP")
 
@@ -427,6 +430,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
             "max_zoom": 14,
             "max_static_zoom": 3,
             "symbology": {"color_map": {"type": "date_conf_intensity"}},
+            "implementation": "foosball",
         },
         "metadata": {},
     }
@@ -468,4 +472,9 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         except ClientError:
             raise AssertionError(f"Key {key} doesn't exist!")
 
-    # FIXME: Make sure files made it into the tile cache bucket as well!
+    # Make sure files made it into the tile cache bucket as well
+    for key in tile_cache_files:
+        try:
+            s3_client.head_object(Bucket=TILE_CACHE_BUCKET, Key=key)
+        except ClientError:
+            raise AssertionError(f"Key {key} doesn't exist!")

@@ -39,7 +39,7 @@ JOB_ENV = writer_secrets + [
 ]
 
 if S3_ENTRYPOINT_URL:
-    # FIXME: Why all these? Because different programs (boto,
+    # Why both? Because different programs (boto,
     # pixetl, gdal*) use different vars.
     JOB_ENV = JOB_ENV + [
         {"name": "AWS_ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
@@ -54,6 +54,7 @@ async def raster_tile_cache_asset(
     min_zoom = input_data["creation_options"]["min_zoom"]
     max_zoom = input_data["creation_options"]["max_zoom"]
     max_static_zoom = input_data["creation_options"]["max_static_zoom"]
+    implementation = input_data["creation_options"]["implementation"]
 
     assert min_zoom <= max_zoom  # FIXME: Raise appropriate exception
     assert max_static_zoom <= max_zoom  # FIXME: Raise appropriate exception
@@ -168,8 +169,8 @@ async def raster_tile_cache_asset(
         )
         job_list += merge_jobs
 
-        # FIXME: build_rgb created the merged rasters but not tiles.geojson or extent.geojson
-        # Create those now with pixetl's pixetl_prep?
+        # build_rgb created the merged rasters but not tiles.geojson or extent.geojson
+        # FIXME: Create those now with pixetl's pixetl_prep
 
         # Actually create the tile cache using gdal2tiles
         print("Now create the tile cache using gdal2tiles...")
@@ -183,16 +184,11 @@ async def raster_tile_cache_asset(
             tile_cache_co,
             min_zoom,
             max_static_zoom,
+            implementation,
             callback_constructor(asset_id),
             merge_jobs,
         )
         job_list += tile_cache_jobs
-
-        print("Yup, made it here")
-        print(f"JOB LIST LENGTH SO FAR: {len(job_list)}")
-        for job in job_list:
-            print(f"JOB: {job.job_name}")
-            print(f"  PARENTS: {job.parents}")
 
     log: ChangeLog = await execute(job_list)
 
@@ -381,6 +377,7 @@ async def _create_tile_cache(
     r_t_s_creation_options: Dict[str, Any],
     min_zoom: int,
     max_zoom: int,
+    implementation: str,
     callback: Callback,
     parents: List[Job],
 ):
@@ -405,6 +402,8 @@ async def _create_tile_cache(
             dataset,
             "-v",
             version,
+            "-I",
+            implementation,
             "--target_bucket",
             TILE_CACHE_BUCKET,
             "--zoom_level",

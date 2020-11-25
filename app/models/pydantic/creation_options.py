@@ -195,6 +195,12 @@ class RasterTileCacheAssetCreationOptions(BaseModel):
     max_static_zoom: int = Field(
         9, description="Maximum zoom level to pre-generate tiles for", ge=0, le=22
     )
+    implementation: str = Field(
+        "default",
+        description="Name space to use for raster tile cache. "
+        "This will be part of the URI and will "
+        "allow to create multiple raster tile caches per version,",
+    )
     symbology: Symbology
     source_asset_id: str
 
