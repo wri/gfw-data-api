@@ -1,5 +1,3 @@
-from time import sleep
-
 import boto3
 import pytest
 import requests
@@ -132,8 +130,6 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     assert asset_resp.json()["data"]["status"] == "saved"
 
     # Flush requests list so we're starting fresh
-    # But sleep a moment for any stragglers to come in
-    sleep(3)
     requests.delete(f"http://localhost:{httpd.server_port}")
 
     # Try adding a non-default raster tile asset based on the default
@@ -212,8 +208,6 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     assert asset_resp.json()["data"]["status"] == "saved"
 
     # Flush requests list so we're starting fresh
-    # But sleep a moment for any stragglers to come in
-    sleep(3)
     requests.delete(f"http://localhost:{httpd.server_port}")
 
     # Try adding a non-default raster tile set asset based on the default
@@ -270,8 +264,6 @@ async def test_asset_bad_requests(async_client, batch_client, httpd):
     )
 
     # Flush requests list so we're starting fresh
-    # But sleep a moment for any stragglers to come in
-    sleep(3)
     requests.delete(f"http://localhost:{httpd.server_port}")
 
     # Try adding a non-default raster tile set asset with an extra field "foo"

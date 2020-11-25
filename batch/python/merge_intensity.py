@@ -24,6 +24,17 @@ def get_s3_path_parts(s3url):
     return bucket, key
 
 
+def get_tile_ids(bucket, key):
+    s3_client = get_s3_client()
+    response = s3_client.get_object(Bucket=bucket, Key=key)
+    geojson: dict = json.loads(response["Body"].read().decode("utf-8"))
+    tiles = [
+        os.path.basename(feature["properties"]["name"])
+        for feature in geojson["features"]
+    ]
+    return tiles
+
+
 @click.command()
 @click.argument("date_conf_uri", type=str)
 @click.argument("intensity_uri", type=str)
@@ -33,50 +44,19 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
     print(f"Intensity URI: {intensity_uri}")
     print(f"Destination prefix: {destination_prefix}")
 
-    s3_client = get_s3_client()
+    bucket, date_conf_key = get_s3_path_parts(date_conf_uri)
+    _, intensity_key = get_s3_path_parts(intensity_uri)
 
-    geo_to_filenames: Dict[str, Dict[str, str]] = dict()
+    date_conf_tiles = get_tile_ids(bucket, date_conf_key)
+    intensity_tiles = get_tile_ids(bucket, intensity_key)
 
-    # Get the tiles.geojsons and map coordinates to geoTIFFs
-    d_c_f_n = "date_conf_file_name"
-    i_f_n = "intensity_file_name"
-    for input_pair in ((d_c_f_n, date_conf_uri), (i_f_n, intensity_uri)):
-        bucket, key = get_s3_path_parts(input_pair[1])
-        response = s3_client.get_object(Bucket=bucket, Key=key)
-        tiles_geojson: dict = json.loads(response["Body"].read().decode("utf-8"))
-        # print(f"TILES.GEOJSON: {json.dumps(tiles_geojson, indent=2)}")
+    common_tiles = set(date_conf_tiles) & set(intensity_tiles)
 
-        for feature in tiles_geojson["features"]:
-            serialized_coords: str = json.dumps(feature["geometry"]["coordinates"])
-            file_name = feature["properties"]["name"].replace("/vsis3/", "s3://")
-            file_names_dict = geo_to_filenames.get(serialized_coords, {})
-            if not file_names_dict:
-                file_names_dict[input_pair[0]] = file_name
-                geo_to_filenames[serialized_coords] = file_names_dict
-            else:
-                geo_to_filenames[serialized_coords][input_pair[0]] = file_name
-
-    print(f"GEO_TO_FILENAMES: {json.dumps(geo_to_filenames, indent=2)}")
-
-    # Only use coordinates that have associated files in both date/conf and
-    # intensity tile sets.
-    for k, v in geo_to_filenames.items():
-        date_conf_uri = v.get(d_c_f_n)
-        intensity_uri = v.get(i_f_n)
-        if date_conf_uri is None:
-            print(f"No date/conf raster file for coordinates {k}... Skipping")
-            continue
-        elif intensity_uri is None:
-            print(f"No intensity raster file for coordinates {k}... Skipping")
-            continue
-        else:
-            output_uri = "/".join([destination_prefix, intensity_uri.rsplit("/", 1)[1]])
-            print("About to operate on:")
-            print(f"date_conf file: {date_conf_uri}")
-            print(f"intensity file: {intensity_uri}")
-            print(f"output file: {output_uri}")
-
-            process_rasters(date_conf_uri, intensity_uri, output_uri)
+    for tile in common_tiles:
+        date_conf_tile = os.path.join(os.path.dirname(date_conf_uri), tile)
+        intensity_tile = os.path.join(os.path.dirname(intensity_uri), tile)
+        output_tile = os.path.join(destination_prefix, tile)
+        process_rasters(date_conf_tile, intensity_tile, output_tile)
 
 
 def process_rasters(date_conf_uri, intensity_uri, output_uri):
@@ -84,9 +64,9 @@ def process_rasters(date_conf_uri, intensity_uri, output_uri):
 
     # Download both files into a temporary directory
     with TemporaryDirectory() as temp_dir:
-        local_date_conf_path = os.path.join(temp_dir, "date_conf.tiff")
-        local_intensity_path = os.path.join(temp_dir, "intensity.tiff")
-        local_output_path = os.path.join(temp_dir, "output.tiff")
+        local_date_conf_path = os.path.join(temp_dir, "date_conf.tif")
+        local_intensity_path = os.path.join(temp_dir, "intensity.tif")
+        local_output_path = os.path.join(temp_dir, "output.tif")
 
         print(f"Downloading {date_conf_uri} to {local_date_conf_path}")
         bucket, key = get_s3_path_parts(date_conf_uri)

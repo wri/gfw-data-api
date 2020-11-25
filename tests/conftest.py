@@ -5,7 +5,6 @@ import shutil
 import threading
 import zipfile
 from http.server import HTTPServer
-from time import sleep
 
 import boto3
 import numpy
