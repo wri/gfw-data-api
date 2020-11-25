@@ -104,7 +104,7 @@ class GDAL2TilesJob(Job):
 
     job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
-    vcpus = 1
-    memory = 15000
+    vcpus = PIXETL_CORES
+    memory = PIXETL_MAX_MEM
     attempts = 1
     attempt_duration_seconds = 7500
