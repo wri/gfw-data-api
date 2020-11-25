@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+from logging import getLogger
 from tempfile import TemporaryDirectory
 
 import boto3
@@ -10,6 +11,8 @@ from tileputty.upload_tiles import upload_tiles
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
+
+logger = getLogger("generate_raster_tile_cache")
 
 
 def get_s3_client(aws_region=AWS_REGION, endpoint_url=AWS_ENDPOINT_URL):
@@ -43,7 +46,7 @@ def get_s3_path_parts(s3url):
 def raster_tile_cache(
     dataset, version, zoom_level, implementation, target_bucket, tile_set_prefix
 ):
-    print(f"Raster tile set asset prefix: {tile_set_prefix}")
+    logger.info(f"Raster tile set asset prefix: {tile_set_prefix}")
 
     s3_client = get_s3_client()
 
@@ -51,27 +54,25 @@ def raster_tile_cache(
     resp = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
 
     if resp["KeyCount"] == 0:
-        print("ERROR: No files found in S3!")
         raise Exception(f"No files found in tile set prefix {tile_set_prefix}")
 
     tiff_paths = []
     for obj in resp["Contents"]:
         remote_key = str(obj["Key"])
         if remote_key.endswith(".tif"):  # FIXME: Add case insensitivity?
-            print(f"Found remote TIFF: {remote_key}")
+            logger.info(f"Found remote TIFF: {remote_key}")
             gdal_path = os.path.join("/vsis3", bucket, remote_key)
-            print(f"Converting to GDAL path {gdal_path}")
             tiff_paths.append(gdal_path)
 
     with TemporaryDirectory() as vrt_dir, TemporaryDirectory() as tiles_dir:
         vrt_path = os.path.join(vrt_dir, "index.vrt")
         cmd_arg_list = ["gdalbuildvrt", vrt_path, *tiff_paths]
-        print(f"Running command: {cmd_arg_list}")
+        logger.info(f"Running command: {cmd_arg_list}")
         proc: subprocess.CompletedProcess = subprocess.run(
             cmd_arg_list, capture_output=True, check=False, text=True
         )
-        print(proc.stdout)
-        print(proc.stderr)
+        logger.info(proc.stdout)
+        logger.error(proc.stderr)
         proc.check_returncode()
 
         cmd_arg_list = [
@@ -85,15 +86,15 @@ def raster_tile_cache(
             vrt_path,
             tiles_dir,
         ]
-        print(f"Running command: {cmd_arg_list}")
+        logger.info(f"Running command: {cmd_arg_list}")
         proc: subprocess.CompletedProcess = subprocess.run(
             cmd_arg_list, capture_output=True, check=False, text=True,
         )
-        print(proc.stdout)
-        print(proc.stderr)
+        logger.info(proc.stdout)
+        logger.error(proc.stderr)
         proc.check_returncode()
 
-        print("Uploading tiles using TilePutty")
+        logger.info("Uploading tiles using TilePutty")
         upload_tiles(
             tiles_dir,
             dataset,

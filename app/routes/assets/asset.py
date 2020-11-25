@@ -38,6 +38,7 @@ from ...tasks.delete_assets import (
     delete_single_file_asset,
     delete_static_vector_tile_cache_assets,
 )
+from ...utils.path import infer_srid_from_grid
 from ..assets import asset_response
 from ..tasks import tasks_response
 
@@ -141,15 +142,13 @@ async def delete_asset(
         )
 
     elif row.asset_type == AssetType.raster_tile_set:
-
+        grid = row.creation_options["grid"]
         background_tasks.add_task(
             delete_raster_tileset_assets,
             row.dataset,
             row.version,
-            row.creation_options.get(
-                "srid", "epsg-4326"
-            ),  # FIXME: Not actually part of model
-            row.creation_options["grid"],
+            infer_srid_from_grid(grid),
+            grid,
             row.creation_options["pixel_meaning"],
         )
     elif is_database_asset(row.asset_type):

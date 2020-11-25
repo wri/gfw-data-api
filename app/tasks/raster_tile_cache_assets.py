@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
+from fastapi.logger import logger
 
 from app.crud.assets import create_asset, get_asset
 from app.models.enum.assets import AssetType
@@ -96,8 +97,6 @@ async def raster_tile_cache_asset(
     ).replace("{tile_id}.tif", "tiles.geojson")
     source_asset_co.source_uri = [source_source_uri]
 
-    # print(f"SOURCE ASSET CREATION OPTIONS: {json.dumps(date_conf_co, indent=2)}")
-
     source_reprojection_jobs = await _reproject_to_web_mercator(
         dataset,
         version,
@@ -107,7 +106,7 @@ async def raster_tile_cache_asset(
         max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
     )
     job_list += source_reprojection_jobs
-    print("SOURCE ASSET REPROJECTION JOBS CREATED")
+    logger.debug("SOURCE ASSET REPROJECTION JOBS CREATED")
 
     # For GLAD/RADD, create intensity asset with pixetl and merge with
     # existing date/conf layer to form a new RGB_ENCODED_PIXEL_MEANING asset
@@ -136,7 +135,7 @@ async def raster_tile_cache_asset(
         }
 
         intensity_co = RasterTileSetSourceCreationOptions(**intensity_co_dict)
-        print(
+        logger.debug(
             "INTENSITY ASSET CREATION OPTIONS: "
             f"{json.dumps(intensity_co.dict(by_alias=True), indent=2)}"
         )
@@ -151,7 +150,7 @@ async def raster_tile_cache_asset(
             max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
         )
         job_list += intensity_reprojection_jobs
-        print("INTENSITY REPROJECTION JOBS CREATED")
+        logger.debug("INTENSITY REPROJECTION JOBS CREATED")
 
         # Now merge the date/conf and intensity tiles for each zoom level to
         # create the final raster tile set asset
@@ -172,7 +171,7 @@ async def raster_tile_cache_asset(
         # FIXME: Create those now with pixetl's pixetl_prep
 
         # Actually create the tile cache using gdal2tiles
-        print("Now create the tile cache using gdal2tiles...")
+        logger.debug("Now create the tile cache using gdal2tiles...")
         tile_cache_co = intensity_co.dict(by_alias=True)
         tile_cache_co["pixel_meaning"] = RGB_ENCODED_PIXEL_MEANING
         tile_cache_co["srid"] = "epsg-3857"
@@ -274,7 +273,7 @@ async def _reproject_to_web_mercator(
             metadata={},
         ).dict(by_alias=True)
         wm_asset_record = await create_asset(dataset, version, **asset_options)
-        print(f"ZOOM LEVEL {zoom_level} REPROJECTION ASSET CREATED")
+        logger.debug(f"ZOOM LEVEL {zoom_level} REPROJECTION ASSET CREATED")
 
         zoom_level_job = await _run_pixetl(
             dataset,
@@ -285,7 +284,7 @@ async def _reproject_to_web_mercator(
             parents=(parents + reprojection_jobs) if parents else reprojection_jobs,
         )
         reprojection_jobs.append(zoom_level_job)
-        print(f"ZOOM LEVEL {zoom_level} REPROJECTION JOB CREATED")
+        logger.debug(f"ZOOM LEVEL {zoom_level} REPROJECTION JOB CREATED")
 
         # Update creation option for the next iteration of for loop
         co["source_uri"] = [asset_uri.replace("{tile_id}.tif", "tiles.geojson")]
@@ -336,7 +335,7 @@ async def _merge_intensity_and_date_conf(
 
         encoded_co = RasterTileSetAssetCreationOptions(**encoded_co_dict)
 
-        print(
+        logger.debug(
             f"ATTEMPTING TO CREATE MERGED ASSET WITH THESE CREATION OPTIONS: {encoded_co_dict}"
         )
 
@@ -350,7 +349,7 @@ async def _merge_intensity_and_date_conf(
         ).dict(by_alias=True)
 
         wm_asset_record = await create_asset(dataset, version, **asset_options)
-        print(
+        logger.debug(
             f"ZOOM LEVEL {zoom_level} MERGED ASSET CREATED WITH ASSET_ID {wm_asset_record.asset_id}"
         )
 
@@ -394,7 +393,7 @@ async def _create_tile_cache(
             dataset, version, AssetType.raster_tile_set, co, co["srid"]
         ).rsplit("/", 1)[0]
 
-        print(
+        logger.debug(
             f"CREATING TILE CACHE JOB FOR ZOOM LEVEL {zoom_level} WITH PREFIX {asset_prefix}"
         )
 

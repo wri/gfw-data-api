@@ -14,6 +14,12 @@ def split_s3_path(s3_path: str) -> Tuple[str, str]:
     return o.netloc, o.path.lstrip("/")
 
 
+def infer_srid_from_grid(grid: str) -> str:
+    if grid.startswith("zoom_"):
+        return "epsg-3857"
+    return "epsg-4326"
+
+
 def is_zipped(s3_uri: str) -> bool:
     """Get basename of source file.
 
