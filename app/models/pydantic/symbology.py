@@ -1,24 +1,25 @@
-from typing import Dict, Union
+from enum import Enum
+from typing import Dict, Tuple, Union
 
-from pydantic import BaseModel
-
-
-class DistinctColorMap(BaseModel):
-    type = "distinct"
-    map: Dict  # Speculative, fill in later
+from pydantic import BaseModel, Field
 
 
-class DateConfIntensityColorMap(BaseModel):
-    type = "date_conf_intensity"
+class ColorMapType(str, Enum):
+    discrete = "discrete"
+    gradient = "gradient"
+    date_conf_intensity = "date_conf_intensity"
 
 
-class GradientColorMap(BaseModel):
-    type = "gradient"
-    map: Dict  # Speculative, fill in later
+class RGBA(BaseModel):
+    red: int = Field(..., ge=0, le=255)
+    green: int = Field(..., ge=0, le=255)
+    blue: int = Field(..., ge=0, le=255)
+    alpha: int = Field(..., ge=0, le=255)
 
-
-ColorMapType = Union[DateConfIntensityColorMap, DistinctColorMap, GradientColorMap]
+    def tuple(self) -> Tuple[int, int, int, int]:
+        return self.red, self.green, self.blue, self.alpha
 
 
 class Symbology(BaseModel):
-    color_map: ColorMapType
+    type: ColorMapType
+    colormap: Dict[Union[int, float], RGBA]

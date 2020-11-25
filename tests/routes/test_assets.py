@@ -4,7 +4,6 @@ import boto3
 import pytest
 import requests
 from botocore.exceptions import ClientError
-from mock import patch
 
 from app.crud import tasks
 from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
@@ -396,7 +395,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
             "min_zoom": 0,
             "max_zoom": 14,
             "max_static_zoom": 3,
-            "symbology": {"color_map": {"type": "date_conf_intensity"}},
+            "symbology": {"type": "date_conf_intensity"},
             "implementation": "foosball",
         },
         "metadata": {},
@@ -406,6 +405,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         f"/dataset/{dataset}/{version}/assets", json=asset_payload
     )
     resp_json = create_asset_resp.json()
+    print(resp_json)
     assert resp_json["status"] == "success"
     assert resp_json["data"]["status"] == "pending"
 

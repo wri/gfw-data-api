@@ -3,6 +3,7 @@ import json
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 
 from app.crud.assets import create_asset, get_asset
@@ -60,10 +61,7 @@ async def raster_tile_cache_asset(
     assert max_static_zoom <= max_zoom  # FIXME: Raise appropriate exception
 
     # FIXME: Remove this when implementing standard tile cache code path:
-    if (
-        input_data["creation_options"]["symbology"]["color_map"]["type"]
-        != "date_conf_intensity"
-    ):
+    if input_data["creation_options"]["symbology"]["type"] != "date_conf_intensity":
         raise NotImplementedError(
             "Raster tile cache currently only implemented for GLAD/RADD pipeline"
         )
@@ -112,10 +110,7 @@ async def raster_tile_cache_asset(
 
     # For GLAD/RADD, create intensity asset with pixetl and merge with
     # existing date/conf layer to form a new RGB_ENCODED_PIXEL_MEANING asset
-    if (
-        input_data["creation_options"]["symbology"]["color_map"]["type"]
-        == "date_conf_intensity"
-    ):
+    if input_data["creation_options"]["symbology"]["type"] == "date_conf_intensity":
 
         # Create intensity asset from date_conf asset creation options
         # No need for a WGS84 copy, so go right to web-mercator
@@ -421,3 +416,16 @@ async def _create_tile_cache(
         tile_cache_jobs += [tile_cache_job]
 
     return tile_cache_jobs
+
+
+async def raster_tile_cache_validator(
+    dataset: str, version: str, input_data: Dict[str, Any]
+) -> None:
+    source_asset: ORMAsset = await get_asset(
+        input_data["creation_options"]["source_asset_id"]
+    )
+    if (source_asset.dataset != dataset) or (source_asset.version != version):
+        raise HTTPException(
+            status_code=400,
+            detail="Dataset and version of source asset must match dataset and version of current asset.",
+        )

@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List
 
 from fastapi import HTTPException
 
@@ -7,6 +7,7 @@ from ...crud import versions as _versions
 from ...models.enum.assets import AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
+from ...tasks.raster_tile_cache_assets import raster_tile_cache_validator
 
 
 async def verify_version_status(dataset, version):
@@ -64,3 +65,13 @@ async def verify_asset_dependencies(dataset, version, asset_type):
             status_code=500,
             detail=f"Creation of asset type {asset_type} not implemented.",
         )
+
+
+async def validate_creation_options(
+    dataset: str, version: str, input_data: Dict[str, Any]
+) -> None:
+    validator = {AssetType.raster_tile_cache: raster_tile_cache_validator}
+    try:
+        await validator[input_data["asset_type"]](dataset, version, input_data)
+    except KeyError:
+        pass

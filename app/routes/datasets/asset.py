@@ -28,7 +28,11 @@ from ...routes import dataset_dependency, is_admin, version_dependency
 from ...tasks.assets import put_asset
 from ...utils.path import get_asset_uri
 from ..assets import asset_response, assets_response
-from . import verify_asset_dependencies, verify_version_status
+from . import (
+    validate_creation_options,
+    verify_asset_dependencies,
+    verify_version_status,
+)
 
 router = APIRouter()
 
@@ -97,6 +101,8 @@ async def add_new_asset(
 
     if input_data["is_managed"]:
         await verify_asset_dependencies(dataset, version, input_data["asset_type"])
+
+    await validate_creation_options(dataset, version, input_data)
 
     try:
         asset_uri = get_asset_uri(
