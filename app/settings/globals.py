@@ -123,7 +123,7 @@ PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str)
 PIXETL_CORES = config("PIXETL_CORES", cast=int, default=48)
 PIXETL_MAX_MEM = config("PIXETL_MAX_MEM", cast=int, default=380000)
 PIXETL_DEFAULT_RESAMPLING = config(
-    "DEFAULT_RESAMPLING", cast=str, default=ResamplingMethod.nearest
+    "DEFAULT_RESAMPLING", cast=str, default=ResamplingMethod.nearest.value
 )
 RASTER_ANALYSIS_LAMBDA_NAME = config("RASTER_ANALYSIS_LAMBDA_NAME", cast=str)
 

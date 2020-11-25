@@ -393,7 +393,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         "creation_options": {
             "source_asset_id": default_asset_id,
             "min_zoom": 0,
-            "max_zoom": 14,
+            "max_zoom": 4,
             "max_static_zoom": 3,
             "symbology": {"type": "date_conf_intensity"},
             "implementation": "foosball",

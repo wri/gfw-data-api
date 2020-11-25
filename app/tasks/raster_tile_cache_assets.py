@@ -309,10 +309,10 @@ async def _merge_intensity_and_date_conf(
     for zoom_level in range(min_zoom, max_zoom):
         # Sanitize creation_options
 
-        date_conf_co = date_conf_co.dict(by_alias=True)
-        date_conf_co["grid"] = f"zoom_{zoom_level}"
+        date_conf_co_dict = date_conf_co.dict(by_alias=True)
+        date_conf_co_dict["grid"] = f"zoom_{zoom_level}"
         date_conf_uri = get_asset_uri(
-            dataset, version, AssetType.raster_tile_set, date_conf_co, "epsg:3857"
+            dataset, version, AssetType.raster_tile_set, date_conf_co_dict, "epsg:3857"
         ).replace("{tile_id}.tif", "tiles.geojson")
 
         intensity_co_dict = intensity_co.dict(by_alias=True)
@@ -388,12 +388,10 @@ async def _create_tile_cache(
     tile_cache_jobs: List[Job] = []
 
     for zoom_level in range(min_zoom, max_zoom):
-        # Sanitize creation_options
-
         co = copy.deepcopy(r_t_s_creation_options)
         co["grid"] = f"zoom_{zoom_level}"
         asset_prefix = get_asset_uri(
-            dataset, version, AssetType.raster_tile_set, co
+            dataset, version, AssetType.raster_tile_set, co, co["srid"]
         ).rsplit("/", 1)[0]
 
         print(
