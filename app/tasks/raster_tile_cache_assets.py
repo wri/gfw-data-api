@@ -160,98 +160,101 @@ async def _date_conf_intensity(
     )
     jobs_dict[zoom_level]["intensity_reprojection_job"] = intensity_reprojection_job
 
-    # source_reprojection_job = jobs_dict[zoom_level]["source_reprojection_job"]
+    source_reprojection_job = jobs_dict[zoom_level]["source_reprojection_job"]
 
     intensity_co_dict = copy.deepcopy(source_asset_co_dict)
     intensity_co_dict["pixel_meaning"] = INTENSITY_PIXEL_MEANING
+    intensity_co_dict["grid"] = f"zoom_{zoom_level}"
 
-    # merge_job = await _merge_intensity_and_date_conf(
-    #     dataset,
-    #     version,
-    #     source_asset_co_dict,
-    #     intensity_co_dict,
-    #     zoom_level,
-    #     max_zoom,
-    #     [source_reprojection_job, intensity_reprojection_job]
-    # )
-    # jobs_dict[zoom_level]["merge_intensisty_job"] = merge_job
+    source_co_dict = copy.deepcopy(source_asset_co_dict)
+    source_co_dict["grid"] = f"zoom_{zoom_level}"
 
-    return [intensity_reprojection_job]  # , merge_job]
+    merge_job = await _merge_intensity_and_date_conf(
+        dataset,
+        version,
+        source_co_dict,
+        intensity_co_dict,
+        zoom_level,
+        max_zoom,
+        [source_reprojection_job, intensity_reprojection_job],
+    )
+    jobs_dict[zoom_level]["merge_intensity_job"] = merge_job
+
+    return [intensity_reprojection_job, merge_job]
 
 
-# async def _merge_intensity_and_date_conf(
-#     dataset: str,
-#     version: str,
-#     date_conf_co_dict: Dict,
-#     intensity_co_dict: Dict,
-#     zoom_level: int,
-#     max_zoom: int,
-#     parents: List[Job],
-# ) -> Job:
-#
-#     date_conf_co_dict = date_conf_co.dict(by_alias=True)
-#     date_conf_co_dict["grid"] = f"zoom_{zoom_level}"
-#     date_conf_uri = get_asset_uri(
-#         dataset, version, AssetType.raster_tile_set, date_conf_co_dict, "epsg:3857"
-#     ).replace("{tile_id}.tif", "tiles.geojson")
-#
-#     intensity_co_dict = intensity_co.dict(by_alias=True)
-#     intensity_co_dict["grid"] = f"zoom_{zoom_level}"
-#     intensity_uri = get_asset_uri(
-#         dataset, version, AssetType.raster_tile_set, intensity_co_dict, "epsg:3857"
-#     ).replace("{tile_id}.tif", "tiles.geojson")
-#
-#     encoded_co_dict = intensity_co.dict(by_alias=True)
-#     encoded_co_dict["grid"] = f"zoom_{zoom_level}"
-#     encoded_co_dict["pixel_meaning"] = RGB_ENCODED_PIXEL_MEANING
-#
-#     asset_uri = get_asset_uri(
-#         dataset, version, AssetType.raster_tile_set, encoded_co_dict, "epsg:3857"
-#     )
-#     encoded_asset_prefix = asset_uri.rsplit("/", 1)[0]
-#
-#     del encoded_co_dict["source_uri"]
-#     del encoded_co_dict["source_driver"]
-#     del encoded_co_dict["source_type"]
-#
-#     encoded_co = RasterTileSetAssetCreationOptions(**encoded_co_dict)
-#
-#     logger.debug(
-#         f"ATTEMPTING TO CREATE MERGED ASSET WITH THESE CREATION OPTIONS: {encoded_co_dict}"
-#     )
-#
-#     # Create an asset record
-#     asset_options = AssetCreateIn(
-#         asset_type=AssetType.raster_tile_set,
-#         asset_uri=asset_uri,
-#         is_managed=True,
-#         creation_options=encoded_co,
-#         metadata={},
-#     ).dict(by_alias=True)
-#
-#     wm_asset_record = await create_asset(dataset, version, **asset_options)
-#     logger.debug(
-#         f"ZOOM LEVEL {zoom_level} MERGED ASSET CREATED WITH ASSET_ID {wm_asset_record.asset_id}"
-#     )
-#
-#     command = [
-#         "merge_intensity.sh",
-#         date_conf_uri,
-#         intensity_uri,
-#         encoded_asset_prefix,
-#     ]
-#
-#     callback = callback_constructor(wm_asset_record.asset_id)
-#
-#     merge_intensity_job = BuildRGBJob(
-#         job_name=f"merge_intensity_zoom_{zoom_level}",
-#         command=command,
-#         environment=JOB_ENV,
-#         callback=callback,
-#         parents=[parent.job_name for parent in parents],
-#     )
-#
-#     return merge_intensity_job
+async def _merge_intensity_and_date_conf(
+    dataset: str,
+    version: str,
+    date_conf_co_dict: Dict,
+    intensity_co_dict: Dict,
+    zoom_level: int,
+    max_zoom: int,
+    parents: List[Job],
+) -> Job:
+
+    # date_conf_co_dict = date_conf_co.dict(by_alias=True)
+    # date_conf_co_dict["grid"] = f"zoom_{zoom_level}"
+    date_conf_uri = get_asset_uri(
+        dataset, version, AssetType.raster_tile_set, date_conf_co_dict, "epsg:3857"
+    ).replace("{tile_id}.tif", "tiles.geojson")
+
+    # intensity_co_dict = intensity_co.dict(by_alias=True)
+    # intensity_co_dict["grid"] = f"zoom_{zoom_level}"
+    intensity_uri = get_asset_uri(
+        dataset, version, AssetType.raster_tile_set, intensity_co_dict, "epsg:3857"
+    ).replace("{tile_id}.tif", "tiles.geojson")
+
+    encoded_co_dict = copy.deepcopy(intensity_co_dict)
+    encoded_co_dict["pixel_meaning"] = RGB_ENCODED_PIXEL_MEANING
+
+    merged_asset_uri = get_asset_uri(
+        dataset, version, AssetType.raster_tile_set, encoded_co_dict, "epsg:3857"
+    )
+    merged_asset_prefix = merged_asset_uri.rsplit("/", 1)[0]
+
+    del encoded_co_dict["source_uri"]
+    del encoded_co_dict["source_driver"]
+    del encoded_co_dict["source_type"]
+
+    encoded_co = RasterTileSetAssetCreationOptions(**encoded_co_dict)
+
+    logger.debug(
+        f"ATTEMPTING TO CREATE MERGED ASSET WITH THESE CREATION OPTIONS: {encoded_co_dict}"
+    )
+
+    # Create an asset record
+    asset_options = AssetCreateIn(
+        asset_type=AssetType.raster_tile_set,
+        asset_uri=merged_asset_uri,
+        is_managed=True,
+        creation_options=encoded_co,
+        metadata={},
+    ).dict(by_alias=True)
+
+    wm_asset_record = await create_asset(dataset, version, **asset_options)
+    logger.debug(
+        f"ZOOM LEVEL {zoom_level} MERGED ASSET CREATED WITH ASSET_ID {wm_asset_record.asset_id}"
+    )
+
+    command = [
+        "merge_intensity.sh",
+        date_conf_uri,
+        intensity_uri,
+        merged_asset_prefix,
+    ]
+
+    callback = callback_constructor(wm_asset_record.asset_id)
+
+    merge_intensity_job = BuildRGBJob(
+        job_name=f"merge_intensity_zoom_{zoom_level}",
+        command=command,
+        environment=JOB_ENV,
+        callback=callback,
+        parents=[parent.job_name for parent in parents],
+    )
+
+    return merge_intensity_job
 
 
 async def _run_pixetl(
