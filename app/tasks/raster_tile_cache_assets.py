@@ -32,7 +32,7 @@ from app.tasks.batch import execute
 from app.utils.path import get_asset_uri
 
 INTENSITY_PIXEL_MEANING = "intensity"
-RGB_ENCODED_PIXEL_MEANING = "rgb_encoded"
+TYPE_SPECIFIC_FINAL_PIXEL_MEANING = {"date_conf_intensity": "rgb_encoded"}
 
 JOB_ENV = writer_secrets + [
     {"name": "AWS_REGION", "value": AWS_REGION},
@@ -50,85 +50,12 @@ if S3_ENTRYPOINT_URL:
     ]
 
 
-async def raster_tile_cache_asset(
-    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
-) -> ChangeLog:
-    # Argument validation
-    min_zoom = input_data["creation_options"]["min_zoom"]
-    max_zoom = input_data["creation_options"]["max_zoom"]
-    max_static_zoom = input_data["creation_options"]["max_static_zoom"]
-    # implementation = input_data["creation_options"]["implementation"]
-
-    # source_asset_id is currently required. Could perhaps make it optional
-    # in the case that the default asset is the only one.
-    source_asset: ORMAsset = await get_asset(
-        input_data["creation_options"]["source_asset_id"]
-    )
-    # Get the creation options from the original raster tile set asset
-    source_asset_co = RasterTileSetSourceCreationOptions(
-        **source_asset.creation_options
-    )
-    source_asset_co_dict = source_asset_co.dict(by_alias=True)
-    source_asset_co_dict["calc"] = None
-    source_asset_co_dict["source_uri"] = [
-        get_asset_uri(
-            dataset, version, AssetType.raster_tile_set, source_asset_co_dict,
-        ).replace("{tile_id}.tif", "tiles.geojson")
-    ]
-
-    job_list: List[Job] = []
-    jobs_dict: Dict[int, Dict[str, Job]] = dict()
-
-    type_specific_function = _date_conf_intensity  # FIXME: Get from lookup table
-
-    for zoom_level in range(max_zoom, min_zoom - 1, -1):
-        jobs_dict[zoom_level] = dict()
-        source_projection_parent_job = jobs_dict.get(zoom_level + 1, {}).get(
-            "source_reprojection_job"
-        )
-        source_reprojection_job: Job = await _reproject_to_web_mercator(
-            dataset,
-            version,
-            source_asset_co_dict,
-            zoom_level,
-            max_zoom,
-            source_projection_parent_job,
-            max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
-        )
-        jobs_dict[zoom_level]["source_reprojection_job"] = source_reprojection_job
-        type_specific_jobs: List[Job] = await type_specific_function(
-            dataset,
-            version,
-            source_asset_co_dict,
-            zoom_level,
-            max_zoom,
-            max_static_zoom,
-            jobs_dict,
-        )
-        # tile_cache_job: Job = await _create_tile_cache(
-        #     dataset,
-        #     version,
-        #     source_asset_co,
-        #     zoom_level,
-        #     max_zoom,
-        #     max_static_zoom,
-        #     type_specific_jobs + [source_reprojection_job]
-        # )
-        #
-        # job_list += type_specific_jobs + [source_reprojection_job, tile_cache_job]
-        job_list += type_specific_jobs + [source_reprojection_job]  # , tile_cache_job]
-
-    log: ChangeLog = await execute(job_list)
-    return log
-
-
 async def _date_conf_intensity(
     dataset: str,
     version: str,
     source_asset_co_dict: Dict[str, Any],
     zoom_level: int,
     max_zoom: int,
-    max_static_zoom: int,
     jobs_dict: Dict,
 ):
     temp_asset_dict = copy.deepcopy(source_asset_co_dict)
@@ -175,12 +102,90 @@ async def _date_conf_intensity(
         source_co_dict,
         intensity_co_dict,
         zoom_level,
-        max_zoom,
         [source_reprojection_job, intensity_reprojection_job],
     )
     jobs_dict[zoom_level]["merge_intensity_job"] = merge_job
 
     return [intensity_reprojection_job, merge_job]
+
+
+TYPE_SPECIFIC_ZOOM_LEVEL_FUNCTIONS = {"date_conf_intensity": _date_conf_intensity}
+
+
+async def raster_tile_cache_asset(
+    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
+) -> ChangeLog:
+    # Argument validation
+    min_zoom = input_data["creation_options"]["min_zoom"]
+    max_zoom = input_data["creation_options"]["max_zoom"]
+    max_static_zoom = input_data["creation_options"]["max_static_zoom"]
+    implementation = input_data["creation_options"]["implementation"]
+
+    # source_asset_id is currently required. Could perhaps make it optional
+    # in the case that the default asset is the only one.
+    source_asset: ORMAsset = await get_asset(
+        input_data["creation_options"]["source_asset_id"]
+    )
+    # Get the creation options from the original raster tile set asset
+    source_asset_co = RasterTileSetSourceCreationOptions(
+        **source_asset.creation_options
+    )
+    source_asset_co_dict = source_asset_co.dict(by_alias=True)
+    source_asset_co_dict["calc"] = None
+    source_asset_co_dict["source_uri"] = [
+        get_asset_uri(
+            dataset, version, AssetType.raster_tile_set, source_asset_co_dict,
+        ).replace("{tile_id}.tif", "tiles.geojson")
+    ]
+
+    job_list: List[Job] = []
+    jobs_dict: Dict[int, Dict[str, Job]] = dict()
+
+    type_specific_function = TYPE_SPECIFIC_ZOOM_LEVEL_FUNCTIONS[
+        input_data["creation_options"]["symbology"]["type"]
+    ]
+
+    for zoom_level in range(max_zoom, min_zoom - 1, -1):
+        jobs_dict[zoom_level] = dict()
+        source_projection_parent_job = jobs_dict.get(zoom_level + 1, {}).get(
+            "source_reprojection_job"
+        )
+        source_reprojection_job: Job = await _reproject_to_web_mercator(
+            dataset,
+            version,
+            source_asset_co_dict,
+            zoom_level,
+            max_zoom,
+            source_projection_parent_job,
+            max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
+        )
+        jobs_dict[zoom_level]["source_reprojection_job"] = source_reprojection_job
+        job_list.append(source_reprojection_job)
+
+        type_specific_jobs: List[Job] = await type_specific_function(
+            dataset, version, source_asset_co_dict, zoom_level, max_zoom, jobs_dict,
+        )
+        job_list += type_specific_jobs
+
+        if zoom_level <= max_static_zoom:
+            tile_cache_co = copy.deepcopy(source_asset_co_dict)
+            tile_cache_co["pixel_meaning"] = TYPE_SPECIFIC_FINAL_PIXEL_MEANING.get(
+                input_data["creation_options"]["symbology"]["type"],
+                source_asset_co_dict["pixel_meaning"],
+            )
+            tile_cache_job: Job = await _create_tile_cache(
+                dataset,
+                version,
+                tile_cache_co,
+                zoom_level,
+                implementation,
+                callback_constructor(asset_id),
+                type_specific_jobs + [source_reprojection_job],
+            )
+            job_list.append(tile_cache_job)
+
+    log: ChangeLog = await execute(job_list)
+    return log
 
 
 async def _merge_intensity_and_date_conf(
@@ -189,7 +194,6 @@ async def _merge_intensity_and_date_conf(
     date_conf_co_dict: Dict,
     intensity_co_dict: Dict,
     zoom_level: int,
-    max_zoom: int,
     parents: List[Job],
 ) -> Job:
 
@@ -206,7 +210,9 @@ async def _merge_intensity_and_date_conf(
     ).replace("{tile_id}.tif", "tiles.geojson")
 
     encoded_co_dict = copy.deepcopy(intensity_co_dict)
-    encoded_co_dict["pixel_meaning"] = RGB_ENCODED_PIXEL_MEANING
+    encoded_co_dict["pixel_meaning"] = TYPE_SPECIFIC_FINAL_PIXEL_MEANING[
+        "date_conf_intensity"
+    ]
 
     merged_asset_uri = get_asset_uri(
         dataset, version, AssetType.raster_tile_set, encoded_co_dict, "epsg:3857"
@@ -300,7 +306,6 @@ async def _run_pixetl(
 async def _reproject_to_web_mercator(
     dataset: str,
     version: str,
-    # source_creation_options: RasterTileSetSourceCreationOptions,
     source_creation_options: Dict[str, Any],
     zoom_level: int,
     max_zoom: int,
@@ -308,7 +313,6 @@ async def _reproject_to_web_mercator(
     max_zoom_resampling: Optional[str] = None,
     max_zoom_calc: Optional[str] = None,
 ) -> Job:
-    # co = source_creation_options.dict(by_alias=True)
     co = copy.deepcopy(source_creation_options)
 
     if zoom_level == max_zoom:
@@ -355,6 +359,51 @@ async def _reproject_to_web_mercator(
     logger.debug(f"ZOOM LEVEL {zoom_level} REPROJECTION JOB CREATED")
 
     return zoom_level_job
+
+
+async def _create_tile_cache(
+    dataset: str,
+    version: str,
+    raster_tile_set_creation_options: Dict[str, Any],
+    zoom_level: int,
+    implementation: str,
+    callback: Callback,
+    parents: List[Job],
+):
+    co = copy.deepcopy(raster_tile_set_creation_options)
+    co["grid"] = f"zoom_{zoom_level}"
+    asset_prefix = get_asset_uri(
+        dataset, version, AssetType.raster_tile_set, co, "epsg:3857"
+    ).rsplit("/", 1)[0]
+
+    logger.debug(
+        f"CREATING TILE CACHE JOB FOR ZOOM LEVEL {zoom_level} WITH PREFIX {asset_prefix}"
+    )
+
+    command: List[str] = [
+        "raster_tile_cache.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+        "-I",
+        implementation,
+        "--target_bucket",
+        TILE_CACHE_BUCKET,
+        "--zoom_level",
+        str(zoom_level),
+        asset_prefix,
+    ]
+
+    tile_cache_job = GDAL2TilesJob(
+        job_name=f"generate_tile_cache_zoom_{zoom_level}",
+        command=command,
+        environment=JOB_ENV,
+        callback=callback,
+        parents=[parent.job_name for parent in parents],
+    )
+
+    return tile_cache_job
 
 
 async def raster_tile_cache_validator(
