@@ -190,7 +190,7 @@ class TileCacheBaseModel(BaseModel):
         0, description="Minimum zoom level of tile cache", ge=0, le=22
     )
     max_zoom: int = Field(
-        22, description="Maximum zoom level of tile cache", ge=0, le=22
+        14, description="Maximum zoom level of tile cache", ge=0, le=22
     )
 
     @classmethod

@@ -67,6 +67,7 @@ async def _date_conf_intensity(
             ).replace("{tile_id}.tif", "tiles.geojson")
         ]
 
+    temp_asset_dict["no_data"] = None
     temp_asset_dict["pixel_meaning"] = INTENSITY_PIXEL_MEANING
 
     previous_level_intensity_reprojection_job: Optional[Job] = None
@@ -115,7 +116,6 @@ TYPE_SPECIFIC_ZOOM_LEVEL_FUNCTIONS = {"date_conf_intensity": _date_conf_intensit
 async def raster_tile_cache_asset(
     dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
 ) -> ChangeLog:
-    # Argument validation
     min_zoom = input_data["creation_options"]["min_zoom"]
     max_zoom = input_data["creation_options"]["max_zoom"]
     max_static_zoom = input_data["creation_options"]["max_static_zoom"]
@@ -196,15 +196,10 @@ async def _merge_intensity_and_date_conf(
     zoom_level: int,
     parents: List[Job],
 ) -> Job:
-
-    # date_conf_co_dict = date_conf_co.dict(by_alias=True)
-    # date_conf_co_dict["grid"] = f"zoom_{zoom_level}"
     date_conf_uri = get_asset_uri(
         dataset, version, AssetType.raster_tile_set, date_conf_co_dict, "epsg:3857"
     ).replace("{tile_id}.tif", "tiles.geojson")
 
-    # intensity_co_dict = intensity_co.dict(by_alias=True)
-    # intensity_co_dict["grid"] = f"zoom_{zoom_level}"
     intensity_uri = get_asset_uri(
         dataset, version, AssetType.raster_tile_set, intensity_co_dict, "epsg:3857"
     ).replace("{tile_id}.tif", "tiles.geojson")
