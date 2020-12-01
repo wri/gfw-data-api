@@ -154,6 +154,12 @@ do
       shift # past argument
       shift # past value
       ;;
+      --target_bucket)
+      TARGET_BUCKET="$2"
+      shift # past argument
+      shift # past value
+      ;;
+
       -v|--version)
       VERSION="$2"
       shift # past argument
@@ -184,6 +190,12 @@ do
       shift # past argument
       shift # past value
       ;;
+      --zoom_level)
+      ZOOM_LEVEL="$2"
+      shift # past argument
+      shift # past value
+      ;;
+
       *)    # unknown option
       POSITIONAL+=("$1") # save it in an array for later
       shift # past argument

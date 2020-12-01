@@ -30,6 +30,29 @@ class Grid(str, Enum):
     ten_by_forty_thousand = "10/40000"
     ninety_by_nine_thousand_nine_hundred_eighty_four = "90/9984"
     ninety_by_twenty_seven_thousand_eight = "90/27008"
+    zoom_0 = "zoom_0"
+    zoom_1 = "zoom_1"
+    zoom_2 = "zoom_2"
+    zoom_3 = "zoom_3"
+    zoom_4 = "zoom_4"
+    zoom_5 = "zoom_5"
+    zoom_6 = "zoom_6"
+    zoom_7 = "zoom_7"
+    zoom_8 = "zoom_8"
+    zoom_9 = "zoom_9"
+    zoom_10 = "zoom_10"
+    zoom_11 = "zoom_11"
+    zoom_12 = "zoom_12"
+    zoom_13 = "zoom_13"
+    zoom_14 = "zoom_14"
+    zoom_15 = "zoom_15"
+    zoom_16 = "zoom_16"
+    zoom_17 = "zoom_17"
+    zoom_18 = "zoom_18"
+    zoom_19 = "zoom_19"
+    zoom_20 = "zoom_20"
+    zoom_21 = "zoom_21"
+    zoom_22 = "zoom_22"
 
 
 class Order(str, Enum):
@@ -38,7 +61,7 @@ class Order(str, Enum):
 
 
 class RasterizeMethod(str, Enum):
-    _count = "count"
+    count_ = "count"
     value = "value"
 
 

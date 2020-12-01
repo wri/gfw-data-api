@@ -34,7 +34,7 @@ async def delete_static_vector_tile_cache_assets(
     )
 
 
-async def delete_static_raster_tile_cache_assets(
+async def delete_raster_tile_cache_assets(
     dataset: str, version: str, implementation: str = "default"
 ) -> None:
     expire_s3_objects(

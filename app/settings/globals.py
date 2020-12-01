@@ -5,6 +5,7 @@ from typing import Optional
 from starlette.config import Config
 from starlette.datastructures import Secret
 
+from ..models.enum.pixetl import ResamplingMethod
 from ..models.pydantic.database import DatabaseURL
 
 #
@@ -119,7 +120,13 @@ TILE_CACHE_JOB_DEFINITION = config("TILE_CACHE_JOB_DEFINITION", cast=str)
 TILE_CACHE_JOB_QUEUE = config("TILE_CACHE_JOB_QUEUE", cast=str)
 PIXETL_JOB_DEFINITION = config("PIXETL_JOB_DEFINITION", cast=str)
 PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str)
+PIXETL_CORES = config("PIXETL_CORES", cast=int, default=48)
+PIXETL_MAX_MEM = config("PIXETL_MAX_MEM", cast=int, default=380000)
+PIXETL_DEFAULT_RESAMPLING = config(
+    "DEFAULT_RESAMPLING", cast=str, default=ResamplingMethod.nearest.value
+)
 RASTER_ANALYSIS_LAMBDA_NAME = config("RASTER_ANALYSIS_LAMBDA_NAME", cast=str)
+
 
 POLL_WAIT_TIME = config("POLL_WAIT_TIME", cast=int, default=30)
 CHUNK_SIZE = config("CHUNK_SIZE", cast=int, default=50)

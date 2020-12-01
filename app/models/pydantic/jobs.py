@@ -6,8 +6,10 @@ from ...settings.globals import (
     AURORA_JOB_QUEUE,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
+    PIXETL_CORES,
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
+    PIXETL_MAX_MEM,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
@@ -80,7 +82,29 @@ class PixETLJob(Job):
 
     job_queue = PIXETL_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION
-    vcpus = 48
-    memory = 350000
+    vcpus = PIXETL_CORES
+    memory = PIXETL_MAX_MEM
     attempts = 2
     attempt_duration_seconds = 9600
+
+
+class BuildRGBJob(Job):
+    """Use for combining date_conf and intensity assets using buildrgb."""
+
+    job_queue = DATA_LAKE_JOB_QUEUE
+    job_definition = GDAL_PYTHON_JOB_DEFINITION
+    vcpus = 1
+    memory = 15000
+    attempts = 1
+    attempt_duration_seconds = 7500
+
+
+class GDAL2TilesJob(Job):
+    """Use for generating a raster tile cache from web-mercator tiles."""
+
+    job_queue = DATA_LAKE_JOB_QUEUE
+    job_definition = GDAL_PYTHON_JOB_DEFINITION
+    vcpus = PIXETL_CORES
+    memory = PIXETL_MAX_MEM
+    attempts = 1
+    attempt_duration_seconds = 7500

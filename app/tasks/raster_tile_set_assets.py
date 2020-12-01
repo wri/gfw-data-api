@@ -11,7 +11,7 @@ from app.models.pydantic.creation_options import (
     RasterTileSetSourceCreationOptions,
 )
 from app.models.pydantic.jobs import PixETLJob
-from app.settings.globals import ENV, S3_ENTRYPOINT_URL
+from app.settings.globals import ENV, PIXETL_CORES, PIXETL_MAX_MEM, S3_ENTRYPOINT_URL
 from app.tasks import Callback, callback_constructor, writer_secrets
 from app.tasks.batch import execute
 
@@ -55,12 +55,19 @@ async def raster_tile_set_asset(
 
     callback: Callback = callback_constructor(asset_id)
 
-    job_env = writer_secrets + [{"name": "ENV", "value": ENV}]
+    job_env = writer_secrets + [
+        {"name": "ENV", "value": ENV},
+        {"name": "CORES", "value": PIXETL_CORES},
+        {"name": "MAX_MEM", "value": PIXETL_MAX_MEM},
+    ]
     if S3_ENTRYPOINT_URL:
-        job_env = job_env + [{"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL}]
+        job_env = job_env + [
+            {"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL},
+            {"name": "AWS_ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
+        ]
 
     command = [
-        "create_raster_tile_set.sh",
+        "run_pixetl.sh",
         "-d",
         dataset,
         "-v",
