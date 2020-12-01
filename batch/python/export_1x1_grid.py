@@ -415,8 +415,9 @@ async def run(
                 retries += 1
 
         if retries >= 2:
-            raise Exception("error: failed with ConnectionDoesNotExistError after multiple retries")
-
+            raise Exception(
+                "error: failed with ConnectionDoesNotExistError after multiple retries"
+            )
 
     max_tasks: int = MAX_TASKS
     tasks: Set = set()

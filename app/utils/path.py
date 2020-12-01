@@ -63,11 +63,12 @@ def get_asset_uri(
 
     grid = creation_options.get("grid", None)
     value = creation_options.get("pixel_meaning", None)
+    implementation = creation_options.get("implementation", "default")
 
     uri_constructor: Dict[str, str] = {
         AssetType.dynamic_vector_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/dynamic/{{z}}/{{x}}/{{y}}.pbf",
-        AssetType.static_vector_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/default/{{z}}/{{x}}/{{y}}.pbf",
-        AssetType.raster_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/default/{{z}}/{{x}}/{{y}}.png",
+        AssetType.static_vector_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/{implementation}/{{z}}/{{x}}/{{y}}.pbf",
+        AssetType.raster_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/{implementation}/{{z}}/{{x}}/{{y}}.png",
         AssetType.shapefile: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{srid}/{dataset}_{version}.shp.zip",
         AssetType.ndjson: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{srid}/{dataset}_{version}.ndjson",
         AssetType.grid_1x1: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{srid}/{dataset}_{version}_1x1.tsv",
