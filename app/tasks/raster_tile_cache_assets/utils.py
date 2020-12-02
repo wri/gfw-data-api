@@ -1,9 +1,6 @@
-import copy
-import json
 import os
-from typing import Any, Dict, List, Optional
+from typing import List, Optional, Tuple
 
-from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 
 from app.crud.assets import create_asset
@@ -11,73 +8,11 @@ from app.models.enum.assets import AssetType
 from app.models.enum.symbology import ColorMapType
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
-from app.models.pydantic.jobs import GDAL2TilesJob, Job, PixETLJob
-from app.settings.globals import (
-    AWS_REGION,
-    ENV,
-    PIXETL_CORES,
-    PIXETL_MAX_MEM,
-    S3_ENTRYPOINT_URL,
-    TILE_CACHE_BUCKET,
-)
-from app.tasks import Callback, callback_constructor, writer_secrets
+from app.models.pydantic.jobs import GDAL2TilesJob, Job
+from app.settings.globals import TILE_CACHE_BUCKET
+from app.tasks import Callback, callback_constructor
+from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_pixetl_job
 from app.utils.path import get_asset_uri
-
-JOB_ENV = writer_secrets + [
-    {"name": "AWS_REGION", "value": AWS_REGION},
-    {"name": "ENV", "value": ENV},
-    {"name": "CORES", "value": PIXETL_CORES},
-    {"name": "MAX_MEM", "value": PIXETL_MAX_MEM},
-]
-
-if S3_ENTRYPOINT_URL:
-    # Why both? Because different programs (boto,
-    # pixetl, gdal*) use different vars.
-    JOB_ENV += [
-        {"name": "AWS_ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
-        {"name": "ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
-    ]
-
-
-async def run_pixetl(
-    dataset: str,
-    version: str,
-    co: Dict[str, Any],
-    job_name: str,
-    callback: Callback,
-    parents: Optional[List[Job]] = None,
-) -> Job:
-    """Schedule a PixETL Batch Job."""
-    co_copy = copy.deepcopy(co)
-    co_copy["source_uri"] = co_copy.pop("source_uri")[0]
-    overwrite = co_copy.pop("overwrite", False)
-    subset = co_copy.pop("subset", None)
-
-    command = [
-        "run_pixetl.sh",
-        "-d",
-        dataset,
-        "-v",
-        version,
-        "-j",
-        json.dumps(jsonable_encoder(co_copy)),
-    ]
-
-    if overwrite:
-        command += ["--overwrite"]
-
-    if subset:
-        command += ["--subset", subset]
-
-    pixetl_job_id = PixETLJob(
-        job_name=job_name,
-        command=command,
-        environment=JOB_ENV,
-        callback=callback,
-        parents=[parent.job_name for parent in parents] if parents else None,
-    )
-
-    return pixetl_job_id
 
 
 async def reproject_to_web_mercator(
@@ -86,24 +21,12 @@ async def reproject_to_web_mercator(
     source_creation_options: RasterTileSetSourceCreationOptions,
     zoom_level: int,
     max_zoom: int,
-    parent: Optional[Job] = None,
+    parents: Optional[List[Job]] = None,
     max_zoom_resampling: Optional[str] = None,
     max_zoom_calc: Optional[str] = None,
-) -> Job:
+) -> Tuple[Job, str]:
     """Create Tileset reprojected into Web Mercator projection."""
 
-    alternate_source_uri = [
-        get_asset_uri(
-            dataset,
-            version,
-            AssetType.raster_tile_set,
-            {
-                "grid": f"zoom_{zoom_level + 1}",
-                "pixel_meaning": source_creation_options.pixel_meaning,
-            },
-            "epsg:3857",
-        ).replace("{tile_id}.tif", "tiles.geojson")
-    ]
     calc = (
         max_zoom_calc
         if zoom_level == max_zoom and max_zoom_calc
@@ -114,19 +37,19 @@ async def reproject_to_web_mercator(
         if zoom_level == max_zoom and max_zoom_resampling
         else source_creation_options.resampling
     )
-    source_uri = (
-        source_creation_options.source_uri
-        if zoom_level == max_zoom
-        else alternate_source_uri
+    source_uri: Optional[List[str]] = get_zoom_source_uri(
+        dataset, version, source_creation_options, zoom_level, max_zoom
     )
+
     symbology = (
         source_creation_options.symbology
         if source_creation_options.symbology
-        and source_creation_options.symbology.type == ColorMapType.discrete
+        and source_creation_options.symbology.type
+        != ColorMapType.discrete  # FIXME: this should be: `not in symbology_constructor.keys()` but creates cirular import
         else None
     )
 
-    co = source_creation_options.copy(
+    creation_options = source_creation_options.copy(
         deep=True,
         update={
             "calc": calc,
@@ -137,8 +60,27 @@ async def reproject_to_web_mercator(
         },
     )
 
+    job_name = f"{dataset}_{version}_{creation_options.pixel_meaning}_{zoom_level}"
+
+    return await create_wm_tile_set_job(
+        dataset, version, creation_options, job_name, parents
+    )
+
+
+async def create_wm_tile_set_job(
+    dataset: str,
+    version: str,
+    creation_options: RasterTileSetSourceCreationOptions,
+    job_name: str,
+    parents: Optional[List[Job]] = None,
+) -> Tuple[Job, str]:
+
     asset_uri = get_asset_uri(
-        dataset, version, AssetType.raster_tile_set, co.dict(by_alias=True), "epsg:3857"
+        dataset,
+        version,
+        AssetType.raster_tile_set,
+        creation_options.dict(by_alias=True),
+        "epsg:3857",
     )
 
     # Create an asset record
@@ -146,23 +88,23 @@ async def reproject_to_web_mercator(
         asset_type=AssetType.raster_tile_set,
         asset_uri=asset_uri,
         is_managed=True,
-        creation_options=co,
+        creation_options=creation_options,
         metadata={},
     ).dict(by_alias=True)
     wm_asset_record = await create_asset(dataset, version, **asset_options)
-    logger.debug(f"ZOOM LEVEL {zoom_level} REPROJECTION ASSET CREATED")
 
-    zoom_level_job = await run_pixetl(
+    logger.debug(f"Created asset for {asset_uri}")
+
+    job = await create_pixetl_job(
         dataset,
         version,
         wm_asset_record.creation_options,
-        f"zoom_level_{zoom_level}_{co.pixel_meaning}_reprojection",
+        job_name,
         callback_constructor(wm_asset_record.asset_id),
-        parents=[parent] if parent else None,
+        parents=parents,
     )
-    logger.debug(f"ZOOM LEVEL {zoom_level} REPROJECTION JOB CREATED")
 
-    return zoom_level_job
+    return job, asset_uri
 
 
 async def create_tile_cache(
@@ -206,3 +148,33 @@ async def create_tile_cache(
     )
 
     return tile_cache_job
+
+
+def get_zoom_source_uri(
+    dataset: str,
+    version: str,
+    creation_options: RasterTileSetSourceCreationOptions,
+    zoom_level: int,
+    max_zoom: int,
+) -> Optional[List[str]]:
+    """Use uri specified in creation option for highest zoom level, otherwise
+    use uri of same tileset but one zoom level up."""
+
+    alternate_source_uri = [
+        get_asset_uri(
+            dataset,
+            version,
+            AssetType.raster_tile_set,
+            {
+                "grid": f"zoom_{zoom_level + 1}",
+                "pixel_meaning": creation_options.pixel_meaning,
+            },
+            "epsg:3857",
+        ).replace("{tile_id}.tif", "tiles.geojson")
+    ]
+
+    source_uri = (
+        creation_options.source_uri if zoom_level == max_zoom else alternate_source_uri
+    )
+
+    return source_uri

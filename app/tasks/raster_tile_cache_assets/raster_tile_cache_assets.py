@@ -65,35 +65,46 @@ async def raster_tile_cache_asset(
         source_projection_parent_job = jobs_dict.get(zoom_level + 1, {}).get(
             "source_reprojection_job"
         )
-        source_reprojection_job: Job = await reproject_to_web_mercator(
+
+        source_projection_parent_jobs = (
+            [source_projection_parent_job] if source_projection_parent_job else []
+        )
+
+        (
+            source_reprojection_job,
+            source_reprojection_uri,
+        ) = await reproject_to_web_mercator(
             dataset,
             version,
             source_asset_co,
             zoom_level,
             max_zoom,
-            source_projection_parent_job,
+            source_projection_parent_jobs,
             max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
         )
         jobs_dict[zoom_level]["source_reprojection_job"] = source_reprojection_job
         job_list.append(source_reprojection_job)
 
-        type_specific_jobs: List[Job]
-        type_specific_source: str
+        symbology_jobs: List[Job]
+        symbology_uri: str
 
-        type_specific_jobs, type_specific_source = await symbology_function(
-            dataset, version, source_asset_co, zoom_level, max_zoom, jobs_dict,
+        symbology_co = source_asset_co.copy(
+            deep=True, update={"source_uri": [source_reprojection_uri]}
         )
-        job_list += type_specific_jobs
+        symbology_jobs, symbology_uri = await symbology_function(
+            dataset, version, symbology_co, zoom_level, max_zoom, jobs_dict,
+        )
+        job_list += symbology_jobs
 
         if zoom_level <= max_static_zoom:
             tile_cache_job: Job = await create_tile_cache(
                 dataset,
                 version,
-                type_specific_source,
+                symbology_uri,
                 zoom_level,
                 implementation,
                 callback_constructor(asset_id),
-                type_specific_jobs + [source_reprojection_job],
+                symbology_jobs + [source_reprojection_job],
             )
             job_list.append(tile_cache_job)
 
