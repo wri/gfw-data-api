@@ -45,7 +45,7 @@ async def reproject_to_web_mercator(
         source_creation_options.symbology
         if source_creation_options.symbology
         and source_creation_options.symbology.type
-        != ColorMapType.discrete  # FIXME: this should be: `not in symbology_constructor.keys()` but creates cirular import
+        == ColorMapType.discrete  # FIXME: this should be: `not in symbology_constructor.keys()` but creates cirular import
         else None
     )
 
@@ -170,11 +170,15 @@ def get_zoom_source_uri(
                 "pixel_meaning": creation_options.pixel_meaning,
             },
             "epsg:3857",
-        ).replace("{tile_id}.tif", "tiles.geojson")
+        )
     ]
 
     source_uri = (
         creation_options.source_uri if zoom_level == max_zoom else alternate_source_uri
     )
 
-    return source_uri
+    return [to_tile_geojson(uri) for uri in source_uri] if source_uri else None
+
+
+def to_tile_geojson(uri: str) -> str:
+    return uri.replace("{tile_id}.tif", "tiles.geojson")

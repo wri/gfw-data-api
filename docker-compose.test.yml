@@ -51,6 +51,7 @@ services:
       - S3_ENTRYPOINT_URL=http://motoserver:5000
       - SERVICE_ACCOUNT_TOKEN=testing
       - RASTER_ANALYSIS_LAMBDA_NAME=test_raster_analysis
+      - AWS_GCS_KEY_SECRET_ARN=testing
     entrypoint: wait_for_postgres.sh pytest -vv --cov-report term --cov-report xml:/app/tests/cobertura.xml --cov=app
     depends_on:
       - test_database

@@ -19,6 +19,7 @@ from app.tasks.raster_tile_cache_assets.utils import (
     create_wm_tile_set_job,
     get_zoom_source_uri,
     reproject_to_web_mercator,
+    to_tile_geojson,
 )
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV
 from app.utils.path import get_asset_uri
@@ -93,12 +94,14 @@ async def date_conf_intensity_symbology(
             "pixel_meaning": pixel_meaning,
         },
     )
+    date_conf_job = jobs_dict[zoom_level]["source_reprojection_job"]
 
-    previous_level_intensity_reprojection_job: Optional[List[Job]] = None
     if zoom_level != max_zoom:
         previous_level_intensity_reprojection_job = [
             jobs_dict[zoom_level + 1]["intensity_reprojection_job"]
         ]
+    else:
+        previous_level_intensity_reprojection_job = [date_conf_job]
 
     intensity_job, intensity_uri = await reproject_to_web_mercator(
         dataset,
@@ -112,16 +115,14 @@ async def date_conf_intensity_symbology(
     )
     jobs_dict[zoom_level]["intensity_reprojection_job"] = intensity_job
 
-    date_conf_job = jobs_dict[zoom_level]["source_reprojection_job"]
-
     assert source_asset_co.source_uri, "No source URI set"
     date_conf_uri = source_asset_co.source_uri[0]
 
     merge_job, dst_uri = await _merge_intensity_and_date_conf(
         dataset,
         version,
-        date_conf_uri,
-        intensity_uri,
+        to_tile_geojson(date_conf_uri),
+        to_tile_geojson(intensity_uri),
         source_asset_co,
         zoom_level,
         [date_conf_job, intensity_job],
