@@ -6,6 +6,7 @@ from fastapi.encoders import jsonable_encoder
 
 from app.models.pydantic.jobs import Job, PixETLJob
 from app.settings.globals import (
+    AWS_GCS_KEY_SECRET_ARN,
     AWS_REGION,
     ENV,
     PIXETL_CORES,
@@ -19,6 +20,7 @@ JOB_ENV = writer_secrets + [
     {"name": "ENV", "value": ENV},
     {"name": "CORES", "value": PIXETL_CORES},
     {"name": "MAX_MEM", "value": PIXETL_MAX_MEM},
+    {"name": "AWS_GCS_KEY_SECRET_ARN", "value": AWS_GCS_KEY_SECRET_ARN},
 ]
 
 if S3_ENTRYPOINT_URL:

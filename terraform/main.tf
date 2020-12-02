@@ -132,6 +132,7 @@ module "batch_data_lake_writer" {
     data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_write_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
+    data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_policy_arn
   ]
   key_pair = var.key_pair
   project  = local.project
