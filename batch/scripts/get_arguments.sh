@@ -50,6 +50,11 @@ do
   key="$1"
 
   case $key in
+      -b|--bucket)
+      BUCKET="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -c|--column_name)
       COLUMN_NAME="$2"
       shift # past argument
@@ -95,6 +100,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      --identifier)
+      IDENTIFIER="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -j|--json)
       JSON="$2"
       shift # past argument
@@ -134,6 +144,16 @@ do
       shift # past argument
       shift # past value
       ;;
+      --prefix)
+      PREFIX="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      --provider)
+      PROVIDER="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -s|--source)
       SRC+=("$2")
       shift # past argument
@@ -159,7 +179,6 @@ do
       shift # past argument
       shift # past value
       ;;
-
       -v|--version)
       VERSION="$2"
       shift # past argument

@@ -332,6 +332,8 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/extent.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/tiles.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/000R_000C.tif",
+        f"{dataset}/{version}/raster/epsg-3857/zoom_0/rgb_encoded/geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-3857/zoom_0/rgb_encoded/geotiff/tiles.geojson",
         f"{dataset}/{version}/raster/epsg-3857/zoom_0/rgb_encoded/geotiff/000R_000C.tif",
     )
     for key in pixetl_output_files:
