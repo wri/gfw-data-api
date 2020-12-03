@@ -70,6 +70,7 @@ data "template_file" "container_definition" {
     raster_analysis_lambda_name = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_lambda_name
     service_url          = local.service_url
     api_token_secret_arn = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
+    aws_gcs_key_secret_arn = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
   }
     depends_on  = [module.batch_job_queues.aurora_job_definition,
       module.batch_job_queues.data_lake_job_definition,

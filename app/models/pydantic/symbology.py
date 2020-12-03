@@ -1,13 +1,8 @@
-from enum import Enum
 from typing import Dict, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
 
-
-class ColorMapType(str, Enum):
-    discrete = "discrete"
-    gradient = "gradient"
-    date_conf_intensity = "date_conf_intensity"
+from app.models.enum.symbology import ColorMapType
 
 
 class RGBA(BaseModel):
