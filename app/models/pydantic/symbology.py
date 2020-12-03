@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Dict, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field

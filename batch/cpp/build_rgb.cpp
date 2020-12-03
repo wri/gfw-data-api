@@ -61,7 +61,7 @@ char **papszOptions = NULL;
 papszOptions = CSLSetNameValue( papszOptions, "COMPRESS", "DEFLATE" );
 papszOptions = CSLSetNameValue( papszOptions, "TILED", "YES" );
 OUTDRIVER = GetGDALDriverManager()->GetDriverByName("GTIFF"); if( OUTDRIVER == NULL ) {cout << "no driver" << endl; exit( 1 );};
-oSRS.SetWellKnownGeogCS( "EPSG:3857" );
+oSRS.importFromEPSG(3857);
 oSRS.exportToWkt( &OUTPRJ );
 double adfGeoTransform[6] = { ulx, pixelsize, 0, uly, 0, -1*pixelsize };
 OUTGDAL = OUTDRIVER->Create( out_name.c_str(), xsize, ysize, 3, GDT_Byte, papszOptions );

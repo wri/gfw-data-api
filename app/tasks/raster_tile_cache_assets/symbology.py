@@ -6,13 +6,14 @@ from fastapi.logger import logger
 
 from app.crud.assets import create_asset
 from app.models.enum.assets import AssetType
+from app.models.enum.creation_options import RasterDrivers
+from app.models.enum.pixetl import DataType
+from app.models.enum.sources import RasterSourceType
 from app.models.enum.symbology import ColorMapType
 from app.models.pydantic.assets import AssetCreateIn
-from app.models.pydantic.creation_options import (
-    RasterTileSetAssetCreationOptions,
-    RasterTileSetSourceCreationOptions,
-)
+from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import BuildRGBJob, Job
+from app.models.pydantic.symbology import Symbology
 from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.raster_tile_cache_assets.utils import (
@@ -38,6 +39,7 @@ async def no_symbology(
     max_zoom: int,
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
+    """Skip symbology step."""
     if source_asset_co.source_uri:
         return list(), source_asset_co.source_uri[0]
     else:
@@ -52,7 +54,7 @@ async def gradient_symbology(
     max_zoom: int,
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
-
+    """Create RGBA raster which gradient symbology based on input raster."""
     pixel_meaning = f"{source_asset_co.pixel_meaning}_gradient"
     parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
 
@@ -81,6 +83,16 @@ async def date_conf_intensity_symbology(
     max_zoom: int,
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
+    """Create Raster Tile Set asset which combines date_conf raster and
+    intensity raster into one.
+
+    At native resolution (max_zoom) it will create intensity raster
+    based on given source. For lower zoom levels if will resample higher
+    zoom level tiles using bilinear resampling method. Once intensity
+    raster tile set is created it will combine it with ource (date_conf)
+    raster into rbg encoded raster.
+    """
+
     pixel_meaning = "intensity"
 
     source_uri: Optional[List[str]] = get_zoom_source_uri(
@@ -123,7 +135,6 @@ async def date_conf_intensity_symbology(
         version,
         to_tile_geojson(date_conf_uri),
         to_tile_geojson(intensity_uri),
-        source_asset_co,
         zoom_level,
         [date_conf_job, intensity_job],
     )
@@ -137,28 +148,36 @@ async def _merge_intensity_and_date_conf(
     version: str,
     date_conf_uri: str,
     intensity_uri: str,
-    source_asset_co: RasterTileSetSourceCreationOptions,
     zoom_level: int,
     parents: List[Job],
 ) -> Tuple[Job, str]:
+    """Create RGB encoded raster tile set based on date_conf and intensity
+    raster tile sets."""
+
     pixel_meaning = "rgb_encoded"
 
-    _encoded_co = source_asset_co.copy(
-        deep=True,
-        exclude={"source_uri", "source_driver", "source_type"},
-        update={"pixel_meaning": pixel_meaning, "grid": f"zoom_{zoom_level}"},
+    encoded_co = RasterTileSetSourceCreationOptions(
+        pixel_meaning=pixel_meaning,
+        data_type=DataType.uint8,
+        resampling=PIXETL_DEFAULT_RESAMPLING,
+        overwrite=False,
+        grid=f"zoom_{zoom_level}",
+        symbology=Symbology(type=ColorMapType.date_conf_intensity),
+        compute_stats=False,
+        compute_histogram=False,
+        source_type=RasterSourceType.raster,
+        source_driver=RasterDrivers.geotiff,
+        source_uri=[date_conf_uri, intensity_uri],
     )
 
-    encoded_co = RasterTileSetAssetCreationOptions(**_encoded_co.dict(by_alias=True))
-
-    merged_asset_uri = get_asset_uri(
+    asset_uri = get_asset_uri(
         dataset,
         version,
         AssetType.raster_tile_set,
         encoded_co.dict(by_alias=True),
         "epsg:3857",
     )
-    merged_asset_prefix = merged_asset_uri.rsplit("/", 1)[0]
+    asset_prefix = asset_uri.rsplit("/", 1)[0]
 
     logger.debug(
         f"ATTEMPTING TO CREATE MERGED ASSET WITH THESE CREATION OPTIONS: {encoded_co}"
@@ -167,27 +186,27 @@ async def _merge_intensity_and_date_conf(
     # Create an asset record
     asset_options = AssetCreateIn(
         asset_type=AssetType.raster_tile_set,
-        asset_uri=merged_asset_uri,
+        asset_uri=asset_uri,
         is_managed=True,
         creation_options=encoded_co,
         metadata={},
     ).dict(by_alias=True)
 
-    wm_asset_record = await create_asset(dataset, version, **asset_options)
+    asset = await create_asset(dataset, version, **asset_options)
     logger.debug(
-        f"ZOOM LEVEL {zoom_level} MERGED ASSET CREATED WITH ASSET_ID {wm_asset_record.asset_id}"
+        f"ZOOM LEVEL {zoom_level} MERGED ASSET CREATED WITH ASSET_ID {asset.asset_id}"
     )
 
     command = [
         "merge_intensity.sh",
         date_conf_uri,
         intensity_uri,
-        merged_asset_prefix,
+        asset_prefix,
     ]
 
-    callback = callback_constructor(wm_asset_record.asset_id)
+    callback = callback_constructor(asset.asset_id)
 
-    merge_intensity_job = BuildRGBJob(
+    rgb_encoding_job = BuildRGBJob(
         job_name=f"merge_intensity_zoom_{zoom_level}",
         command=command,
         environment=JOB_ENV,
@@ -195,7 +214,9 @@ async def _merge_intensity_and_date_conf(
         parents=[parent.job_name for parent in parents],
     )
 
-    return merge_intensity_job, os.path.join(merged_asset_prefix, "tiles.geojson")
+    # TODO: Run pixetl_prep afterwards to generate tiles.geojson file
+
+    return rgb_encoding_job, os.path.join(asset_prefix, "tiles.geojson")
 
 
 _symbology_constructor: Dict[str, SymbologyFuncType] = {
