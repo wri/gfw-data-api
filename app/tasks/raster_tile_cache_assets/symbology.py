@@ -215,22 +215,17 @@ async def _merge_intensity_and_date_conf(
     )
 
     _prefix = split_s3_path(asset_prefix)[1].split("/")
-    bucket = DATA_LAKE_BUCKET
-    prefix = "/".join(_prefix) + "/"
-    identifier = "/".join(_prefix[2:-1]) + "/"
+    prefix = "/".join(_prefix[2:-1]) + "/"
     cmd = [
         "run_pixetl_prep.sh",
-        "-b",
-        bucket,
-        "--prefix",
-        prefix,
+        "-s",
+        asset_prefix,
         "-d",
         dataset,
         "-v",
         version,
-        "--identifier",
-        identifier,
-        "--overwrite",
+        "--prefix",
+        prefix,
     ]
     tiles_geojson_job = PixETLJob(
         job_name=f"generate_tiles_geojson_{zoom_level}",
