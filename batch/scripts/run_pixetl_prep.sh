@@ -17,7 +17,7 @@ ME=$(basename "$0")
 echo "Fetch remote GeoTIFFs headers to generate tiles.geojson"
 
 # Build an array of arguments to pass to pixetl_prep
-ARG_ARRAY=SRC
+ARG_ARRAY=$SRC
 ARG_ARRAY+=("--dataset" "${DATASET}" "--version" "${VERSION}")
 
 
