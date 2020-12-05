@@ -164,7 +164,7 @@ resource "aws_iam_role" "aws_ecs_service_role_clone" {
   assume_role_policy = data.template_file.iam_trust_entity.rendered
 }
 
-resource "aws_iam_role_policy_attachment" "role-policy-attachment" {
+resource "aws_iam_role_policy_attachment" "role-policy-attachment_clone" {
   role       = aws_iam_role.aws_ecs_service_role_clone.name
   count      = length(var.iam_policy_arn)
   policy_arn = var.iam_policy_arn[count.index]
