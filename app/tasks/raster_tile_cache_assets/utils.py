@@ -49,6 +49,12 @@ async def reproject_to_web_mercator(
         else None
     )
 
+    pixel_meaning = (
+        f"{source_creation_options.pixel_meaning}_{symbology.type}"
+        if symbology
+        else source_creation_options.pixel_meaning
+    )
+
     creation_options = source_creation_options.copy(
         deep=True,
         update={
@@ -60,7 +66,7 @@ async def reproject_to_web_mercator(
         },
     )
 
-    job_name = f"{dataset}_{version}_{creation_options.pixel_meaning}_{zoom_level}"
+    job_name = f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
 
     return await create_wm_tile_set_job(
         dataset, version, creation_options, job_name, parents

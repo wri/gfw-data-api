@@ -9,7 +9,7 @@ from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.utils.aws import get_s3_client
 
 from .. import BUCKET, PORT, SHP_NAME
-from ..utils import create_default_asset, poll_jobs
+from ..utils import check_tasks_status, create_default_asset, poll_jobs
 from . import MockECSClient
 
 
@@ -206,17 +206,7 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
         assert response.status_code == 202
         asset_id = response.json()["data"]["asset_id"]
 
-        # get tasks id from change log and wait until finished
-        response = await async_client.get(f"/asset/{asset_id}/change_log")
-
-        assert response.status_code == 200
-        tasks = json.loads(response.json()["data"][-1]["detail"])
-        task_ids = [task["job_id"] for task in tasks]
-        print(task_ids)
-
-        # make sure, all jobs completed
-        status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
-        assert status == "saved"
+        await check_tasks_status(async_client, logs, asset_id)
 
         response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
         assert response.status_code == 200
