@@ -10,7 +10,7 @@ resource "aws_iam_policy" "s3_read_only" {
 }
 
 resource "aws_iam_policy" "lambda_invoke" {
-  name   = "${local.project}-lambda_invoke${local.name_suffix}"
-//  policy = data.template_file.iam_lambda_invoke.rendered
+  name = "${local.project}-lambda_invoke${local.name_suffix}"
+  //  policy = data.template_file.iam_lambda_invoke.rendered
   policy = data.local_file.iam_lambda_invoke.content
 }
