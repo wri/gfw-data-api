@@ -104,20 +104,20 @@ data "template_file" "gdal_container_properties" {
 data "template_file" "pixetl_container_properties" {
   template = file("${path.root}/templates/container_properties.json.tmpl")
   vars = {
-    image_url      = var.pixetl_repository_url
-    environment    = var.environment
-    job_role_arn   = aws_iam_role.aws_ecs_service_role.arn
-    clone_role_arn = aws_iam_role.aws_ecs_service_role_clone.arn
+    image_url          = var.pixetl_repository_url
+    environment        = var.environment
+    job_role_arn       = aws_iam_role.aws_ecs_service_role.arn
+    clone_role_arn     = aws_iam_role.aws_ecs_service_role_clone.arn
     gcs_key_secret_arn = var.gcs_secret
-    cpu            = 48
-    memory         = 380000
-    hardULimit     = 1024
-    softULimit     = 1024
-//    maxSwap        = 600000
-//    swappiness     = 60
-    tile_cache     = "gfw-tiles${local.bucket_suffix}"
-    data_lake      = "gfw-data-lake${local.bucket_suffix}"
-    max_tasks      = var.aurora_max_vcpus
+    cpu                = 48
+    memory             = 380000
+    hardULimit         = 1024
+    softULimit         = 1024
+    //    maxSwap        = 600000
+    //    swappiness     = 60
+    tile_cache = "gfw-tiles${local.bucket_suffix}"
+    data_lake  = "gfw-data-lake${local.bucket_suffix}"
+    max_tasks  = var.aurora_max_vcpus
   }
 }
 
@@ -143,20 +143,10 @@ resource "aws_iam_role" "aws_ecs_service_role" {
   assume_role_policy = data.template_file.ecs-task_assume.rendered
 }
 
-
-resource "aws_iam_role_policy_attachment" "s3_read_only" {
+resource "aws_iam_role_policy_attachment" "role-policy-attachment" {
   role       = aws_iam_role.aws_ecs_service_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-}
-
-resource "aws_iam_role_policy_attachment" "s3_write_data-lake" {
-  role       = aws_iam_role.aws_ecs_service_role.name
-  policy_arn = var.s3_write_data-lake_arn
-}
-
-resource "aws_iam_role_policy_attachment" "s3_write_tile_cache" {
-  role       = aws_iam_role.aws_ecs_service_role.name
-  policy_arn = var.s3_write_tile-cache_arn
+  count      = length(var.iam_policy_arn)
+  policy_arn = var.iam_policy_arn[count.index]
 }
 
 
@@ -174,20 +164,12 @@ resource "aws_iam_role" "aws_ecs_service_role_clone" {
   assume_role_policy = data.template_file.iam_trust_entity.rendered
 }
 
-resource "aws_iam_role_policy_attachment" "s3_read_only_clone" {
+resource "aws_iam_role_policy_attachment" "role-policy-attachment" {
   role       = aws_iam_role.aws_ecs_service_role_clone.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+  count      = length(var.iam_policy_arn)
+  policy_arn = var.iam_policy_arn[count.index]
 }
 
-resource "aws_iam_role_policy_attachment" "s3_write_data-lake_clone" {
-  role       = aws_iam_role.aws_ecs_service_role_clone.name
-  policy_arn = var.s3_write_data-lake_arn
-}
-
-resource "aws_iam_role_policy_attachment" "s3_write_tile_cache_clone" {
-  role       = aws_iam_role.aws_ecs_service_role_clone.name
-  policy_arn = var.s3_write_tile-cache_arn
-}
 
 data "template_file" "iam_trust_entity" {
   template = file("${path.root}/templates/iam_trust_entity.json.tmpl")
