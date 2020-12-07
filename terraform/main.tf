@@ -162,8 +162,6 @@ module "batch_job_queues" {
     "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-reader_arn,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-writer_arn,
     data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_policy_arn
   ]
   aurora_max_vcpus = local.aurora_max_vcpus
