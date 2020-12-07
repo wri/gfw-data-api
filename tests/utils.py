@@ -209,20 +209,21 @@ def print_logs(logs):
                 print(event["message"])
 
 
-async def check_tasks_status(async_client, logs, asset_id) -> None:
-    # get tasks id from change log and wait until finished
-    response = await async_client.get(f"/asset/{asset_id}/change_log")
-
-    assert response.status_code == 200
+async def check_tasks_status(async_client, logs, asset_ids) -> None:
     tasks = list()
-    resp_logs = response.json()["data"]
-    print(resp_logs)
-    for log in resp_logs:
-        if log["message"] == "Successfully scheduled batch jobs":
-            tasks += json.loads(log["detail"])
-    print(tasks)
+
+    for asset_id in asset_ids:
+        # get tasks id from change log and wait until finished
+        response = await async_client.get(f"/asset/{asset_id}/change_log")
+
+        assert response.status_code == 200
+
+        resp_logs = response.json()["data"]
+        for log in resp_logs:
+            if log["message"] == "Successfully scheduled batch jobs":
+                tasks += json.loads(log["detail"])
+
     task_ids = [task["job_id"] for task in tasks]
-    print(task_ids)
 
     # make sure, all jobs completed
     status = await poll_jobs(task_ids, logs=logs, async_client=async_client)

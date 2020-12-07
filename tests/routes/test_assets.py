@@ -352,7 +352,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     )
     default_asset_id = asset["asset_id"]
 
-    await check_tasks_status(async_client, logs, default_asset_id)
+    await check_tasks_status(async_client, logs, [default_asset_id])
 
     # Verify that the asset and version are in state "saved"
     version_resp = await async_client.get(f"/dataset/{dataset}/{version}")
@@ -420,7 +420,6 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         await _test_raster_tile_cache(
             dataset, version, default_asset_id, async_client, logs, **check,
         )
-        assert False
 
 
 async def _test_raster_tile_cache(
@@ -436,16 +435,13 @@ async def _test_raster_tile_cache(
     pixetl_test_files = [
         "geotiff/extent.geojson",
         "geotiff/tiles.geojson",
-        "000R_000C.tif",
+        "geotiff/000R_000C.tif",
     ]
 
     _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
     _delete_s3_files(TILE_CACHE_BUCKET, f"{dataset}/{version}")
 
     print("FINISHED CLEANING UP")
-
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
-    _delete_s3_files(TILE_CACHE_BUCKET, f"{dataset}/{version}")
 
     # Add a tile cache asset based on the raster tile set
     asset_payload = {
@@ -454,8 +450,8 @@ async def _test_raster_tile_cache(
         "creation_options": {
             "source_asset_id": default_asset_id,
             "min_zoom": 0,
-            "max_zoom": 4,
-            "max_static_zoom": 3,
+            "max_zoom": 2,
+            "max_static_zoom": 1,
             "symbology": symbology,
             "implementation": symbology["type"],
         },
@@ -469,6 +465,7 @@ async def _test_raster_tile_cache(
         f"/dataset/{dataset}/{version}/assets", json=asset_payload
     )
     resp_json = create_asset_resp.json()
+    print(resp_json)
     assert resp_json["status"] == "success"
     assert resp_json["data"]["status"] == "pending"
 
@@ -480,8 +477,7 @@ async def _test_raster_tile_cache(
         - old_asset_ids
     )
 
-    for asset_id in new_asset_ids:
-        await check_tasks_status(async_client, logs, asset_id)
+    await check_tasks_status(async_client, logs, new_asset_ids)
 
     # Make sure the raster tile cache asset is in "saved" state
     asset_resp = await async_client.get(f"/asset/{tile_cache_asset_id}")
@@ -496,7 +492,7 @@ async def _test_raster_tile_cache(
         _check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
     _check_s3_file_present(
-        TILE_CACHE_BUCKET, f"{dataset}/{version}/{symbology['type']}/0/0/0.png"
+        TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/0/0/0.png"]
     )
 
 

@@ -206,7 +206,7 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
         assert response.status_code == 202
         asset_id = response.json()["data"]["asset_id"]
 
-        await check_tasks_status(async_client, logs, asset_id)
+        await check_tasks_status(async_client, logs, [asset_id])
 
         response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
         assert response.status_code == 200

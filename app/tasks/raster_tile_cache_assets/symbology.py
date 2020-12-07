@@ -14,7 +14,7 @@ from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import BuildRGBJob, Job, PixETLJob
 from app.models.pydantic.symbology import Symbology
-from app.settings.globals import DATA_LAKE_BUCKET, PIXETL_DEFAULT_RESAMPLING
+from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.raster_tile_cache_assets.utils import (
     create_wm_tile_set_job,
@@ -46,7 +46,7 @@ async def no_symbology(
         raise RuntimeError("No source URI set.")
 
 
-async def gradient_symbology(
+async def pixetl_symbology(
     dataset: str,
     version: str,
     source_asset_co: RasterTileSetSourceCreationOptions,
@@ -55,12 +55,19 @@ async def gradient_symbology(
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
     """Create RGBA raster which gradient symbology based on input raster."""
-    pixel_meaning = f"{source_asset_co.pixel_meaning}_gradient"
+    assert source_asset_co.symbology  # make mypy happy
+    pixel_meaning = f"{source_asset_co.pixel_meaning}_{source_asset_co.symbology.type}"
     parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
+    source_uri = (
+        [to_tile_geojson(uri) for uri in source_asset_co.source_uri]
+        if source_asset_co.source_uri
+        else None
+    )
 
     creation_options = source_asset_co.copy(
         deep=True,
         update={
+            "source_uri": source_uri,
             "calc": None,
             "resampling": PIXETL_DEFAULT_RESAMPLING,
             "grid": f"zoom_{zoom_level}",
@@ -243,7 +250,8 @@ async def _merge_intensity_and_date_conf(
 
 _symbology_constructor: Dict[str, SymbologyFuncType] = {
     ColorMapType.date_conf_intensity: date_conf_intensity_symbology,
-    ColorMapType.gradient: gradient_symbology,
+    ColorMapType.gradient: pixetl_symbology,
+    ColorMapType.discrete: pixetl_symbology,
 }
 
 symbology_constructor: DefaultDict[str, SymbologyFuncType] = defaultdict(

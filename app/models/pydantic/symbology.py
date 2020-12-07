@@ -9,7 +9,7 @@ class RGBA(BaseModel):
     red: int = Field(..., ge=0, le=255)
     green: int = Field(..., ge=0, le=255)
     blue: int = Field(..., ge=0, le=255)
-    alpha: int = Field(..., ge=0, le=255)
+    alpha: int = Field(255, ge=0, le=255)
 
     def tuple(self) -> Tuple[int, int, int, int]:
         return self.red, self.green, self.blue, self.alpha
