@@ -33,8 +33,8 @@ STR_VALUE_REGEX = r"^[a-zA-Z0-9_-]{1,}$"
 
 class Index(BaseModel):
     index_type: IndexType
-    column_name: str = Field(
-        ..., description="Column to be used by index", regex=COLUMN_REGEX
+    column_names: List[str] = Field(
+        ..., description="Columns to be used by index", regex=COLUMN_REGEX
     )
 
 
@@ -128,9 +128,9 @@ class VectorSourceCreationOptions(BaseModel):
 
     indices: List[Index] = Field(
         [
-            Index(index_type="gist", column_name="geom"),
-            Index(index_type="gist", column_name="geom_wm"),
-            Index(index_type="hash", column_name="gfw_geostore_id"),
+            Index(index_type="gist", column_names=["geom"]),
+            Index(index_type="gist", column_names=["geom_wm"]),
+            Index(index_type="hash", column_names=["gfw_geostore_id"]),
         ],
         description="List of indices to add to table",
     )

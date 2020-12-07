@@ -94,15 +94,15 @@ async def vector_source_asset(
     for index in creation_options.indices:
         index_jobs.append(
             PostgresqlClientJob(
-                job_name=f"create_index_{index.column_name}_{index.index_type}",
+                job_name=f"create_index_{'_'.join(index.column_names)}_{index.index_type}",
                 command=[
                     "create_index.sh",
                     "-d",
                     dataset,
                     "-v",
                     version,
-                    "-c",
-                    index.column_name,
+                    "-C",
+                    ",".join(index.column_names),
                     "-x",
                     index.index_type,
                 ],

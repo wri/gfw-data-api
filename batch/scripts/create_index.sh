@@ -10,8 +10,7 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
-#psql -c "\d+ \"$DATASET\".\"$VERSION\" "
-
-psql -c "CREATE INDEX IF NOT EXISTS \"${VERSION}_${COLUMN_NAME}_${INDEX_TYPE}_idx\"
+COLUMN_NAMES_UNDERSCORED="$(echo $COLUMN_NAMES | sed 's/,/_/g')"
+psql -c "CREATE INDEX IF NOT EXISTS \"${VERSION}_${COLUMN_NAMES_UNDERSCORED}_${INDEX_TYPE}_idx\"
      ON \"$DATASET\".\"$VERSION\" USING $INDEX_TYPE
-     (${COLUMN_NAME});"
+     (${COLUMN_NAMES});"

@@ -104,9 +104,9 @@ async def test_versions(mocked_cloudfront_client, async_client):
         "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
         "layers": None,
         "indices": [
-            {"column_name": "geom", "index_type": "gist"},
-            {"column_name": "geom_wm", "index_type": "gist"},
-            {"column_name": "gfw_geostore_id", "index_type": "hash"},
+            {"column_names": ["geom"], "index_type": "gist"},
+            {"column_names": ["geom_wm"], "index_type": "gist"},
+            {"column_names": ["gfw_geostore_id"], "index_type": "hash"},
         ],
         "create_dynamic_vector_tile_cache": True,
         "add_to_geostore": True,

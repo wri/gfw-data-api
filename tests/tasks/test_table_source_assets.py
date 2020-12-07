@@ -50,16 +50,16 @@ async def test_table_source_asset(batch_client, async_client):
             "has_header": True,
             "latitude": "latitude",
             "longitude": "longitude",
-            "cluster": {"index_type": "gist", "column_name": "geom_wm"},
+            "cluster": {"index_type": "btree", "column_names": ["iso", "adm1", "adm2", "alert__date"]},
             "partitions": {
                 "partition_type": "range",
                 "partition_column": "alert__date",
                 "partition_schema": partition_schema,
             },
             "indices": [
-                {"index_type": "gist", "column_name": "geom"},
-                {"index_type": "gist", "column_name": "geom_wm"},
-                {"index_type": "btree", "column_name": "alert__date"},
+                {"index_type": "gist", "column_names": ["geom"]},
+                {"index_type": "gist", "column_names": ["geom_wm"]},
+                {"index_type": "btree", "column_names": ["iso", "adm1", "adm2", "alert__date"]},
             ],
             "table_schema": [
                 {
@@ -238,16 +238,16 @@ async def test_table_source_asset_parallel(batch_client, async_client):
             "has_header": True,
             "latitude": "latitude",
             "longitude": "longitude",
-            "cluster": {"index_type": "gist", "column_name": "geom_wm"},
+            "cluster": {"index_type": "gist", "column_names": ["geom_wm"]},
             "partitions": {
                 "partition_type": "range",
                 "partition_column": "alert__date",
                 "partition_schema": partition_schema,
             },
             "indices": [
-                {"index_type": "gist", "column_name": "geom"},
-                {"index_type": "gist", "column_name": "geom_wm"},
-                {"index_type": "btree", "column_name": "alert__date"},
+                {"index_type": "gist", "column_names": ["geom"]},
+                {"index_type": "gist", "column_names": ["geom_wm"]},
+                {"index_type": "btree", "column_names": ["alert__date"]},
             ],
             "table_schema": [
                 {

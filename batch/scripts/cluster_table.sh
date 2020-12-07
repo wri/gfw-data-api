@@ -10,5 +10,6 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
-echo "PSQL: CLUSTER \"$DATASET\".\"$VERSION\" USING \"${VERSION}_${COLUMN_NAME}_${INDEX_TYPE}_idx\""
-psql -c "CLUSTER \"$DATASET\".\"$VERSION\" USING \"${VERSION}_${COLUMN_NAME}_${INDEX_TYPE}_idx\";"
+COLUMN_NAMES_UNDERSCORED="$(echo $COLUMN_NAMES | sed 's/,/_/g')"
+echo "PSQL: CLUSTER \"$DATASET\".\"$VERSION\" USING \"${VERSION}_${COLUMN_NAMES_UNDERSCORED}_${INDEX_TYPE}_idx\""
+psql -c "CLUSTER \"$DATASET\".\"$VERSION\" USING \"${VERSION}_${COLUMN_NAMES_UNDERSCORED}_${INDEX_TYPE}_idx\";"
