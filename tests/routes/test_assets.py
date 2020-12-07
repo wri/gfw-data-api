@@ -1,4 +1,5 @@
 from typing import Any, Dict, List
+from unittest.mock import patch
 from uuid import UUID
 
 import boto3
@@ -10,6 +11,7 @@ from app.crud import tasks
 from app.models.enum.symbology import ColorMapType
 from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.utils.aws import get_s3_client
+from tests.tasks import MockCloudfrontClient
 from tests.utils import check_tasks_status, create_default_asset, poll_jobs
 
 
@@ -367,9 +369,6 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     # ]
     # _check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
-    # Flush requests list so we're starting fresh
-    requests.delete(f"http://localhost:{httpd.server_port}")
-
     ########################
 
     symbology_checks = [
@@ -417,6 +416,9 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     ]
 
     for check in symbology_checks:
+        # Flush requests list so we're starting fresh
+        requests.delete(f"http://localhost:{httpd.server_port}")
+
         await _test_raster_tile_cache(
             dataset, version, default_asset_id, async_client, logs, **check,
         )
@@ -494,6 +496,11 @@ async def _test_raster_tile_cache(
     _check_s3_file_present(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/0/0/0.png"]
     )
+
+    with patch("app.tasks.aws_tasks.get_cloudfront_client") as mock_client:
+        mock_client.return_value = MockCloudfrontClient()
+        for asset_id in new_asset_ids:
+            await async_client.delete(f"/asset/{asset_id}")
 
 
 def _check_s3_file_present(bucket, keys):
