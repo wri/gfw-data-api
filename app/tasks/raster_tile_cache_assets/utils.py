@@ -41,13 +41,8 @@ async def reproject_to_web_mercator(
         dataset, version, source_creation_options, zoom_level, max_zoom
     )
 
-    symbology = (
-        source_creation_options.symbology
-        if source_creation_options.symbology
-        and source_creation_options.symbology.type
-        == ColorMapType.discrete  # FIXME: this should be: `not in symbology_constructor.keys()` but creates cirular import
-        else None
-    )
+    # We create RGBA image in a second step, since we cannot easily resample RGBA to next zoom level using PixETL.
+    symbology = None
 
     creation_options = source_creation_options.copy(
         deep=True,
@@ -60,7 +55,9 @@ async def reproject_to_web_mercator(
         },
     )
 
-    job_name = f"{dataset}_{version}_{creation_options.pixel_meaning}_{zoom_level}"
+    job_name = (
+        f"{dataset}_{version}_{source_creation_options.pixel_meaning}_{zoom_level}"
+    )
 
     return await create_wm_tile_set_job(
         dataset, version, creation_options, job_name, parents

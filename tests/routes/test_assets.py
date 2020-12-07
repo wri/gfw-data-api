@@ -1,11 +1,18 @@
+from typing import Any, Dict, List
+from unittest.mock import patch
+from uuid import UUID
+
 import boto3
 import pytest
 import requests
 from botocore.exceptions import ClientError
 
 from app.crud import tasks
+from app.models.enum.symbology import ColorMapType
 from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
-from tests.utils import create_default_asset, poll_jobs
+from app.utils.aws import get_s3_client
+from tests.tasks import MockCloudfrontClient
+from tests.utils import check_tasks_status, create_default_asset, poll_jobs
 
 
 @pytest.mark.asyncio
@@ -321,30 +328,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     version = "v1.0.0"
     primary_grid = "90/27008"
 
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-    )
-
-    pixetl_output_files = (
-        f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-3857/zoom_0/date_conf/geotiff/000R_000C.tif",
-        f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-3857/zoom_0/intensity/geotiff/000R_000C.tif",
-        f"{dataset}/{version}/raster/epsg-3857/zoom_0/rgb_encoded/geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-3857/zoom_0/rgb_encoded/geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-3857/zoom_0/rgb_encoded/geotiff/000R_000C.tif",
-    )
-    for key in pixetl_output_files:
-        s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
-
-    tile_cache_files = (f"{dataset}/{version}/foosball/0/0/0.png",)
-    for key in tile_cache_files:
-        s3_client.delete_object(Bucket=TILE_CACHE_BUCKET, Key=key)
-
-    print("FINISHED CLEANING UP")
-
+    pixel_meaning = "date_conf"
     raster_version_payload = {
         "is_latest": True,
         "creation_options": {
@@ -353,7 +337,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
             "source_driver": "GeoTIFF",
             "data_type": "uint16",
             "no_data": 0,
-            "pixel_meaning": "date_conf",
+            "pixel_meaning": pixel_meaning,
             "grid": primary_grid,
             "resampling": "nearest",
             "overwrite": True,
@@ -370,6 +354,8 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     )
     default_asset_id = asset["asset_id"]
 
+    await check_tasks_status(async_client, logs, [default_asset_id])
+
     # Verify that the asset and version are in state "saved"
     version_resp = await async_client.get(f"/dataset/{dataset}/{version}")
     assert version_resp.json()["data"]["status"] == "saved"
@@ -377,8 +363,87 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     asset_resp = await async_client.get(f"/asset/{default_asset_id}")
     assert asset_resp.json()["data"]["status"] == "saved"
 
-    # Flush requests list so we're starting fresh
-    requests.delete(f"http://localhost:{httpd.server_port}")
+    # test_files = [
+    #     f"{pixetl_output_files_prefix}/{pixel_meaning}/{test_file}"
+    #     for test_file in pixetl_test_files
+    # ]
+    # _check_s3_file_present(DATA_LAKE_BUCKET, test_files)
+
+    ########################
+
+    symbology_checks = [
+        {
+            "wm_tile_set_assets": ["date_conf", "intensity", "rgb_encoded"],
+            "symbology": {"type": ColorMapType.date_conf_intensity},
+        },
+        {
+            "wm_tile_set_assets": ["date_conf", f"date_conf_{ColorMapType.gradient}"],
+            "symbology": {
+                "type": ColorMapType.gradient,
+                "colormap": {
+                    1: {"red": 255, "green": 0, "blue": 0},
+                    19: {"red": 0, "green": 0, "blue": 255},
+                },
+            },
+        },
+        {
+            "wm_tile_set_assets": [f"date_conf_{ColorMapType.discrete}"],
+            "symbology": {
+                "type": ColorMapType.discrete,
+                "colormap": {
+                    1: {"red": 255, "green": 0, "blue": 0},
+                    2: {"red": 255, "green": 0, "blue": 0},
+                    3: {"red": 255, "green": 20, "blue": 0},
+                    4: {"red": 255, "green": 40, "blue": 0},
+                    5: {"red": 255, "green": 60, "blue": 0},
+                    6: {"red": 255, "green": 80, "blue": 0},
+                    7: {"red": 255, "green": 100, "blue": 0},
+                    8: {"red": 255, "green": 120, "blue": 0},
+                    9: {"red": 255, "green": 140, "blue": 0},
+                    10: {"red": 255, "green": 160, "blue": 0},
+                    11: {"red": 255, "green": 180, "blue": 0},
+                    12: {"red": 255, "green": 200, "blue": 0},
+                    13: {"red": 255, "green": 220, "blue": 0},
+                    14: {"red": 255, "green": 240, "blue": 0},
+                    15: {"red": 255, "green": 255, "blue": 0},
+                    16: {"red": 255, "green": 255, "blue": 20},
+                    17: {"red": 255, "green": 255, "blue": 40},
+                    18: {"red": 255, "green": 255, "blue": 60},
+                    19: {"red": 255, "green": 255, "blue": 80},
+                },
+            },
+        },
+    ]
+
+    for check in symbology_checks:
+        # Flush requests list so we're starting fresh
+        requests.delete(f"http://localhost:{httpd.server_port}")
+
+        await _test_raster_tile_cache(
+            dataset, version, default_asset_id, async_client, logs, **check,
+        )
+
+
+async def _test_raster_tile_cache(
+    dataset: str,
+    version: str,
+    default_asset_id: UUID,
+    async_client,
+    logs,
+    wm_tile_set_assets,
+    symbology,
+):
+    pixetl_output_files_prefix = f"{dataset}/{version}/raster/epsg-3857/zoom_0"
+    pixetl_test_files = [
+        "geotiff/extent.geojson",
+        "geotiff/tiles.geojson",
+        "geotiff/000R_000C.tif",
+    ]
+
+    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    _delete_s3_files(TILE_CACHE_BUCKET, f"{dataset}/{version}")
+
+    print("FINISHED CLEANING UP")
 
     # Add a tile cache asset based on the raster tile set
     asset_payload = {
@@ -387,54 +452,70 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         "creation_options": {
             "source_asset_id": default_asset_id,
             "min_zoom": 0,
-            "max_zoom": 4,
-            "max_static_zoom": 3,
-            "symbology": {"type": "date_conf_intensity"},
-            "implementation": "foosball",
+            "max_zoom": 2,
+            "max_static_zoom": 1,
+            "symbology": symbology,
+            "implementation": symbology["type"],
         },
         "metadata": {},
     }
+
+    old_assets_resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    old_asset_ids = set([asset["asset_id"] for asset in old_assets_resp.json()["data"]])
 
     create_asset_resp = await async_client.post(
         f"/dataset/{dataset}/{version}/assets", json=asset_payload
     )
     resp_json = create_asset_resp.json()
+    print(resp_json)
     assert resp_json["status"] == "success"
     assert resp_json["data"]["status"] == "pending"
 
     tile_cache_asset_id = resp_json["data"]["asset_id"]
 
-    # Check the status of all tasks (except the default one which has already been checked)
-    task_ids = []
-    assets_response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
-    for asset in assets_response.json()["data"]:
-        asset_id = asset["asset_id"]
-        if asset_id != default_asset_id:
-            tasks_resp = await async_client.get(f"/asset/{asset_id}/tasks")
-            for task in tasks_resp.json()["data"]:
-                task_ids += [task["task_id"]]
-                print(f"Adding task id: {task['task_id']}")
+    new_assets_resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    new_asset_ids = (
+        set([asset["asset_id"] for asset in new_assets_resp.json()["data"]])
+        - old_asset_ids
+    )
 
-    print(f"All found task ids: {task_ids}")
+    await check_tasks_status(async_client, logs, new_asset_ids)
 
-    # Wait until all batch jobs are done.
-    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
-    assert status == "saved"
-
-    # Finally, make sure the raster tile cache asset is in "saved" state
+    # Make sure the raster tile cache asset is in "saved" state
     asset_resp = await async_client.get(f"/asset/{tile_cache_asset_id}")
     assert asset_resp.json()["data"]["status"] == "saved"
 
-    # Oh, and make sure all files got uploaded to S3 along the way
-    for key in pixetl_output_files:
+    # Check if file for all expected assets are present
+    for pixel_meaning in wm_tile_set_assets:
+        test_files = [
+            f"{pixetl_output_files_prefix}/{pixel_meaning}/{test_file}"
+            for test_file in pixetl_test_files
+        ]
+        _check_s3_file_present(DATA_LAKE_BUCKET, test_files)
+
+    _check_s3_file_present(
+        TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/0/0/0.png"]
+    )
+
+    with patch("app.tasks.aws_tasks.get_cloudfront_client") as mock_client:
+        mock_client.return_value = MockCloudfrontClient()
+        for asset_id in new_asset_ids:
+            await async_client.delete(f"/asset/{asset_id}")
+
+
+def _check_s3_file_present(bucket, keys):
+    s3_client = get_s3_client()
+
+    for key in keys:
         try:
-            s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+            s3_client.head_object(Bucket=bucket, Key=key)
         except ClientError:
             raise AssertionError(f"Key {key} doesn't exist!")
 
-    # Make sure files made it into the tile cache bucket as well
-    for key in tile_cache_files:
-        try:
-            s3_client.head_object(Bucket=TILE_CACHE_BUCKET, Key=key)
-        except ClientError:
-            raise AssertionError(f"Key {key} doesn't exist!")
+
+def _delete_s3_files(bucket, prefix):
+    s3_client = get_s3_client()
+    response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    for obj in response.get("Contents", list()):
+        print("Deleting", obj["Key"])
+        s3_client.delete_object(Bucket=bucket, Key=obj["Key"])
