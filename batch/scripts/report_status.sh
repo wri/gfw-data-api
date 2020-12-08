@@ -17,7 +17,7 @@ EXIT_CODE="${PIPESTATUS[0]}"
 
 echo COMMAND EXIT CODE: $EXIT_CODE
 
-cat output.log | grep -i error
+cat output.txt | grep -i error
 GREP_EXIT_CODE=$?
 
 echo GREP EXIT CODE: $GREP_EXIT_CODE
@@ -36,7 +36,7 @@ cat output.txt \
   | sed 's/^PGHOST.*$/PGHOST=\*\*\*/' \
   | sed 's/^SERVICE_ACCOUNT_TOKEN.*$/SERVICE_ACCOUNT_TOKEN=\*\*\*/' \
   | sed 's/^GPG_KEY.*$/GPG_KEY=\*\*\*/' \
-  | tail -n 1000 \
+  | tail -c 1000 \
   > filtered_output.txt
 
 ESC_OUTPUT="$(cat filtered_output.txt | python -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')"
