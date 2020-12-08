@@ -12,13 +12,12 @@ URL=${STATUS_URL}/${AWS_BATCH_JOB_ID}
 echo "URL: $URL"
 
 # Execute command, save the exit code and output (stdout AND stderr)
-OUTPUT=$("$@" 2>&1)
-EXIT_CODE=$?
+"$@" 2>&1 | tee output.txt
+EXIT_CODE="${PIPESTATUS[0]}"
 
 echo COMMAND EXIT CODE: $EXIT_CODE
-echo OUTPUT: "$OUTPUT"
 
-echo "$OUTPUT" | grep -i error
+cat output.log | grep -i error
 GREP_EXIT_CODE=$?
 
 echo GREP EXIT CODE: $GREP_EXIT_CODE
@@ -28,15 +27,19 @@ echo GREP EXIT CODE: $GREP_EXIT_CODE
 # But we still want to know if the var was set
 ESC_COMMAND=$(json_escape "$*")
 
-ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^AWS_SECRET_ACCESS_KEY.*$/AWS_SECRET_ACCESS_KEY=\*\*\*/') # pragma: allowlist secret
-ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^AWS_ACCESS_KEY_ID.*$/AWS_ACCESS_KEY_ID=\*\*\*/')
-ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^PGPASSWORD.*$/PGPASSWORD=\*\*\*/')  # pragma: allowlist secret
-ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^PGUSER.*$/PGUSER=\*\*\*/')
-ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^PGDATABASE.*$/PGDATABASE=\*\*\*/')
-ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^PGHOST.*$/PGHOST=\*\*\*/')
-ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^SERVICE_ACCOUNT_TOKEN.*$/SERVICE_ACCOUNT_TOKEN=\*\*\*/')
-ESC_OUTPUT=$(echo "$ESC_OUTPUT" | sed 's/^GPG_KEY.*$/GPG_KEY=\*\*\*/')
-ESC_OUTPUT=$(json_escape "$ESC_OUTPUT")
+cat output.txt \
+  | sed 's/^AWS_SECRET_ACCESS_KEY.*$/AWS_SECRET_ACCESS_KEY=\*\*\*/' \
+  | sed 's/^AWS_ACCESS_KEY_ID.*$/AWS_ACCESS_KEY_ID=\*\*\*/' \
+  | sed 's/^PGPASSWORD.*$/PGPASSWORD=\*\*\*/' \
+  | sed 's/^PGUSER.*$/PGUSER=\*\*\*/' \
+  | sed 's/^PGDATABASE.*$/PGDATABASE=\*\*\*/' \
+  | sed 's/^PGHOST.*$/PGHOST=\*\*\*/' \
+  | sed 's/^SERVICE_ACCOUNT_TOKEN.*$/SERVICE_ACCOUNT_TOKEN=\*\*\*/' \
+  | sed 's/^GPG_KEY.*$/GPG_KEY=\*\*\*/' \
+  | tail -n 1000 \
+  > filtered_output.txt
+
+ESC_OUTPUT="$(cat filtered_output.txt | python -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')"
 
 if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
     STATUS="success"
@@ -45,7 +48,7 @@ if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
 else
     STATUS="failed"
     MESSAGE="Command [ $ESC_COMMAND ] encountered errors"
-    DETAIL=${ESC_OUTPUT:(-1000)} # crop output length to be able to send using CURL
+    DETAIL=$ESC_OUTPUT # crop output length to be able to send using CURL
 fi
 
 AFTER=$(date '+%Y-%m-%d %H:%M:%S')
