@@ -5,7 +5,6 @@ from fastapi.logger import logger
 
 from app.crud.assets import create_asset
 from app.models.enum.assets import AssetType
-from app.models.enum.symbology import ColorMapType
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import GDAL2TilesJob, Job
