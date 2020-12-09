@@ -17,11 +17,6 @@ EXIT_CODE="${PIPESTATUS[0]}"
 
 echo COMMAND EXIT CODE: $EXIT_CODE
 
-cat output.txt | grep -i error
-GREP_EXIT_CODE=$?
-
-echo GREP EXIT CODE: $GREP_EXIT_CODE
-
 # escape all quotes inside command to not break JSON payload
 # Also make sure we don't reveal any sensitive information
 # But we still want to know if the var was set
@@ -41,7 +36,7 @@ cat output.txt \
 
 ESC_OUTPUT="$(cat filtered_output.txt | python -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')"
 
-if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
+if [ $EXIT_CODE -eq 0 ]; then
     STATUS="success"
     MESSAGE="Successfully ran command [ $ESC_COMMAND ]"
     DETAIL=""
@@ -80,7 +75,7 @@ rm -R "$WORK_DIR"
 set -e
 
 
-if [ $EXIT_CODE -eq 0 ] && [ $GREP_EXIT_CODE -ne 0 ]; then
+if [ $EXIT_CODE -eq 0 ]; then
     exit 0
 else
     exit 1
