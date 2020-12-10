@@ -54,8 +54,8 @@ async def reproject_to_web_mercator(
         },
     )
 
-    job_name = (
-        f"{dataset}_{version}_{source_creation_options.pixel_meaning}_{zoom_level}"
+    job_name = f"{dataset}_{version}_{source_creation_options.pixel_meaning}_{zoom_level}".replace(
+        ".", "_"
     )
 
     return await create_wm_tile_set_job(

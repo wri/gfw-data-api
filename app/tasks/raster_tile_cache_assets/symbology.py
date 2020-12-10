@@ -74,7 +74,7 @@ async def pixetl_symbology(
             "pixel_meaning": pixel_meaning,
         },
     )
-    job_name = f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
+    job_name = f"{dataset}_{version}_{pixel_meaning}_{zoom_level}".replace(".", "_")
     job, uri = await create_wm_tile_set_job(
         dataset, version, creation_options, job_name, parents
     )
