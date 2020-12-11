@@ -2,7 +2,7 @@
 
 # Use Python json.dumps to escape special characters for JSON payload
 json_escape () {
-    printf '%s' "$1" | python -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])'
+    python -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])'
 }
 
 # SERVICE_ACCOUNT_TOKEN, STATUS_URL are put in the env from WRITER_SECRETS
@@ -17,11 +17,11 @@ EXIT_CODE="${PIPESTATUS[0]}"
 
 echo COMMAND EXIT CODE: $EXIT_CODE
 
-# escape all quotes inside command to not break JSON payload
+# Escape all quotes inside command to not break JSON payload
+ESC_COMMAND=$(echo -n "$*" | json_escape)
+
 # Also make sure we don't reveal any sensitive information
 # But we still want to know if the var was set
-ESC_COMMAND=$(json_escape "$*")
-
 cat output.txt \
   | sed 's/^AWS_SECRET_ACCESS_KEY.*$/AWS_SECRET_ACCESS_KEY=\*\*\*/' \
   | sed 's/^AWS_ACCESS_KEY_ID.*$/AWS_ACCESS_KEY_ID=\*\*\*/' \
@@ -34,9 +34,9 @@ cat output.txt \
   | tail -c 1000 \
   > filtered_output.txt
 
-ESC_OUTPUT="$(cat filtered_output.txt | python -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')"
+ESC_OUTPUT="$(json_escape < filtered_output.txt)"
 
-if [ $EXIT_CODE -eq 0 ]; then
+if [ "$EXIT_CODE" -eq 0 ]; then
     STATUS="success"
     MESSAGE="Successfully ran command [ $ESC_COMMAND ]"
     DETAIL=""
