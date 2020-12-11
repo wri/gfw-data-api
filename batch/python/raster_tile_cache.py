@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import os
 import subprocess
 from logging import getLogger
@@ -64,8 +63,14 @@ def raster_tile_cache(
             gdal_path = os.path.join("/vsis3", bucket, remote_key)
             tiff_paths.append(gdal_path)
 
+    # If there are no files, what can we do? Just exit I guess!
+    if not tiff_paths:
+        logger.info("No input files! I guess we're good then?")
+        return
+
     with TemporaryDirectory() as vrt_dir, TemporaryDirectory() as tiles_dir:
         vrt_path = os.path.join(vrt_dir, "index.vrt")
+
         cmd_arg_list = ["gdalbuildvrt", vrt_path, *tiff_paths]
         logger.info(f"Running command: {cmd_arg_list}")
         proc: subprocess.CompletedProcess = subprocess.run(
