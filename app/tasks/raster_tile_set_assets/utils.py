@@ -21,7 +21,6 @@ JOB_ENV = writer_secrets + [
     {"name": "CORES", "value": PIXETL_CORES},
     {"name": "MAX_MEM", "value": PIXETL_MAX_MEM},
     {"name": "AWS_GCS_KEY_SECRET_ARN", "value": AWS_GCS_KEY_SECRET_ARN},
-    {"name": "VRT_SHARED_SOURCE", "value": "0"},
 ]
 
 if S3_ENTRYPOINT_URL:
