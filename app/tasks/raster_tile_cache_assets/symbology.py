@@ -23,6 +23,7 @@ from app.tasks.raster_tile_cache_assets.utils import (
     to_tile_geojson,
 )
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV
+from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri, split_s3_path
 
 SymbologyFuncType = Callable[
@@ -74,7 +75,9 @@ async def pixetl_symbology(
             "pixel_meaning": pixel_meaning,
         },
     )
-    job_name = f"{dataset}_{version}_{pixel_meaning}_{zoom_level}".replace(".", "_")
+    job_name = sanitize_batch_job_name(
+        f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
+    )
     job, uri = await create_wm_tile_set_job(
         dataset, version, creation_options, job_name, parents
     )

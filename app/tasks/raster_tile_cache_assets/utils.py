@@ -11,6 +11,7 @@ from app.models.pydantic.jobs import GDAL2TilesJob, Job
 from app.settings.globals import TILE_CACHE_BUCKET
 from app.tasks import Callback, callback_constructor
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_pixetl_job
+from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri
 
 
@@ -54,8 +55,8 @@ async def reproject_to_web_mercator(
         },
     )
 
-    job_name = f"{dataset}_{version}_{source_creation_options.pixel_meaning}_{zoom_level}".replace(
-        ".", "_"
+    job_name = sanitize_batch_job_name(
+        f"{dataset}_{version}_{source_creation_options.pixel_meaning}_{zoom_level}"
     )
 
     return await create_wm_tile_set_job(
