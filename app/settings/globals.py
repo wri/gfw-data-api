@@ -120,8 +120,8 @@ TILE_CACHE_JOB_DEFINITION = config("TILE_CACHE_JOB_DEFINITION", cast=str)
 TILE_CACHE_JOB_QUEUE = config("TILE_CACHE_JOB_QUEUE", cast=str)
 PIXETL_JOB_DEFINITION = config("PIXETL_JOB_DEFINITION", cast=str)
 PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str)
-PIXETL_CORES = config("PIXETL_CORES", cast=int, default=12)
-PIXETL_MAX_MEM = config("PIXETL_MAX_MEM", cast=int, default=36000)
+PIXETL_CORES = config("PIXETL_CORES", cast=int, default=8)
+PIXETL_MAX_MEM = config("PIXETL_MAX_MEM", cast=int, default=3800)
 PIXETL_DEFAULT_RESAMPLING = config(
     "DEFAULT_RESAMPLING", cast=str, default=ResamplingMethod.nearest.value
 )
