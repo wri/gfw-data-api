@@ -9,10 +9,11 @@ json_escape () {
 # AWS_BATCH_JOB_ID is put in the env by AWS Batch/moto
 HEADERS="Authorization: Bearer $SERVICE_ACCOUNT_TOKEN"
 URL=${STATUS_URL}/${AWS_BATCH_JOB_ID}
-echo "URL: $URL"
+
+OUTPUT_FILE="/tmp/${AWS_BATCH_JOB_ID}_output.txt"
 
 # Execute command, save the exit code and output (stdout AND stderr)
-"$@" 2>&1 | tee output.txt
+"$@" 2>&1 | tee $OUTPUT_FILE
 EXIT_CODE="${PIPESTATUS[0]}"
 
 echo COMMAND EXIT CODE: $EXIT_CODE
@@ -22,7 +23,7 @@ ESC_COMMAND=$(echo -n "$*" | json_escape)
 
 # Also make sure we don't reveal any sensitive information
 # But we still want to know if the var was set
-cat output.txt \
+ESC_OUTPUT="$(cat $OUTPUT_FILE \
   | sed 's/^AWS_SECRET_ACCESS_KEY.*$/AWS_SECRET_ACCESS_KEY=\*\*\*/' \
   | sed 's/^AWS_ACCESS_KEY_ID.*$/AWS_ACCESS_KEY_ID=\*\*\*/' \
   | sed 's/^PGPASSWORD.*$/PGPASSWORD=\*\*\*/' \
@@ -32,9 +33,8 @@ cat output.txt \
   | sed 's/^SERVICE_ACCOUNT_TOKEN.*$/SERVICE_ACCOUNT_TOKEN=\*\*\*/' \
   | sed 's/^GPG_KEY.*$/GPG_KEY=\*\*\*/' \
   | tail -c 1000 \
-  > filtered_output.txt
-
-ESC_OUTPUT="$(json_escape < filtered_output.txt)"
+  | json_escape
+)"
 
 if [ "$EXIT_CODE" -eq 0 ]; then
     STATUS="success"
@@ -72,10 +72,11 @@ set +e
 pushd /tmp
 WORK_DIR="/tmp/$AWS_BATCH_JOB_ID"
 rm -R "$WORK_DIR"
+rm "$OUTPUT_FILE"
 set -e
 
 
-if [ $EXIT_CODE -eq 0 ]; then
+if [ "$EXIT_CODE" -eq 0 ]; then
     exit 0
 else
     exit 1
