@@ -95,8 +95,8 @@ class RasterTileSetAssetCreationOptions(BaseModel):
     subset: Optional[str]
     grid: Grid
     symbology: Optional[Symbology] = None
-    compute_stats: bool = True
-    compute_histogram: bool = True
+    compute_stats: bool = False
+    compute_histogram: bool = False
 
     class Config:
         extra = "forbid"
