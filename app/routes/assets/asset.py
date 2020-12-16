@@ -215,7 +215,7 @@ async def get_creation_options(asset_id: UUID = Path(...)):
 )
 async def get_stats(asset_id: UUID = Path(...)):
     asset = await assets.get_asset(asset_id)
-    stats: Optional[Stats] = stats_factory(asset.asset_type, **asset.stats)
+    stats: Optional[Stats] = stats_factory(asset.asset_type, asset.stats)
     return StatsResponse(data=stats)
 
 

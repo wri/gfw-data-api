@@ -161,10 +161,16 @@ def client():
                             _ = client.delete(
                                 f"/dataset/{ds_id}/{version}/{asset['asset_id']}"
                             )
-                            _ = client.delete(f"/dataset/{ds_id}/{version}")
-                            _ = client.delete(f"/dataset/{ds_id}")
                         except Exception:
                             print(f"Exception deleting asset {asset['asset_id']}")
+                    try:
+                        _ = client.delete(f"/dataset/{ds_id}/{version}")
+                    except Exception:
+                        print(f"Exception deleting version {version}")
+            try:
+                _ = client.delete(f"/dataset/{ds_id}")
+            except Exception:
+                print(f"Exception deleting dataset {ds_id}")
 
     app.dependency_overrides = {}
     main(["--raiseerr", "downgrade", "base"])
