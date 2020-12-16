@@ -522,76 +522,77 @@ def _delete_s3_files(bucket, prefix):
         s3_client.delete_object(Bucket=bucket, Key=obj["Key"])
 
 
-@pytest.mark.asyncio
-async def test_asset_stats(async_client):
-    """."""
+# @pytest.mark.asyncio
+# async def test_asset_stats(async_client):
+#     """."""
+#
+#     dataset = "test_asset_stats"
+#     version = "v1.0.0"
+#
+#     s3_client = boto3.client(
+#         "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+#     )
+#
+#     pixetl_output_files = [
+#         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/extent.geojson",
+#         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/extent.geojson",
+#         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/tiles.geojson",
+#         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/tiles.geojson",
+#         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/90N_000E.tif",
+#         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/90N_000E.tif",
+#     ]
+#
+#     for key in pixetl_output_files:
+#         s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+#
+#     raster_version_payload = {
+#         "is_latest": True,
+#         "creation_options": {
+#             "source_type": "raster",
+#             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+#             "source_driver": "GeoTIFF",
+#             "data_type": "uint16",
+#             "pixel_meaning": "percent",
+#             "grid": "90/27008",
+#             "resampling": "nearest",
+#             "overwrite": True,
+#             "compute_histogram": True,
+#             "compute_stats": True,
+#         },
+#     }
+#
+#     await create_default_asset(
+#         dataset,
+#         version,
+#         version_payload=raster_version_payload,
+#         async_client=async_client,
+#         execute_batch_jobs=True,
+#     )
+#
+#     for key in pixetl_output_files:
+#         try:
+#             s3_client.head_object(Bucket="gfw-data-lake-test", Key=key)
+#         except ClientError:
+#             raise AssertionError(f"Key {key} doesn't exist!")
+#
+#     # DEBUGGING:
+#     tiles_geojson_key = (
+#         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/tiles.geojson"
+#     )
+#     response = s3_client.get_object(Bucket=DATA_LAKE_BUCKET, Key=tiles_geojson_key)
+#     geojson: dict = json.loads(response["Body"].read().decode("utf-8"))
+#
+#     for feature in geojson["features"]:
+#         print("Feature:")
+#         print(f"Type: {feature['geometry']['type']}")
+#         print(f"Extent: {feature['properties']['extent']}")
+#         # print(f"Dimensions: {feature['properties']['extent']}")
+#         print(json.dumps(geojson, indent=2))
+#
+#     assert 1 == 2
 
-    dataset = "test_asset_stats"
-    version = "v1.0.0"
-
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-    )
-
-    pixetl_output_files = [
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/90N_000E.tif",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/90N_000E.tif",
-    ]
-
-    for key in pixetl_output_files:
-        s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
-
-    raster_version_payload = {
-        "is_latest": True,
-        "creation_options": {
-            "source_type": "raster",
-            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
-            "source_driver": "GeoTIFF",
-            "data_type": "uint16",
-            "pixel_meaning": "percent",
-            "grid": "90/27008",
-            "resampling": "nearest",
-            "overwrite": True,
-            "compute_histogram": True,
-            "compute_stats": True,
-        },
-    }
-
-    await create_default_asset(
-        dataset,
-        version,
-        version_payload=raster_version_payload,
-        async_client=async_client,
-        execute_batch_jobs=True,
-    )
-
-    for key in pixetl_output_files:
-        try:
-            s3_client.head_object(Bucket="gfw-data-lake-test", Key=key)
-        except ClientError:
-            raise AssertionError(f"Key {key} doesn't exist!")
-
-    # DEBUGGING:
-    tiles_geojson_key = (
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/tiles.geojson"
-    )
-    response = s3_client.get_object(Bucket=DATA_LAKE_BUCKET, Key=tiles_geojson_key)
-    geojson: dict = json.loads(response["Body"].read().decode("utf-8"))
-
-    for feature in geojson["features"]:
-        print("Feature:")
-        print(f"Type: {feature['geometry']['type']}")
-        print(f"Extent: {feature['properties']['extent']}")
-        # print(f"Dimensions: {feature['properties']['extent']}")
-        print(json.dumps(geojson, indent=2))
-
-    assert 1 == 2
-    # tiles = [
-    #     os.path.basename(feature["properties"]["name"])
-    #     for feature in geojson["features"]
-    # ]
-    # return tiles
+# tiles = [
+#     os.path.basename(feature["properties"]["name"])
+#     for feature in geojson["features"]
+# ]
+# return tiles

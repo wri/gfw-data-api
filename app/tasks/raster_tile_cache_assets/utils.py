@@ -12,7 +12,7 @@ from app.settings.globals import TILE_CACHE_BUCKET
 from app.tasks import Callback, callback_constructor
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_pixetl_job
 from app.tasks.utils import sanitize_batch_job_name
-from app.utils.path import get_asset_uri
+from app.utils.path import get_asset_uri, tile_uri_to_tiles_geojson
 
 
 async def reproject_to_web_mercator(
@@ -174,8 +174,6 @@ def get_zoom_source_uri(
         creation_options.source_uri if zoom_level == max_zoom else alternate_source_uri
     )
 
-    return [to_tile_geojson(uri) for uri in source_uri] if source_uri else None
-
-
-def to_tile_geojson(uri: str) -> str:
-    return uri.replace("{tile_id}.tif", "tiles.geojson")
+    return (
+        [tile_uri_to_tiles_geojson(uri) for uri in source_uri] if source_uri else None
+    )

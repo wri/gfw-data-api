@@ -20,7 +20,7 @@ from app.tasks.raster_tile_cache_assets.utils import (
     create_wm_tile_set_job,
     get_zoom_source_uri,
     reproject_to_web_mercator,
-    to_tile_geojson,
+    tile_uri_to_tiles_geojson,
 )
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV
 from app.tasks.utils import sanitize_batch_job_name
@@ -60,7 +60,7 @@ async def pixetl_symbology(
     pixel_meaning = f"{source_asset_co.pixel_meaning}_{source_asset_co.symbology.type}"
     parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
     source_uri = (
-        [to_tile_geojson(uri) for uri in source_asset_co.source_uri]
+        [tile_uri_to_tiles_geojson(uri) for uri in source_asset_co.source_uri]
         if source_asset_co.source_uri
         else None
     )
@@ -143,8 +143,8 @@ async def date_conf_intensity_symbology(
     merge_jobs, dst_uri = await _merge_intensity_and_date_conf(
         dataset,
         version,
-        to_tile_geojson(date_conf_uri),
-        to_tile_geojson(intensity_uri),
+        tile_uri_to_tiles_geojson(date_conf_uri),
+        tile_uri_to_tiles_geojson(intensity_uri),
         zoom_level,
         [date_conf_job, intensity_job],
     )

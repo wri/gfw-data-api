@@ -27,6 +27,14 @@ from ...models.pydantic.metadata import FieldMetadata
 from ...models.pydantic.tasks import TaskCreateIn, TaskResponse, TaskUpdateIn
 from ...settings.globals import TILE_CACHE_URL
 from ...tasks.assets import put_asset
+from ...utils.aws import get_s3_client
+from ...utils.path import (
+    get_asset_uri,
+    infer_srid_from_grid,
+    split_s3_path,
+    tile_uri_to_extent_geojson,
+    tile_uri_to_tiles_geojson,
+)
 from ...utils.tile_cache import redeploy_tile_cache_service
 from .. import is_service_account
 from . import task_response
@@ -213,7 +221,29 @@ async def _check_completed(asset_id: UUID):
             # Force new deployment of tile cache service, to make sure new tile cache version is recognized
             await redeploy_tile_cache_service(asset_id)
 
-        # if asset_row.asset_type == AssetType.raster_tile_set and json.loads(asset_row.creation_options)["compute_stats"]:
+        # if (
+        #     asset_row.asset_type == AssetType.raster_tile_set
+        #     and json.loads(asset_row.creation_options)["compute_stats"]
+        # ):
+        #     # Get tiles.geojson and extent.geojson from S3
+        #     s3_client = get_s3_client()
+        #     asset_uri = get_asset_uri(
+        #         asset_row.dataset,
+        #         asset_row.version,
+        #         asset_row.asset_type,
+        #         asset_row.creation_options,
+        #         srid=infer_srid_from_grid(asset_row.creation_options.get("grid", None))
+        #     )
+        #     bucket, extent_key = split_s3_path(tile_uri_to_extent_geojson(asset_uri))
+        #     extent_resp = s3_client.get_object(Bucket=bucket, Key=extent_key)
+        #     extent_geojson: dict = json.loads(extent_resp["Body"].read().decode("utf-8"))
+        #
+        #     _, tiles_key = tile_uri_to_tiles_geojson(asset_uri)
+        #     tiles_resp = s3_client.get_object(Bucket=bucket, Key=tiles_key)
+        #     tiles_geojson: dict = json.loads(tiles_resp["Body"].read().decode("utf-8"))
+        #
+        #
+        #
         #     _: ORMAsset = await assets.update_asset(
         #         asset_id,
         #         status=AssetStatus.saved,
