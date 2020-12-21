@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from pydantic import Field
 from pydantic.main import BaseModel
@@ -63,7 +63,7 @@ class TableStats(BaseModel):
 
 
 class Histogram(BaseModel):
-    bin_count: int = Field(..., description="Number of bin in histogram.")
+    bin_count: int = Field(..., description="Number of bins in histogram.")
     min: float = Field(..., description="Minimum bin value.")
     max: float = Field(..., description="Maximum bin value.")
     value_count: List[int] = Field(..., description="Value count for each bin.")
@@ -79,29 +79,30 @@ class Affine(BaseModel):
 
 
 class BandStats(BaseModel):
-    driver: str = Field(..., description="Driver used to create raster file.")
-    interleave: str = Field(..., description="Interleave strategy.")
-    tiled: bool = Field(..., description="Raster file is tiled or not.")
-    blockxsize: int = Field(..., description="Width of tiles or strips")
-    blockysize: int = Field(..., description="Height of tiles or stripes.")
-    compress: str = Field(..., description="Image compression used.")
-    nodata: Optional[int] = Field(..., description="No data value.")
-    dtype: str = Field(..., description="Pixel data type.")
-    width: int = Field(..., description="Raster width.")
-    height: int = Field(..., description="Raster height.")
-    bounds: Tuple[float, float, float, float] = Field(..., description="Raster bounds.")
-    transform: Affine = Field(..., description="Affine transformation.")
-    crs: str = Field(..., description="Coordinate reference system.")
-    pixel_size: Tuple[float, float] = Field(..., description="Raster pixel size.")
     # origin: Tuple[float, float] = Field(..., description="Raster origin.")
     min: float = Field(..., description="Minimum pixel value.")
     max: float = Field(..., description="Maximum pixel value.")
     mean: float = Field(..., description="Mean pixel value.")
-    std_dev: float = Field(..., description="Standard deviation of pixel values.")
+    # std_dev: float = Field(..., description="Standard deviation of pixel values.")
     histogram: Histogram = Field(..., description="Histogram.")
 
 
 class RasterStats(BaseModel):
+    # driver: str = Field(..., description="Driver used to create raster file.")
+    # interleave: str = Field(..., description="Interleave strategy.")
+    # tiled: bool = Field(..., description="Raster file is tiled or not.")
+    # blockxsize: int = Field(..., description="Width of tiles or strips")
+    # blockysize: int = Field(..., description="Height of tiles or stripes.")
+    # compress: str = Field(..., description="Image compression used.")
+    # nodata: Optional[int] = Field(..., description="No data value.")
+    # dtype: str = Field(..., description="Pixel data type.")
+    # width: int = Field(..., description="Raster width.")
+    # height: int = Field(..., description="Raster height.")
+    # bounds: Tuple[float, float, float, float] = Field(..., description="Raster bounds.")
+    # transform: Affine = Field(..., description="Affine transformation.")
+    # crs: str = Field(..., description="Coordinate reference system.")
+    # pixel_size: Tuple[float, float] = Field(..., description="Raster pixel size.")
+
     bands: List[BandStats]
 
 
