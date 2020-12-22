@@ -244,7 +244,7 @@ def copy_fixtures():
     }
     with rasterio.Env():
         with rasterio.open("0000000000-0000000000.tif", "w", **dataset_profile) as dst:
-            dummy_data = numpy.ones((100, 100), rasterio.uint16)
+            dummy_data = numpy.identity(100, rasterio.uint16)
             dst.write(dummy_data.astype(rasterio.uint16), 1)
 
     s3_client.upload_file(

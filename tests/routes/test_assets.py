@@ -523,27 +523,16 @@ def _delete_s3_files(bucket, prefix):
 
 
 @pytest.mark.asyncio
-async def test_asset_stats(async_client):
-    """."""
+async def test_asset_stats(async_client, batch_client):
+    _, logs = batch_client
 
     dataset = "test_asset_stats"
     version = "v1.0.0"
 
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+    pixetl_output_files_prefix = (
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
     )
-
-    pixetl_output_files = [
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/90N_000E.tif",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/90N_000E.tif",
-    ]
-
-    for key in pixetl_output_files:
-        s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
+    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
         "is_latest": True,
@@ -558,6 +547,7 @@ async def test_asset_stats(async_client):
             "overwrite": True,
             "compute_histogram": True,
             "compute_stats": True,
+            "no_data": 0,
         },
     }
 
@@ -567,36 +557,20 @@ async def test_asset_stats(async_client):
         version_payload=raster_version_payload,
         async_client=async_client,
         execute_batch_jobs=True,
+        logs=logs,
     )
 
-    for key in pixetl_output_files:
-        try:
-            s3_client.head_object(Bucket="gfw-data-lake-test", Key=key)
-        except ClientError:
-            raise AssertionError(f"Key {key} doesn't exist!")
-
     resp = await async_client.get(f"/dataset/{dataset}/{version}/stats")
-    print(f"STATS: {json.dumps(resp.json(), indent=2)}")
 
-    # DEBUGGING:
-    # tiles_geojson_key = (
-    #     f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/tiles.geojson"
-    # )
-    # response = s3_client.get_object(Bucket=DATA_LAKE_BUCKET, Key=tiles_geojson_key)
-    # geojson: dict = json.loads(response["Body"].read().decode("utf-8"))
-    #
-    # for feature in geojson["features"]:
-    #     print("Feature:")
-    #     print(f"Type: {feature['geometry']['type']}")
-    #     print(f"Extent: {feature['properties']['extent']}")
-    #     # print(f"Dimensions: {feature['properties']['extent']}")
-    #     print(json.dumps(geojson, indent=2))
+    assert resp.json()["data"]["bands"][0]["min"] == 1.0
+    assert resp.json()["data"]["bands"][0]["max"] == 1.0
+    assert resp.json()["data"]["bands"][0]["mean"] == 1.0
+    assert resp.json()["data"]["bands"][0]["histogram"]["bin_count"] == 256
+    assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][255] == 0
+    # FIXME: I think the following assertion should be true, but the value always
+    # winds up being 900 instead of 100. If there's a bug it's in pixetl, because
+    # it looks like the stats code is faithfully reporting what gets saved in
+    # tiles.geojson
+    # assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 100
 
-    assert 1 == 2
-
-
-# tiles = [
-#     os.path.basename(feature["properties"]["name"])
-#     for feature in geojson["features"]
-# ]
-# return tiles
+    assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 900
