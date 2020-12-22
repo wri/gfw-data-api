@@ -3,10 +3,8 @@
 You can view a single tasks or all tasks associated with as specific
 asset. Only _service accounts_ can create or update tasks.
 """
-import json
-from collections import defaultdict
 from datetime import datetime
-from typing import Any, DefaultDict, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path
@@ -15,7 +13,7 @@ from fastapi.responses import ORJSONResponse
 from ...application import ContextEngine, db
 from ...crud import assets, tasks, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
-from ...models.enum.assets import AssetStatus, is_database_asset, is_tile_cache_asset
+from ...models.enum.assets import AssetStatus
 from ...models.enum.change_log import ChangeLogStatus
 from ...models.enum.versions import VersionStatus
 from ...models.orm.assets import Asset as ORMAsset
@@ -25,17 +23,11 @@ from ...models.pydantic.assets import AssetCreateIn, AssetType
 from ...models.pydantic.change_log import ChangeLog
 from ...models.pydantic.creation_options import DynamicVectorTileCacheCreationOptions
 from ...models.pydantic.metadata import FieldMetadata
-from ...models.pydantic.statistics import BandStats, RasterStats
 from ...models.pydantic.tasks import TaskCreateIn, TaskResponse, TaskUpdateIn
 from ...settings.globals import TILE_CACHE_URL
 from ...tasks.assets import put_asset
-from ...utils.aws import get_s3_client
-from ...utils.path import (
-    get_asset_uri,
-    infer_srid_from_grid,
-    split_s3_path,
-    tile_uri_to_extent_geojson,
-    tile_uri_to_tiles_geojson,
+from ...tasks.raster_tile_set_assets.raster_tile_set_assets import (
+    raster_tile_set_post_completion_task,
 )
 from ...utils.tile_cache import redeploy_tile_cache_service
 from .. import is_service_account
@@ -70,7 +62,7 @@ async def create_task(
     *,
     task_id: UUID = Path(...),
     request: TaskCreateIn,
-    is_service_account: bool = Depends(is_service_account),
+    _: bool = Depends(is_service_account),
 ) -> TaskResponse:
     """Create a task."""
 
@@ -93,7 +85,7 @@ async def update_task(
     *,
     task_id: UUID = Path(...),
     request: TaskUpdateIn,
-    is_authorized: bool = Depends(is_service_account),
+    _: bool = Depends(is_service_account),
 ) -> TaskResponse:
     """Update the status of a task.
 
@@ -173,6 +165,21 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
         )
 
 
+def _post_completion_task_factory(
+    asset_type: AssetType,
+) -> Optional[Callable[[UUID], Awaitable[None]]]:
+    tasks_function_constructor: Dict[AssetType, Callable[[UUID], Awaitable[None]]] = {
+        AssetType.database_table: table_post_completion_task,
+        AssetType.geo_database_table: table_post_completion_task,
+        AssetType.dynamic_vector_tile_cache: tile_cache_post_completion_task,
+        AssetType.static_vector_tile_cache: tile_cache_post_completion_task,
+        AssetType.raster_tile_cache: tile_cache_post_completion_task,
+        AssetType.raster_tile_set: raster_tile_set_post_completion_task,
+    }
+
+    return tasks_function_constructor.get(asset_type)
+
+
 async def _check_completed(asset_id: UUID):
     """Check if all tasks have completed.
 
@@ -196,17 +203,6 @@ async def _check_completed(asset_id: UUID):
             status=AssetStatus.saved,
             change_log=[status_change_log.dict(by_alias=True)],
         )
-        # For database tables, fetch list of fields and their types from PostgreSQL
-        # and add them to metadata object
-        # Check if creation options specify to register a dynamic vector tile cache asset
-        if is_database_asset(asset_row.asset_type):
-            asset_row = await _update_asset_field_metadata(
-                asset_row.dataset, asset_row.version, asset_id,
-            )
-
-            await _register_dynamic_vector_tile_cache(
-                asset_row.dataset, asset_row.version, asset_row.metadata
-            )
 
         # If default asset, make sure version is also set to saved
         if asset_row.is_default:
@@ -219,81 +215,10 @@ async def _check_completed(asset_id: UUID):
                 change_log=[status_change_log.dict(by_alias=True)],
             )
 
-        if is_tile_cache_asset(asset_row.asset_type):
-            # Force new deployment of tile cache service, to make sure new tile cache version is recognized
-            await redeploy_tile_cache_service(asset_id)
-
-        if (
-            asset_row.asset_type == AssetType.raster_tile_set
-            and asset_row.creation_options["compute_stats"]
-        ):
-            # Get tiles.geojson and extent.geojson from S3
-            s3_client = get_s3_client()
-            asset_uri = get_asset_uri(
-                asset_row.dataset,
-                asset_row.version,
-                asset_row.asset_type,
-                asset_row.creation_options,
-                srid=infer_srid_from_grid(asset_row.creation_options.get("grid")),
-            )
-            # FIXME: Save extent
-            # bucket, extent_key = split_s3_path(tile_uri_to_extent_geojson(asset_uri))
-            # extent_resp = s3_client.get_object(Bucket=bucket, Key=extent_key)
-            # extent_geojson: Dict = json.loads(
-            #     extent_resp["Body"].read().decode("utf-8")
-            # )
-
-            bucket, tiles_key = split_s3_path(tile_uri_to_tiles_geojson(asset_uri))
-            tiles_resp = s3_client.get_object(Bucket=bucket, Key=tiles_key)
-            tiles_geojson: dict = json.loads(tiles_resp["Body"].read().decode("utf-8"))
-
-            stats_by_band: DefaultDict[int, DefaultDict[str, List[int]]] = defaultdict(
-                lambda: defaultdict(lambda: [])
-            )
-            histogram_by_band: Dict[int, Dict[str, Any]] = dict()
-
-            for feature in tiles_geojson["features"]:
-                for i, band in enumerate(feature["properties"]["bands"]):
-                    for val in ("min", "max", "mean"):
-                        if band.get("stats", dict()).get(val) is not None:  # eliminate?
-                            stats_by_band[i][val].append(band["stats"][val])
-
-                    histo = band["histogram"]
-                    if histogram_by_band.get(i) is None:
-                        histogram_by_band[i] = {
-                            "min": histo["min"],
-                            "max": histo["max"],
-                            "bin_count": histo["count"],
-                            "value_count": histo["buckets"],
-                        }
-                    else:
-                        # len(histo["buckets"]) should == histo["count"]. Assert?
-                        histogram_by_band[i]["min"] = min(
-                            histogram_by_band[i]["min"], histo["min"]
-                        )
-                        histogram_by_band[i]["max"] = max(
-                            histogram_by_band[i]["max"], histo["max"]
-                        )
-                        for bucket_num, bucket_val in enumerate(histo["buckets"]):
-                            histogram_by_band[i]["value_count"][
-                                bucket_num
-                            ] += bucket_val
-
-            bandstats = []
-            for i, band in stats_by_band.items():
-                bandstats.append(
-                    BandStats(
-                        min=min(stats_by_band[i]["min"]),
-                        max=max(stats_by_band[i]["max"]),
-                        mean=sum(stats_by_band[i]["mean"])
-                        / len(stats_by_band[i]["mean"]),
-                        histogram=histogram_by_band[i],
-                    )
-                )
-
-            _: ORMAsset = await assets.update_asset(
-                asset_id, stats=RasterStats(bands=bandstats)
-            )
+        # Run any asset type-specific code necessary
+        post_completion_task = _post_completion_task_factory(asset_row.asset_type)
+        if post_completion_task is not None:
+            await post_completion_task(asset_id)
 
 
 def _all_finished(task_rows: List[ORMTask]) -> bool:
@@ -402,3 +327,24 @@ async def _register_dynamic_vector_tile_cache(
                 version,
                 data.dict(by_alias=True),
             )
+
+
+async def tile_cache_post_completion_task(asset_id: UUID):
+    """Force new deployment of tile cache service to make sure new tile cache
+    version is recognized."""
+    await redeploy_tile_cache_service(asset_id)
+
+
+async def table_post_completion_task(asset_id: UUID):
+    """For database tables, fetch list of fields and their types from
+    PostgreSQL and add them to metadata object Check if creation options
+    specify to register a dynamic vector tile cache asset."""
+    asset_row: ORMAsset = await assets.get_asset(asset_id)
+
+    asset_row = await _update_asset_field_metadata(
+        asset_row.dataset, asset_row.version, asset_id,
+    )
+
+    await _register_dynamic_vector_tile_cache(
+        asset_row.dataset, asset_row.version, asset_row.metadata
+    )
