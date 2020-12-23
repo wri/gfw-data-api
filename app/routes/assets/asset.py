@@ -26,6 +26,7 @@ from ...models.pydantic.creation_options import (
     CreationOptionsResponse,
     creation_option_factory,
 )
+from ...models.pydantic.extent import Extent, ExtentResponse
 from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.tasks import TasksResponse
@@ -205,6 +206,18 @@ async def get_creation_options(asset_id: UUID = Path(...)):
         asset.asset_type, asset.creation_options
     )
     return CreationOptionsResponse(data=creation_options)
+
+
+@router.get(
+    "/{asset_id}/extent",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=ExtentResponse,
+)
+async def get_extent(asset_id: UUID = Path(...)):
+    asset = await assets.get_asset(asset_id)
+    extent: Optional[Extent] = asset.extent
+    return ExtentResponse(data=extent)
 
 
 @router.get(

@@ -10,6 +10,7 @@ Available assets and endpoints to choose from depend on the source type.
 """
 from copy import deepcopy
 from typing import List, Optional
+from uuid import UUID
 
 from botocore.exceptions import ClientError, ParamValidationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
@@ -26,6 +27,7 @@ from ...models.pydantic.creation_options import (
     CreationOptionsResponse,
     creation_option_factory,
 )
+from ...models.pydantic.extent import Extent, ExtentResponse
 from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.versions import (
@@ -258,6 +260,21 @@ async def get_creation_options(
         asset.asset_type, asset.creation_options
     )
     return CreationOptionsResponse(data=creation_options)
+
+
+@router.get(
+    "/{dataset}/{version}/extent",
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+    response_model=ExtentResponse,
+)
+async def get_extent(
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+):
+    asset = await assets.get_default_asset(dataset, version)
+    extent: Optional[Extent] = asset.extent
+    return ExtentResponse(data=extent)
 
 
 @router.get(

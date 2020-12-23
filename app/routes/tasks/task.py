@@ -12,6 +12,7 @@ from fastapi.responses import ORJSONResponse
 
 from ...application import ContextEngine, db
 from ...crud import assets, tasks, versions
+from ...crud.assets import get_asset
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus
 from ...models.enum.change_log import ChangeLogStatus
@@ -62,7 +63,7 @@ async def create_task(
     *,
     task_id: UUID = Path(...),
     request: TaskCreateIn,
-    _: bool = Depends(is_service_account),
+    is_service_account: bool = Depends(is_service_account),
 ) -> TaskResponse:
     """Create a task."""
 
@@ -85,7 +86,7 @@ async def update_task(
     *,
     task_id: UUID = Path(...),
     request: TaskUpdateIn,
-    _: bool = Depends(is_service_account),
+    is_authorized: bool = Depends(is_service_account),
 ) -> TaskResponse:
     """Update the status of a task.
 
@@ -198,7 +199,15 @@ async def _check_completed(asset_id: UUID):
     )
 
     if all_finished:
-        asset_row: ORMAsset = await assets.update_asset(
+        asset_row: ORMAsset = await get_asset(asset_id)
+
+        # Run any asset type-specific code necessary
+        post_completion_task = _post_completion_task_factory(asset_row.asset_type)
+        if post_completion_task is not None:
+            await post_completion_task(asset_id)
+
+        # Set the asset to status saved
+        asset_row = await assets.update_asset(
             asset_id,
             status=AssetStatus.saved,
             change_log=[status_change_log.dict(by_alias=True)],
@@ -214,11 +223,6 @@ async def _check_completed(asset_id: UUID):
                 status=VersionStatus.saved,
                 change_log=[status_change_log.dict(by_alias=True)],
             )
-
-        # Run any asset type-specific code necessary
-        post_completion_task = _post_completion_task_factory(asset_row.asset_type)
-        if post_completion_task is not None:
-            await post_completion_task(asset_id)
 
 
 def _all_finished(task_rows: List[ORMTask]) -> bool:

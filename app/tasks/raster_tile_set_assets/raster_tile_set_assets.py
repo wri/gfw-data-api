@@ -10,7 +10,8 @@ from app.models.pydantic.creation_options import (
     RasterTileSetAssetCreationOptions,
     RasterTileSetSourceCreationOptions,
 )
-from app.models.pydantic.statistics import BandStats, RasterStats
+from app.models.pydantic.extent import Extent
+from app.models.pydantic.statistics import BandStats, Histogram, RasterStats
 from app.tasks import Callback, callback_constructor
 from app.tasks.batch import execute
 from app.tasks.raster_tile_set_assets.utils import create_pixetl_job
@@ -19,6 +20,7 @@ from app.utils.path import (
     get_asset_uri,
     infer_srid_from_grid,
     split_s3_path,
+    tile_uri_to_extent_geojson,
     tile_uri_to_tiles_geojson,
 )
 
@@ -68,12 +70,30 @@ async def raster_tile_set_asset(
     return log
 
 
+async def get_extent(asset_id: UUID) -> Extent:
+    asset_row: ORMAsset = await get_asset(asset_id)
+    asset_uri: str = get_asset_uri(
+        asset_row.dataset,
+        asset_row.version,
+        asset_row.asset_type,
+        asset_row.creation_options,
+        srid=infer_srid_from_grid(asset_row.creation_options.get("grid")),
+    )
+    bucket, key = split_s3_path(tile_uri_to_extent_geojson(asset_uri))
+
+    s3_client = get_s3_client()
+    resp = s3_client.get_object(Bucket=bucket, Key=key)
+    extent_geojson: dict = json.loads(resp["Body"].read().decode("utf-8"))
+
+    return Extent(**extent_geojson)
+
+
 async def get_raster_stats(asset_id: UUID) -> List[BandStats]:
     asset_row: ORMAsset = await get_asset(asset_id)
 
     compute_histogram: bool = asset_row.creation_options["compute_histogram"]
 
-    asset_uri = get_asset_uri(
+    asset_uri: str = get_asset_uri(
         asset_row.dataset,
         asset_row.version,
         asset_row.asset_type,
@@ -95,8 +115,7 @@ async def get_raster_stats(asset_id: UUID) -> List[BandStats]:
     for feature in tiles_geojson["features"]:
         for i, band in enumerate(feature["properties"]["bands"]):
             for val in ("min", "max", "mean"):
-                if band.get("stats", dict()).get(val) is not None:  # eliminate?
-                    stats_by_band[i][val].append(band["stats"][val])
+                stats_by_band[i][val].append(band.get("stats", dict()).get(val))
 
             if compute_histogram:
                 histo = band["histogram"]
@@ -119,25 +138,27 @@ async def get_raster_stats(asset_id: UUID) -> List[BandStats]:
                         histogram_by_band[i]["value_count"][bucket_num] += bucket_val
 
         for i, band in stats_by_band.items():
-            bandstats.append(
-                BandStats(
-                    min=min(stats_by_band[i]["min"]),
-                    max=max(stats_by_band[i]["max"]),
-                    mean=sum(stats_by_band[i]["mean"]) / len(stats_by_band[i]["mean"]),
-                    histogram=histogram_by_band[i],
-                )
+            bs = BandStats(
+                min=min(stats_by_band[i]["min"]),
+                max=max(stats_by_band[i]["max"]),
+                mean=sum(stats_by_band[i]["mean"]) / len(stats_by_band[i]["mean"]),
             )
+            if compute_histogram:
+                bs.histogram = Histogram(**histogram_by_band[i])
+            bandstats.append(bs)
 
     return bandstats
 
 
 async def raster_tile_set_post_completion_task(asset_id: UUID):
+    extent: Extent = await get_extent(asset_id)
+
+    stats: List[BandStats] = []
+
     asset_row: ORMAsset = await get_asset(asset_id)
-
     if asset_row.creation_options["compute_stats"]:
+        stats = await get_raster_stats(asset_id)
 
-        stats: List[BandStats] = await get_raster_stats(asset_id)
-
-        _: ORMAsset = await update_asset(asset_id, stats=RasterStats(bands=stats))
-
-    # FIXME: Save extent in asset extent column
+    _: ORMAsset = await update_asset(
+        asset_id, extent=extent, stats=RasterStats(bands=stats)
+    )

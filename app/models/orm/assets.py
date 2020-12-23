@@ -14,6 +14,7 @@ class Asset(Base):
     creation_options = db.Column(db.JSONB, nullable=False, default=dict())
     metadata = db.Column(db.JSONB, nullable=False, default=dict())
     fields = db.Column(db.JSONB, nullable=False, default=list())
+    extent = db.Column(db.JSONB, nullable=False, default=dict())
     stats = db.Column(db.JSONB, nullable=False, default=dict())
     change_log = db.Column(db.ARRAY(db.JSONB), nullable=False, default=list())
 

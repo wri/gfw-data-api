@@ -68,6 +68,9 @@ class Histogram(BaseModel):
     max: float = Field(..., description="Maximum bin value.")
     value_count: List[int] = Field(..., description="Value count for each bin.")
 
+    class Config:
+        extra = "forbid"
+
 
 class Affine(BaseModel):
     a: float = Field(..., description="Scale factor x")
@@ -77,14 +80,20 @@ class Affine(BaseModel):
     e: float = Field(..., description="Scale factor y")
     f: float = Field(..., description="Offset y")
 
+    class Config:
+        extra = "forbid"
+
 
 class BandStats(BaseModel):
     # origin: Tuple[float, float] = Field(..., description="Raster origin.")
     min: float = Field(..., description="Minimum pixel value.")
     max: float = Field(..., description="Maximum pixel value.")
     mean: float = Field(..., description="Mean pixel value.")
-    # std_dev: float = Field(..., description="Standard deviation of pixel values.")
-    histogram: Histogram = Field(..., description="Histogram.")
+
+    histogram: Optional[Histogram] = Field(description="Histogram.")
+
+    class Config:
+        extra = "forbid"
 
 
 class RasterStats(BaseModel):
@@ -102,8 +111,10 @@ class RasterStats(BaseModel):
     # transform: Affine = Field(..., description="Affine transformation.")
     # crs: str = Field(..., description="Coordinate reference system.")
     # pixel_size: Tuple[float, float] = Field(..., description="Raster pixel size.")
-
     bands: List[BandStats]
+
+    class Config:
+        extra = "forbid"
 
 
 Stats = Union[TableStats, RasterStats]

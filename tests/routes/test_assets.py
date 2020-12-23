@@ -9,9 +9,16 @@ import requests
 from botocore.exceptions import ClientError
 
 from app.crud import tasks
+from app.models.enum.assets import AssetType
 from app.models.enum.symbology import ColorMapType
 from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.utils.aws import get_s3_client
+from app.utils.path import (
+    get_asset_uri,
+    infer_srid_from_grid,
+    split_s3_path,
+    tile_uri_to_extent_geojson,
+)
 from tests.tasks import MockCloudfrontClient
 from tests.utils import check_tasks_status, create_default_asset, poll_jobs
 
@@ -523,9 +530,7 @@ def _delete_s3_files(bucket, prefix):
 
 
 @pytest.mark.asyncio
-async def test_asset_stats(async_client, batch_client):
-    _, logs = batch_client
-
+async def test_asset_stats(async_client):
     dataset = "test_asset_stats"
     version = "v1.0.0"
 
@@ -557,20 +562,124 @@ async def test_asset_stats(async_client, batch_client):
         version_payload=raster_version_payload,
         async_client=async_client,
         execute_batch_jobs=True,
-        logs=logs,
     )
 
-    resp = await async_client.get(f"/dataset/{dataset}/{version}/stats")
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    asset_id = resp.json()["data"][0]["asset_id"]
 
-    assert resp.json()["data"]["bands"][0]["min"] == 1.0
-    assert resp.json()["data"]["bands"][0]["max"] == 1.0
-    assert resp.json()["data"]["bands"][0]["mean"] == 1.0
-    assert resp.json()["data"]["bands"][0]["histogram"]["bin_count"] == 256
-    assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][255] == 0
-    # FIXME: I think the following assertion should be true, but the value always
-    # winds up being 900 instead of 100. If there's a bug it's in pixetl, because
-    # it looks like the stats code is faithfully reporting what gets saved in
-    # tiles.geojson
-    # assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 100
+    asset_resp = await async_client.get(f"/asset/{asset_id}/stats")
+    version_resp = await async_client.get(f"/dataset/{dataset}/{version}/stats")
 
-    assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 900
+    for resp in (asset_resp, version_resp):
+        assert resp.json()["data"]["bands"][0]["min"] == 1.0
+        assert resp.json()["data"]["bands"][0]["max"] == 1.0
+        assert resp.json()["data"]["bands"][0]["mean"] == 1.0
+        assert resp.json()["data"]["bands"][0]["histogram"]["bin_count"] == 256
+        assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][255] == 0
+        # FIXME: I think the following assertion should be true, but the value always
+        # winds up being 90000 instead of 10000. It looks like the stats code is
+        # faithfully reporting what gets saved in tiles.geojson
+        # assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 10000
+
+
+@pytest.mark.asyncio
+async def test_asset_stats_no_histo(async_client):
+    dataset = "test_asset_stats_no_histo"
+    version = "v1.0.0"
+
+    pixetl_output_files_prefix = (
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
+    )
+    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+
+    raster_version_payload = {
+        "is_latest": True,
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_driver": "GeoTIFF",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            "overwrite": True,
+            "compute_histogram": False,
+            "compute_stats": True,
+            "no_data": 0,
+        },
+    }
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=True,
+    )
+
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    asset_id = resp.json()["data"][0]["asset_id"]
+
+    asset_resp = await async_client.get(f"/asset/{asset_id}/stats")
+    version_resp = await async_client.get(f"/dataset/{dataset}/{version}/stats")
+
+    for resp in (asset_resp, version_resp):
+        assert resp.json()["data"]["bands"][0]["min"] == 1.0
+        assert resp.json()["data"]["bands"][0]["max"] == 1.0
+        assert resp.json()["data"]["bands"][0]["mean"] == 1.0
+        assert resp.json()["data"]["bands"][0].get("histogram", None) is None
+
+
+@pytest.mark.asyncio
+async def test_asset_extent(async_client):
+    dataset = "test_asset_extent"
+    version = "v1.0.0"
+
+    pixetl_output_files_prefix = (
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
+    )
+    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+
+    raster_version_payload = {
+        "is_latest": True,
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_driver": "GeoTIFF",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            "overwrite": True,
+            "compute_histogram": False,
+            "compute_stats": False,
+            "no_data": 0,
+        },
+    }
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=True,
+    )
+
+    expected_coords = [
+        [[0.0, 90.0], [90.0, 90.0], [90.0, 0.0], [0.0, 0.0], [0.0, 90.0]]
+    ]
+
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    asset_id = resp.json()["data"][0]["asset_id"]
+
+    resp = await async_client.get(f"/asset/{asset_id}/extent")
+    # print(f"ASSET EXTENT RESP: {json.dumps(resp.json(), indent=2)}")
+    assert (
+        resp.json()["data"]["features"][0]["geometry"]["coordinates"] == expected_coords
+    )
+
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/extent")
+    # print(f"VERSION EXTENT RESP: {json.dumps(resp.json(), indent=2)}")
+    assert (
+        resp.json()["data"]["features"][0]["geometry"]["coordinates"] == expected_coords
+    )
