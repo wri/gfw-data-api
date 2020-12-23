@@ -18,7 +18,6 @@ class DatabaseURL(BaseModel):
         arbitrary_types_allowed = True
         allow_population_by_field_name = True
 
-    @classmethod
     @validator("url", always=True)
     def build_url(cls, v: Any, field: fields.Field, values: dict):
         if isinstance(v, URL):
