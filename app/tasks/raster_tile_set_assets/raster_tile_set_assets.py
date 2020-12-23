@@ -117,8 +117,8 @@ async def get_raster_stats(asset_id: UUID) -> List[BandStats]:
             for val in ("min", "max", "mean"):
                 stats_by_band[i][val].append(band.get("stats", dict()).get(val))
 
-            if compute_histogram:
-                histo = band["histogram"]
+            histo = band.get("histogram")
+            if compute_histogram and histo is not None:
                 if histogram_by_band.get(i) is None:
                     histogram_by_band[i] = {
                         "min": histo["min"],

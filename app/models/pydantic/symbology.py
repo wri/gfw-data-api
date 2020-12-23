@@ -14,6 +14,9 @@ class RGBA(BaseModel):
     def tuple(self) -> Tuple[int, int, int, int]:
         return self.red, self.green, self.blue, self.alpha
 
+    class Config:
+        extra = "forbid"
+
 
 class Symbology(BaseModel):
     type: ColorMapType
