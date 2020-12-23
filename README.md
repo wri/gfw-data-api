@@ -2,23 +2,16 @@
 High-performance Async REST API, in Python. FastAPI + GINO + Uvicorn (powered by PostgreSQL).
 
 ## Get Started
-### Run Locally
+### Run Locally with Docker
 
 1. Clone this Repository. `git clone https://github.com/wri/gfw-data-api.git`
-2. Run `pipenv install --dev` from root. (Run `pip install pipenv` first, if necessary.)
-3. Make a copy of `.dist.env`, rename to `.env`. Fill in PostgreSQL connection vars.
-4. Generate DB Migrations: `alembic revision --autogenerate`. It will be applied when the application starts. You can trigger manually with `alembic upgrade head`.
-5. Run:
-    - FastAPI Application:
-        * _For Active Development (w/ auto-reload):_ Run locally with `pipenv run uvicorn app.main:app --reload `
-        * _For Debugging (compatible w/ debuggers, no auto-reload):_ Configure debugger to run `python app/main.py`.
+2. Run `./scripts/setup` from the root directory. (Run `pip install pipenv` first, if necessary.)
+3. Run locally using docker-compose. `./scripts/develop`
 
-### Run Locally with Docker
-1. Clone this Repository. `git clone https://github.com/leosussan/fastapi-gino-arq-uvicorn.git`
-2. Generate a DB Migration: `alembic revision --autogenerate`.*
-3. Run locally using docker-compose. `docker-compose -f docker-compose.local.yml -f docker-compose.worker.yml -f docker-compose.yml up --build`.
-
-*`app/settings/prestart.sh` will run migrations for you before the app starts.
+### Developing
+* Generate a DB Migration: `./scripts/migrate` (note `app/settings/prestart.sh` will run migrations automatically when running `/scripts/develop`)
+* Run tests: `./scripts/test`
+* Run specific tests: `./scripts/test tasks/test_vector_source_assets.py::test_vector_source_asset`
 
 ## Features
 ### Core Dependencies
