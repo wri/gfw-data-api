@@ -10,7 +10,6 @@ Available assets and endpoints to choose from depend on the source type.
 """
 from copy import deepcopy
 from typing import List, Optional
-from uuid import UUID
 
 from botocore.exceptions import ClientError, ParamValidationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response

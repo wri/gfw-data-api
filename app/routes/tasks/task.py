@@ -12,7 +12,6 @@ from fastapi.responses import ORJSONResponse
 
 from ...application import ContextEngine, db
 from ...crud import assets, tasks, versions
-from ...crud.assets import get_asset
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus
 from ...models.enum.change_log import ChangeLogStatus
