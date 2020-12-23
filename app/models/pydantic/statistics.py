@@ -85,18 +85,6 @@ class Affine(BaseModel):
 
 
 class BandStats(BaseModel):
-    # origin: Tuple[float, float] = Field(..., description="Raster origin.")
-    min: float = Field(..., description="Minimum pixel value.")
-    max: float = Field(..., description="Maximum pixel value.")
-    mean: float = Field(..., description="Mean pixel value.")
-
-    histogram: Optional[Histogram] = Field(description="Histogram.")
-
-    class Config:
-        extra = "forbid"
-
-
-class RasterStats(BaseModel):
     # driver: str = Field(..., description="Driver used to create raster file.")
     # interleave: str = Field(..., description="Interleave strategy.")
     # tiled: bool = Field(..., description="Raster file is tiled or not.")
@@ -111,6 +99,17 @@ class RasterStats(BaseModel):
     # transform: Affine = Field(..., description="Affine transformation.")
     # crs: str = Field(..., description="Coordinate reference system.")
     # pixel_size: Tuple[float, float] = Field(..., description="Raster pixel size.")
+    min: float = Field(..., description="Minimum pixel value.")
+    max: float = Field(..., description="Maximum pixel value.")
+    mean: float = Field(..., description="Mean pixel value.")
+
+    histogram: Optional[Histogram] = Field(description="Histogram.")
+
+    class Config:
+        extra = "forbid"
+
+
+class RasterStats(BaseModel):
     bands: List[BandStats]
 
     class Config:
