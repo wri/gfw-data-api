@@ -114,8 +114,9 @@ async def get_raster_stats(asset_id: UUID) -> List[BandStats]:
 
     for feature in tiles_geojson["features"]:
         for i, band in enumerate(feature["properties"]["bands"]):
-            for val in ("min", "max", "mean"):
-                stats_by_band[i][val].append(band.get("stats", dict()).get(val))
+            if band.get("stats") is not None:
+                for val in ("min", "max", "mean"):
+                    stats_by_band[i][val].append(band["stats"][val])
 
             histo = band.get("histogram")
             if compute_histogram and histo is not None:
