@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pydantic import BaseModel, Field, StrictFloat, StrictInt, root_validator
+from pydantic import BaseModel, Field, StrictInt, root_validator
 from pydantic.types import PositiveInt
 
 from ...settings.globals import PIXETL_DEFAULT_RESAMPLING
@@ -86,7 +86,7 @@ class RasterTileSetAssetCreationOptions(BaseModel):
     pixel_meaning: str
     data_type: DataType
     nbits: Optional[int]
-    no_data: Optional[Union[StrictInt, StrictFloat]]
+    no_data: Optional[Union[StrictInt, float]]
     rasterize_method: Optional[RasterizeMethod]
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
     calc: Optional[str]
@@ -286,9 +286,9 @@ SourceCreationOptions = Union[
 ]
 
 OtherCreationOptions = Union[
+    RasterTileCacheCreationOptions,
     StaticVectorTileCacheCreationOptions,
     StaticVectorFileCreationOptions,
-    RasterTileCacheCreationOptions,
     DynamicVectorTileCacheCreationOptions,
     RasterTileSetAssetCreationOptions,
     TableAssetCreationOptions,
