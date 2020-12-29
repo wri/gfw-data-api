@@ -1,5 +1,3 @@
-import json
-from typing import Any, Dict, List
 from unittest.mock import patch
 from uuid import UUID
 
@@ -8,17 +6,12 @@ import pytest
 import requests
 from botocore.exceptions import ClientError
 
+from app.application import ContextEngine
 from app.crud import tasks
-from app.models.enum.assets import AssetType
+from app.crud.assets import update_asset
 from app.models.enum.symbology import ColorMapType
 from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.utils.aws import get_s3_client
-from app.utils.path import (
-    get_asset_uri,
-    infer_srid_from_grid,
-    split_s3_path,
-    tile_uri_to_extent_geojson,
-)
 from tests.tasks import MockCloudfrontClient
 from tests.utils import check_tasks_status, create_default_asset, poll_jobs
 
@@ -683,3 +676,63 @@ async def test_asset_extent(async_client):
     assert (
         resp.json()["data"]["features"][0]["geometry"]["coordinates"] == expected_coords
     )
+
+
+@pytest.mark.asyncio
+async def test_asset_extent_stats_empty(async_client):
+    dataset = "test_asset_extent_stats_empty"
+    version = "v1.0.0"
+
+    pixetl_output_files_prefix = (
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
+    )
+    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+
+    raster_version_payload = {
+        "is_latest": True,
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_driver": "GeoTIFF",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            "overwrite": True,
+            "compute_histogram": False,
+            "compute_stats": False,
+            "no_data": 0,
+        },
+    }
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=True,
+    )
+
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    asset_id = resp.json()["data"][0]["asset_id"]
+
+    # Update the stats and extent fields of the asset to be None to simulate
+    # older assets in the DB
+    async with ContextEngine("WRITE"):
+        _ = await update_asset(asset_id, extent=None, stats=None)
+
+    # Verify that hitting the stats and extent endpoint for such assets
+    # yields data=None rather than a 500
+    resp = await async_client.get(f"/asset/{asset_id}/extent")
+    assert resp.status_code == 200
+    assert resp.json()["data"] is None
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/extent")
+    assert resp.status_code == 200
+    assert resp.json()["data"] is None
+
+    resp = await async_client.get(f"/asset/{asset_id}/stats")
+    assert resp.status_code == 200
+    assert resp.json()["data"] is None
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/stats")
+    assert resp.status_code == 200
+    assert resp.json()["data"] is None
