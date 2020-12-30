@@ -199,7 +199,7 @@ async def _check_completed(asset_id: UUID):
 
     if all_finished:
         # Set the asset to status saved
-        asset_row = await assets.update_asset(
+        asset_row: ORMAsset = await assets.update_asset(
             asset_id,
             status=AssetStatus.saved,
             change_log=[status_change_log.dict(by_alias=True)],

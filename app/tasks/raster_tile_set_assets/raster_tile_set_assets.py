@@ -90,7 +90,28 @@ async def get_extent(asset_id: UUID) -> Extent:
     return Extent(**extent_geojson)
 
 
-def collect_bandstats(fc: FeatureCollection) -> List[BandStats]:
+def _create_or_augment_histogram(
+    source_histo_i: Dict[str, Any], target_histo_i: Optional[Histogram]
+):
+    if target_histo_i is None:
+        target_histo_i = Histogram(
+            **{
+                "min": source_histo_i["min"],
+                "max": source_histo_i["max"],
+                "bin_count": source_histo_i["count"],
+                "value_count": source_histo_i["buckets"],
+            }
+        )
+    else:
+        target_histo_i.min = min(target_histo_i.min, source_histo_i["min"])
+        target_histo_i.max = max(target_histo_i.max, source_histo_i["max"])
+        for bucket_num, bucket_val in enumerate(source_histo_i["buckets"]):
+            target_histo_i.value_count[bucket_num] += bucket_val
+
+    return target_histo_i
+
+
+def _collect_bandstats(fc: FeatureCollection) -> List[BandStats]:
     stats_by_band: DefaultDict[int, DefaultDict[str, List[int]]] = defaultdict(
         lambda: defaultdict(lambda: [])
     )
@@ -103,26 +124,11 @@ def collect_bandstats(fc: FeatureCollection) -> List[BandStats]:
                 for val in ("min", "max", "mean"):
                     stats_by_band[i][val].append(band["stats"][val])
 
-            histo = band.get("histogram")
-            if histo is not None:
-                if histogram_by_band.get(i) is None:
-                    histogram_by_band[i] = Histogram(
-                        **{
-                            "min": histo["min"],
-                            "max": histo["max"],
-                            "bin_count": histo["count"],
-                            "value_count": histo["buckets"],
-                        }
-                    )
-                else:
-                    histogram_by_band[i].min = min(
-                        histogram_by_band[i].min, histo["min"]
-                    )
-                    histogram_by_band[i].max = max(
-                        histogram_by_band[i].max, histo["max"]
-                    )
-                    for bucket_num, bucket_val in enumerate(histo["buckets"]):
-                        histogram_by_band[i].value_count[bucket_num] += bucket_val
+            feature_histo_i = band.get("histogram")
+            if feature_histo_i is not None:
+                histogram_by_band[i] = _create_or_augment_histogram(
+                    feature_histo_i, histogram_by_band.get(i)
+                )
 
         for i, band in stats_by_band.items():
             bs = BandStats(
@@ -137,7 +143,7 @@ def collect_bandstats(fc: FeatureCollection) -> List[BandStats]:
     return bandstats
 
 
-async def get_raster_stats(asset_id: UUID) -> List[BandStats]:
+async def _get_raster_stats(asset_id: UUID) -> List[BandStats]:
     asset_row: ORMAsset = await get_asset(asset_id)
 
     asset_uri: str = get_asset_uri(
@@ -155,7 +161,7 @@ async def get_raster_stats(asset_id: UUID) -> List[BandStats]:
         tiles_resp["Body"].read().decode("utf-8")
     )
 
-    bandstats: List[BandStats] = collect_bandstats(FeatureCollection(**tiles_geojson))
+    bandstats: List[BandStats] = _collect_bandstats(FeatureCollection(**tiles_geojson))
 
     return bandstats
 
@@ -167,7 +173,7 @@ async def raster_tile_set_post_completion_task(asset_id: UUID):
 
     asset_row: ORMAsset = await get_asset(asset_id)
     if asset_row.creation_options["compute_stats"]:
-        stats = await get_raster_stats(asset_id)
+        stats = await _get_raster_stats(asset_id)
 
     _: ORMAsset = await update_asset(
         asset_id, extent=extent, stats=RasterStats(bands=stats)
