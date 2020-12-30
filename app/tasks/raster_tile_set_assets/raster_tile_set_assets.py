@@ -11,6 +11,7 @@ from app.models.pydantic.creation_options import (
     RasterTileSetSourceCreationOptions,
 )
 from app.models.pydantic.extent import Extent
+from app.models.pydantic.jobs import Job
 from app.models.pydantic.statistics import BandStats, Histogram, RasterStats
 from app.tasks import Callback, callback_constructor
 from app.tasks.batch import execute
@@ -39,7 +40,7 @@ async def raster_tile_set_asset(
             **input_data["creation_options"]
         ).dict(exclude_none=True, by_alias=True)
 
-        default_asset = await get_default_asset(dataset, version)
+        default_asset: ORMAsset = await get_default_asset(dataset, version)
 
         if default_asset.creation_options["source_type"] == "raster":
             creation_options["source_type"] = "raster"
@@ -61,7 +62,7 @@ async def raster_tile_set_asset(
 
     callback: Callback = callback_constructor(asset_id)
 
-    create_raster_tile_set_job = await create_pixetl_job(
+    create_raster_tile_set_job: Job = await create_pixetl_job(
         dataset, version, creation_options, "create_raster_tile_set", callback
     )
 
@@ -83,7 +84,7 @@ async def get_extent(asset_id: UUID) -> Extent:
 
     s3_client = get_s3_client()
     resp = s3_client.get_object(Bucket=bucket, Key=key)
-    extent_geojson: dict = json.loads(resp["Body"].read().decode("utf-8"))
+    extent_geojson: Dict[str, Any] = json.loads(resp["Body"].read().decode("utf-8"))
 
     return Extent(**extent_geojson)
 
@@ -104,12 +105,14 @@ async def get_raster_stats(asset_id: UUID) -> List[BandStats]:
 
     s3_client = get_s3_client()
     tiles_resp = s3_client.get_object(Bucket=bucket, Key=tiles_key)
-    tiles_geojson: dict = json.loads(tiles_resp["Body"].read().decode("utf-8"))
+    tiles_geojson: Dict[str, Any] = json.loads(
+        tiles_resp["Body"].read().decode("utf-8")
+    )
 
     stats_by_band: DefaultDict[int, DefaultDict[str, List[int]]] = defaultdict(
         lambda: defaultdict(lambda: [])
     )
-    histogram_by_band: Dict[int, Dict[str, Any]] = dict()
+    histogram_by_band: Dict[int, Histogram] = dict()
     bandstats: List[BandStats] = []
 
     for feature in tiles_geojson["features"]:
@@ -121,22 +124,24 @@ async def get_raster_stats(asset_id: UUID) -> List[BandStats]:
             histo = band.get("histogram")
             if compute_histogram and histo is not None:
                 if histogram_by_band.get(i) is None:
-                    histogram_by_band[i] = {
-                        "min": histo["min"],
-                        "max": histo["max"],
-                        "bin_count": histo["count"],
-                        "value_count": histo["buckets"],
-                    }
+                    histogram_by_band[i] = Histogram(
+                        **{
+                            "min": histo["min"],
+                            "max": histo["max"],
+                            "bin_count": histo["count"],
+                            "value_count": histo["buckets"],
+                        }
+                    )
                 else:
                     # len(histo["buckets"]) should == histo["count"]. Assert?
-                    histogram_by_band[i]["min"] = min(
-                        histogram_by_band[i]["min"], histo["min"]
+                    histogram_by_band[i].min = min(
+                        histogram_by_band[i].min, histo["min"]
                     )
-                    histogram_by_band[i]["max"] = max(
-                        histogram_by_band[i]["max"], histo["max"]
+                    histogram_by_band[i].max = max(
+                        histogram_by_band[i].max, histo["max"]
                     )
                     for bucket_num, bucket_val in enumerate(histo["buckets"]):
-                        histogram_by_band[i]["value_count"][bucket_num] += bucket_val
+                        histogram_by_band[i].value_count[bucket_num] += bucket_val
 
         for i, band in stats_by_band.items():
             bs = BandStats(
@@ -145,7 +150,7 @@ async def get_raster_stats(asset_id: UUID) -> List[BandStats]:
                 mean=sum(stats_by_band[i]["mean"]) / len(stats_by_band[i]["mean"]),
             )
             if compute_histogram:
-                bs.histogram = Histogram(**histogram_by_band[i])
+                bs.histogram = histogram_by_band[i]
             bandstats.append(bs)
 
     return bandstats

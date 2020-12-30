@@ -85,6 +85,7 @@ class Affine(BaseModel):
 
 
 class BandStats(BaseModel):
+    # Add these fields in the future? Of debatable usefulness?
     # driver: str = Field(..., description="Driver used to create raster file.")
     # interleave: str = Field(..., description="Interleave strategy.")
     # tiled: bool = Field(..., description="Raster file is tiled or not.")
