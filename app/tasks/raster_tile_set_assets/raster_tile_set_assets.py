@@ -143,7 +143,7 @@ def _collect_bandstats(fc: FeatureCollection) -> List[BandStats]:
     return bandstats
 
 
-async def _get_raster_stats(asset_id: UUID) -> List[BandStats]:
+async def _get_raster_stats(asset_id: UUID) -> RasterStats:
     asset_row: ORMAsset = await get_asset(asset_id)
 
     asset_uri: str = get_asset_uri(
@@ -163,18 +163,16 @@ async def _get_raster_stats(asset_id: UUID) -> List[BandStats]:
 
     bandstats: List[BandStats] = _collect_bandstats(FeatureCollection(**tiles_geojson))
 
-    return bandstats
+    return RasterStats(bands=bandstats)
 
 
 async def raster_tile_set_post_completion_task(asset_id: UUID):
     extent: Extent = await get_extent(asset_id)
 
-    stats: List[BandStats] = []
+    stats: Optional[RasterStats] = None
 
     asset_row: ORMAsset = await get_asset(asset_id)
     if asset_row.creation_options["compute_stats"]:
         stats = await _get_raster_stats(asset_id)
 
-    _: ORMAsset = await update_asset(
-        asset_id, extent=extent, stats=RasterStats(bands=stats)
-    )
+    _: ORMAsset = await update_asset(asset_id, extent=extent, stats=stats)

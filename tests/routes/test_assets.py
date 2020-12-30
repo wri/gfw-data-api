@@ -716,10 +716,10 @@ async def test_asset_extent_stats_empty(async_client):
     resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
     asset_id = resp.json()["data"][0]["asset_id"]
 
-    # Update the stats and extent fields of the asset to be None to simulate
-    # older assets in the DB
+    # # Update the extent fields of the asset to be None to simulate
+    # # older assets in the DB
     async with ContextEngine("WRITE"):
-        _ = await update_asset(asset_id, extent=None, stats=None)
+        _ = await update_asset(asset_id, extent=None)
 
     # Verify that hitting the stats and extent endpoint for such assets
     # yields data=None rather than a 500
