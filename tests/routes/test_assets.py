@@ -564,15 +564,13 @@ async def test_asset_stats(async_client):
     version_resp = await async_client.get(f"/dataset/{dataset}/{version}/stats")
 
     for resp in (asset_resp, version_resp):
-        assert resp.json()["data"]["bands"][0]["min"] == 1.0
-        assert resp.json()["data"]["bands"][0]["max"] == 1.0
-        assert resp.json()["data"]["bands"][0]["mean"] == 1.0
-        assert resp.json()["data"]["bands"][0]["histogram"]["bin_count"] == 256
-        assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][255] == 0
-        # FIXME: I think the following assertion should be true, but the value always
-        # winds up being 90000 instead of 10000. It looks like the stats code is
-        # faithfully reporting what gets saved in tiles.geojson
-        # assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 10000
+        band_0 = resp.json()["data"]["bands"][0]
+        assert band_0["min"] == 1.0
+        assert band_0["max"] == 1.0
+        assert band_0["mean"] == 1.0
+        assert band_0["histogram"]["bin_count"] == 256
+        assert band_0["histogram"]["value_count"][255] == 0
+        assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 10000
 
 
 @pytest.mark.asyncio

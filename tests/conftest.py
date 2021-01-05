@@ -240,7 +240,8 @@ def copy_fixtures():
         "blockxsize": 100,
         "blockysize": 100,
         "crs": CRS.from_epsg(4326),
-        "transform": Affine(0.01, 0, 1, 0, -0.01, 1),
+        # 0.003332345971563981 is the pixel size of 90/27008
+        "transform": Affine(0.003332345971563981, 0, 1, 0, -0.003332345971563981, 1),
     }
     with rasterio.Env():
         with rasterio.open("0000000000-0000000000.tif", "w", **dataset_profile) as dst:
