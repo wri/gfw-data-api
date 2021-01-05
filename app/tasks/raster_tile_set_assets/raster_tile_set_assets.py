@@ -72,7 +72,7 @@ async def raster_tile_set_asset(
     return log
 
 
-async def get_extent(asset_id: UUID) -> Extent:
+async def get_extent(asset_id: UUID) -> Optional[Extent]:
     asset_row: ORMAsset = await get_asset(asset_id)
     asset_uri: str = get_asset_uri(
         asset_row.dataset,
@@ -87,7 +87,13 @@ async def get_extent(asset_id: UUID) -> Extent:
     resp = s3_client.get_object(Bucket=bucket, Key=key)
     extent_geojson: Dict[str, Any] = json.loads(resp["Body"].read().decode("utf-8"))
 
-    return Extent(**extent_geojson)
+    if extent_geojson:
+        return Extent(**extent_geojson)
+    return None
+
+
+def _merge_histograms(histo1: Histogram, histo2: Histogram) -> Histogram:
+    pass
 
 
 def _create_or_augment_histogram(
@@ -95,10 +101,10 @@ def _create_or_augment_histogram(
 ):
     if target_histo_i is None:
         target_histo_i = Histogram(
-                min=source_histo_i["min"],
-                max=source_histo_i["max"],
-                bin_count=source_histo_i["count"],
-                value_count=source_histo_i["buckets"]           
+            min=source_histo_i["min"],
+            max=source_histo_i["max"],
+            bin_count=source_histo_i["count"],
+            value_count=source_histo_i["buckets"],
         )
     else:
         target_histo_i.min = min(target_histo_i.min, source_histo_i["min"])
@@ -165,7 +171,7 @@ async def _get_raster_stats(asset_id: UUID) -> RasterStats:
 
 
 async def raster_tile_set_post_completion_task(asset_id: UUID):
-    extent: Extent = await get_extent(asset_id)
+    extent: Optional[Extent] = await get_extent(asset_id)
 
     stats: Optional[RasterStats] = None
 

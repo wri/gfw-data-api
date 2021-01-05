@@ -12,6 +12,7 @@ from fastapi.responses import ORJSONResponse
 
 from ...application import ContextEngine, db
 from ...crud import assets, tasks, versions
+from ...crud.assets import get_asset
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus
 from ...models.enum.change_log import ChangeLogStatus
@@ -191,19 +192,24 @@ async def _check_completed(asset_id: UUID):
     all_task_rows: List[ORMTask] = await tasks.get_tasks(asset_id)
     all_finished = _all_finished(all_task_rows)
 
-    status_change_log: ChangeLog = ChangeLog(
-        date_time=now,
-        status=ChangeLogStatus.success,
-        message=f"Successfully created asset {asset_id}.",
-    )
-
     if all_finished:
+        status_change_log: ChangeLog = ChangeLog(
+            date_time=now,
+            status=ChangeLogStatus.success,
+            message=f"Successfully created asset {asset_id}.",
+        )
+
         # Set the asset to status saved
         asset_row: ORMAsset = await assets.update_asset(
             asset_id,
             status=AssetStatus.saved,
             change_log=[status_change_log.dict(by_alias=True)],
         )
+
+        # Run any asset type-specific code necessary
+        post_completion_task = _post_completion_task_factory(asset_row.asset_type)
+        if post_completion_task is not None:
+            await post_completion_task(asset_id)
 
         # If default asset, make sure version is also set to saved
         if asset_row.is_default:
@@ -215,11 +221,6 @@ async def _check_completed(asset_id: UUID):
                 status=VersionStatus.saved,
                 change_log=[status_change_log.dict(by_alias=True)],
             )
-
-        # Run any asset type-specific code necessary
-        post_completion_task = _post_completion_task_factory(asset_row.asset_type)
-        if post_completion_task is not None:
-            await post_completion_task(asset_id)
 
 
 def _all_finished(task_rows: List[ORMTask]) -> bool:

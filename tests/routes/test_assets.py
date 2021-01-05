@@ -434,7 +434,7 @@ async def _test_raster_tile_cache(
     wm_tile_set_assets,
     symbology,
 ):
-    pixetl_output_files_prefix = f"{dataset}/{version}/raster/epsg-3857/zoom_0"
+    pixetl_output_files_prefix = f"{dataset}/{version}/raster/epsg-3857/zoom_1"
     pixetl_test_files = [
         "geotiff/extent.geojson",
         "geotiff/tiles.geojson",
@@ -495,7 +495,7 @@ async def _test_raster_tile_cache(
         _check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
     _check_s3_file_present(
-        TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/0/0/0.png"]
+        TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"]
     )
 
     with patch("app.tasks.aws_tasks.get_cloudfront_client") as mock_client:

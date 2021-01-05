@@ -12,6 +12,7 @@ from app.models.orm.geostore import Geostore
 from .. import BUCKET, GEOJSON_NAME, GEOJSON_PATH, GEOJSON_PATH2, PORT, SHP_NAME
 from ..utils import create_default_asset
 from . import (
+    MockECSClient,
     check_asset_status,
     check_dynamic_vector_tile_cache_status,
     check_task_status,
@@ -94,7 +95,7 @@ async def test_vector_source_asset(batch_client, async_client):
             response = await async_client.get(
                 f"/dataset/{dataset}/{version}/query?sql=SELECT count(*) FROM mytable&geostore_id=17076d5ea9f214a5bdb68cc40433addb&geostore_origin=rw"
             )
-        print(response.json())
+        # print(response.json())
         assert response.status_code == 200
         assert len(response.json()["data"]) == 1
         assert response.json()["data"][0]["count"] == 1
@@ -106,7 +107,7 @@ async def test_vector_source_asset(batch_client, async_client):
             response = await async_client.get(
                 f"/dataset/{dataset}/{version}/query?sql=SELECT count(*) FROM mytable&geostore_id=17076d5ea9f214a5bdb68cc40433addb&geostore_origin=rw"
             )
-        print(response.json())
+        # print(response.json())
         assert response.status_code == 200
         assert len(response.json()["data"]) == 1
         assert response.json()["data"][0]["count"] == 0

@@ -15,7 +15,7 @@ class Geometry(BaseModel):
 class Feature(BaseModel):
     properties: Dict[str, Any]
     type: str
-    geometry: Geometry
+    geometry: Optional[Geometry]
 
 
 class FeatureCollection(BaseModel):
