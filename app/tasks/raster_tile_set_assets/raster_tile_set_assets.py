@@ -95,12 +95,10 @@ def _create_or_augment_histogram(
 ):
     if target_histo_i is None:
         target_histo_i = Histogram(
-            **{
-                "min": source_histo_i["min"],
-                "max": source_histo_i["max"],
-                "bin_count": source_histo_i["count"],
-                "value_count": source_histo_i["buckets"],
-            }
+                min=source_histo_i["min"],
+                max=source_histo_i["max"],
+                bin_count=source_histo_i["count"],
+                value_count=source_histo_i["buckets"]           
         )
     else:
         target_histo_i.min = min(target_histo_i.min, source_histo_i["min"])
