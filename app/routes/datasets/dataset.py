@@ -135,4 +135,4 @@ async def _dataset_response(dataset: str, orm: ORMDataset) -> DatasetResponse:
     data = Dataset.from_orm(orm).dict(by_alias=True)
     data["versions"] = [version[0] for version in _versions]
 
-    return DatasetResponse(data=data)
+    return DatasetResponse(data=Dataset(**data))

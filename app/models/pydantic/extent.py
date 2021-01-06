@@ -5,12 +5,8 @@ from .geostore import FeatureCollection
 
 
 class Extent(FeatureCollection):
-    class Config:
-        extra = "forbid"
+    pass
 
 
 class ExtentResponse(Response):
     data: Optional[Extent]
-
-    class Config:
-        extra = "forbid"

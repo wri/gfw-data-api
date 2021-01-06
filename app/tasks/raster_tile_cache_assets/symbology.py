@@ -7,12 +7,13 @@ from fastapi.logger import logger
 from app.crud.assets import create_asset
 from app.models.enum.assets import AssetType
 from app.models.enum.creation_options import RasterDrivers
-from app.models.enum.pixetl import DataType
+from app.models.enum.pixetl import DataType, Grid
 from app.models.enum.sources import RasterSourceType
 from app.models.enum.symbology import ColorMapType
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import BuildRGBJob, Job, PixETLJob
+from app.models.pydantic.metadata import RasterTileSetMetadata
 from app.models.pydantic.symbology import Symbology
 from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
@@ -171,7 +172,7 @@ async def _merge_intensity_and_date_conf(
         data_type=DataType.uint8,
         resampling=PIXETL_DEFAULT_RESAMPLING,
         overwrite=False,
-        grid=f"zoom_{zoom_level}",
+        grid=Grid(f"zoom_{zoom_level}"),
         symbology=Symbology(type=ColorMapType.date_conf_intensity),
         compute_stats=False,
         compute_histogram=False,
@@ -199,7 +200,7 @@ async def _merge_intensity_and_date_conf(
         asset_uri=asset_uri,
         is_managed=True,
         creation_options=encoded_co,
-        metadata={},
+        metadata=RasterTileSetMetadata(),
     ).dict(by_alias=True)
 
     asset = await create_asset(dataset, version, **asset_options)

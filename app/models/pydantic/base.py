@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 
 class Base(BaseModel):
@@ -9,3 +9,8 @@ class Base(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class DataApiBaseModel(BaseModel):
+    class Config:
+        extra = Extra.forbid

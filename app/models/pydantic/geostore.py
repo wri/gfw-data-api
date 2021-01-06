@@ -1,24 +1,22 @@
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
-
-from .base import Base
+from .base import Base, DataApiBaseModel
 from .responses import Response
 
 
-class Geometry(BaseModel):
+class Geometry(DataApiBaseModel):
     type: str
     coordinates: List[Any]
 
 
-class Feature(BaseModel):
+class Feature(DataApiBaseModel):
     properties: Dict[str, Any]
     type: str
     geometry: Optional[Geometry]
 
 
-class FeatureCollection(BaseModel):
+class FeatureCollection(DataApiBaseModel):
     features: List[Feature]
     crs: Optional[Dict[str, Any]]
     type: str

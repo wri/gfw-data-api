@@ -1,8 +1,6 @@
 from typing import List, Optional
 
-from pydantic import BaseModel
-
-from .base import Base
+from .base import Base, DataApiBaseModel
 from .metadata import DatasetMetadata
 from .responses import Response
 
@@ -13,11 +11,11 @@ class Dataset(Base):
     versions: Optional[List[str]] = list()
 
 
-class DatasetCreateIn(BaseModel):
+class DatasetCreateIn(DataApiBaseModel):
     metadata: DatasetMetadata
 
 
-class DatasetUpdateIn(BaseModel):
+class DatasetUpdateIn(DataApiBaseModel):
     metadata: DatasetMetadata
 
 

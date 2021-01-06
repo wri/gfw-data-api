@@ -107,7 +107,6 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
         s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
 
     raster_version_payload = {
-        "is_latest": True,
         "creation_options": {
             "source_type": "raster",
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
@@ -118,6 +117,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
             "resampling": "nearest",
             "overwrite": True,
             "subset": "90N_000E",
+            "no_data": 0,
         },
         "metadata": {},
     }
@@ -151,6 +151,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
             "resampling": "nearest",
             "overwrite": True,
             "subset": "90N_000E",
+            "no_data": 0,
         },
     }
 
@@ -331,7 +332,6 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
 
     pixel_meaning = "date_conf"
     raster_version_payload = {
-        "is_latest": True,
         "creation_options": {
             "source_type": "raster",
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
@@ -533,7 +533,6 @@ async def test_asset_stats(async_client):
     _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
-        "is_latest": True,
         "creation_options": {
             "source_type": "raster",
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
@@ -584,7 +583,6 @@ async def test_asset_stats_no_histo(async_client):
     _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
-        "is_latest": True,
         "creation_options": {
             "source_type": "raster",
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
@@ -632,7 +630,6 @@ async def test_asset_extent(async_client):
     _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
-        "is_latest": True,
         "creation_options": {
             "source_type": "raster",
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
@@ -687,7 +684,6 @@ async def test_asset_extent_stats_empty(async_client):
     _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
-        "is_latest": True,
         "creation_options": {
             "source_type": "raster",
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],

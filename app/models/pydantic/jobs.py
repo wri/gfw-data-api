@@ -1,7 +1,5 @@
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
-
 from ...settings.globals import (
     AURORA_JOB_QUEUE,
     DATA_LAKE_JOB_QUEUE,
@@ -14,9 +12,10 @@ from ...settings.globals import (
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
 )
+from .base import DataApiBaseModel
 
 
-class Job(BaseModel):
+class Job(DataApiBaseModel):
     job_name: str
     job_queue: str
     job_definition: str

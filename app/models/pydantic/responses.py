@@ -1,8 +1,8 @@
 from typing import Any
 
-from pydantic import BaseModel
+from app.models.pydantic.base import DataApiBaseModel
 
 
-class Response(BaseModel):
+class Response(DataApiBaseModel):
     data: Any
     status: str = "success"

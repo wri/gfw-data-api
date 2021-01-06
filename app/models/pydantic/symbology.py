@@ -1,11 +1,12 @@
 from typing import Dict, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field, StrictInt
+from pydantic import Field, StrictInt
 
 from app.models.enum.symbology import ColorMapType
+from app.models.pydantic.base import DataApiBaseModel
 
 
-class RGBA(BaseModel):
+class RGBA(DataApiBaseModel):
     red: int = Field(..., ge=0, le=255)
     green: int = Field(..., ge=0, le=255)
     blue: int = Field(..., ge=0, le=255)
@@ -14,13 +15,7 @@ class RGBA(BaseModel):
     def tuple(self) -> Tuple[int, int, int, int]:
         return self.red, self.green, self.blue, self.alpha
 
-    class Config:
-        extra = "forbid"
 
-
-class Symbology(BaseModel):
+class Symbology(DataApiBaseModel):
     type: ColorMapType
     colormap: Optional[Dict[Union[StrictInt, float], RGBA]]
-
-    class Config:
-        extra = "forbid"

@@ -1,11 +1,10 @@
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
-
 from ..enum.analysis import RasterLayer
+from .base import DataApiBaseModel
 
 
-class ZonalAnalysisRequestIn(BaseModel):
+class ZonalAnalysisRequestIn(DataApiBaseModel):
     geometry: Dict[str, Any]
     sum: List[RasterLayer]
     group_by: List[RasterLayer] = list()

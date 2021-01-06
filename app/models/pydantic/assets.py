@@ -1,10 +1,8 @@
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
-
 from ..enum.assets import AssetStatus, AssetType
-from .base import Base
+from .base import Base, DataApiBaseModel
 from .creation_options import CreationOptions, OtherCreationOptions
 from .metadata import AssetMetadata
 from .responses import Response
@@ -21,22 +19,19 @@ class Asset(Base):
     metadata: AssetMetadata
 
 
-class AssetCreateIn(BaseModel):
+class AssetCreateIn(DataApiBaseModel):
     asset_type: AssetType
     asset_uri: Optional[str]
     is_managed: bool = True
     creation_options: OtherCreationOptions
     metadata: Optional[AssetMetadata]
 
-    class Config:
-        extra = "forbid"
 
-
-class AssetUpdateIn(BaseModel):
+class AssetUpdateIn(DataApiBaseModel):
     metadata: AssetMetadata
 
 
-class AssetTaskCreate(BaseModel):
+class AssetTaskCreate(DataApiBaseModel):
     asset_type: AssetType
     dataset: str
     version: str

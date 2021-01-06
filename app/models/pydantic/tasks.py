@@ -1,9 +1,7 @@
 from typing import List
 from uuid import UUID
 
-from pydantic import BaseModel
-
-from .base import Base
+from .base import Base, DataApiBaseModel
 from .change_log import ChangeLog
 from .responses import Response
 
@@ -14,12 +12,12 @@ class Task(Base):
     change_log: List[ChangeLog]
 
 
-class TaskCreateIn(BaseModel):
+class TaskCreateIn(DataApiBaseModel):
     asset_id: UUID
     change_log: List[ChangeLog]
 
 
-class TaskUpdateIn(BaseModel):
+class TaskUpdateIn(DataApiBaseModel):
     change_log: List[ChangeLog]
 
 

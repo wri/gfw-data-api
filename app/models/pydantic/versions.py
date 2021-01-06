@@ -1,9 +1,9 @@
 from typing import List, Optional, Tuple
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from ..enum.versions import VersionStatus
-from .base import Base
+from .base import Base, DataApiBaseModel
 from .creation_options import SourceCreationOptions
 from .metadata import VersionMetadata
 from .responses import Response
@@ -20,7 +20,7 @@ class Version(Base):
     assets: List[Tuple[str, str]] = list()
 
 
-class VersionCreateIn(BaseModel):
+class VersionCreateIn(DataApiBaseModel):
     metadata: Optional[VersionMetadata] = Field(
         None,
         description="Version metadata. Version will inherit metadata from dataset. "
@@ -32,7 +32,7 @@ class VersionCreateIn(BaseModel):
     )
 
 
-class VersionUpdateIn(BaseModel):
+class VersionUpdateIn(DataApiBaseModel):
     is_latest: Optional[bool] = Field(
         None,
         description="Indicate if the current version should be tagged `latest`. "
@@ -46,7 +46,7 @@ class VersionUpdateIn(BaseModel):
     )
 
 
-class VersionAppendIn(BaseModel):
+class VersionAppendIn(DataApiBaseModel):
     source_uri: List[str]
 
 

@@ -1,7 +1,7 @@
 from typing import List, Optional
 
-from pydantic import BaseModel
+from app.models.pydantic.base import DataApiBaseModel
 
 
-class Source(BaseModel):
+class Source(DataApiBaseModel):
     source_uri: Optional[List[str]]
