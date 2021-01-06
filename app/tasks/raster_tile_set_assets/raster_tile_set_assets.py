@@ -25,6 +25,7 @@ from app.utils.path import (
     tile_uri_to_extent_geojson,
     tile_uri_to_tiles_geojson,
 )
+from app.utils.stats import merge_histograms
 
 
 async def raster_tile_set_asset(
@@ -92,25 +93,13 @@ async def get_extent(asset_id: UUID) -> Optional[Extent]:
     return None
 
 
-def _merge_histograms(histo1: Histogram, histo2: Histogram) -> Histogram:
-    pass
-
-
 def _create_or_augment_histogram(
-    source_histo_i: Dict[str, Any], target_histo_i: Optional[Histogram]
+    source_histo_i: Histogram, target_histo_i: Optional[Histogram]
 ):
     if target_histo_i is None:
-        target_histo_i = Histogram(
-            min=source_histo_i["min"],
-            max=source_histo_i["max"],
-            bin_count=source_histo_i["count"],
-            value_count=source_histo_i["buckets"],
-        )
+        target_histo_i = source_histo_i
     else:
-        target_histo_i.min = min(target_histo_i.min, source_histo_i["min"])
-        target_histo_i.max = max(target_histo_i.max, source_histo_i["max"])
-        for bucket_num, bucket_val in enumerate(source_histo_i["buckets"]):
-            target_histo_i.value_count[bucket_num] += bucket_val
+        target_histo_i = merge_histograms(source_histo_i, target_histo_i)
 
     return target_histo_i
 
@@ -128,10 +117,16 @@ def _collect_bandstats(fc: FeatureCollection) -> List[BandStats]:
                 for val in ("min", "max", "mean"):
                     stats_by_band[i][val].append(band["stats"][val])
 
-            feature_histo_i = band.get("histogram")
-            if feature_histo_i is not None:
+            feature_histo_dict_i = band.get("histogram")
+            if feature_histo_dict_i is not None:
+                histo_i = Histogram(
+                    min=feature_histo_dict_i["min"],
+                    max=feature_histo_dict_i["max"],
+                    bin_count=feature_histo_dict_i["count"],
+                    value_count=feature_histo_dict_i["buckets"],
+                )
                 histogram_by_band[i] = _create_or_augment_histogram(
-                    feature_histo_i, histogram_by_band.get(i)
+                    histo_i, histogram_by_band.get(i)
                 )
 
         for i, band in stats_by_band.items():
