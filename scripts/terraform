@@ -2,4 +2,4 @@
 
 set -e
 
-docker-compose -f terraform/docker/docker-compose.yml run --rm --entrypoint /bin/bash terraform
+docker-compose -f terraform/docker/docker-compose.yml run --rm --entrypoint terraform --workdir /usr/local/src/terraform terraform "$@"

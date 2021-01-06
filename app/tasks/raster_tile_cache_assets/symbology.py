@@ -7,7 +7,7 @@ from fastapi.logger import logger
 from app.crud.assets import create_asset
 from app.models.enum.assets import AssetType
 from app.models.enum.creation_options import RasterDrivers
-from app.models.enum.pixetl import DataType
+from app.models.enum.pixetl import DataType, ResamplingMethod
 from app.models.enum.sources import RasterSourceType
 from app.models.enum.symbology import ColorMapType
 from app.models.pydantic.assets import AssetCreateIn
@@ -114,6 +114,7 @@ async def date_conf_intensity_symbology(
             "source_uri": source_uri,
             "no_data": None,
             "pixel_meaning": pixel_meaning,
+            "resampling": ResamplingMethod.bilinear.value,
         },
     )
     date_conf_job = jobs_dict[zoom_level]["source_reprojection_job"]
