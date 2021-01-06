@@ -1,3 +1,4 @@
+import math
 from datetime import date
 from typing import Any, Dict, List, Optional, Type, Union
 
@@ -98,6 +99,16 @@ class RasterTileSetAssetCreationOptions(DataApiBaseModel):
     symbology: Optional[Symbology] = None
     compute_stats: bool = True
     compute_histogram: bool = True
+
+    @classmethod
+    @root_validator
+    def check_no_data(cls, values):
+        no_data = values.get("no_data")
+        if isinstance(no_data, float) and not math.isnan(no_data):
+            raise ValueError(
+                "For float datasets, `no_data` must be either `Null` or `NaN`"
+            )
+        return values
 
 
 class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
