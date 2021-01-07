@@ -129,15 +129,15 @@ def _collect_bandstats(fc: FeatureCollection) -> List[BandStats]:
                     histo_i, histogram_by_band.get(i)
                 )
 
-        for i, band in stats_by_band.items():
-            bs = BandStats(
-                min=min(stats_by_band[i]["min"]),
-                max=max(stats_by_band[i]["max"]),
-                mean=sum(stats_by_band[i]["mean"]) / len(stats_by_band[i]["mean"]),
-            )
-            if histogram_by_band.get(i) is not None:
-                bs.histogram = histogram_by_band[i]
-            bandstats.append(bs)
+    for i, band in stats_by_band.items():
+        bs = BandStats(
+            min=min(stats_by_band[i]["min"]),
+            max=max(stats_by_band[i]["max"]),
+            mean=sum(stats_by_band[i]["mean"]) / len(stats_by_band[i]["mean"]),
+        )
+        if histogram_by_band.get(i) is not None:
+            bs.histogram = histogram_by_band[i]
+        bandstats.append(bs)
 
     return bandstats
 
