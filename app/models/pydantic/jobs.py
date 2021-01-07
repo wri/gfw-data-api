@@ -6,6 +6,8 @@ from ...settings.globals import (
     AURORA_JOB_QUEUE,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
+    MAX_CORES,
+    MAX_MEM,
     PIXETL_CORES,
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
@@ -93,8 +95,8 @@ class BuildRGBJob(Job):
 
     job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
-    vcpus = 1
-    memory = 15000
+    vcpus = MAX_CORES
+    memory = MAX_MEM
     attempts = 1
     attempt_duration_seconds = 7500
 
@@ -104,7 +106,7 @@ class GDAL2TilesJob(Job):
 
     job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
-    vcpus = PIXETL_CORES
-    memory = PIXETL_MAX_MEM
+    vcpus = MAX_CORES
+    memory = MAX_MEM
     attempts = 1
     attempt_duration_seconds = 7500

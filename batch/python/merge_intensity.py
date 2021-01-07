@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 from logging import getLogger
+from multiprocessing import Pool, cpu_count
 from tempfile import TemporaryDirectory
 
 import boto3
@@ -11,7 +12,7 @@ import click
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
-
+CORES = os.environ.get("CORES", cpu_count())
 
 logger = getLogger("merge_intensity")
 
@@ -50,16 +51,23 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
     bucket, date_conf_key = get_s3_path_parts(date_conf_uri)
     _, intensity_key = get_s3_path_parts(intensity_uri)
 
-    date_conf_tiles = get_tile_ids(bucket, date_conf_key)
-    intensity_tiles = get_tile_ids(bucket, intensity_key)
+    # Get common tiles
+    date_conf_tile_ids = get_tile_ids(bucket, date_conf_key)
+    intensity_tile_ids = get_tile_ids(bucket, intensity_key)
+    common_tile_ids = set(date_conf_tile_ids) & set(intensity_tile_ids)
 
-    common_tiles = set(date_conf_tiles) & set(intensity_tiles)
+    # Recreating full path
+    date_conf_tiles, intensity_tiles, output_tiles = ([],) * 3
+    for tile_id in common_tile_ids:
+        date_conf_tiles.append(os.path.join(os.path.dirname(date_conf_uri), tile_id))
+        intensity_tiles.append(os.path.join(os.path.dirname(intensity_uri), tile_id))
+        output_tiles.append(os.path.join(destination_prefix, tile_id))
 
-    for tile in common_tiles:
-        date_conf_tile = os.path.join(os.path.dirname(date_conf_uri), tile)
-        intensity_tile = os.path.join(os.path.dirname(intensity_uri), tile)
-        output_tile = os.path.join(destination_prefix, tile)
-        process_rasters(date_conf_tile, intensity_tile, output_tile)
+    # Process in parallel
+    with Pool(processes=CORES) as pool:
+        pool.starmap(
+            process_rasters, zip(date_conf_tiles, intensity_tiles, output_tiles)
+        )
 
 
 def process_rasters(date_conf_uri, intensity_uri, output_uri):
