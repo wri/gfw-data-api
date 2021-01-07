@@ -14,7 +14,6 @@ moto = {editable = true,git = "https://github.com/wri/moto.git",ref = "master"}
 pytest-cov = "*"
 pendulum = "*"
 httpx = "*"
-numpy = "*"
 rasterio = "*"
 
 [packages]
@@ -42,6 +41,7 @@ httpx = "*"
 pendulum = "*"
 aioboto3 = "*"
 typing-extensions = "==3.7.4.3"
+numpy = "*"
 
 [requires]
 python_version = "3.8"
