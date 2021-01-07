@@ -23,7 +23,10 @@ from app.utils.path import get_asset_uri
 
 
 async def raster_tile_cache_asset(
-    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    input_data: Dict[str, Any],
 ) -> ChangeLog:
     """Generate Raster Tile Cache Assets."""
 
@@ -96,7 +99,12 @@ async def raster_tile_cache_asset(
             deep=True, update={"source_uri": [source_reprojection_uri]}
         )
         symbology_jobs, symbology_uri = await symbology_function(
-            dataset, version, symbology_co, zoom_level, max_zoom, jobs_dict,
+            dataset,
+            version,
+            symbology_co,
+            zoom_level,
+            max_zoom,
+            jobs_dict,
         )
         job_list += symbology_jobs
 

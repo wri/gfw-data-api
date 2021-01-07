@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pydantic import BaseModel, Field
+from pydantic import Extra, Field
 
 from ..enum.assets import AssetType
 from ..enum.pg_types import PGType
@@ -18,6 +18,7 @@ class FieldMetadata(StrictBaseModel):
 
     class Config:
         orm_mode = True
+        extra = Extra.forbid
 
 
 class DatasetMetadata(StrictBaseModel):

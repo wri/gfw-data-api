@@ -50,12 +50,20 @@ async def zonal_statistics_get(
     geostore."""
     geometry = await get_geostore_geometry(geostore_id, geostore_origin)
     return await _zonal_statics(
-        geometry, sum_layers, group_by, filters, start_date, end_date,
+        geometry,
+        sum_layers,
+        group_by,
+        filters,
+        start_date,
+        end_date,
     )
 
 
 @router.post(
-    "/zonal", response_class=ORJSONResponse, response_model=Response, tags=["Analysis"],
+    "/zonal",
+    response_class=ORJSONResponse,
+    response_model=Response,
+    tags=["Analysis"],
 )
 async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
     return await _zonal_statics(

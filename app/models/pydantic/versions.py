@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from ..enum.versions import VersionStatus
 from .base import BaseRecord, StrictBaseModel

@@ -20,7 +20,9 @@ router = APIRouter()
     status_code=201,
 )
 async def add_new_geostore(
-    *, request: GeostoreIn, response: ORJSONResponse,
+    *,
+    request: GeostoreIn,
+    response: ORJSONResponse,
 ):
     """Add geostore feature to user area of geostore."""
 

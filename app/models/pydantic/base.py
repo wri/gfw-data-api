@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 
 class BaseRecord(BaseModel):
@@ -9,3 +9,9 @@ class BaseRecord(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class StrictBaseModel(BaseModel):
+    class Config:
+        extra = Extra.forbid
+        validate_assignment = True

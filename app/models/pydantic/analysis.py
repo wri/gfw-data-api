@@ -1,7 +1,5 @@
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
-
 from ..enum.analysis import RasterLayer
 from .base import StrictBaseModel
 

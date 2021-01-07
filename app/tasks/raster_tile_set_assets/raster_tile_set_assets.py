@@ -13,7 +13,10 @@ from app.tasks.raster_tile_set_assets.utils import create_pixetl_job
 
 
 async def raster_tile_set_asset(
-    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    input_data: Dict[str, Any],
 ) -> ChangeLog:
 
     # If being created as a source (default) asset, creation_options["source_uri"]

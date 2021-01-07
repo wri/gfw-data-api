@@ -10,9 +10,11 @@ from . import update_data
 
 
 async def get_tasks(asset_id: UUID) -> List[ORMTask]:
-    tasks: List[ORMTask] = await ORMTask.query.where(
-        ORMTask.asset_id == asset_id
-    ).order_by(ORMTask.created_on).gino.all()
+    tasks: List[ORMTask] = (
+        await ORMTask.query.where(ORMTask.asset_id == asset_id)
+        .order_by(ORMTask.created_on)
+        .gino.all()
+    )
 
     return tasks
 

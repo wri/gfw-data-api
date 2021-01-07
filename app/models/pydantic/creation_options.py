@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import Field, StrictInt, root_validator
 from pydantic.types import PositiveInt
 
 from ...settings.globals import PIXETL_DEFAULT_RESAMPLING
@@ -87,7 +87,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     pixel_meaning: str
     data_type: DataType
     nbits: Optional[int]
-    no_data: Optional[int]
+    no_data: Optional[Union[StrictInt, float]]
     rasterize_method: Optional[RasterizeMethod]
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
     calc: Optional[str]
@@ -96,11 +96,8 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     subset: Optional[str]
     grid: Grid
     symbology: Optional[Symbology] = None
-    compute_stats: bool = False
-    compute_histogram: bool = False
-
-    class Config:
-        extra = "forbid"
+    compute_stats: bool = True
+    compute_histogram: bool = True
 
 
 class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
@@ -129,9 +126,9 @@ class VectorSourceCreationOptions(StrictBaseModel):
 
     indices: List[Index] = Field(
         [
-            Index(index_type="gist", column_name="geom"),
-            Index(index_type="gist", column_name="geom_wm"),
-            Index(index_type="hash", column_name="gfw_geostore_id"),
+            Index(index_type=IndexType.gist.value, column_name="geom"),
+            Index(index_type=IndexType.gist.value, column_name="geom_wm"),
+            Index(index_type=IndexType.hash.value, column_name="gfw_geostore_id"),
         ],
         description="List of indices to add to table",
     )
@@ -145,8 +142,6 @@ class VectorSourceCreationOptions(StrictBaseModel):
         description="Include features to geostore, to make geometries searchable via geostore endpoint.",
     )
 
-    class Config:
-        extra = "forbid"
 
 class TableAssetCreationOptions(StrictBaseModel):
     has_header: bool = Field(True, description="Input file has header. Must be true")
@@ -175,9 +170,6 @@ class TableAssetCreationOptions(StrictBaseModel):
         "when geographic columns are present. "
         "Disable this option by setting value to `false`",
     )
-
-    class Config:
-        extra = "forbid"
 
 
 class TableSourceCreationOptions(TableAssetCreationOptions):
@@ -215,9 +207,6 @@ class TileCacheBaseModel(StrictBaseModel):
                 "`max_zoom` must be equal or larger than `max_static_zoom`"
             )
         return values
-
-    class Config:
-        extra = "forbid"
 
 
 class RasterTileCacheCreationOptions(TileCacheBaseModel):
@@ -282,9 +271,6 @@ class StaticVectorFileCreationOptions(StrictBaseModel):
         description="Field attributes to include in vector tiles. "
         "If left blank, all fields marked as `is_feature_info` will be included.",
     )
-
-    class Config:
-        extra = "forbid"
 
 
 SourceCreationOptions = Union[

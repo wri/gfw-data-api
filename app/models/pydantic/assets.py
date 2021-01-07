@@ -1,8 +1,6 @@
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
-
 from ..enum.assets import AssetStatus, AssetType
 from .base import BaseRecord, StrictBaseModel
 from .creation_options import CreationOptions, OtherCreationOptions
@@ -28,8 +26,6 @@ class AssetCreateIn(StrictBaseModel):
     creation_options: OtherCreationOptions
     metadata: Optional[AssetMetadata]
 
-    class Config:
-        extra = "forbid"
 
 class AssetUpdateIn(StrictBaseModel):
     metadata: AssetMetadata

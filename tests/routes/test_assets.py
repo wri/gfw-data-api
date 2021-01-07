@@ -6,7 +6,9 @@ import pytest
 import requests
 from botocore.exceptions import ClientError
 
+from app.application import ContextEngine
 from app.crud import tasks
+from app.crud.assets import update_asset
 from app.models.enum.symbology import ColorMapType
 from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.utils.aws import get_s3_client
@@ -105,7 +107,6 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
         s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
 
     raster_version_payload = {
-        "is_latest": True,
         "creation_options": {
             "source_type": "raster",
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
@@ -116,6 +117,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
             "resampling": "nearest",
             "overwrite": True,
             "subset": "90N_000E",
+            "no_data": 0,
         },
         "metadata": {},
     }
@@ -149,6 +151,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
             "resampling": "nearest",
             "overwrite": True,
             "subset": "90N_000E",
+            "no_data": 0,
         },
     }
 
@@ -329,7 +332,6 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
 
     pixel_meaning = "date_conf"
     raster_version_payload = {
-        "is_latest": True,
         "creation_options": {
             "source_type": "raster",
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
@@ -419,7 +421,12 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         requests.delete(f"http://localhost:{httpd.server_port}")
 
         await _test_raster_tile_cache(
-            dataset, version, default_asset_id, async_client, logs, **check,
+            dataset,
+            version,
+            default_asset_id,
+            async_client,
+            logs,
+            **check,
         )
 
 
@@ -432,7 +439,7 @@ async def _test_raster_tile_cache(
     wm_tile_set_assets,
     symbology,
 ):
-    pixetl_output_files_prefix = f"{dataset}/{version}/raster/epsg-3857/zoom_0"
+    pixetl_output_files_prefix = f"{dataset}/{version}/raster/epsg-3857/zoom_1"
     pixetl_test_files = [
         "geotiff/extent.geojson",
         "geotiff/tiles.geojson",
@@ -493,7 +500,7 @@ async def _test_raster_tile_cache(
         _check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
     _check_s3_file_present(
-        TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/0/0/0.png"]
+        TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"]
     )
 
     with patch("app.tasks.aws_tasks.get_cloudfront_client") as mock_client:
@@ -519,3 +526,224 @@ def _delete_s3_files(bucket, prefix):
         print("Deleting", obj["Key"])
         s3_client.delete_object(Bucket=bucket, Key=obj["Key"])
 
+
+@pytest.mark.skip(
+    reason="Must have cherry-picked this test. Add back in once stats branch is merged."
+)
+@pytest.mark.asyncio
+async def test_asset_stats(async_client):
+    dataset = "test_asset_stats"
+    version = "v1.0.0"
+
+    pixetl_output_files_prefix = (
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
+    )
+    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+
+    raster_version_payload = {
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_driver": "GeoTIFF",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            "overwrite": True,
+            "compute_histogram": True,
+            "compute_stats": True,
+            "no_data": 0,
+        },
+    }
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=True,
+    )
+
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    asset_id = resp.json()["data"][0]["asset_id"]
+
+    asset_resp = await async_client.get(f"/asset/{asset_id}/stats")
+    version_resp = await async_client.get(f"/dataset/{dataset}/{version}/stats")
+
+    for resp in (asset_resp, version_resp):
+        band_0 = resp.json()["data"]["bands"][0]
+        assert band_0["min"] == 1.0
+        assert band_0["max"] == 1.0
+        assert band_0["mean"] == 1.0
+        assert band_0["histogram"]["bin_count"] == 256
+        assert band_0["histogram"]["value_count"][255] == 0
+        assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 10000
+
+
+@pytest.mark.skip(
+    reason="Must have cherry-picked this test. Add back in once stats branch is merged."
+)
+@pytest.mark.asyncio
+async def test_asset_stats_no_histo(async_client):
+    dataset = "test_asset_stats_no_histo"
+    version = "v1.0.0"
+
+    pixetl_output_files_prefix = (
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
+    )
+    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+
+    raster_version_payload = {
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_driver": "GeoTIFF",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            "overwrite": True,
+            "compute_histogram": False,
+            "compute_stats": True,
+            "no_data": 0,
+        },
+    }
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=True,
+    )
+
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    asset_id = resp.json()["data"][0]["asset_id"]
+
+    asset_resp = await async_client.get(f"/asset/{asset_id}/stats")
+    version_resp = await async_client.get(f"/dataset/{dataset}/{version}/stats")
+
+    for resp in (asset_resp, version_resp):
+        assert resp.json()["data"]["bands"][0]["min"] == 1.0
+        assert resp.json()["data"]["bands"][0]["max"] == 1.0
+        assert resp.json()["data"]["bands"][0]["mean"] == 1.0
+        assert resp.json()["data"]["bands"][0].get("histogram", None) is None
+
+
+@pytest.mark.skip(
+    reason="Must have cherry-picked this test. Add back in once stats branch is merged."
+)
+@pytest.mark.asyncio
+async def test_asset_extent(async_client):
+    dataset = "test_asset_extent"
+    version = "v1.0.0"
+
+    pixetl_output_files_prefix = (
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
+    )
+    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+
+    raster_version_payload = {
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_driver": "GeoTIFF",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            "overwrite": True,
+            "compute_histogram": False,
+            "compute_stats": False,
+            "no_data": 0,
+        },
+    }
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=True,
+    )
+
+    expected_coords = [
+        [[0.0, 90.0], [90.0, 90.0], [90.0, 0.0], [0.0, 0.0], [0.0, 90.0]]
+    ]
+
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    asset_id = resp.json()["data"][0]["asset_id"]
+
+    resp = await async_client.get(f"/asset/{asset_id}/extent")
+    # print(f"ASSET EXTENT RESP: {json.dumps(resp.json(), indent=2)}")
+    assert (
+        resp.json()["data"]["features"][0]["geometry"]["coordinates"] == expected_coords
+    )
+
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/extent")
+    # print(f"VERSION EXTENT RESP: {json.dumps(resp.json(), indent=2)}")
+    assert (
+        resp.json()["data"]["features"][0]["geometry"]["coordinates"] == expected_coords
+    )
+
+
+@pytest.mark.skip(
+    reason="Must have cherry-picked this test. Add back in once stats branch is merged."
+)
+@pytest.mark.asyncio
+async def test_asset_extent_stats_empty(async_client):
+    dataset = "test_asset_extent_stats_empty"
+    version = "v1.0.0"
+
+    pixetl_output_files_prefix = (
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
+    )
+    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+
+    raster_version_payload = {
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_driver": "GeoTIFF",
+            "data_type": "uint16",
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            "overwrite": True,
+            "compute_histogram": False,
+            "compute_stats": False,
+            "no_data": 0,
+        },
+    }
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=True,
+    )
+
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    asset_id = resp.json()["data"][0]["asset_id"]
+
+    # # Update the extent fields of the asset to be None to simulate
+    # # older assets in the DB
+    async with ContextEngine("WRITE"):
+        _ = await update_asset(asset_id, extent=None)
+
+    # Verify that hitting the stats and extent endpoint for such assets
+    # yields data=None rather than a 500
+    resp = await async_client.get(f"/asset/{asset_id}/extent")
+    assert resp.status_code == 200
+    assert resp.json()["data"] is None
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/extent")
+    assert resp.status_code == 200
+    assert resp.json()["data"] is None
+
+    resp = await async_client.get(f"/asset/{asset_id}/stats")
+    assert resp.status_code == 200
+    assert resp.json()["data"] is None
+    resp = await async_client.get(f"/dataset/{dataset}/{version}/stats")
+    assert resp.status_code == 200
+    assert resp.json()["data"] is None

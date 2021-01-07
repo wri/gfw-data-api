@@ -1,8 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
-
 from ..enum.change_log import ChangeLogStatus, ChangeLogStatusTaskIn
 from .base import StrictBaseModel
 from .responses import Response

@@ -51,7 +51,10 @@ router = APIRouter()
     tags=["Assets"],
     response_model=AssetResponse,
 )
-async def get_asset(*, asset_id: UUID = Path(...),) -> AssetResponse:
+async def get_asset(
+    *,
+    asset_id: UUID = Path(...),
+) -> AssetResponse:
     """Get a specific asset."""
     try:
         row: ORMAsset = await assets.get_asset(asset_id)

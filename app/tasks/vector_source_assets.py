@@ -11,7 +11,10 @@ from .batch import execute
 
 
 async def vector_source_asset(
-    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    input_data: Dict[str, Any],
 ) -> ChangeLog:
 
     source_uris: List[str] = input_data["creation_options"].get("source_uri", [])

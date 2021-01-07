@@ -18,7 +18,10 @@ def update_ecs_service(cluster: str, service: str) -> Dict[str, Any]:
     return response
 
 
-def delete_s3_objects(bucket: str, prefix: str,) -> int:
+def delete_s3_objects(
+    bucket: str,
+    prefix: str,
+) -> int:
     """S3 list_objects_v2 and delete_objects paginate responses in chunks of
     1000 We need to use paginator object to retrieve objects and then delete
     1000 at a time https://stackoverflow.com/a/43436769/1410317."""
