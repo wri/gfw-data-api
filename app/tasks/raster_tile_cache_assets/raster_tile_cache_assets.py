@@ -5,6 +5,7 @@ from fastapi import HTTPException
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
+from app.models.enum.pixetl import ResamplingMethod
 from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
@@ -51,6 +52,10 @@ async def raster_tile_cache_asset(
             source_asset_co.dict(by_alias=True),
         ).replace("{tile_id}.tif", "tiles.geojson")
     ]
+    # TODO:
+    #  Using med over mode, due to performance issues.
+    #  Need to verify if this is the best resampling method for data other than RADD alerts as well.
+    source_asset_co.resampling = ResamplingMethod.med
     source_asset_co.symbology = Symbology(**symbology)
     source_asset_co.compute_stats = False
     source_asset_co.compute_histogram = False
