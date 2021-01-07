@@ -97,7 +97,7 @@ async def create_wm_tile_set_job(
         asset_uri=asset_uri,
         is_managed=True,
         creation_options=creation_options,
-        metadata={},
+        metadata=RasterTileSetMetadata(),
     ).dict(by_alias=True)
     wm_asset_record = await create_asset(dataset, version, **asset_options)
 
@@ -190,8 +190,6 @@ def get_zoom_source_uri(
         creation_options.source_uri if zoom_level == max_zoom else alternate_source_uri
     )
 
-    return [to_tile_geojson(uri) for uri in source_uri] if source_uri else None
-
-
-def to_tile_geojson(uri: str) -> str:
-    return uri.replace("{tile_id}.tif", "tiles.geojson")
+    return (
+        [tile_uri_to_tiles_geojson(uri) for uri in source_uri] if source_uri else None
+    )
