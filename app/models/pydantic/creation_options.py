@@ -231,8 +231,16 @@ class RasterTileCacheCreationOptions(TileCacheBaseModel):
         "This will be part of the URI and will "
         "allow to create multiple raster tile caches per version,",
     )
-    symbology: Symbology
-    source_asset_id: str
+    symbology: Symbology = Field(..., description="Symbology to use for output tiles")
+    source_asset_id: str = Field(
+        ...,
+        description="Raster tile set asset ID to use as source. "
+        "Must be an asset of the same dataset version",
+    )
+    resampling: ResamplingMethod = Field(
+        ResamplingMethod.average,
+        description="Resampling method used to downsample tiles",
+    )
 
 
 class DynamicVectorTileCacheCreationOptions(TileCacheBaseModel):

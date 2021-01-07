@@ -32,6 +32,7 @@ async def raster_tile_cache_asset(
     max_static_zoom = input_data["creation_options"]["max_static_zoom"]
     implementation = input_data["creation_options"]["implementation"]
     symbology = input_data["creation_options"]["symbology"]
+    resampling = input_data["creation_options"]["resampling"]
 
     # source_asset_id is currently required. Could perhaps make it optional
     # in the case that the default asset is the only one.
@@ -52,10 +53,8 @@ async def raster_tile_cache_asset(
             source_asset_co.dict(by_alias=True),
         ).replace("{tile_id}.tif", "tiles.geojson")
     ]
-    # TODO:
-    #  Using med over mode, due to performance issues.
-    #  Need to verify if this is the best resampling method for data other than RADD alerts as well.
-    source_asset_co.resampling = ResamplingMethod.med
+
+    source_asset_co.resampling = resampling
     source_asset_co.symbology = Symbology(**symbology)
     source_asset_co.compute_stats = False
     source_asset_co.compute_histogram = False
