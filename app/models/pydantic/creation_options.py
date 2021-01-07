@@ -23,6 +23,7 @@ from ..enum.sources import (
     TableSourceType,
     VectorSourceType,
 )
+from .base import StrictBaseModel
 from .responses import Response
 from .symbology import Symbology
 
@@ -31,18 +32,18 @@ PARTITION_SUFFIX_REGEX = r"^[a-z0-9_-]{3,}$"
 STR_VALUE_REGEX = r"^[a-zA-Z0-9_-]{1,}$"
 
 
-class Index(BaseModel):
+class Index(StrictBaseModel):
     index_type: IndexType
     column_name: str = Field(
         ..., description="Column to be used by index", regex=COLUMN_REGEX
     )
 
 
-class HashPartitionSchema(BaseModel):
+class HashPartitionSchema(StrictBaseModel):
     partition_count: PositiveInt
 
 
-class ListPartitionSchema(BaseModel):
+class ListPartitionSchema(StrictBaseModel):
     partition_suffix: str = Field(
         ..., description="Suffix for partition table", regex=PARTITION_SUFFIX_REGEX
     )
@@ -51,7 +52,7 @@ class ListPartitionSchema(BaseModel):
     )
 
 
-class RangePartitionSchema(BaseModel):
+class RangePartitionSchema(StrictBaseModel):
     partition_suffix: str = Field(
         ..., description="Suffix for partition table", regex=PARTITION_SUFFIX_REGEX
     )
@@ -63,7 +64,7 @@ class RangePartitionSchema(BaseModel):
     )
 
 
-class Partitions(BaseModel):
+class Partitions(StrictBaseModel):
     partition_type: PartitionType = Field(..., description="Partition type")
     partition_column: str = Field(
         ..., description="Column to be used to create partitions.", regex=COLUMN_REGEX
@@ -77,12 +78,12 @@ class Partitions(BaseModel):
     ] = Field(..., description="Partition Schema to be used.")
 
 
-class FieldType(BaseModel):
+class FieldType(StrictBaseModel):
     field_name: str = Field(..., description="Name of field", regex=COLUMN_REGEX)
     field_type: PGType = Field(..., description="Type of field (PostgreSQL type).")
 
 
-class RasterTileSetAssetCreationOptions(BaseModel):
+class RasterTileSetAssetCreationOptions(StrictBaseModel):
     pixel_meaning: str
     data_type: DataType
     nbits: Optional[int]
@@ -112,7 +113,7 @@ class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
     )
 
 
-class VectorSourceCreationOptions(BaseModel):
+class VectorSourceCreationOptions(StrictBaseModel):
     source_type: VectorSourceType = Field(..., description="Source type of input file.")
     source_driver: VectorDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
@@ -147,8 +148,7 @@ class VectorSourceCreationOptions(BaseModel):
     class Config:
         extra = "forbid"
 
-
-class TableAssetCreationOptions(BaseModel):
+class TableAssetCreationOptions(StrictBaseModel):
     has_header: bool = Field(True, description="Input file has header. Must be true")
     delimiter: Delimiters = Field(..., description="Delimiter used in input file")
 
@@ -188,7 +188,7 @@ class TableSourceCreationOptions(TableAssetCreationOptions):
     )
 
 
-class TileCacheBaseModel(BaseModel):
+class TileCacheBaseModel(StrictBaseModel):
     min_zoom: int = Field(
         0, description="Minimum zoom level of tile cache", ge=0, le=22
     )
@@ -276,7 +276,7 @@ class StaticVectorTileCacheCreationOptions(TileCacheBaseModel):
     )
 
 
-class StaticVectorFileCreationOptions(BaseModel):
+class StaticVectorFileCreationOptions(StrictBaseModel):
     field_attributes: Optional[List[str]] = Field(
         None,
         description="Field attributes to include in vector tiles. "

@@ -1,5 +1,4 @@
 import os
-from copy import deepcopy
 from typing import List, Optional, Tuple
 
 from fastapi.logger import logger
@@ -9,11 +8,12 @@ from app.models.enum.assets import AssetType
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import GDAL2TilesJob, Job
+from app.models.pydantic.metadata import RasterTileSetMetadata
 from app.settings.globals import MAX_CORES, MAX_MEM, TILE_CACHE_BUCKET
 from app.tasks import Callback, callback_constructor
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_pixetl_job
 from app.tasks.utils import sanitize_batch_job_name
-from app.utils.path import get_asset_uri
+from app.utils.path import get_asset_uri, tile_uri_to_tiles_geojson
 
 CACHE_JOB_ENV = list()
 

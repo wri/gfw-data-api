@@ -22,7 +22,7 @@ from ...models.orm.tasks import Task as ORMTask
 from ...models.pydantic.assets import AssetCreateIn, AssetType
 from ...models.pydantic.change_log import ChangeLog
 from ...models.pydantic.creation_options import DynamicVectorTileCacheCreationOptions
-from ...models.pydantic.metadata import FieldMetadata
+from ...models.pydantic.metadata import DynamicVectorTileCacheMetadata, FieldMetadata
 from ...models.pydantic.tasks import TaskCreateIn, TaskResponse, TaskUpdateIn
 from ...settings.globals import TILE_CACHE_URL
 from ...tasks.assets import put_asset
@@ -282,11 +282,10 @@ async def _register_dynamic_vector_tile_cache(
             asset_type=AssetType.dynamic_vector_tile_cache,
             asset_uri=f"{TILE_CACHE_URL}/{dataset}/{version}/dynamic/{{z}}/{{x}}/{{y}}.pbf",
             is_managed=True,
-            creation_options=creation_options.dict(by_alias=True),
-            metadata={
-                "min_zoom": creation_options.min_zoom,
-                "max_zoom": creation_options.max_zoom,
-            },
+            creation_options=creation_options,
+            metadata=DynamicVectorTileCacheMetadata(
+                min_zoom=creation_options.min_zoom, max_zoom=creation_options.max_zoom
+            ),
         )
 
         try:

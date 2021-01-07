@@ -112,7 +112,9 @@ class StatsResponse(Response):
     data: Optional[Stats]
 
 
-def stats_factory(asset_type: str, input_data: Dict[str, Any]) -> Optional[Stats]:
+def stats_factory(
+    asset_type: str, input_data: Optional[Dict[str, Any]]
+) -> Optional[Stats]:
     stats_constructor: Dict[str, Type[Stats]] = {
         AssetType.database_table: TableStats,
         AssetType.geo_database_table: TableStats,

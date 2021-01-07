@@ -1,4 +1,3 @@
-from typing import Any, Dict, List
 from unittest.mock import patch
 from uuid import UUID
 
@@ -510,7 +509,7 @@ def _check_s3_file_present(bucket, keys):
         try:
             s3_client.head_object(Bucket=bucket, Key=key)
         except ClientError:
-            raise AssertionError(f"Key {key} doesn't exist!")
+            raise AssertionError(f"Object {key} doesn't exist in bucket {bucket}!")
 
 
 def _delete_s3_files(bucket, prefix):
@@ -519,3 +518,4 @@ def _delete_s3_files(bucket, prefix):
     for obj in response.get("Contents", list()):
         print("Deleting", obj["Key"])
         s3_client.delete_object(Bucket=bucket, Key=obj["Key"])
+

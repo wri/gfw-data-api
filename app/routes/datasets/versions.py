@@ -306,7 +306,7 @@ async def _version_response(
     data = Version.from_orm(data).dict(by_alias=True)
     data["assets"] = [(asset[0], asset[1]) for asset in assets]
 
-    return VersionResponse(data=data)
+    return VersionResponse(data=Version(**data))
 
 
 def _verify_source_file_access(s3_sources):

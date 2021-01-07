@@ -3,7 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class Base(BaseModel):
+class BaseRecord(BaseModel):
     created_on: datetime
     updated_on: datetime
 
