@@ -2,8 +2,8 @@ import json
 from typing import List
 from uuid import UUID
 
+import httpx
 import pytest
-import requests
 from mock import patch
 
 from app.application import ContextEngine, db
@@ -12,7 +12,6 @@ from app.models.orm.geostore import Geostore
 from .. import BUCKET, GEOJSON_NAME, GEOJSON_PATH, GEOJSON_PATH2, PORT, SHP_NAME
 from ..utils import create_default_asset
 from . import (
-    MockECSClient,
     check_asset_status,
     check_dynamic_vector_tile_cache_status,
     check_task_status,
@@ -333,7 +332,7 @@ async def test_vector_source_asset(batch_client, async_client):
                 },
             ]
 
-        requests.delete(f"http://localhost:{PORT}")
+        httpx.delete(f"http://localhost:{PORT}")
 
     response = await async_client.get(f"/asset/{asset_id}")
     assert response.status_code == 200

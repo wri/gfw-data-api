@@ -7,10 +7,10 @@ import zipfile
 from http.server import HTTPServer
 
 import boto3
+import httpx
 import numpy
 import pytest
 import rasterio
-import requests
 from affine import Affine
 from alembic.config import main
 from docker.models.containers import ContainerCollection
@@ -215,7 +215,7 @@ def httpd():
 @pytest.fixture(autouse=True)
 def flush_request_list(httpd):
     """Delete request cache before every test."""
-    requests.delete(f"http://localhost:{httpd.server_port}")
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
 
 @pytest.fixture(autouse=True)

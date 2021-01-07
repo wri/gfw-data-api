@@ -3,7 +3,7 @@ import uuid
 from time import sleep
 from typing import Any, Dict, List, Set
 
-import requests
+import httpx
 from mock import patch
 
 from app.crud import tasks
@@ -148,7 +148,7 @@ async def poll_jobs(job_ids: List[str], logs=None, async_client=None) -> str:
 
 
 async def check_callbacks(task_ids, async_client=None):
-    get_resp = requests.get(f"http://localhost:{PORT}")
+    get_resp = httpx.get(f"http://localhost:{PORT}")
     req_list = get_resp.json()["requests"]
 
     # print("REQUESTS", req_list)
