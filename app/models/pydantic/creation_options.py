@@ -126,9 +126,9 @@ class VectorSourceCreationOptions(StrictBaseModel):
 
     indices: List[Index] = Field(
         [
-            Index(index_type=IndexType.gist.value, column_name="geom"),
-            Index(index_type=IndexType.gist.value, column_name="geom_wm"),
-            Index(index_type=IndexType.hash.value, column_name="gfw_geostore_id"),
+            Index(index_type=IndexType.gist.value, column_names=["geom"]),
+            Index(index_type=IndexType.gist.value, column_names=["geom_wm"]),
+            Index(index_type=IndexType.hash.value, column_names=["gfw_geostore_id"]),
         ],
         description="List of indices to add to table",
     )
