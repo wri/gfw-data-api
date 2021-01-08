@@ -5,6 +5,7 @@ from typing import Optional
 from starlette.config import Config
 from starlette.datastructures import Secret
 
+from ..models.enum.pixetl import ResamplingMethod
 from ..models.pydantic.database import DatabaseURL
 
 #
@@ -117,9 +118,17 @@ AURORA_JOB_QUEUE_FAST = config("AURORA_JOB_QUEUE_FAST", cast=str)
 DATA_LAKE_JOB_QUEUE = config("DATA_LAKE_JOB_QUEUE", cast=str)
 TILE_CACHE_JOB_DEFINITION = config("TILE_CACHE_JOB_DEFINITION", cast=str)
 TILE_CACHE_JOB_QUEUE = config("TILE_CACHE_JOB_QUEUE", cast=str)
+MAX_CORES = config("MAX_CORES", cast=int, default=96)
+MAX_MEM = config("MAX_MEM", cast=int, default=760000)
 PIXETL_JOB_DEFINITION = config("PIXETL_JOB_DEFINITION", cast=str)
 PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str)
+PIXETL_CORES = config("PIXETL_CORES", cast=int, default=MAX_CORES / 2)
+PIXETL_MAX_MEM = config("PIXETL_MAX_MEM", cast=int, default=MAX_MEM / 2)
+PIXETL_DEFAULT_RESAMPLING = config(
+    "DEFAULT_RESAMPLING", cast=str, default=ResamplingMethod.nearest.value
+)
 RASTER_ANALYSIS_LAMBDA_NAME = config("RASTER_ANALYSIS_LAMBDA_NAME", cast=str)
+
 
 POLL_WAIT_TIME = config("POLL_WAIT_TIME", cast=int, default=30)
 CHUNK_SIZE = config("CHUNK_SIZE", cast=int, default=50)
@@ -131,3 +140,5 @@ SERVICE_ACCOUNT_TOKEN = config(
 
 S3_ENTRYPOINT_URL = config("S3_ENTRYPOINT_URL", cast=str, default=None)
 SQL_REQUEST_TIMEOUT = 58
+
+AWS_GCS_KEY_SECRET_ARN = config("AWS_GCS_KEY_SECRET_ARN", cast=str, default=None)

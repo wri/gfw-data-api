@@ -10,6 +10,7 @@ from ..models.enum.sources import SourceType
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
 from .dynamic_vector_tile_cache_assets import dynamic_vector_tile_cache_asset
+from .raster_tile_cache_assets import raster_tile_cache_asset
 from .raster_tile_set_assets import raster_tile_set_asset
 from .static_vector_1x1_assets import static_vector_1x1_asset
 from .static_vector_file_assets import static_vector_file_asset
@@ -26,7 +27,7 @@ ASSET_PIPELINES: FrozenSet[AssetType] = frozenset(
         AssetType.static_vector_tile_cache: static_vector_tile_cache_asset,
         AssetType.grid_1x1: static_vector_1x1_asset,
         # AssetType.vector_tile_cache: vector_tile_cache_asset,
-        # AssetType.raster_tile_cache: raster_tile_cache_asset,
+        AssetType.raster_tile_cache: raster_tile_cache_asset,
         # AssetType.dynamic_raster_tile_cache: dynamic_raster_tile_cache_asset,
         AssetType.raster_tile_set: raster_tile_set_asset,
     }.items()
@@ -55,7 +56,10 @@ async def put_asset(
 
         if asset_type in asset_constructor.keys():
             log: ChangeLog = await asset_constructor[asset_type](
-                dataset, version, asset_id, input_data,
+                dataset,
+                version,
+                asset_id,
+                input_data,
             )
 
         else:
@@ -90,81 +94,3 @@ async def put_asset(
         await versions.update_version(
             dataset, version, change_log=[log.dict(by_alias=True)]
         )
-
-
-# TODO:
-# async def raster_tile_cache_asset():
-#     # supported input types
-#     #  - raster
-#     #  - vector ?
-#
-#     # steps
-#     # create raster tile cache using mapnik and upload to S3
-#     # register static raster tile cache asset entry to enable service
-#
-#     # creation options:
-#     #  - symbology/ legend
-#     #  - tiling strategy
-#     #  - min/max zoom level
-#     #  - caching strategy
-#
-#     # custom metadata
-#     #  - symbology/ legend
-#     #  - rendered zoom levels
-#
-#     raise NotImplementedError
-#
-#
-# async def dynamic_raster_tile_cache_asset():
-#     # supported input types
-#     #  - raster
-#     #  - vector ?
-#
-#     # steps
-#     # create raster set (pixETL) using WebMercator grid
-#     # register dynamic raster tile cache asset entry to enable service
-#
-#     # creation options:
-#     #  - symbology/ legend
-#     #  - tiling strategy
-#     #  - min/max zoom level
-#     #  - caching strategy
-#
-#     # custom metadata
-#     #  - symbology/ legend
-#
-#     raise NotImplementedError
-#
-#
-# async def raster_tile_set_asset():
-#     # supported input types
-#     #  - vector
-#     #  - raster
-#
-#     # steps
-#     #  - wait until database table is created (vector only)
-#     #  - create 1x1 materialized view (vector only)
-#     #  - create raster tiles using pixETL and upload to S3
-#     #  - create tile set asset entry
-#
-#     # creation options
-#     #  - set tile set value name
-#     #  - select field value or expression to use for rasterization (vector only)
-#     #  - select order direction (asc/desc) of field values for rasterization (vector only)
-#     #  - override input raster, must be another raster tile set of the same version (raster only)
-#     #  - define numpy calc expression (raster only)
-#     #  - select resampling method (raster only)
-#     #  - select out raster datatype
-#     #  - select out raster nbit value
-#     #  - select out raster no data value
-#     #  - select out raster grid type
-#
-#     # custom metadata
-#     #  - raster statistics
-#     #  - raster table (pixel value look up)
-#     #  - list of raster files
-#     #  - raster data type
-#     #  - compression
-#     #  - no data value
-#
-#     raise NotImplementedError

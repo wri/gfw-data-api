@@ -208,6 +208,7 @@ class AWSMock(object):
                 {"name": "TILE_CACHE", "value": TILE_CACHE_BUCKET},
                 {"name": "DATA_LAKE", "value": DATA_LAKE_BUCKET},
                 {"name": "AWS_HTTPS", "value": "NO"},
+                {"name": "AWS_S3_ENDPOINT", "value": "motoserver:5000"},
                 {"name": "AWS_VIRTUAL_HOSTING", "value": "FALSE"},
                 {"name": "GDAL_DISABLE_READDIR_ON_OPEN", "value": "YES"},
             ],

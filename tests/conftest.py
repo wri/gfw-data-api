@@ -148,6 +148,24 @@ def client():
     with TestClient(app) as client:
         yield client
 
+        # Clean up created assets/versions/datasets so teardown doesn't break
+        datasets_resp = client.get("/datasets")
+        for ds in datasets_resp.json()["data"]:
+            ds_id = ds["dataset"]
+            if ds.get("versions") is not None:
+                for version in ds["versions"]:
+                    assets_resp = client.get(f"/dataset/{ds_id}/{version}/assets")
+                    for asset in assets_resp.json()["data"]:
+                        print(f"DELETING ASSET {asset['asset_id']}")
+                        try:
+                            _ = client.delete(
+                                f"/dataset/{ds_id}/{version}/{asset['asset_id']}"
+                            )
+                            _ = client.delete(f"/dataset/{ds_id}/{version}")
+                            _ = client.delete(f"/dataset/{ds_id}")
+                        except Exception:
+                            print(f"Exception deleting asset {asset['asset_id']}")
+
     app.dependency_overrides = {}
     main(["--raiseerr", "downgrade", "base"])
 
@@ -265,7 +283,7 @@ async def tmp_folder():
 
     ready = os.path.join(tmp_dir, "READY")
 
-    # Create zerobytes READY file
+    # Create zero bytes READY file
     with open(ready, "w"):
         pass
     yield

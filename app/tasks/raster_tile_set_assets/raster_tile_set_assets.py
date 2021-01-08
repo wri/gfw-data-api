@@ -1,8 +1,5 @@
-import json
 from typing import Any, Dict, List, Optional
 from uuid import UUID
-
-from fastapi.encoders import jsonable_encoder
 
 from app.crud.assets import get_default_asset
 from app.models.pydantic.change_log import ChangeLog
@@ -10,14 +7,16 @@ from app.models.pydantic.creation_options import (
     RasterTileSetAssetCreationOptions,
     RasterTileSetSourceCreationOptions,
 )
-from app.models.pydantic.jobs import PixETLJob
-from app.settings.globals import ENV, S3_ENTRYPOINT_URL
-from app.tasks import Callback, callback_constructor, writer_secrets
+from app.tasks import Callback, callback_constructor
 from app.tasks.batch import execute
+from app.tasks.raster_tile_set_assets.utils import create_pixetl_job
 
 
 async def raster_tile_set_asset(
-    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    input_data: Dict[str, Any],
 ) -> ChangeLog:
 
     # If being created as a source (default) asset, creation_options["source_uri"]
@@ -36,10 +35,11 @@ async def raster_tile_set_asset(
             creation_options["source_type"] = "raster"
             creation_options["source_uri"] = default_asset.creation_options[
                 "source_uri"
-            ][0]
+            ]
         elif default_asset.creation_options["source_type"] == "vector":
             creation_options["source_type"] = "vector"
     else:
+        # FIXME move to validator function and assess prior to running background task
         if len(source_uris) > 1:
             raise AssertionError("Raster assets currently only support one input file")
         elif len(source_uris) == 0:
@@ -47,39 +47,12 @@ async def raster_tile_set_asset(
         creation_options = RasterTileSetSourceCreationOptions(
             **input_data["creation_options"]
         ).dict(exclude_none=True, by_alias=True)
-        creation_options["source_uri"] = source_uris[0]
-
-    overwrite = creation_options.pop("overwrite", None)
-    subset = creation_options.pop("subset", None)
-    layer_def = json.dumps(jsonable_encoder(creation_options))
+        creation_options["source_uri"] = source_uris
 
     callback: Callback = callback_constructor(asset_id)
 
-    job_env = writer_secrets + [{"name": "ENV", "value": ENV}]
-    if S3_ENTRYPOINT_URL:
-        job_env = job_env + [{"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL}]
-
-    command = [
-        "create_raster_tile_set.sh",
-        "-d",
-        dataset,
-        "-v",
-        version,
-        "-j",
-        layer_def,
-    ]
-
-    if overwrite:
-        command += ["--overwrite"]
-
-    if subset:
-        command += ["--subset", subset]
-
-    create_raster_tile_set_job = PixETLJob(
-        job_name="create_raster_tile_set",
-        command=command,
-        environment=job_env,
-        callback=callback,
+    create_raster_tile_set_job = await create_pixetl_job(
+        dataset, version, creation_options, "create_raster_tile_set", callback
     )
 
     log: ChangeLog = await execute([create_raster_tile_set_job])

@@ -160,7 +160,9 @@ def geodesic_point_buffer(lat: float, lng: float, zoom: int) -> geoPolygon:
     # Azimuthal equidistant projection
     aeqd_proj = "+proj=aeqd +lat_0={lat} +lon_0={lon} +x_0=0 +y_0=0"
     project = partial(
-        pyproj.transform, pyproj.Proj(aeqd_proj.format(lat=lat, lon=lng)), proj_wgs84,
+        pyproj.transform,
+        pyproj.Proj(aeqd_proj.format(lat=lat, lon=lng)),
+        proj_wgs84,
     )
     buf: int = Point(0, 0).buffer(buffer_distance)  # distance in metres
 

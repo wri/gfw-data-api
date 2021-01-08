@@ -1,20 +1,23 @@
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
-
 from ...settings.globals import (
     AURORA_JOB_QUEUE,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
+    MAX_CORES,
+    MAX_MEM,
+    PIXETL_CORES,
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
+    PIXETL_MAX_MEM,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
 )
+from .base import StrictBaseModel
 
 
-class Job(BaseModel):
+class Job(StrictBaseModel):
     job_name: str
     job_queue: str
     job_definition: str
@@ -80,7 +83,29 @@ class PixETLJob(Job):
 
     job_queue = PIXETL_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION
-    vcpus = 48
-    memory = 350000
-    attempts = 2
+    vcpus = PIXETL_CORES
+    memory = PIXETL_MAX_MEM
+    attempts = 1
     attempt_duration_seconds = 9600
+
+
+class BuildRGBJob(Job):
+    """Use for combining date_conf and intensity assets using buildrgb."""
+
+    job_queue = DATA_LAKE_JOB_QUEUE
+    job_definition = GDAL_PYTHON_JOB_DEFINITION
+    vcpus = MAX_CORES
+    memory = MAX_MEM
+    attempts = 1
+    attempt_duration_seconds = 7500
+
+
+class GDAL2TilesJob(Job):
+    """Use for generating a raster tile cache from web-mercator tiles."""
+
+    job_queue = DATA_LAKE_JOB_QUEUE
+    job_definition = GDAL_PYTHON_JOB_DEFINITION
+    vcpus = MAX_CORES
+    memory = MAX_MEM
+    attempts = 1
+    attempt_duration_seconds = 7500

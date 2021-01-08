@@ -1,13 +1,14 @@
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pydantic import BaseModel, Field
+from pydantic import Extra, Field
 
 from ..enum.assets import AssetType
 from ..enum.pg_types import PGType
+from .base import StrictBaseModel
 from .responses import Response
 
 
-class FieldMetadata(BaseModel):
+class FieldMetadata(StrictBaseModel):
     field_name_: str = Field(..., alias="field_name")
     field_alias: Optional[str]
     field_description: Optional[str]
@@ -17,9 +18,10 @@ class FieldMetadata(BaseModel):
 
     class Config:
         orm_mode = True
+        extra = Extra.forbid
 
 
-class DatasetMetadata(BaseModel):
+class DatasetMetadata(StrictBaseModel):
     title: Optional[str]
     subtitle: Optional[str]
     function: Optional[str]
@@ -62,9 +64,17 @@ class VersionMetadata(DatasetMetadata):
     data_updates: Optional[str]
 
 
-class RasterTable(BaseModel):
+class RasterTable(StrictBaseModel):
     value: int
     description: str
+
+
+class RasterTileCacheMetadata(VersionMetadata):
+    min_zoom: Optional[int]  # FIXME: Should this really be optional?
+    max_zoom: Optional[
+        int
+    ]  # FIXME: Making required causes exception as it's never set. Find out why
+    # TODO: More?
 
 
 class RasterTileSetMetadata(VersionMetadata):
@@ -102,6 +112,7 @@ AssetMetadata = Union[
     DatabaseTableMetadata,
     StaticVectorTileCacheMetadata,
     DynamicVectorTileCacheMetadata,
+    RasterTileCacheMetadata,
     RasterTileSetMetadata,
     VectorFileMetadata,
 ]
@@ -116,6 +127,7 @@ def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMe
     metadata_factory: Dict[str, Type[AssetMetadata]] = {
         AssetType.static_vector_tile_cache: StaticVectorTileCacheMetadata,
         AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheMetadata,
+        AssetType.raster_tile_cache: RasterTileCacheMetadata,
         AssetType.raster_tile_set: RasterTileSetMetadata,
         AssetType.database_table: DatabaseTableMetadata,
         AssetType.geo_database_table: DatabaseTableMetadata,

@@ -22,7 +22,7 @@ from ...models.orm.tasks import Task as ORMTask
 from ...models.pydantic.assets import AssetCreateIn, AssetType
 from ...models.pydantic.change_log import ChangeLog
 from ...models.pydantic.creation_options import DynamicVectorTileCacheCreationOptions
-from ...models.pydantic.metadata import FieldMetadata
+from ...models.pydantic.metadata import DynamicVectorTileCacheMetadata, FieldMetadata
 from ...models.pydantic.tasks import TaskCreateIn, TaskResponse, TaskUpdateIn
 from ...settings.globals import TILE_CACHE_URL
 from ...tasks.assets import put_asset
@@ -147,7 +147,9 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
     # Query returns empty list in case table does not exist.
     if asset_row.asset_type in [AssetType.database_table, AssetType.geo_database_table]:
         await _update_asset_field_metadata(
-            asset_row.dataset, asset_row.version, asset_id,
+            asset_row.dataset,
+            asset_row.version,
+            asset_id,
         )
 
     # If default asset failed, we must version status also to failed.
@@ -190,7 +192,9 @@ async def _check_completed(asset_id: UUID):
         # Check if creation options specify to register a dynamic vector tile cache asset
         if is_database_asset(asset_row.asset_type):
             asset_row = await _update_asset_field_metadata(
-                asset_row.dataset, asset_row.version, asset_id,
+                asset_row.dataset,
+                asset_row.version,
+                asset_id,
             )
 
             await _register_dynamic_vector_tile_cache(
@@ -268,7 +272,8 @@ async def _register_dynamic_vector_tile_cache(
 ) -> None:
     """Register dynamic vector tile cache asset with version if required."""
     default_asset: ORMAsset = await assets.get_default_asset(
-        dataset, version,
+        dataset,
+        version,
     )
     create_dynamic_vector_tile_cache: Optional[
         bool
@@ -282,17 +287,19 @@ async def _register_dynamic_vector_tile_cache(
             asset_type=AssetType.dynamic_vector_tile_cache,
             asset_uri=f"{TILE_CACHE_URL}/{dataset}/{version}/dynamic/{{z}}/{{x}}/{{y}}.pbf",
             is_managed=True,
-            creation_options=creation_options.dict(by_alias=True),
-            metadata={
-                "min_zoom": creation_options.min_zoom,
-                "max_zoom": creation_options.max_zoom,
-            },
+            creation_options=creation_options,
+            metadata=DynamicVectorTileCacheMetadata(
+                min_zoom=creation_options.min_zoom, max_zoom=creation_options.max_zoom
+            ),
         )
 
         try:
             async with ContextEngine("WRITE"):
                 asset_orm = await assets.create_asset(
-                    dataset, version, **data.dict(by_alias=True)
+                    dataset,
+                    version,
+                    fields=default_asset.fields,
+                    **data.dict(by_alias=True),
                 )
 
         except Exception as e:

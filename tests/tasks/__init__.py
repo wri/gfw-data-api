@@ -81,7 +81,10 @@ async def create_asset(dataset, version, asset_type, asset_uri, input_data) -> A
     await create_version(dataset, version, input_data)
     async with ContextEngine("WRITE"):
         new_asset = await assets.create_asset(
-            dataset, version, asset_type=asset_type, asset_uri=asset_uri,
+            dataset,
+            version,
+            asset_type=asset_type,
+            asset_uri=asset_uri,
         )
     return new_asset
 
@@ -156,3 +159,4 @@ async def check_dynamic_vector_tile_cache_status(dataset, version):
     assert rows[0].asset_type == AssetType.geo_database_table
     assert rows[1].asset_type == AssetType.dynamic_vector_tile_cache
     assert rows[1].status == AssetStatus.saved
+    assert rows[0].fields == rows[1].fields

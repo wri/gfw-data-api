@@ -7,6 +7,7 @@ from asyncio import AbstractEventLoop
 from typing import List, Set, Tuple
 
 import asyncpg
+from asyncpg.exceptions import ConnectionDoesNotExistError
 from sqlalchemy import Table, column, literal_column, select, table, text
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import TextClause
@@ -385,21 +386,38 @@ async def run(
         grid_id: str = tile[0]
         tcl: bool = tile[1]
         glad: bool = tile[2]
-        con = await asyncpg.connect(
-            user=PGUSER,
-            database=PGDATABASE,
-            host=PGHOST,
-            port=PGPORT,
-            password=PGPASSWORD,
-        )
-        result = await con.copy_from_query(
-            str(get_sql(dataset, version, fields, grid_id, tcl, glad)),
-            output=output,
-            format="csv",
-            delimiter="\t",
-            header=header,
-        )
-        print(result)
+
+        retries = 0
+        success = False
+
+        while not success and retries < 2:
+            try:
+                con = await asyncpg.connect(
+                    user=PGUSER,
+                    database=PGDATABASE,
+                    host=PGHOST,
+                    port=PGPORT,
+                    password=PGPASSWORD,
+                )
+                result = await con.copy_from_query(
+                    str(get_sql(dataset, version, fields, grid_id, tcl, glad)),
+                    output=output,
+                    format="csv",
+                    delimiter="\t",
+                    header=header,
+                )
+                print(result)
+
+                await con.close()
+                success = True
+            except ConnectionDoesNotExistError:
+                print("warning: Connection to DB lost during operation, retrying...")
+                retries += 1
+
+        if retries >= 2:
+            raise Exception(
+                "error: failed with ConnectionDoesNotExistError after multiple retries"
+            )
 
     max_tasks: int = MAX_TASKS
     tasks: Set = set()
