@@ -36,7 +36,6 @@ payload = {
 }
 
 version_payload = {
-    "is_latest": True,
     "creation_options": {
         "source_type": "vector",
         "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
@@ -343,7 +342,6 @@ async def test_invalid_source_uri(async_client):
         f"s3://{BUCKET}/{SHP_NAME}",
     ]
     version_payload = {
-        "is_latest": True,
         "creation_options": {
             "source_type": "vector",
             "source_uri": source_uri,
@@ -417,7 +415,6 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
         s3_client.delete_object(Bucket="gfw-data-lake-test", Key=key)
 
     raster_version_payload = {
-        "is_latest": True,
         "creation_options": {
             "source_type": "raster",
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
@@ -458,7 +455,6 @@ async def test_version_put_raster_bug_fixes(mocked_cloudfront_client, async_clie
     version = "v1.0.0"
 
     raster_version_payload = {
-        "is_latest": True,
         "creation_options": {
             "source_type": "raster",
             "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],

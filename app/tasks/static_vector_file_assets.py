@@ -14,7 +14,10 @@ from .batch import execute
 
 
 async def static_vector_file_asset(
-    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    input_data: Dict[str, Any],
 ) -> ChangeLog:
     """Export Vector data to different file formats."""
 
@@ -46,7 +49,8 @@ async def static_vector_file_asset(
     )
 
     await assets.update_asset(
-        asset_id, fields=field_attributes,
+        asset_id,
+        fields=field_attributes,
     )
 
     uri = get_asset_uri(dataset, version, asset_type)

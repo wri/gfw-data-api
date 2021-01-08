@@ -14,7 +14,9 @@ from ..utils.aws import get_batch_client
 BATCH_DEPENDENCY_LIMIT = 14
 
 
-async def execute(jobs: List[Job],) -> ChangeLog:
+async def execute(
+    jobs: List[Job],
+) -> ChangeLog:
     try:
         scheduled_jobs = await schedule(jobs)
     except TooManyRetriesError as e:

@@ -106,7 +106,7 @@ async def test_dataset_version_geostore(async_client, batch_client):
     assert len(rows) == 1
     assert rows[0].gfw_geostore_id == UUID(sample_geojson_hash)
 
-    # The geostore should be accesible with its hash via the geostore endpoint
+    # The geostore should be accessible with its hash via the geostore endpoint
     resp = await async_client.get(f"/geostore/{sample_geojson_hash}")
     # Validate response structure
     GeostoreResponse.parse_raw(resp.text)

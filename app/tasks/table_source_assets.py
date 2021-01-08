@@ -16,7 +16,10 @@ from ..tasks.batch import BATCH_DEPENDENCY_LIMIT, execute
 
 
 async def table_source_asset(
-    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    input_data: Dict[str, Any],
 ) -> ChangeLog:
 
     creation_options = TableSourceCreationOptions(**input_data["creation_options"])
@@ -191,7 +194,10 @@ async def table_source_asset(
 
 
 async def append_table_source_asset(
-    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    input_data: Dict[str, Any],
 ) -> ChangeLog:
 
     creation_options = TableSourceCreationOptions(**input_data["creation_options"])

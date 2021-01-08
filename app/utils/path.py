@@ -88,3 +88,11 @@ def get_asset_uri(
         )
 
     return uri
+
+
+def tile_uri_to_extent_geojson(uri: str) -> str:
+    return uri.replace("{tile_id}.tif", "extent.geojson")
+
+
+def tile_uri_to_tiles_geojson(uri: str) -> str:
+    return uri.replace("{tile_id}.tif", "tiles.geojson")

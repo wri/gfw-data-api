@@ -7,22 +7,25 @@ from fastapi.logger import logger
 from app.crud.assets import create_asset
 from app.models.enum.assets import AssetType
 from app.models.enum.creation_options import RasterDrivers
-from app.models.enum.pixetl import DataType
+from app.models.enum.pixetl import DataType, Grid, ResamplingMethod
 from app.models.enum.sources import RasterSourceType
 from app.models.enum.symbology import ColorMapType
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import BuildRGBJob, Job, PixETLJob
+from app.models.pydantic.metadata import RasterTileSetMetadata
 from app.models.pydantic.symbology import Symbology
-from app.settings.globals import DATA_LAKE_BUCKET, PIXETL_DEFAULT_RESAMPLING
+from app.settings.globals import MAX_CORES, MAX_MEM, PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.raster_tile_cache_assets.utils import (
+    CACHE_JOB_ENV,
     create_wm_tile_set_job,
     get_zoom_source_uri,
     reproject_to_web_mercator,
-    to_tile_geojson,
+    tile_uri_to_tiles_geojson,
 )
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV
+from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri, split_s3_path
 
 SymbologyFuncType = Callable[
@@ -46,7 +49,7 @@ async def no_symbology(
         raise RuntimeError("No source URI set.")
 
 
-async def gradient_symbology(
+async def pixetl_symbology(
     dataset: str,
     version: str,
     source_asset_co: RasterTileSetSourceCreationOptions,
@@ -55,19 +58,28 @@ async def gradient_symbology(
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
     """Create RGBA raster which gradient symbology based on input raster."""
-    pixel_meaning = f"{source_asset_co.pixel_meaning}_gradient"
+    assert source_asset_co.symbology  # make mypy happy
+    pixel_meaning = f"{source_asset_co.pixel_meaning}_{source_asset_co.symbology.type}"
     parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
+    source_uri = (
+        [tile_uri_to_tiles_geojson(uri) for uri in source_asset_co.source_uri]
+        if source_asset_co.source_uri
+        else None
+    )
 
     creation_options = source_asset_co.copy(
         deep=True,
         update={
+            "source_uri": source_uri,
             "calc": None,
             "resampling": PIXETL_DEFAULT_RESAMPLING,
             "grid": f"zoom_{zoom_level}",
             "pixel_meaning": pixel_meaning,
         },
     )
-    job_name = f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
+    job_name = sanitize_batch_job_name(
+        f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
+    )
     job, uri = await create_wm_tile_set_job(
         dataset, version, creation_options, job_name, parents
     )
@@ -104,6 +116,7 @@ async def date_conf_intensity_symbology(
             "source_uri": source_uri,
             "no_data": None,
             "pixel_meaning": pixel_meaning,
+            "resampling": ResamplingMethod.bilinear,
         },
     )
     date_conf_job = jobs_dict[zoom_level]["source_reprojection_job"]
@@ -133,8 +146,8 @@ async def date_conf_intensity_symbology(
     merge_jobs, dst_uri = await _merge_intensity_and_date_conf(
         dataset,
         version,
-        to_tile_geojson(date_conf_uri),
-        to_tile_geojson(intensity_uri),
+        tile_uri_to_tiles_geojson(date_conf_uri),
+        tile_uri_to_tiles_geojson(intensity_uri),
         zoom_level,
         [date_conf_job, intensity_job],
     )
@@ -161,7 +174,7 @@ async def _merge_intensity_and_date_conf(
         data_type=DataType.uint8,
         resampling=PIXETL_DEFAULT_RESAMPLING,
         overwrite=False,
-        grid=f"zoom_{zoom_level}",
+        grid=Grid(f"zoom_{zoom_level}"),
         symbology=Symbology(type=ColorMapType.date_conf_intensity),
         compute_stats=False,
         compute_histogram=False,
@@ -189,7 +202,7 @@ async def _merge_intensity_and_date_conf(
         asset_uri=asset_uri,
         is_managed=True,
         creation_options=encoded_co,
-        metadata={},
+        metadata=RasterTileSetMetadata(),
     ).dict(by_alias=True)
 
     asset = await create_asset(dataset, version, **asset_options)
@@ -209,7 +222,7 @@ async def _merge_intensity_and_date_conf(
     rgb_encoding_job = BuildRGBJob(
         job_name=f"merge_intensity_zoom_{zoom_level}",
         command=cmd,
-        environment=JOB_ENV,
+        environment=CACHE_JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents],
     )
@@ -230,9 +243,11 @@ async def _merge_intensity_and_date_conf(
     tiles_geojson_job = PixETLJob(
         job_name=f"generate_tiles_geojson_{zoom_level}",
         command=cmd,
-        environment=JOB_ENV,
+        environment=CACHE_JOB_ENV,
         callback=callback,
         parents=[rgb_encoding_job.job_name],
+        vcpus=MAX_CORES,
+        memory=MAX_MEM,
     )
 
     return (
@@ -243,7 +258,8 @@ async def _merge_intensity_and_date_conf(
 
 _symbology_constructor: Dict[str, SymbologyFuncType] = {
     ColorMapType.date_conf_intensity: date_conf_intensity_symbology,
-    ColorMapType.gradient: gradient_symbology,
+    ColorMapType.gradient: pixetl_symbology,
+    ColorMapType.discrete: pixetl_symbology,
 }
 
 symbology_constructor: DefaultDict[str, SymbologyFuncType] = defaultdict(

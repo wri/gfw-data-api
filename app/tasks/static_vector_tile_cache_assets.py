@@ -21,7 +21,10 @@ from .batch import execute
 
 
 async def static_vector_tile_cache_asset(
-    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    input_data: Dict[str, Any],
 ) -> ChangeLog:
     """Create Vector tile cache and NDJSON file as intermediate data."""
 
