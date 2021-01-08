@@ -15,7 +15,7 @@ from app.models.pydantic.creation_options import RasterTileSetSourceCreationOpti
 from app.models.pydantic.jobs import BuildRGBJob, Job, PixETLJob
 from app.models.pydantic.metadata import RasterTileSetMetadata
 from app.models.pydantic.symbology import Symbology
-from app.settings.globals import MAX_CORES, MAX_MEM, PIXETL_DEFAULT_RESAMPLING
+from app.settings.globals import PIXETL_CORES, PIXETL_DEFAULT_RESAMPLING, PIXETL_MAX_MEM
 from app.tasks import callback_constructor
 from app.tasks.raster_tile_cache_assets.utils import (
     CACHE_JOB_ENV,
@@ -24,7 +24,6 @@ from app.tasks.raster_tile_cache_assets.utils import (
     reproject_to_web_mercator,
     tile_uri_to_tiles_geojson,
 )
-from app.tasks.raster_tile_set_assets.utils import JOB_ENV
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri, split_s3_path
 
@@ -246,8 +245,8 @@ async def _merge_intensity_and_date_conf(
         environment=CACHE_JOB_ENV,
         callback=callback,
         parents=[rgb_encoding_job.job_name],
-        vcpus=MAX_CORES,
-        memory=MAX_MEM,
+        vcpus=PIXETL_CORES,
+        memory=PIXETL_MAX_MEM,
     )
 
     return (
