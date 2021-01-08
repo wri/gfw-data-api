@@ -298,15 +298,17 @@ async def _version_response(
     """Assure that version responses are parsed correctly and include
     associated assets."""
 
-    assets: List[ORMAsset] = await ORMAsset.select("asset_type", "asset_uri").where(
-        ORMAsset.dataset == dataset
-    ).where(ORMAsset.version == version).where(
-        ORMAsset.status == AssetStatus.saved
-    ).gino.all()
+    assets: List[ORMAsset] = (
+        await ORMAsset.select("asset_type", "asset_uri")
+        .where(ORMAsset.dataset == dataset)
+        .where(ORMAsset.version == version)
+        .where(ORMAsset.status == AssetStatus.saved)
+        .gino.all()
+    )
     data = Version.from_orm(data).dict(by_alias=True)
     data["assets"] = [(asset[0], asset[1]) for asset in assets]
 
-    return VersionResponse(data=data)
+    return VersionResponse(data=Version(**data))
 
 
 def _verify_source_file_access(s3_sources):

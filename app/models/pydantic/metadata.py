@@ -1,13 +1,14 @@
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pydantic import BaseModel, Field
+from pydantic import Extra, Field
 
 from ..enum.assets import AssetType
 from ..enum.pg_types import PGType
+from .base import StrictBaseModel
 from .responses import Response
 
 
-class FieldMetadata(BaseModel):
+class FieldMetadata(StrictBaseModel):
     field_name_: str = Field(..., alias="field_name")
     field_alias: Optional[str]
     field_description: Optional[str]
@@ -17,9 +18,10 @@ class FieldMetadata(BaseModel):
 
     class Config:
         orm_mode = True
+        extra = Extra.forbid
 
 
-class DatasetMetadata(BaseModel):
+class DatasetMetadata(StrictBaseModel):
     title: Optional[str]
     subtitle: Optional[str]
     function: Optional[str]
@@ -62,7 +64,7 @@ class VersionMetadata(DatasetMetadata):
     data_updates: Optional[str]
 
 
-class RasterTable(BaseModel):
+class RasterTable(StrictBaseModel):
     value: int
     description: str
 

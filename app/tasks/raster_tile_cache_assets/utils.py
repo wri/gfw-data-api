@@ -8,11 +8,22 @@ from app.models.enum.assets import AssetType
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import GDAL2TilesJob, Job
-from app.settings.globals import TILE_CACHE_BUCKET
+from app.models.pydantic.metadata import RasterTileSetMetadata
+from app.settings.globals import MAX_CORES, MAX_MEM, TILE_CACHE_BUCKET
 from app.tasks import Callback, callback_constructor
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_pixetl_job
 from app.tasks.utils import sanitize_batch_job_name
-from app.utils.path import get_asset_uri
+from app.utils.path import get_asset_uri, tile_uri_to_tiles_geojson
+
+CACHE_JOB_ENV = list()
+
+# update core and max_mem values
+for var in JOB_ENV:
+    if var["name"] == "CORES":
+        var["value"] = MAX_CORES
+    elif var["name"] == "MAX_MEM":
+        var["value"] = MAX_MEM
+    CACHE_JOB_ENV.append(var)
 
 
 async def reproject_to_web_mercator(
@@ -86,7 +97,7 @@ async def create_wm_tile_set_job(
         asset_uri=asset_uri,
         is_managed=True,
         creation_options=creation_options,
-        metadata={},
+        metadata=RasterTileSetMetadata(),
     ).dict(by_alias=True)
     wm_asset_record = await create_asset(dataset, version, **asset_options)
 
@@ -100,6 +111,11 @@ async def create_wm_tile_set_job(
         callback_constructor(wm_asset_record.asset_id),
         parents=parents,
     )
+
+    # use max instance resources
+    job.memory = MAX_MEM
+    job.vcpus = MAX_CORES
+    job.environment = CACHE_JOB_ENV
 
     return job, asset_uri
 
@@ -139,7 +155,7 @@ async def create_tile_cache(
     tile_cache_job = GDAL2TilesJob(
         job_name=f"generate_tile_cache_zoom_{zoom_level}",
         command=command,
-        environment=JOB_ENV,
+        environment=CACHE_JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents],
     )
@@ -174,8 +190,6 @@ def get_zoom_source_uri(
         creation_options.source_uri if zoom_level == max_zoom else alternate_source_uri
     )
 
-    return [to_tile_geojson(uri) for uri in source_uri] if source_uri else None
-
-
-def to_tile_geojson(uri: str) -> str:
-    return uri.replace("{tile_id}.tif", "tiles.geojson")
+    return (
+        [tile_uri_to_tiles_geojson(uri) for uri in source_uri] if source_uri else None
+    )

@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import Field, StrictInt, root_validator
 from pydantic.types import PositiveInt
 
 from ...settings.globals import PIXETL_DEFAULT_RESAMPLING
@@ -23,6 +23,7 @@ from ..enum.sources import (
     TableSourceType,
     VectorSourceType,
 )
+from .base import StrictBaseModel
 from .responses import Response
 from .symbology import Symbology
 
@@ -31,18 +32,18 @@ PARTITION_SUFFIX_REGEX = r"^[a-z0-9_-]{3,}$"
 STR_VALUE_REGEX = r"^[a-zA-Z0-9_-]{1,}$"
 
 
-class Index(BaseModel):
+class Index(StrictBaseModel):
     index_type: IndexType
     column_name: str = Field(
         ..., description="Column to be used by index", regex=COLUMN_REGEX
     )
 
 
-class HashPartitionSchema(BaseModel):
+class HashPartitionSchema(StrictBaseModel):
     partition_count: PositiveInt
 
 
-class ListPartitionSchema(BaseModel):
+class ListPartitionSchema(StrictBaseModel):
     partition_suffix: str = Field(
         ..., description="Suffix for partition table", regex=PARTITION_SUFFIX_REGEX
     )
@@ -51,7 +52,7 @@ class ListPartitionSchema(BaseModel):
     )
 
 
-class RangePartitionSchema(BaseModel):
+class RangePartitionSchema(StrictBaseModel):
     partition_suffix: str = Field(
         ..., description="Suffix for partition table", regex=PARTITION_SUFFIX_REGEX
     )
@@ -63,7 +64,7 @@ class RangePartitionSchema(BaseModel):
     )
 
 
-class Partitions(BaseModel):
+class Partitions(StrictBaseModel):
     partition_type: PartitionType = Field(..., description="Partition type")
     partition_column: str = Field(
         ..., description="Column to be used to create partitions.", regex=COLUMN_REGEX
@@ -77,16 +78,16 @@ class Partitions(BaseModel):
     ] = Field(..., description="Partition Schema to be used.")
 
 
-class FieldType(BaseModel):
+class FieldType(StrictBaseModel):
     field_name: str = Field(..., description="Name of field", regex=COLUMN_REGEX)
     field_type: PGType = Field(..., description="Type of field (PostgreSQL type).")
 
 
-class RasterTileSetAssetCreationOptions(BaseModel):
+class RasterTileSetAssetCreationOptions(StrictBaseModel):
     pixel_meaning: str
     data_type: DataType
     nbits: Optional[int]
-    no_data: Optional[int]
+    no_data: Optional[Union[StrictInt, float]]
     rasterize_method: Optional[RasterizeMethod]
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
     calc: Optional[str]
@@ -95,11 +96,8 @@ class RasterTileSetAssetCreationOptions(BaseModel):
     subset: Optional[str]
     grid: Grid
     symbology: Optional[Symbology] = None
-    compute_stats: bool = False
-    compute_histogram: bool = False
-
-    class Config:
-        extra = "forbid"
+    compute_stats: bool = True
+    compute_histogram: bool = True
 
 
 class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
@@ -112,7 +110,7 @@ class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
     )
 
 
-class VectorSourceCreationOptions(BaseModel):
+class VectorSourceCreationOptions(StrictBaseModel):
     source_type: VectorSourceType = Field(..., description="Source type of input file.")
     source_driver: VectorDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
@@ -128,9 +126,9 @@ class VectorSourceCreationOptions(BaseModel):
 
     indices: List[Index] = Field(
         [
-            Index(index_type="gist", column_name="geom"),
-            Index(index_type="gist", column_name="geom_wm"),
-            Index(index_type="hash", column_name="gfw_geostore_id"),
+            Index(index_type=IndexType.gist.value, column_name="geom"),
+            Index(index_type=IndexType.gist.value, column_name="geom_wm"),
+            Index(index_type=IndexType.hash.value, column_name="gfw_geostore_id"),
         ],
         description="List of indices to add to table",
     )
@@ -144,11 +142,8 @@ class VectorSourceCreationOptions(BaseModel):
         description="Include features to geostore, to make geometries searchable via geostore endpoint.",
     )
 
-    class Config:
-        extra = "forbid"
 
-
-class TableAssetCreationOptions(BaseModel):
+class TableAssetCreationOptions(StrictBaseModel):
     has_header: bool = Field(True, description="Input file has header. Must be true")
     delimiter: Delimiters = Field(..., description="Delimiter used in input file")
 
@@ -176,9 +171,6 @@ class TableAssetCreationOptions(BaseModel):
         "Disable this option by setting value to `false`",
     )
 
-    class Config:
-        extra = "forbid"
-
 
 class TableSourceCreationOptions(TableAssetCreationOptions):
     source_type: TableSourceType = Field(..., description="Source type of input file.")
@@ -188,7 +180,7 @@ class TableSourceCreationOptions(TableAssetCreationOptions):
     )
 
 
-class TileCacheBaseModel(BaseModel):
+class TileCacheBaseModel(StrictBaseModel):
     min_zoom: int = Field(
         0, description="Minimum zoom level of tile cache", ge=0, le=22
     )
@@ -216,9 +208,6 @@ class TileCacheBaseModel(BaseModel):
             )
         return values
 
-    class Config:
-        extra = "forbid"
-
 
 class RasterTileCacheCreationOptions(TileCacheBaseModel):
     # FIXME: Should we make the max_static_zoom upper limit lower to avoid DOS?
@@ -231,8 +220,16 @@ class RasterTileCacheCreationOptions(TileCacheBaseModel):
         "This will be part of the URI and will "
         "allow to create multiple raster tile caches per version,",
     )
-    symbology: Symbology
-    source_asset_id: str
+    symbology: Symbology = Field(..., description="Symbology to use for output tiles")
+    source_asset_id: str = Field(
+        ...,
+        description="Raster tile set asset ID to use as source. "
+        "Must be an asset of the same dataset version",
+    )
+    resampling: ResamplingMethod = Field(
+        ResamplingMethod.average,
+        description="Resampling method used to downsample tiles",
+    )
 
 
 class DynamicVectorTileCacheCreationOptions(TileCacheBaseModel):
@@ -268,15 +265,12 @@ class StaticVectorTileCacheCreationOptions(TileCacheBaseModel):
     )
 
 
-class StaticVectorFileCreationOptions(BaseModel):
+class StaticVectorFileCreationOptions(StrictBaseModel):
     field_attributes: Optional[List[str]] = Field(
         None,
         description="Field attributes to include in vector tiles. "
         "If left blank, all fields marked as `is_feature_info` will be included.",
     )
-
-    class Config:
-        extra = "forbid"
 
 
 SourceCreationOptions = Union[

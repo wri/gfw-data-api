@@ -15,7 +15,8 @@ async def dataset_dependency(
 ) -> str:
     if dataset == "latest":
         raise HTTPException(
-            status_code=400, detail="Name `latest` is reserved for versions only.",
+            status_code=400,
+            detail="Name `latest` is reserved for versions only.",
         )
     return dataset
 

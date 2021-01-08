@@ -13,7 +13,10 @@ router = APIRouter()
 
 
 @router.get(
-    "/", response_class=ORJSONResponse, tags=["Assets"], response_model=AssetsResponse,
+    "/",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=AssetsResponse,
 )
 async def get_assets(
     *,

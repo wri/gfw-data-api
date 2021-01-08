@@ -78,7 +78,6 @@ async def test_features(async_client, batch_client):
     asset = await create_default_asset(
         dataset,
         version,
-        dataset_payload=input_data,
         version_payload=input_data,
         async_client=async_client,
         logs=logs,

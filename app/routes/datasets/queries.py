@@ -209,7 +209,8 @@ def _no_forbidden_value_functions(parsed: List[Dict[str, Any]]) -> None:
     value_functions = _get_item_value("SQLValueFunction", parsed)
     if value_functions:
         raise HTTPException(
-            status_code=400, detail="Use of sql value functions is not allowed.",
+            status_code=400,
+            detail="Use of sql value functions is not allowed.",
         )
 
 

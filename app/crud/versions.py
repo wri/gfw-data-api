@@ -18,9 +18,11 @@ async def get_versions(dataset: str) -> List[ORMVersion]:
 
 
 async def get_version_names(dataset: str) -> List[Any]:
-    versions: List[Any] = await ORMVersion.select("version").where(
-        ORMVersion.dataset == dataset
-    ).gino.all()
+    versions: List[Any] = (
+        await ORMVersion.select("version")
+        .where(ORMVersion.dataset == dataset)
+        .gino.all()
+    )
 
     return versions
 
@@ -39,9 +41,12 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
 async def get_latest_version(dataset) -> str:
     """Fetch latest version number."""
 
-    latest: Optional[str] = await ORMVersion.select("version").where(
-        ORMVersion.dataset == dataset
-    ).where(ORMVersion.is_latest).gino.scalar()
+    latest: Optional[str] = (
+        await ORMVersion.select("version")
+        .where(ORMVersion.dataset == dataset)
+        .where(ORMVersion.is_latest)
+        .gino.scalar()
+    )
 
     if latest is None:
         raise RecordNotFoundError(f"Dataset {dataset} has no latest version.")

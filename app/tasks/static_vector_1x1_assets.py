@@ -14,7 +14,10 @@ from app.utils.path import get_asset_uri
 
 
 async def static_vector_1x1_asset(
-    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    input_data: Dict[str, Any],
 ) -> ChangeLog:
     """Create Vector tile cache and NDJSON file as intermediate data."""
 
@@ -33,7 +36,8 @@ async def static_vector_1x1_asset(
     grid_1x1_uri = get_asset_uri(dataset, version, AssetType.grid_1x1)
 
     await assets.update_asset(
-        asset_id, fields=field_attributes,
+        asset_id,
+        fields=field_attributes,
     )
 
     ############################
