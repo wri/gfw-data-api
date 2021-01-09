@@ -101,7 +101,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     compute_histogram: bool = True
 
     @classmethod
-    @root_validator
+    @root_validator(allow_reuse=True)
     def check_no_data(cls, values):
         no_data = values.get("no_data")
         if isinstance(no_data, float) and not math.isnan(no_data):
@@ -192,15 +192,15 @@ class TableSourceCreationOptions(TableAssetCreationOptions):
 
 
 class TileCacheBaseModel(StrictBaseModel):
-    min_zoom: StrictInt = Field(
+    min_zoom: int = Field(
         0, description="Minimum zoom level of tile cache", ge=0, le=22
     )
-    max_zoom: StrictInt = Field(
+    max_zoom: int = Field(
         14, description="Maximum zoom level of tile cache", ge=0, le=22
     )
 
     @classmethod
-    @root_validator
+    @root_validator(allow_reuse=True)
     def check_zoom(cls, values):
         min_zoom, max_zoom, max_static_zoom = (
             values.get("min_zoom", None),
