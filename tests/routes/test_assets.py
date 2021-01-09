@@ -421,7 +421,12 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
         httpx.delete(f"http://localhost:{httpd.server_port}")
 
         await _test_raster_tile_cache(
-            dataset, version, default_asset_id, async_client, logs, **check,
+            dataset,
+            version,
+            default_asset_id,
+            async_client,
+            logs,
+            **check,
         )
 
 
@@ -511,7 +516,7 @@ def _check_s3_file_present(bucket, keys):
         try:
             s3_client.head_object(Bucket=bucket, Key=key)
         except ClientError:
-            raise AssertionError(f"Key {key} doesn't exist!")
+            raise AssertionError(f"Object {key} doesn't exist in bucket {bucket}!")
 
 
 def _delete_s3_files(bucket, prefix):

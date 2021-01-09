@@ -146,7 +146,10 @@ async def test_assets():
     assert result == f"Could not find requested asset {_asset_id}"
 
     # It should be possible to update a dataset using a context engine
-    metadata = DatabaseTableMetadata(title="Test Title", tags=["tag1", "tag2"],)
+    metadata = DatabaseTableMetadata(
+        title="Test Title",
+        tags=["tag1", "tag2"],
+    )
     logs = ChangeLog(date_time=datetime.now(), status="pending", message="all good")
     async with ContextEngine("WRITE"):
         row = await update_asset(

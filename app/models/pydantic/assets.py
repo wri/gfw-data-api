@@ -2,13 +2,13 @@ from typing import List, Optional
 from uuid import UUID
 
 from ..enum.assets import AssetStatus, AssetType
-from .base import Base, DataApiBaseModel
+from .base import BaseRecord, StrictBaseModel
 from .creation_options import CreationOptions, OtherCreationOptions
 from .metadata import AssetMetadata
 from .responses import Response
 
 
-class Asset(Base):
+class Asset(BaseRecord):
     asset_id: UUID
     dataset: str
     version: str
@@ -19,7 +19,7 @@ class Asset(Base):
     metadata: AssetMetadata
 
 
-class AssetCreateIn(DataApiBaseModel):
+class AssetCreateIn(StrictBaseModel):
     asset_type: AssetType
     asset_uri: Optional[str]
     is_managed: bool = True
@@ -27,11 +27,11 @@ class AssetCreateIn(DataApiBaseModel):
     metadata: Optional[AssetMetadata]
 
 
-class AssetUpdateIn(DataApiBaseModel):
+class AssetUpdateIn(StrictBaseModel):
     metadata: AssetMetadata
 
 
-class AssetTaskCreate(DataApiBaseModel):
+class AssetTaskCreate(StrictBaseModel):
     asset_type: AssetType
     dataset: str
     version: str

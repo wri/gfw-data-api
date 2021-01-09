@@ -1,10 +1,10 @@
 from typing import Any, Dict, List, Optional
 
 from ..enum.analysis import RasterLayer
-from .base import DataApiBaseModel
+from .base import StrictBaseModel
 
 
-class ZonalAnalysisRequestIn(DataApiBaseModel):
+class ZonalAnalysisRequestIn(StrictBaseModel):
     geometry: Dict[str, Any]
     sum: List[RasterLayer]
     group_by: List[RasterLayer] = list()

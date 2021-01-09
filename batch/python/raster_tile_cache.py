@@ -93,7 +93,10 @@ def raster_tile_cache(
         ]
         logger.info(f"Running command: {cmd_arg_list}")
         proc: subprocess.CompletedProcess = subprocess.run(
-            cmd_arg_list, capture_output=True, check=False, text=True,
+            cmd_arg_list,
+            capture_output=True,
+            check=False,
+            text=True,
         )
         logger.info(proc.stdout)
         logger.error(proc.stderr)

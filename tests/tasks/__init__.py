@@ -81,7 +81,10 @@ async def create_asset(dataset, version, asset_type, asset_uri, input_data) -> A
     await create_version(dataset, version, input_data)
     async with ContextEngine("WRITE"):
         new_asset = await assets.create_asset(
-            dataset, version, asset_type=asset_type, asset_uri=asset_uri,
+            dataset,
+            version,
+            asset_type=asset_type,
+            asset_uri=asset_uri,
         )
     return new_asset
 

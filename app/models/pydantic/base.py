@@ -3,7 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, Extra
 
 
-class Base(BaseModel):
+class BaseRecord(BaseModel):
     created_on: datetime
     updated_on: datetime
 
@@ -11,6 +11,7 @@ class Base(BaseModel):
         orm_mode = True
 
 
-class DataApiBaseModel(BaseModel):
+class StrictBaseModel(BaseModel):
     class Config:
         extra = Extra.forbid
+        validate_assignment = True

@@ -9,11 +9,21 @@ from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import GDAL2TilesJob, Job
 from app.models.pydantic.metadata import RasterTileSetMetadata
-from app.settings.globals import TILE_CACHE_BUCKET
+from app.settings.globals import MAX_CORES, MAX_MEM, TILE_CACHE_BUCKET
 from app.tasks import Callback, callback_constructor
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_pixetl_job
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri, tile_uri_to_tiles_geojson
+
+CACHE_JOB_ENV = list()
+
+# update core and max_mem values
+for var in JOB_ENV:
+    if var["name"] == "CORES":
+        var["value"] = MAX_CORES
+    elif var["name"] == "MAX_MEM":
+        var["value"] = MAX_MEM
+    CACHE_JOB_ENV.append(var)
 
 
 async def reproject_to_web_mercator(
@@ -102,6 +112,11 @@ async def create_wm_tile_set_job(
         parents=parents,
     )
 
+    # use max instance resources
+    job.memory = MAX_MEM
+    job.vcpus = MAX_CORES
+    job.environment = CACHE_JOB_ENV
+
     return job, asset_uri
 
 
@@ -140,7 +155,7 @@ async def create_tile_cache(
     tile_cache_job = GDAL2TilesJob(
         job_name=f"generate_tile_cache_zoom_{zoom_level}",
         command=command,
-        environment=JOB_ENV,
+        environment=CACHE_JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents],
     )

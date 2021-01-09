@@ -56,7 +56,10 @@ async def put_asset(
 
         if asset_type in asset_constructor.keys():
             log: ChangeLog = await asset_constructor[asset_type](
-                dataset, version, asset_id, input_data,
+                dataset,
+                version,
+                asset_id,
+                input_data,
             )
 
         else:

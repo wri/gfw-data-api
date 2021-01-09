@@ -1,23 +1,23 @@
 from typing import List
 from uuid import UUID
 
-from .base import Base, DataApiBaseModel
+from .base import BaseRecord, StrictBaseModel
 from .change_log import ChangeLog
 from .responses import Response
 
 
-class Task(Base):
+class Task(BaseRecord):
     task_id: UUID
     asset_id: UUID
     change_log: List[ChangeLog]
 
 
-class TaskCreateIn(DataApiBaseModel):
+class TaskCreateIn(StrictBaseModel):
     asset_id: UUID
     change_log: List[ChangeLog]
 
 
-class TaskUpdateIn(DataApiBaseModel):
+class TaskUpdateIn(StrictBaseModel):
     change_log: List[ChangeLog]
 
 

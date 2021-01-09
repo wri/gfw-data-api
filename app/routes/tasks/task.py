@@ -150,7 +150,9 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
     # Query returns empty list in case table does not exist.
     if asset_row.asset_type in [AssetType.database_table, AssetType.geo_database_table]:
         await _update_asset_field_metadata(
-            asset_row.dataset, asset_row.version, asset_id,
+            asset_row.dataset,
+            asset_row.version,
+            asset_id,
         )
 
     # If default asset failed, we must also set version status to failed.
@@ -277,7 +279,8 @@ async def _register_dynamic_vector_tile_cache(
 ) -> None:
     """Register dynamic vector tile cache asset with version if required."""
     default_asset: ORMAsset = await assets.get_default_asset(
-        dataset, version,
+        dataset,
+        version,
     )
     create_dynamic_vector_tile_cache: Optional[
         bool
@@ -342,7 +345,9 @@ async def table_post_completion_task(asset_id: UUID):
     asset_row: ORMAsset = await assets.get_asset(asset_id)
 
     asset_row = await _update_asset_field_metadata(
-        asset_row.dataset, asset_row.version, asset_id,
+        asset_row.dataset,
+        asset_row.version,
+        asset_id,
     )
 
     await _register_dynamic_vector_tile_cache(

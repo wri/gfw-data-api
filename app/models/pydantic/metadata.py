@@ -1,14 +1,14 @@
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pydantic import Extra, Field
+from pydantic import Extra, Field, StrictInt
 
 from ..enum.assets import AssetType
 from ..enum.pg_types import PGType
-from .base import DataApiBaseModel
+from .base import StrictBaseModel
 from .responses import Response
 
 
-class FieldMetadata(DataApiBaseModel):
+class FieldMetadata(StrictBaseModel):
     field_name_: str = Field(..., alias="field_name")
     field_alias: Optional[str]
     field_description: Optional[str]
@@ -21,7 +21,7 @@ class FieldMetadata(DataApiBaseModel):
         extra = Extra.forbid
 
 
-class DatasetMetadata(DataApiBaseModel):
+class DatasetMetadata(StrictBaseModel):
     title: Optional[str]
     subtitle: Optional[str]
     function: Optional[str]
@@ -64,7 +64,7 @@ class VersionMetadata(DatasetMetadata):
     data_updates: Optional[str]
 
 
-class RasterTable(DataApiBaseModel):
+class RasterTable(StrictBaseModel):
     value: int
     description: str
 
@@ -95,8 +95,8 @@ class StaticVectorTileCacheMetadata(VersionMetadata):
 
 
 class DynamicVectorTileCacheMetadata(StaticVectorTileCacheMetadata):
-    min_zoom: int = 0
-    max_zoom: int = 22
+    min_zoom: StrictInt = 0
+    max_zoom: StrictInt = 22
 
 
 class DatabaseTableMetadata(VersionMetadata):

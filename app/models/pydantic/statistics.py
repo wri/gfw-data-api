@@ -13,15 +13,15 @@ from ..enum.pg_types import (
 )
 from ..pydantic.geostore import FeatureCollection
 from ..pydantic.responses import Response
-from .base import DataApiBaseModel
+from .base import StrictBaseModel
 
 
-class FieldStats(DataApiBaseModel):
+class FieldStats(StrictBaseModel):
     field_name: str = Field(..., description="Field name")
     field_type: PGType = Field(..., description="Field data type (PostgreSQL)")
 
 
-class NumericFieldStats(DataApiBaseModel):
+class NumericFieldStats(StrictBaseModel):
     field_type: PGNumericType
     min: float = Field(..., description="Minimum value in column.")
     max: float = Field(..., description="Maximum value in column.")
@@ -30,7 +30,7 @@ class NumericFieldStats(DataApiBaseModel):
     std_dev: float = Field(..., description="Standard deviation of column.")
 
 
-class TextFieldStats(DataApiBaseModel):
+class TextFieldStats(StrictBaseModel):
     field_type: PGTextType
     discrete_values: Optional[List[str]] = Field(
         None,
@@ -55,21 +55,21 @@ class GeometryFieldStats(FieldStats):
     )
 
 
-class TableStats(DataApiBaseModel):
-    row_count: int = Field(..., description="Total row count.")
+class TableStats(StrictBaseModel):
+    row_count: StrictInt = Field(..., description="Total row count.")
     field_stats: List[
         Union[NumericFieldStats, TextFieldStats, DateFieldStats, GeometryFieldStats]
     ] = Field(..., description="Statistics for selected field types.")
 
 
-class Histogram(DataApiBaseModel):
+class Histogram(StrictBaseModel):
     bin_count: StrictInt = Field(..., description="Number of bins in histogram.")
     min: float = Field(..., description="Minimum bin value.")
     max: float = Field(..., description="Maximum bin value.")
     value_count: List[StrictInt] = Field(..., description="Value count for each bin.")
 
 
-class Affine(DataApiBaseModel):
+class Affine(StrictBaseModel):
     a: float = Field(..., description="Scale factor x")
     b: float = Field(..., description="Shear angle x")
     c: float = Field(..., description="Offset x")
@@ -78,7 +78,7 @@ class Affine(DataApiBaseModel):
     f: float = Field(..., description="Offset y")
 
 
-class BandStats(DataApiBaseModel):
+class BandStats(StrictBaseModel):
     # Add these fields in the future? Of debatable usefulness?
     # driver: str = Field(..., description="Driver used to create raster file.")
     # interleave: str = Field(..., description="Interleave strategy.")
@@ -101,7 +101,7 @@ class BandStats(DataApiBaseModel):
     histogram: Optional[Histogram] = Field(description="Histogram.")
 
 
-class RasterStats(DataApiBaseModel):
+class RasterStats(StrictBaseModel):
     bands: List[BandStats]
 
 
