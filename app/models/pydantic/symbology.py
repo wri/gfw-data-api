@@ -7,12 +7,12 @@ from app.models.pydantic.base import DataApiBaseModel
 
 
 class RGBA(DataApiBaseModel):
-    red: int = Field(..., ge=0, le=255)
-    green: int = Field(..., ge=0, le=255)
-    blue: int = Field(..., ge=0, le=255)
-    alpha: int = Field(255, ge=0, le=255)
+    red: StrictInt = Field(..., ge=0, le=255)
+    green: StrictInt = Field(..., ge=0, le=255)
+    blue: StrictInt = Field(..., ge=0, le=255)
+    alpha: StrictInt = Field(255, ge=0, le=255)
 
-    def tuple(self) -> Tuple[int, int, int, int]:
+    def tuple(self) -> Tuple[StrictInt, StrictInt, StrictInt, StrictInt]:
         return self.red, self.green, self.blue, self.alpha
 
 
