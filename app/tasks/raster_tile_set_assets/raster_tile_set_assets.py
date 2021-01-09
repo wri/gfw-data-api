@@ -25,11 +25,14 @@ from app.utils.path import (
     tile_uri_to_extent_geojson,
     tile_uri_to_tiles_geojson,
 )
-from app.utils.stats import merge_histograms
+from app.utils.stats import merge_n_histograms
 
 
 async def raster_tile_set_asset(
-    dataset: str, version: str, asset_id: UUID, input_data: Dict[str, Any],
+    dataset: str,
+    version: str,
+    asset_id: UUID,
+    input_data: Dict[str, Any],
 ) -> ChangeLog:
 
     # If being created as a source (default) asset, creation_options["source_uri"]
@@ -93,25 +96,13 @@ async def get_extent(asset_id: UUID) -> Optional[Extent]:
     return None
 
 
-def _create_or_augment_histogram(
-    source_histo_i: Histogram, target_histo_i: Optional[Histogram]
-):
-    if target_histo_i is None:
-        target_histo_i = source_histo_i
-    else:
-        target_histo_i = merge_histograms(source_histo_i, target_histo_i)
-
-    return target_histo_i
-
-
 def _collect_bandstats(fc: FeatureCollection) -> List[BandStats]:
     stats_by_band: DefaultDict[int, DefaultDict[str, List[int]]] = defaultdict(
         lambda: defaultdict(lambda: [])
     )
-    histogram_by_band: Dict[int, Histogram] = dict()
-    bandstats: List[BandStats] = []
+    histograms_by_band: DefaultDict[int, List[Histogram]] = defaultdict(lambda: [])
 
-    for feature in fc.features:
+    for f_i, feature in enumerate(fc.features):
         for i, band in enumerate(feature.properties["bands"]):
             if band.get("stats") is not None:
                 for val in ("min", "max", "mean"):
@@ -125,18 +116,16 @@ def _collect_bandstats(fc: FeatureCollection) -> List[BandStats]:
                     bin_count=feature_histo_dict_i["count"],
                     value_count=feature_histo_dict_i["buckets"],
                 )
-                histogram_by_band[i] = _create_or_augment_histogram(
-                    histo_i, histogram_by_band.get(i)
-                )
+                histograms_by_band[i].append(histo_i)
 
+    bandstats: List[BandStats] = []
     for i, band in stats_by_band.items():
         bs = BandStats(
             min=min(stats_by_band[i]["min"]),
             max=max(stats_by_band[i]["max"]),
             mean=sum(stats_by_band[i]["mean"]) / len(stats_by_band[i]["mean"]),
         )
-        if histogram_by_band.get(i) is not None:
-            bs.histogram = histogram_by_band[i]
+        bs.histogram = merge_n_histograms(histograms_by_band[i])
         bandstats.append(bs)
 
     return bandstats
