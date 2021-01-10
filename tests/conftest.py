@@ -7,16 +7,13 @@ import zipfile
 from http.server import HTTPServer
 
 import boto3
-import numpy
 import pytest
 import rasterio
 import requests
-from affine import Affine
 from alembic.config import main
 from docker.models.containers import ContainerCollection
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from rasterio.crs import CRS
 
 from app.routes import is_admin, is_service_account
 from app.settings.globals import (
@@ -52,6 +49,21 @@ from . import (
     is_service_account_mocked,
     setup_clients,
 )
+from .utils import upload_fake_data
+
+FAKE_INT_DATA_PARAMS = {
+    "dtype": rasterio.uint16,
+    "no_data": 0,
+    "dtype_name": "uint16",
+    "prefix": "test/v1.1.1/raw/uint16",
+}
+FAKE_FLOAT_DATA_PARAMS = {
+    "dtype": rasterio.float32,
+    "no_data": float("nan"),
+    "dtype_name": "float32",
+    "prefix": "test/v1.1.1/raw/float32",
+}
+
 
 # TODO Fixme
 # @pytest.fixture(scope="session", autouse=True)
@@ -223,34 +235,8 @@ def copy_fixtures():
     s3_client.create_bucket(Bucket=DATA_LAKE_BUCKET)
     s3_client.create_bucket(Bucket=TILE_CACHE_BUCKET)
 
-    RAW_TILE_SET_PREFIX = "test/v1.1.1/raw"
-    dataset_profile = {
-        "driver": "GTiff",
-        "nodata": 0,
-        "dtype": rasterio.uint16,
-        "count": 1,
-        "width": 100,
-        "height": 100,
-        "blockxsize": 100,
-        "blockysize": 100,
-        "crs": CRS.from_epsg(4326),
-        "transform": Affine(0.01, 0, 1, 0, -0.01, 1),
-    }
-    with rasterio.Env():
-        with rasterio.open("0000000000-0000000000.tif", "w", **dataset_profile) as dst:
-            dummy_data = numpy.ones((100, 100), rasterio.uint16)
-            dst.write(dummy_data.astype(rasterio.uint16), 1)
-
-    s3_client.upload_file(
-        "0000000000-0000000000.tif",
-        DATA_LAKE_BUCKET,
-        f"{RAW_TILE_SET_PREFIX}/0000000000-0000000000.tif",
-    )
-    s3_client.upload_file(
-        "tests/fixtures/tiles.geojson",
-        DATA_LAKE_BUCKET,
-        f"{RAW_TILE_SET_PREFIX}/tiles.geojson",
-    )
+    upload_fake_data(**FAKE_INT_DATA_PARAMS)
+    upload_fake_data(**FAKE_FLOAT_DATA_PARAMS)
 
     s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)

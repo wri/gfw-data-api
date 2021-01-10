@@ -56,9 +56,9 @@ class Grid(str, Enum):
 
 
 class NonNumericFloat(str, Enum):
-    inf = "Inf"
-    neg_inf = "-Inf"
-    nan = "NaN"
+    # inf = "Inf"
+    # neg_inf = "-Inf"
+    nan = "nan"
 
 
 class Order(str, Enum):
