@@ -2,8 +2,8 @@ from unittest.mock import patch
 from uuid import UUID
 
 import boto3
+import httpx
 import pytest
-import requests
 from botocore.exceptions import ClientError
 
 from app.application import ContextEngine
@@ -141,7 +141,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     assert asset_resp.json()["data"]["status"] == "saved"
 
     # Flush requests list so we're starting fresh
-    requests.delete(f"http://localhost:{httpd.server_port}")
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
     # Try adding a non-default raster tile asset based on the default
     asset_payload = {
@@ -220,7 +220,7 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     assert asset_resp.json()["data"]["status"] == "saved"
 
     # Flush requests list so we're starting fresh
-    requests.delete(f"http://localhost:{httpd.server_port}")
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
     # Try adding a non-default raster tile set asset based on the default
     # vector asset
@@ -276,7 +276,7 @@ async def test_asset_bad_requests(async_client, batch_client, httpd):
     )
 
     # Flush requests list so we're starting fresh
-    requests.delete(f"http://localhost:{httpd.server_port}")
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
     # Try adding a non-default raster tile set asset with an extra field "foo"
     asset_payload = {
@@ -423,7 +423,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
 
     for check in symbology_checks:
         # Flush requests list so we're starting fresh
-        requests.delete(f"http://localhost:{httpd.server_port}")
+        httpx.delete(f"http://localhost:{httpd.server_port}")
 
         await _test_raster_tile_cache(
             dataset,
@@ -532,9 +532,6 @@ def _delete_s3_files(bucket, prefix):
         s3_client.delete_object(Bucket=bucket, Key=obj["Key"])
 
 
-@pytest.mark.skip(
-    reason="Must have cherry-picked this test. Add back in once stats branch is merged."
-)
 @pytest.mark.asyncio
 async def test_asset_stats(async_client):
     dataset = "test_asset_stats"
@@ -587,9 +584,6 @@ async def test_asset_stats(async_client):
         assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 10000
 
 
-@pytest.mark.skip(
-    reason="Must have cherry-picked this test. Add back in once stats branch is merged."
-)
 @pytest.mark.asyncio
 async def test_asset_stats_no_histo(async_client):
     dataset = "test_asset_stats_no_histo"
@@ -639,9 +633,6 @@ async def test_asset_stats_no_histo(async_client):
         assert resp.json()["data"]["bands"][0].get("histogram", None) is None
 
 
-@pytest.mark.skip(
-    reason="Must have cherry-picked this test. Add back in once stats branch is merged."
-)
 @pytest.mark.asyncio
 async def test_asset_extent(async_client):
     dataset = "test_asset_extent"
@@ -698,9 +689,6 @@ async def test_asset_extent(async_client):
     )
 
 
-@pytest.mark.skip(
-    reason="Must have cherry-picked this test. Add back in once stats branch is merged."
-)
 @pytest.mark.asyncio
 async def test_asset_extent_stats_empty(async_client):
     dataset = "test_asset_extent_stats_empty"

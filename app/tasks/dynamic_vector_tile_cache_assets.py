@@ -18,14 +18,14 @@ async def dynamic_vector_tile_cache_asset(
     asset_id: UUID,
     input_data: Dict[str, Any],
 ) -> ChangeLog:
-    """Verify if given database table asset is present and correctly configured
+    """Verify given database table asset is present and correctly configured
     for dynamic vector tile cache."""
 
     async with ContextEngine("READ"):
         orm_assets: List[ORMAsset] = await assets.get_assets(dataset, version)
 
     # Let's first assume that the database table is not correctly configured or present
-    # And then try to proof it is.
+    # And then try to prove that it is.
     change_log: ChangeLog = ChangeLog(
         date_time=datetime.now(),
         status=ChangeLogStatus.failed,

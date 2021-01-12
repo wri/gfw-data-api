@@ -196,7 +196,7 @@ class TileCacheBaseModel(StrictBaseModel):
     )
 
     @classmethod
-    @root_validator
+    @root_validator(allow_reuse=True)
     def check_zoom(cls, values):
         min_zoom, max_zoom, max_static_zoom = (
             values.get("min_zoom", None),
@@ -287,9 +287,9 @@ SourceCreationOptions = Union[
 ]
 
 OtherCreationOptions = Union[
+    RasterTileCacheCreationOptions,
     StaticVectorTileCacheCreationOptions,
     StaticVectorFileCreationOptions,
-    RasterTileCacheCreationOptions,
     DynamicVectorTileCacheCreationOptions,
     RasterTileSetAssetCreationOptions,
     TableAssetCreationOptions,

@@ -26,6 +26,7 @@ from ...models.pydantic.creation_options import (
     CreationOptionsResponse,
     creation_option_factory,
 )
+from ...models.pydantic.extent import Extent, ExtentResponse
 from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.tasks import TasksResponse
@@ -188,7 +189,7 @@ async def get_tasks(*, asset_id: UUID = Path(...)) -> TasksResponse:
     response_model=ChangeLogResponse,
 )
 async def get_change_log(asset_id: UUID = Path(...)):
-    asset = await assets.get_asset(asset_id)
+    asset: ORMAsset = await assets.get_asset(asset_id)
     change_logs: List[ChangeLog] = [
         ChangeLog(**change_log) for change_log in asset.change_log
     ]
@@ -203,11 +204,23 @@ async def get_change_log(asset_id: UUID = Path(...)):
     response_model=CreationOptionsResponse,
 )
 async def get_creation_options(asset_id: UUID = Path(...)):
-    asset = await assets.get_asset(asset_id)
+    asset: ORMAsset = await assets.get_asset(asset_id)
     creation_options: CreationOptions = creation_option_factory(
         asset.asset_type, asset.creation_options
     )
     return CreationOptionsResponse(data=creation_options)
+
+
+@router.get(
+    "/{asset_id}/extent",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=ExtentResponse,
+)
+async def get_extent(asset_id: UUID = Path(...)):
+    asset: ORMAsset = await assets.get_asset(asset_id)
+    extent: Optional[Extent] = asset.extent
+    return ExtentResponse(data=extent)
 
 
 @router.get(
@@ -217,8 +230,8 @@ async def get_creation_options(asset_id: UUID = Path(...)):
     response_model=StatsResponse,
 )
 async def get_stats(asset_id: UUID = Path(...)):
-    asset = await assets.get_asset(asset_id)
-    stats: Optional[Stats] = stats_factory(asset.asset_type, **asset.stats)
+    asset: ORMAsset = await assets.get_asset(asset_id)
+    stats: Optional[Stats] = stats_factory(asset.asset_type, asset.stats)
     return StatsResponse(data=stats)
 
 
@@ -229,7 +242,7 @@ async def get_stats(asset_id: UUID = Path(...)):
     response_model=FieldMetadataResponse,
 )
 async def get_fields(asset_id: UUID = Path(...)):
-    asset = await assets.get_asset(asset_id)
+    asset: ORMAsset = await assets.get_asset(asset_id)
     fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
 
     return FieldMetadataResponse(data=fields)

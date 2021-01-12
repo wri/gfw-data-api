@@ -7,9 +7,9 @@ import zipfile
 from http.server import HTTPServer
 
 import boto3
+import httpx
 import pytest
 import rasterio
-import requests
 from alembic.config import main
 from docker.models.containers import ContainerCollection
 from fastapi.testclient import TestClient
@@ -173,10 +173,16 @@ def client():
                             _ = client.delete(
                                 f"/dataset/{ds_id}/{version}/{asset['asset_id']}"
                             )
-                            _ = client.delete(f"/dataset/{ds_id}/{version}")
-                            _ = client.delete(f"/dataset/{ds_id}")
-                        except Exception:
-                            print(f"Exception deleting asset {asset['asset_id']}")
+                        except Exception as ex:
+                            print(f"Exception deleting asset {asset['asset_id']}: {ex}")
+                    try:
+                        _ = client.delete(f"/dataset/{ds_id}/{version}")
+                    except Exception as ex:
+                        print(f"Exception deleting version {version}: {ex}")
+            try:
+                _ = client.delete(f"/dataset/{ds_id}")
+            except Exception as ex:
+                print(f"Exception deleting dataset {ds_id}: {ex}")
 
     app.dependency_overrides = {}
     main(["--raiseerr", "downgrade", "base"])
@@ -221,7 +227,7 @@ def httpd():
 @pytest.fixture(autouse=True)
 def flush_request_list(httpd):
     """Delete request cache before every test."""
-    requests.delete(f"http://localhost:{httpd.server_port}")
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
 
 @pytest.fixture(autouse=True)
