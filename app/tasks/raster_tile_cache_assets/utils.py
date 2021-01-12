@@ -15,16 +15,6 @@ from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_pixetl_job
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri, tile_uri_to_tiles_geojson
 
-CACHE_JOB_ENV = list()
-
-# update core and max_mem values
-for var in JOB_ENV:
-    if var["name"] == "CORES":
-        var["value"] = MAX_CORES
-    elif var["name"] == "MAX_MEM":
-        var["value"] = MAX_MEM
-    CACHE_JOB_ENV.append(var)
-
 
 async def reproject_to_web_mercator(
     dataset: str,
@@ -115,7 +105,6 @@ async def create_wm_tile_set_job(
     # use max instance resources
     job.memory = MAX_MEM
     job.vcpus = MAX_CORES
-    job.environment = CACHE_JOB_ENV
 
     return job, asset_uri
 
@@ -155,7 +144,7 @@ async def create_tile_cache(
     tile_cache_job = GDAL2TilesJob(
         job_name=f"generate_tile_cache_zoom_{zoom_level}",
         command=command,
-        environment=CACHE_JOB_ENV,
+        environment=JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents],
     )
