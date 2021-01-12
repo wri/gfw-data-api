@@ -1,6 +1,9 @@
 """Explore data entries for a given dataset version using standard SQL."""
+import csv
 import json
-from typing import Any, Dict, List, Optional
+from contextlib import contextmanager
+from io import StringIO
+from typing import Any, Dict, Generator, List, Optional
 from urllib.parse import unquote
 from uuid import UUID
 
@@ -10,11 +13,12 @@ from asyncpg import (
     UndefinedFunctionError,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import ORJSONResponse, Response
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
+from starlette.responses import StreamingResponse
 
 from ...application import db
 from ...crud import versions
@@ -47,7 +51,9 @@ from ...models.enum.pg_sys_functions import (
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
-from ...models.pydantic.responses import Response
+from ...models.enum.queries import QueryFormat
+from ...models.pydantic.responses import Response as ResponseModel
+from ...responses import CSVResponse
 from ...utils.geostore import get_geostore_geometry
 from .. import dataset_dependency, version_dependency
 
@@ -64,11 +70,15 @@ async def query_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
-    sql: str = Query(..., title="SQL query"),
-    geostore_id: Optional[UUID] = Query(None, title="Geostore ID"),
+    sql: str = Query(..., description="SQL query."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
     geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, title="Origin service of geostore ID"
+        GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
+    format: QueryFormat = Query(
+        QueryFormat.json, description="Output format of query."
+    ),
+    download: bool = Query(False, description="Download response as file."),
 ):
     """Execute a read ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -117,7 +127,51 @@ async def query_dataset(
         raise HTTPException(status_code=400, detail="Bad request. Unknown function.")
     except UndefinedColumnError as e:
         raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
-    return Response(data=response)
+
+    return ResponseModel(data=response)
+
+
+#
+# async def parse_response(data: List, format: str, download: bool) -> Response:
+#     if format == QueryFormat.json:
+#         response: Response = ORJSONResponse(ResponseModel(data=data))
+#
+#     elif format == QueryFormat.csv:
+#         with orm_to_csv(data) as stream:
+#
+#             if download:
+#                 response = StreamingResponse(
+#                     iter([stream.getvalue()]), media_type="text/csv"
+#                 )
+#                 response.headers[
+#                     "Content-Disposition"
+#                 ] = "attachment; filename=export.csv"
+#
+#             else:
+#                 response = CSVResponse(stream)
+#
+#     else:
+#         raise RuntimeError("Unknown format.")
+#
+#     return response
+
+
+@contextmanager
+def orm_to_csv(data):
+
+    """Create a new csv file that represents generated data."""
+
+    csv_file = StringIO()
+    try:
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
+        field_names = data[0].keys()
+        wr.writerow(", ".join(field_names))
+        for row in data:
+            wr.writerow(row.values())
+        csv_file.seek(0)
+        yield csv_file
+    finally:
+        csv_file.close()
 
 
 def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
