@@ -55,6 +55,12 @@ class Grid(str, Enum):
     zoom_22 = "zoom_22"
 
 
+class NonNumericFloat(str, Enum):
+    # inf = "Inf"
+    # neg_inf = "-Inf"
+    nan = "nan"
+
+
 class Order(str, Enum):
     asc = "asc"
     desc = "desc"
