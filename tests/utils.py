@@ -3,7 +3,7 @@ import uuid
 from time import sleep
 from typing import Any, Dict, List, Set
 
-import requests
+import httpx
 from mock import patch
 
 from app.crud import tasks
@@ -140,7 +140,7 @@ async def poll_jobs(job_ids: List[str], logs=None, async_client=None) -> str:
             status = "failed"
 
         if status:
-            print_logs(logs)
+            # print_logs(logs)
             await check_callbacks(job_ids, async_client)
             return status
 
@@ -148,18 +148,18 @@ async def poll_jobs(job_ids: List[str], logs=None, async_client=None) -> str:
 
 
 async def check_callbacks(task_ids, async_client=None):
-    get_resp = requests.get(f"http://localhost:{PORT}")
+    get_resp = httpx.get(f"http://localhost:{PORT}")
     req_list = get_resp.json()["requests"]
 
-    print("REQUEST", req_list)
-    print("TASKS", task_ids)
+    # print("REQUESTS", req_list)
+    # print("TASKS", task_ids)
     assert len(req_list) == len(task_ids)
 
     task_path = [f"/task/{taskid}" for taskid in task_ids]
     req_paths = list()
     for i, req in enumerate(req_list):
-        print("#############")
-        print(req)
+        # print("#############")
+        # print(req)
         req_paths.append(req["path"])
         assert req["body"]["change_log"][0]["status"] == "success"
         if async_client:
@@ -185,7 +185,7 @@ async def forward_request(async_client, request):
             response = await client_request[request["method"]](
                 request["path"], json=request["body"]
             )
-            print(response.json())
+            # print(response.json())
             assert response.status_code == 200
     except KeyError:
         raise NotImplementedError(

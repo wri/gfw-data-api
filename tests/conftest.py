@@ -7,10 +7,10 @@ import zipfile
 from http.server import HTTPServer
 
 import boto3
+import httpx
 import numpy
 import pytest
 import rasterio
-import requests
 from affine import Affine
 from alembic.config import main
 from docker.models.containers import ContainerCollection
@@ -161,10 +161,16 @@ def client():
                             _ = client.delete(
                                 f"/dataset/{ds_id}/{version}/{asset['asset_id']}"
                             )
-                            _ = client.delete(f"/dataset/{ds_id}/{version}")
-                            _ = client.delete(f"/dataset/{ds_id}")
-                        except Exception:
-                            print(f"Exception deleting asset {asset['asset_id']}")
+                        except Exception as ex:
+                            print(f"Exception deleting asset {asset['asset_id']}: {ex}")
+                    try:
+                        _ = client.delete(f"/dataset/{ds_id}/{version}")
+                    except Exception as ex:
+                        print(f"Exception deleting version {version}: {ex}")
+            try:
+                _ = client.delete(f"/dataset/{ds_id}")
+            except Exception as ex:
+                print(f"Exception deleting dataset {ds_id}: {ex}")
 
     app.dependency_overrides = {}
     main(["--raiseerr", "downgrade", "base"])
@@ -209,7 +215,7 @@ def httpd():
 @pytest.fixture(autouse=True)
 def flush_request_list(httpd):
     """Delete request cache before every test."""
-    requests.delete(f"http://localhost:{httpd.server_port}")
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
 
 @pytest.fixture(autouse=True)
@@ -234,7 +240,8 @@ def copy_fixtures():
         "blockxsize": 100,
         "blockysize": 100,
         "crs": CRS.from_epsg(4326),
-        "transform": Affine(0.01, 0, 1, 0, -0.01, 1),
+        # 0.003332345971563981 is the pixel size of 90/27008
+        "transform": Affine(0.003332345971563981, 0, 1, 0, -0.003332345971563981, 1),
     }
     with rasterio.Env():
         with rasterio.open("0000000000-0000000000.tif", "w", **dataset_profile) as dst:
