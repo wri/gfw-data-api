@@ -9,8 +9,6 @@ from app.settings.globals import (
     AWS_GCS_KEY_SECRET_ARN,
     AWS_REGION,
     ENV,
-    PIXETL_CORES,
-    PIXETL_MAX_MEM,
     S3_ENTRYPOINT_URL,
 )
 from app.tasks import Callback, writer_secrets
@@ -18,8 +16,6 @@ from app.tasks import Callback, writer_secrets
 JOB_ENV = writer_secrets + [
     {"name": "AWS_REGION", "value": AWS_REGION},
     {"name": "ENV", "value": ENV},
-    {"name": "CORES", "value": PIXETL_CORES},
-    {"name": "MAX_MEM", "value": PIXETL_MAX_MEM},
     {"name": "AWS_GCS_KEY_SECRET_ARN", "value": AWS_GCS_KEY_SECRET_ARN},
 ]
 
