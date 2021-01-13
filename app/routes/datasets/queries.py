@@ -3,7 +3,7 @@ import csv
 import json
 from contextlib import contextmanager
 from io import StringIO
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 from urllib.parse import unquote
 from uuid import UUID
 
@@ -13,16 +13,17 @@ from asyncpg import (
     UndefinedFunctionError,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import ORJSONResponse, Response
+from fastapi.responses import ORJSONResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
-from starlette.responses import StreamingResponse
+from sqlalchemy.engine import RowProxy
 
 from ...application import db
-from ...crud import versions
+from ...crud import assets, versions
 from ...errors import RecordNotFoundError
+from ...models.enum.assets import AssetType
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pg_admin_functions import (
     advisory_lock_functions,
@@ -51,8 +52,8 @@ from ...models.enum.pg_sys_functions import (
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
-from ...models.enum.queries import QueryFormat
-from ...models.pydantic.responses import Response as ResponseModel
+from ...models.orm.assets import Asset as AssetORM
+from ...models.pydantic.responses import Response
 from ...responses import CSVResponse
 from ...utils.geostore import get_geostore_geometry
 from .. import dataset_dependency, version_dependency
@@ -75,19 +76,72 @@ async def query_dataset(
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
-    format: QueryFormat = Query(
-        QueryFormat.json, description="Output format of query."
-    ),
-    download: bool = Query(False, description="Download response as file."),
 ):
-    """Execute a read ONLY SQL query on the given dataset version (if
+    """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
+
+    data: List[RowProxy] = await _query_dataset(
+        dataset, version, sql, geostore_id, geostore_origin
+    )
+    return Response(data=data)
+
+
+@router.get(
+    "/{dataset}/{version}/download",
+    response_class=CSVResponse,
+    tags=["Query"],
+)
+async def download_dataset(
+    *,
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+    sql: str = Query(..., description="SQL query."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_origin: GeostoreOrigin = Query(
+        GeostoreOrigin.gfw, description="Origin service of geostore ID."
+    ),
+    filename: str = Query("export.csv", description="Name of export file."),
+    delimiter: str = Query(",", description="Delimiter to use for CSV file."),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented).
+
+    Return results as downloadable CSV file
+    """
+
+    data: List[RowProxy] = await _query_dataset(
+        dataset, version, sql, geostore_id, geostore_origin
+    )
+
+    with orm_to_csv(data, delimiter) as stream:
+        response = CSVResponse(iter([stream.getvalue()]), filename=filename)
+        return response
+
+
+async def _query_dataset(
+    dataset: str,
+    version: str,
+    sql: str,
+    geostore_id: Optional[UUID],
+    geostore_origin: str,
+) -> List[RowProxy]:
 
     # make sure version exists
     try:
         await versions.get_version(dataset, version)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=400, detail=(str(e)))
+
+    # Make sure we can query the dataset
+    default_asset: AssetORM = await assets.get_default_asset(dataset, version)
+    if default_asset.asset_type not in [
+        AssetType.geo_database_table,
+        AssetType.database_table,
+    ]:
+        raise HTTPException(
+            status_code=501,
+            detail="This endpoint is not implemented for the given dataset.",
+        )
 
     # parse and validate SQL statement
     try:
@@ -128,44 +182,19 @@ async def query_dataset(
     except UndefinedColumnError as e:
         raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
 
-    return ResponseModel(data=response)
-
-
-#
-# async def parse_response(data: List, format: str, download: bool) -> Response:
-#     if format == QueryFormat.json:
-#         response: Response = ORJSONResponse(ResponseModel(data=data))
-#
-#     elif format == QueryFormat.csv:
-#         with orm_to_csv(data) as stream:
-#
-#             if download:
-#                 response = StreamingResponse(
-#                     iter([stream.getvalue()]), media_type="text/csv"
-#                 )
-#                 response.headers[
-#                     "Content-Disposition"
-#                 ] = "attachment; filename=export.csv"
-#
-#             else:
-#                 response = CSVResponse(stream)
-#
-#     else:
-#         raise RuntimeError("Unknown format.")
-#
-#     return response
+    return response
 
 
 @contextmanager
-def orm_to_csv(data):
+def orm_to_csv(data: List[RowProxy], delimiter=",") -> Iterator[StringIO]:
 
     """Create a new csv file that represents generated data."""
 
     csv_file = StringIO()
     try:
-        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
         field_names = data[0].keys()
-        wr.writerow(", ".join(field_names))
+        wr.writerow(field_names)
         for row in data:
             wr.writerow(row.values())
         csv_file.seek(0)
