@@ -1,12 +1,20 @@
 import json
+import os
+import tempfile
 import uuid
 from time import sleep
 from typing import Any, Dict, List, Set
 
+import boto3
 import httpx
+import numpy
+import rasterio
+from affine import Affine
 from mock import patch
+from rasterio.crs import CRS
 
 from app.crud import tasks
+from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET
 from app.utils.aws import get_batch_client
 from tests import BUCKET, PORT, SHP_NAME
 from tests.tasks import MockECSClient
@@ -228,3 +236,65 @@ async def check_tasks_status(async_client, logs, asset_ids) -> None:
     # make sure, all jobs completed
     status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
     assert status == "saved"
+
+
+def upload_fake_data(dtype, dtype_name, no_data, prefix):
+    s3_client = boto3.client(
+        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+    )
+
+    data_file_name = "0000000000-0000000000.tif"
+
+    tiles_geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [[1.0, 1.0], [2.0, 1.0], [2.0, 0.0], [1.0, 0.0], [1.0, 1.0]]
+                    ],
+                },
+                "properties": {
+                    "name": f"/vsis3/{DATA_LAKE_BUCKET}/{prefix}/{data_file_name}"
+                },
+            }
+        ],
+    }
+
+    dataset_profile = {
+        "driver": "GTiff",
+        "dtype": dtype,
+        "nodata": no_data,
+        "count": 1,
+        "width": 100,
+        "height": 100,
+        "blockxsize": 100,
+        "blockysize": 100,
+        "crs": CRS.from_epsg(4326),
+        # 0.003332345971563981 is the pixel size of 90/27008
+        "transform": Affine(0.003332345971563981, 0, 1, 0, -0.003332345971563981, 1),
+    }
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        full_tiles_path = f"{os.path.join(tmpdir, 'tiles.geojson')}"
+
+        with open(full_tiles_path, "w") as dst:
+            dst.write(json.dumps(tiles_geojson))
+        s3_client.upload_file(
+            full_tiles_path,
+            DATA_LAKE_BUCKET,
+            f"{prefix}/tiles.geojson",
+        )
+
+        full_data_file_path = f"{os.path.join(tmpdir, data_file_name)}"
+        with rasterio.Env():
+            with rasterio.open(full_data_file_path, "w", **dataset_profile) as dst:
+                dummy_data = numpy.ones((100, 100), dtype)
+                dst.write(dummy_data.astype(dtype), 1)
+        s3_client.upload_file(
+            full_data_file_path,
+            DATA_LAKE_BUCKET,
+            f"{prefix}/{data_file_name}",
+        )
