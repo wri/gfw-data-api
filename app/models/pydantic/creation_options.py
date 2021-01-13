@@ -16,7 +16,14 @@ from ..enum.creation_options import (
     VectorDrivers,
 )
 from ..enum.pg_types import PGType
-from ..enum.pixetl import DataType, Grid, Order, RasterizeMethod, ResamplingMethod
+from ..enum.pixetl import (
+    DataType,
+    Grid,
+    NonNumericFloat,
+    Order,
+    RasterizeMethod,
+    ResamplingMethod,
+)
 from ..enum.sources import (
     RasterSourceType,
     SourceType,
@@ -87,7 +94,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     pixel_meaning: str
     data_type: DataType
     nbits: Optional[int]
-    no_data: Optional[Union[StrictInt, float]]
+    no_data: Optional[Union[StrictInt, NonNumericFloat]]
     rasterize_method: Optional[RasterizeMethod]
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
     calc: Optional[str]
@@ -189,7 +196,7 @@ class TileCacheBaseModel(StrictBaseModel):
     )
 
     @classmethod
-    @root_validator
+    @root_validator(allow_reuse=True)
     def check_zoom(cls, values):
         min_zoom, max_zoom, max_static_zoom = (
             values.get("min_zoom", None),
@@ -280,9 +287,9 @@ SourceCreationOptions = Union[
 ]
 
 OtherCreationOptions = Union[
+    RasterTileCacheCreationOptions,
     StaticVectorTileCacheCreationOptions,
     StaticVectorFileCreationOptions,
-    RasterTileCacheCreationOptions,
     DynamicVectorTileCacheCreationOptions,
     RasterTileSetAssetCreationOptions,
     TableAssetCreationOptions,

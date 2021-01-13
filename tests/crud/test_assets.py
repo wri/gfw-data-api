@@ -65,7 +65,7 @@ async def test_assets():
 
         assert result == "permission denied for table assets"
 
-    # Using context engine with "PUT" should work
+    # Using context engine with "WRITE" should work
     async with ContextEngine("WRITE"):
         new_row = await create_asset(
             dataset_name,

@@ -8,6 +8,7 @@ from botocore.exceptions import ClientError
 from app.models.pydantic.metadata import VersionMetadata
 from app.settings.globals import AWS_REGION
 from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
+from tests.conftest import FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import create_dataset, create_default_asset
 
@@ -417,9 +418,12 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
     raster_version_payload = {
         "creation_options": {
             "source_type": "raster",
-            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_uri": [
+                f"s3://{DATA_LAKE_BUCKET}/{FAKE_INT_DATA_PARAMS['prefix']}/tiles.geojson"
+            ],
             "source_driver": "GeoTIFF",
-            "data_type": "uint16",
+            "data_type": FAKE_INT_DATA_PARAMS["dtype_name"],
+            "no_data": FAKE_INT_DATA_PARAMS["no_data"],
             "pixel_meaning": "percent",
             "grid": "90/27008",
             "resampling": "nearest",
@@ -457,9 +461,12 @@ async def test_version_put_raster_bug_fixes(mocked_cloudfront_client, async_clie
     raster_version_payload = {
         "creation_options": {
             "source_type": "raster",
-            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_uri": [
+                f"s3://{DATA_LAKE_BUCKET}/{FAKE_INT_DATA_PARAMS['prefix']}/tiles.geojson"
+            ],
             "source_driver": "GeoTIFF",
-            "data_type": "uint16",
+            "data_type": FAKE_INT_DATA_PARAMS["dtype_name"],
+            "no_data": FAKE_INT_DATA_PARAMS["no_data"],
             "pixel_meaning": "percent",
             "grid": "90/27008",
             "resampling": "nearest",

@@ -18,7 +18,6 @@ from app.models.pydantic.symbology import Symbology
 from app.settings.globals import MAX_CORES, MAX_MEM, PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.raster_tile_cache_assets.utils import (
-    CACHE_JOB_ENV,
     create_wm_tile_set_job,
     get_zoom_source_uri,
     reproject_to_web_mercator,
@@ -222,7 +221,7 @@ async def _merge_intensity_and_date_conf(
     rgb_encoding_job = BuildRGBJob(
         job_name=f"merge_intensity_zoom_{zoom_level}",
         command=cmd,
-        environment=CACHE_JOB_ENV,
+        environment=JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents],
     )
@@ -243,7 +242,7 @@ async def _merge_intensity_and_date_conf(
     tiles_geojson_job = PixETLJob(
         job_name=f"generate_tiles_geojson_{zoom_level}",
         command=cmd,
-        environment=CACHE_JOB_ENV,
+        environment=JOB_ENV,
         callback=callback,
         parents=[rgb_encoding_job.job_name],
         vcpus=MAX_CORES,

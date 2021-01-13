@@ -26,6 +26,7 @@ from ...models.pydantic.creation_options import (
     CreationOptionsResponse,
     creation_option_factory,
 )
+from ...models.pydantic.extent import Extent, ExtentResponse
 from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.versions import (
@@ -235,7 +236,7 @@ async def get_change_log(
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
 ):
-    v = await versions.get_version(dataset, version)
+    v: ORMVersion = await versions.get_version(dataset, version)
     change_logs: List[ChangeLog] = [
         ChangeLog(**change_log) for change_log in v.change_log
     ]
@@ -253,11 +254,26 @@ async def get_creation_options(
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
 ):
-    asset = await assets.get_default_asset(dataset, version)
+    asset: ORMAsset = await assets.get_default_asset(dataset, version)
     creation_options: CreationOptions = creation_option_factory(
         asset.asset_type, asset.creation_options
     )
     return CreationOptionsResponse(data=creation_options)
+
+
+@router.get(
+    "/{dataset}/{version}/extent",
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+    response_model=ExtentResponse,
+)
+async def get_extent(
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+):
+    asset: ORMAsset = await assets.get_default_asset(dataset, version)
+    extent: Optional[Extent] = asset.extent
+    return ExtentResponse(data=extent)
 
 
 @router.get(
@@ -271,7 +287,7 @@ async def get_stats(
     version: str = Depends(version_dependency),
 ):
     """Retrieve Asset Statistics."""
-    asset = await assets.get_default_asset(dataset, version)
+    asset: ORMAsset = await assets.get_default_asset(dataset, version)
     stats: Optional[Stats] = stats_factory(asset.asset_type, asset.stats)
     return StatsResponse(data=stats)
 

@@ -13,7 +13,7 @@ class Geometry(StrictBaseModel):
 class Feature(StrictBaseModel):
     properties: Dict[str, Any]
     type: str
-    geometry: Geometry
+    geometry: Optional[Geometry]
 
 
 class FeatureCollection(StrictBaseModel):

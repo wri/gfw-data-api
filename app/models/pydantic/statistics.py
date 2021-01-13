@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pydantic import Field
+from pydantic import Field, StrictInt
 
 from ..enum.assets import AssetType
 from ..enum.pg_types import (
@@ -56,17 +56,17 @@ class GeometryFieldStats(FieldStats):
 
 
 class TableStats(StrictBaseModel):
-    row_count: int = Field(..., description="Total row count.")
+    row_count: StrictInt = Field(..., description="Total row count.")
     field_stats: List[
         Union[NumericFieldStats, TextFieldStats, DateFieldStats, GeometryFieldStats]
     ] = Field(..., description="Statistics for selected field types.")
 
 
 class Histogram(StrictBaseModel):
-    bin_count: int = Field(..., description="Number of bins in histogram.")
+    bin_count: StrictInt = Field(..., description="Number of bins in histogram.")
     min: float = Field(..., description="Minimum bin value.")
     max: float = Field(..., description="Maximum bin value.")
-    value_count: List[int] = Field(..., description="Value count for each bin.")
+    value_count: List[StrictInt] = Field(..., description="Value count for each bin.")
 
 
 class Affine(StrictBaseModel):

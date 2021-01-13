@@ -1,7 +1,7 @@
 import json
 
+import httpx
 import pytest
-import requests
 from mock import patch
 
 from app.models.enum.assets import AssetType
@@ -47,7 +47,7 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
     )
 
     ### Create static tile cache asset
-    requests.delete(f"http://localhost:{PORT}")
+    httpx.delete(f"http://localhost:{PORT}")
 
     input_data = {
         "asset_type": "Static vector tile cache",
@@ -129,7 +129,7 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
     # 1x1 Grid
     ###########
     ### Create static tile cache asset
-    requests.delete(f"http://localhost:{PORT}")
+    httpx.delete(f"http://localhost:{PORT}")
 
     input_data = {
         "asset_type": "1x1 grid",
@@ -190,7 +190,7 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
         response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
         current_asset_count = len(response.json()["data"])
 
-        requests.delete(f"http://localhost:{PORT}")
+        httpx.delete(f"http://localhost:{PORT}")
 
         input_data = {
             "asset_type": asset_type,

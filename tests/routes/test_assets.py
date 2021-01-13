@@ -2,8 +2,8 @@ from unittest.mock import patch
 from uuid import UUID
 
 import boto3
+import httpx
 import pytest
-import requests
 from botocore.exceptions import ClientError
 
 from app.application import ContextEngine
@@ -12,6 +12,7 @@ from app.crud.assets import update_asset
 from app.models.enum.symbology import ColorMapType
 from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.utils.aws import get_s3_client
+from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import check_tasks_status, create_default_asset, poll_jobs
 
@@ -109,15 +110,17 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     raster_version_payload = {
         "creation_options": {
             "source_type": "raster",
-            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_uri": [
+                f"s3://{DATA_LAKE_BUCKET}/{FAKE_INT_DATA_PARAMS['prefix']}/tiles.geojson"
+            ],
             "source_driver": "GeoTIFF",
-            "data_type": "uint16",
+            "data_type": FAKE_INT_DATA_PARAMS["dtype_name"],
+            "no_data": FAKE_INT_DATA_PARAMS["no_data"],
             "pixel_meaning": "percent",
             "grid": primary_grid,
             "resampling": "nearest",
             "overwrite": True,
             "subset": "90N_000E",
-            "no_data": 0,
         },
         "metadata": {},
     }
@@ -138,20 +141,20 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     assert asset_resp.json()["data"]["status"] == "saved"
 
     # Flush requests list so we're starting fresh
-    requests.delete(f"http://localhost:{httpd.server_port}")
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
     # Try adding a non-default raster tile asset based on the default
     asset_payload = {
         "asset_type": "Raster tile set",
         "is_managed": True,
         "creation_options": {
-            "data_type": "uint16",
+            "data_type": FAKE_INT_DATA_PARAMS["dtype_name"],
             "pixel_meaning": "gfw_fid",
             "grid": auxiliary_grid,
             "resampling": "nearest",
             "overwrite": True,
             "subset": "90N_000E",
-            "no_data": 0,
+            "no_data": FAKE_INT_DATA_PARAMS["no_data"],
         },
     }
 
@@ -217,7 +220,7 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     assert asset_resp.json()["data"]["status"] == "saved"
 
     # Flush requests list so we're starting fresh
-    requests.delete(f"http://localhost:{httpd.server_port}")
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
     # Try adding a non-default raster tile set asset based on the default
     # vector asset
@@ -226,7 +229,7 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
         "asset_uri": "http://www.osnews.com",
         "is_managed": True,
         "creation_options": {
-            "data_type": "uint16",
+            "data_type": FAKE_INT_DATA_PARAMS["dtype"],
             "pixel_meaning": "gfw_fid",
             "grid": "90/27008",
             "resampling": "nearest",
@@ -273,7 +276,7 @@ async def test_asset_bad_requests(async_client, batch_client, httpd):
     )
 
     # Flush requests list so we're starting fresh
-    requests.delete(f"http://localhost:{httpd.server_port}")
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
     # Try adding a non-default raster tile set asset with an extra field "foo"
     asset_payload = {
@@ -334,10 +337,12 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
     raster_version_payload = {
         "creation_options": {
             "source_type": "raster",
-            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_uri": [
+                f"s3://{DATA_LAKE_BUCKET}/{FAKE_INT_DATA_PARAMS['prefix']}/tiles.geojson"
+            ],
             "source_driver": "GeoTIFF",
-            "data_type": "uint16",
-            "no_data": 0,
+            "data_type": FAKE_INT_DATA_PARAMS["dtype_name"],
+            "no_data": FAKE_INT_DATA_PARAMS["no_data"],
             "pixel_meaning": pixel_meaning,
             "grid": primary_grid,
             "resampling": "nearest",
@@ -418,7 +423,7 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
 
     for check in symbology_checks:
         # Flush requests list so we're starting fresh
-        requests.delete(f"http://localhost:{httpd.server_port}")
+        httpx.delete(f"http://localhost:{httpd.server_port}")
 
         await _test_raster_tile_cache(
             dataset,
@@ -527,9 +532,6 @@ def _delete_s3_files(bucket, prefix):
         s3_client.delete_object(Bucket=bucket, Key=obj["Key"])
 
 
-@pytest.mark.skip(
-    reason="Must have cherry-picked this test. Add back in once stats branch is merged."
-)
 @pytest.mark.asyncio
 async def test_asset_stats(async_client):
     dataset = "test_asset_stats"
@@ -543,16 +545,18 @@ async def test_asset_stats(async_client):
     raster_version_payload = {
         "creation_options": {
             "source_type": "raster",
-            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_uri": [
+                f"s3://{DATA_LAKE_BUCKET}/{FAKE_INT_DATA_PARAMS['prefix']}/tiles.geojson"
+            ],
             "source_driver": "GeoTIFF",
-            "data_type": "uint16",
+            "data_type": FAKE_INT_DATA_PARAMS["dtype_name"],
+            "no_data": FAKE_INT_DATA_PARAMS["no_data"],
             "pixel_meaning": "percent",
             "grid": "90/27008",
             "resampling": "nearest",
             "overwrite": True,
             "compute_histogram": True,
             "compute_stats": True,
-            "no_data": 0,
         },
     }
 
@@ -580,9 +584,6 @@ async def test_asset_stats(async_client):
         assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 10000
 
 
-@pytest.mark.skip(
-    reason="Must have cherry-picked this test. Add back in once stats branch is merged."
-)
 @pytest.mark.asyncio
 async def test_asset_stats_no_histo(async_client):
     dataset = "test_asset_stats_no_histo"
@@ -596,16 +597,18 @@ async def test_asset_stats_no_histo(async_client):
     raster_version_payload = {
         "creation_options": {
             "source_type": "raster",
-            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_uri": [
+                f"s3://{DATA_LAKE_BUCKET}/{FAKE_INT_DATA_PARAMS['prefix']}/tiles.geojson"
+            ],
             "source_driver": "GeoTIFF",
-            "data_type": "uint16",
+            "data_type": FAKE_INT_DATA_PARAMS["dtype_name"],
+            "no_data": FAKE_INT_DATA_PARAMS["no_data"],
             "pixel_meaning": "percent",
             "grid": "90/27008",
             "resampling": "nearest",
             "overwrite": True,
             "compute_histogram": False,
             "compute_stats": True,
-            "no_data": 0,
         },
     }
 
@@ -630,9 +633,6 @@ async def test_asset_stats_no_histo(async_client):
         assert resp.json()["data"]["bands"][0].get("histogram", None) is None
 
 
-@pytest.mark.skip(
-    reason="Must have cherry-picked this test. Add back in once stats branch is merged."
-)
 @pytest.mark.asyncio
 async def test_asset_extent(async_client):
     dataset = "test_asset_extent"
@@ -646,16 +646,18 @@ async def test_asset_extent(async_client):
     raster_version_payload = {
         "creation_options": {
             "source_type": "raster",
-            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_uri": [
+                f"s3://{DATA_LAKE_BUCKET}/{FAKE_INT_DATA_PARAMS['prefix']}/tiles.geojson"
+            ],
             "source_driver": "GeoTIFF",
-            "data_type": "uint16",
+            "data_type": FAKE_INT_DATA_PARAMS["dtype_name"],
+            "no_data": FAKE_INT_DATA_PARAMS["no_data"],
             "pixel_meaning": "percent",
             "grid": "90/27008",
             "resampling": "nearest",
             "overwrite": True,
             "compute_histogram": False,
             "compute_stats": False,
-            "no_data": 0,
         },
     }
 
@@ -687,9 +689,6 @@ async def test_asset_extent(async_client):
     )
 
 
-@pytest.mark.skip(
-    reason="Must have cherry-picked this test. Add back in once stats branch is merged."
-)
 @pytest.mark.asyncio
 async def test_asset_extent_stats_empty(async_client):
     dataset = "test_asset_extent_stats_empty"
@@ -703,16 +702,18 @@ async def test_asset_extent_stats_empty(async_client):
     raster_version_payload = {
         "creation_options": {
             "source_type": "raster",
-            "source_uri": [f"s3://{DATA_LAKE_BUCKET}/test/v1.1.1/raw/tiles.geojson"],
+            "source_uri": [
+                f"s3://{DATA_LAKE_BUCKET}/{FAKE_INT_DATA_PARAMS['prefix']}/tiles.geojson"
+            ],
             "source_driver": "GeoTIFF",
-            "data_type": "uint16",
+            "data_type": FAKE_INT_DATA_PARAMS["dtype_name"],
+            "no_data": FAKE_INT_DATA_PARAMS["no_data"],
             "pixel_meaning": "percent",
             "grid": "90/27008",
             "resampling": "nearest",
             "overwrite": True,
             "compute_histogram": False,
             "compute_stats": False,
-            "no_data": 0,
         },
     }
 
@@ -747,3 +748,40 @@ async def test_asset_extent_stats_empty(async_client):
     resp = await async_client.get(f"/dataset/{dataset}/{version}/stats")
     assert resp.status_code == 200
     assert resp.json()["data"] is None
+
+
+@pytest.mark.asyncio
+async def test_asset_float_no_data(async_client):
+    dataset = "test_asset_float_no_data"
+    version = "v1.0.0"
+
+    pixetl_output_files_prefix = (
+        f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
+    )
+    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+
+    raster_version_payload = {
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [
+                f"s3://{DATA_LAKE_BUCKET}/{FAKE_FLOAT_DATA_PARAMS['prefix']}/tiles.geojson"
+            ],
+            "source_driver": "GeoTIFF",
+            "data_type": FAKE_FLOAT_DATA_PARAMS["dtype_name"],
+            "no_data": str(FAKE_FLOAT_DATA_PARAMS["no_data"]),
+            "pixel_meaning": "percent",
+            "grid": "90/27008",
+            "resampling": "nearest",
+            "overwrite": True,
+            "compute_histogram": False,
+            "compute_stats": False,
+        },
+    }
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=True,
+    )
