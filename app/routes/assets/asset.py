@@ -13,6 +13,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path
 from fastapi.responses import ORJSONResponse
+from starlette.responses import JSONResponse
 
 from ...crud import assets, tasks
 from ...errors import RecordNotFoundError
@@ -199,11 +200,13 @@ async def get_change_log(asset_id: UUID = Path(...)):
 
 @router.get(
     "/{asset_id}/creation_options",
-    response_class=ORJSONResponse,
+    response_class=JSONResponse,
     tags=["Assets"],
     response_model=CreationOptionsResponse,
 )
 async def get_creation_options(asset_id: UUID = Path(...)):
+    # Not using ORJSONResponse because orjson won't serialize the numeric
+    # keys in a Symbology object
     asset: ORMAsset = await assets.get_asset(asset_id)
     creation_options: CreationOptions = creation_option_factory(
         asset.asset_type, asset.creation_options

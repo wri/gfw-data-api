@@ -496,6 +496,11 @@ async def _test_raster_tile_cache(
     asset_resp = await async_client.get(f"/asset/{tile_cache_asset_id}")
     assert asset_resp.json()["data"]["status"] == "saved"
 
+    # Make sure the creation_options endpoint works (verify that the bug
+    # with numeric keys in colormap is fixed, GTC-974):
+    c_o_resp = await async_client.get(f"/asset/{tile_cache_asset_id}/creation_options")
+    assert c_o_resp.json()["status"] == "success"
+
     # Check if file for all expected assets are present
     for pixel_meaning in wm_tile_set_assets:
         test_files = [
