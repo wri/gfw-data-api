@@ -1,9 +1,7 @@
 """Explore data entries for a given dataset version using standard SQL."""
-import csv
+
 import json
-from contextlib import contextmanager
-from io import StringIO
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import unquote
 from uuid import UUID
 
@@ -54,7 +52,6 @@ from ...models.enum.pg_sys_functions import (
 )
 from ...models.orm.assets import Asset as AssetORM
 from ...models.pydantic.responses import Response
-from ...responses import CSVResponse
 from ...utils.geostore import get_geostore_geometry
 from .. import dataset_dependency, version_dependency
 
@@ -84,38 +81,6 @@ async def query_dataset(
         dataset, version, sql, geostore_id, geostore_origin
     )
     return Response(data=data)
-
-
-@router.get(
-    "/{dataset}/{version}/download",
-    response_class=CSVResponse,
-    tags=["Query"],
-)
-async def download_dataset(
-    *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
-    sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
-    geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, description="Origin service of geostore ID."
-    ),
-    filename: str = Query("export.csv", description="Name of export file."),
-    delimiter: str = Query(",", description="Delimiter to use for CSV file."),
-):
-    """Execute a READ-ONLY SQL query on the given dataset version (if
-    implemented).
-
-    Return results as downloadable CSV file
-    """
-
-    data: List[RowProxy] = await _query_dataset(
-        dataset, version, sql, geostore_id, geostore_origin
-    )
-
-    with orm_to_csv(data, delimiter) as stream:
-        response = CSVResponse(iter([stream.getvalue()]), filename=filename)
-        return response
 
 
 async def _query_dataset(
@@ -183,24 +148,6 @@ async def _query_dataset(
         raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
 
     return response
-
-
-@contextmanager
-def orm_to_csv(data: List[RowProxy], delimiter=",") -> Iterator[StringIO]:
-
-    """Create a new csv file that represents generated data."""
-
-    csv_file = StringIO()
-    try:
-        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
-        field_names = data[0].keys()
-        wr.writerow(field_names)
-        for row in data:
-            wr.writerow(row.values())
-        csv_file.seek(0)
-        yield csv_file
-    finally:
-        csv_file.close()
 
 
 def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
