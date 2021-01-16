@@ -17,5 +17,5 @@ ME=$(basename "$0")
 
 echo "Generate raster tile cache with GDAL2Tiles and upload to target S3 bucket"
 
-raster_tile_cache.py -d "${DATASET}" -v "${VERSION}" -I "${IMPLEMENTATION}" \
-  --target_bucket "${TARGET_BUCKET}" --zoom_level "${ZOOM_LEVEL}" "${POSITIONAL[@]}"
+raster_tile_cache.py --dataset "${DATASET}" --version "${VERSION}" --implementation "${IMPLEMENTATION}" \
+  --target-bucket "${TARGET_BUCKET}" --zoom-level "${ZOOM_LEVEL}" "${POSITIONAL[@]}"
