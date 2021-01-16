@@ -3,19 +3,24 @@ import math
 import multiprocessing
 import os
 import subprocess as sp
+from concurrent.futures import ProcessPoolExecutor
 from logging import getLogger
 from tempfile import TemporaryDirectory
 from typing import Dict, List, Optional, Tuple
 
 import boto3
-import typer
 from tileputty.upload_tiles import upload_tiles
+from typer import Argument, Option, run
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
 CORES = int(os.environ.get("CORES", multiprocessing.cpu_count()))
 
 LOGGER = getLogger("generate_raster_tile_cache")
+
+
+class GDALError(Exception):
+    pass
 
 
 def get_s3_client(aws_region=AWS_REGION, endpoint_url=AWS_ENDPOINT_URL):
@@ -27,10 +32,6 @@ def get_s3_path_parts(s3url):
     bucket = just_path.split("/")[0]
     key = "/".join(just_path.split("/")[1:])
     return bucket, key
-
-
-class GDALError(Exception):
-    pass
 
 
 def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str, str]:
@@ -79,9 +80,9 @@ def get_input_tiles(prefix: str) -> List[Tuple[str, str]]:
     return tiles
 
 
-def create_tiles(
-    tile, dataset, version, target_bucket, implementation, zoom_level, cores
-):
+def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, int]):
+
+    tile, dataset, version, target_bucket, implementation, zoom_level, cores = args
 
     with TemporaryDirectory() as download_dir, TemporaryDirectory() as tiles_dir:
         tile_name = os.path.join(download_dir, os.path.basename(tile[1]))
@@ -112,14 +113,16 @@ def create_tiles(
             implementation=implementation,
         )
 
+    return tile
+
 
 def raster_tile_cache(
-    dataset: str,
-    version: str,
-    zoom_level: int,
-    implementation: str,
-    target_bucket: str,
-    tile_set_prefix: str,
+    dataset: str = Option(..., help="Dataset name."),
+    version: str = Option(..., help="Version number."),
+    zoom_level: int = Option(..., help="Zoom level."),
+    implementation: str = Option(..., help="Implementation name/ pixel meaning."),
+    target_bucket: str = Option(..., help="Target bucket,"),
+    tile_set_prefix: str = Argument(..., help="Tile prefix,"),
 ):
     LOGGER.info(f"Raster tile set asset prefix: {tile_set_prefix}")
 
@@ -145,9 +148,12 @@ def raster_tile_cache(
         for tile in tiles
     ]
 
-    with multiprocessing.Pool(processes=CORES) as pool:
-        pool.starmap(create_tiles, args)
+    # Cannot use normal pool here, since we run sub-processes
+    # https://stackoverflow.com/a/61470465/1410317
+    with ProcessPoolExecutor(max_workers=CORES) as executor:
+        for tile in executor.map(create_tiles, args):
+            print(f"Processed tile {os.path.basename(tile[1])}")
 
 
 if __name__ == "__main__":
-    typer.run(raster_tile_cache)
+    run(raster_tile_cache)
