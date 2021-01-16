@@ -164,7 +164,7 @@ async def test_vector_source_asset(batch_client, async_client):
         # Downloads
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/download?sql=select count(*) from mytable;"
+            f"/dataset/{dataset}/{version}/download/csv?sql=select count(*) from mytable;"
         )
         assert response.status_code == 200
         assert response.text == '"count"\r\n1\r\n'
