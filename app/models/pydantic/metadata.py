@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pydantic import Extra, Field
+from pydantic import Extra, Field, StrictInt
 
 from ..enum.assets import AssetType
 from ..enum.pg_types import PGType
@@ -95,8 +95,8 @@ class StaticVectorTileCacheMetadata(VersionMetadata):
 
 
 class DynamicVectorTileCacheMetadata(StaticVectorTileCacheMetadata):
-    min_zoom: int = 0
-    max_zoom: int = 22
+    min_zoom: StrictInt = 0
+    max_zoom: StrictInt = 22
 
 
 class DatabaseTableMetadata(VersionMetadata):

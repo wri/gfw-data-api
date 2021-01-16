@@ -1,1 +1,0 @@
-{"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[1.0, 1.0], [2.0, 1.0], [2.0, 0.0], [1.0, 0.0], [1.0, 1.0]]]}, "properties": {"name": "/vsis3/gfw-data-lake-test/test/v1.1.1/raw/0000000000-0000000000.tif"}}]}
