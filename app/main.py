@@ -21,7 +21,15 @@ from .routes import security
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.datasets import asset as version_asset
-from .routes.datasets import dataset, datasets, features, geostore, queries, versions
+from .routes.datasets import (
+    dataset,
+    datasets,
+    downloads,
+    features,
+    geostore,
+    queries,
+    versions,
+)
 from .routes.geostore import geostore as geostore_top
 from .routes.tasks import task
 
@@ -112,6 +120,7 @@ dataset_routers = (
     geostore.router,
     version_asset.router,
     queries.router,
+    downloads.router,
 )
 
 for r in dataset_routers:

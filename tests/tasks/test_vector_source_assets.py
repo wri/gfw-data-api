@@ -161,6 +161,14 @@ async def test_vector_source_asset(batch_client, async_client):
         )
         assert response.status_code == 400
 
+        # Downloads
+
+        response = await async_client.get(
+            f"/dataset/{dataset}/{version}/download/csv?sql=select count(*) from mytable;"
+        )
+        assert response.status_code == 200
+        assert response.text == '"count"\r\n1\r\n'
+
         # Stats
         # TODO: We currently don't compute stats, will need update this test once feature is available
 
