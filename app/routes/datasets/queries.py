@@ -1,4 +1,5 @@
 """Explore data entries for a given dataset version using standard SQL."""
+
 import json
 from typing import Any, Dict, List, Optional
 from urllib.parse import unquote
@@ -15,10 +16,12 @@ from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
+from sqlalchemy.engine import RowProxy
 
 from ...application import db
-from ...crud import versions
+from ...crud import assets, versions
 from ...errors import RecordNotFoundError
+from ...models.enum.assets import AssetType
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pg_admin_functions import (
     advisory_lock_functions,
@@ -47,6 +50,7 @@ from ...models.enum.pg_sys_functions import (
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
+from ...models.orm.assets import Asset as AssetORM
 from ...models.pydantic.responses import Response
 from ...utils.geostore import get_geostore_geometry
 from .. import dataset_dependency, version_dependency
@@ -64,20 +68,45 @@ async def query_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
     version: str = Depends(version_dependency),
-    sql: str = Query(..., title="SQL query"),
-    geostore_id: Optional[UUID] = Query(None, title="Geostore ID"),
+    sql: str = Query(..., description="SQL query."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
     geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, title="Origin service of geostore ID"
+        GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
 ):
-    """Execute a read ONLY SQL query on the given dataset version (if
+    """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
+
+    data: List[RowProxy] = await _query_dataset(
+        dataset, version, sql, geostore_id, geostore_origin
+    )
+    return Response(data=data)
+
+
+async def _query_dataset(
+    dataset: str,
+    version: str,
+    sql: str,
+    geostore_id: Optional[UUID],
+    geostore_origin: str,
+) -> List[RowProxy]:
 
     # make sure version exists
     try:
         await versions.get_version(dataset, version)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=400, detail=(str(e)))
+
+    # Make sure we can query the dataset
+    default_asset: AssetORM = await assets.get_default_asset(dataset, version)
+    if default_asset.asset_type not in [
+        AssetType.geo_database_table,
+        AssetType.database_table,
+    ]:
+        raise HTTPException(
+            status_code=501,
+            detail="This endpoint is not implemented for the given dataset.",
+        )
 
     # parse and validate SQL statement
     try:
@@ -117,7 +146,8 @@ async def query_dataset(
         raise HTTPException(status_code=400, detail="Bad request. Unknown function.")
     except UndefinedColumnError as e:
         raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
-    return Response(data=response)
+
+    return response
 
 
 def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
