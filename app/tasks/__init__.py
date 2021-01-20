@@ -55,7 +55,9 @@ async def update_asset_status(asset_id, status):
 Callback = Callable[[UUID, ChangeLog], Coroutine[Any, Any, Awaitable[None]]]
 
 
-def callback_constructor(asset_id: UUID,) -> Callback:
+def callback_constructor(
+    asset_id: UUID,
+) -> Callback:
     """Callback constructor.
 
     Assign asset_id in the context of the constructor once. Afterwards

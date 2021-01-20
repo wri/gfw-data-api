@@ -1,23 +1,21 @@
 from typing import List, Optional
 
-from pydantic import BaseModel
-
-from .base import Base
+from .base import BaseRecord, StrictBaseModel
 from .metadata import DatasetMetadata
 from .responses import Response
 
 
-class Dataset(Base):
+class Dataset(BaseRecord):
     dataset: str
     metadata: DatasetMetadata
     versions: Optional[List[str]] = list()
 
 
-class DatasetCreateIn(BaseModel):
+class DatasetCreateIn(StrictBaseModel):
     metadata: DatasetMetadata
 
 
-class DatasetUpdateIn(BaseModel):
+class DatasetUpdateIn(StrictBaseModel):
     metadata: DatasetMetadata
 
 

@@ -1,20 +1,25 @@
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import validator
 
 from ...settings.globals import (
     AURORA_JOB_QUEUE,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
+    MAX_CORES,
+    MAX_MEM,
+    PIXETL_CORES,
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
+    PIXETL_MAX_MEM,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
 )
+from .base import StrictBaseModel
 
 
-class Job(BaseModel):
+class Job(StrictBaseModel):
     job_name: str
     job_queue: str
     job_definition: str
@@ -27,6 +32,36 @@ class Job(BaseModel):
     parents: Optional[List[str]] = None
     # somehow mypy doesn't like the type when declared here?
     callback: Any  # Callable[[UUID, ChangeLog], Coroutine[Any, Any, Awaitable[None]]]
+
+    @validator("environment", pre=True, always=True)
+    def update_environment(cls, v, *, values, **kwargs):
+        v = cls._update_environment(v, "CORES", values.get("vcpus"))
+        v = cls._update_environment(v, "MAX_MEM", values.get("memory"))
+        return v
+
+    @validator("vcpus", pre=True, always=True, allow_reuse=True)
+    def update_max_cores(cls, v, *, values, **kwargs):
+        cls.environment = cls._update_environment(values["environment"], "CORES", v)
+        return v
+
+    @validator("memory", pre=True, always=True)
+    def update_max_mem(cls, v, *, values, **kwargs):
+        cls.environment = cls._update_environment(values["environment"], "MAX_MEM", v)
+        return v
+
+    @staticmethod
+    def _update_environment(env: List[Dict[str, str]], name: str, value: Optional[str]):
+        if value:
+            found = False
+            for i, item in enumerate(env):
+                if item["name"] == name:
+                    env[i]["value"] = str(value)
+                    found = True
+                    break
+            if not found:
+                env.append({"name": name, "value": str(value)})
+
+        return env
 
 
 class PostgresqlClientJob(Job):
@@ -80,7 +115,29 @@ class PixETLJob(Job):
 
     job_queue = PIXETL_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION
-    vcpus = 48
-    memory = 350000
-    attempts = 2
+    vcpus = PIXETL_CORES
+    memory = PIXETL_MAX_MEM
+    attempts = 1
     attempt_duration_seconds = 9600
+
+
+class BuildRGBJob(Job):
+    """Use for combining date_conf and intensity assets using buildrgb."""
+
+    job_queue = DATA_LAKE_JOB_QUEUE
+    job_definition = GDAL_PYTHON_JOB_DEFINITION
+    vcpus = MAX_CORES
+    memory = MAX_MEM
+    attempts = 1
+    attempt_duration_seconds = 7500
+
+
+class GDAL2TilesJob(Job):
+    """Use for generating a raster tile cache from web-mercator tiles."""
+
+    job_queue = DATA_LAKE_JOB_QUEUE
+    job_definition = GDAL_PYTHON_JOB_DEFINITION
+    vcpus = MAX_CORES
+    memory = MAX_MEM
+    attempts = 1
+    attempt_duration_seconds = 7500

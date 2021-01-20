@@ -81,7 +81,10 @@ async def create_asset(dataset, version, asset_type, asset_uri, input_data) -> A
     await create_version(dataset, version, input_data)
     async with ContextEngine("WRITE"):
         new_asset = await assets.create_asset(
-            dataset, version, asset_type=asset_type, asset_uri=asset_uri,
+            dataset,
+            version,
+            asset_type=asset_type,
+            asset_uri=asset_uri,
         )
     return new_asset
 
@@ -135,7 +138,7 @@ async def check_task_status(asset_id, nb_jobs, last_job_name):
         # in this test we don't set the final asset status to saved or failed
         assert row.status == "pending"
     # in this test we only see the logs from background task, not from batch jobs
-    assert rows[-1].change_log[0]["message"] == (f"Scheduled job {last_job_name}")
+    assert rows[-1].change_log[0]["message"] == f"Scheduled job {last_job_name}"
 
 
 async def check_dynamic_vector_tile_cache_status(dataset, version):
@@ -149,8 +152,8 @@ async def check_dynamic_vector_tile_cache_status(dataset, version):
         assert len(asset_row.fields) == 9
 
     rows = await assets.get_assets(dataset, version)
-    v = await versions.get_version(dataset, version)
-    print(v.change_log)
+    # v = await versions.get_version(dataset, version)
+    # print(v.change_log)
 
     assert len(rows) == 2
     assert rows[0].asset_type == AssetType.geo_database_table

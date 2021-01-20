@@ -7,16 +7,13 @@ import zipfile
 from http.server import HTTPServer
 
 import boto3
-import numpy
+import httpx
 import pytest
 import rasterio
-import requests
-from affine import Affine
 from alembic.config import main
 from docker.models.containers import ContainerCollection
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from rasterio.crs import CRS
 
 from app.routes import is_admin, is_service_account
 from app.settings.globals import (
@@ -52,6 +49,21 @@ from . import (
     is_service_account_mocked,
     setup_clients,
 )
+from .utils import upload_fake_data
+
+FAKE_INT_DATA_PARAMS = {
+    "dtype": rasterio.uint16,
+    "no_data": 0,
+    "dtype_name": "uint16",
+    "prefix": "test/v1.1.1/raw/uint16",
+}
+FAKE_FLOAT_DATA_PARAMS = {
+    "dtype": rasterio.float32,
+    "no_data": float("nan"),
+    "dtype_name": "float32",
+    "prefix": "test/v1.1.1/raw/float32",
+}
+
 
 # TODO Fixme
 # @pytest.fixture(scope="session", autouse=True)
@@ -148,6 +160,30 @@ def client():
     with TestClient(app) as client:
         yield client
 
+        # Clean up created assets/versions/datasets so teardown doesn't break
+        datasets_resp = client.get("/datasets")
+        for ds in datasets_resp.json()["data"]:
+            ds_id = ds["dataset"]
+            if ds.get("versions") is not None:
+                for version in ds["versions"]:
+                    assets_resp = client.get(f"/dataset/{ds_id}/{version}/assets")
+                    for asset in assets_resp.json()["data"]:
+                        print(f"DELETING ASSET {asset['asset_id']}")
+                        try:
+                            _ = client.delete(
+                                f"/dataset/{ds_id}/{version}/{asset['asset_id']}"
+                            )
+                        except Exception as ex:
+                            print(f"Exception deleting asset {asset['asset_id']}: {ex}")
+                    try:
+                        _ = client.delete(f"/dataset/{ds_id}/{version}")
+                    except Exception as ex:
+                        print(f"Exception deleting version {version}: {ex}")
+            try:
+                _ = client.delete(f"/dataset/{ds_id}")
+            except Exception as ex:
+                print(f"Exception deleting dataset {ds_id}: {ex}")
+
     app.dependency_overrides = {}
     main(["--raiseerr", "downgrade", "base"])
 
@@ -191,7 +227,7 @@ def httpd():
 @pytest.fixture(autouse=True)
 def flush_request_list(httpd):
     """Delete request cache before every test."""
-    requests.delete(f"http://localhost:{httpd.server_port}")
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
 
 @pytest.fixture(autouse=True)
@@ -205,34 +241,8 @@ def copy_fixtures():
     s3_client.create_bucket(Bucket=DATA_LAKE_BUCKET)
     s3_client.create_bucket(Bucket=TILE_CACHE_BUCKET)
 
-    RAW_TILE_SET_PREFIX = "test/v1.1.1/raw"
-    dataset_profile = {
-        "driver": "GTiff",
-        "nodata": 0,
-        "dtype": rasterio.uint16,
-        "count": 1,
-        "width": 100,
-        "height": 100,
-        "blockxsize": 100,
-        "blockysize": 100,
-        "crs": CRS.from_epsg(4326),
-        "transform": Affine(0.01, 0, 1, 0, -0.01, 1),
-    }
-    with rasterio.Env():
-        with rasterio.open("0000000000-0000000000.tif", "w", **dataset_profile) as dst:
-            dummy_data = numpy.ones((100, 100), rasterio.uint16)
-            dst.write(dummy_data.astype(rasterio.uint16), 1)
-
-    s3_client.upload_file(
-        "0000000000-0000000000.tif",
-        DATA_LAKE_BUCKET,
-        f"{RAW_TILE_SET_PREFIX}/0000000000-0000000000.tif",
-    )
-    s3_client.upload_file(
-        "tests/fixtures/tiles.geojson",
-        DATA_LAKE_BUCKET,
-        f"{RAW_TILE_SET_PREFIX}/tiles.geojson",
-    )
+    upload_fake_data(**FAKE_INT_DATA_PARAMS)
+    upload_fake_data(**FAKE_FLOAT_DATA_PARAMS)
 
     s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
@@ -265,7 +275,7 @@ async def tmp_folder():
 
     ready = os.path.join(tmp_dir, "READY")
 
-    # Create zerobytes READY file
+    # Create zero bytes READY file
     with open(ready, "w"):
         pass
     yield

@@ -1,8 +1,7 @@
 from datetime import date
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
-from pydantic import Field
-from pydantic.main import BaseModel
+from pydantic import Field, StrictInt
 
 from ..enum.assets import AssetType
 from ..enum.pg_types import (
@@ -14,14 +13,15 @@ from ..enum.pg_types import (
 )
 from ..pydantic.geostore import FeatureCollection
 from ..pydantic.responses import Response
+from .base import StrictBaseModel
 
 
-class FieldStats(BaseModel):
+class FieldStats(StrictBaseModel):
     field_name: str = Field(..., description="Field name")
     field_type: PGType = Field(..., description="Field data type (PostgreSQL)")
 
 
-class NumericFieldStats(FieldStats):
+class NumericFieldStats(StrictBaseModel):
     field_type: PGNumericType
     min: float = Field(..., description="Minimum value in column.")
     max: float = Field(..., description="Maximum value in column.")
@@ -30,7 +30,7 @@ class NumericFieldStats(FieldStats):
     std_dev: float = Field(..., description="Standard deviation of column.")
 
 
-class TextFieldStats(FieldStats):
+class TextFieldStats(StrictBaseModel):
     field_type: PGTextType
     discrete_values: Optional[List[str]] = Field(
         None,
@@ -55,21 +55,21 @@ class GeometryFieldStats(FieldStats):
     )
 
 
-class TableStats(BaseModel):
-    row_count: int = Field(..., description="Total row count.")
+class TableStats(StrictBaseModel):
+    row_count: StrictInt = Field(..., description="Total row count.")
     field_stats: List[
         Union[NumericFieldStats, TextFieldStats, DateFieldStats, GeometryFieldStats]
     ] = Field(..., description="Statistics for selected field types.")
 
 
-class Histogram(BaseModel):
-    bin_count: int = Field(..., description="Number of bin in histogram.")
+class Histogram(StrictBaseModel):
+    bin_count: StrictInt = Field(..., description="Number of bins in histogram.")
     min: float = Field(..., description="Minimum bin value.")
     max: float = Field(..., description="Maximum bin value.")
-    value_count: List[int] = Field(..., description="Value count for each bin.")
+    value_count: List[StrictInt] = Field(..., description="Value count for each bin.")
 
 
-class Affine(BaseModel):
+class Affine(StrictBaseModel):
     a: float = Field(..., description="Scale factor x")
     b: float = Field(..., description="Shear angle x")
     c: float = Field(..., description="Offset x")
@@ -78,30 +78,30 @@ class Affine(BaseModel):
     f: float = Field(..., description="Offset y")
 
 
-class BandStats(BaseModel):
-    driver: str = Field(..., description="Driver used to create raster file.")
-    interleave: str = Field(..., description="Interleave strategy.")
-    tiled: bool = Field(..., description="Raster file is tiled or not.")
-    blockxsize: int = Field(..., description="Width of tiles or strips")
-    blockysize: int = Field(..., description="Hight of tiles or stripes.")
-    compress: str = Field(..., description="Image compression used.")
-    nodata: Optional[int] = Field(..., description="No data value.")
-    dtype: str = Field(..., description="Pixel data type.")
-    width: int = Field(..., description="Raster width.")
-    height: int = Field(..., description="Raster height.")
-    bounds: Tuple[float, float, float, float] = Field(..., description="Raster founds.")
-    transform: Affine = Field(..., description="Affine transformation.")
-    crs: str = Field(..., description="Coordinate reference system.")
-    pixel_size: Tuple[float, float] = Field(..., description="Raster pixel size.")
-    origin: Tuple[float, float] = Field(..., description="Raster origin.")
+class BandStats(StrictBaseModel):
+    # Add these fields in the future? Of debatable usefulness?
+    # driver: str = Field(..., description="Driver used to create raster file.")
+    # interleave: str = Field(..., description="Interleave strategy.")
+    # tiled: bool = Field(..., description="Raster file is tiled or not.")
+    # blockxsize: int = Field(..., description="Width of tiles or strips")
+    # blockysize: int = Field(..., description="Height of tiles or stripes.")
+    # compress: str = Field(..., description="Image compression used.")
+    # nodata: Optional[int] = Field(..., description="No data value.")
+    # dtype: str = Field(..., description="Pixel data type.")
+    # width: int = Field(..., description="Raster width.")
+    # height: int = Field(..., description="Raster height.")
+    # bounds: Tuple[float, float, float, float] = Field(..., description="Raster bounds.")
+    # transform: Affine = Field(..., description="Affine transformation.")
+    # crs: str = Field(..., description="Coordinate reference system.")
+    # pixel_size: Tuple[float, float] = Field(..., description="Raster pixel size.")
     min: float = Field(..., description="Minimum pixel value.")
     max: float = Field(..., description="Maximum pixel value.")
     mean: float = Field(..., description="Mean pixel value.")
-    std_dev: float = Field(..., description="Standard deviation of pixel values.")
-    histogram: Histogram = Field(..., description="Histogram.")
+
+    histogram: Optional[Histogram] = Field(description="Histogram.")
 
 
-class RasterStats(BaseModel):
+class RasterStats(StrictBaseModel):
     bands: List[BandStats]
 
 
@@ -112,7 +112,9 @@ class StatsResponse(Response):
     data: Optional[Stats]
 
 
-def stats_factory(asset_type: str, input_data: Dict[str, Any]) -> Optional[Stats]:
+def stats_factory(
+    asset_type: str, input_data: Optional[Dict[str, Any]]
+) -> Optional[Stats]:
     stats_constructor: Dict[str, Type[Stats]] = {
         AssetType.database_table: TableStats,
         AssetType.geo_database_table: TableStats,

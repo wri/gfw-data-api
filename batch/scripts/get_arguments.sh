@@ -134,6 +134,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      --prefix)
+      PREFIX="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -s|--source)
       SRC+=("$2")
       shift # past argument
@@ -151,6 +156,11 @@ do
       ;;
       -T|--target)
       TARGET="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      --target_bucket)
+      TARGET_BUCKET="$2"
       shift # past argument
       shift # past value
       ;;
@@ -184,6 +194,12 @@ do
       shift # past argument
       shift # past value
       ;;
+      --zoom_level)
+      ZOOM_LEVEL="$2"
+      shift # past argument
+      shift # past value
+      ;;
+
       *)    # unknown option
       POSITIONAL+=("$1") # save it in an array for later
       shift # past argument

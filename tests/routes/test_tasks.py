@@ -97,7 +97,7 @@ async def test_tasks_success(async_client):
     asset_resp = await async_client.get(f"/asset/{asset_id}")
     assert asset_resp.json()["data"]["status"] == "saved"
 
-    # Verify if the dynamic vector tile cache was created. Status should be failed b/c batch jobs were not tiggered.
+    # Verify if the dynamic vector tile cache was created. Status should be failed b/c batch jobs were not triggered.
     assets_resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
     assert len(version_resp.json()["data"]["assets"]) == 1
     assert len(assets_resp.json()["data"]) == 2
@@ -110,17 +110,22 @@ async def test_tasks_success(async_client):
 
     # The following will fail until creation of auxiliary assets is working
 
-    field_payload = {
-        "metadata": {
-            "fields": [
-                {"field_name": "test", "field_type": "numeric", "is_feature_info": True}
-            ]
-        }
-    }
-
-    asset_resp = await async_client.patch(f"/asset/{asset_id}", json=field_payload)
-    print(asset_resp.json())
-    assert asset_resp.json()["status"] == "success"
+    # Commenting-out the following as "fields" is commented-out in the metadata model
+    # Looks like it must have been silently ignored until now, but I'm making all
+    # models strict (setting extra=Forbid) and this now causes a failure. Can
+    # reinstate if we ever add "fields" to the metadata model
+    #
+    # field_payload = {
+    #     "metadata": {
+    #         "fields": [
+    #             {"field_name": "test", "field_type": "numeric", "is_feature_info": True}
+    #         ]
+    #     }
+    # }
+    #
+    # asset_resp = await async_client.patch(f"/asset/{asset_id}", json=field_payload)
+    # print(asset_resp.json())
+    # assert asset_resp.json()["status"] == "success"
 
     # Now that the default asset is saved we can create a non-default
     # asset, which is handled slightly differently. In particular if

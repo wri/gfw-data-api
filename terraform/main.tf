@@ -132,6 +132,7 @@ module "batch_data_lake_writer" {
     data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_write_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
+    data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_policy_arn
   ]
   key_pair = var.key_pair
   project  = local.project
@@ -157,10 +158,14 @@ module "batch_job_queues" {
   pixetl_repository_url              = "${module.batch_pixetl_image.repository_url}:latest"
   postgres_repository_url            = "${module.batch_postgresql_client_image.repository_url}:latest"
   tile_cache_repository_url          = "${module.batch_tile_cache_image.repository_url}:latest"
-  s3_write_data-lake_arn             = data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn
-  s3_write_tile-cache_arn            = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_write_policy_arn
-  reader_secret_arn                  = data.terraform_remote_state.core.outputs.secrets_postgresql-reader_arn
-  writer_secret_arn                  = data.terraform_remote_state.core.outputs.secrets_postgresql-writer_arn
-  aurora_max_vcpus                   = local.aurora_max_vcpus
-  gcs_secret                         = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
+  iam_policy_arn = [
+    "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
+    data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
+    data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_write_policy_arn,
+    data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
+    data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
+    data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_policy_arn
+  ]
+  aurora_max_vcpus = local.aurora_max_vcpus
+  gcs_secret       = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
 }

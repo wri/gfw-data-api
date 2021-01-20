@@ -1,8 +1,8 @@
 import json
 
+import httpx
 import pendulum
 import pytest
-import requests
 from pendulum.parsing.exceptions import ParserError
 
 from app.application import ContextEngine, db
@@ -141,11 +141,11 @@ async def test_table_source_asset(batch_client, async_client):
     # Append
     #########################
 
-    requests.delete(f"http://localhost:{PORT}")
+    httpx.delete(f"http://localhost:{PORT}")
 
     # Create default asset in mocked BATCH
 
-    requests.delete(f"http://localhost:{PORT}")
+    httpx.delete(f"http://localhost:{PORT}")
 
     response = await async_client.post(
         f"/dataset/{dataset}/{version}/append",
@@ -157,7 +157,7 @@ async def test_table_source_asset(batch_client, async_client):
     assert response.status_code == 200
     tasks = json.loads(response.json()["data"][-1]["detail"])
     task_ids = [task["job_id"] for task in tasks]
-    print(task_ids)
+    # print(task_ids)
 
     # make sure, all jobs completed
     status = await poll_jobs(task_ids, logs=logs, async_client=async_client)

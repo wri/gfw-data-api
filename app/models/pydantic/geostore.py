@@ -1,37 +1,35 @@
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
-
-from .base import Base
+from .base import BaseRecord, StrictBaseModel
 from .responses import Response
 
 
-class Geometry(BaseModel):
+class Geometry(StrictBaseModel):
     type: str
     coordinates: List[Any]
 
 
-class Feature(BaseModel):
+class Feature(StrictBaseModel):
     properties: Dict[str, Any]
     type: str
-    geometry: Geometry
+    geometry: Optional[Geometry]
 
 
-class FeatureCollection(BaseModel):
+class FeatureCollection(StrictBaseModel):
     features: List[Feature]
     crs: Optional[Dict[str, Any]]
     type: str
 
 
-class Geostore(Base):
+class Geostore(BaseRecord):
     gfw_geostore_id: UUID
     gfw_geojson: str
     gfw_area__ha: float
     gfw_bbox: List[float]
 
 
-class GeostoreHydrated(Base):
+class GeostoreHydrated(BaseRecord):
     gfw_geostore_id: UUID
     gfw_geojson: FeatureCollection
     gfw_area__ha: float

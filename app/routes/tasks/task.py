@@ -4,7 +4,7 @@ You can view a single tasks or all tasks associated with as specific
 asset. Only _service accounts_ can create or update tasks.
 """
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path
@@ -13,7 +13,7 @@ from fastapi.responses import ORJSONResponse
 from ...application import ContextEngine, db
 from ...crud import assets, tasks, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
-from ...models.enum.assets import AssetStatus, is_database_asset, is_tile_cache_asset
+from ...models.enum.assets import AssetStatus
 from ...models.enum.change_log import ChangeLogStatus
 from ...models.enum.versions import VersionStatus
 from ...models.orm.assets import Asset as ORMAsset
@@ -22,10 +22,13 @@ from ...models.orm.tasks import Task as ORMTask
 from ...models.pydantic.assets import AssetCreateIn, AssetType
 from ...models.pydantic.change_log import ChangeLog
 from ...models.pydantic.creation_options import DynamicVectorTileCacheCreationOptions
-from ...models.pydantic.metadata import FieldMetadata
+from ...models.pydantic.metadata import DynamicVectorTileCacheMetadata, FieldMetadata
 from ...models.pydantic.tasks import TaskCreateIn, TaskResponse, TaskUpdateIn
 from ...settings.globals import TILE_CACHE_URL
 from ...tasks.assets import put_asset
+from ...tasks.raster_tile_set_assets.raster_tile_set_assets import (
+    raster_tile_set_post_completion_task,
+)
 from ...utils.tile_cache import redeploy_tile_cache_service
 from .. import is_service_account
 from . import task_response
@@ -147,10 +150,12 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
     # Query returns empty list in case table does not exist.
     if asset_row.asset_type in [AssetType.database_table, AssetType.geo_database_table]:
         await _update_asset_field_metadata(
-            asset_row.dataset, asset_row.version, asset_id,
+            asset_row.dataset,
+            asset_row.version,
+            asset_id,
         )
 
-    # If default asset failed, we must version status also to failed.
+    # If default asset failed, we must also set version status to failed.
     if asset_row.is_default:
         dataset, version = asset_row.dataset, asset_row.version
 
@@ -160,6 +165,21 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
             status=VersionStatus.failed,
             change_log=[status_change_log.dict(by_alias=True)],
         )
+
+
+def _post_completion_task_factory(
+    asset_type: AssetType,
+) -> Optional[Callable[[UUID], Awaitable[None]]]:
+    tasks_function_constructor: Dict[AssetType, Callable[[UUID], Awaitable[None]]] = {
+        AssetType.database_table: table_post_completion_task,
+        AssetType.geo_database_table: table_post_completion_task,
+        AssetType.dynamic_vector_tile_cache: tile_cache_post_completion_task,
+        AssetType.static_vector_tile_cache: tile_cache_post_completion_task,
+        AssetType.raster_tile_cache: tile_cache_post_completion_task,
+        AssetType.raster_tile_set: raster_tile_set_post_completion_task,
+    }
+
+    return tasks_function_constructor.get(asset_type)
 
 
 async def _check_completed(asset_id: UUID):
@@ -173,31 +193,26 @@ async def _check_completed(asset_id: UUID):
     all_task_rows: List[ORMTask] = await tasks.get_tasks(asset_id)
     all_finished = _all_finished(all_task_rows)
 
-    status_change_log: ChangeLog = ChangeLog(
-        date_time=now,
-        status=ChangeLogStatus.success,
-        message=f"Successfully created asset {asset_id}.",
-    )
-
     if all_finished:
+        status_change_log: ChangeLog = ChangeLog(
+            date_time=now,
+            status=ChangeLogStatus.success,
+            message=f"Successfully created asset {asset_id}.",
+        )
+
+        # Set the asset to status saved
         asset_row: ORMAsset = await assets.update_asset(
             asset_id,
             status=AssetStatus.saved,
             change_log=[status_change_log.dict(by_alias=True)],
         )
-        # For database tables, fetch list of fields and their types from PostgreSQL
-        # and add them to metadata object
-        # Check if creation options specify to register a dynamic vector tile cache asset
-        if is_database_asset(asset_row.asset_type):
-            asset_row = await _update_asset_field_metadata(
-                asset_row.dataset, asset_row.version, asset_id,
-            )
 
-            await _register_dynamic_vector_tile_cache(
-                asset_row.dataset, asset_row.version, asset_row.metadata
-            )
+        # Run any asset type-specific code necessary
+        post_completion_task = _post_completion_task_factory(asset_row.asset_type)
+        if post_completion_task is not None:
+            await post_completion_task(asset_id)
 
-        # If default asset, make sure, version is also set to saved
+        # If default asset, make sure version is also set to saved
         if asset_row.is_default:
             dataset, version = asset_row.dataset, asset_row.version
 
@@ -207,10 +222,6 @@ async def _check_completed(asset_id: UUID):
                 status=VersionStatus.saved,
                 change_log=[status_change_log.dict(by_alias=True)],
             )
-
-        if is_tile_cache_asset(asset_row.asset_type):
-            # Force new deployment of tile cache service, to make sure new tile cache version is recognized
-            await redeploy_tile_cache_service(asset_id)
 
 
 def _all_finished(task_rows: List[ORMTask]) -> bool:
@@ -268,7 +279,8 @@ async def _register_dynamic_vector_tile_cache(
 ) -> None:
     """Register dynamic vector tile cache asset with version if required."""
     default_asset: ORMAsset = await assets.get_default_asset(
-        dataset, version,
+        dataset,
+        version,
     )
     create_dynamic_vector_tile_cache: Optional[
         bool
@@ -282,11 +294,10 @@ async def _register_dynamic_vector_tile_cache(
             asset_type=AssetType.dynamic_vector_tile_cache,
             asset_uri=f"{TILE_CACHE_URL}/{dataset}/{version}/dynamic/{{z}}/{{x}}/{{y}}.pbf",
             is_managed=True,
-            creation_options=creation_options.dict(by_alias=True),
-            metadata={
-                "min_zoom": creation_options.min_zoom,
-                "max_zoom": creation_options.max_zoom,
-            },
+            creation_options=creation_options,
+            metadata=DynamicVectorTileCacheMetadata(
+                min_zoom=creation_options.min_zoom, max_zoom=creation_options.max_zoom
+            ),
         )
 
         try:
@@ -319,3 +330,26 @@ async def _register_dynamic_vector_tile_cache(
                 version,
                 data.dict(by_alias=True),
             )
+
+
+async def tile_cache_post_completion_task(asset_id: UUID):
+    """Force new deployment of tile cache service to make sure new tile cache
+    version is recognized."""
+    await redeploy_tile_cache_service(asset_id)
+
+
+async def table_post_completion_task(asset_id: UUID):
+    """For database tables, fetch list of fields and their types from
+    PostgreSQL and add them to metadata object Check if creation options
+    specify to register a dynamic vector tile cache asset."""
+    asset_row: ORMAsset = await assets.get_asset(asset_id)
+
+    asset_row = await _update_asset_field_metadata(
+        asset_row.dataset,
+        asset_row.version,
+        asset_id,
+    )
+
+    await _register_dynamic_vector_tile_cache(
+        asset_row.dataset, asset_row.version, asset_row.metadata
+    )

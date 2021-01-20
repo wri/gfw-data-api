@@ -33,7 +33,10 @@ DEFAULT_APPEND_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
 
 
 async def create_default_asset(
-    dataset: str, version: str, input_data: Dict[str, Any], file_obj: Optional[IO],
+    dataset: str,
+    version: str,
+    input_data: Dict[str, Any],
+    file_obj: Optional[IO],
 ) -> UUID:
 
     source_uri = input_data["creation_options"]["source_uri"]
@@ -60,7 +63,9 @@ async def create_default_asset(
     else:
         try:
             asset_id: UUID = await _create_default_asset(
-                dataset=dataset, version=version, input_data=input_data,
+                dataset=dataset,
+                version=version,
+                input_data=input_data,
             )
             return asset_id
         # Make sure version status is set to `failed` in case there is an uncaught Exception
@@ -95,7 +100,9 @@ async def append_default_asset(
 
 
 async def _create_default_asset(
-    dataset: str, version: str, input_data: Dict[str, Any],
+    dataset: str,
+    version: str,
+    input_data: Dict[str, Any],
 ) -> UUID:
     creation_option = input_data["creation_options"]
     source_type = creation_option["source_type"]
