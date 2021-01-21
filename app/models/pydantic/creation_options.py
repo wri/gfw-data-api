@@ -105,6 +105,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     symbology: Optional[Symbology] = None
     compute_stats: bool = True
     compute_histogram: bool = False
+    process_locally: bool = True
 
 
 class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
