@@ -1,7 +1,7 @@
 """Explore data entries for a given dataset version using standard SQL."""
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote
 from uuid import UUID
 
@@ -53,7 +53,7 @@ from ...models.enum.pg_sys_functions import (
 from ...models.orm.assets import Asset as AssetORM
 from ...models.pydantic.responses import Response
 from ...utils.geostore import get_geostore_geometry
-from .. import dataset_dependency, version_dependency
+from .. import dataset_version_dependency
 
 router = APIRouter()
 
@@ -66,8 +66,7 @@ router = APIRouter()
 )
 async def query_dataset(
     *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
     geostore_origin: GeostoreOrigin = Query(
@@ -77,6 +76,7 @@ async def query_dataset(
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
 
+    dataset, version = dataset_version
     data: List[RowProxy] = await _query_dataset(
         dataset, version, sql, geostore_id, geostore_origin
     )
@@ -90,12 +90,6 @@ async def _query_dataset(
     geostore_id: Optional[UUID],
     geostore_origin: str,
 ) -> List[RowProxy]:
-
-    # make sure version exists
-    try:
-        await versions.get_version(dataset, version)
-    except RecordNotFoundError as e:
-        raise HTTPException(status_code=400, detail=(str(e)))
 
     # Make sure we can query the dataset
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
