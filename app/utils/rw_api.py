@@ -43,7 +43,7 @@ async def who_am_i(token) -> Response:
     url = f"https://{prefix}-api.globalforestwatch.org/auth/check-logged"
 
     async with AsyncClient() as client:
-        response: HTTPXResponse = await client.get(url, headers=headers)
+        response: HTTPXResponse = await client.get(url, headers=headers, timeout=10.0)
 
     if response.status_code != 200 and response.status_code != 401:
         logger.warning(

@@ -4,12 +4,11 @@ import json
 import pytest
 
 import app.routes.analysis.analysis as analysis
-from app.errors import InvalidResponseError
 from app.settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
 from app.utils.aws import get_lambda_client
 
 
-# Workaroud because of this bug with aiobotocore: https://github.com/aio-libs/aiobotocore/issues/755
+# Workaround because of this bug with aiobotocore: https://github.com/aio-libs/aiobotocore/issues/755
 # It's not working correctly with moto, so need to monkeypatch the lambda invoke to be synchronous
 # during tests
 @pytest.yield_fixture(scope="session")
