@@ -1,12 +1,13 @@
 import json
 from unittest.mock import patch
+from urllib.parse import urlparse
 
-import boto3
 import pytest
 from botocore.exceptions import ClientError
 
 from app.models.pydantic.metadata import VersionMetadata
-from app.settings.globals import AWS_REGION
+from app.settings.globals import S3_ENTRYPOINT_URL
+from app.utils.aws import get_s3_client
 from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
 from tests.conftest import FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
@@ -399,9 +400,7 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
     dataset = "test_version_put_raster"
     version = "v1.0.0"
 
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-    )
+    s3_client = get_s3_client()
 
     pixetl_output_files = [
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/extent.geojson",
@@ -448,6 +447,31 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
             s3_client.head_object(Bucket="gfw-data-lake-test", Key=key)
         except ClientError:
             raise AssertionError(f"Key {key} doesn't exist!")
+
+    # test to download assets
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/download/geotiff",
+        params={"grid": "90/27008", "tile_id": "90N_000E"},
+        allow_redirects=False,
+    )
+    assert response.status_code == 307
+    url = urlparse(response.headers["Location"])
+    assert url.scheme == "http"
+    assert url.netloc == urlparse(S3_ENTRYPOINT_URL).netloc
+    assert (
+        url.path
+        == f"/gfw-data-lake-test/{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/90N_000E.tif"
+    )
+    assert "AWSAccessKeyId" in url.query
+    assert "Signature" in url.query
+    assert "Expires" in url.query
+
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/download/geotiff",
+        params={"grid": "10/40000", "tile_id": "90N_000E"},
+        allow_redirects=False,
+    )
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

@@ -7,8 +7,8 @@ from uuid import UUID
 
 from aiohttp import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import RedirectResponse
 from sqlalchemy.engine import RowProxy
-from starlette.responses import RedirectResponse
 
 from ...crud.assets import get_assets_by_filter
 from ...main import logger
@@ -61,24 +61,71 @@ async def download_csv(
     "/{dataset}/{version}/download/geotiff",
     response_class=RedirectResponse,
     tags=["Download"],
+    status_code=307,
 )
 async def download_geotiff(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     grid: Grid = Query(..., description="Grid size of tile to download."),
     tile_id: str = Query(..., description="Tile ID of tile to download."),
-    # geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
-    # geostore_origin: GeostoreOrigin = Query(
-    #     GeostoreOrigin.gfw, description="Origin service of geostore ID."
-    # ),
 ):
     """Download geotiff raster tile."""
 
     dataset, version = dataset_version
 
-    asset_url = await _get_asset_url(dataset, version, grid)
+    asset_url = await _get_raster_tile_set_asset_url(dataset, version, grid)
     tile_url = asset_url.format(tile_id=tile_id)
     bucket, key = split_s3_path(tile_url)
+
+    presigned_url = await _get_presigned_url(bucket, key)
+
+    return RedirectResponse(url=presigned_url)
+
+
+@router.get(
+    "/{dataset}/{version}/download/shp",
+    response_class=RedirectResponse,
+    tags=["Download"],
+    status_code=307,
+)
+async def download_shapefile(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+):
+    """Download ESRI Shapefile.
+
+    Response will return a temporary redirect to download URL.
+    """
+
+    dataset, version = dataset_version
+
+    asset_url = await _get_asset_url(dataset, version, AssetType.shapefile)
+    bucket, key = split_s3_path(asset_url)
+
+    presigned_url = await _get_presigned_url(bucket, key)
+
+    return RedirectResponse(url=presigned_url)
+
+
+@router.get(
+    "/{dataset}/{version}/download/gpkg",
+    response_class=RedirectResponse,
+    tags=["Download"],
+    status_code=307,
+)
+async def download_geopackage(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+):
+    """Download Geopackage.
+
+    Response will return a temporary redirect to download URL.
+    """
+
+    dataset, version = dataset_version
+
+    asset_url = await _get_asset_url(dataset, version, AssetType.geopackage)
+    bucket, key = split_s3_path(asset_url)
 
     presigned_url = await _get_presigned_url(bucket, key)
 
@@ -88,7 +135,10 @@ async def download_geotiff(
 @contextmanager
 def orm_to_csv(data: List[RowProxy], delimiter=",") -> Iterator[StringIO]:
 
-    """Create a new csv file that represents generated data."""
+    """Create a new csv file that represents generated data.
+
+    Response will return a temporary redirect to download URL.
+    """
 
     csv_file = StringIO()
     try:
@@ -103,10 +153,16 @@ def orm_to_csv(data: List[RowProxy], delimiter=",") -> Iterator[StringIO]:
         csv_file.close()
 
 
-async def _get_asset_url(dataset: str, version: str, grid: str) -> str:
+async def _get_raster_tile_set_asset_url(dataset: str, version: str, grid: str) -> str:
     assets = await get_assets_by_filter(
         dataset, version, asset_types=[AssetType.raster_tile_set]
     )
+
+    if not assets:
+        raise HTTPException(
+            status_code=501,
+            detail="This endpoint is not implemented for the given dataset.",
+        )
 
     for asset in assets:
         if asset.creation_options["grid"] == grid:
@@ -116,6 +172,20 @@ async def _get_asset_url(dataset: str, version: str, grid: str) -> str:
         status_code=404,
         detail=f"Dataset version does not have raster tile asset with grid {grid}.",
     )
+
+
+async def _get_asset_url(dataset: str, version: str, asset_type: str) -> str:
+    assets = await get_assets_by_filter(dataset, version, asset_types=[asset_type])
+
+    # TODO: return a `409 - Conflict` error response and trigger asset generation in the background
+    #  tell user to wait until asset finished processing and to try again later.
+    if not assets:
+        raise HTTPException(
+            status_code=501,
+            detail="This endpoint is not implemented for the given dataset.",
+        )
+
+    return assets[0].asset_uri
 
 
 async def _get_presigned_url(bucket, key):
