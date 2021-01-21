@@ -210,7 +210,6 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
         await check_tasks_status(async_client, logs, [asset_id])
 
         response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
-        print(response)
         assert response.status_code == 200
 
         # there should be one more asset than before this test
