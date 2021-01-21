@@ -1,11 +1,12 @@
 import json
+from urllib.parse import urlparse
 
 import httpx
 import pytest
 from mock import patch
 
 from app.models.enum.assets import AssetType
-from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
+from app.settings.globals import DATA_LAKE_BUCKET, S3_ENTRYPOINT_URL, TILE_CACHE_BUCKET
 from app.utils.aws import get_s3_client
 
 from .. import BUCKET, PORT, SHP_NAME
@@ -218,8 +219,25 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
         resp = s3_client.list_objects_v2(
             Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
         )
-        print(resp)
         assert resp["KeyCount"] == 1
+
+        # test to download assets
+        fmt = "shp" if asset_type == AssetType.shapefile else "gpkg"
+        ext = "shp.zip" if asset_type == AssetType.shapefile else "gpkg"
+        response = await async_client.get(
+            f"/dataset/{dataset}/{version}/download/{fmt}", allow_redirects=False
+        )
+        assert response.status_code == 307
+        url = urlparse(response.headers["Location"])
+        assert url.scheme == "http"
+        assert url.netloc == urlparse(S3_ENTRYPOINT_URL).netloc
+        assert (
+            url.path
+            == f"/gfw-data-lake-test/{dataset}/{version}/vector/epsg-4326/{dataset}_{version}.{ext}"
+        )
+        assert "AWSAccessKeyId" in url.query
+        assert "Signature" in url.query
+        assert "Expires" in url.query
 
         response = await async_client.delete(f"/asset/{asset_id}")
         print(response.json())
