@@ -16,10 +16,13 @@ ME=$(basename "$0")
 # Set TILE_STRATEGY
 case ${TILE_STRATEGY} in
 discontinuous) # Discontinuous polygon features
-  STRATEGY=drop-densest-as-needed
+  STRATEGY=("--drop-densest-as-needed" "--extend-zooms-if-still-dropping")
   ;;
 continuous) # Continuous polygon features
-  STRATEGY=coalesce-densest-as-needed
+  STRATEGY=("--coalesce-densest-as-needed" "--extend-zooms-if-still-dropping")
+  ;;
+keep_all) # never drop or coalesce feature, ignore size and feature count
+  STRATEGY=("--no-feature-limit" "--no-tile-size-limit")
   ;;
 *)
   echo "Invalid Tile Cache option -${TILE_STRATEGY}"
@@ -31,7 +34,7 @@ echo "Fetch NDJSON data from Data Lake ${SRC} -> ${DATASET}"
 aws s3 cp "${SRC}" "${DATASET}"
 
 echo "Build Tile Cache"
-tippecanoe -Z"${MIN_ZOOM}" -z"${MAX_ZOOM}" -e tilecache --"${STRATEGY}" --extend-zooms-if-still-dropping -P -n "${DATASET}" "${DATASET}"
+tippecanoe -Z"${MIN_ZOOM}" -z"${MAX_ZOOM}" -e tilecache "${STRATEGY[@]}" -P -n "${DATASET}" "${DATASET}"
 
 echo "Upload tiles to S3"
 tileputty tilecache --bucket "${TILE_CACHE}" --dataset "${DATASET}" --version "${VERSION}" --implementation "${IMPLEMENTATION}"
