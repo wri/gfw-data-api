@@ -21,7 +21,15 @@ from .routes import security
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.datasets import asset as version_asset
-from .routes.datasets import dataset, datasets, features, geostore, queries, versions
+from .routes.datasets import (
+    dataset,
+    datasets,
+    downloads,
+    features,
+    geostore,
+    queries,
+    versions,
+)
 from .routes.geostore import geostore as geostore_top
 from .routes.tasks import task
 
@@ -112,6 +120,7 @@ dataset_routers = (
     geostore.router,
     version_asset.router,
     queries.router,
+    downloads.router,
 )
 
 for r in dataset_routers:
@@ -158,6 +167,7 @@ tags_metadata = [
     {"name": "Version", "description": versions.__doc__},
     {"name": "Assets", "description": asset.__doc__},
     {"name": "Query", "description": queries.__doc__},
+    {"name": "Download", "description": downloads.__doc__},
     {"name": "Geostore", "description": geostore.__doc__},
     {"name": "Tasks", "description": task.__doc__},
     {"name": "Analysis", "description": analysis.__doc__},
@@ -170,7 +180,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title="GFW DATA API",
-        version="0.1.0",
+        version="0.2.0",
         description="Use GFW DATA API to explore, manage and access data.",
         routes=app.routes,
     )
@@ -180,7 +190,8 @@ def custom_openapi():
     openapi_schema["x-tagGroups"] = [
         {"name": "Dataset API", "tags": ["Datasets", "Versions", "Assets"]},
         {"name": "Geostore API", "tags": ["Geostore"]},
-        {"name": "SQL API", "tags": ["Query"]},
+        {"name": "Query API", "tags": ["Query"]},
+        {"name": "Download API", "tags": ["Download"]},
         {"name": "Task API", "tags": ["Tasks"]},
         {"name": "Analysis API", "tags": ["Analysis"]},
     ]
