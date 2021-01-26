@@ -43,6 +43,7 @@ httpx = "*"
 pendulum = "*"
 typing-extensions = "==3.7.4.3"
 numpy = "*"
+httpx-auth = "*"
 
 [requires]
 python_version = "3.8"

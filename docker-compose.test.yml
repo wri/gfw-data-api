@@ -49,6 +49,7 @@ services:
       - PIXETL_MAX_MEM=3800
       - API_URL=http://app_test:9000
       - S3_ENTRYPOINT_URL=http://motoserver:5000
+      - LAMBDA_ENTRYPOINT_URL=http://motoserver:5000
       - SERVICE_ACCOUNT_TOKEN=testing
       - RASTER_ANALYSIS_LAMBDA_NAME=test_raster_analysis
       - AWS_GCS_KEY_SECRET_ARN=testing

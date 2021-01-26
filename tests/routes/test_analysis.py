@@ -18,18 +18,18 @@ def event_loop(request):
     loop.close()
 
 
-@pytest.fixture(autouse=True)
-def patch_invoke(monkeypatch):
-    async def mock_invoke(payload):
-        response = get_lambda_client().invoke(
-            FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
-            InvocationType="RequestResponse",
-            Payload=bytes(json.dumps(payload), "utf-8"),
-        )
-
-        return response["Payload"].read()
-
-    monkeypatch.setattr(analysis, "_invoke_lambda", mock_invoke)
+# @pytest.fixture(autouse=True)
+# def patch_invoke(monkeypatch):
+#     async def mock_invoke(payload):
+#         response = get_lambda_client().invoke(
+#             FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
+#             InvocationType="RequestResponse",
+#             Payload=bytes(json.dumps(payload), "utf-8"),
+#         )
+#
+#         return response["Payload"].read()
+#
+#     monkeypatch.setattr(analysis, "_invoke_lambda", mock_invoke)
 
 
 @pytest.mark.asyncio

@@ -138,6 +138,7 @@ SERVICE_ACCOUNT_TOKEN = config(
     "SERVICE_ACCOUNT_TOKEN", cast=str, default=SERVICE_ACCOUNT_SECRET["token"]
 )
 
+LAMBA_ENTRYPOINT_URL = config("LAMBDA_ENTRYPOINT_URL", cast=str, default=None)
 S3_ENTRYPOINT_URL = config("S3_ENTRYPOINT_URL", cast=str, default=None)
 SQL_REQUEST_TIMEOUT = 58
 
