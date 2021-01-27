@@ -110,7 +110,7 @@ async def _zonal_statics(
             500, "Raster analysis geoprocessor experienced an error. See logs."
         )
 
-    response_data = response.json()["body"]["data"]
+    response_data = response.json()
     return Response(data=response_data)
 
 
@@ -148,6 +148,6 @@ async def _invoke_lambda(payload, timeout=30) -> httpx.Response:
             headers=headers,
         )
 
-    print(f"Lambda response: {response}")
+    print(f"Lambda response: {response.text}")
 
     return response
