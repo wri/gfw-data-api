@@ -106,10 +106,9 @@ async def _zonal_statistics(
 
     resp_dict = response.json()
 
-    if resp_dict["statusCode"] != 200:
+    if response.status_code != 200 or resp_dict.get("statusCode") != 200:
         logger.error(
-            f"Raster analysis lambda returned status code: {resp_dict['statusCode']} "
-            f"with body: {resp_dict['body']}"
+            f"Raster analysis lambda experienced an error. Full response: {resp_dict}"
         )
         raise HTTPException(
             500, "Raster analysis geoprocessor experienced an error. See logs."
@@ -130,7 +129,7 @@ async def _zonal_statistics(
 #         return await response["Payload"].read()
 
 
-async def _invoke_lambda(payload, timeout=30) -> httpx.Response:
+async def _invoke_lambda(payload, timeout=60) -> httpx.Response:
     session = boto3.Session()
     cred = session.get_credentials()
 
