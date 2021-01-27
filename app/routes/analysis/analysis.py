@@ -1,9 +1,7 @@
 """Run analysis on registered datasets."""
-# import json
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-# import aioboto3
 import boto3
 import httpx
 from fastapi import APIRouter, HTTPException, Path, Query
@@ -56,7 +54,8 @@ async def zonal_statistics_get(
     """Calculate zonal statistics on any registered raster layers in a
     geostore."""
     geometry = await get_geostore_geometry(geostore_id, geostore_origin)
-    return await _zonal_statics(
+
+    return await _zonal_statistics(
         geometry,
         sum_layers,
         group_by,
@@ -73,7 +72,7 @@ async def zonal_statistics_get(
     tags=["Analysis"],
 )
 async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
-    return await _zonal_statics(
+    return await _zonal_statistics(
         request.geometry,
         request.sum,
         request.group_by,
@@ -83,7 +82,7 @@ async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
     )
 
 
-async def _zonal_statics(
+async def _zonal_statistics(
     geometry: Dict[str, Any],
     sum_layers: List[RasterLayer],
     group_by: List[RasterLayer],
@@ -100,11 +99,17 @@ async def _zonal_statics(
         "end_date": end_date,
     }
 
-    response = await _invoke_lambda(payload)
+    try:
+        response = await _invoke_lambda(payload)
+    except httpx.TimeoutException:
+        raise HTTPException(500, "Query took too long to process.")
 
-    if response.status_code != 200:
+    resp_dict = response.json()
+
+    if resp_dict["statusCode"] != 200:
         logger.error(
-            f"Raster analysis lambda returned status code {response.status_code}"
+            f"Raster analysis lambda returned status code: {resp_dict['statusCode']} "
+            f"with body: {resp_dict['body']}"
         )
         raise HTTPException(
             500, "Raster analysis geoprocessor experienced an error. See logs."
