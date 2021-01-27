@@ -17,4 +17,4 @@ ME=$(basename "$0")
 # I prefer to still do it. This way, we have a consistent way to log the env variables and can make sure
 # that argument names are used consistently across all tools.
 echo "PYTHON: Cluster partitions"
-cluster_partitions.py -d "$DATASET" -v "$VERSION" -p "$PARTITION_TYPE" -P "$PARTITION_SCHEMA" -x "$INDEX_TYPE" -c "$COLUMN_NAME"
+cluster_partitions.py -d "$DATASET" -v "$VERSION" -p "$PARTITION_TYPE" -P "$PARTITION_SCHEMA" -x "$INDEX_TYPE" -C "$COLUMN_NAMES"
