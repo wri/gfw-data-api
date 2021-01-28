@@ -1,4 +1,5 @@
 """Run analysis on registered datasets."""
+from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -107,17 +108,16 @@ async def _zonal_statistics(
     except httpx.TimeoutException:
         raise HTTPException(500, "Query took too long to process.")
 
-    resp_dict = response.json()
-
-    if response.status_code != 200 or resp_dict.get("statusCode") != 200:
+    try:
+        response_data = response.json()["body"]["data"]
+    except (JSONDecodeError, KeyError):
         logger.error(
-            f"Raster analysis lambda experienced an error. Full response: {resp_dict}"
+            f"Raster analysis lambda experienced an error. Full response: {response.text}"
         )
         raise HTTPException(
             500, "Raster analysis geoprocessor experienced an error. See logs."
         )
 
-    response_data = response.json()
     return Response(data=response_data)
 
 
