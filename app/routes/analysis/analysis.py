@@ -5,6 +5,7 @@ from uuid import UUID
 import boto3
 import httpx
 from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 from httpx_auth import AWS4Auth
@@ -12,6 +13,7 @@ from httpx_auth import AWS4Auth
 from ...models.enum.analysis import RasterLayer
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.pydantic.analysis import ZonalAnalysisRequestIn
+from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.responses import Response
 from ...settings.globals import (
     AWS_REGION,
@@ -53,10 +55,11 @@ async def zonal_statistics_get(
 ):
     """Calculate zonal statistics on any registered raster layers in a
     geostore."""
-    geometry = await get_geostore_geometry(geostore_id, geostore_origin)
+    geometry: Geometry = await get_geostore_geometry(geostore_id, geostore_origin)
+    safe_geo = jsonable_encoder(geometry)
 
     return await _zonal_statistics(
-        geometry,
+        safe_geo,
         sum_layers,
         group_by,
         filters,
@@ -118,18 +121,7 @@ async def _zonal_statistics(
     return Response(data=response_data)
 
 
-# async def _invoke_lambda(payload):
-#     async with aioboto3.client("lambda", region_name=AWS_REGION) as lambda_client:
-#         response = await lambda_client.invoke(
-#             FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
-#             InvocationType="RequestResponse",
-#             Payload=bytes(json.dumps(payload), "utf-8"),
-#         )
-#
-#         return await response["Payload"].read()
-
-
-async def _invoke_lambda(payload, timeout=60) -> httpx.Response:
+async def _invoke_lambda(payload, timeout=55) -> httpx.Response:
     session = boto3.Session()
     cred = session.get_credentials()
 
@@ -151,7 +143,5 @@ async def _invoke_lambda(payload, timeout=60) -> httpx.Response:
             timeout=timeout,
             headers=headers,
         )
-
-    print(f"Lambda response: {response.text}")
 
     return response
