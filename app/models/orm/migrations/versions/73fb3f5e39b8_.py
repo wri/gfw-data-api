@@ -21,7 +21,7 @@ def upgrade():
     # change indices to column_names instead of column_name, and use array
     op.execute(
         """UPDATE assets
-                SET creation_options = jsonb_set(creation_options, '{indices}', REGEXP_REPLACE((creation_options->'indices')::text, '"column_name": ("[_[:alpha:]]*")', '"column_names": [\1]', 'g')::jsonb, false)
+                SET creation_options = jsonb_set(creation_options, '{indices}', REGEXP_REPLACE((creation_options->'indices')::text, '"column_name": ("[_[:alpha:]]*")', '"column_names": [\\1]', 'g')::jsonb, false)
                 WHERE (asset_type = 'Geo database table' or asset_type = 'Database table') AND creation_options ? 'indices';
         """
     )
@@ -29,7 +29,7 @@ def upgrade():
     # change cluster to column_names instead of column_name, and use array
     op.execute(
         """UPDATE assets
-                SET creation_options = jsonb_set(creation_options, '{cluster}', REGEXP_REPLACE((creation_options->'cluster')::text, '"column_name": ("[_[:alpha:]]*")', '"column_names": [\1]', 'g')::jsonb, false)
+                SET creation_options = jsonb_set(creation_options, '{cluster}', REGEXP_REPLACE((creation_options->'cluster')::text, '"column_name": ("[_[:alpha:]]*")', '"column_names": [\\1]', 'g')::jsonb, false)
                 WHERE (asset_type = 'Geo database table' or asset_type = 'Database table') AND creation_options ? 'cluster';
         """
     )
@@ -42,7 +42,7 @@ def downgrade():
     # change back indices
     op.execute(
         """UPDATE assets
-                SET creation_options = jsonb_set(creation_options, '{indices}', REGEXP_REPLACE((creation_options->'indices')::text, '"column_names": \[("[_[:alpha:]]*")\]', '"column_name": \1', 'g')::jsonb, false)
+                SET creation_options = jsonb_set(creation_options, '{indices}', REGEXP_REPLACE((creation_options->'indices')::text, '"column_names": \[("[_[:alpha:]]*")\]', '"column_name": \\1', 'g')::jsonb, false)
                 WHERE (asset_type = 'Geo database table' or asset_type = 'Database table') AND creation_options ? 'indices';
         """
     )
@@ -50,7 +50,7 @@ def downgrade():
     # change back cluster
     op.execute(
         """UPDATE assets
-                SET creation_options = jsonb_set(creation_options, '{cluster}', REGEXP_REPLACE((creation_options->'cluster')::text, '"column_names": \[("[_[:alpha:]]*")\]', '"column_name": \1', 'g')::jsonb, false)
+                SET creation_options = jsonb_set(creation_options, '{cluster}', REGEXP_REPLACE((creation_options->'cluster')::text, '"column_names": \[("[_[:alpha:]]*")\]', '"column_name": \\1', 'g')::jsonb, false)
                 WHERE (asset_type = 'Geo database table' or asset_type = 'Database table') AND creation_options ? 'cluster';
         """
     )
