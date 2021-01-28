@@ -1,4 +1,3 @@
-from typing import Optional
 from uuid import UUID
 
 from async_lru import alru_cache
