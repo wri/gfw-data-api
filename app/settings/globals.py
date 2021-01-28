@@ -138,7 +138,7 @@ SERVICE_ACCOUNT_TOKEN = config(
     "SERVICE_ACCOUNT_TOKEN", cast=str, default=SERVICE_ACCOUNT_SECRET["token"]
 )
 
-LAMBA_ENTRYPOINT_URL = config(
+LAMBDA_ENTRYPOINT_URL = config(
     "LAMBDA_ENTRYPOINT_URL",
     cast=str,
     default=f"https://lambda.{AWS_REGION}.amazonaws.com",

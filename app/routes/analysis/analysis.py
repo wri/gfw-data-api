@@ -17,7 +17,7 @@ from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.responses import Response
 from ...settings.globals import (
     AWS_REGION,
-    LAMBA_ENTRYPOINT_URL,
+    LAMBDA_ENTRYPOINT_URL,
     RASTER_ANALYSIS_LAMBDA_NAME,
 )
 from ...utils.geostore import get_geostore_geometry
@@ -137,7 +137,7 @@ async def _invoke_lambda(payload, timeout=55) -> httpx.Response:
 
     async with httpx.AsyncClient() as client:
         response: httpx.Response = await client.post(
-            f"{LAMBA_ENTRYPOINT_URL}/2015-03-31/functions/{RASTER_ANALYSIS_LAMBDA_NAME}/invocations",
+            f"{LAMBDA_ENTRYPOINT_URL}/2015-03-31/functions/{RASTER_ANALYSIS_LAMBDA_NAME}/invocations",
             json=payload,
             auth=aws,
             timeout=timeout,
