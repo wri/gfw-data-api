@@ -41,8 +41,8 @@ STR_VALUE_REGEX = r"^[a-zA-Z0-9_-]{1,}$"
 
 class Index(StrictBaseModel):
     index_type: IndexType
-    column_name: str = Field(
-        ..., description="Column to be used by index", regex=COLUMN_REGEX
+    column_names: List[str] = Field(
+        ..., description="Columns to be used by index", regex=COLUMN_REGEX
     )
 
 
@@ -134,9 +134,9 @@ class VectorSourceCreationOptions(StrictBaseModel):
 
     indices: List[Index] = Field(
         [
-            Index(index_type=IndexType.gist.value, column_name="geom"),
-            Index(index_type=IndexType.gist.value, column_name="geom_wm"),
-            Index(index_type=IndexType.hash.value, column_name="gfw_geostore_id"),
+            Index(index_type=IndexType.gist.value, column_names=["geom"]),
+            Index(index_type=IndexType.gist.value, column_names=["geom_wm"]),
+            Index(index_type=IndexType.hash.value, column_names=["gfw_geostore_id"]),
         ],
         description="List of indices to add to table",
     )
