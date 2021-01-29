@@ -33,7 +33,8 @@ if [ "${BUILD}" = true ]; then
   docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test build --no-cache app_test
 fi
 
+set +e
 docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test run --rm --name app_test app_test tests/"$*"
 exit_code=$?
-docker-compose -f docker-compose.test.yml down
+docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test down --remove-orphans
 exit $exit_code

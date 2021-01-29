@@ -92,7 +92,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     auxiliary_grid = "90/9984"
 
     s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver-s3:5000"
     )
 
     pixetl_output_files = [
@@ -192,7 +192,7 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     version = "v1.1.1"
 
     s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver-s3:5000"
     )
 
     pixetl_output_files = [

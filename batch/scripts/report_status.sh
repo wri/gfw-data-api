@@ -24,9 +24,9 @@ ESC_COMMAND=$(echo -n "$*" | json_escape)
 # Also make sure we don't reveal any sensitive information
 # But we still want to know if the var was set
 ESC_OUTPUT="$(cat $OUTPUT_FILE \
-  | sed 's/^AWS_SECRET_ACCESS_KEY.*$/AWS_SECRET_ACCESS_KEY=\*\*\*/' \
+  | sed 's/^AWS_SECRET_ACCESS_KEY.*$/AWS_SECRET_ACCESS_KEY=\*\*\*/' \  # pragma: allowlist secret
   | sed 's/^AWS_ACCESS_KEY_ID.*$/AWS_ACCESS_KEY_ID=\*\*\*/' \
-  | sed 's/^PGPASSWORD.*$/PGPASSWORD=\*\*\*/' \
+  | sed 's/^PGPASSWORD.*$/PGPASSWORD=\*\*\*/' \  # pragma: allowlist secret
   | sed 's/^PGUSER.*$/PGUSER=\*\*\*/' \
   | sed 's/^PGDATABASE.*$/PGDATABASE=\*\*\*/' \
   | sed 's/^PGHOST.*$/PGHOST=\*\*\*/' \

@@ -148,3 +148,4 @@ S3_ENTRYPOINT_URL = config("S3_ENTRYPOINT_URL", cast=str, default=None)
 SQL_REQUEST_TIMEOUT = 58
 
 AWS_GCS_KEY_SECRET_ARN = config("AWS_GCS_KEY_SECRET_ARN", cast=str, default=None)
+AWS_SECRETSMANAGER_URL = config("AWS_SECRETSMANAGER_URL", cast=str, default=None)

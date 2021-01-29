@@ -19,7 +19,9 @@ from app.routes import is_admin, is_service_account
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
     AURORA_JOB_QUEUE_FAST,
+    AWS_GCS_KEY_SECRET_ARN,
     AWS_REGION,
+    AWS_SECRETSMANAGER_URL,
     DATA_LAKE_BUCKET,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
@@ -234,7 +236,7 @@ def flush_request_list(httpd):
 def copy_fixtures():
     # Upload file to mocked S3 bucket
     s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver-s3:5000"
     )
 
     s3_client.create_bucket(Bucket=BUCKET)
@@ -312,3 +314,18 @@ def lambda_client():
     yield create_lambda
 
     aws_mock.stop_services()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def secrets():
+
+    secret_client = boto3.client(
+        "secretsmanager", region_name=AWS_REGION, endpoint_url=AWS_SECRETSMANAGER_URL
+    )
+    secret_client.create_secret(
+        Name=AWS_GCS_KEY_SECRET_ARN,
+        SecretString="foosecret",  # pragma: allowlist secret
+    )
+    yield
+
+    secret_client.delete_secret(SecretId=AWS_GCS_KEY_SECRET_ARN)

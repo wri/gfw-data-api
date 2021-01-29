@@ -240,7 +240,7 @@ async def check_tasks_status(async_client, logs, asset_ids) -> None:
 
 def upload_fake_data(dtype, dtype_name, no_data, prefix):
     s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
+        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver-s3:5000"
     )
 
     data_file_name = "0000000000-0000000000.tif"
