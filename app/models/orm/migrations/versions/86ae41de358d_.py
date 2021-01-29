@@ -170,6 +170,7 @@ def downgrade():
 
     # Delete custom functions
     op.execute("""DROP FUNCTION IF EXISTS public.gfw_create_fishnet;""")
+    op.execute("""DROP FUNCTION IF EXISTS public.reset_latest;""")
 
     # Delete custom users
     op.execute(
@@ -180,4 +181,4 @@ def downgrade():
 
     # Delete extensions
     op.execute("""DROP EXTENSION IF EXISTS "uuid-ossp";""")
-    op.execute("""DROP EXTENSION IF EXISTS "postgis";""")
+    op.execute("""DROP EXTENSION IF EXISTS "postgis" CASCADE;""")
