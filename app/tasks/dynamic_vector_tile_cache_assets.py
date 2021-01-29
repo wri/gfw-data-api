@@ -68,6 +68,8 @@ def _has_geom_wm(fields: List[Dict[str, Any]]) -> bool:
 def _has_spatial_index(creation_options: Dict[str, Any]) -> bool:
     """Check if geom_wm column has gist index."""
     for index in creation_options["indices"]:
-        if index["index_type"] == IndexType.gist and index["column_names"] == ["geom_wm"]:
+        if index["index_type"] == IndexType.gist and index["column_names"] == [
+            "geom_wm"
+        ]:
             return True
     return False
