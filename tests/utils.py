@@ -5,7 +5,6 @@ import uuid
 from time import sleep
 from typing import Any, Dict, List, Set
 
-import boto3
 import httpx
 import numpy
 import rasterio
@@ -14,8 +13,8 @@ from mock import patch
 from rasterio.crs import CRS
 
 from app.crud import tasks
-from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET
-from app.utils.aws import get_batch_client
+from app.settings.globals import DATA_LAKE_BUCKET
+from app.utils.aws import get_batch_client, get_s3_client
 from tests import BUCKET, PORT, SHP_NAME
 from tests.tasks import MockECSClient
 
@@ -239,9 +238,7 @@ async def check_tasks_status(async_client, logs, asset_ids) -> None:
 
 
 def upload_fake_data(dtype, dtype_name, no_data, prefix):
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver-s3:5000"
-    )
+    s3_client = get_s3_client()
 
     data_file_name = "0000000000-0000000000.tif"
 

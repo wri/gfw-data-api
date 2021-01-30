@@ -1,7 +1,6 @@
 from unittest.mock import patch
 from uuid import UUID
 
-import boto3
 import httpx
 import pytest
 from botocore.exceptions import ClientError
@@ -10,7 +9,7 @@ from app.application import ContextEngine
 from app.crud import tasks
 from app.crud.assets import update_asset
 from app.models.enum.symbology import ColorMapType
-from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
+from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.utils.aws import get_s3_client
 from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
@@ -91,9 +90,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     primary_grid = "90/27008"
     auxiliary_grid = "90/9984"
 
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver-s3:5000"
-    )
+    s3_client = get_s3_client()
 
     pixetl_output_files = [
         f"{dataset}/{version}/raster/epsg-4326/{auxiliary_grid}/gfw_fid/gdal-geotiff/extent.geojson",
@@ -191,9 +188,7 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     dataset = "test_vector"
     version = "v1.1.1"
 
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver-s3:5000"
-    )
+    s3_client = get_s3_client()
 
     pixetl_output_files = [
         f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/gdal-geotiff/extent.geojson",

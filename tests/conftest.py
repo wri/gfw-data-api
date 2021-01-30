@@ -33,6 +33,7 @@ from app.settings.globals import (
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
 )
+from app.utils.aws import get_s3_client
 
 from . import (
     APPEND_TSV_NAME,
@@ -235,9 +236,7 @@ def flush_request_list(httpd):
 @pytest.fixture(autouse=True)
 def copy_fixtures():
     # Upload file to mocked S3 bucket
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver-s3:5000"
-    )
+    s3_client = get_s3_client()
 
     s3_client.create_bucket(Bucket=BUCKET)
     s3_client.create_bucket(Bucket=DATA_LAKE_BUCKET)
