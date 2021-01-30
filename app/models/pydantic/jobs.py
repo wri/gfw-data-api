@@ -118,7 +118,7 @@ class PixETLJob(Job):
     vcpus = PIXETL_CORES
     memory = PIXETL_MAX_MEM
     attempts = 4
-    attempt_duration_seconds = 9600
+    attempt_duration_seconds = 18200
 
 
 class BuildRGBJob(Job):
