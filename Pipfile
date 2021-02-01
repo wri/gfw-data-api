@@ -5,15 +5,16 @@ verify_ssl = true
 
 [dev-packages]
 black = "*"
-flake8 = "*"
 pre-commit = "*"
 detect-secrets = "*"
+flake8 = "*"
+httpx = "*"
+moto = {editable = true,git = "https://github.com/wri/moto.git",ref = "master"}
 pytest = "*"
 pytest-asyncio = "*"
-moto = {editable = true,git = "https://github.com/wri/moto.git",ref = "master"}
 pytest-cov = "*"
+pytest-timeout = "*"
 pendulum = "*"
-httpx = "*"
 rasterio = "*"
 
 [packages]
