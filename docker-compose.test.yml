@@ -51,13 +51,13 @@ services:
       - S3_ENTRYPOINT_URL=http://motoserver-s3:5000
       - SERVICE_ACCOUNT_TOKEN=testing
       - RASTER_ANALYSIS_LAMBDA_NAME=test_raster_analysis
-      - AWS_GCS_KEY_SECRET_ARN=testing
-      - AWS_SECRETSMANAGER_URL=http://motoserver-secretsmanager:5001
+#      - AWS_GCS_KEY_SECRET_ARN=testing
+#      - AWS_SECRETSMANAGER_URL=http://motoserver-secretsmanager:5001
     entrypoint: wait_for_postgres.sh pytest -vv --cov-report term --cov-report xml:/app/tests/cobertura.xml --cov=app
     depends_on:
       - test_database
       - motoserver-s3
-      - motoserver-secretsmanager
+#      - motoserver-secretsmanager
 
   test_database:
     container_name: gfw-data-api-test-database
@@ -81,13 +81,13 @@ services:
     entrypoint: moto_server s3 -H 0.0.0.0
     restart: on-failure
 
-  motoserver-secretsmanager:
-    container_name: motoserver-secretsmanager
-    image: motoserver/moto:latest
-    ports:
-      - 5001:5001
-    entrypoint: moto_server secretsmanager -p 5001 -H 0.0.0.0
-    restart: on-failure
+#  motoserver-secretsmanager:
+#    container_name: motoserver-secretsmanager
+#    image: motoserver/moto:latest
+#    ports:
+#      - 5001:5001
+#    entrypoint: moto_server secretsmanager -p 5001 -H 0.0.0.0
+#    restart: on-failure
 
 volumes:
   test_database_data:
