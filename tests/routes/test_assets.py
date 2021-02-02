@@ -318,8 +318,54 @@ async def test_asset_bad_requests(async_client, batch_client, httpd):
     ]
 
 
+symbology_checks = [
+    {
+        "wm_tile_set_assets": ["date_conf", "intensity", "rgb_encoded"],
+        "symbology": {"type": ColorMapType.date_conf_intensity},
+    },
+    {
+        "wm_tile_set_assets": ["date_conf", f"date_conf_{ColorMapType.gradient}"],
+        "symbology": {
+            "type": ColorMapType.gradient,
+            "colormap": {
+                1: {"red": 255, "green": 0, "blue": 0},
+                19: {"red": 0, "green": 0, "blue": 255},
+            },
+        },
+    },
+    {
+        "wm_tile_set_assets": [f"date_conf_{ColorMapType.discrete}"],
+        "symbology": {
+            "type": ColorMapType.discrete,
+            "colormap": {
+                1: {"red": 255, "green": 0, "blue": 0},
+                2: {"red": 255, "green": 0, "blue": 0},
+                3: {"red": 255, "green": 20, "blue": 0},
+                4: {"red": 255, "green": 40, "blue": 0},
+                5: {"red": 255, "green": 60, "blue": 0},
+                6: {"red": 255, "green": 80, "blue": 0},
+                7: {"red": 255, "green": 100, "blue": 0},
+                8: {"red": 255, "green": 120, "blue": 0},
+                9: {"red": 255, "green": 140, "blue": 0},
+                10: {"red": 255, "green": 160, "blue": 0},
+                11: {"red": 255, "green": 180, "blue": 0},
+                12: {"red": 255, "green": 200, "blue": 0},
+                13: {"red": 255, "green": 220, "blue": 0},
+                14: {"red": 255, "green": 240, "blue": 0},
+                15: {"red": 255, "green": 255, "blue": 0},
+                16: {"red": 255, "green": 255, "blue": 20},
+                17: {"red": 255, "green": 255, "blue": 40},
+                18: {"red": 255, "green": 255, "blue": 60},
+                19: {"red": 255, "green": 255, "blue": 80},
+            },
+        },
+    },
+]
+
+
+@pytest.mark.parametrize("checks", symbology_checks)
 @pytest.mark.asyncio
-async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
+async def test_raster_tile_cache_asset(checks, async_client, batch_client, httpd):
     """"""
     _, logs = batch_client
 
@@ -372,62 +418,17 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
 
     ########################
 
-    symbology_checks = [
-        {
-            "wm_tile_set_assets": ["date_conf", "intensity", "rgb_encoded"],
-            "symbology": {"type": ColorMapType.date_conf_intensity},
-        },
-        {
-            "wm_tile_set_assets": ["date_conf", f"date_conf_{ColorMapType.gradient}"],
-            "symbology": {
-                "type": ColorMapType.gradient,
-                "colormap": {
-                    1: {"red": 255, "green": 0, "blue": 0},
-                    19: {"red": 0, "green": 0, "blue": 255},
-                },
-            },
-        },
-        {
-            "wm_tile_set_assets": [f"date_conf_{ColorMapType.discrete}"],
-            "symbology": {
-                "type": ColorMapType.discrete,
-                "colormap": {
-                    1: {"red": 255, "green": 0, "blue": 0},
-                    2: {"red": 255, "green": 0, "blue": 0},
-                    3: {"red": 255, "green": 20, "blue": 0},
-                    4: {"red": 255, "green": 40, "blue": 0},
-                    5: {"red": 255, "green": 60, "blue": 0},
-                    6: {"red": 255, "green": 80, "blue": 0},
-                    7: {"red": 255, "green": 100, "blue": 0},
-                    8: {"red": 255, "green": 120, "blue": 0},
-                    9: {"red": 255, "green": 140, "blue": 0},
-                    10: {"red": 255, "green": 160, "blue": 0},
-                    11: {"red": 255, "green": 180, "blue": 0},
-                    12: {"red": 255, "green": 200, "blue": 0},
-                    13: {"red": 255, "green": 220, "blue": 0},
-                    14: {"red": 255, "green": 240, "blue": 0},
-                    15: {"red": 255, "green": 255, "blue": 0},
-                    16: {"red": 255, "green": 255, "blue": 20},
-                    17: {"red": 255, "green": 255, "blue": 40},
-                    18: {"red": 255, "green": 255, "blue": 60},
-                    19: {"red": 255, "green": 255, "blue": 80},
-                },
-            },
-        },
-    ]
+    # Flush requests list so we're starting fresh
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
-    for check in symbology_checks:
-        # Flush requests list so we're starting fresh
-        httpx.delete(f"http://localhost:{httpd.server_port}")
-
-        await _test_raster_tile_cache(
-            dataset,
-            version,
-            default_asset_id,
-            async_client,
-            logs,
-            **check,
-        )
+    await _test_raster_tile_cache(
+        dataset,
+        version,
+        default_asset_id,
+        async_client,
+        logs,
+        **checks,
+    )
 
 
 async def _test_raster_tile_cache(
