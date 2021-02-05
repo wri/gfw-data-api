@@ -304,7 +304,7 @@ tiles: List[Tuple[str, bool, bool]] = [
 ]
 
 intersection: TextClause = text(
-    """ST_Buffer(
+    """ST_Buffer(ST_Buffer(
         ST_MakeValid(
             ST_SimplifyPreserveTopology(
                 ST_Intersection(
@@ -312,7 +312,7 @@ intersection: TextClause = text(
                     g.geom),
                 0.0001)
             ),
-        0)"""
+        0.0001),-0.0001)"""
 )
 
 
