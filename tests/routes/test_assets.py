@@ -22,6 +22,7 @@ from tests.utils import (
 )
 
 
+@pytest.mark.hanging  # Doesn't hang, experimenting
 @pytest.mark.asyncio
 async def test_assets(async_client):
     """Basic tests of asset endpoint behavior."""
@@ -85,7 +86,7 @@ async def test_assets(async_client):
     )
 
 
-@pytest.mark.hanging
+# @pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     """"""
@@ -371,7 +372,7 @@ symbology_checks = [
 ]
 
 
-@pytest.mark.hanging
+# @pytest.mark.hanging
 @pytest.mark.parametrize("checks", symbology_checks)
 @pytest.mark.asyncio
 async def test_raster_tile_cache_asset(checks, async_client, batch_client, httpd):
