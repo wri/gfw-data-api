@@ -392,6 +392,7 @@ async def test_put_latest(async_client):
     )
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 @patch("app.tasks.aws_tasks.get_cloudfront_client")
 async def test_version_put_raster(mocked_cloudfront_client, async_client):

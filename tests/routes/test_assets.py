@@ -682,6 +682,7 @@ async def test_asset_extent(async_client):
     )
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_asset_extent_stats_empty(async_client):
     dataset = "test_asset_extent_stats_empty"
