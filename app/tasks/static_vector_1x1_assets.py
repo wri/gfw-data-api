@@ -61,7 +61,7 @@ async def static_vector_1x1_asset(
         job_name="export_1x1_grid",
         job_queue=DATA_LAKE_JOB_QUEUE,
         command=command,
-        memory=4500,
+        memory=9000,
         environment=reader_secrets,
         callback=callback_constructor(asset_id),
     )
