@@ -186,6 +186,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
             raise AssertionError(f"Key {key} doesn't exist!")
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     """"""
@@ -744,6 +745,7 @@ async def test_asset_extent_stats_empty(async_client):
     assert resp.json()["data"] is None
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_asset_float_no_data(async_client):
     dataset = "test_asset_float_no_data"
