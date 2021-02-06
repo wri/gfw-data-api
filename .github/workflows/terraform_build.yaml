@@ -12,7 +12,7 @@ jobs:
 
     - name: Test with pytest
       run: |
-        ./scripts/test
+        ./scripts/test --without-hanging-tests
 
     - name: Run codacy-coverage-reporter
       uses: codacy/codacy-coverage-reporter-action@master

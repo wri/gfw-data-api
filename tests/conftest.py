@@ -63,23 +63,25 @@ FAKE_FLOAT_DATA_PARAMS = {
 
 
 def pytest_addoption(parser):
-    parser.addoption("--run-hanging-tests", action="store_true", default=False)
-    parser.addoption("--run-slow-tests", action="store_true", default=False)
+    parser.addoption("--without-hanging-tests", action="store_true", default=False)
+    parser.addoption("--with-slow-tests", action="store_true", default=False)
 
 
 def pytest_configure(config):
-    config.addinivalue_line("markers", "hanging: mark test as currently hanging")
+    config.addinivalue_line(
+        "markers", "hanging: mark test as hanging on Github Actions"
+    )
     config.addinivalue_line("markers", "slow: mark test as slow to run")
 
 
 def pytest_collection_modifyitems(config, items):
-    skip_hanging = pytest.mark.skip(reason="need --run-hanging-tests option to run")
-    skip_slow = pytest.mark.skip(reason="need --run-slow-tests option to run")
+    skip_hanging = pytest.mark.skip(reason="omit --without-hanging-tests option to run")
+    skip_slow = pytest.mark.skip(reason="need --with-slow-tests option to run")
 
     for item in items:
-        if "hanging" in item.keywords and not config.getoption("--run-hanging-tests"):
+        if "hanging" in item.keywords and config.getoption("--without-hanging-tests"):
             item.add_marker(skip_hanging)
-        if "slow" in item.keywords and not config.getoption("--run-slow-tests"):
+        if "slow" in item.keywords and not config.getoption("--with-slow-tests"):
             item.add_marker(skip_slow)
 
 
