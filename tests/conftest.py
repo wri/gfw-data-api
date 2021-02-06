@@ -3,7 +3,6 @@ import io
 import os
 import shutil
 import threading
-import zipfile
 from http.server import HTTPServer
 
 import httpx
@@ -24,7 +23,6 @@ from app.settings.globals import (
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
-    RASTER_ANALYSIS_LAMBDA_NAME,
     TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
@@ -62,6 +60,27 @@ FAKE_FLOAT_DATA_PARAMS = {
     "dtype_name": "float32",
     "prefix": "test/v1.1.1/raw/float32",
 }
+
+
+def pytest_addoption(parser):
+    parser.addoption("--run-hanging-tests", action="store_true", default=False)
+    parser.addoption("--run-slow-tests", action="store_true", default=False)
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "hanging: mark test as currently hanging")
+    config.addinivalue_line("markers", "slow: mark test as slow to run")
+
+
+def pytest_collection_modifyitems(config, items):
+    skip_hanging = pytest.mark.skip(reason="need --run-hanging-tests option to run")
+    skip_slow = pytest.mark.skip(reason="need --run-slow-tests option to run")
+
+    for item in items:
+        if "hanging" in item.keywords and not config.getoption("--run-hanging-tests"):
+            item.add_marker(skip_hanging)
+        if "slow" in item.keywords and not config.getoption("--run-slow-tests"):
+            item.add_marker(skip_slow)
 
 
 # TODO Fixme
@@ -281,37 +300,36 @@ async def tmp_folder():
     shutil.rmtree(tmp_dir)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def lambda_client():
-    services = ["lambda", "iam", "logs"]
-    aws_mock = AWSMock(*services)
-
-    resp = aws_mock.mocked_services["iam"]["client"].create_role(
-        RoleName="TestRole", AssumeRolePolicyDocument="some_policy"
-    )
-    iam_arn = resp["Role"]["Arn"]
-
-    def create_lambda(func_str):
-        zip_output = io.BytesIO()
-        zip_file = zipfile.ZipFile(zip_output, "w", zipfile.ZIP_DEFLATED)
-        zip_file.writestr("lambda_function.py", func_str)
-        zip_file.close()
-        zip_output.seek(0)
-
-        return aws_mock.mocked_services["lambda"]["client"].create_function(
-            Code={"ZipFile": zip_output.read()},
-            FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
-            Handler="lambda_function.lambda_handler",
-            Runtime="python3.7",
-            Role=iam_arn,
-        )
-
-    yield create_lambda
-
-    aws_mock.stop_services()
-
-
+# @pytest.fixture(scope="session", autouse=True)
+# def lambda_client():
+#     services = ["lambda", "iam", "logs"]
+#     aws_mock = AWSMock(*services)
 #
+#     resp = aws_mock.mocked_services["iam"]["client"].create_role(
+#         RoleName="TestRole", AssumeRolePolicyDocument="some_policy"
+#     )
+#     iam_arn = resp["Role"]["Arn"]
+#
+#     def create_lambda(func_str):
+#         zip_output = io.BytesIO()
+#         zip_file = zipfile.ZipFile(zip_output, "w", zipfile.ZIP_DEFLATED)
+#         zip_file.writestr("lambda_function.py", func_str)
+#         zip_file.close()
+#         zip_output.seek(0)
+#
+#         return aws_mock.mocked_services["lambda"]["client"].create_function(
+#             Code={"ZipFile": zip_output.read()},
+#             FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
+#             Handler="lambda_function.lambda_handler",
+#             Runtime="python3.7",
+#             Role=iam_arn,
+#         )
+#
+#     yield create_lambda
+#
+#     aws_mock.stop_services()
+
+
 # @pytest.fixture(scope="session", autouse=True)
 # def secrets():
 #

@@ -13,7 +13,13 @@ from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.utils.aws import get_s3_client
 from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
-from tests.utils import check_tasks_status, create_default_asset, poll_jobs
+from tests.utils import (
+    check_s3_file_present,
+    check_tasks_status,
+    create_default_asset,
+    delete_s3_files,
+    poll_jobs,
+)
 
 
 @pytest.mark.asyncio
@@ -79,6 +85,7 @@ async def test_assets(async_client):
     )
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     """"""
@@ -363,6 +370,7 @@ symbology_checks = [
 ]
 
 
+@pytest.mark.hanging
 @pytest.mark.parametrize("checks", symbology_checks)
 @pytest.mark.asyncio
 async def test_raster_tile_cache_asset(checks, async_client, batch_client, httpd):
@@ -447,8 +455,8 @@ async def _test_raster_tile_cache(
         "geotiff/000R_000C.tif",
     ]
 
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
-    _delete_s3_files(TILE_CACHE_BUCKET, f"{dataset}/{version}")
+    delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    delete_s3_files(TILE_CACHE_BUCKET, f"{dataset}/{version}")
 
     print("FINISHED CLEANING UP")
 
@@ -503,9 +511,9 @@ async def _test_raster_tile_cache(
             f"{pixetl_output_files_prefix}/{pixel_meaning}/{test_file}"
             for test_file in pixetl_test_files
         ]
-        _check_s3_file_present(DATA_LAKE_BUCKET, test_files)
+        check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
-    _check_s3_file_present(
+    check_s3_file_present(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"]
     )
 
@@ -513,24 +521,6 @@ async def _test_raster_tile_cache(
         mock_client.return_value = MockCloudfrontClient()
         for asset_id in new_asset_ids:
             await async_client.delete(f"/asset/{asset_id}")
-
-
-def _check_s3_file_present(bucket, keys):
-    s3_client = get_s3_client()
-
-    for key in keys:
-        try:
-            s3_client.head_object(Bucket=bucket, Key=key)
-        except ClientError:
-            raise AssertionError(f"Object {key} doesn't exist in bucket {bucket}!")
-
-
-def _delete_s3_files(bucket, prefix):
-    s3_client = get_s3_client()
-    response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    for obj in response.get("Contents", list()):
-        print("Deleting", obj["Key"])
-        s3_client.delete_object(Bucket=bucket, Key=obj["Key"])
 
 
 @pytest.mark.asyncio
@@ -541,7 +531,7 @@ async def test_asset_stats(async_client):
     pixetl_output_files_prefix = (
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
     )
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
         "creation_options": {
@@ -585,6 +575,7 @@ async def test_asset_stats(async_client):
         assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 10000
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_asset_stats_no_histo(async_client):
     dataset = "test_asset_stats_no_histo"
@@ -593,7 +584,7 @@ async def test_asset_stats_no_histo(async_client):
     pixetl_output_files_prefix = (
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
     )
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
         "creation_options": {
@@ -634,6 +625,7 @@ async def test_asset_stats_no_histo(async_client):
         assert resp.json()["data"]["bands"][0].get("histogram", None) is None
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_asset_extent(async_client):
     dataset = "test_asset_extent"
@@ -642,7 +634,7 @@ async def test_asset_extent(async_client):
     pixetl_output_files_prefix = (
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
     )
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
         "creation_options": {
@@ -698,7 +690,7 @@ async def test_asset_extent_stats_empty(async_client):
     pixetl_output_files_prefix = (
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
     )
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
         "creation_options": {
@@ -759,7 +751,7 @@ async def test_asset_float_no_data(async_client):
     pixetl_output_files_prefix = (
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
     )
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
         "creation_options": {
