@@ -23,15 +23,16 @@ ESC_COMMAND=$(echo -n "$*" | json_escape)
 
 # Also make sure we don't reveal any sensitive information
 # But we still want to know if the var was set
+# Crop output length to be able to send using CURL
+sed -i 's/^AWS_SECRET_ACCESS_KEY.*$/AWS_SECRET_ACCESS_KEY=\*\*\*/g' $OUTPUT_FILE # pragma: allowlist secret
+sed -i 's/^PGPASSWORD.*$/PGPASSWORD=\*\*\*/g' $OUTPUT_FILE  # pragma: allowlist secret
 ESC_OUTPUT="$(cat $OUTPUT_FILE \
-  | sed 's/^AWS_SECRET_ACCESS_KEY.*$/AWS_SECRET_ACCESS_KEY=\*\*\*/' \  # pragma: allowlist secret
-  | sed 's/^AWS_ACCESS_KEY_ID.*$/AWS_ACCESS_KEY_ID=\*\*\*/' \
-  | sed 's/^PGPASSWORD.*$/PGPASSWORD=\*\*\*/' \  # pragma: allowlist secret
-  | sed 's/^PGUSER.*$/PGUSER=\*\*\*/' \
-  | sed 's/^PGDATABASE.*$/PGDATABASE=\*\*\*/' \
-  | sed 's/^PGHOST.*$/PGHOST=\*\*\*/' \
-  | sed 's/^SERVICE_ACCOUNT_TOKEN.*$/SERVICE_ACCOUNT_TOKEN=\*\*\*/' \
-  | sed 's/^GPG_KEY.*$/GPG_KEY=\*\*\*/' \
+  | sed 's/^AWS_ACCESS_KEY_ID.*$/AWS_ACCESS_KEY_ID=\*\*\*/g' \
+  | sed 's/^PGUSER.*$/PGUSER=\*\*\*/g' \
+  | sed 's/^PGDATABASE.*$/PGDATABASE=\*\*\*/g' \
+  | sed 's/^PGHOST.*$/PGHOST=\*\*\*/g' \
+  | sed 's/^SERVICE_ACCOUNT_TOKEN.*$/SERVICE_ACCOUNT_TOKEN=\*\*\*/g' \
+  | sed 's/^GPG_KEY.*$/GPG_KEY=\*\*\*/g' \
   | tail -c 1000 \
   | json_escape
 )"
@@ -43,7 +44,7 @@ if [ "$EXIT_CODE" -eq 0 ]; then
 else
     STATUS="failed"
     MESSAGE="Command [ $ESC_COMMAND ] encountered errors"
-    DETAIL=$ESC_OUTPUT # crop output length to be able to send using CURL
+    DETAIL=$ESC_OUTPUT
 fi
 
 AFTER=$(date '+%Y-%m-%d %H:%M:%S')
