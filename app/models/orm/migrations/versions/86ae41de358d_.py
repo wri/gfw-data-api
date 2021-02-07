@@ -1,13 +1,10 @@
-"""empty message.
+"""Create custom extensions, functions, views, types and roles.
 
 Revision ID: 86ae41de358d
 Revises:
 Create Date: 2020-04-14 21:58:38.173605
 """
-import geoalchemy2
-import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 from app.settings.globals import READER_DBNAME, READER_PASSWORD, READER_USERNAME
 
@@ -20,7 +17,9 @@ depends_on = None
 
 def upgrade():
 
+    # Create extensions
     op.execute("""CREATE EXTENSION IF NOT EXISTS postgis;""")
+    op.execute("""CREATE EXTENSION IF NOT EXISTS "uuid-ossp";""")
 
     #### Create read only user
     op.execute(
@@ -64,13 +63,13 @@ def upgrade():
             IMMUTABLE STRICT
             ROWS 1000
         AS $BODY$
-        SELECT i + 1 AS row, j + 1 AS col, ST_Translate(cell, j * $3 + $5, i * $4 + $6) AS geom
-        FROM generate_series(0, $1 - 1) AS i,
-             generate_series(0, $2 - 1) AS j,
-        (
-        SELECT ('POLYGON((0 0, 0 '||$4||', '||$3||' '||$4||', '||$3||' 0,0 0))')::geometry AS cell
-        ) AS foo;
-        $BODY$;
+                SELECT i + 1 AS row, j + 1 AS col, ST_Translate(cell, j * $3 + $5, i * $4 + $6) AS geom
+                FROM generate_series(0, $1 - 1) AS i,
+                     generate_series(0, $2 - 1) AS j,
+                (
+                SELECT ('POLYGON((0 0, 0 '||$4||', '||$3||' '||$4||', '||$3||' 0,0 0))')::geometry AS cell
+                ) AS foo;
+                $BODY$;
     """
     )
 
@@ -90,151 +89,96 @@ def upgrade():
                 ), grid AS (
                  SELECT
                         CASE
-                            WHEN fishnet.top_1 < 0::double precision THEN 'S'::text || lpad((fishnet.top_1 * '-1'::integer::double precision)::text, 2, '0'::text)
-                            WHEN fishnet.top_1 = 0::double precision THEN 'N'::text || lpad((fishnet.top_1 * '-1'::integer::double precision)::text, 2, '0'::text)
-                            ELSE 'N'::text || lpad(fishnet.top_1::text, 2, '0'::text)
+                            WHEN fishnet.top_1 < 0::double precision THEN lpad((fishnet.top_1 * '-1'::integer::double precision)::text, 2, '0'::text) || 'S'::text
+                            WHEN fishnet.top_1 = 0::double precision THEN lpad((fishnet.top_1 * '-1'::integer::double precision)::text, 2, '0'::text) || 'N'::text
+                            ELSE lpad(fishnet.top_1::text, 2, '0'::text) || 'N'::text
                         END AS top_1,
                         CASE
-                            WHEN fishnet.left_1 < 0::double precision THEN 'W'::text || lpad((fishnet.left_1 * '-1'::integer::double precision)::text, 3, '0'::text)
-                            ELSE 'E'::text || lpad(fishnet.left_1::text, 3, '0'::text)
+                            WHEN fishnet.left_1 < 0::double precision THEN lpad((fishnet.left_1 * '-1'::integer::double precision)::text, 3, '0'::text) || 'W'::text
+                            ELSE lpad(fishnet.left_1::text, 3, '0'::text) || 'E'::text
                         END AS left_1,
                         CASE
-                            WHEN fishnet.top_10 < 0::double precision THEN 'S'::text || lpad((fishnet.top_10 * '-1'::integer::double precision)::text, 2, '0'::text)
-                            WHEN fishnet.top_10 = 0::double precision THEN 'N'::text || lpad((fishnet.top_10 * '-1'::integer::double precision)::text, 2, '0'::text)
-                            ELSE 'N'::text || lpad(fishnet.top_10::text, 2, '0'::text)
+                            WHEN fishnet.top_10 < 0::double precision THEN lpad((fishnet.top_10 * '-1'::integer::double precision)::text, 2, '0'::text) || 'S'::text
+                            WHEN fishnet.top_10 = 0::double precision THEN lpad((fishnet.top_10 * '-1'::integer::double precision)::text, 2, '0'::text) || 'N'::text
+                            ELSE lpad(fishnet.top_10::text, 2, '0'::text) || 'N'::text
                         END AS top_10,
                         CASE
-                            WHEN fishnet.left_10 < 0::double precision THEN 'W'::text || lpad((fishnet.left_10 * '-1'::integer::double precision)::text, 3, '0'::text)
-                            ELSE 'E'::text || lpad(fishnet.left_10::text, 3, '0'::text)
+                            WHEN fishnet.left_10 < 0::double precision THEN lpad((fishnet.left_10 * '-1'::integer::double precision)::text, 3, '0'::text) || 'W'::text
+                            ELSE lpad(fishnet.left_10::text, 3, '0'::text) || 'E'::text
                         END AS left_10,
                     fishnet.geom
                    FROM fishnet
                 )
-         SELECT grid.top_1 || grid.left_1 AS gfw_grid_1x1_id,
-            grid.top_10 || grid.left_10 AS gfw_grid_10x10_id,
+         SELECT (grid.top_1 || '_'::text) || grid.left_1 AS gfw_grid_1x1_id,
+            (grid.top_10 || '_'::text) || grid.left_10 AS gfw_grid_10x10_id,
             grid.geom
            FROM grid
         WITH DATA;
 
-        CREATE INDEX IF NOT EXISTS gfw_grid_1x1_geom_idx
+        CREATE INDEX gfw_grid_1x1_geom_idx
             ON public.gfw_grid_1x1 USING gist
-            (geom);"""
+            (geom)
+            TABLESPACE pg_default;
+    """
     )
 
     #### Create custom data type gfw_grid_type
     op.execute(
         """
-    CREATE TYPE public.gfw_grid_type AS (gfw_grid_1x1 text, gfw_grid_10x10 text, geom geometry);
-    """
+        CREATE TYPE public.gfw_grid_type AS
+            (
+                gfw_grid_1x1 text,
+                gfw_grid_10x10 text,
+                geom geometry
+            );
+        """
     )
 
-    # ### commands auto generated by Alembic - please adjust! ###
-    op.create_table(
-        "datasets",
-        sa.Column(
-            "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        sa.Column(
-            "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        sa.Column("dataset", sa.String(), nullable=False),
-        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.PrimaryKeyConstraint("dataset"),
+    ### Create custom triggers
+    op.execute(
+        """
+        CREATE FUNCTION public.reset_latest()
+    RETURNS trigger
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE NOT LEAKPROOF
+AS $BODY$
+        BEGIN
+            IF NEW.is_latest = true THEN
+                UPDATE versions
+                  SET is_latest = false
+                    WHERE versions.dataset = NEW.dataset
+                     AND versions.version <> NEW.version;
+            END IF;
+
+        RETURN NEW;
+        END;
+       $BODY$;"""
     )
 
-    op.create_table(
-        "geostore",
-        sa.Column(
-            "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        sa.Column(
-            "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        # sa.Column('geostore', sa.Column('gfw_geojson', sa.String(), nullable=True)),
-        sa.Column("gfw_geostore_id", postgresql.UUID(), nullable=False),
-        sa.Column("gfw_area__ha", sa.Numeric(), nullable=False),
-        sa.Column(
-            "gfw_bbox",
-            geoalchemy2.types.Geometry(geometry_type="POLYGON", srid=4326),
-            nullable=False,
-        ),
-        sa.PrimaryKeyConstraint("gfw_geostore_id"),
-    )
-
-    op.create_index(
-        "geostore_gfw_geostore_id_idx",
-        "geostore",
-        ["gfw_geostore_id"],
-        unique=False,
-        postgresql_using="hash",
-    )
-
-    op.create_table(
-        "versions",
-        sa.Column(
-            "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        sa.Column(
-            "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        sa.Column("dataset", sa.String(), nullable=False),
-        sa.Column("version", sa.String(), nullable=False),
-        sa.Column("is_latest", sa.Boolean(), nullable=True),
-        sa.Column("source_type", sa.String(), nullable=False),
-        sa.Column("has_vector_tile_cache", sa.Boolean(), nullable=True),
-        sa.Column("has_raster_tile_cache", sa.Boolean(), nullable=True),
-        sa.Column("has_geostore", sa.Boolean(), nullable=True),
-        sa.Column("has_feature_info", sa.Boolean(), nullable=True),
-        sa.Column("has_10_40000_tiles", sa.Boolean(), nullable=True),
-        sa.Column("has_90_27008_tiles", sa.Boolean(), nullable=True),
-        sa.Column("has_90_9876_tiles", sa.Boolean(), nullable=True),
-        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.ForeignKeyConstraint(["dataset"], ["datasets.dataset"], name="fk"),
-        sa.PrimaryKeyConstraint("dataset", "version"),
-    )
-
-    op.create_table(
-        "assets",
-        sa.Column(
-            "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        sa.Column(
-            "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        sa.Column("dataset", sa.String(), nullable=False),
-        sa.Column("version", sa.String(), nullable=False),
-        sa.Column("asset_type", sa.String(), nullable=False),
-        sa.Column("asset_uri", sa.String(), nullable=True),
-        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["dataset", "version"], ["versions.dataset", "versions.version"], name="fk"
-        ),
-        sa.PrimaryKeyConstraint("dataset", "version", "asset_type"),
-    )
     # ### end Alembic commands ###
 
 
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_table("assets")
-    op.drop_table("versions")
-    op.drop_index("geostore_gfw_geostore_id_idx", table_name="geostore")
-    op.execute("""DROP TABLE IF EXISTS public.geostore CASCADE;""")
 
-    conn = op.get_bind()
-    res = conn.execute("SELECT dataset FROM public.datasets")
-    rows = res.fetchall()
-
-    op.drop_table("datasets")
-    # ### end Alembic commands ###
-
-    for row in rows:
-        op.execute(f"""DROP SCHEMA IF EXISTS {row.dataset} CASCADE;""")
+    # Delete custom types
     op.execute("""DROP TYPE IF EXISTS public.gfw_grid_type;""")
+
+    # Delete custom materialized views
     op.execute("""DROP MATERIALIZED VIEW IF EXISTS public.gfw_grid_1x1;""")
+
+    # Delete custom functions
     op.execute("""DROP FUNCTION IF EXISTS public.gfw_create_fishnet;""")
+    op.execute("""DROP FUNCTION IF EXISTS public.reset_latest;""")
+
+    # Delete custom users
     op.execute(
         f"ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE SELECT ON TABLES FROM {READER_USERNAME};"
     )
     op.execute(f"REVOKE CONNECT ON DATABASE {READER_DBNAME} FROM {READER_USERNAME};")
-    op.execute(f"""DROP USER IF EXISTS {READER_USERNAME}""")
+    op.execute(f"""DROP USER IF EXISTS {READER_USERNAME};""")
+
+    # Delete extensions
+    op.execute("""DROP EXTENSION IF EXISTS "uuid-ossp";""")
+    op.execute("""DROP EXTENSION IF EXISTS "postgis" CASCADE;""")

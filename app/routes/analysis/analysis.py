@@ -1,18 +1,26 @@
 """Run analysis on registered datasets."""
-import json
+from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-import aioboto3
+import boto3
+import httpx
 from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
+from httpx_auth import AWS4Auth
 
 from ...models.enum.analysis import RasterLayer
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.pydantic.analysis import ZonalAnalysisRequestIn
+from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.responses import Response
-from ...settings.globals import AWS_REGION, RASTER_ANALYSIS_LAMBDA_NAME
+from ...settings.globals import (
+    AWS_REGION,
+    LAMBDA_ENTRYPOINT_URL,
+    RASTER_ANALYSIS_LAMBDA_NAME,
+)
 from ...utils.geostore import get_geostore_geometry
 
 router = APIRouter()
@@ -48,9 +56,11 @@ async def zonal_statistics_get(
 ):
     """Calculate zonal statistics on any registered raster layers in a
     geostore."""
-    geometry = await get_geostore_geometry(geostore_id, geostore_origin)
-    return await _zonal_statics(
-        geometry,
+    geometry: Geometry = await get_geostore_geometry(geostore_id, geostore_origin)
+    safe_geo = jsonable_encoder(geometry)
+
+    return await _zonal_statistics(
+        safe_geo,
         sum_layers,
         group_by,
         filters,
@@ -66,7 +76,7 @@ async def zonal_statistics_get(
     tags=["Analysis"],
 )
 async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
-    return await _zonal_statics(
+    return await _zonal_statistics(
         request.geometry,
         request.sum,
         request.group_by,
@@ -76,7 +86,7 @@ async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
     )
 
 
-async def _zonal_statics(
+async def _zonal_statistics(
     geometry: Dict[str, Any],
     sum_layers: List[RasterLayer],
     group_by: List[RasterLayer],
@@ -93,27 +103,45 @@ async def _zonal_statics(
         "end_date": end_date,
     }
 
-    response_payload_encoded = await _invoke_lambda(payload)
-    response_payload = json.loads(response_payload_encoded.decode())
+    try:
+        response = await _invoke_lambda(payload)
+    except httpx.TimeoutException:
+        raise HTTPException(500, "Query took too long to process.")
 
-    if response_payload["statusCode"] != 200:
+    try:
+        response_data = response.json()["body"]["data"]
+    except (JSONDecodeError, KeyError):
         logger.error(
-            f"Raster analysis lambda returned status code {response_payload['statusCode']}"
+            f"Raster analysis lambda experienced an error. Full response: {response.text}"
         )
         raise HTTPException(
             500, "Raster analysis geoprocessor experienced an error. See logs."
         )
 
-    response_data = response_payload["body"]["data"]
     return Response(data=response_data)
 
 
-async def _invoke_lambda(payload):
-    async with aioboto3.client("lambda", region_name=AWS_REGION) as lambda_client:
-        response = await lambda_client.invoke(
-            FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
-            InvocationType="RequestResponse",
-            Payload=bytes(json.dumps(payload), "utf-8"),
+async def _invoke_lambda(payload, timeout=55) -> httpx.Response:
+    session = boto3.Session()
+    cred = session.get_credentials()
+
+    aws = AWS4Auth(
+        access_id=cred.access_key,
+        secret_key=cred.secret_key,
+        security_token=cred.token,
+        region=AWS_REGION,
+        service="lambda",
+    )
+
+    headers = {"X-Amz-Invocation-Type": "RequestResponse"}
+
+    async with httpx.AsyncClient() as client:
+        response: httpx.Response = await client.post(
+            f"{LAMBDA_ENTRYPOINT_URL}/2015-03-31/functions/{RASTER_ANALYSIS_LAMBDA_NAME}/invocations",
+            json=payload,
+            auth=aws,
+            timeout=timeout,
+            headers=headers,
         )
 
-        return await response["Payload"].read()
+    return response

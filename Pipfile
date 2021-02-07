@@ -5,15 +5,16 @@ verify_ssl = true
 
 [dev-packages]
 black = "*"
-flake8 = "*"
 pre-commit = "*"
 detect-secrets = "*"
+flake8 = "*"
+httpx = "*"
+moto = {editable = true,git = "https://github.com/wri/moto.git",ref = "master"}
 pytest = "*"
 pytest-asyncio = "*"
-moto = {editable = true,git = "https://github.com/wri/moto.git",ref = "master"}
 pytest-cov = "*"
+pytest-timeout = "*"
 pendulum = "*"
-httpx = "*"
 rasterio = "*"
 
 [packages]
@@ -25,9 +26,10 @@ alembic = "*"
 psycopg2-binary = "*"
 uvicorn = "*"
 geoalchemy2 = "*"
-boto3 = "==1.12.32"
-botocore = "==1.15.32"
-docker = "==4.4.1"
+aiobotocore = "==1.2.0"
+boto3 = "==1.16.52"
+botocore = "==1.19.52"
+docker = "*"
 gino_starlette = "*"
 orjson = "*"
 python-multipart = "*"
@@ -40,9 +42,9 @@ pglast = "*"
 async-lru = "*"
 httpx = "*"
 pendulum = "*"
-aioboto3 = "==8.0.5"
 typing-extensions = "==3.7.4.3"
 numpy = "*"
+httpx-auth = "*"
 
 [requires]
 python_version = "3.8"

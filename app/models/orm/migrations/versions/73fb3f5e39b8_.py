@@ -1,16 +1,14 @@
-"""empty message
+"""Update asset creation option records.
 
 Revision ID: 73fb3f5e39b8
 Revises: 167eebbf29e4
 Create Date: 2021-01-13 21:18:04.313795
-
 """
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
-revision = '73fb3f5e39b8'
-down_revision = '167eebbf29e4'
+revision = "73fb3f5e39b8"  # pragma: allowlist secret
+down_revision = "167eebbf29e4"  # pragma: allowlist secret
 branch_labels = None
 depends_on = None
 
