@@ -1,7 +1,6 @@
 from unittest.mock import patch
 from uuid import UUID
 
-import boto3
 import httpx
 import pytest
 from botocore.exceptions import ClientError
@@ -10,11 +9,17 @@ from app.application import ContextEngine
 from app.crud import tasks
 from app.crud.assets import update_asset
 from app.models.enum.symbology import ColorMapType
-from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
+from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.utils.aws import get_s3_client
 from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
-from tests.utils import check_tasks_status, create_default_asset, poll_jobs
+from tests.utils import (
+    check_s3_file_present,
+    check_tasks_status,
+    create_default_asset,
+    delete_s3_files,
+    poll_jobs,
+)
 
 
 @pytest.mark.asyncio
@@ -80,6 +85,7 @@ async def test_assets(async_client):
     )
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     """"""
@@ -91,9 +97,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     primary_grid = "90/27008"
     auxiliary_grid = "90/9984"
 
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-    )
+    s3_client = get_s3_client()
 
     pixetl_output_files = [
         f"{dataset}/{version}/raster/epsg-4326/{auxiliary_grid}/gfw_fid/gdal-geotiff/extent.geojson",
@@ -182,6 +186,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
             raise AssertionError(f"Key {key} doesn't exist!")
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     """"""
@@ -191,9 +196,7 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     dataset = "test_vector"
     version = "v1.1.1"
 
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-    )
+    s3_client = get_s3_client()
 
     pixetl_output_files = [
         f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/gdal-geotiff/extent.geojson",
@@ -323,8 +326,55 @@ async def test_asset_bad_requests(async_client, batch_client, httpd):
     ]
 
 
+symbology_checks = [
+    {
+        "wm_tile_set_assets": ["date_conf", "intensity", "rgb_encoded"],
+        "symbology": {"type": ColorMapType.date_conf_intensity},
+    },
+    {
+        "wm_tile_set_assets": ["date_conf", f"date_conf_{ColorMapType.gradient}"],
+        "symbology": {
+            "type": ColorMapType.gradient,
+            "colormap": {
+                1: {"red": 255, "green": 0, "blue": 0},
+                19: {"red": 0, "green": 0, "blue": 255},
+            },
+        },
+    },
+    {
+        "wm_tile_set_assets": [f"date_conf_{ColorMapType.discrete}"],
+        "symbology": {
+            "type": ColorMapType.discrete,
+            "colormap": {
+                1: {"red": 255, "green": 0, "blue": 0},
+                2: {"red": 255, "green": 0, "blue": 0},
+                3: {"red": 255, "green": 20, "blue": 0},
+                4: {"red": 255, "green": 40, "blue": 0},
+                5: {"red": 255, "green": 60, "blue": 0},
+                6: {"red": 255, "green": 80, "blue": 0},
+                7: {"red": 255, "green": 100, "blue": 0},
+                8: {"red": 255, "green": 120, "blue": 0},
+                9: {"red": 255, "green": 140, "blue": 0},
+                10: {"red": 255, "green": 160, "blue": 0},
+                11: {"red": 255, "green": 180, "blue": 0},
+                12: {"red": 255, "green": 200, "blue": 0},
+                13: {"red": 255, "green": 220, "blue": 0},
+                14: {"red": 255, "green": 240, "blue": 0},
+                15: {"red": 255, "green": 255, "blue": 0},
+                16: {"red": 255, "green": 255, "blue": 20},
+                17: {"red": 255, "green": 255, "blue": 40},
+                18: {"red": 255, "green": 255, "blue": 60},
+                19: {"red": 255, "green": 255, "blue": 80},
+            },
+        },
+    },
+]
+
+
+@pytest.mark.hanging
+@pytest.mark.parametrize("checks", symbology_checks)
 @pytest.mark.asyncio
-async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
+async def test_raster_tile_cache_asset(checks, async_client, batch_client, httpd):
     """"""
     _, logs = batch_client
 
@@ -377,62 +427,17 @@ async def test_raster_tile_cache_asset(async_client, batch_client, httpd):
 
     ########################
 
-    symbology_checks = [
-        {
-            "wm_tile_set_assets": ["date_conf", "intensity", "rgb_encoded"],
-            "symbology": {"type": ColorMapType.date_conf_intensity},
-        },
-        {
-            "wm_tile_set_assets": ["date_conf", f"date_conf_{ColorMapType.gradient}"],
-            "symbology": {
-                "type": ColorMapType.gradient,
-                "colormap": {
-                    1: {"red": 255, "green": 0, "blue": 0},
-                    19: {"red": 0, "green": 0, "blue": 255},
-                },
-            },
-        },
-        {
-            "wm_tile_set_assets": [f"date_conf_{ColorMapType.discrete}"],
-            "symbology": {
-                "type": ColorMapType.discrete,
-                "colormap": {
-                    1: {"red": 255, "green": 0, "blue": 0},
-                    2: {"red": 255, "green": 0, "blue": 0},
-                    3: {"red": 255, "green": 20, "blue": 0},
-                    4: {"red": 255, "green": 40, "blue": 0},
-                    5: {"red": 255, "green": 60, "blue": 0},
-                    6: {"red": 255, "green": 80, "blue": 0},
-                    7: {"red": 255, "green": 100, "blue": 0},
-                    8: {"red": 255, "green": 120, "blue": 0},
-                    9: {"red": 255, "green": 140, "blue": 0},
-                    10: {"red": 255, "green": 160, "blue": 0},
-                    11: {"red": 255, "green": 180, "blue": 0},
-                    12: {"red": 255, "green": 200, "blue": 0},
-                    13: {"red": 255, "green": 220, "blue": 0},
-                    14: {"red": 255, "green": 240, "blue": 0},
-                    15: {"red": 255, "green": 255, "blue": 0},
-                    16: {"red": 255, "green": 255, "blue": 20},
-                    17: {"red": 255, "green": 255, "blue": 40},
-                    18: {"red": 255, "green": 255, "blue": 60},
-                    19: {"red": 255, "green": 255, "blue": 80},
-                },
-            },
-        },
-    ]
+    # Flush requests list so we're starting fresh
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
-    for check in symbology_checks:
-        # Flush requests list so we're starting fresh
-        httpx.delete(f"http://localhost:{httpd.server_port}")
-
-        await _test_raster_tile_cache(
-            dataset,
-            version,
-            default_asset_id,
-            async_client,
-            logs,
-            **check,
-        )
+    await _test_raster_tile_cache(
+        dataset,
+        version,
+        default_asset_id,
+        async_client,
+        logs,
+        **checks,
+    )
 
 
 async def _test_raster_tile_cache(
@@ -451,8 +456,8 @@ async def _test_raster_tile_cache(
         "geotiff/000R_000C.tif",
     ]
 
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
-    _delete_s3_files(TILE_CACHE_BUCKET, f"{dataset}/{version}")
+    delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    delete_s3_files(TILE_CACHE_BUCKET, f"{dataset}/{version}")
 
     print("FINISHED CLEANING UP")
 
@@ -507,9 +512,9 @@ async def _test_raster_tile_cache(
             f"{pixetl_output_files_prefix}/{pixel_meaning}/{test_file}"
             for test_file in pixetl_test_files
         ]
-        _check_s3_file_present(DATA_LAKE_BUCKET, test_files)
+        check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
-    _check_s3_file_present(
+    check_s3_file_present(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"]
     )
 
@@ -519,24 +524,7 @@ async def _test_raster_tile_cache(
             await async_client.delete(f"/asset/{asset_id}")
 
 
-def _check_s3_file_present(bucket, keys):
-    s3_client = get_s3_client()
-
-    for key in keys:
-        try:
-            s3_client.head_object(Bucket=bucket, Key=key)
-        except ClientError:
-            raise AssertionError(f"Object {key} doesn't exist in bucket {bucket}!")
-
-
-def _delete_s3_files(bucket, prefix):
-    s3_client = get_s3_client()
-    response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    for obj in response.get("Contents", list()):
-        print("Deleting", obj["Key"])
-        s3_client.delete_object(Bucket=bucket, Key=obj["Key"])
-
-
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_asset_stats(async_client):
     dataset = "test_asset_stats"
@@ -545,7 +533,7 @@ async def test_asset_stats(async_client):
     pixetl_output_files_prefix = (
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
     )
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
         "creation_options": {
@@ -589,6 +577,7 @@ async def test_asset_stats(async_client):
         assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 10000
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_asset_stats_no_histo(async_client):
     dataset = "test_asset_stats_no_histo"
@@ -597,7 +586,7 @@ async def test_asset_stats_no_histo(async_client):
     pixetl_output_files_prefix = (
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
     )
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
         "creation_options": {
@@ -638,6 +627,7 @@ async def test_asset_stats_no_histo(async_client):
         assert resp.json()["data"]["bands"][0].get("histogram", None) is None
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_asset_extent(async_client):
     dataset = "test_asset_extent"
@@ -646,7 +636,7 @@ async def test_asset_extent(async_client):
     pixetl_output_files_prefix = (
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
     )
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
         "creation_options": {
@@ -694,6 +684,7 @@ async def test_asset_extent(async_client):
     )
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_asset_extent_stats_empty(async_client):
     dataset = "test_asset_extent_stats_empty"
@@ -702,7 +693,7 @@ async def test_asset_extent_stats_empty(async_client):
     pixetl_output_files_prefix = (
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
     )
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
         "creation_options": {
@@ -755,6 +746,7 @@ async def test_asset_extent_stats_empty(async_client):
     assert resp.json()["data"] is None
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_asset_float_no_data(async_client):
     dataset = "test_asset_float_no_data"
@@ -763,7 +755,7 @@ async def test_asset_float_no_data(async_client):
     pixetl_output_files_prefix = (
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/"
     )
-    _delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
+    delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
     raster_version_payload = {
         "creation_options": {

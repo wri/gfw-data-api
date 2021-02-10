@@ -19,8 +19,7 @@ from pglast.printer import RawStream
 from sqlalchemy.engine import RowProxy
 
 from ...application import db
-from ...crud import assets, versions
-from ...errors import RecordNotFoundError
+from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pg_admin_functions import (

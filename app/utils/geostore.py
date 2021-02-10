@@ -1,16 +1,36 @@
 from uuid import UUID
 
+from async_lru import alru_cache
 from fastapi import HTTPException
 
-from app.errors import BadResponseError, InvalidResponseError
+from app.crud.geostore import get_geostore_from_anywhere
+from app.errors import BadResponseError, InvalidResponseError, RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
+from app.models.pydantic.geostore import Geometry, GeostoreHydrated
 from app.utils import rw_api
+
+
+@alru_cache(maxsize=128)
+async def _get_gfw_geostore_geometry(geostore_id: UUID) -> Geometry:
+    """Get GFW Geostore geometry."""
+
+    geo: GeostoreHydrated = await get_geostore_from_anywhere(geostore_id)
+
+    try:
+        geometry = geo.gfw_geojson.features[0].geometry
+    except (KeyError, RecordNotFoundError):
+        raise BadResponseError("Cannot fetch geostore geometry")
+
+    if geometry is None:
+        raise BadResponseError("Cannot fetch geostore geometry")
+
+    return geometry
 
 
 async def get_geostore_geometry(geostore_id: UUID, geostore_origin: str):
     geostore_constructor = {
-        # GeostoreOrigin.gfw: geostore.get_geostore_geometry,
-        GeostoreOrigin.rw: rw_api.get_geostore_geometry
+        GeostoreOrigin.gfw: _get_gfw_geostore_geometry,
+        GeostoreOrigin.rw: rw_api.get_geostore_geometry,
     }
 
     try:

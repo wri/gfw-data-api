@@ -16,8 +16,11 @@ from app.tasks import Callback, writer_secrets
 JOB_ENV = writer_secrets + [
     {"name": "AWS_REGION", "value": AWS_REGION},
     {"name": "ENV", "value": ENV},
-    {"name": "AWS_GCS_KEY_SECRET_ARN", "value": AWS_GCS_KEY_SECRET_ARN},
 ]
+
+if AWS_GCS_KEY_SECRET_ARN:
+    JOB_ENV += [{"name": "AWS_GCS_KEY_SECRET_ARN", "value": AWS_GCS_KEY_SECRET_ARN}]
+
 
 if S3_ENTRYPOINT_URL:
     # Why both? Because different programs (boto,
