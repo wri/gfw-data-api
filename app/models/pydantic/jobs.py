@@ -106,7 +106,7 @@ class TileCacheJob(Job):
     job_definition = TILE_CACHE_JOB_DEFINITION
     vcpus = 48
     memory = 96000
-    attempts = 1
+    attempts = 4
     attempt_duration_seconds = 3600
 
 
