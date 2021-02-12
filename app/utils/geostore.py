@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 
 from async_lru import alru_cache
@@ -18,7 +19,7 @@ async def _get_gfw_geostore_geometry(geostore_id: UUID) -> Geometry:
     try:
         geo: GeostoreHydrated = await get_geostore_from_anywhere(geostore_id)
         logger.info(f"Found GFW geostore: {geo}")
-        geometry = geo.gfw_geojson.features[0].geometry
+        geometry: Optional[Geometry] = geo.gfw_geojson.features[0].geometry
         logger.info(f"Geostore geometry: {geometry}")
     except (KeyError, RecordNotFoundError) as ex:
         logger.exception(ex)
@@ -31,7 +32,7 @@ async def _get_gfw_geostore_geometry(geostore_id: UUID) -> Geometry:
     return geometry
 
 
-async def get_geostore_geometry(geostore_id: UUID, geostore_origin: str):
+async def get_geostore_geometry(geostore_id: UUID, geostore_origin: str) -> Geometry:
     geostore_constructor = {
         GeostoreOrigin.gfw: _get_gfw_geostore_geometry,
         GeostoreOrigin.rw: rw_api.get_geostore_geometry,
