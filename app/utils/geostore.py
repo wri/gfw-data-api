@@ -18,15 +18,13 @@ async def _get_gfw_geostore_geometry(geostore_id: UUID) -> Geometry:
 
     try:
         geo: GeostoreHydrated = await get_geostore_from_anywhere(geostore_id)
-        logger.info(f"Found GFW geostore: {geo}")
         geometry: Optional[Geometry] = geo.gfw_geojson.features[0].geometry
-        logger.info(f"Geostore geometry: {geometry}")
     except (KeyError, RecordNotFoundError) as ex:
         logger.exception(ex)
         raise BadResponseError("Cannot fetch geostore geometry")
 
     if geometry is None:
-        logger.error("Geometry is None")
+        logger.error(f"Geometry for geostore_id {geostore_id} is None")
         raise BadResponseError("Cannot fetch geostore geometry")
 
     return geometry
