@@ -24,8 +24,8 @@ ESC_COMMAND=$(echo -n "$*" | json_escape)
 # Also make sure we don't reveal any sensitive information
 # But we still want to know if the var was set
 # Crop output length to be able to send using CURL
-sed -i 's/^AWS_SECRET_ACCESS_KEY.*$/AWS_SECRET_ACCESS_KEY=\*\*\*/g' $OUTPUT_FILE # pragma: allowlist secret
-sed -i 's/^PGPASSWORD.*$/PGPASSWORD=\*\*\*/g' $OUTPUT_FILE  # pragma: allowlist secret
+sed -i 's/^AWS_SECRET_ACCESS_KEY.*$/AWS_SECRET_ACCESS_KEY=\*\*\*/g' "$OUTPUT_FILE" # pragma: allowlist secret
+sed -i 's/^PGPASSWORD.*$/PGPASSWORD=\*\*\*/g' "$OUTPUT_FILE"  # pragma: allowlist secret
 ESC_OUTPUT="$(cat $OUTPUT_FILE \
   | sed 's/^AWS_ACCESS_KEY_ID.*$/AWS_ACCESS_KEY_ID=\*\*\*/g' \
   | sed 's/^PGUSER.*$/PGUSER=\*\*\*/g' \
