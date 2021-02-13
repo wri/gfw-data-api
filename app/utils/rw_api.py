@@ -31,7 +31,7 @@ async def get_geostore_geometry(geostore_id: UUID) -> Geometry:
     except KeyError:
         raise BadResponseError("Cannot fetch geostore geometry")
 
-    return geometry
+    return Geometry(**geometry)
 
 
 async def who_am_i(token) -> Response:
