@@ -8,17 +8,16 @@ from httpx import Response as HTTPXResponse
 
 from ..errors import BadResponseError, InvalidResponseError, UnauthorizedError
 from ..models.pydantic.geostore import Geometry
-from ..settings.globals import ENV
+from ..settings.globals import RW_API_URL
 
 
 @alru_cache(maxsize=128)
 async def get_geostore_geometry(geostore_id: UUID) -> Geometry:
     """Get RW Geostore geometry."""
 
-    prefix = _env_prefix()
     geostore_id_str: str = str(geostore_id).replace("-", "")
 
-    url = f"https://{prefix}-api.globalforestwatch.org/v2/geostore/{geostore_id_str}"
+    url = f"{RW_API_URL}/v2/geostore/{geostore_id_str}"
     async with AsyncClient() as client:
         response: HTTPXResponse = await client.get(url)
 
@@ -37,10 +36,8 @@ async def get_geostore_geometry(geostore_id: UUID) -> Geometry:
 async def who_am_i(token) -> Response:
     """Call GFW API to get token's identity."""
 
-    prefix = _env_prefix()
-
     headers = {"Authorization": f"Bearer {token}"}
-    url = f"https://{prefix}-api.globalforestwatch.org/auth/check-logged"
+    url = f"{RW_API_URL}/auth/check-logged"
 
     async with AsyncClient() as client:
         response: HTTPXResponse = await client.get(url, headers=headers, timeout=10.0)
@@ -62,13 +59,11 @@ async def login(user_name: str, password: str) -> str:
     headers = {"Content-Type": "application/json"}
     payload = {"email": user_name, "password": password}
 
-    prefix = _env_prefix()
-
     logger.debug(
         f"Requesting Bearer token from GFW production API for user {user_name}"
     )
 
-    url = f"https://{prefix}-api.globalforestwatch.org/auth/login"
+    url = f"{RW_API_URL}/auth/login"
 
     async with AsyncClient() as client:
         response: HTTPXResponse = await client.post(url, json=payload, headers=headers)
@@ -80,13 +75,3 @@ async def login(user_name: str, password: str) -> str:
         raise UnauthorizedError("Authentication failed")
 
     return response.json()["data"]["token"]
-
-
-def _env_prefix() -> str:
-    """Set RW environment."""
-    if ENV in ("dev", "test"):
-        prefix = "staging"
-    else:
-        prefix = ENV
-
-    return prefix
