@@ -1,6 +1,8 @@
-from typing import Any, Dict, List
+import math
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
+import numpy as np
 from fastapi import HTTPException
 
 from app.crud.assets import get_asset
@@ -9,6 +11,7 @@ from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import Job
+from app.models.pydantic.statistics import RasterStats
 from app.models.pydantic.symbology import Symbology
 from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
@@ -19,6 +22,34 @@ from app.tasks.raster_tile_cache_assets.utils import (
     reproject_to_web_mercator,
 )
 from app.utils.path import get_asset_uri
+
+
+def generate_stats(asset_id) -> RasterStats:
+    raise NotImplementedError()
+
+
+def generate_max_zoom_calc(
+    asset_id, data_type, stats: RasterStats
+) -> Tuple[Optional[str], Optional[str]]:
+    d_type = data_type.lower()
+    calc_str = None
+    new_data_type = None
+    if np.issubdtype(np.dtype(d_type), np.floating):
+        if stats is None:
+            stats = generate_stats(asset_id)
+        assert len(stats.bands) == 1
+        stats_min = stats.bands[0].min
+        stats_max = stats.bands[0].max
+        value_range = math.fabs(stats_max - stats_min)
+        uint16_max = np.iinfo(np.uint16).max
+        # Expand or squeeze to fit into a uint16
+        # Could inf values blow this up?
+        # Should we use a larger int type if necessary?
+        mult_factor = int(math.floor(uint16_max / value_range))
+        calc_str = f"((A - {stats_min}) * {mult_factor}).astype(np.uint16)"
+        new_data_type = "uint16"
+
+    return calc_str, new_data_type
 
 
 async def raster_tile_cache_asset(
@@ -66,6 +97,12 @@ async def raster_tile_cache_asset(
 
     symbology_function = symbology_constructor[symbology["type"]]
 
+    max_zoom_calc, new_data_type = generate_max_zoom_calc(
+        asset_id, source_asset_co.data_type, source_asset.stats
+    )
+    if new_data_type is not None:
+        source_asset_co.data_type = new_data_type
+
     for zoom_level in range(max_zoom, min_zoom - 1, -1):
         jobs_dict[zoom_level] = dict()
         source_projection_parent_job = jobs_dict.get(zoom_level + 1, {}).get(
@@ -87,6 +124,7 @@ async def raster_tile_cache_asset(
             max_zoom,
             source_projection_parent_jobs,
             max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
+            max_zoom_calc=max_zoom_calc,
         )
         jobs_dict[zoom_level]["source_reprojection_job"] = source_reprojection_job
         job_list.append(source_reprojection_job)
