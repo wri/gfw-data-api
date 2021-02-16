@@ -452,7 +452,7 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
     # test to download assets
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/download/geotiff",
-        params={"grid": "90/27008", "tile_id": "90N_000E"},
+        params={"grid": "90/27008", "tile_id": "90N_000E", "pixel_meaning": "percent"},
         allow_redirects=False,
     )
     assert response.status_code == 307
@@ -469,7 +469,7 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
 
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/download/geotiff",
-        params={"grid": "10/40000", "tile_id": "90N_000E"},
+        params={"grid": "10/40000", "tile_id": "90N_000E", "pixel_meaning": "percent"},
         allow_redirects=False,
     )
     assert response.status_code == 404
