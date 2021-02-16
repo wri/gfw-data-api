@@ -87,7 +87,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
 
     # Add a dataset, version, and default asset
     dataset = "test_auxiliary_raster_asset"
-    version = "v1.0.0"
+    version = "v1.8"
     primary_grid = "90/27008"
     auxiliary_grid = "90/9984"
 
