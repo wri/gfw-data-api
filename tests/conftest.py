@@ -3,10 +3,8 @@ import io
 import os
 import shutil
 import threading
-import zipfile
 from http.server import HTTPServer
 
-import boto3
 import httpx
 import pytest
 import rasterio
@@ -19,18 +17,17 @@ from app.routes import is_admin, is_service_account
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
     AURORA_JOB_QUEUE_FAST,
-    AWS_REGION,
     DATA_LAKE_BUCKET,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
-    RASTER_ANALYSIS_LAMBDA_NAME,
     TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
 )
+from app.utils.aws import get_s3_client
 
 from . import (
     APPEND_TSV_NAME,
@@ -63,6 +60,29 @@ FAKE_FLOAT_DATA_PARAMS = {
     "dtype_name": "float32",
     "prefix": "test/v1.1.1/raw/float32",
 }
+
+
+def pytest_addoption(parser):
+    parser.addoption("--without-hanging-tests", action="store_true", default=False)
+    parser.addoption("--with-slow-tests", action="store_true", default=False)
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "hanging: mark test as hanging on Github Actions"
+    )
+    config.addinivalue_line("markers", "slow: mark test as slow to run")
+
+
+def pytest_collection_modifyitems(config, items):
+    skip_hanging = pytest.mark.skip(reason="omit --without-hanging-tests option to run")
+    skip_slow = pytest.mark.skip(reason="need --with-slow-tests option to run")
+
+    for item in items:
+        if "hanging" in item.keywords and config.getoption("--without-hanging-tests"):
+            item.add_marker(skip_hanging)
+        if "slow" in item.keywords and not config.getoption("--with-slow-tests"):
+            item.add_marker(skip_slow)
 
 
 # TODO Fixme
@@ -233,9 +253,7 @@ def flush_request_list(httpd):
 @pytest.fixture(autouse=True)
 def copy_fixtures():
     # Upload file to mocked S3 bucket
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-    )
+    s3_client = get_s3_client()
 
     s3_client.create_bucket(Bucket=BUCKET)
     s3_client.create_bucket(Bucket=DATA_LAKE_BUCKET)
@@ -284,31 +302,46 @@ async def tmp_folder():
     shutil.rmtree(tmp_dir)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def lambda_client():
-    services = ["lambda", "iam", "logs"]
-    aws_mock = AWSMock(*services)
+# @pytest.fixture(scope="session", autouse=True)
+# def lambda_client():
+#     services = ["lambda", "iam", "logs"]
+#     aws_mock = AWSMock(*services)
+#
+#     resp = aws_mock.mocked_services["iam"]["client"].create_role(
+#         RoleName="TestRole", AssumeRolePolicyDocument="some_policy"
+#     )
+#     iam_arn = resp["Role"]["Arn"]
+#
+#     def create_lambda(func_str):
+#         zip_output = io.BytesIO()
+#         zip_file = zipfile.ZipFile(zip_output, "w", zipfile.ZIP_DEFLATED)
+#         zip_file.writestr("lambda_function.py", func_str)
+#         zip_file.close()
+#         zip_output.seek(0)
+#
+#         return aws_mock.mocked_services["lambda"]["client"].create_function(
+#             Code={"ZipFile": zip_output.read()},
+#             FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
+#             Handler="lambda_function.lambda_handler",
+#             Runtime="python3.7",
+#             Role=iam_arn,
+#         )
+#
+#     yield create_lambda
+#
+#     aws_mock.stop_services()
 
-    resp = aws_mock.mocked_services["iam"]["client"].create_role(
-        RoleName="TestRole", AssumeRolePolicyDocument="some_policy"
-    )
-    iam_arn = resp["Role"]["Arn"]
 
-    def create_lambda(func_str):
-        zip_output = io.BytesIO()
-        zip_file = zipfile.ZipFile(zip_output, "w", zipfile.ZIP_DEFLATED)
-        zip_file.writestr("lambda_function.py", func_str)
-        zip_file.close()
-        zip_output.seek(0)
+# @pytest.fixture(scope="session", autouse=True)
+# def secrets():
+#
+#     secret_client = boto3.client(
+#         "secretsmanager", region_name=AWS_REGION, endpoint_url=AWS_SECRETSMANAGER_URL
+#     )
+#     secret_client.create_secret(
+#         Name=AWS_GCS_KEY_SECRET_ARN,
+#         SecretString="foosecret",  # pragma: allowlist secret
+#     )
+#     yield
 
-        return aws_mock.mocked_services["lambda"]["client"].create_function(
-            Code={"ZipFile": zip_output.read()},
-            FunctionName=RASTER_ANALYSIS_LAMBDA_NAME,
-            Handler="lambda_function.lambda_handler",
-            Runtime="python3.7",
-            Role=iam_arn,
-        )
-
-    yield create_lambda
-
-    aws_mock.stop_services()
+# secret_client.delete_secret(SecretId=AWS_GCS_KEY_SECRET_ARN)

@@ -128,7 +128,7 @@ class BuildRGBJob(Job):
     job_definition = GDAL_PYTHON_JOB_DEFINITION
     vcpus = MAX_CORES
     memory = MAX_MEM
-    attempts = 1
+    attempts = 4
     attempt_duration_seconds = 7500
 
 
@@ -139,5 +139,5 @@ class GDAL2TilesJob(Job):
     job_definition = GDAL_PYTHON_JOB_DEFINITION
     vcpus = MAX_CORES
     memory = MAX_MEM
-    attempts = 1
+    attempts = 4
     attempt_duration_seconds = 7500

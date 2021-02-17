@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
 
 
-class CSVResponse(StreamingResponse):
+class CSVStreamingResponse(StreamingResponse):
     media_type = "text/csv"
 
     def __init__(

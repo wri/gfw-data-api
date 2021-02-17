@@ -1,12 +1,13 @@
 import json
 from unittest.mock import patch
+from urllib.parse import urlparse
 
-import boto3
 import pytest
 from botocore.exceptions import ClientError
 
 from app.models.pydantic.metadata import VersionMetadata
-from app.settings.globals import AWS_REGION
+from app.settings.globals import S3_ENTRYPOINT_URL
+from app.utils.aws import get_s3_client
 from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
 from tests.conftest import FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
@@ -104,9 +105,9 @@ async def test_versions(mocked_cloudfront_client, async_client):
         "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
         "layers": None,
         "indices": [
-            {"column_name": "geom", "index_type": "gist"},
-            {"column_name": "geom_wm", "index_type": "gist"},
-            {"column_name": "gfw_geostore_id", "index_type": "hash"},
+            {"column_names": ["geom"], "index_type": "gist"},
+            {"column_names": ["geom_wm"], "index_type": "gist"},
+            {"column_names": ["gfw_geostore_id"], "index_type": "hash"},
         ],
         "create_dynamic_vector_tile_cache": True,
         "add_to_geostore": True,
@@ -391,6 +392,7 @@ async def test_put_latest(async_client):
     )
 
 
+@pytest.mark.hanging
 @pytest.mark.asyncio
 @patch("app.tasks.aws_tasks.get_cloudfront_client")
 async def test_version_put_raster(mocked_cloudfront_client, async_client):
@@ -399,9 +401,7 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
     dataset = "test_version_put_raster"
     version = "v1.0.0"
 
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-    )
+    s3_client = get_s3_client()
 
     pixetl_output_files = [
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/extent.geojson",
@@ -449,7 +449,33 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
         except ClientError:
             raise AssertionError(f"Key {key} doesn't exist!")
 
+    # test to download assets
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/download/geotiff",
+        params={"grid": "90/27008", "tile_id": "90N_000E", "pixel_meaning": "percent"},
+        allow_redirects=False,
+    )
+    assert response.status_code == 307
+    url = urlparse(response.headers["Location"])
+    assert url.scheme == "http"
+    assert url.netloc == urlparse(S3_ENTRYPOINT_URL).netloc
+    assert (
+        url.path
+        == f"/gfw-data-lake-test/{dataset}/{version}/raster/epsg-4326/90/27008/percent/geotiff/90N_000E.tif"
+    )
+    assert "AWSAccessKeyId" in url.query
+    assert "Signature" in url.query
+    assert "Expires" in url.query
 
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/download/geotiff",
+        params={"grid": "10/40000", "tile_id": "90N_000E", "pixel_meaning": "percent"},
+        allow_redirects=False,
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.hanging
 @pytest.mark.asyncio
 @patch("app.tasks.aws_tasks.get_cloudfront_client")
 async def test_version_put_raster_bug_fixes(mocked_cloudfront_client, async_client):

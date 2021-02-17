@@ -5,17 +5,17 @@ import uuid
 from time import sleep
 from typing import Any, Dict, List, Set
 
-import boto3
 import httpx
 import numpy
 import rasterio
 from affine import Affine
+from botocore.exceptions import ClientError
 from mock import patch
 from rasterio.crs import CRS
 
 from app.crud import tasks
-from app.settings.globals import AWS_REGION, DATA_LAKE_BUCKET
-from app.utils.aws import get_batch_client
+from app.settings.globals import DATA_LAKE_BUCKET
+from app.utils.aws import get_batch_client, get_s3_client
 from tests import BUCKET, PORT, SHP_NAME
 from tests.tasks import MockECSClient
 
@@ -178,6 +178,24 @@ async def check_callbacks(task_ids, async_client=None):
     assert all(elem in task_path for elem in req_paths)
 
 
+def check_s3_file_present(bucket, keys):
+    s3_client = get_s3_client()
+
+    for key in keys:
+        try:
+            s3_client.head_object(Bucket=bucket, Key=key)
+        except ClientError:
+            raise AssertionError(f"Object {key} doesn't exist in bucket {bucket}!")
+
+
+def delete_s3_files(bucket, prefix):
+    s3_client = get_s3_client()
+    response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    for obj in response.get("Contents", list()):
+        print("Deleting", obj["Key"])
+        s3_client.delete_object(Bucket=bucket, Key=obj["Key"])
+
+
 async def forward_request(async_client, request):
     # ecs_client.return_value = MockECSClient()
 
@@ -239,9 +257,7 @@ async def check_tasks_status(async_client, logs, asset_ids) -> None:
 
 
 def upload_fake_data(dtype, dtype_name, no_data, prefix):
-    s3_client = boto3.client(
-        "s3", region_name=AWS_REGION, endpoint_url="http://motoserver:5000"
-    )
+    s3_client = get_s3_client()
 
     data_file_name = "0000000000-0000000000.tif"
 

@@ -1,5 +1,7 @@
 from unittest import mock
 
+import pytest
+
 from app.tasks.aws_tasks import (
     delete_s3_objects,
     expire_s3_objects,
@@ -12,6 +14,7 @@ from .. import BUCKET, TSV_NAME, TSV_PATH
 from . import KEY, VALUE, MockCloudfrontClient, MockECSClient, MockS3Client
 
 
+@pytest.mark.hanging
 def test_delete_s3_objects():
     """" Make sure we can delete more than 1000 items."""
 

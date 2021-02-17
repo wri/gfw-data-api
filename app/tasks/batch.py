@@ -122,25 +122,15 @@ def submit_batch_job(
             "memory": job.memory,
             "environment": job.environment,
         },
-        "retryStrategy": {"attempts": job.attempts},
+        "retryStrategy": {
+            "attempts": job.attempts,
+            "evaluateOnExit": [{"onStatusReason": "Host EC2*", "action": "RETRY"}],
+        },
         "timeout": {"attemptDurationSeconds": job.attempt_duration_seconds},
     }
 
     logger.info(f"Submit batch job with payload: {payload}")
 
-    response = client.submit_job(
-        jobName=job.job_name,
-        jobQueue=job.job_queue,
-        dependsOn=depends_on,
-        jobDefinition=job.job_definition,
-        containerOverrides={
-            "command": job.command,
-            "vcpus": job.vcpus,
-            "memory": job.memory,
-            "environment": job.environment,
-        },
-        retryStrategy={"attempts": job.attempts},
-        timeout={"attemptDurationSeconds": job.attempt_duration_seconds},
-    )
+    response = client.submit_job(**payload)
 
     return UUID(response["jobId"])

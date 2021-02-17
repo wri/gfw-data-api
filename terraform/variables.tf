@@ -28,11 +28,11 @@ variable "desired_count" {
 }
 variable "fargate_cpu" {
   type    = number
-  default = 1024
+  default = 512
 }
 variable "fargate_memory" {
   type    = number
-  default = 8192
+  default = 2048
 }
 variable "auto_scaling_cooldown" {
   type    = number

@@ -1,8 +1,12 @@
+from typing import Tuple
+
 from fastapi import Depends, HTTPException, Path
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
 from httpx import Response
 
+from ..crud.versions import get_version
+from ..errors import RecordNotFoundError
 from ..utils.rw_api import who_am_i
 
 DATASET_REGEX = r"^[a-z][a-z0-9_-]{2,}$"
@@ -32,6 +36,19 @@ async def version_dependency(
             detail="You must list version name explicitly for this operation.",
         )
     return version
+
+
+async def dataset_version_dependency(
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+) -> Tuple[str, str]:
+    # make sure version exists
+    try:
+        await get_version(dataset, version)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=400, detail=(str(e)))
+
+    return dataset, version
 
 
 async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
