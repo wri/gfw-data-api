@@ -1,4 +1,3 @@
-import json
 from unittest.mock import patch
 from uuid import UUID
 
@@ -812,14 +811,14 @@ async def test_asset_float_no_data(async_client, batch_client, httpd):
         logs,
         **checks,
     )
-    s3_client = get_s3_client()
-    tiles_geojson_key = f"{pixetl_output_files_prefix}/tiles.geojson"
-    try:
-        result = s3_client.get_object(Bucket=DATA_LAKE_BUCKET, Key=tiles_geojson_key)
-        tiles_geojson = result["Body"].read().decode()
-        print(json.dumps(json.loads(tiles_geojson), indent=2))
-    except ClientError:
-        raise AssertionError("tiles.geojson does not exist!!")
+    # s3_client = get_s3_client()
+    # tiles_geojson_key = f"{pixetl_output_files_prefix}/geotiff/tiles.geojson"
+    # try:
+    #     result = s3_client.get_object(Bucket=DATA_LAKE_BUCKET, Key=tiles_geojson_key)
+    #     tiles_geojson = result["Body"].read().decode()
+    #     print(json.dumps(json.loads(tiles_geojson), indent=2))
+    # except ClientError:
+    #     raise AssertionError(f"{tiles_geojson_key} does not exist!!")
 
 
 @pytest.mark.asyncio
