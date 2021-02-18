@@ -4,6 +4,7 @@ from uuid import UUID
 
 import numpy as np
 from fastapi import HTTPException
+from pydantic import StrictInt
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
@@ -29,27 +30,34 @@ def generate_stats(asset_id) -> RasterStats:
 
 
 def generate_max_zoom_calc(
-    asset_id, data_type, stats: RasterStats
-) -> Tuple[Optional[str], Optional[str]]:
+    asset_id, data_type, stats: Dict[str, Any]
+) -> Tuple[Optional[str], Optional[str], Optional[StrictInt]]:
     d_type = data_type.lower()
     calc_str = None
     new_data_type = None
+    new_no_data_val = None
     if np.issubdtype(np.dtype(d_type), np.floating):
         if stats is None:
             stats = generate_stats(asset_id)
+        else:
+            stats = RasterStats(**stats)
         assert len(stats.bands) == 1
         stats_min = stats.bands[0].min
         stats_max = stats.bands[0].max
         value_range = math.fabs(stats_max - stats_min)
-        uint16_max = np.iinfo(np.uint16).max
+        # Shift by 1 (and add 1 later) so any values of zero don't get counted as no_data
+        uint16_max = np.iinfo(np.uint16).max - 1
         # Expand or squeeze to fit into a uint16
         # Could inf values blow this up?
         # Should we use a larger int type if necessary?
-        mult_factor = int(math.floor(uint16_max / value_range))
-        calc_str = f"((A - {stats_min}) * {mult_factor}).astype(np.uint16)"
+        mult_factor = int(math.floor(uint16_max / value_range)) if value_range else 1
+        # if mult_factor != 1:
+        calc_str = f"(A != np.nan).astype(np.uint8) * (1 + (A - {stats_min}) * {mult_factor}).astype(np.uint16)"
+        # calc_str = "A.astype(np.uint16)"  # Debugging
         new_data_type = "uint16"
+        new_no_data_val = 0
 
-    return calc_str, new_data_type
+    return calc_str, new_data_type, new_no_data_val
 
 
 async def raster_tile_cache_asset(
@@ -97,11 +105,13 @@ async def raster_tile_cache_asset(
 
     symbology_function = symbology_constructor[symbology["type"]]
 
-    max_zoom_calc, new_data_type = generate_max_zoom_calc(
+    max_zoom_calc, new_data_type, new_no_data_value = generate_max_zoom_calc(
         asset_id, source_asset_co.data_type, source_asset.stats
     )
     if new_data_type is not None:
         source_asset_co.data_type = new_data_type
+    if new_no_data_value is not None:
+        source_asset_co.no_data = new_no_data_value
 
     for zoom_level in range(max_zoom, min_zoom - 1, -1):
         jobs_dict[zoom_level] = dict()

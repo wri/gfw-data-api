@@ -307,6 +307,7 @@ def upload_fake_data(dtype, dtype_name, no_data, prefix):
         full_data_file_path = f"{os.path.join(tmpdir, data_file_name)}"
         with rasterio.Env():
             with rasterio.open(full_data_file_path, "w", **dataset_profile) as dst:
+                # dummy_data = numpy.row_stack((numpy.ones((50, 100), "int16"), numpy.ones((50, 100), "int16") * (-1)))
                 dummy_data = numpy.ones((100, 100), dtype)
                 dst.write(dummy_data.astype(dtype), 1)
         s3_client.upload_file(

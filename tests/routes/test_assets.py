@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 from uuid import UUID
 
@@ -749,7 +750,9 @@ async def test_asset_extent_stats_empty(async_client):
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
-async def test_asset_float_no_data(async_client):
+async def test_asset_float_no_data(async_client, batch_client, httpd):
+    _, logs = batch_client
+
     dataset = "test_asset_float_no_data"
     version = "v1.0.0"
 
@@ -771,18 +774,52 @@ async def test_asset_float_no_data(async_client):
             "grid": "90/27008",
             "resampling": "nearest",
             "overwrite": True,
-            "compute_histogram": False,
-            "compute_stats": False,
-        },
+            "compute_histogram": True,
+            "compute_stats": True,
+        }
     }
 
-    await create_default_asset(
+    asset = await create_default_asset(
         dataset,
         version,
         version_payload=raster_version_payload,
         async_client=async_client,
         execute_batch_jobs=True,
     )
+    default_asset_id = asset["asset_id"]
+
+    # await check_tasks_status(async_client, logs, [default_asset_id])
+
+    checks = {
+        "wm_tile_set_assets": ["date_conf", f"date_conf_{ColorMapType.gradient}"],
+        "symbology": {
+            "type": ColorMapType.gradient,
+            "colormap": {
+                1: {"red": 255, "green": 0, "blue": 0},
+                65535: {"red": 0, "green": 0, "blue": 255},
+            },
+        },
+    }
+
+    # Flush requests list so we're starting fresh
+    httpx.delete(f"http://localhost:{httpd.server_port}")
+
+    await _test_raster_tile_cache(
+        dataset,
+        version,
+        default_asset_id,
+        async_client,
+        logs,
+        **checks,
+    )
+    s3_client = get_s3_client()
+    tiles_geojson_key = f"{pixetl_output_files_prefix}/tiles.geojson"
+    try:
+        result = s3_client.get_object(Bucket=DATA_LAKE_BUCKET, Key=tiles_geojson_key)
+        tiles_geojson = result["Body"].read().decode()
+        print(json.dumps(json.loads(tiles_geojson), indent=2))
+    except ClientError:
+        raise AssertionError("tiles.geojson does not exist!!")
 
 
 @pytest.mark.asyncio
