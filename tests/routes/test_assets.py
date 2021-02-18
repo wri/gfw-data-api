@@ -749,7 +749,7 @@ async def test_asset_extent_stats_empty(async_client):
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
-async def test_asset_float_no_data(async_client, batch_client, httpd):
+async def test_asset_float(async_client, batch_client, httpd):
     _, logs = batch_client
 
     dataset = "test_asset_float_no_data"
@@ -810,17 +810,17 @@ async def test_asset_float_no_data(async_client, batch_client, httpd):
         **checks,
     )
 
-    import json
-
-    s3_client = get_s3_client()
-    tiles_geojson_key = f"{pixetl_output_files_prefix}/geotiff/tiles.geojson"
-    try:
-        result = s3_client.get_object(Bucket=DATA_LAKE_BUCKET, Key=tiles_geojson_key)
-        tiles_geojson = result["Body"].read().decode()
-        print(json.dumps(json.loads(tiles_geojson), indent=2))
-    except ClientError:
-        raise AssertionError(f"{tiles_geojson_key} does not exist!!")
-    assert 1 == 2  # So we get the output of the tile.geojson, above ^
+    # import json
+    #
+    # s3_client = get_s3_client()
+    # tiles_geojson_key = f"{pixetl_output_files_prefix}/geotiff/tiles.geojson"
+    # try:
+    #     result = s3_client.get_object(Bucket=DATA_LAKE_BUCKET, Key=tiles_geojson_key)
+    #     tiles_geojson = result["Body"].read().decode()
+    #     print(json.dumps(json.loads(tiles_geojson), indent=2))
+    # except ClientError:
+    #     raise AssertionError(f"{tiles_geojson_key} does not exist!!")
+    # assert 1 == 2  # So we get the output of the tile.geojson, above ^
 
 
 @pytest.mark.asyncio
