@@ -18,6 +18,7 @@ from tests.utils import (
     check_tasks_status,
     create_default_asset,
     delete_s3_files,
+    generate_uuid,
     poll_jobs,
 )
 
@@ -93,7 +94,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
 
     # Add a dataset, version, and default asset
     dataset = "test_auxiliary_raster_asset"
-    version = "v1.0.0"
+    version = "v1.8"
     primary_grid = "90/27008"
     auxiliary_grid = "90/9984"
 
@@ -782,3 +783,72 @@ async def test_asset_float_no_data(async_client):
         async_client=async_client,
         execute_batch_jobs=True,
     )
+
+
+@pytest.mark.asyncio
+async def test_raster_asset_payloads_vector_source(async_client):
+    """Test creating various raster assets based on vector input."""
+
+    # Add a dataset, version, and default asset
+    dataset = "vector_test"
+    version = "v20200626"
+
+    #
+    asset = await create_default_asset(
+        dataset, version, async_client=async_client, execute_batch_jobs=False
+    )
+    asset_id = asset["asset_id"]
+
+    # Since we did not actually execute the batch job, all tasks are still pending
+    # We pretend that they succeeded so that we can continue creating assets
+    get_resp = await async_client.get(f"/asset/{asset_id}/tasks")
+    task_list = get_resp.json()["data"]
+    for task in task_list:
+        task_id = task["task_id"]
+        patch_payload = {
+            "change_log": [
+                {
+                    "date_time": "2020-06-25 14:30:00",
+                    "status": "success",
+                    "message": "Let's fake it",
+                    "detail": "None",
+                }
+            ]
+        }
+        patch_resp = await async_client.patch(f"/task/{task_id}", json=patch_payload)
+        assert patch_resp.json()["status"] == "success"
+
+    create_asset_resp = await async_client.get(f"/asset/{asset_id}")
+    print(create_asset_resp.json())
+    assert create_asset_resp.json()["data"]["status"] == "saved"
+
+    ######################
+    # Create Raster Tile Set based on Vector source asset
+    #######################
+
+    # Try adding a non-default raster tile asset based on the default
+
+    asset_payload = {
+        "asset_type": "Raster tile set",
+        "is_managed": True,
+        "creation_options": {
+            "pixel_meaning": "year",
+            "data_type": "uint8",
+            "nbits": 5,
+            "no_data": 0,
+            "rasterize_method": "value",
+            "calc": "year",
+            "order": "asc",
+            "grid": "10/40000",
+            "symbology": None,
+        },
+    }
+
+    # Only checking if payload is accepted, nothing else
+    with patch("app.tasks.batch.submit_batch_job", side_effect=generate_uuid):
+        create_asset_resp = await async_client.post(
+            f"/dataset/{dataset}/{version}/assets", json=asset_payload
+        )
+        resp_json = create_asset_resp.json()
+        print(resp_json)
+        assert resp_json["status"] == "success"

@@ -107,7 +107,8 @@ class TileCacheJob(Job):
     vcpus = 48
     memory = 96000
     attempts = 4
-    attempt_duration_seconds = 3600
+    attempt_duration_seconds = 10800
+
 
 
 class PixETLJob(Job):

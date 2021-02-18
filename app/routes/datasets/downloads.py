@@ -68,12 +68,15 @@ async def download_geotiff(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     grid: Grid = Query(..., description="Grid size of tile to download."),
     tile_id: str = Query(..., description="Tile ID of tile to download."),
+    pixel_meaning: str = Query(..., description="Pixel meaning of tile to download."),
 ):
     """Download geotiff raster tile."""
 
     dataset, version = dataset_version
 
-    asset_url = await _get_raster_tile_set_asset_url(dataset, version, grid)
+    asset_url = await _get_raster_tile_set_asset_url(
+        dataset, version, grid, pixel_meaning
+    )
     tile_url = asset_url.format(tile_id=tile_id)
     bucket, key = split_s3_path(tile_url)
 
@@ -153,7 +156,9 @@ def orm_to_csv(data: List[RowProxy], delimiter=",") -> Iterator[StringIO]:
         csv_file.close()
 
 
-async def _get_raster_tile_set_asset_url(dataset: str, version: str, grid: str) -> str:
+async def _get_raster_tile_set_asset_url(
+    dataset: str, version: str, grid: str, pixel_meaning: str
+) -> str:
     assets = await get_assets_by_filter(
         dataset, version, asset_types=[AssetType.raster_tile_set]
     )
@@ -165,7 +170,10 @@ async def _get_raster_tile_set_asset_url(dataset: str, version: str, grid: str) 
         )
 
     for asset in assets:
-        if asset.creation_options["grid"] == grid:
+        if (
+            asset.creation_options["grid"] == grid
+            and asset.creation_options["pixel_meaning"] == pixel_meaning
+        ):
             return asset.asset_uri
 
     raise HTTPException(

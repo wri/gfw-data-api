@@ -1,7 +1,9 @@
+from typing import Optional
 from uuid import UUID
 
 from async_lru import alru_cache
 from fastapi import HTTPException
+from fastapi.logger import logger
 
 from app.crud.geostore import get_geostore_from_anywhere
 from app.errors import BadResponseError, InvalidResponseError, RecordNotFoundError
@@ -14,20 +16,21 @@ from app.utils import rw_api
 async def _get_gfw_geostore_geometry(geostore_id: UUID) -> Geometry:
     """Get GFW Geostore geometry."""
 
-    geo: GeostoreHydrated = await get_geostore_from_anywhere(geostore_id)
-
     try:
-        geometry = geo.gfw_geojson.features[0].geometry
-    except (KeyError, RecordNotFoundError):
+        geo: GeostoreHydrated = await get_geostore_from_anywhere(geostore_id)
+        geometry: Optional[Geometry] = geo.gfw_geojson.features[0].geometry
+    except (KeyError, RecordNotFoundError) as ex:
+        logger.exception(ex)
         raise BadResponseError("Cannot fetch geostore geometry")
 
     if geometry is None:
+        logger.error(f"Geometry for geostore_id {geostore_id} is None")
         raise BadResponseError("Cannot fetch geostore geometry")
 
     return geometry
 
 
-async def get_geostore_geometry(geostore_id: UUID, geostore_origin: str):
+async def get_geostore_geometry(geostore_id: UUID, geostore_origin: str) -> Geometry:
     geostore_constructor = {
         GeostoreOrigin.gfw: _get_gfw_geostore_geometry,
         GeostoreOrigin.rw: rw_api.get_geostore_geometry,
