@@ -791,7 +791,7 @@ async def test_asset_float_no_data(async_client, batch_client, httpd):
     # await check_tasks_status(async_client, logs, [default_asset_id])
 
     checks = {
-        "wm_tile_set_assets": ["date_conf", f"date_conf_{ColorMapType.gradient}"],
+        "wm_tile_set_assets": ["percent", f"percent_{ColorMapType.gradient}"],
         "symbology": {
             "type": ColorMapType.gradient,
             "colormap": {
