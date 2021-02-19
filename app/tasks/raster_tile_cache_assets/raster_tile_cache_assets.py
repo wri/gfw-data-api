@@ -13,6 +13,7 @@ from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import Job
 from app.models.pydantic.statistics import RasterStats
+from app.models.pydantic.symbology import Symbology
 from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.batch import execute
@@ -63,10 +64,7 @@ def convert_float_to_int(
     source_asset_co.data_type = DataType.uint16
     source_asset_co.no_data = 0
 
-    if (
-        source_asset_co.symbology is not None
-        and source_asset_co.symbology.colormap is not None
-    ):
+    if source_asset_co.symbology and source_asset_co.symbology.colormap is not None:
         source_asset_co.symbology.colormap = {
             (1 + (float(k) - stats_min) * mult_factor): v
             for k, v in source_asset_co.symbology.colormap.items()
@@ -87,6 +85,7 @@ async def raster_tile_cache_asset(
     max_zoom = input_data["creation_options"]["max_zoom"]
     max_static_zoom = input_data["creation_options"]["max_static_zoom"]
     implementation = input_data["creation_options"]["implementation"]
+    symbology = Symbology(**input_data["creation_options"]["symbology"])
     resampling = input_data["creation_options"]["resampling"]
 
     # source_asset_id is currently required. Could perhaps make it optional
@@ -118,6 +117,7 @@ async def raster_tile_cache_asset(
     jobs_dict: Dict[int, Dict[str, Job]] = dict()
 
     # If float data type, convert to int in derivative assets for performance
+    source_asset_co.symbology = symbology
     max_zoom_calc = None
     if np.issubdtype(np.dtype(source_asset_co.data_type), np.floating):
         source_asset_co, max_zoom_calc = convert_float_to_int(
