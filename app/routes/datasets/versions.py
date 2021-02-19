@@ -133,7 +133,7 @@ async def update_version(
 
     # if version was tagged as `latest`
     # make sure associated `latest` routes in tile cache cloud front distribution are invalidated
-    if input_data["is_latest"]:
+    if input_data.get("is_latest"):
         background_tasks.add_task(
             flush_cloudfront_cache,
             TILE_CACHE_CLOUDFRONT_ID,
