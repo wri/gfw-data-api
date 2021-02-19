@@ -6,10 +6,7 @@ from fastapi.logger import logger
 from app.crud.assets import create_asset
 from app.models.enum.assets import AssetType
 from app.models.pydantic.assets import AssetCreateIn
-from app.models.pydantic.creation_options import (
-    PixETLCreationOptions,
-    RasterTileSetSourceCreationOptions,
-)
+from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import GDAL2TilesJob, Job
 from app.models.pydantic.metadata import RasterTileSetMetadata
 from app.settings.globals import MAX_CORES, MAX_MEM, TILE_CACHE_BUCKET
@@ -99,7 +96,7 @@ async def create_wm_tile_set_job(
     job = await create_pixetl_job(
         dataset,
         version,
-        PixETLCreationOptions(**creation_options.dict()),
+        creation_options,
         job_name,
         callback_constructor(wm_asset_record.asset_id),
         parents=parents,
