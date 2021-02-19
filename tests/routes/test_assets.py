@@ -785,15 +785,13 @@ async def test_asset_float(async_client, batch_client, httpd):
     )
     default_asset_id = asset["asset_id"]
 
-    # await check_tasks_status(async_client, logs, [default_asset_id])
-
     checks = {
         "wm_tile_set_assets": ["percent", f"percent_{ColorMapType.gradient}"],
         "symbology": {
             "type": ColorMapType.gradient,
             "colormap": {
-                1: {"red": 255, "green": 0, "blue": 0},
-                65535: {"red": 0, "green": 0, "blue": 255},
+                -1: {"red": 255, "green": 0, "blue": 0},
+                1: {"red": 0, "green": 0, "blue": 255},
             },
         },
     }
@@ -809,18 +807,6 @@ async def test_asset_float(async_client, batch_client, httpd):
         logs,
         **checks,
     )
-
-    # import json
-    #
-    # s3_client = get_s3_client()
-    # tiles_geojson_key = f"{pixetl_output_files_prefix}/geotiff/tiles.geojson"
-    # try:
-    #     result = s3_client.get_object(Bucket=DATA_LAKE_BUCKET, Key=tiles_geojson_key)
-    #     tiles_geojson = result["Body"].read().decode()
-    #     print(json.dumps(json.loads(tiles_geojson), indent=2))
-    # except ClientError:
-    #     raise AssertionError(f"{tiles_geojson_key} does not exist!!")
-    # assert 1 == 2  # So we get the output of the tile.geojson, above ^
 
 
 @pytest.mark.asyncio

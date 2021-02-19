@@ -1,19 +1,18 @@
 import math
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 import numpy as np
 from fastapi import HTTPException
-from pydantic import StrictInt
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
+from app.models.enum.pixetl import DataType
 from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import Job
 from app.models.pydantic.statistics import RasterStats
-from app.models.pydantic.symbology import RGBA, Symbology
 from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.batch import execute
@@ -29,50 +28,51 @@ def generate_stats(asset_id) -> RasterStats:
     raise NotImplementedError()
 
 
-def generate_max_zoom_calc(
+def convert_float_to_int(
     asset_id: UUID,
-    data_type: str,
     stats: Optional[Dict[str, Any]],
-    symbology: Symbology,
-) -> Tuple[Optional[str], Optional[str], Optional[StrictInt], Symbology]:
-    calc_str = None
-    new_data_type = data_type
-    new_no_data_val = None
-    new_symbology = symbology
+    source_asset_co: RasterTileSetSourceCreationOptions,
+) -> Tuple[RasterTileSetSourceCreationOptions, str]:
+    if stats is None:
+        stats = generate_stats(asset_id)
+    else:
+        stats = RasterStats(**stats)
+    assert len(stats.bands) == 1
+    stats_min = stats.bands[0].min
+    stats_max = stats.bands[0].max
+    value_range = math.fabs(stats_max - stats_min)
 
-    if np.issubdtype(np.dtype(data_type), np.floating):
-        if stats is None:
-            stats = generate_stats(asset_id)
-        else:
-            stats = RasterStats(**stats)
-        assert len(stats.bands) == 1
-        stats_min = stats.bands[0].min
-        stats_max = stats.bands[0].max
-        value_range = math.fabs(stats_max - stats_min)
-        # Shift by 1 (and add 1 later) so any values of zero don't get counted as no_data
-        uint16_max = np.iinfo(np.uint16).max - 1
-        # Expand or squeeze to fit into a uint16
-        # Could inf values blow this up?
-        # Should we use a larger int type if necessary?
-        mult_factor = int(math.floor(uint16_max / value_range)) if value_range else 1
-        calc_str = f"(A != np.nan).astype(np.uint8) * (1 + (A - {stats_min}) * {mult_factor}).astype(np.uint16)"
+    # Shift by 1 (and add 1 later) so any values of zero don't get counted as no_data
+    uint16_max = np.iinfo(np.uint16).max - 1
+    # Expand or squeeze to fit into a uint16
+    mult_factor = int(math.floor(uint16_max / value_range)) if value_range else 1
 
-        new_data_type = "uint16"
-        new_no_data_val = 0
+    old_no_data = source_asset_co.no_data
+    if old_no_data is None:
+        old_no_data = "None"
+    elif old_no_data == str(np.nan):
+        old_no_data = "np.nan"
+    else:
+        old_no_data = float(old_no_data)
 
-        def transform_colormap(
-            colormap: Optional[Dict[Union[StrictInt, float], RGBA]]
-        ) -> Optional[Dict[Union[StrictInt, float], RGBA]]:
-            if colormap is None:
-                return None
-            new_colormap: Optional[Dict[Union[StrictInt, float], RGBA]] = {
-                (1 + float(k) - stats_min) * mult_factor: v for k, v in colormap.items()
-            }
-            return new_colormap
+    calc_str = (
+        f"(A != {old_no_data}).astype(np.uint8) * "
+        f"(1 + (A - {stats_min}) * {mult_factor}).astype(np.uint16)"
+    )
 
-        new_symbology.colormap = transform_colormap(symbology.colormap)
+    source_asset_co.data_type = DataType.uint16
+    source_asset_co.no_data = 0
 
-    return calc_str, new_data_type, new_no_data_val, new_symbology
+    if (
+        source_asset_co.symbology is not None
+        and source_asset_co.symbology.colormap is not None
+    ):
+        source_asset_co.symbology.colormap = {
+            (1 + (float(k) - stats_min) * mult_factor): v
+            for k, v in source_asset_co.symbology.colormap.items()
+        }
+
+    return source_asset_co, calc_str
 
 
 async def raster_tile_cache_asset(
@@ -87,7 +87,6 @@ async def raster_tile_cache_asset(
     max_zoom = input_data["creation_options"]["max_zoom"]
     max_static_zoom = input_data["creation_options"]["max_static_zoom"]
     implementation = input_data["creation_options"]["implementation"]
-    orig_symbology = input_data["creation_options"]["symbology"]
     resampling = input_data["creation_options"]["resampling"]
 
     # source_asset_id is currently required. Could perhaps make it optional
@@ -118,21 +117,15 @@ async def raster_tile_cache_asset(
     job_list: List[Job] = []
     jobs_dict: Dict[int, Dict[str, Job]] = dict()
 
-    symbology_obj = Symbology(**orig_symbology)
+    # If float data type, convert to int in derivative assets for performance
+    max_zoom_calc = None
+    if np.issubdtype(np.dtype(source_asset_co.data_type), np.floating):
+        source_asset_co, max_zoom_calc = convert_float_to_int(
+            asset_id, source_asset.stats, source_asset_co
+        )
 
-    (
-        max_zoom_calc,
-        new_data_type,
-        new_no_data_value,
-        new_symbology,
-    ) = generate_max_zoom_calc(
-        asset_id, source_asset_co.data_type, source_asset.stats, symbology_obj
-    )
-    symbology_function = symbology_constructor[new_symbology.type]
-    source_asset_co.symbology = new_symbology
-    source_asset_co.data_type = new_data_type
-    if new_no_data_value is not None:
-        source_asset_co.no_data = new_no_data_value
+    assert source_asset_co.symbology is not None
+    symbology_function = symbology_constructor[source_asset_co.symbology.type]
 
     for zoom_level in range(max_zoom, min_zoom - 1, -1):
         jobs_dict[zoom_level] = dict()
