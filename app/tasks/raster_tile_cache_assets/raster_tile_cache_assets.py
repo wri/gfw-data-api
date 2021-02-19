@@ -1,5 +1,5 @@
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
 import numpy as np
@@ -13,7 +13,7 @@ from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import Job
 from app.models.pydantic.statistics import RasterStats
-from app.models.pydantic.symbology import Symbology
+from app.models.pydantic.symbology import RGBA, Symbology
 from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.batch import execute
@@ -30,13 +30,17 @@ def generate_stats(asset_id) -> RasterStats:
 
 
 def generate_max_zoom_calc(
-    asset_id, data_type, stats: Dict[str, Any]
-) -> Tuple[Optional[str], Optional[str], Optional[StrictInt]]:
-    d_type = data_type.lower()
+    asset_id: UUID,
+    data_type: str,
+    stats: Optional[Dict[str, Any]],
+    symbology: Symbology,
+) -> Tuple[Optional[str], Optional[str], Optional[StrictInt], Symbology]:
     calc_str = None
-    new_data_type = None
+    new_data_type = data_type
     new_no_data_val = None
-    if np.issubdtype(np.dtype(d_type), np.floating):
+    new_symbology = symbology
+
+    if np.issubdtype(np.dtype(data_type), np.floating):
         if stats is None:
             stats = generate_stats(asset_id)
         else:
@@ -51,13 +55,24 @@ def generate_max_zoom_calc(
         # Could inf values blow this up?
         # Should we use a larger int type if necessary?
         mult_factor = int(math.floor(uint16_max / value_range)) if value_range else 1
-        # if mult_factor != 1:
         calc_str = f"(A != np.nan).astype(np.uint8) * (1 + (A - {stats_min}) * {mult_factor}).astype(np.uint16)"
-        # calc_str = "A.astype(np.uint16)"  # Debugging
+
         new_data_type = "uint16"
         new_no_data_val = 0
 
-    return calc_str, new_data_type, new_no_data_val
+        def transform_colormap(
+            colormap: Optional[Dict[Union[StrictInt, float], RGBA]]
+        ) -> Optional[Dict[Union[StrictInt, float], RGBA]]:
+            if colormap is None:
+                return None
+            new_colormap: Optional[Dict[Union[StrictInt, float], RGBA]] = {
+                (1 + float(k) - stats_min) * mult_factor: v for k, v in colormap.items()
+            }
+            return new_colormap
+
+        new_symbology.colormap = transform_colormap(symbology.colormap)
+
+    return calc_str, new_data_type, new_no_data_val, new_symbology
 
 
 async def raster_tile_cache_asset(
@@ -72,7 +87,7 @@ async def raster_tile_cache_asset(
     max_zoom = input_data["creation_options"]["max_zoom"]
     max_static_zoom = input_data["creation_options"]["max_static_zoom"]
     implementation = input_data["creation_options"]["implementation"]
-    symbology = input_data["creation_options"]["symbology"]
+    orig_symbology = input_data["creation_options"]["symbology"]
     resampling = input_data["creation_options"]["resampling"]
 
     # source_asset_id is currently required. Could perhaps make it optional
@@ -80,6 +95,7 @@ async def raster_tile_cache_asset(
     source_asset: ORMAsset = await get_asset(
         input_data["creation_options"]["source_asset_id"]
     )
+
     # Get the creation options from the original raster tile set asset
     source_asset_co = RasterTileSetSourceCreationOptions(
         **source_asset.creation_options
@@ -96,20 +112,25 @@ async def raster_tile_cache_asset(
     ]
 
     source_asset_co.resampling = resampling
-    source_asset_co.symbology = Symbology(**symbology)
     source_asset_co.compute_stats = False
     source_asset_co.compute_histogram = False
 
     job_list: List[Job] = []
     jobs_dict: Dict[int, Dict[str, Job]] = dict()
 
-    symbology_function = symbology_constructor[symbology["type"]]
+    symbology_obj = Symbology(**orig_symbology)
 
-    max_zoom_calc, new_data_type, new_no_data_value = generate_max_zoom_calc(
-        asset_id, source_asset_co.data_type, source_asset.stats
+    (
+        max_zoom_calc,
+        new_data_type,
+        new_no_data_value,
+        new_symbology,
+    ) = generate_max_zoom_calc(
+        asset_id, source_asset_co.data_type, source_asset.stats, symbology_obj
     )
-    if new_data_type is not None:
-        source_asset_co.data_type = new_data_type
+    symbology_function = symbology_constructor[new_symbology.type]
+    source_asset_co.symbology = new_symbology
+    source_asset_co.data_type = new_data_type
     if new_no_data_value is not None:
         source_asset_co.no_data = new_no_data_value
 
