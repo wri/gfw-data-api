@@ -1,14 +1,17 @@
-import copy
 import json
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from fastapi.encoders import jsonable_encoder
 
+from app.models.pydantic.creation_options import PixETLCreationOptions
 from app.models.pydantic.jobs import Job, PixETLJob
 from app.settings.globals import (
     AWS_GCS_KEY_SECRET_ARN,
     AWS_REGION,
+    DEFAULT_JOB_DURATION,
     ENV,
+    MAX_CORES,
+    MAX_MEM,
     S3_ENTRYPOINT_URL,
 )
 from app.tasks import Callback, writer_secrets
@@ -34,14 +37,14 @@ if S3_ENTRYPOINT_URL:
 async def create_pixetl_job(
     dataset: str,
     version: str,
-    co: Dict[str, Any],
+    co: PixETLCreationOptions,
     job_name: str,
     callback: Callback,
     parents: Optional[List[Job]] = None,
 ) -> Job:
     """Schedule a PixETL Batch Job."""
-    co_copy = copy.deepcopy(co)
-    if isinstance(co_copy.get("source_uri"), list):
+    co_copy = co.dict(exclude_none=True, by_alias=True)
+    if isinstance(co.source_uri, list):
         co_copy["source_uri"] = co_copy["source_uri"][0]
     overwrite = co_copy.pop("overwrite", False)
     subset = co_copy.pop("subset", None)
@@ -63,10 +66,21 @@ async def create_pixetl_job(
     if subset:
         command += ["--subset", subset]
 
+    # allowing float jobs to run longer
+    if "float" in co.data_type:
+        kwargs = {
+            "attempt_duration_seconds": int(DEFAULT_JOB_DURATION * 3),
+            "vcpus": MAX_CORES,
+            "memory": MAX_MEM,
+        }
+    else:
+        kwargs = {}
+
     return PixETLJob(
         job_name=job_name,
         command=command,
         environment=JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents] if parents else None,
+        **kwargs
     )
