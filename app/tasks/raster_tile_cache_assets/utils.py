@@ -96,7 +96,7 @@ async def create_wm_tile_set_job(
     job = await create_pixetl_job(
         dataset,
         version,
-        wm_asset_record.creation_options,
+        creation_options,
         job_name,
         callback_constructor(wm_asset_record.asset_id),
         parents=parents,

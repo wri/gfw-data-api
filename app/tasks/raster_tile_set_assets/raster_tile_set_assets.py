@@ -1,15 +1,13 @@
 import json
 from collections import defaultdict
+from copy import deepcopy
 from typing import Any, DefaultDict, Dict, List, Optional
 from uuid import UUID
 
 from app.crud.assets import get_asset, get_default_asset, update_asset
 from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.change_log import ChangeLog
-from app.models.pydantic.creation_options import (
-    RasterTileSetAssetCreationOptions,
-    RasterTileSetSourceCreationOptions,
-)
+from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.extent import Extent
 from app.models.pydantic.geostore import FeatureCollection
 from app.models.pydantic.jobs import Job
@@ -39,31 +37,27 @@ async def raster_tile_set_asset(
     # will be a list. When being created as an auxiliary asset, it will be None.
     # In the latter case we will generate one for pixETL based on the default asset,
     # below.
-    source_uris: Optional[List[str]] = input_data["creation_options"].get("source_uri")
+
+    co = deepcopy(input_data["creation_options"])
+
+    source_uris: Optional[List[str]] = co.get("source_uri")
     if source_uris is None:
-        creation_options = RasterTileSetAssetCreationOptions(
-            **input_data["creation_options"]
-        ).dict(exclude_none=True, by_alias=True)
 
         default_asset: ORMAsset = await get_default_asset(dataset, version)
 
         if default_asset.creation_options["source_type"] == "raster":
-            creation_options["source_type"] = "raster"
-            creation_options["source_uri"] = default_asset.creation_options[
-                "source_uri"
-            ]
+            co["source_type"] = "raster"
+            co["source_uri"] = default_asset.creation_options["source_uri"]
         elif default_asset.creation_options["source_type"] == "vector":
-            creation_options["source_type"] = "vector"
+            co["source_type"] = "vector"
     else:
         # FIXME move to validator function and assess prior to running background task
         if len(source_uris) > 1:
             raise AssertionError("Raster assets currently only support one input file")
         elif len(source_uris) == 0:
             raise AssertionError("source_uri must contain a URI to an input file in S3")
-        creation_options = RasterTileSetSourceCreationOptions(
-            **input_data["creation_options"]
-        ).dict(exclude_none=True, by_alias=True)
-        creation_options["source_uri"] = source_uris
+
+    creation_options = RasterTileSetSourceCreationOptions(**co)
 
     callback: Callback = callback_constructor(asset_id)
 
