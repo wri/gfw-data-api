@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from fastapi.encoders import jsonable_encoder
 
-from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
+from app.models.pydantic.creation_options import PixETLCreationOptions
 from app.models.pydantic.jobs import Job, PixETLJob
 from app.settings.globals import (
     AWS_GCS_KEY_SECRET_ARN,
@@ -37,7 +37,7 @@ if S3_ENTRYPOINT_URL:
 async def create_pixetl_job(
     dataset: str,
     version: str,
-    co: RasterTileSetSourceCreationOptions,
+    co: PixETLCreationOptions,
     job_name: str,
     callback: Callback,
     parents: Optional[List[Job]] = None,

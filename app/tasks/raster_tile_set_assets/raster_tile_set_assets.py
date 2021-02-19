@@ -5,9 +5,11 @@ from typing import Any, DefaultDict, Dict, List, Optional
 from uuid import UUID
 
 from app.crud.assets import get_asset, get_default_asset, update_asset
+from app.models.enum.creation_options import RasterDrivers
+from app.models.enum.sources import RasterSourceType, VectorSourceType
 from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.change_log import ChangeLog
-from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
+from app.models.pydantic.creation_options import PixETLCreationOptions
 from app.models.pydantic.extent import Extent
 from app.models.pydantic.geostore import FeatureCollection
 from app.models.pydantic.jobs import Job
@@ -45,11 +47,12 @@ async def raster_tile_set_asset(
 
         default_asset: ORMAsset = await get_default_asset(dataset, version)
 
-        if default_asset.creation_options["source_type"] == "raster":
-            co["source_type"] = "raster"
+        if default_asset.creation_options["source_type"] == RasterSourceType.raster:
+            co["source_type"] = RasterSourceType.raster
             co["source_uri"] = default_asset.creation_options["source_uri"]
-        elif default_asset.creation_options["source_type"] == "vector":
-            co["source_type"] = "vector"
+            co["source_driver"] = RasterDrivers.geotiff
+        elif default_asset.creation_options["source_type"] == VectorSourceType.vector:
+            co["source_type"] = VectorSourceType.vector
     else:
         # FIXME move to validator function and assess prior to running background task
         if len(source_uris) > 1:
@@ -57,7 +60,7 @@ async def raster_tile_set_asset(
         elif len(source_uris) == 0:
             raise AssertionError("source_uri must contain a URI to an input file in S3")
 
-    creation_options = RasterTileSetSourceCreationOptions(**co)
+    creation_options = PixETLCreationOptions(**co)
 
     callback: Callback = callback_constructor(asset_id)
 

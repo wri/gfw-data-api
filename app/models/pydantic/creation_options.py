@@ -118,6 +118,12 @@ class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
     )
 
 
+class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
+    # For internal use only
+    source_type: Union[RasterSourceType, VectorSourceType]
+    source_driver: Optional[RasterDrivers] = None
+
+
 class VectorSourceCreationOptions(StrictBaseModel):
     source_type: VectorSourceType = Field(..., description="Source type of input file.")
     source_driver: VectorDrivers = Field(
