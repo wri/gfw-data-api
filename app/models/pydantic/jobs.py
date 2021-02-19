@@ -106,8 +106,9 @@ class TileCacheJob(Job):
     job_definition = TILE_CACHE_JOB_DEFINITION
     vcpus = 48
     memory = 96000
-    attempts = 1
+    attempts = 4
     attempt_duration_seconds = 10800
+
 
 
 class PixETLJob(Job):
@@ -117,7 +118,7 @@ class PixETLJob(Job):
     job_definition = PIXETL_JOB_DEFINITION
     vcpus = PIXETL_CORES
     memory = PIXETL_MAX_MEM
-    attempts = 1
+    attempts = 4
     attempt_duration_seconds = 9600
 
 

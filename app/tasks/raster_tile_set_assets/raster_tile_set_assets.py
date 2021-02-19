@@ -103,7 +103,7 @@ def _collect_bandstats(fc: FeatureCollection) -> List[BandStats]:
     histograms_by_band: DefaultDict[int, List[Histogram]] = defaultdict(lambda: [])
 
     for f_i, feature in enumerate(fc.features):
-        for i, band in enumerate(feature.properties["bands"]):
+        for i, band in enumerate(feature.properties.get("bands", list())):
             if band.get("stats") is not None:
                 for val in ("min", "max", "mean"):
                     stats_by_band[i][val].append(band["stats"][val])

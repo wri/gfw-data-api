@@ -147,14 +147,14 @@ async def delete_asset(asset_id: UUID) -> ORMAsset:
     return update_metadata(row, version)
 
 
-async def _update_all_asset_metadata(assets):
-    new_rows = list()
+async def _update_all_asset_metadata(assets) -> List[ORMAsset]:
+    new_rows: List[ORMAsset] = list()
     for row in assets:
         dataset: ORMDataset = await datasets.get_dataset(row.dataset)
         version: ORMVersion = await versions.get_version(row.dataset, row.version)
         version = update_metadata(version, dataset)
-        update_metadata(row, version)
-        new_rows.append(row)
+        new_row = update_metadata(row, version)
+        new_rows.append(new_row)
 
     return new_rows
 
