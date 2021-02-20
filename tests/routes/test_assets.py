@@ -771,7 +771,6 @@ async def test_asset_float(async_client, batch_client, httpd):
             "pixel_meaning": "percent",
             "grid": "90/27008",
             "resampling": "nearest",
-            "overwrite": True,
             "compute_histogram": True,
             "compute_stats": True,
         }
@@ -811,6 +810,7 @@ async def test_asset_float(async_client, batch_client, httpd):
 
     # Verify w-m assets created with the correct symbology
     all_assets_resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    print(f"EVERYTHING: {all_assets_resp.json()['data']}")
     for asset in all_assets_resp.json()["data"]:
         if "epsg-3857" in asset["asset_uri"]:
             co_url = f"/asset/{asset['asset_id']}/creation_options"
