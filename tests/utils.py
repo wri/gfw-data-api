@@ -6,7 +6,6 @@ from time import sleep
 from typing import Any, Dict, List, Set
 
 import httpx
-import numpy
 import rasterio
 from affine import Affine
 from botocore.exceptions import ClientError
@@ -256,7 +255,7 @@ async def check_tasks_status(async_client, logs, asset_ids) -> None:
     assert status == "saved"
 
 
-def upload_fake_data(dtype, dtype_name, no_data, prefix):
+def upload_fake_data(dtype, dtype_name, no_data, prefix, data):
     s3_client = get_s3_client()
 
     data_file_name = "0000000000-0000000000.tif"
@@ -307,9 +306,7 @@ def upload_fake_data(dtype, dtype_name, no_data, prefix):
         full_data_file_path = f"{os.path.join(tmpdir, data_file_name)}"
         with rasterio.Env():
             with rasterio.open(full_data_file_path, "w", **dataset_profile) as dst:
-                # dummy_data = numpy.row_stack((numpy.ones((50, 100), "int16"), numpy.ones((50, 100), "int16") * (-1)))
-                dummy_data = numpy.ones((100, 100), dtype)
-                dst.write(dummy_data.astype(dtype), 1)
+                dst.write(data.astype(dtype), 1)
         s3_client.upload_file(
             full_data_file_path,
             DATA_LAKE_BUCKET,
