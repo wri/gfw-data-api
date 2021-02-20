@@ -25,19 +25,18 @@ from app.tasks.raster_tile_cache_assets.utils import (
 from app.utils.path import get_asset_uri
 
 
-def generate_stats(asset_id) -> RasterStats:
-    raise NotImplementedError()
+def generate_stats(stats) -> RasterStats:
+    if stats is None:
+        raise NotImplementedError()
+    return RasterStats(**stats)
 
 
 def convert_float_to_int(
-    asset_id: UUID,
     stats: Optional[Dict[str, Any]],
     source_asset_co: RasterTileSetSourceCreationOptions,
 ) -> Tuple[RasterTileSetSourceCreationOptions, str]:
-    if stats is None:
-        stats = generate_stats(asset_id)
-    else:
-        stats = RasterStats(**stats)
+    stats = generate_stats(stats)
+
     assert len(stats.bands) == 1
     stats_min = stats.bands[0].min
     stats_max = stats.bands[0].max
@@ -57,7 +56,7 @@ def convert_float_to_int(
         old_no_data = float(old_no_data)
 
     calc_str = (
-        f"(A != {old_no_data}).astype(np.uint8) * "
+        f"(A != {old_no_data}).astype(bool) * "
         f"(1 + (A - {stats_min}) * {mult_factor}).astype(np.uint16)"
     )
 
@@ -85,7 +84,7 @@ async def raster_tile_cache_asset(
     max_zoom = input_data["creation_options"]["max_zoom"]
     max_static_zoom = input_data["creation_options"]["max_static_zoom"]
     implementation = input_data["creation_options"]["implementation"]
-    symbology = Symbology(**input_data["creation_options"]["symbology"])
+    symbology = input_data["creation_options"]["symbology"]
     resampling = input_data["creation_options"]["resampling"]
 
     # source_asset_id is currently required. Could perhaps make it optional
@@ -117,11 +116,11 @@ async def raster_tile_cache_asset(
     jobs_dict: Dict[int, Dict[str, Job]] = dict()
 
     # If float data type, convert to int in derivative assets for performance
-    source_asset_co.symbology = symbology
+    source_asset_co.symbology = Symbology(**symbology)
     max_zoom_calc = None
     if np.issubdtype(np.dtype(source_asset_co.data_type), np.floating):
         source_asset_co, max_zoom_calc = convert_float_to_int(
-            asset_id, source_asset.stats, source_asset_co
+            source_asset.stats, source_asset_co
         )
 
     assert source_asset_co.symbology is not None
