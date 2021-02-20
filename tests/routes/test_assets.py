@@ -813,22 +813,19 @@ async def test_asset_float(async_client, batch_client, httpd):
     all_assets_resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
     for asset in all_assets_resp.json()["data"]:
         if "epsg-3857" in asset["asset_uri"]:
-            if "gradient" not in asset["asset_uri"]:
-                c_o_resp = await async_client.get(
-                    f"/asset/{asset['asset_id']}/creation_options"
-                )
-                assert c_o_resp.json()["data"]["data_type"] == "uint16"
-                assert c_o_resp.json()["data"]["symbology"] is None
+            co_url = f"/asset/{asset['asset_id']}/creation_options"
+            c_o_resp = await async_client.get(co_url)
+            data = c_o_resp.json()["data"]
+            assert data["data_type"] == "uint16"
+            print(f"SYMBOLOGY: {json.dumps(data['symbology'], indent=2)}")
 
+            if "gradient" not in asset["asset_uri"]:
+                assert data["symbology"] is None
             else:
-                c_o_resp = await async_client.get(
-                    f"/asset/{asset['asset_id']}/creation_options"
-                )
-                assert c_o_resp.json()["data"]["data_type"] == "uint16"
-                print(
-                    f"GRADIENT SYMBOLOGY: {json.dumps(c_o_resp.json()['data']['symbology'], indent=2)}"
-                )
-                assert c_o_resp.json()["data"]["symbology"] == {"foo": "bar"}
+                print(f"GRADIENT SYMBOLOGY: {json.dumps(data['symbology'], indent=2)}")
+                assert data["symbology"] == {"foo": "bar"}
+
+    assert 1 == 2
 
     # # Verify that tile cache asset got created with the right symbology
     # tc_asset_id = None
