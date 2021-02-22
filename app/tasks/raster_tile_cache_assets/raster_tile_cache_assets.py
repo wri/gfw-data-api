@@ -73,6 +73,7 @@ def convert_float_to_int(
             for k, v in source_asset_co.symbology.colormap.items()
         }
 
+    # FIXME: DEBUGGING
     logger.info(f"New symbology: {source_asset_co.symbology}")
 
     return source_asset_co, calc_str

@@ -823,9 +823,9 @@ async def test_asset_float(async_client, batch_client, httpd):
                 assert data["symbology"] is None
             else:
                 print(f"GRADIENT SYMBOLOGY: {json.dumps(data['symbology'], indent=2)}")
-                assert data["symbology"] == {"foo": "bar"}
+                # assert data["symbology"] == {"foo": "bar"}
 
-    assert 1 == 2
+    # assert 1 == 2
 
     # # Verify that tile cache asset got created with the right symbology
     # tc_asset_id = None
