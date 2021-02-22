@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 from uuid import UUID
 
@@ -484,7 +485,7 @@ async def _test_raster_tile_cache(
         f"/dataset/{dataset}/{version}/assets", json=asset_payload
     )
     resp_json = create_asset_resp.json()
-    print(resp_json)
+    print(f"CREATE TILE CACHE ASSET RESPONSE: {resp_json}")
     assert resp_json["status"] == "success"
     assert resp_json["data"]["status"] == "pending"
 
@@ -770,7 +771,6 @@ async def test_asset_float(async_client, batch_client, httpd):
             "pixel_meaning": "percent",
             "grid": "90/27008",
             "resampling": "nearest",
-            "overwrite": True,
             "compute_histogram": True,
             "compute_stats": True,
         }
@@ -807,6 +807,33 @@ async def test_asset_float(async_client, batch_client, httpd):
         logs,
         **checks,
     )
+
+    # Verify w-m assets created with the correct symbology
+    all_assets_resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    print(f"EVERYTHING: {all_assets_resp.json()['data']}")
+    for asset in all_assets_resp.json()["data"]:
+        if "epsg-3857" in asset["asset_uri"]:
+            co_url = f"/asset/{asset['asset_id']}/creation_options"
+            c_o_resp = await async_client.get(co_url)
+            data = c_o_resp.json()["data"]
+            assert data["data_type"] == "uint16"
+            print(f"SYMBOLOGY: {json.dumps(data['symbology'], indent=2)}")
+
+            if "gradient" not in asset["asset_uri"]:
+                assert data["symbology"] is None
+            else:
+                print(f"GRADIENT SYMBOLOGY: {json.dumps(data['symbology'], indent=2)}")
+                # assert data["symbology"] == {"foo": "bar"}
+
+    # assert 1 == 2
+
+    # # Verify that tile cache asset got created with the right symbology
+    # tc_asset_id = None
+    # for asset in all_assets_resp.json()["data"]:
+    #     if asset["asset_type"] == "Raster tile cache":
+    #         tc_asset_id = asset["asset_id"]
+    #         break
+    # assert tc_asset_id is not None
 
 
 @pytest.mark.asyncio

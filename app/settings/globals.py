@@ -118,12 +118,12 @@ AURORA_JOB_QUEUE_FAST = config("AURORA_JOB_QUEUE_FAST", cast=str)
 DATA_LAKE_JOB_QUEUE = config("DATA_LAKE_JOB_QUEUE", cast=str)
 TILE_CACHE_JOB_DEFINITION = config("TILE_CACHE_JOB_DEFINITION", cast=str)
 TILE_CACHE_JOB_QUEUE = config("TILE_CACHE_JOB_QUEUE", cast=str)
-MAX_CORES = config("MAX_CORES", cast=int, default=48)
-MAX_MEM = config("MAX_MEM", cast=int, default=380000)
+MAX_CORES = config("MAX_CORES", cast=int, default=96)
+MAX_MEM = config("MAX_MEM", cast=int, default=760000)
 PIXETL_JOB_DEFINITION = config("PIXETL_JOB_DEFINITION", cast=str)
 PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str)
-PIXETL_CORES = config("PIXETL_CORES", cast=int, default=MAX_CORES)
-PIXETL_MAX_MEM = config("PIXETL_MAX_MEM", cast=int, default=MAX_MEM)
+PIXETL_CORES = config("PIXETL_CORES", cast=int, default=48)
+PIXETL_MAX_MEM = config("PIXETL_MAX_MEM", cast=int, default=380000)
 PIXETL_DEFAULT_RESAMPLING = config(
     "DEFAULT_RESAMPLING", cast=str, default=ResamplingMethod.nearest.value
 )
@@ -155,3 +155,6 @@ RW_API_URL = (
     if ENV == "production"
     else "https://staging-api.resourcewatch.org"
 )
+
+HOUR: int = int(60 * 60)
+DEFAULT_JOB_DURATION: int = int(HOUR * 2)

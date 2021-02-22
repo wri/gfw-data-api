@@ -108,13 +108,19 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     process_locally: bool = True
 
 
-class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
+class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
+    # For internal use only
+    source_type: Union[RasterSourceType, VectorSourceType]
+    source_driver: Optional[RasterDrivers] = None
+    source_uri: Optional[List[str]] = Field(
+        description="List of input files. Must be s3:// URLs.",
+    )
+
+
+class RasterTileSetSourceCreationOptions(PixETLCreationOptions):
     source_type: RasterSourceType = Field(..., description="Source type of input file.")
     source_driver: RasterDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
-    )
-    source_uri: Optional[List[str]] = Field(
-        description="List of input files. Must be s3:// URLs.",
     )
 
 
