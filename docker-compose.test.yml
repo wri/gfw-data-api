@@ -75,7 +75,7 @@ services:
 
   motoserver-s3:
     container_name: motoserver-s3
-    image: motoserver/moto:latest
+    image: motoserver/moto:1.3.16
     ports:
       - 5000:5000
     entrypoint: moto_server s3 -H 0.0.0.0
@@ -83,7 +83,7 @@ services:
 
 #  motoserver-secretsmanager:
 #    container_name: motoserver-secretsmanager
-#    image: motoserver/moto:latest
+#    image: motoserver/moto:1.3.16
 #    ports:
 #      - 5001:5001
 #    entrypoint: moto_server secretsmanager -p 5001 -H 0.0.0.0

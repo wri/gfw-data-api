@@ -44,8 +44,6 @@ async def create_pixetl_job(
 ) -> Job:
     """Schedule a PixETL Batch Job."""
     co_copy = co.dict(exclude_none=True, by_alias=True)
-    if isinstance(co.source_uri, list):
-        co_copy["source_uri"] = co_copy["source_uri"][0]
     overwrite = co_copy.pop("overwrite", False)
     subset = co_copy.pop("subset", None)
     layer_def = json.dumps(jsonable_encoder(co_copy))

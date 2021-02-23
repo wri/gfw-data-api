@@ -8,6 +8,9 @@ from ...models.enum.assets import AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...tasks.raster_tile_cache_assets import raster_tile_cache_validator
+from ...tasks.raster_tile_set_assets.raster_tile_set_assets import (
+    raster_tile_set_validator,
+)
 
 
 async def verify_version_status(dataset, version):
@@ -70,7 +73,10 @@ async def verify_asset_dependencies(dataset, version, asset_type):
 async def validate_creation_options(
     dataset: str, version: str, input_data: Dict[str, Any]
 ) -> None:
-    validator = {AssetType.raster_tile_cache: raster_tile_cache_validator}
+    validator = {
+        AssetType.raster_tile_cache: raster_tile_cache_validator,
+        AssetType.raster_tile_set: raster_tile_set_validator,
+    }
     try:
         await validator[input_data["asset_type"]](dataset, version, input_data)
     except KeyError:
