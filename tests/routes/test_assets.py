@@ -10,7 +10,9 @@ from app.application import ContextEngine
 from app.crud import tasks
 from app.crud.assets import update_asset
 from app.models.enum.symbology import ColorMapType
+from app.models.pydantic.jobs import GDAL2TilesJob, PixETLJob
 from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
+from app.tasks.utils import sanitize_batch_job_name
 from app.utils.aws import get_s3_client
 from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
@@ -755,6 +757,7 @@ async def test_asset_float(async_client, batch_client, httpd):
 
     dataset = "test_asset_float_no_data"
     version = "v1.0.0"
+    pixel_meaning = "percent"
 
     pixetl_output_files_prefix = f"{dataset}/{version}/raster/epsg-3857/zoom_1/percent"
     delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
@@ -768,10 +771,9 @@ async def test_asset_float(async_client, batch_client, httpd):
             "source_driver": "GeoTIFF",
             "data_type": FAKE_FLOAT_DATA_PARAMS["dtype_name"],
             "no_data": str(FAKE_FLOAT_DATA_PARAMS["no_data"]),
-            "pixel_meaning": "percent",
+            "pixel_meaning": pixel_meaning,
             "grid": "90/27008",
             "resampling": "nearest",
-            "compute_histogram": True,
             "compute_stats": True,
         }
     }
@@ -785,55 +787,115 @@ async def test_asset_float(async_client, batch_client, httpd):
     )
     default_asset_id = asset["asset_id"]
 
-    checks = {
-        "wm_tile_set_assets": ["percent", f"percent_{ColorMapType.gradient}"],
-        "symbology": {
-            "type": ColorMapType.gradient,
-            "colormap": {
-                -1: {"red": 255, "green": 0, "blue": 0},
-                1: {"red": 0, "green": 0, "blue": 255},
-            },
+    symbology = {
+        "type": ColorMapType.gradient,
+        "colormap": {
+            -1: {"red": 255, "green": 0, "blue": 0},
+            1: {"red": 0, "green": 0, "blue": 255},
+        },
+    }
+
+    expected_scaled_symbology = {
+        "type": "gradient",
+        "colormap": {
+            # Remember it's okay if these are negative (or greater than
+            # uint16.max), they're based on the original breakpoints,
+            # which could have been far above or below the
+            # original data max and min
+            "-32766.0": {"red": 255, "green": 0, "blue": 0, "alpha": 255},
+            "98302.0": {"red": 0, "green": 0, "blue": 255, "alpha": 255},
         },
     }
 
     # Flush requests list so we're starting fresh
     httpx.delete(f"http://localhost:{httpd.server_port}")
 
-    await _test_raster_tile_cache(
-        dataset,
-        version,
-        default_asset_id,
-        async_client,
-        logs,
-        **checks,
-    )
+    # Make the call to create a tile cache, but mock out actually
+    # creating the jobs because 1. It takes a while and 2. Otherwise Pixetl hangs
+    # when running this test locally
+    tile_cache_levels = 2
+    max_zoom_levels = tile_cache_levels + 1
+    with patch(
+        "app.tasks.batch.submit_batch_job", side_effect=generate_uuid
+    ) as mock_submit:
+        # Add a tile cache asset based on the raster tile set
+        asset_payload = {
+            "asset_type": "Raster tile cache",
+            "is_managed": True,
+            "creation_options": {
+                "source_asset_id": default_asset_id,
+                "min_zoom": 0,
+                "max_zoom": max_zoom_levels,
+                "max_static_zoom": tile_cache_levels - 1,
+                "symbology": symbology,
+                "implementation": symbology["type"],
+            },
+        }
 
-    # Verify w-m assets created with the correct symbology
-    all_assets_resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
-    print(f"EVERYTHING: {all_assets_resp.json()['data']}")
-    for asset in all_assets_resp.json()["data"]:
-        if "epsg-3857" in asset["asset_uri"]:
-            co_url = f"/asset/{asset['asset_id']}/creation_options"
-            c_o_resp = await async_client.get(co_url)
-            data = c_o_resp.json()["data"]
-            assert data["data_type"] == "uint16"
-            print(f"SYMBOLOGY: {json.dumps(data['symbology'], indent=2)}")
+        create_asset_resp = await async_client.post(
+            f"/dataset/{dataset}/{version}/assets", json=asset_payload
+        )
+        resp_json = create_asset_resp.json()
+        assert resp_json["status"] == "success"
+        assert resp_json["data"]["status"] == "pending"
 
-            if "gradient" not in asset["asset_uri"]:
-                assert data["symbology"] is None
-            else:
-                print(f"GRADIENT SYMBOLOGY: {json.dumps(data['symbology'], indent=2)}")
-                # assert data["symbology"] == {"foo": "bar"}
+    # Now check the mock
+    pixetl_jobs = dict()
+    gdal2tiles_jobs = dict()
 
-    # assert 1 == 2
+    for mock_call in mock_submit.call_args_list:
+        job_obj = mock_call[0][0]
+        if isinstance(job_obj, PixETLJob):
+            cmd = job_obj.command
+            layer_def = None
+            for i, arg in enumerate(cmd):
+                if arg == "-j":
+                    layer_def = json.loads(cmd[i + 1])
+            assert layer_def is not None
+            job = (
+                layer_def["data_type"],
+                layer_def["no_data"],
+                layer_def.get("symbology"),
+                job_obj.parents,
+            )
+            pixetl_jobs[job_obj.job_name] = job
+        elif isinstance(job_obj, GDAL2TilesJob):
+            gdal2tiles_jobs[job_obj.job_name] = job_obj.parents
 
-    # # Verify that tile cache asset got created with the right symbology
-    # tc_asset_id = None
-    # for asset in all_assets_resp.json()["data"]:
-    #     if asset["asset_type"] == "Raster tile cache":
-    #         tc_asset_id = asset["asset_id"]
-    #         break
-    # assert tc_asset_id is not None
+    assert pixetl_jobs == {
+        **{
+            sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}"): (
+                "uint16",
+                0,
+                None,
+                [sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i+1}")]
+                if i < (max_zoom_levels)
+                else None,
+            )
+            for i in range(0, max_zoom_levels + 1)
+        },
+        **{
+            sanitize_batch_job_name(
+                f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"
+            ): (
+                "uint16",
+                0,
+                expected_scaled_symbology,
+                [sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}")],
+            )
+            for i in range(0, max_zoom_levels + 1)
+        },
+    }
+
+    assert gdal2tiles_jobs == {
+        f"generate_tile_cache_zoom_{i}": [
+            sanitize_batch_job_name(
+                f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"
+            ),
+            sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}"),
+        ]
+        for i in range(0, tile_cache_levels)
+    }
 
 
 @pytest.mark.asyncio
