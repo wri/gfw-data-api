@@ -261,7 +261,7 @@ async def _add_geostore_filter(parsed_sql, geostore_id: UUID, geostore_origin: s
 
     # make empty select statement with where clause including filter
     # this way we can later parse it as AST
-    intersect_filter = f"SELECT WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON('{json.dumps(geometry)}'),4326))"
+    intersect_filter = f"SELECT WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON('{geometry.json()}'),4326))"
 
     # combine the two where clauses
     parsed_filter = parse_sql(intersect_filter)
