@@ -56,8 +56,8 @@ async def raster_tile_set_asset(
             co["source_driver"] = RasterDrivers.geotiff
             auxiliary_assets = co.pop("auxiliary_assets", None)
             if auxiliary_assets:
-                for asset_id in auxiliary_assets:
-                    auxiliary_asset: ORMAsset = await get_asset(asset_id)
+                for aux_asset_id in auxiliary_assets:
+                    auxiliary_asset: ORMAsset = await get_asset(aux_asset_id)
                     co["source_uri"].append(
                         tile_uri_to_tiles_geojson(auxiliary_asset.asset_uri)
                     )
