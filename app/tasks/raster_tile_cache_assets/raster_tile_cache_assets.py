@@ -4,7 +4,6 @@ from uuid import UUID
 
 import numpy as np
 from fastapi import HTTPException
-from fastapi.logger import logger
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
@@ -64,17 +63,11 @@ def convert_float_to_int(
     source_asset_co.data_type = DataType.uint16
     source_asset_co.no_data = 0
 
-    # FIXME: DEBUGGING
-    logger.info(f"Old symbology: {source_asset_co.symbology}")
-
     if source_asset_co.symbology and source_asset_co.symbology.colormap is not None:
         source_asset_co.symbology.colormap = {
             (1 + (float(k) - stats_min) * mult_factor): v
             for k, v in source_asset_co.symbology.colormap.items()
         }
-
-    # FIXME: DEBUGGING
-    logger.info(f"New symbology: {source_asset_co.symbology}")
 
     return source_asset_co, calc_str
 
@@ -116,10 +109,8 @@ async def raster_tile_cache_asset(
     ]
 
     source_asset_co.resampling = resampling
-    # source_asset_co.compute_stats = False
-    # source_asset_co.compute_histogram = False
-    source_asset_co.compute_stats = True  # FIXME
-    source_asset_co.compute_histogram = True  # FIXME
+    source_asset_co.compute_stats = False
+    source_asset_co.compute_histogram = False
 
     job_list: List[Job] = []
     jobs_dict: Dict[int, Dict[str, Job]] = dict()
