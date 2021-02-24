@@ -1,4 +1,4 @@
-FROM globalforestwatch/pixetl:v1.3.13
+FROM globalforestwatch/pixetl:v1.4.0
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/

@@ -4,7 +4,11 @@ from copy import deepcopy
 from typing import Any, DefaultDict, Dict, List, Optional
 from uuid import UUID
 
+from fastapi import HTTPException
+
 from app.crud.assets import get_asset, get_default_asset, update_asset
+from app.errors import RecordNotFoundError
+from app.models.enum.assets import AssetStatus, AssetType
 from app.models.enum.creation_options import RasterDrivers
 from app.models.enum.sources import RasterSourceType, VectorSourceType
 from app.models.orm.assets import Asset as ORMAsset
@@ -44,21 +48,22 @@ async def raster_tile_set_asset(
 
     source_uris: Optional[List[str]] = co.get("source_uri")
     if source_uris is None:
-
         default_asset: ORMAsset = await get_default_asset(dataset, version)
 
         if default_asset.creation_options["source_type"] == RasterSourceType.raster:
             co["source_type"] = RasterSourceType.raster
-            co["source_uri"] = default_asset.creation_options["source_uri"]
+            co["source_uri"] = [tile_uri_to_tiles_geojson(default_asset.asset_uri)]
             co["source_driver"] = RasterDrivers.geotiff
+            auxiliary_assets = co.pop("auxiliary_assets", None)
+            if auxiliary_assets:
+                for aux_asset_id in auxiliary_assets:
+                    auxiliary_asset: ORMAsset = await get_asset(aux_asset_id)
+                    co["source_uri"].append(
+                        tile_uri_to_tiles_geojson(auxiliary_asset.asset_uri)
+                    )
+
         elif default_asset.creation_options["source_type"] == VectorSourceType.vector:
             co["source_type"] = VectorSourceType.vector
-    else:
-        # FIXME move to validator function and assess prior to running background task
-        if len(source_uris) > 1:
-            raise AssertionError("Raster assets currently only support one input file")
-        elif len(source_uris) == 0:
-            raise AssertionError("source_uri must contain a URI to an input file in S3")
 
     creation_options = PixETLCreationOptions(**co)
 
@@ -149,6 +154,43 @@ async def _get_raster_stats(asset_id: UUID) -> RasterStats:
     bandstats: List[BandStats] = _collect_bandstats(FeatureCollection(**tiles_geojson))
 
     return RasterStats(bands=bandstats)
+
+
+async def raster_tile_set_validator(
+    dataset: str, version: str, input_data: Dict[str, Any]
+) -> None:
+    """Validate Raster Tile Cache Creation Options.
+
+    Used in asset route. If validation fails, it will raise a
+    HTTPException visible to user.
+    """
+    for asset_id in input_data["creation_options"]["auxiliary_assets"]:
+
+        try:
+            auxiliary_asset: ORMAsset = await get_asset(asset_id)
+        except RecordNotFoundError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Auxiliary asset {asset_id} does not exist.",
+            )
+        if auxiliary_asset.status != AssetStatus.saved:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Auxiliary asset {asset_id} not in status {AssetStatus.saved}.",
+            )
+        if auxiliary_asset.asset_type != AssetType.raster_tile_set:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Auxiliary asset {asset_id} not a {AssetType.raster_tile_set}.",
+            )
+        if (
+            auxiliary_asset.creation_options["grid"]
+            != input_data["creation_options"]["grid"]
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Input grid and grid of auxiliary asset {asset_id} do not match.",
+            )
 
 
 async def raster_tile_set_post_completion_task(asset_id: UUID):
