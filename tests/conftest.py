@@ -6,6 +6,7 @@ import threading
 from http.server import HTTPServer
 
 import httpx
+import numpy
 import pytest
 import rasterio
 from alembic.config import main
@@ -53,12 +54,19 @@ FAKE_INT_DATA_PARAMS = {
     "no_data": 0,
     "dtype_name": "uint16",
     "prefix": "test/v1.1.1/raw/uint16",
+    "data": numpy.ones((100, 100), rasterio.uint16),
 }
 FAKE_FLOAT_DATA_PARAMS = {
     "dtype": rasterio.float32,
     "no_data": float("nan"),
     "dtype_name": "float32",
     "prefix": "test/v1.1.1/raw/float32",
+    "data": numpy.row_stack(
+        (
+            numpy.ones((50, 100), rasterio.float32) * 0.5,
+            numpy.ones((50, 100), rasterio.float32) * (-0.5),
+        )
+    ),
 }
 
 
