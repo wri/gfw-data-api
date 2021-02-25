@@ -135,6 +135,7 @@ module "batch_data_lake_writer" {
     data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_policy_arn
   ]
   key_pair = var.key_pair
+  max_vcpu = var.data_lake_max_vcpu
   project  = local.project
   security_group_ids = [data.terraform_remote_state.core.outputs.default_security_group_id,
   data.terraform_remote_state.core.outputs.postgresql_security_group_id]
