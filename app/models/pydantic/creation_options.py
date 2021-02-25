@@ -22,6 +22,7 @@ from ..enum.pixetl import (
     Grid,
     NonNumericFloat,
     Order,
+    PhotometricType,
     RasterizeMethod,
     ResamplingMethod,
 )
@@ -95,6 +96,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     pixel_meaning: str
     data_type: DataType
     nbits: Optional[int]
+    count: int = 1
     no_data: Optional[Union[StrictInt, NonNumericFloat]]
     rasterize_method: Optional[RasterizeMethod]
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
@@ -108,6 +110,15 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     compute_histogram: bool = False
     process_locally: bool = True
     auxiliary_assets: Optional[List[UUID]] = None
+    photometric: Optional[PhotometricType] = None
+
+    @validator("no_data")
+    def validate_no_data(cls, v, values, **kwargs):
+        if isinstance(v, list):
+            assert len(v) != values.get(
+                "count"
+            ), "Length of no data list must much band count."
+        return v
 
 
 class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
