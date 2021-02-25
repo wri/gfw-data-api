@@ -1,7 +1,7 @@
 from typing import Any, List, Literal, Optional, Union
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from ..enum.assets import AssetStatus, AssetType
 from .base import BaseRecord, StrictBaseModel
@@ -85,7 +85,7 @@ class TableAssetCreateIn(BaseAssetCreateIn):
 # AssetCreateIn = Annotated[Union[RasterTileSetAssetCreateIn, RasterTileCacheAssetCreateIn, StaticVectorTileCacheAssetCreateIn], Field(discriminator='asset_type')]
 
 
-class AssetCreateIn(StrictBaseModel):
+class AssetCreateIn(BaseModel):
     __root__: Union[
         RasterTileSetAssetCreateIn,
         RasterTileCacheAssetCreateIn,
