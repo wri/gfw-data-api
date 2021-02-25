@@ -17,7 +17,7 @@ from fastapi.responses import ORJSONResponse
 
 from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
-from ...models.enum.assets import AssetStatus
+from ...models.enum.assets import AssetStatus, AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
@@ -134,11 +134,22 @@ async def update_version(
     # if version was tagged as `latest`
     # make sure associated `latest` routes in tile cache cloud front distribution are invalidated
     if input_data.get("is_latest"):
-        background_tasks.add_task(
-            flush_cloudfront_cache,
-            TILE_CACHE_CLOUDFRONT_ID,
-            ["/_latest", f"/{dataset}/{version}/latest/*"],
+        tile_cache_assets: List[ORMAsset] = await assets.get_assets_by_filter(
+            dataset=dataset,
+            version=version,
+            asset_types=[
+                AssetType.dynamic_vector_tile_cache,
+                AssetType.static_vector_tile_cache,
+                AssetType.raster_tile_cache
+            ]
         )
+
+        if tile_cache_assets:
+            background_tasks.add_task(
+                flush_cloudfront_cache,
+                TILE_CACHE_CLOUDFRONT_ID,
+                ["/_latest", f"/{dataset}/{version}/latest/*"],
+            )
 
     return await _version_response(dataset, version, row)
 
