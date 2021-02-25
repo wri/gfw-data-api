@@ -18,6 +18,7 @@ pendulum = "*"
 rasterio = "*"
 
 [packages]
+pydantic = {editable = true,git = "https://github.com/PrettyWood/pydantic.git",ref = "f/discriminated-union"}
 fastapi = "*"
 gino = "*"
 arq = "*"
