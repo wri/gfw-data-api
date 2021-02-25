@@ -367,7 +367,7 @@ async def test_invalid_source_uri(async_client):
     response = await async_client.post(
         f"/dataset/{dataset}/{version}/append", json={"source_uri": source_uri}
     )
-    assert response.status_code == 400
+    assert response.status_code == 404
     assert response.json()["status"] == "failed"
     assert (
         response.json()["message"]
