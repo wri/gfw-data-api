@@ -48,8 +48,7 @@ version_payload = {
 
 
 @pytest.mark.asyncio
-@patch("app.tasks.aws_tasks.get_cloudfront_client")
-async def test_versions(mocked_cloudfront_client, async_client):
+async def test_versions(async_client):
     """Test version path operations.
 
     We patch/ disable background tasks here, as they run asynchronously.
@@ -57,8 +56,6 @@ async def test_versions(mocked_cloudfront_client, async_client):
     """
     dataset = "test"
     version = "v1.1.1"
-
-    mocked_cloudfront_client.return_value = MockCloudfrontClient()
 
     await create_default_asset(
         dataset,
@@ -123,8 +120,6 @@ async def test_versions(mocked_cloudfront_client, async_client):
     assert response.status_code == 200
     assert len(response.json()["data"]) == 1
 
-    assert mocked_cloudfront_client.called
-
     # Query
 
     response = await async_client.get(
@@ -161,8 +156,6 @@ async def test_versions(mocked_cloudfront_client, async_client):
     print(response.json())
     assert response.status_code == 400
     assert response.json()["message"] == "Must not use sub queries."
-
-    assert mocked_cloudfront_client.called
 
 
 @pytest.mark.asyncio
@@ -292,12 +285,9 @@ async def test_version_delete_protection(mocked_cloudfront_client, async_client)
 
 
 @pytest.mark.asyncio
-@patch("app.tasks.aws_tasks.get_cloudfront_client")
-async def test_latest_middleware(mocked_cloudfront_client, async_client):
+async def test_latest_middleware(async_client):
     """Test if middleware redirects to correct version when using `latest`
     version identifier."""
-
-    mocked_cloudfront_client.return_value = MockCloudfrontClient()
 
     dataset = "test"
     version = "v1.1.1"
@@ -323,8 +313,6 @@ async def test_latest_middleware(mocked_cloudfront_client, async_client):
     print(response.json())
     assert response.status_code == 200
     assert response.json()["data"]["version"] == version
-
-    assert mocked_cloudfront_client.called
 
 
 @pytest.mark.asyncio
@@ -394,8 +382,7 @@ async def test_put_latest(async_client):
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
-@patch("app.tasks.aws_tasks.get_cloudfront_client")
-async def test_version_put_raster(mocked_cloudfront_client, async_client):
+async def test_version_put_raster(async_client):
     """Test raster source version operations."""
 
     dataset = "test_version_put_raster"
@@ -432,8 +419,6 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
         },
         "metadata": payload["metadata"],
     }
-
-    mocked_cloudfront_client.return_value = MockCloudfrontClient()
 
     await create_default_asset(
         dataset,
@@ -477,8 +462,7 @@ async def test_version_put_raster(mocked_cloudfront_client, async_client):
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
-@patch("app.tasks.aws_tasks.get_cloudfront_client")
-async def test_version_put_raster_bug_fixes(mocked_cloudfront_client, async_client):
+async def test_version_put_raster_bug_fixes(async_client):
     """Test bug fixes for raster source version operations."""
 
     dataset = "test_version_put_raster_minimal_args"
@@ -501,8 +485,6 @@ async def test_version_put_raster_bug_fixes(mocked_cloudfront_client, async_clie
         },
         # "metadata": payload["metadata"],  # Leave these out to test bug fix
     }
-
-    mocked_cloudfront_client.return_value = MockCloudfrontClient()
 
     await create_default_asset(
         dataset,
