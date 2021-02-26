@@ -46,7 +46,7 @@ async def dataset_version_dependency(
     try:
         await get_version(dataset, version)
     except RecordNotFoundError as e:
-        raise HTTPException(status_code=400, detail=(str(e)))
+        raise HTTPException(status_code=404, detail=(str(e)))
 
     return dataset, version
 

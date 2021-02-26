@@ -1,7 +1,8 @@
 from datetime import date
 from typing import Any, Dict, List, Optional, Type, Union
+from uuid import UUID
 
-from pydantic import Field, StrictInt, root_validator
+from pydantic import Field, StrictInt, root_validator, validator
 from pydantic.types import PositiveInt
 
 from ...settings.globals import PIXETL_DEFAULT_RESAMPLING
@@ -106,15 +107,33 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     compute_stats: bool = True
     compute_histogram: bool = False
     process_locally: bool = True
+    auxiliary_assets: Optional[List[UUID]] = None
 
 
-class RasterTileSetSourceCreationOptions(RasterTileSetAssetCreationOptions):
+class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
+    # For internal use only
+    source_type: Union[RasterSourceType, VectorSourceType]
+    source_driver: Optional[RasterDrivers] = None
+    source_uri: Optional[List[str]] = Field(
+        description="List of input files. Must a be tile.geojson file located on S3. "
+        "Input tiles must have path either starting with /vsis3/ or /vsigs/",
+    )
+
+    @validator("source_uri")
+    def validate_source_uri(cls, v, values, **kwargs):
+        if values.get("source_type") == SourceType.raster:
+            assert v, "Raster source types require source_uri"
+            if len(v) > 1:
+                assert values.get("calc"), "More than one source_uri require calc"
+        else:
+            assert not v, "Only raster source type require source_uri"
+        return v
+
+
+class RasterTileSetSourceCreationOptions(PixETLCreationOptions):
     source_type: RasterSourceType = Field(..., description="Source type of input file.")
     source_driver: RasterDrivers = Field(
         ..., description="Driver of source file. Must be an OGR driver"
-    )
-    source_uri: Optional[List[str]] = Field(
-        description="List of input files. Must be s3:// URLs.",
     )
 
 

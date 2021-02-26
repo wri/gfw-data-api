@@ -11,12 +11,13 @@ from app.utils.aws import get_s3_client
 
 from .. import BUCKET, PORT, SHP_NAME
 from ..utils import check_tasks_status, create_default_asset, poll_jobs
-from . import MockECSClient
+from . import MockECSClient, MockCloudfrontClient
 
 
 @pytest.mark.asyncio
 @patch("app.tasks.aws_tasks.get_ecs_client")  # TODO use moto client
-async def test_vector_tile_asset(ecs_client, batch_client, async_client):
+@patch("app.tasks.aws_tasks.get_cloudfront_client")
+async def test_vector_tile_asset(mocked_cloudfront_client, ecs_client, batch_client, async_client):
     _, logs = batch_client
     ecs_client.return_value = MockECSClient()
     ############################
@@ -249,3 +250,10 @@ async def test_vector_tile_asset(ecs_client, batch_client, async_client):
         )
         print(resp)
         assert resp["KeyCount"] == 0
+
+    mocked_cloudfront_client.return_value = MockCloudfrontClient()
+    response = await async_client.patch(
+        f"/dataset/{dataset}/{version}", json={"is_latest": True}
+    )
+    assert response.status_code == 200
+    assert mocked_cloudfront_client.called

@@ -73,7 +73,7 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
     return update_metadata(new_version, d)
 
 
-async def update_version(dataset: str, version: str, **data):
+async def update_version(dataset: str, version: str, **data) -> ORMVersion:
     """Update fields of version."""
     row: ORMVersion = await get_version(dataset, version)
     row = await update_data(row, data)

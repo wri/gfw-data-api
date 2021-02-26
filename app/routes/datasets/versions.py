@@ -9,7 +9,7 @@ assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
 from copy import deepcopy
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from botocore.exceptions import ClientError, ParamValidationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
@@ -17,7 +17,7 @@ from fastapi.responses import ORJSONResponse
 
 from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
-from ...models.enum.assets import AssetStatus
+from ...models.enum.assets import AssetStatus, AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
@@ -36,7 +36,12 @@ from ...models.pydantic.versions import (
     VersionResponse,
     VersionUpdateIn,
 )
-from ...routes import dataset_dependency, is_admin, version_dependency
+from ...routes import (
+    dataset_dependency,
+    dataset_version_dependency,
+    is_admin,
+    version_dependency,
+)
 from ...settings.globals import TILE_CACHE_CLOUDFRONT_ID
 from ...tasks.aws_tasks import flush_cloudfront_cache
 from ...tasks.default_assets import append_default_asset, create_default_asset
@@ -54,16 +59,12 @@ router = APIRouter()
     response_model=VersionResponse,
 )
 async def get_version(
-    *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
+    *, dv: Tuple[str, str] = Depends(dataset_version_dependency)
 ) -> VersionResponse:
     """Get basic metadata for a given version."""
 
-    try:
-        row: ORMVersion = await versions.get_version(dataset, version)
-    except RecordNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    dataset, version = dv
+    row: ORMVersion = await versions.get_version(dataset, version)
 
     return await _version_response(dataset, version, row)
 
@@ -116,8 +117,7 @@ async def add_new_version(
 )
 async def update_version(
     *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
     request: VersionUpdateIn,
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
@@ -126,19 +126,30 @@ async def update_version(
 
     Update metadata or change latest tag
     """
-
+    dataset, version = dv
     input_data = request.dict(exclude_none=True, by_alias=True)
 
     row: ORMVersion = await versions.update_version(dataset, version, **input_data)
 
     # if version was tagged as `latest`
     # make sure associated `latest` routes in tile cache cloud front distribution are invalidated
-    if input_data["is_latest"]:
-        background_tasks.add_task(
-            flush_cloudfront_cache,
-            TILE_CACHE_CLOUDFRONT_ID,
-            ["/_latest", f"/{dataset}/{version}/latest/*"],
+    if input_data.get("is_latest"):
+        tile_cache_assets: List[ORMAsset] = await assets.get_assets_by_filter(
+            dataset=dataset,
+            version=version,
+            asset_types=[
+                AssetType.dynamic_vector_tile_cache,
+                AssetType.static_vector_tile_cache,
+                AssetType.raster_tile_cache
+            ]
         )
+
+        if tile_cache_assets:
+            background_tasks.add_task(
+                flush_cloudfront_cache,
+                TILE_CACHE_CLOUDFRONT_ID,
+                ["/_latest", f"/{dataset}/{version}/latest/*"],
+            )
 
     return await _version_response(dataset, version, row)
 
@@ -152,8 +163,7 @@ async def update_version(
 )
 async def append_to_version(
     *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
     request: VersionAppendIn,
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
@@ -163,7 +173,7 @@ async def append_to_version(
     Schema of input file must match or be a subset of previous input
     files.
     """
-
+    dataset, version = dv
     _verify_source_file_access(request.dict()["source_uri"])
 
     default_asset: ORMAsset = await assets.get_default_asset(dataset, version)
@@ -192,17 +202,18 @@ async def append_to_version(
 )
 async def delete_version(
     *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
     is_authorized: bool = Depends(is_admin),
     background_tasks: BackgroundTasks,
 ):
+
     """Delete a version.
 
     Only delete version if it is not tagged as `latest` or if it is the
     only version associated with dataset. All associated, managed assets
     will be deleted in consequence.
     """
+    dataset, version = dv
     row: Optional[ORMVersion] = None
     rows: List[ORMVersion] = await versions.get_versions(dataset)
 
@@ -232,10 +243,8 @@ async def delete_version(
     tags=["Versions"],
     response_model=ChangeLogResponse,
 )
-async def get_change_log(
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
-):
+async def get_change_log(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
+    dataset, version = dv
     v: ORMVersion = await versions.get_version(dataset, version)
     change_logs: List[ChangeLog] = [
         ChangeLog(**change_log) for change_log in v.change_log
@@ -251,9 +260,9 @@ async def get_change_log(
     response_model=CreationOptionsResponse,
 )
 async def get_creation_options(
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
+    dv: Tuple[str, str] = Depends(dataset_version_dependency)
 ):
+    dataset, version = dv
     asset: ORMAsset = await assets.get_default_asset(dataset, version)
     creation_options: CreationOptions = creation_option_factory(
         asset.asset_type, asset.creation_options
@@ -267,10 +276,8 @@ async def get_creation_options(
     tags=["Versions"],
     response_model=ExtentResponse,
 )
-async def get_extent(
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
-):
+async def get_extent(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
+    dataset, version = dv
     asset: ORMAsset = await assets.get_default_asset(dataset, version)
     extent: Optional[Extent] = asset.extent
     return ExtentResponse(data=extent)
@@ -282,11 +289,9 @@ async def get_extent(
     tags=["Versions"],
     response_model=StatsResponse,
 )
-async def get_stats(
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
-):
+async def get_stats(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     """Retrieve Asset Statistics."""
+    dataset, version = dv
     asset: ORMAsset = await assets.get_default_asset(dataset, version)
     stats: Optional[Stats] = stats_factory(asset.asset_type, asset.stats)
     return StatsResponse(data=stats)
@@ -298,10 +303,8 @@ async def get_stats(
     tags=["Versions"],
     response_model=FieldMetadataResponse,
 )
-async def get_fields(
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
-):
+async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
+    dataset, version = dv
     asset = await assets.get_default_asset(dataset, version)
     fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
 

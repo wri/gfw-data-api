@@ -2,7 +2,7 @@
 only) in a classic RESTful way."""
 
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import pendulum
 import pyproj
@@ -19,7 +19,7 @@ from ...application import db
 from ...crud import assets
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.pydantic.features import FeaturesResponse
-from ...routes import dataset_dependency, version_dependency
+from ...routes import dataset_version_dependency, version_dependency
 
 router = APIRouter()
 
@@ -82,8 +82,7 @@ async def get_nasa_viirs_fire_alerts_features(
 )
 async def get_features(
     *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
     lat: float = Query(..., title="Latitude", ge=-90, le=90),
     lng: float = Query(..., title="Longitude", ge=-180, le=180),
     z: int = Query(..., title="Zoom level", ge=0, le=22),
@@ -93,6 +92,7 @@ async def get_features(
     Search radius various decreases for higher zoom levels.
     """
 
+    dataset, version = dv
     try:
         feature_rows = await get_features_by_location(dataset, version, lat, lng, z)
     except UndefinedTableError:

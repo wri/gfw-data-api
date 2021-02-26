@@ -5,6 +5,7 @@ from pydantic import validator
 from ...settings.globals import (
     AURORA_JOB_QUEUE,
     DATA_LAKE_JOB_QUEUE,
+    DEFAULT_JOB_DURATION,
     GDAL_PYTHON_JOB_DEFINITION,
     MAX_CORES,
     MAX_MEM,
@@ -72,7 +73,7 @@ class PostgresqlClientJob(Job):
     vcpus = 1
     memory = 1500
     attempts = 1
-    attempt_duration_seconds = 7500
+    attempt_duration_seconds = DEFAULT_JOB_DURATION
 
 
 class GdalPythonImportJob(Job):
@@ -84,7 +85,7 @@ class GdalPythonImportJob(Job):
     vcpus = 1
     memory = 2500
     attempts = 1
-    attempt_duration_seconds = 7500
+    attempt_duration_seconds = DEFAULT_JOB_DURATION
 
 
 class GdalPythonExportJob(Job):
@@ -96,7 +97,7 @@ class GdalPythonExportJob(Job):
     vcpus = 1
     memory = 15000
     attempts = 1
-    attempt_duration_seconds = 7500
+    attempt_duration_seconds = DEFAULT_JOB_DURATION
 
 
 class TileCacheJob(Job):
@@ -106,8 +107,8 @@ class TileCacheJob(Job):
     job_definition = TILE_CACHE_JOB_DEFINITION
     vcpus = 48
     memory = 96000
-    attempts = 1
-    attempt_duration_seconds = 10800
+    attempts = 4
+    attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 
 
 class PixETLJob(Job):
@@ -117,8 +118,8 @@ class PixETLJob(Job):
     job_definition = PIXETL_JOB_DEFINITION
     vcpus = PIXETL_CORES
     memory = PIXETL_MAX_MEM
-    attempts = 1
-    attempt_duration_seconds = 9600
+    attempts = 4
+    attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 
 
 class BuildRGBJob(Job):
@@ -129,7 +130,7 @@ class BuildRGBJob(Job):
     vcpus = MAX_CORES
     memory = MAX_MEM
     attempts = 4
-    attempt_duration_seconds = 7500
+    attempt_duration_seconds = DEFAULT_JOB_DURATION
 
 
 class GDAL2TilesJob(Job):
@@ -140,4 +141,4 @@ class GDAL2TilesJob(Job):
     vcpus = MAX_CORES
     memory = MAX_MEM
     attempts = 4
-    attempt_duration_seconds = 7500
+    attempt_duration_seconds = DEFAULT_JOB_DURATION
