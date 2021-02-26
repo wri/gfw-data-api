@@ -6,10 +6,9 @@ from fastapi.logger import logger
 
 from app.crud.assets import create_asset
 from app.models.enum.assets import AssetType
-from app.models.enum.creation_options import RasterDrivers
-from app.models.enum.pixetl import DataType, Grid, ResamplingMethod
+from app.models.enum.creation_options import ColorMapType, RasterDrivers
+from app.models.enum.pixetl import DataType, Grid, PhotometricType, ResamplingMethod
 from app.models.enum.sources import RasterSourceType
-from app.models.enum.symbology import ColorMapType
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import BuildRGBJob, Job, PixETLJob
@@ -23,7 +22,7 @@ from app.tasks.raster_tile_cache_assets.utils import (
     reproject_to_web_mercator,
     tile_uri_to_tiles_geojson,
 )
-from app.tasks.raster_tile_set_assets.utils import JOB_ENV
+from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_pixetl_job
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri, split_s3_path
 
@@ -103,6 +102,69 @@ async def date_conf_intensity_symbology(
     raster tile set is created it will combine it with ource (date_conf)
     raster into rbg encoded raster.
     """
+    return await _date_intensity_symbology(
+        dataset,
+        version,
+        source_asset_co,
+        zoom_level,
+        max_zoom,
+        jobs_dict,
+        "(A>0)*55",
+        ResamplingMethod.bilinear,
+        _merge_intensity_and_date_conf,
+    )
+
+
+async def year_intensity_symbology(
+    dataset: str,
+    version: str,
+    source_asset_co: RasterTileSetSourceCreationOptions,
+    zoom_level: int,
+    max_zoom: int,
+    jobs_dict: Dict,
+) -> Tuple[List[Job], str]:
+    """Create Raster Tile Set asset which combines year raster and intensity
+    raster into one.
+
+    At native resolution (max_zoom) it will create intensity raster
+    based on given source. For lower zoom levels if will resample higher
+    zoom level tiles using mean resampling method. Once intensity raster
+    tile set is created it will combine it with source (year) raster
+    into rbg encoded raster.
+    """
+    return await _date_intensity_symbology(
+        dataset,
+        version,
+        source_asset_co,
+        zoom_level,
+        max_zoom,
+        jobs_dict,
+        "(A>0)*255",
+        ResamplingMethod.mean,
+        _merge_intensity_and_year,
+    )
+
+
+async def _date_intensity_symbology(
+    dataset: str,
+    version: str,
+    source_asset_co: RasterTileSetSourceCreationOptions,
+    zoom_level: int,
+    max_zoom: int,
+    jobs_dict: Dict,
+    max_zoom_calc: str,
+    resampling: ResamplingMethod,
+    merge_function: Callable,
+) -> Tuple[List[Job], str]:
+    """Create Raster Tile Set asset which combines year raster and intensity
+    raster into one.
+
+    At native resolution (max_zoom) it will create intensity raster
+    based on given source. For lower zoom levels if will resample higher
+    zoom level tiles using mean resampling method. Once intensity raster
+    tile set is created it will combine it with source (year) raster
+    into rbg encoded raster.
+    """
 
     pixel_meaning = "intensity"
 
@@ -115,17 +177,17 @@ async def date_conf_intensity_symbology(
             "source_uri": source_uri,
             "no_data": None,
             "pixel_meaning": pixel_meaning,
-            "resampling": ResamplingMethod.bilinear,
+            "resampling": resampling,
         },
     )
-    date_conf_job = jobs_dict[zoom_level]["source_reprojection_job"]
+    date_job = jobs_dict[zoom_level]["source_reprojection_job"]
 
     if zoom_level != max_zoom:
         previous_level_intensity_reprojection_job = [
             jobs_dict[zoom_level + 1]["intensity_reprojection_job"]
         ]
     else:
-        previous_level_intensity_reprojection_job = [date_conf_job]
+        previous_level_intensity_reprojection_job = [date_job]
 
     intensity_job, intensity_uri = await reproject_to_web_mercator(
         dataset,
@@ -135,20 +197,20 @@ async def date_conf_intensity_symbology(
         max_zoom,
         previous_level_intensity_reprojection_job,
         max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
-        max_zoom_calc="(A>0)*55",
+        max_zoom_calc=max_zoom_calc,
     )
     jobs_dict[zoom_level]["intensity_reprojection_job"] = intensity_job
 
     assert source_asset_co.source_uri, "No source URI set"
-    date_conf_uri = source_asset_co.source_uri[0]
+    date_uri = source_asset_co.source_uri[0]
 
-    merge_jobs, dst_uri = await _merge_intensity_and_date_conf(
+    merge_jobs, dst_uri = await merge_function(
         dataset,
         version,
-        tile_uri_to_tiles_geojson(date_conf_uri),
+        tile_uri_to_tiles_geojson(date_uri),
         tile_uri_to_tiles_geojson(intensity_uri),
         zoom_level,
-        [date_conf_job, intensity_job],
+        [date_job, intensity_job],
     )
     jobs_dict[zoom_level]["merge_intensity_jobs"] = merge_jobs
 
@@ -257,8 +319,82 @@ async def _merge_intensity_and_date_conf(
     )
 
 
+async def _merge_intensity_and_year(
+    dataset: str,
+    version: str,
+    year_uri: str,
+    intensity_uri: str,
+    zoom_level: int,
+    parents: List[Job],
+) -> Tuple[List[Job], str]:
+    """Create RGB encoded raster tile set based on date_conf and intensity
+    raster tile sets."""
+
+    pixel_meaning = "rgb_encoded"
+
+    encoded_co = RasterTileSetSourceCreationOptions(
+        pixel_meaning=pixel_meaning,
+        data_type=DataType.uint8,
+        resampling=PIXETL_DEFAULT_RESAMPLING,
+        overwrite=False,
+        grid=Grid(f"zoom_{zoom_level}"),
+        symbology=Symbology(type=ColorMapType.date_conf_intensity),
+        compute_stats=False,
+        compute_histogram=False,
+        source_type=RasterSourceType.raster,
+        source_driver=RasterDrivers.geotiff,
+        source_uri=[year_uri, intensity_uri],
+        count=3,
+        no_data=None,
+        photometric=PhotometricType.rgb,
+        calc="np.ma.array([A, np.ma.zeros(A.shape, dtype='uint8'), B], fill_value=0).astype('uint8')",
+    )
+
+    asset_uri = get_asset_uri(
+        dataset,
+        version,
+        AssetType.raster_tile_set,
+        encoded_co.dict(by_alias=True),
+        "epsg:3857",
+    )
+    asset_prefix = asset_uri.rsplit("/", 1)[0]
+
+    logger.debug(
+        f"ATTEMPTING TO CREATE MERGED ASSET WITH THESE CREATION OPTIONS: {encoded_co}"
+    )
+
+    # Create an asset record
+    asset_options = AssetCreateIn(
+        asset_type=AssetType.raster_tile_set,
+        asset_uri=asset_uri,
+        is_managed=True,
+        creation_options=encoded_co,
+        metadata=RasterTileSetMetadata(),
+    ).dict(by_alias=True)
+
+    asset = await create_asset(dataset, version, **asset_options)
+    logger.debug(
+        f"ZOOM LEVEL {zoom_level} MERGED ASSET CREATED WITH ASSET_ID {asset.asset_id}"
+    )
+    callback = callback_constructor(asset.asset_id)
+    pixetl_job = await create_pixetl_job(
+        dataset,
+        version,
+        encoded_co,
+        job_name=f"merge_year_intensity_zoom_{zoom_level}",
+        callback=callback,
+        parents=parents,
+    )
+
+    return (
+        [pixetl_job],
+        os.path.join(asset_prefix, "tiles.geojson"),
+    )
+
+
 _symbology_constructor: Dict[str, SymbologyFuncType] = {
     ColorMapType.date_conf_intensity: date_conf_intensity_symbology,
+    ColorMapType.year_intensity: year_intensity_symbology,
     ColorMapType.gradient: pixetl_symbology,
     ColorMapType.discrete: pixetl_symbology,
 }

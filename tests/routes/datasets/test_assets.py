@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 from app.application import ContextEngine
 from app.crud import tasks
 from app.crud.assets import update_asset
-from app.models.enum.symbology import ColorMapType
+from app.models.enum.creation_options import ColorMapType
 from app.models.pydantic.jobs import GDAL2TilesJob, PixETLJob
 from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.tasks.utils import sanitize_batch_job_name

@@ -2,7 +2,7 @@ from typing import Dict, Optional, Tuple, Union
 
 from pydantic import Field, StrictInt
 
-from app.models.enum.symbology import ColorMapType
+from app.models.enum.creation_options import ColorMapType
 from app.models.pydantic.base import StrictBaseModel
 
 
