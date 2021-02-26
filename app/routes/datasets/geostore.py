@@ -1,3 +1,4 @@
+from typing import Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path
@@ -6,7 +7,7 @@ from fastapi.responses import ORJSONResponse
 from ...crud import geostore
 from ...errors import RecordNotFoundError
 from ...models.pydantic.geostore import GeostoreHydrated, GeostoreResponse
-from ...routes import dataset_dependency, version_dependency
+from ...routes import dataset_version_dependency
 
 router = APIRouter()
 
@@ -19,8 +20,7 @@ router = APIRouter()
 )
 async def get_geostore_by_version(
     *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
     geostore_id: UUID = Path(..., title="geostore_id"),
 ):
     """Retrieve GeoJSON representation for a given geostore ID of a dataset
@@ -28,6 +28,7 @@ async def get_geostore_by_version(
 
     Obtain geostore ID from feature attributes.
     """
+    dataset, version = dv
     try:
         result: GeostoreHydrated = await geostore.get_geostore_by_version(
             dataset, version, geostore_id

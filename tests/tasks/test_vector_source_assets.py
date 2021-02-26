@@ -353,7 +353,7 @@ async def test_vector_source_asset(batch_client, async_client):
     assert response.status_code == 200
 
     response = await async_client.get("/dataset/different/v1.1.1/assets")
-    assert response.status_code == 400
+    assert response.status_code == 404
 
     response = await async_client.delete(f"/asset/{asset_id}")
     assert response.status_code == 409

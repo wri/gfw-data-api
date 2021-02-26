@@ -9,13 +9,13 @@ cannot rely on full integrity. We can only assume that unmanaged are
 based on the same version and do not know the processing history.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
 
-from ...crud import assets, versions
-from ...errors import RecordAlreadyExistsError, RecordNotFoundError
+from ...crud import assets
+from ...errors import RecordAlreadyExistsError
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.pydantic.assets import (
     AssetCreateIn,
@@ -23,7 +23,7 @@ from ...models.pydantic.assets import (
     AssetsResponse,
     AssetType,
 )
-from ...routes import dataset_dependency, is_admin, version_dependency
+from ...routes import dataset_version_dependency, is_admin
 from ...tasks.assets import put_asset
 from ...utils.path import get_asset_uri
 from ..assets import asset_response, assets_response
@@ -44,8 +44,7 @@ router = APIRouter()
 )
 async def get_version_assets(
     *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
     asset_type: Optional[AssetType] = Query(None, title="Filter by Asset Type"),
     asset_uri: Optional[str] = Query(None),
     is_latest: Optional[bool] = Query(None),
@@ -53,10 +52,7 @@ async def get_version_assets(
 ):
     """Get all assets for a given dataset version."""
 
-    try:
-        await versions.get_version(dataset, version)
-    except RecordNotFoundError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    dataset, version = dv
 
     if asset_type is not None:
         a_t: Optional[List[str]] = [asset_type]
@@ -79,8 +75,7 @@ async def get_version_assets(
 )
 async def add_new_asset(
     *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
     request: AssetCreateIn,
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
@@ -93,6 +88,8 @@ async def add_new_asset(
     If the asset is not managed, you need to specify an Asset URI to
     link to.
     """
+
+    dataset, version = dv
 
     input_data = request.dict(exclude_none=True, by_alias=True)
 

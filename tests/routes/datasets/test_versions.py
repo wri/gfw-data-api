@@ -353,10 +353,11 @@ async def test_invalid_source_uri(async_client):
     }
 
     await create_dataset(dataset, async_client, payload)
+
+    # Test creating a version with (some) bad source URIs
     response = await async_client.put(
         f"/dataset/{dataset}/{version}", json=version_payload
     )
-    print(response.json())
     assert response.status_code == 400
     assert response.json()["status"] == "failed"
     assert (
@@ -364,6 +365,18 @@ async def test_invalid_source_uri(async_client):
         == "Cannot access source files ['s3://doesnotexist', 's3://bucket/key', 'http://domain/file']"
     )
 
+    # Create a version with a valid source_uri so we have something to append to
+    version_payload["creation_options"]["source_uri"] = [f"s3://{BUCKET}/{SHP_NAME}"]
+    await create_default_asset(
+        dataset,
+        version,
+        skip_dataset=True,
+        version_payload=version_payload,
+        async_client=async_client,
+        execute_batch_jobs=False,
+    )
+
+    # Test appending to a version that exists
     response = await async_client.post(
         f"/dataset/{dataset}/{version}/append", json={"source_uri": source_uri}
     )
@@ -372,6 +385,19 @@ async def test_invalid_source_uri(async_client):
     assert (
         response.json()["message"]
         == "Cannot access source files ['s3://doesnotexist', 's3://bucket/key', 'http://domain/file']"
+    )
+
+    # Test appending to a version that DOESN'T exist
+    # Really this tests dataset_version_dependency, but that isn't done elsewhere yet
+    bad_version = "v1.42"
+    response = await async_client.post(
+        f"/dataset/{dataset}/{bad_version}/append", json={"source_uri": source_uri}
+    )
+    assert response.status_code == 404
+    assert response.json()["status"] == "failed"
+    assert (
+        response.json()["message"]
+        == f"Version with name {dataset}.{bad_version} does not exist"
     )
 
 
