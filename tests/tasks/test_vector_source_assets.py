@@ -103,13 +103,16 @@ async def test_vector_source_asset(batch_client, async_client):
         assert len(response.json()["data"]) == 1
         assert response.json()["data"][0]["count"] == 1
 
-        with open(GEOJSON_PATH2, "r") as geojson, patch(
-            "app.utils.rw_api.get_geostore_geometry",
-            return_value=json.load(geojson)["features"][0]["geometry"],
-        ):
-            response = await async_client.get(
-                f"/dataset/{dataset}/{version}/query?sql=SELECT count(*) FROM mytable&geostore_id=17076d5ea9f214a5bdb68cc40433addb&geostore_origin=rw"
-            )
+        with open(GEOJSON_PATH2, "r") as geojson:
+            raw_geom = json.load(geojson)["features"][0]["geometry"]
+            geom = Geometry(type=raw_geom["type"], coordinates=raw_geom["coordinates"])
+            with patch(
+                "app.utils.rw_api.get_geostore_geometry",
+                return_value=geom,
+            ):
+                response = await async_client.get(
+                    f"/dataset/{dataset}/{version}/query?sql=SELECT count(*) FROM mytable&geostore_id=17076d5ea9f214a5bdb68cc40433addb&geostore_origin=rw"
+                )
         # print(response.json())
         assert response.status_code == 200
         assert len(response.json()["data"]) == 1
