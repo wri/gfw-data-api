@@ -336,7 +336,7 @@ symbology_checks = [
         "symbology": {"type": ColorMapType.date_conf_intensity},
     },
     {
-        "wm_tile_set_assets": ["year", "intensity", "rgb_encoded"],
+        "wm_tile_set_assets": ["date_conf", "intensity", "rgb_encoded"],
         "symbology": {"type": ColorMapType.year_intensity},
     },
     {
