@@ -140,7 +140,7 @@ async def year_intensity_symbology(
         max_zoom,
         jobs_dict,
         "(A>0)*255",
-        ResamplingMethod.mean,
+        ResamplingMethod.average,
         _merge_intensity_and_year,
     )
 
