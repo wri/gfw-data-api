@@ -1,15 +1,14 @@
 """Explore data entries for a given dataset version using standard SQL."""
 
-import json
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote
 from uuid import UUID
 
 from asyncpg import (
     InsufficientPrivilegeError,
+    InvalidTextRepresentationError,
     UndefinedColumnError,
     UndefinedFunctionError,
-    InvalidTextRepresentationError,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
