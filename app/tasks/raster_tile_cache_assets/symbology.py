@@ -338,7 +338,6 @@ async def _merge_intensity_and_year(
         resampling=PIXETL_DEFAULT_RESAMPLING,
         overwrite=False,
         grid=Grid(f"zoom_{zoom_level}"),
-        symbology=Symbology(type=ColorMapType.date_conf_intensity),
         compute_stats=False,
         compute_histogram=False,
         source_type=RasterSourceType.raster,
