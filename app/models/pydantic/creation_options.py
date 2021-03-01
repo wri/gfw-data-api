@@ -144,7 +144,8 @@ class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
 class RasterTileSetSourceCreationOptions(PixETLCreationOptions):
     source_type: RasterSourceType = Field(..., description="Source type of input file.")
     source_driver: RasterDrivers = Field(
-        ..., description="Driver of source file. Must be an OGR driver"
+        RasterDrivers.geotiff,
+        description="Driver of source file. Must be an OGR driver",
     )
 
 
