@@ -87,7 +87,7 @@ async def create_pixetl_job(
     )
 
 
-def create_gdaldem_job(
+async def create_gdaldem_job(
     dataset: str,
     version: str,
     co: PixETLCreationOptions,

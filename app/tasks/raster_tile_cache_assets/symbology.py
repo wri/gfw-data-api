@@ -96,12 +96,14 @@ async def pixetl_symbology(
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
     """Create an RGBA raster with gradient or discrete symbology."""
-    source_asset_uri = get_asset_uri(
-        dataset,
-        version,
-        AssetType.raster_tile_set,
-        source_asset_co.dict(by_alias=True),
-        "epsg:3857",
+    source_asset_uri = tile_uri_to_tiles_geojson(
+        get_asset_uri(
+            dataset,
+            version,
+            AssetType.raster_tile_set,
+            source_asset_co.dict(by_alias=True),
+            "epsg:3857",
+        )
     )
 
     assert source_asset_co.symbology  # make mypy happy
