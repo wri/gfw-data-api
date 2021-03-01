@@ -27,7 +27,7 @@ from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri, split_s3_path
 
 SymbologyFuncType = Callable[
-    [str, str, RasterTileSetSourceCreationOptions, int, int, Dict[Any, Any]],
+    [str, str, str, RasterTileSetSourceCreationOptions, int, int, Dict[Any, Any]],
     Coroutine[Any, Any, Tuple[List[Job], str]],
 ]
 
@@ -35,6 +35,7 @@ SymbologyFuncType = Callable[
 async def no_symbology(
     dataset: str,
     version: str,
+    pixel_meaning: str,
     source_asset_co: RasterTileSetSourceCreationOptions,
     zoom_level: int,
     max_zoom: int,
@@ -50,6 +51,7 @@ async def no_symbology(
 async def pixetl_symbology(
     dataset: str,
     version: str,
+    pixel_meaning: str,
     source_asset_co: RasterTileSetSourceCreationOptions,
     zoom_level: int,
     max_zoom: int,
@@ -57,7 +59,6 @@ async def pixetl_symbology(
 ) -> Tuple[List[Job], str]:
     """Create RGBA raster which gradient symbology based on input raster."""
     assert source_asset_co.symbology  # make mypy happy
-    pixel_meaning = f"{source_asset_co.pixel_meaning}_{source_asset_co.symbology.type}"
     parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
     source_uri = (
         [tile_uri_to_tiles_geojson(uri) for uri in source_asset_co.source_uri]
@@ -88,6 +89,7 @@ async def pixetl_symbology(
 async def date_conf_intensity_symbology(
     dataset: str,
     version: str,
+    pixel_meaning: str,
     source_asset_co: RasterTileSetSourceCreationOptions,
     zoom_level: int,
     max_zoom: int,
@@ -105,6 +107,7 @@ async def date_conf_intensity_symbology(
     return await _date_intensity_symbology(
         dataset,
         version,
+        pixel_meaning,
         source_asset_co,
         zoom_level,
         max_zoom,
@@ -118,6 +121,7 @@ async def date_conf_intensity_symbology(
 async def year_intensity_symbology(
     dataset: str,
     version: str,
+    pixel_meaning: str,
     source_asset_co: RasterTileSetSourceCreationOptions,
     zoom_level: int,
     max_zoom: int,
@@ -135,6 +139,7 @@ async def year_intensity_symbology(
     return await _date_intensity_symbology(
         dataset,
         version,
+        pixel_meaning,
         source_asset_co,
         zoom_level,
         max_zoom,
@@ -148,6 +153,7 @@ async def year_intensity_symbology(
 async def _date_intensity_symbology(
     dataset: str,
     version: str,
+    pixel_meaning: str,
     source_asset_co: RasterTileSetSourceCreationOptions,
     zoom_level: int,
     max_zoom: int,
@@ -166,8 +172,6 @@ async def _date_intensity_symbology(
     into rbg encoded raster.
     """
 
-    pixel_meaning = "intensity"
-
     source_uri: Optional[List[str]] = get_zoom_source_uri(
         dataset, version, source_asset_co, zoom_level, max_zoom
     )
@@ -176,7 +180,7 @@ async def _date_intensity_symbology(
         update={
             "source_uri": source_uri,
             "no_data": None,
-            "pixel_meaning": pixel_meaning,
+            "pixel_meaning": "intensity",
             "resampling": resampling,
         },
     )
@@ -207,6 +211,7 @@ async def _date_intensity_symbology(
     merge_jobs, dst_uri = await merge_function(
         dataset,
         version,
+        pixel_meaning,
         tile_uri_to_tiles_geojson(date_uri),
         tile_uri_to_tiles_geojson(intensity_uri),
         zoom_level,
@@ -220,6 +225,7 @@ async def _date_intensity_symbology(
 async def _merge_intensity_and_date_conf(
     dataset: str,
     version: str,
+    pixel_meaning: str,
     date_conf_uri: str,
     intensity_uri: str,
     zoom_level: int,
@@ -227,8 +233,6 @@ async def _merge_intensity_and_date_conf(
 ) -> Tuple[List[Job], str]:
     """Create RGB encoded raster tile set based on date_conf and intensity
     raster tile sets."""
-
-    pixel_meaning = "rgb_encoded"
 
     encoded_co = RasterTileSetSourceCreationOptions(
         pixel_meaning=pixel_meaning,
@@ -322,6 +326,7 @@ async def _merge_intensity_and_date_conf(
 async def _merge_intensity_and_year(
     dataset: str,
     version: str,
+    pixel_meaning: str,
     year_uri: str,
     intensity_uri: str,
     zoom_level: int,
@@ -329,8 +334,6 @@ async def _merge_intensity_and_year(
 ) -> Tuple[List[Job], str]:
     """Create RGB encoded raster tile set based on date_conf and intensity
     raster tile sets."""
-
-    pixel_meaning = "rgb_encoded"
 
     encoded_co = RasterTileSetSourceCreationOptions(
         pixel_meaning=pixel_meaning,

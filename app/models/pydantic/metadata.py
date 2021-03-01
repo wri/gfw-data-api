@@ -40,7 +40,7 @@ class DatasetMetadata(StrictBaseModel):
     added_date: Optional[str] = Field(
         None,
         description="Date the data were added to GFW website",
-        regex="^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$",
+        regex=r"^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$",
     )
     why_added: Optional[str]
     other: Optional[str]
@@ -52,12 +52,12 @@ class VersionMetadata(DatasetMetadata):
     content_date: Optional[str] = Field(
         None,
         description="Date content was created",
-        regex="^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$",
+        regex=r"^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$",
     )
     last_update: Optional[str] = Field(
         None,
         description="Date the data were last updated",
-        regex="^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$",
+        regex=r"^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$",
     )
     download: Optional[str]
     analysis: Optional[str]

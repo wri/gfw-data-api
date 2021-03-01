@@ -19,11 +19,9 @@ from ...application import db
 from ...crud import assets
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.pydantic.features import FeaturesResponse
-from ...routes import dataset_version_dependency, version_dependency
+from ...routes import DATE_REGEX, dataset_version_dependency, version_dependency
 
 router = APIRouter()
-
-DATE_REGEX = r"^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$"
 
 
 def default_start():

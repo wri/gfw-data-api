@@ -17,7 +17,10 @@ from app.models.pydantic.symbology import Symbology
 from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.batch import execute
-from app.tasks.raster_tile_cache_assets.symbology import symbology_constructor
+from app.tasks.raster_tile_cache_assets.symbology import (
+    no_symbology,
+    symbology_constructor,
+)
 from app.tasks.raster_tile_cache_assets.utils import (
     create_tile_cache,
     reproject_to_web_mercator,
@@ -112,9 +115,6 @@ async def raster_tile_cache_asset(
     source_asset_co.compute_stats = False
     source_asset_co.compute_histogram = False
 
-    job_list: List[Job] = []
-    jobs_dict: Dict[int, Dict[str, Job]] = dict()
-
     # If float data type, convert to int in derivative assets for performance
     source_asset_co.symbology = Symbology(**symbology)
     max_zoom_calc = None
@@ -125,6 +125,13 @@ async def raster_tile_cache_asset(
 
     assert source_asset_co.symbology is not None
     symbology_function = symbology_constructor[source_asset_co.symbology.type]
+
+    # We want to make sure that the final RGB asset is called after the implementation of the tile cache
+    if symbology_function == no_symbology:
+        source_asset_co.pixel_meaning = implementation
+
+    job_list: List[Job] = []
+    jobs_dict: Dict[int, Dict[str, Job]] = dict()
 
     for zoom_level in range(max_zoom, min_zoom - 1, -1):
         jobs_dict[zoom_level] = dict()
@@ -161,6 +168,7 @@ async def raster_tile_cache_asset(
         symbology_jobs, symbology_uri = await symbology_function(
             dataset,
             version,
+            implementation,
             symbology_co,
             zoom_level,
             max_zoom,
