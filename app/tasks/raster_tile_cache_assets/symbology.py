@@ -47,8 +47,8 @@ async def no_symbology(
         raise RuntimeError("No source URI set.")
 
 
-async def create_apply_symbology_with_gdaldem_job(
-    dataset, version, creation_options, job_name, parents
+async def create_colormap_symbology_job(
+    dataset, version, creation_options, source_asset_uri, job_name, parents
 ) -> Tuple[Job, str]:
     asset_uri = get_asset_uri(
         dataset,
@@ -66,7 +66,7 @@ async def create_apply_symbology_with_gdaldem_job(
         creation_options=creation_options,
         metadata=RasterTileSetMetadata(),
     ).dict(by_alias=True)
-    wm_asset_record = await create_asset(dataset, version, **asset_options)
+    symbology_asset_record = await create_asset(dataset, version, **asset_options)
 
     logger.debug(f"Created asset for {asset_uri}")
 
@@ -74,14 +74,15 @@ async def create_apply_symbology_with_gdaldem_job(
         dataset,
         version,
         creation_options,
+        source_asset_uri,
         job_name,
-        callback_constructor(wm_asset_record.asset_id),
+        callback_constructor(symbology_asset_record.asset_id),
         parents=parents,
     )
 
-    # use max instance resources
-    job.memory = MAX_MEM
-    job.vcpus = MAX_CORES
+    # use max instance resources?
+    # job.memory = MAX_MEM
+    # job.vcpus = MAX_CORES
 
     return job, asset_uri
 
@@ -94,7 +95,15 @@ async def pixetl_symbology(
     max_zoom: int,
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
-    """Create RGBA raster with gradient or discrete symbology."""
+    """Create an RGBA raster with gradient or discrete symbology."""
+    source_asset_uri = get_asset_uri(
+        dataset,
+        version,
+        AssetType.raster_tile_set,
+        source_asset_co.dict(by_alias=True),
+        "epsg:3857",
+    )
+
     assert source_asset_co.symbology  # make mypy happy
     pixel_meaning = f"{source_asset_co.pixel_meaning}_{source_asset_co.symbology.type}"
     parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
@@ -117,8 +126,8 @@ async def pixetl_symbology(
     job_name = sanitize_batch_job_name(
         f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
     )
-    job, uri = await create_apply_symbology_with_gdaldem_job(
-        dataset, version, creation_options, job_name, parents
+    job, uri = await create_colormap_symbology_job(
+        dataset, version, creation_options, source_asset_uri, job_name, parents
     )
 
     return [job], uri

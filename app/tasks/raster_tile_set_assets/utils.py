@@ -1,8 +1,10 @@
 import json
+import posixpath
 from typing import List, Optional
 
 from fastapi.encoders import jsonable_encoder
 
+from app.models.enum.assets import AssetType
 from app.models.pydantic.creation_options import PixETLCreationOptions
 from app.models.pydantic.jobs import GDALDEMJob, Job, PixETLJob
 from app.settings.globals import (
@@ -15,6 +17,7 @@ from app.settings.globals import (
     S3_ENTRYPOINT_URL,
 )
 from app.tasks import Callback, writer_secrets
+from app.utils.path import get_asset_uri, split_s3_path, tile_uri_to_tiles_geojson
 
 JOB_ENV = writer_secrets + [
     {"name": "AWS_REGION", "value": AWS_REGION},
@@ -88,12 +91,24 @@ def create_gdaldem_job(
     dataset: str,
     version: str,
     co: PixETLCreationOptions,
+    source_asset_uri: str,
     job_name: str,
     callback: Callback,
     parents: Optional[List[Job]] = None,
 ):
     symbology = json.dumps(jsonable_encoder(co.symbology))
     no_data = json.dumps(co.no_data)
+
+    target_asset_uri = tile_uri_to_tiles_geojson(
+        get_asset_uri(
+            dataset,
+            version,
+            AssetType.raster_tile_set,
+            co.dict(by_alias=True),
+            "epsg:3857",
+        )
+    )
+    target_prefix = posixpath.dirname(split_s3_path(target_asset_uri)[1])
 
     command = [
         "apply_symbology.sh",
@@ -106,14 +121,10 @@ def create_gdaldem_job(
         "-n",
         no_data,
         "-s",
+        source_asset_uri,
+        "-T",
+        target_prefix,
     ]
-
-    # -d | --dataset
-    # -v | --version
-    # -j | --json
-    # -n | --no_data
-    # -s | --source
-    # -T | --target
 
     return GDALDEMJob(
         job_name=job_name,
