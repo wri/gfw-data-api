@@ -332,15 +332,19 @@ async def test_asset_bad_requests(async_client, batch_client, httpd):
 
 symbology_checks = [
     {
-        "wm_tile_set_assets": ["date_conf", "intensity", "rgb_encoded"],
+        "wm_tile_set_assets": [
+            "date_conf",
+            "intensity",
+            ColorMapType.date_conf_intensity,
+        ],
         "symbology": {"type": ColorMapType.date_conf_intensity},
     },
     {
-        "wm_tile_set_assets": ["date_conf", "intensity", "rgb_encoded"],
+        "wm_tile_set_assets": ["date_conf", "intensity", ColorMapType.year_intensity],
         "symbology": {"type": ColorMapType.year_intensity},
     },
     {
-        "wm_tile_set_assets": ["date_conf", f"date_conf_{ColorMapType.gradient}"],
+        "wm_tile_set_assets": ["date_conf", ColorMapType.gradient],
         "symbology": {
             "type": ColorMapType.gradient,
             "colormap": {
@@ -350,7 +354,7 @@ symbology_checks = [
         },
     },
     {
-        "wm_tile_set_assets": [f"date_conf_{ColorMapType.discrete}"],
+        "wm_tile_set_assets": [ColorMapType.discrete],
         "symbology": {
             "type": ColorMapType.discrete,
             "colormap": {
@@ -879,9 +883,7 @@ async def test_asset_float(async_client, batch_client, httpd):
             for i in range(0, max_zoom_levels + 1)
         },
         **{
-            sanitize_batch_job_name(
-                f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"
-            ): (
+            sanitize_batch_job_name(f"{dataset}_{version}_gradient_{i}"): (
                 "uint16",
                 0,
                 expected_scaled_symbology,
