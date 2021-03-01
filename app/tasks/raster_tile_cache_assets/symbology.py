@@ -18,12 +18,11 @@ from app.models.pydantic.symbology import Symbology
 from app.settings.globals import MAX_CORES, MAX_MEM, PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.raster_tile_cache_assets.utils import (
-    create_wm_tile_set_job,
     get_zoom_source_uri,
     reproject_to_web_mercator,
     tile_uri_to_tiles_geojson,
 )
-from app.tasks.raster_tile_set_assets.utils import JOB_ENV
+from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_gdaldem_job
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri, split_s3_path
 
@@ -48,6 +47,45 @@ async def no_symbology(
         raise RuntimeError("No source URI set.")
 
 
+async def create_apply_symbology_with_gdaldem_job(
+    dataset, version, creation_options, job_name, parents
+) -> Tuple[Job, str]:
+    asset_uri = get_asset_uri(
+        dataset,
+        version,
+        AssetType.raster_tile_set,
+        creation_options.dict(by_alias=True),
+        "epsg:3857",
+    )
+
+    # Create an asset record
+    asset_options = AssetCreateIn(
+        asset_type=AssetType.raster_tile_set,
+        asset_uri=asset_uri,
+        is_managed=True,
+        creation_options=creation_options,
+        metadata=RasterTileSetMetadata(),
+    ).dict(by_alias=True)
+    wm_asset_record = await create_asset(dataset, version, **asset_options)
+
+    logger.debug(f"Created asset for {asset_uri}")
+
+    job = await create_gdaldem_job(
+        dataset,
+        version,
+        creation_options,
+        job_name,
+        callback_constructor(wm_asset_record.asset_id),
+        parents=parents,
+    )
+
+    # use max instance resources
+    job.memory = MAX_MEM
+    job.vcpus = MAX_CORES
+
+    return job, asset_uri
+
+
 async def pixetl_symbology(
     dataset: str,
     version: str,
@@ -56,7 +94,7 @@ async def pixetl_symbology(
     max_zoom: int,
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
-    """Create RGBA raster which gradient symbology based on input raster."""
+    """Create RGBA raster with gradient or discrete symbology."""
     assert source_asset_co.symbology  # make mypy happy
     pixel_meaning = f"{source_asset_co.pixel_meaning}_{source_asset_co.symbology.type}"
     parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
@@ -79,7 +117,7 @@ async def pixetl_symbology(
     job_name = sanitize_batch_job_name(
         f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
     )
-    job, uri = await create_wm_tile_set_job(
+    job, uri = await create_apply_symbology_with_gdaldem_job(
         dataset, version, creation_options, job_name, parents
     )
 

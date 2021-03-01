@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi.encoders import jsonable_encoder
 
 from app.models.pydantic.creation_options import PixETLCreationOptions
-from app.models.pydantic.jobs import Job, PixETLJob
+from app.models.pydantic.jobs import GDALDEMJob, Job, PixETLJob
 from app.settings.globals import (
     AWS_GCS_KEY_SECRET_ARN,
     AWS_REGION,
@@ -81,4 +81,44 @@ async def create_pixetl_job(
         callback=callback,
         parents=[parent.job_name for parent in parents] if parents else None,
         **kwargs
+    )
+
+
+def create_gdaldem_job(
+    dataset: str,
+    version: str,
+    co: PixETLCreationOptions,
+    job_name: str,
+    callback: Callback,
+    parents: Optional[List[Job]] = None,
+):
+    symbology = json.dumps(jsonable_encoder(co.symbology))
+    no_data = json.dumps(co.no_data)
+
+    command = [
+        "apply_symbology.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+        "-j",
+        symbology,
+        "-n",
+        no_data,
+        "-s",
+    ]
+
+    # -d | --dataset
+    # -v | --version
+    # -j | --json
+    # -n | --no_data
+    # -s | --source
+    # -T | --target
+
+    return GDALDEMJob(
+        job_name=job_name,
+        command=command,
+        environment=JOB_ENV,
+        callback=callback,
+        parents=[parent.job_name for parent in parents] if parents else None,
     )
