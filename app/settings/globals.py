@@ -150,11 +150,10 @@ SQL_REQUEST_TIMEOUT = 58
 AWS_GCS_KEY_SECRET_ARN = config("AWS_GCS_KEY_SECRET_ARN", cast=str, default=None)
 AWS_SECRETSMANAGER_URL = config("AWS_SECRETSMANAGER_URL", cast=str, default=None)
 
-RW_API_URL = (
-    "https://api.resourcewatch.org"
-    if ENV == "production"
-    else "https://staging-api.resourcewatch.org"
-)
+RW_API_URL = "https://api.resourcewatch.org"
+#     if ENV == "production"
+#     else "https://staging-api.resourcewatch.org"
+# )
 
 HOUR: int = int(60 * 60)
 DEFAULT_JOB_DURATION: int = int(HOUR * 2)
