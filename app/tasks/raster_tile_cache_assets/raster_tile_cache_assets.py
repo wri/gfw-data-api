@@ -7,7 +7,9 @@ from fastapi import HTTPException
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
+from app.models.enum.creation_options import RasterDrivers
 from app.models.enum.pixetl import DataType
+from app.models.enum.sources import RasterSourceType
 from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
@@ -95,7 +97,9 @@ async def raster_tile_cache_asset(
 
     # Get the creation options from the original raster tile set asset
     source_asset_co = RasterTileSetSourceCreationOptions(
-        **source_asset.creation_options
+        source_type=RasterSourceType.raster,
+        source_driver=RasterDrivers.geotiff,
+        **source_asset.creation_options,
     )
 
     source_asset_co.calc = None
