@@ -895,9 +895,7 @@ async def test_asset_float(async_client, batch_client, httpd):
 
     assert gdal2tiles_jobs == {
         f"generate_tile_cache_zoom_{i}": [
-            sanitize_batch_job_name(
-                f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"
-            ),
+            sanitize_batch_job_name(f"{dataset}_{version}_gradient_{i}"),
             sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}"),
         ]
         for i in range(0, tile_cache_levels)
