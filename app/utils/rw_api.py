@@ -3,7 +3,7 @@ from uuid import UUID
 from async_lru import alru_cache
 from fastapi import HTTPException, Response
 from fastapi.logger import logger
-from httpx import AsyncClient
+from httpx import AsyncClient, ReadTimeout
 from httpx import Response as HTTPXResponse
 
 from ..errors import BadResponseError, InvalidResponseError, UnauthorizedError
@@ -39,8 +39,16 @@ async def who_am_i(token) -> Response:
     headers = {"Authorization": f"Bearer {token}"}
     url = f"{RW_API_URL}/auth/check-logged"
 
-    async with AsyncClient() as client:
-        response: HTTPXResponse = await client.get(url, headers=headers, timeout=10.0)
+    try:
+        async with AsyncClient() as client:
+            response: HTTPXResponse = await client.get(
+                url, headers=headers, timeout=10.0
+            )
+    except ReadTimeout:
+        raise HTTPException(
+            status_code=500,
+            detail="Call to authorization server timed-out. Please try again.",
+        )
 
     if response.status_code != 200 and response.status_code != 401:
         logger.warning(
@@ -65,8 +73,16 @@ async def login(user_name: str, password: str) -> str:
 
     url = f"{RW_API_URL}/auth/login"
 
-    async with AsyncClient() as client:
-        response: HTTPXResponse = await client.post(url, json=payload, headers=headers)
+    try:
+        async with AsyncClient() as client:
+            response: HTTPXResponse = await client.post(
+                url, json=payload, headers=headers
+            )
+    except ReadTimeout:
+        raise HTTPException(
+            status_code=500,
+            detail="Call to authorization server timed-out. Please try again.",
+        )
 
     if response.status_code != 200:
         logger.warning(
