@@ -117,6 +117,9 @@ def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str
         e = str(e_byte)
 
     if p.returncode != 0:
+        LOGGER.error(f"Exit code {p.returncode} for command {cmd}")
+        LOGGER.error(f"Standard output: {o}")
+        LOGGER.error(f"Standard error: {e}")
         raise GDALError(e)
 
     return o, e
@@ -195,8 +198,8 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
 
         try:
             run_gdal_subcommand(cmd)
-        except GDALError as e:
-            LOGGER.error(f"Could not create Color Relief: {e}")
+        except GDALError:
+            LOGGER.error(f"Could not create Color Relief for tile_id {tile_id}")
             raise
 
         # Now upload the file to S3

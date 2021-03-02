@@ -47,10 +47,36 @@ async def no_symbology(
         raise RuntimeError("No source URI set.")
 
 
-async def create_colormap_symbology_job(
-    dataset, version, creation_options, source_asset_uri, job_name, parents
-) -> Tuple[Job, str]:
-    asset_uri = get_asset_uri(
+async def colormap_symbology(
+    dataset: str,
+    version: str,
+    source_asset_co: RasterTileSetSourceCreationOptions,
+    zoom_level: int,
+    max_zoom: int,
+    jobs_dict: Dict,
+) -> Tuple[List[Job], str]:
+    """Create an RGBA raster with gradient or discrete symbology."""
+    assert source_asset_co.symbology  # make mypy happy
+
+    source_uri = (
+        [tile_uri_to_tiles_geojson(uri) for uri in source_asset_co.source_uri]
+        if source_asset_co.source_uri
+        else None
+    )
+    pixel_meaning = f"{source_asset_co.pixel_meaning}_{source_asset_co.symbology.type}"
+
+    creation_options = source_asset_co.copy(
+        deep=True,
+        update={
+            "source_uri": source_uri,
+            "calc": None,
+            "resampling": PIXETL_DEFAULT_RESAMPLING,
+            "grid": f"zoom_{zoom_level}",
+            "pixel_meaning": pixel_meaning,
+        },
+    )
+
+    new_asset_uri = get_asset_uri(
         dataset,
         version,
         AssetType.raster_tile_set,
@@ -61,82 +87,28 @@ async def create_colormap_symbology_job(
     # Create an asset record
     asset_options = AssetCreateIn(
         asset_type=AssetType.raster_tile_set,
-        asset_uri=asset_uri,
+        asset_uri=new_asset_uri,
         is_managed=True,
         creation_options=creation_options,
         metadata=RasterTileSetMetadata(),
     ).dict(by_alias=True)
     symbology_asset_record = await create_asset(dataset, version, **asset_options)
 
-    logger.debug(f"Created asset for {asset_uri}")
+    logger.debug(f"Created asset record for {new_asset_uri}")
 
+    parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
+    job_name = sanitize_batch_job_name(
+        f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
+    )
     job = await create_gdaldem_job(
         dataset,
         version,
         creation_options,
-        source_asset_uri,
         job_name,
         callback_constructor(symbology_asset_record.asset_id),
         parents=parents,
     )
-
-    # use max instance resources?
-    # job.memory = MAX_MEM
-    # job.vcpus = MAX_CORES
-
-    return job, asset_uri
-
-
-async def pixetl_symbology(
-    dataset: str,
-    version: str,
-    source_asset_co: RasterTileSetSourceCreationOptions,
-    zoom_level: int,
-    max_zoom: int,
-    jobs_dict: Dict,
-) -> Tuple[List[Job], str]:
-    """Create an RGBA raster with gradient or discrete symbology."""
-
-    assert source_asset_co.symbology  # make mypy happy
-    parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
-    source_uri = (
-        [tile_uri_to_tiles_geojson(uri) for uri in source_asset_co.source_uri]
-        if source_asset_co.source_uri
-        else None
-    )
-
-    creation_options = source_asset_co.copy(
-        deep=True,
-        update={
-            "source_uri": source_uri,
-            "calc": None,
-            "resampling": PIXETL_DEFAULT_RESAMPLING,
-            "grid": f"zoom_{zoom_level}",
-        },
-    )
-
-    # Needed by gdaldem down the line
-    source_asset_uri = tile_uri_to_tiles_geojson(
-        get_asset_uri(
-            dataset,
-            version,
-            AssetType.raster_tile_set,
-            creation_options.dict(by_alias=True),
-            "epsg:3857",
-        )
-    )
-
-    pixel_meaning = f"{source_asset_co.pixel_meaning}_{source_asset_co.symbology.type}"
-    creation_options.pixel_meaning = pixel_meaning
-
-    job_name = sanitize_batch_job_name(
-        f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
-    )
-    job, uri = await create_colormap_symbology_job(
-        dataset, version, creation_options, source_asset_uri, job_name, parents
-    )
-
-    return [job], uri
+    return [job], new_asset_uri
 
 
 async def date_conf_intensity_symbology(
@@ -312,8 +284,8 @@ async def _merge_intensity_and_date_conf(
 
 _symbology_constructor: Dict[str, SymbologyFuncType] = {
     ColorMapType.date_conf_intensity: date_conf_intensity_symbology,
-    ColorMapType.gradient: pixetl_symbology,
-    ColorMapType.discrete: pixetl_symbology,
+    ColorMapType.gradient: colormap_symbology,
+    ColorMapType.discrete: colormap_symbology,
 }
 
 symbology_constructor: DefaultDict[str, SymbologyFuncType] = defaultdict(

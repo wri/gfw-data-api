@@ -91,13 +91,16 @@ async def create_gdaldem_job(
     dataset: str,
     version: str,
     co: PixETLCreationOptions,
-    source_asset_uri: str,
     job_name: str,
     callback: Callback,
     parents: Optional[List[Job]] = None,
 ):
     symbology = json.dumps(jsonable_encoder(co.symbology))
     no_data = json.dumps(co.no_data)
+
+    # Possibly not after https://github.com/wri/gfw-data-api/pull/153 ?
+    assert isinstance(co.source_uri, List) and len(co.source_uri) == 1
+    source_asset_uri = co.source_uri[0]
 
     target_asset_uri = tile_uri_to_tiles_geojson(
         get_asset_uri(

@@ -127,7 +127,7 @@ class GDALDEMJob(Job):
 
     job_queue = PIXETL_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION
-    vcpus = PIXETL_CORES
+    vcpus = max(int(PIXETL_CORES / 2), 1)
     memory = PIXETL_MAX_MEM
     attempts = 4
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
