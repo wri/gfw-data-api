@@ -888,7 +888,11 @@ async def test_asset_float(async_client, batch_client, httpd):
                 "uint16",
                 0,
                 None,
-                [sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i+1}")]
+                [
+                    sanitize_batch_job_name(
+                        f"{dataset}_{version}_{pixel_meaning}_gradient_{i+1}"
+                    )
+                ]
                 if i < (max_zoom_levels)
                 else None,
             )
@@ -899,7 +903,11 @@ async def test_asset_float(async_client, batch_client, httpd):
                 "uint16",
                 0,
                 expected_scaled_symbology,
-                [sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}")],
+                [
+                    sanitize_batch_job_name(
+                        f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"
+                    )
+                ],
             )
             for i in range(0, max_zoom_levels + 1)
         },
@@ -914,6 +922,15 @@ async def test_asset_float(async_client, batch_client, httpd):
         ]
         for i in range(0, tile_cache_levels)
     }
+
+    # Make sure creation options are correctly parsed.
+    all_asset_resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+
+    for asset in all_asset_resp.json()["data"]:
+        asset_co_resp = await async_client.get(
+            f"/asset/{asset['asset_id']}/creation_options"
+        )
+        assert asset_co_resp.status_code == 200
 
 
 @pytest.mark.asyncio
