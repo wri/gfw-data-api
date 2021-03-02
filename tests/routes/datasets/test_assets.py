@@ -543,7 +543,7 @@ async def _test_raster_tile_cache(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/0/0/0.png"]
     )
     with pytest.raises(AssertionError):
-        # This is an empty tile and should not exit
+        # This is an empty tile and should not exist
         check_s3_file_present(
             TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"]
         )
