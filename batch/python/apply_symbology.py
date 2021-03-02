@@ -195,8 +195,8 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
 
         try:
             run_gdal_subcommand(cmd)
-        except GDALError:
-            LOGGER.error("Could not create Color Relief")
+        except GDALError as e:
+            LOGGER.error(f"Could not create Color Relief: {e}")
             raise
 
         # Now upload the file to S3
