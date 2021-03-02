@@ -96,18 +96,8 @@ async def pixetl_symbology(
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
     """Create an RGBA raster with gradient or discrete symbology."""
-    source_asset_uri = tile_uri_to_tiles_geojson(
-        get_asset_uri(
-            dataset,
-            version,
-            AssetType.raster_tile_set,
-            source_asset_co.dict(by_alias=True),
-            "epsg:3857",
-        )
-    )
 
     assert source_asset_co.symbology  # make mypy happy
-    pixel_meaning = f"{source_asset_co.pixel_meaning}_{source_asset_co.symbology.type}"
     parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
     source_uri = (
         [tile_uri_to_tiles_geojson(uri) for uri in source_asset_co.source_uri]
@@ -122,9 +112,23 @@ async def pixetl_symbology(
             "calc": None,
             "resampling": PIXETL_DEFAULT_RESAMPLING,
             "grid": f"zoom_{zoom_level}",
-            "pixel_meaning": pixel_meaning,
         },
     )
+
+    # Needed by gdaldem down the line
+    source_asset_uri = tile_uri_to_tiles_geojson(
+        get_asset_uri(
+            dataset,
+            version,
+            AssetType.raster_tile_set,
+            creation_options.dict(by_alias=True),
+            "epsg:3857",
+        )
+    )
+
+    pixel_meaning = f"{source_asset_co.pixel_meaning}_{source_asset_co.symbology.type}"
+    creation_options.pixel_meaning = pixel_meaning
+
     job_name = sanitize_batch_job_name(
         f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
     )
