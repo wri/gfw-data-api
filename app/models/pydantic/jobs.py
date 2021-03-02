@@ -141,4 +141,4 @@ class GDAL2TilesJob(Job):
     vcpus = MAX_CORES
     memory = MAX_MEM
     attempts = 4
-    attempt_duration_seconds = DEFAULT_JOB_DURATION
+    attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
