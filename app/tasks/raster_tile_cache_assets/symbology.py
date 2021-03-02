@@ -345,7 +345,7 @@ async def _merge_intensity_and_year(
         source_driver=RasterDrivers.geotiff,
         source_uri=[intensity_uri, year_uri],
         band_count=3,
-        no_data=None,
+        no_data=[0, 0, 0],
         photometric=PhotometricType.rgb,
         calc="np.ma.array([A, np.ma.zeros(A.shape, dtype='uint8'), B], fill_value=0).astype('uint8')",
     )
