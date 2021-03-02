@@ -220,7 +220,7 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
             raise
 
         # Now upload the file to S3
-        target_key = os.path.join(target_prefix, os.path.basename(local_dest_file_path))
+        target_key = os.path.join(target_prefix, os.path.basename(local_src_file_path))
         s3_client.upload_file(local_dest_file_path, bucket, target_key)
 
     return tile_id
