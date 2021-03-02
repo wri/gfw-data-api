@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, FrozenSet, Union
+from typing import Any, Callable, Coroutine, Dict, FrozenSet, Union
 from uuid import UUID
 
 from ..application import ContextEngine
@@ -9,13 +9,14 @@ from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
-from ..models.types import Pipeline
 from .dynamic_vector_tile_cache_assets import dynamic_vector_tile_cache_asset
 from .raster_tile_cache_assets import raster_tile_cache_asset
 from .raster_tile_set_assets import raster_tile_set_asset
 from .static_vector_1x1_assets import static_vector_1x1_asset
 from .static_vector_file_assets import static_vector_file_asset
 from .static_vector_tile_cache_assets import static_vector_tile_cache_asset
+
+Pipeline = Callable[[str, str, UUID, Dict[str, Any]], Coroutine[Any, Any, ChangeLog]]
 
 ASSET_PIPELINES: FrozenSet[AssetType] = frozenset(
     {

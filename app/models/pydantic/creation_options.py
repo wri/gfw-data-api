@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 from uuid import UUID
 
 from pydantic import Field, root_validator, validator
-from pydantic.types import PositiveInt
+from pydantic.types import PositiveInt, StrictInt
 
 from ...settings.globals import PIXETL_DEFAULT_RESAMPLING
 from ..enum.assets import AssetType, is_default_asset
@@ -20,6 +20,7 @@ from ..enum.pg_types import PGType
 from ..enum.pixetl import (
     DataType,
     Grid,
+    NonNumericFloat,
     Order,
     PhotometricType,
     RasterizeMethod,
@@ -31,7 +32,6 @@ from ..enum.sources import (
     TableSourceType,
     VectorSourceType,
 )
-from ..types import NoDataType
 from .base import StrictBaseModel
 from .responses import Response
 from .symbology import Symbology
@@ -39,6 +39,8 @@ from .symbology import Symbology
 COLUMN_REGEX = r"^[a-z][a-zA-Z0-9_-]{2,}$"
 PARTITION_SUFFIX_REGEX = r"^[a-z0-9_-]{3,}$"
 STR_VALUE_REGEX = r"^[a-zA-Z0-9_-]{1,}$"
+
+NoDataType = Union[StrictInt, NonNumericFloat]
 
 
 class Index(StrictBaseModel):
