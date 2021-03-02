@@ -15,7 +15,7 @@ from app.models.pydantic.creation_options import RasterTileSetSourceCreationOpti
 from app.models.pydantic.jobs import BuildRGBJob, Job, PixETLJob
 from app.models.pydantic.metadata import RasterTileSetMetadata
 from app.models.pydantic.symbology import Symbology
-from app.settings.globals import MAX_CORES, MAX_MEM, PIXETL_DEFAULT_RESAMPLING
+from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.raster_tile_cache_assets.utils import (
     get_zoom_source_uri,
@@ -296,8 +296,8 @@ async def _merge_intensity_and_date_conf(
         environment=JOB_ENV,
         callback=callback,
         parents=[rgb_encoding_job.job_name],
-        vcpus=MAX_CORES,
-        memory=MAX_MEM,
+        vcpus=1,
+        memory=2500,
     )
 
     return (
