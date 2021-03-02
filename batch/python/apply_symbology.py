@@ -122,26 +122,6 @@ def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str
     return o, e
 
 
-# def get_input_tiles(source_uri: str) -> List[str]:
-#     s3_client = get_s3_client()
-#
-#     bucket, prefix = get_s3_path_parts(prefix)
-#     resp = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
-#
-#     if resp["KeyCount"] == 0:
-#         raise Exception(f"No files found in tile set prefix {prefix}")
-#
-#     tiles: List[str] = list()
-#     for obj in resp["Contents"]:
-#         key = str(obj["Key"])
-#         if key.endswith(".tif"):
-#             LOGGER.info(f"Found remote TIFF: {key}")
-#             tile = (bucket, key)
-#             tiles.append(tile)
-#
-#     return tiles
-
-
 def _sort_colormap(
     no_data_value: Optional[Union[StrictInt, float]], symbology: Symbology
 ) -> OrderedColorMap:
@@ -173,7 +153,7 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
     Gradient colormap: Use linear interpolation based on provided
     colormap to compute RGBA quadruplet for any given pixel value.
     Discrete colormap: Use strict matching when searching in the color
-    configuration file. If none matching color entry is found, the
+    configuration file. If no matching color entry is found, the
     “0,0,0,0” RGBA quadruplet will be used.
     """
     source_tile_uri, target_prefix, symbology_type, colormap_path = args
@@ -234,7 +214,7 @@ def apply_symbology(
     source_uri: str = Option(..., help="URI of source tiles.geojson."),
     target_prefix: str = Option(..., help="Target prefix."),
 ):
-    # LOGGER.info(f"Raster tile set asset prefix: {tile_set_prefix}")
+    LOGGER.info(f"Applying symbology to tiles listed in {source_uri}")
 
     tile_uris = get_source_tile_uris(source_uri)
 
@@ -247,7 +227,7 @@ def apply_symbology(
     symbology_obj = Symbology(**json.loads(symbology))
     ordered_colormap: OrderedColorMap = _sort_colormap(no_data_value, symbology_obj)
 
-    # Write the colormap to a file
+    # Write the colormap to a file in a temporary directory
     with TemporaryDirectory() as tmp_dir:
         colormap_path = os.path.join(tmp_dir, "colormap.txt")
         with open(colormap_path, "w") as colormap_file:
@@ -264,14 +244,15 @@ def apply_symbology(
             for tile_uri in tile_uris
         )
 
-        # Cannot use normal pool here, since we run sub-processes
+        # Cannot use normal pool here since we run sub-processes
         # https://stackoverflow.com/a/61470465/1410317
         with ProcessPoolExecutor(max_workers=CORES) as executor:
             for tile_id in executor.map(create_rgb_tile, process_args):
                 print(f"Processed tile {tile_id}")
 
-    # Now run pixetl_prep to generate a tiles.geojson and extent.geojson
-    # in the target prefix(es)
+    # Now run pixetl_prep.create_geojsons to generate a tiles.geojson and
+    # extent.geojson in the target prefix. But that code appends /geotiff
+    # to the prefix so remove it first
     create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1].replace(
         "/geotiff", ""
     )
