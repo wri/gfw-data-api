@@ -6,6 +6,8 @@ from fastapi import HTTPException
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
+from app.models.enum.creation_options import RasterDrivers
+from app.models.enum.sources import RasterSourceType
 from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
@@ -47,12 +49,26 @@ async def raster_tile_cache_asset(
         input_data["creation_options"]["source_asset_id"]
     )
 
-    # Get the creation options from the original raster tile set asset
+    # Get the creation options from the original raster tile set asset and overwrite settings
+    # make sure source_type and source_driver are set in case it is an auxiliary asset
+
     source_asset_co = RasterTileSetSourceCreationOptions(
-        **source_asset.creation_options,
+        # TODO: With python 3.9, we can use the `|` operator here
+        #  waiting for https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker/pull/67
+        **{
+            **source_asset.creation_options,
+            **{
+                "source_type": RasterSourceType.raster,
+                "source_driver": RasterDrivers.geotiff,
+                "calc": None,
+                "resampling": resampling,
+                "compute_stats": False,
+                "compute_histogram": False,
+                "symbology": Symbology(**symbology),
+            },
+        }
     )
 
-    source_asset_co.calc = None
     source_asset_co.source_uri = [
         get_asset_uri(
             dataset,
@@ -62,12 +78,7 @@ async def raster_tile_cache_asset(
         ).replace("{tile_id}.tif", "tiles.geojson")
     ]
 
-    source_asset_co.resampling = resampling
-    source_asset_co.compute_stats = False
-    source_asset_co.compute_histogram = False
-
     # If float data type, convert to int in derivative assets for performance
-    source_asset_co.symbology = Symbology(**symbology)
     max_zoom_calc = None
     if np.issubdtype(np.dtype(source_asset_co.data_type), np.floating):
         source_asset_co, max_zoom_calc = convert_float_to_int(

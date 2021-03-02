@@ -144,11 +144,12 @@ class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
 
 
 class RasterTileSetSourceCreationOptions(PixETLCreationOptions):
-    source_type: RasterSourceType = Field(
-        RasterSourceType.raster, description="Source type of input file."
-    )
+    # Keep source_type and source_driver mandatory without default value
+    # This will help Pydantic to differentiate between
+    # RasterTileSetSourceCreationOptions and RasterTileSetAssetCreationOptions
+    source_type: RasterSourceType = Field(..., description="Source type of input file.")
     source_driver: RasterDrivers = Field(
-        RasterDrivers.geotiff,
+        ...,
         description="Driver of source file. Must be an OGR driver",
     )
 
