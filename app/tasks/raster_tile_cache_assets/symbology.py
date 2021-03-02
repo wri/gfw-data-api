@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import Any, Callable, Coroutine, DefaultDict, Dict, List, Optional, Tuple
+from typing import Callable, DefaultDict, Dict, List, Optional, Tuple
 
 from fastapi.logger import logger
 
@@ -14,6 +14,7 @@ from app.models.pydantic.creation_options import RasterTileSetSourceCreationOpti
 from app.models.pydantic.jobs import BuildRGBJob, Job, PixETLJob
 from app.models.pydantic.metadata import RasterTileSetMetadata
 from app.models.pydantic.symbology import Symbology
+from app.models.types import SymbologyFuncType
 from app.settings.globals import MAX_CORES, MAX_MEM, PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.raster_tile_cache_assets.utils import (
@@ -25,11 +26,6 @@ from app.tasks.raster_tile_cache_assets.utils import (
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_pixetl_job
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri, split_s3_path
-
-SymbologyFuncType = Callable[
-    [str, str, str, RasterTileSetSourceCreationOptions, int, int, Dict[Any, Any]],
-    Coroutine[Any, Any, Tuple[List[Job], str]],
-]
 
 
 async def no_symbology(
@@ -180,7 +176,7 @@ async def _date_intensity_symbology(
         update={
             "source_uri": source_uri,
             "no_data": None,
-            "pixel_meaning": "intensity",
+            "pixel_meaning": f"intensity_{pixel_meaning}",
             "resampling": resampling,
         },
     )
@@ -346,7 +342,7 @@ async def _merge_intensity_and_year(
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
         source_uri=[intensity_uri, year_uri],
-        count=3,
+        band_count=3,
         no_data=None,
         photometric=PhotometricType.rgb,
         calc="np.ma.array([A, np.ma.zeros(A.shape, dtype='uint8'), B], fill_value=0).astype('uint8')",

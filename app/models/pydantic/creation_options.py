@@ -2,7 +2,7 @@ from datetime import date
 from typing import Any, Dict, List, Optional, Type, Union
 from uuid import UUID
 
-from pydantic import Field, StrictInt, root_validator, validator
+from pydantic import Field, root_validator, validator
 from pydantic.types import PositiveInt
 
 from ...settings.globals import PIXETL_DEFAULT_RESAMPLING
@@ -20,7 +20,6 @@ from ..enum.pg_types import PGType
 from ..enum.pixetl import (
     DataType,
     Grid,
-    NonNumericFloat,
     Order,
     PhotometricType,
     RasterizeMethod,
@@ -32,6 +31,7 @@ from ..enum.sources import (
     TableSourceType,
     VectorSourceType,
 )
+from ..types import NoDataType
 from .base import StrictBaseModel
 from .responses import Response
 from .symbology import Symbology
@@ -96,8 +96,8 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     pixel_meaning: str
     data_type: DataType
     nbits: Optional[int]
-    count: int = 1
-    no_data: Optional[Union[StrictInt, NonNumericFloat]]
+    band_count: int = 1
+    no_data: Optional[Union[List[NoDataType], NoDataType]]
     rasterize_method: Optional[RasterizeMethod]
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
     calc: Optional[str]
@@ -116,7 +116,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     def validate_no_data(cls, v, values, **kwargs):
         if isinstance(v, list):
             assert len(v) != values.get(
-                "count"
+                "band_count"
             ), "Length of no data list must much band count."
         return v
 

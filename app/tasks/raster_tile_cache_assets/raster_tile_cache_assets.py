@@ -1,5 +1,4 @@
-import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 from uuid import UUID
 
 import numpy as np
@@ -7,12 +6,10 @@ from fastapi import HTTPException
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
-from app.models.enum.pixetl import DataType
 from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import Job
-from app.models.pydantic.statistics import RasterStats
 from app.models.pydantic.symbology import Symbology
 from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
@@ -22,57 +19,11 @@ from app.tasks.raster_tile_cache_assets.symbology import (
     symbology_constructor,
 )
 from app.tasks.raster_tile_cache_assets.utils import (
+    convert_float_to_int,
     create_tile_cache,
     reproject_to_web_mercator,
 )
 from app.utils.path import get_asset_uri
-
-
-def generate_stats(stats) -> RasterStats:
-    if stats is None:
-        raise NotImplementedError()
-    return RasterStats(**stats)
-
-
-def convert_float_to_int(
-    stats: Optional[Dict[str, Any]],
-    source_asset_co: RasterTileSetSourceCreationOptions,
-) -> Tuple[RasterTileSetSourceCreationOptions, str]:
-    stats = generate_stats(stats)
-
-    assert len(stats.bands) == 1
-    stats_min = stats.bands[0].min
-    stats_max = stats.bands[0].max
-    value_range = math.fabs(stats_max - stats_min)
-
-    # Shift by 1 (and add 1 later) so any values of zero don't get counted as no_data
-    uint16_max = np.iinfo(np.uint16).max - 1
-    # Expand or squeeze to fit into a uint16
-    mult_factor = int(math.floor(uint16_max / value_range)) if value_range else 1
-
-    old_no_data = source_asset_co.no_data
-    if old_no_data is None:
-        old_no_data = "None"
-    elif old_no_data == str(np.nan):
-        old_no_data = "np.nan"
-    else:
-        old_no_data = float(old_no_data)
-
-    calc_str = (
-        f"(A != {old_no_data}).astype(bool) * "
-        f"(1 + (A - {stats_min}) * {mult_factor}).astype(np.uint16)"
-    )
-
-    source_asset_co.data_type = DataType.uint16
-    source_asset_co.no_data = 0
-
-    if source_asset_co.symbology and source_asset_co.symbology.colormap is not None:
-        source_asset_co.symbology.colormap = {
-            (1 + (float(k) - stats_min) * mult_factor): v
-            for k, v in source_asset_co.symbology.colormap.items()
-        }
-
-    return source_asset_co, calc_str
 
 
 async def raster_tile_cache_asset(
@@ -127,8 +78,13 @@ async def raster_tile_cache_asset(
     symbology_function = symbology_constructor[source_asset_co.symbology.type]
 
     # We want to make sure that the final RGB asset is called after the implementation of the tile cache
+    # And that the source_asset name is not already used by another intermediate asset.
     if symbology_function == no_symbology:
         source_asset_co.pixel_meaning = implementation
+    else:
+        source_asset_co.pixel_meaning = (
+            f"{source_asset_co.pixel_meaning}_{implementation}"
+        )
 
     job_list: List[Job] = []
     jobs_dict: Dict[int, Dict[str, Job]] = dict()
@@ -207,4 +163,9 @@ async def raster_tile_cache_validator(
         raise HTTPException(
             status_code=400,
             detail="Dataset and version of source asset must match dataset and version of current asset.",
+        )
+
+    if source_asset.creation_options.get("band_count") > 1:
+        raise HTTPException(
+            status_code=400, detail="Cannot apply colormap on multi-band image."
         )

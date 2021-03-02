@@ -333,18 +333,25 @@ async def test_asset_bad_requests(async_client, batch_client, httpd):
 symbology_checks = [
     {
         "wm_tile_set_assets": [
-            "date_conf",
-            "intensity",
+            f"date_conf_{ColorMapType.date_conf_intensity}",
+            f"intensity_{ColorMapType.date_conf_intensity}",
             ColorMapType.date_conf_intensity,
         ],
         "symbology": {"type": ColorMapType.date_conf_intensity},
     },
     {
-        "wm_tile_set_assets": ["date_conf", "intensity", ColorMapType.year_intensity],
+        "wm_tile_set_assets": [
+            f"date_conf_{ColorMapType.year_intensity}",
+            f"intensity_{ColorMapType.year_intensity}",
+            ColorMapType.year_intensity,
+        ],
         "symbology": {"type": ColorMapType.year_intensity},
     },
     {
-        "wm_tile_set_assets": ["date_conf", ColorMapType.gradient],
+        "wm_tile_set_assets": [
+            f"date_conf_{ColorMapType.gradient}",
+            ColorMapType.gradient,
+        ],
         "symbology": {
             "type": ColorMapType.gradient,
             "colormap": {
@@ -354,7 +361,10 @@ symbology_checks = [
         },
     },
     {
-        "wm_tile_set_assets": [ColorMapType.discrete],
+        "wm_tile_set_assets": [
+            f"date_conf_{ColorMapType.discrete}",
+            ColorMapType.discrete,
+        ],
         "symbology": {
             "type": ColorMapType.discrete,
             "colormap": {
@@ -872,7 +882,9 @@ async def test_asset_float(async_client, batch_client, httpd):
 
     assert pixetl_jobs == {
         **{
-            sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}"): (
+            sanitize_batch_job_name(
+                f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"
+            ): (
                 "uint16",
                 0,
                 None,
@@ -896,7 +908,9 @@ async def test_asset_float(async_client, batch_client, httpd):
     assert gdal2tiles_jobs == {
         f"generate_tile_cache_zoom_{i}": [
             sanitize_batch_job_name(f"{dataset}_{version}_gradient_{i}"),
-            sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}"),
+            sanitize_batch_job_name(
+                f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"
+            ),
         ]
         for i in range(0, tile_cache_levels)
     }
