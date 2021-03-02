@@ -158,14 +158,12 @@ async def _date_intensity_symbology(
     resampling: ResamplingMethod,
     merge_function: Callable,
 ) -> Tuple[List[Job], str]:
-    """Create Raster Tile Set asset which combines year raster and intensity
+    """Create Raster Tile Set asset which combines source asset and intensity
     raster into one.
 
-    At native resolution (max_zoom) it will create intensity raster
-    based on given source. For lower zoom levels if will resample higher
-    zoom level tiles using mean resampling method. Once intensity raster
-    tile set is created it will combine it with source (year) raster
-    into rbg encoded raster.
+    Create Intensity value layer using provided calc function, resample
+    intensity based on provided resampling method. Merge intensity value
+    with source asset using provided merge function.
     """
 
     source_uri: Optional[List[str]] = get_zoom_source_uri(
