@@ -90,7 +90,9 @@ def get_source_tile_uris(tiles_geojson_uri):
 
     response = s3_client.get_object(Bucket=bucket, Key=key)
     tiles_geojson: Dict[str, Any] = json.loads(response["Body"].read().decode("utf-8"))
-    tiles = [feature["properties"]["name"] for feature in tiles_geojson["features"]]
+    tiles = [
+        from_vsi(feature["properties"]["name"]) for feature in tiles_geojson["features"]
+    ]
     return tiles
 
 
@@ -165,7 +167,7 @@ def _sort_colormap(
     return ordered_gdal_colormap
 
 
-def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]):
+def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
     """Add symbology to output raster.
 
     Gradient colormap: Use linear interpolation based on provided
