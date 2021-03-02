@@ -345,7 +345,7 @@ async def _merge_intensity_and_year(
         compute_histogram=False,
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
-        source_uri=[year_uri, intensity_uri],
+        source_uri=[intensity_uri, year_uri],
         count=3,
         no_data=None,
         photometric=PhotometricType.rgb,
