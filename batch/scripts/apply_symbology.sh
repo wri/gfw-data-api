@@ -20,11 +20,11 @@ ARG_ARRAY=("--dataset" "${DATASET}" "--version" "${VERSION}")
 
 ARG_ARRAY+=("--symbology" "${JSON}")
 
-ARG_ARRAY+=("--no_data" "${NO_DATA}")
+ARG_ARRAY+=("--no-data" "${NO_DATA}")
 
-ARG_ARRAY+=("--source_uri" "${SRC}")
+ARG_ARRAY+=("--source-uri" "${SRC}")
 
-ARG_ARRAY+=("--target_prefix" "${TARGET}")
+ARG_ARRAY+=("--target-prefix" "${TARGET}")
 
 # Run apply_symbology.py with the array of arguments
 apply_symbology.py "${ARG_ARRAY[@]}"
