@@ -272,7 +272,9 @@ def apply_symbology(
 
     # Now run pixetl_prep to generate a tiles.geojson and extent.geojson
     # in the target prefix(es)
-    create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1]
+    create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1].replace(
+        "/geotiff", ""
+    )
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
 
 
