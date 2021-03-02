@@ -106,9 +106,8 @@ async def create_wm_tile_set_job(
         parents=parents,
     )
 
-    # use max instance resources
-    job.memory = MAX_MEM
-    job.vcpus = MAX_CORES
+    zoom_level = int(creation_options.grid.strip("zoom_"))
+    job = scale_wm_job(job, zoom_level)
 
     return job, asset_uri
 
@@ -152,6 +151,8 @@ async def create_tile_cache(
         callback=callback,
         parents=[parent.job_name for parent in parents],
     )
+
+    tile_cache_job = scale_wm_job(tile_cache_job, zoom_level)
 
     return tile_cache_job
 
@@ -234,3 +235,12 @@ def convert_float_to_int(
         }
 
     return source_asset_co, calc_str
+
+
+def scale_wm_job(job: Job, zoom_level: int):
+    """Use up to maximum resources for higher and scale down for lower zoom
+    levels."""
+    job.vcpus = min(MAX_CORES, 2 ** zoom_level)
+    job.memory = (MAX_MEM / MAX_CORES) * job.vcpus
+
+    return job
