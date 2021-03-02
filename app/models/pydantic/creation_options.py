@@ -117,9 +117,9 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     @validator("no_data")
     def validate_no_data(cls, v, values, **kwargs):
         if isinstance(v, list):
-            assert len(v) != values.get(
-                "band_count"
-            ), "Length of no data list must much band count."
+            assert len(v) == int(
+                values.get("band_count")
+            ), f"Length of no data ({v}) list must match band count ({values.get('band_count')})."
         return v
 
 
