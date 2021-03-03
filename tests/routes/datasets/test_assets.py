@@ -538,14 +538,30 @@ async def _test_raster_tile_cache(
         check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
     s3_client = get_s3_client()
+
+    print("S3 items: ", s3_client.list_objects_v2(Bucket=DATA_LAKE_BUCKET))
+
     s3_client.download_file(
         DATA_LAKE_BUCKET,
-        f"test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif",
-        "localcopy.tif",
+        f"test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/tiles.geojson",
+        "tiles.geojson",
     )
+    with open("tiles.geojson") as src:
+        print(src.read())
 
-    with rasterio.open("localcopy.tif") as src:
-        print("NO DATA VALS: ", src.nodatavals)
+    try:
+        s3_client.download_file(
+            DATA_LAKE_BUCKET,
+            f"test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif",
+            "localcopy.tif",
+        )
+
+        with rasterio.open("localcopy.tif") as img:
+            print("NO DATA VALS: ", img.nodatavals)
+    except Exception:
+        print(
+            f"cannot find file test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif"
+        )
 
     check_s3_file_present(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/1/0.png"]
