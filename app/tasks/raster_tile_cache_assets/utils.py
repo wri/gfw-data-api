@@ -240,7 +240,7 @@ def convert_float_to_int(
 def scale_wm_job(job: Job, zoom_level: int):
     """Use up to maximum resources for higher and scale down for lower zoom
     levels."""
-    job.vcpus = min(MAX_CORES, 2 ** zoom_level)
+    job.vcpus = min(MAX_CORES, math.ceil(2 ** (zoom_level - 4)))
     job.memory = (MAX_MEM / MAX_CORES) * job.vcpus
 
     return job
