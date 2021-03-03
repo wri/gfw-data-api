@@ -356,7 +356,8 @@ symbology_checks = [
             "type": ColorMapType.gradient,
             "colormap": {
                 1: {"red": 255, "green": 0, "blue": 0},
-                19: {"red": 0, "green": 0, "blue": 255},
+                2: {"red": 0, "green": 255, "blue": 0},
+                3: {"red": 0, "green": 0, "blue": 255},
             },
         },
     },
@@ -542,11 +543,11 @@ async def _test_raster_tile_cache(
     check_s3_file_present(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/0/0/0.png"]
     )
-    # with pytest.raises(AssertionError):
-    #     # This is an empty tile and should not exist
-    check_s3_file_present(
-        TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"]
-    )
+    with pytest.raises(AssertionError):
+        # This is an empty tile and should not exist
+        check_s3_file_present(
+            TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"]
+        )
 
     with patch("app.tasks.aws_tasks.get_cloudfront_client") as mock_client:
         mock_client.return_value = MockCloudfrontClient()
