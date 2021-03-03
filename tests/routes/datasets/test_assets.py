@@ -540,7 +540,7 @@ async def _test_raster_tile_cache(
     s3_client = get_s3_client()
     s3_client.download_file(
         DATA_LAKE_BUCKET,
-        "/test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif",
+        f"/test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif",
         "localcopy.tif",
     )
 
