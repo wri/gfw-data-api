@@ -535,7 +535,7 @@ async def _test_raster_tile_cache(
             f"{pixetl_output_files_prefix}/{pixel_meaning}/{test_file}"
             for test_file in pixetl_test_files
         ]
-        check_s3_file_present(DATA_LAKE_BUCKET, test_files)
+        check_s3_file_present(TILE_CACHE_BUCKET, test_files)
 
     s3_client = get_s3_client()
 
@@ -558,6 +558,7 @@ async def _test_raster_tile_cache(
 
         with rasterio.open("localcopy.tif") as img:
             print("NO DATA VALS: ", img.nodatavals)
+            print("MAX DATA VALs: ", [arr.max() for arr in img.read()])
     except Exception:
         print(
             f"cannot find file test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif"
