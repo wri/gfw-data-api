@@ -4,6 +4,7 @@ from uuid import UUID
 
 import httpx
 import pytest
+import rasterio
 from botocore.exceptions import ClientError
 
 from app.application import ContextEngine
@@ -14,7 +15,7 @@ from app.models.pydantic.jobs import GDAL2TilesJob, PixETLJob
 from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.aws import get_s3_client
-from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
+from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS, GDAL_ENV
 from tests.tasks import MockCloudfrontClient
 from tests.utils import (
     check_s3_file_present,
@@ -536,17 +537,23 @@ async def _test_raster_tile_cache(
         ]
         check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
+    with rasterio.Env(**GDAL_ENV), rasterio.open(
+        f"/vsis3/{DATA_LAKE_BUCKET}/test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif"
+    ) as src:
+        print("NO DATA VALS: ", src.nodatavals)
+
     check_s3_file_present(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/1/0.png"]
     )
     check_s3_file_present(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/0/0/0.png"]
     )
-    # with pytest.raises(AssertionError):
-    # This is an empty tile and should not exist
-    check_s3_file_present(
-        TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"]
-    )
+
+    with pytest.raises(AssertionError):
+        # This is an empty tile and should not exist
+        check_s3_file_present(
+            TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"]
+        )
 
     with patch("app.tasks.aws_tasks.get_cloudfront_client") as mock_client:
         mock_client.return_value = MockCloudfrontClient()

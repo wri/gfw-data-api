@@ -24,6 +24,7 @@ from app.settings.globals import (
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
+    S3_ENTRYPOINT_URL,
     TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
     TILE_CACHE_JOB_QUEUE,
@@ -67,6 +68,14 @@ FAKE_FLOAT_DATA_PARAMS = {
             numpy.ones((50, 100), rasterio.float32) * (-0.5),
         )
     ),
+}
+
+
+GDAL_ENV = {
+    "AWS_ENDPOINT_URL": S3_ENTRYPOINT_URL,
+    "AWS_HTTPS": "NO",
+    "AWS_VIRTUAL_HOSTING": False,
+    "GDAL_DISABLE_READDIR_ON_OPEN": "YES",
 }
 
 
