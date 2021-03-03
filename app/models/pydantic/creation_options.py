@@ -122,6 +122,14 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
             ), f"Length of no data ({v}) list must match band count ({values.get('band_count')})."
         return v
 
+    @validator("band_count")
+    def validate_band_count(cls, v, values, **kwargs):
+        if v > 1:
+            assert values.get(
+                "calc"
+            ), "Output raster with more than one band require calc"
+        return v
+
 
 class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
     # For internal use only
