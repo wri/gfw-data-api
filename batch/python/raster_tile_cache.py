@@ -97,7 +97,7 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, int]):
             "--resampling=near",
             f"--processes={cores}",
             "--xyz",
-            "-x",  # exclude empty tiles
+            # "-x",  # exclude empty tiles
             tile_name,
             tiles_dir,
         ]
