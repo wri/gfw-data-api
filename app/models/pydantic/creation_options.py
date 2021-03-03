@@ -98,11 +98,11 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     pixel_meaning: str
     data_type: DataType
     nbits: Optional[int]
+    calc: Optional[str]
     band_count: int = 1
     no_data: Optional[Union[List[NoDataType], NoDataType]]
     rasterize_method: Optional[RasterizeMethod]
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
-    calc: Optional[str]
     order: Optional[Order]
     overwrite: bool = False
     subset: Optional[str]
