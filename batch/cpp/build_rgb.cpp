@@ -83,7 +83,6 @@ int main(int argc, char* argv[])
     OUTGDAL = OUTDRIVER->Create(out_name.c_str(), xsize, ysize, 3, GDT_Byte, papszOptions);
     OUTGDAL->SetGeoTransform(adfGeoTransform);
     OUTGDAL->SetProjection(OUTPRJ);
-    OUTGDAL->SetNoDataValue(0);
     OUTBAND1 = OUTGDAL->GetRasterBand(1);
     OUTBAND2 = OUTGDAL->GetRasterBand(2);
     OUTBAND3 = OUTGDAL->GetRasterBand(3);
@@ -131,8 +130,11 @@ int main(int argc, char* argv[])
             }
         }
         OUTBAND1->RasterIO(GF_Write, 0, y, xsize, 1, out_data1, xsize, 1, GDT_Byte, 0, 0);
+        OUTBAND1->SetNoDataValue(0);
         OUTBAND2->RasterIO(GF_Write, 0, y, xsize, 1, out_data2, xsize, 1, GDT_Byte, 0, 0);
+        OUTBAND2->SetNoDataValue(0);
         OUTBAND3->RasterIO(GF_Write, 0, y, xsize, 1, out_data3, xsize, 1, GDT_Byte, 0, 0);
+        OUTBAND3->SetNoDataValue(0);
     }
 
     //close GDAL
