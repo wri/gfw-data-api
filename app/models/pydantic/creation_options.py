@@ -120,6 +120,9 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
             assert len(v) == int(
                 values.get("band_count")
             ), f"Length of no data ({v}) list must match band count ({values.get('band_count')})."
+            assert (
+                len(set(v)) == 1
+            ), "No data values must be the same for all bands"  # RasterIO does not support different no data values for bands
         return v
 
     @validator("band_count")
