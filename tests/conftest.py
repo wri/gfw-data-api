@@ -54,7 +54,7 @@ FAKE_INT_DATA_PARAMS = {
     "no_data": 0,
     "dtype_name": "uint16",
     "prefix": "test/v1.1.1/raw/uint16",
-    "data": numpy.ones((300, 300), rasterio.uint16),
+    "data": (numpy.ones((300, 300), rasterio.uint16) * 30100).astype("uint16"),
 }
 FAKE_FLOAT_DATA_PARAMS = {
     "dtype": rasterio.float32,
