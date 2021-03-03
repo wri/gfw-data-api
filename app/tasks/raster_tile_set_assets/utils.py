@@ -1,10 +1,12 @@
 import json
+import posixpath
 from typing import List, Optional
 
 from fastapi.encoders import jsonable_encoder
 
+from app.models.enum.assets import AssetType
 from app.models.pydantic.creation_options import PixETLCreationOptions
-from app.models.pydantic.jobs import Job, PixETLJob
+from app.models.pydantic.jobs import GDALDEMJob, Job, PixETLJob
 from app.settings.globals import (
     AWS_GCS_KEY_SECRET_ARN,
     AWS_REGION,
@@ -15,6 +17,7 @@ from app.settings.globals import (
     S3_ENTRYPOINT_URL,
 )
 from app.tasks import Callback, writer_secrets
+from app.utils.path import get_asset_uri, split_s3_path, tile_uri_to_tiles_geojson
 
 JOB_ENV = writer_secrets + [
     {"name": "AWS_REGION", "value": AWS_REGION},
@@ -81,4 +84,55 @@ async def create_pixetl_job(
         callback=callback,
         parents=[parent.job_name for parent in parents] if parents else None,
         **kwargs
+    )
+
+
+async def create_gdaldem_job(
+    dataset: str,
+    version: str,
+    co: PixETLCreationOptions,
+    job_name: str,
+    callback: Callback,
+    parents: Optional[List[Job]] = None,
+):
+    symbology = json.dumps(jsonable_encoder(co.symbology))
+    no_data = json.dumps(co.no_data)
+
+    # Possibly not after https://github.com/wri/gfw-data-api/pull/153 ?
+    assert isinstance(co.source_uri, List) and len(co.source_uri) == 1
+    source_asset_uri = co.source_uri[0]
+
+    target_asset_uri = tile_uri_to_tiles_geojson(
+        get_asset_uri(
+            dataset,
+            version,
+            AssetType.raster_tile_set,
+            co.dict(by_alias=True),
+            "epsg:3857",
+        )
+    )
+    target_prefix = posixpath.dirname(split_s3_path(target_asset_uri)[1])
+
+    command = [
+        "apply_symbology.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+        "-j",
+        symbology,
+        "-n",
+        no_data,
+        "-s",
+        source_asset_uri,
+        "-T",
+        target_prefix,
+    ]
+
+    return GDALDEMJob(
+        job_name=job_name,
+        command=command,
+        environment=JOB_ENV,
+        callback=callback,
+        parents=[parent.job_name for parent in parents] if parents else None,
     )

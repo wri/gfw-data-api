@@ -120,6 +120,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      -n|--no_data)
+      NO_DATA="$2"
+      shift # past argument
+      shift # past value
+      ;;
       --overwrite)
       OVERWRITE="TRUE"
       shift # past argument
