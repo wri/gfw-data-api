@@ -15,7 +15,7 @@ from app.models.pydantic.jobs import GDAL2TilesJob, PixETLJob
 from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.aws import get_s3_client
-from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS, GDAL_ENV
+from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import (
     check_s3_file_present,
@@ -529,9 +529,13 @@ async def _test_raster_tile_cache(
         ]
         check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
-    with rasterio.Env(**GDAL_ENV), rasterio.open(
-        f"s3://{DATA_LAKE_BUCKET}/test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif"
-    ) as img:
+    # somehow I didn't get the GDAL_ENV to work, short cut here.
+    s3_client.download_file(
+        DATA_LAKE_BUCKET,
+        "test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif",
+        "local_copy.tif",
+    )
+    with rasterio.open("local_copy.tif") as img:
         nodata_vals = img.nodatavals
         max_vals = [arr.max() for arr in img.read()]
 
