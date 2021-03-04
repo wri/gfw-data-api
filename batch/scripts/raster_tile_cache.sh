@@ -28,4 +28,4 @@ fi
 
 echo "Generate raster tile cache with GDAL2Tiles and upload to target S3 bucket"
 
-raster_tile_cache.py  "${ARG_ARRAY[@]}"
+raster_tile_cache.py  "${ARG_ARRAY[@]}" "${POSITIONAL[@]}"
