@@ -4,7 +4,6 @@ import multiprocessing
 import os
 import subprocess as sp
 from concurrent.futures import ProcessPoolExecutor
-from logging import getLogger
 from tempfile import TemporaryDirectory
 from typing import Dict, List, Optional, Tuple
 
@@ -12,11 +11,13 @@ import boto3
 from tileputty.upload_tiles import upload_tiles
 from typer import Argument, Option, run
 
+from .logger import get_logger
+
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
 CORES = int(os.environ.get("CORES", multiprocessing.cpu_count()))
 
-LOGGER = getLogger("generate_raster_tile_cache")
+LOGGER = get_logger(__name__)
 
 
 class GDALError(Exception):
@@ -80,9 +81,18 @@ def get_input_tiles(prefix: str) -> List[Tuple[str, str]]:
     return tiles
 
 
-def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, int]):
+def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int]):
 
-    tile, dataset, version, target_bucket, implementation, zoom_level, cores = args
+    (
+        tile,
+        dataset,
+        version,
+        target_bucket,
+        implementation,
+        zoom_level,
+        skip_empty_tiles,
+        cores,
+    ) = args
 
     with TemporaryDirectory() as download_dir, TemporaryDirectory() as tiles_dir:
         tile_name = os.path.join(download_dir, os.path.basename(tile[1]))
@@ -97,10 +107,12 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, int]):
             "--resampling=near",
             f"--processes={cores}",
             "--xyz",
-            "-x",  # exclude empty tiles
-            tile_name,
-            tiles_dir,
         ]
+
+        if skip_empty_tiles:
+            cmd += ["-x"]
+
+        cmd += [tile_name, tiles_dir]
 
         run_gdal_subcommand(cmd)
 
@@ -123,6 +135,9 @@ def raster_tile_cache(
     zoom_level: int = Option(..., help="Zoom level."),
     implementation: str = Option(..., help="Implementation name/ pixel meaning."),
     target_bucket: str = Option(..., help="Target bucket,"),
+    skip_empty_tiles: bool = Option(
+        False, "--skip_empty_tiles", help="Do not write empty tiles to tile cache."
+    ),
     tile_set_prefix: str = Argument(..., help="Tile prefix,"),
 ):
     LOGGER.info(f"Raster tile set asset prefix: {tile_set_prefix}")
@@ -144,6 +159,7 @@ def raster_tile_cache(
             target_bucket,
             implementation,
             zoom_level,
+            skip_empty_tiles,
             sub_processes,
         )
         for tile in tiles

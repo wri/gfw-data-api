@@ -12,12 +12,16 @@ from sqlalchemy import Table, column, literal_column, select, table, text
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import TextClause
 
+from .logger import get_logger
+
 PGPASSWORD = os.environ.get("PGPASSWORD", None)
 PGHOST = os.environ.get("PGHOST", None)
 PGPORT = os.environ.get("PGPORT", None)
 PGDATABASE = os.environ.get("PGDATABASE", None)
 PGUSER = os.environ.get("PGUSER", None)
 MAX_TASKS = int(os.environ.get("MAX_TASKS", 1))
+
+LOGGER = get_logger(__name__)
 
 tiles: List[Tuple[str, bool, bool]] = [
     ("00N_000E", True, True),
@@ -370,7 +374,7 @@ def get_sql(
         .where(intersect_filter)
         .where(grid_filter(grid_id))
     )
-    print(sql)
+    LOGGER.info(sql)
 
     return sql
 
@@ -409,12 +413,12 @@ async def run(
                     delimiter="\t",
                     header=header,
                 )
-                print(result)
+                LOGGER.info(result)
 
                 await con.close()
                 success = True
             except ConnectionDoesNotExistError:
-                print("warning: Connection to DB lost during operation, retrying...")
+                LOGGER.warning("Connection to DB lost during operation, retrying...")
                 retries += 1
 
         if retries >= 2:

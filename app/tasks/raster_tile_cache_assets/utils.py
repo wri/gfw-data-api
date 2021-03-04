@@ -129,7 +129,7 @@ async def create_tile_cache(
         f"CREATING TILE CACHE JOB FOR ZOOM LEVEL {zoom_level} WITH PREFIX {asset_prefix}"
     )
 
-    command: List[str] = [
+    cmd: List[str] = [
         "raster_tile_cache.sh",
         "-d",
         dataset,
@@ -141,12 +141,20 @@ async def create_tile_cache(
         TILE_CACHE_BUCKET,
         "--zoom_level",
         str(zoom_level),
-        asset_prefix,
     ]
+    # TODO: GTC-1090, GTC 1091
+    #  this should be the default. However there seems to be an issue
+    #  with some of the symbology function (discrete, date-conf-intensity)
+    #  which generate empty tiles at least during tests.
+    #
+    if zoom_level > 9:
+        cmd += ["--skip"]
+
+    cmd += [asset_prefix]
 
     tile_cache_job = GDAL2TilesJob(
         job_name=f"generate_tile_cache_zoom_{zoom_level}",
-        command=command,
+        command=cmd,
         environment=JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents],
