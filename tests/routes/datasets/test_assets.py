@@ -512,6 +512,15 @@ async def _test_raster_tile_cache(
     c_o_resp = await async_client.get(f"/asset/{tile_cache_asset_id}/creation_options")
     assert c_o_resp.json()["status"] == "success"
 
+    ########
+    s3_client = get_s3_client()
+    print("#############################################################")
+    print("DATALAKE: ", s3_client.list_objects_v2(Bucket=DATA_LAKE_BUCKET))
+    print("#############################################################")
+    print("TILECACHE: ", s3_client.list_objects_v2(Bucket=TILE_CACHE_BUCKET))
+    print("#############################################################")
+    ########
+
     # Check if file for all expected assets are present
     for pixel_meaning in wm_tile_set_assets:
         test_files = [
@@ -520,10 +529,7 @@ async def _test_raster_tile_cache(
         ]
         check_s3_file_present(TILE_CACHE_BUCKET, test_files)
 
-    s3_client = get_s3_client()
-
-    print("S3 items: ", s3_client.list_objects_v2(Bucket=DATA_LAKE_BUCKET))
-
+    #############
     s3_client.download_file(
         DATA_LAKE_BUCKET,
         f"test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/tiles.geojson",
@@ -546,6 +552,7 @@ async def _test_raster_tile_cache(
         print(
             f"cannot find file test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif"
         )
+    ##########
 
     check_s3_file_present(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/1/0.png"]
