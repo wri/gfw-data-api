@@ -10,7 +10,7 @@ from app.application import ContextEngine
 from app.crud import tasks
 from app.crud.assets import update_asset
 from app.models.enum.symbology import ColorMapType
-from app.models.pydantic.jobs import GDAL2TilesJob, PixETLJob
+from app.models.pydantic.jobs import GDAL2TilesJob, GDALDEMJob, PixETLJob
 from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.aws import get_s3_client
@@ -841,6 +841,7 @@ async def test_asset_float(async_client, batch_client, httpd):
 
     # Now check the mock
     pixetl_jobs = dict()
+    gdaldem_jobs = dict()
     gdal2tiles_jobs = dict()
 
     for mock_call in mock_submit.call_args_list:
@@ -861,30 +862,51 @@ async def test_asset_float(async_client, batch_client, httpd):
             pixetl_jobs[job_obj.job_name] = job
         elif isinstance(job_obj, GDAL2TilesJob):
             gdal2tiles_jobs[job_obj.job_name] = job_obj.parents
+        elif isinstance(job_obj, GDALDEMJob):
+            cmd = job_obj.command
+            no_data_value = None
+            symbology = None
+            for i, arg in enumerate(cmd):
+                if arg == "-j":
+                    symbology = json.loads(cmd[i + 1])
+                if arg == "-n":
+                    no_data_value = json.loads(cmd[i + 1])
+            assert symbology is not None
+            job = (
+                symbology,
+                no_data_value,
+                job_obj.parents,
+            )
+            gdaldem_jobs[job_obj.job_name] = job
+        # else:
+        #     raise Exception("Unknown job type found")
+
+    print("GDALDEM JOBS:")
+    for job_name, deets in gdaldem_jobs.items():
+        print(f"{job_name}: {deets}")
+
+    print("PIXETL JOBS:")
+    for job_name, deets in pixetl_jobs.items():
+        print(f"{job_name}: {deets}")
 
     assert pixetl_jobs == {
-        **{
-            sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}"): (
-                "uint16",
-                0,
-                None,
-                [sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i+1}")]
-                if i < (max_zoom_levels)
-                else None,
-            )
-            for i in range(0, max_zoom_levels + 1)
-        },
-        **{
-            sanitize_batch_job_name(
-                f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"
-            ): (
-                "uint16",
-                0,
-                expected_scaled_symbology,
-                [sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}")],
-            )
-            for i in range(0, max_zoom_levels + 1)
-        },
+        sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}"): (
+            "uint16",
+            0,
+            None,
+            [sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i+1}")]
+            if i < max_zoom_levels
+            else None,
+        )
+        for i in range(0, max_zoom_levels + 1)
+    }
+    assert gdaldem_jobs == {
+        sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"): (
+            expected_scaled_symbology,
+            0,
+            [sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}")],
+        )
+        for i in range(0, max_zoom_levels + 1)
     }
 
     assert gdal2tiles_jobs == {

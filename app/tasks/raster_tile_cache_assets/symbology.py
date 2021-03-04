@@ -15,15 +15,14 @@ from app.models.pydantic.creation_options import RasterTileSetSourceCreationOpti
 from app.models.pydantic.jobs import BuildRGBJob, Job, PixETLJob
 from app.models.pydantic.metadata import RasterTileSetMetadata
 from app.models.pydantic.symbology import Symbology
-from app.settings.globals import MAX_CORES, MAX_MEM, PIXETL_DEFAULT_RESAMPLING
+from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.raster_tile_cache_assets.utils import (
-    create_wm_tile_set_job,
     get_zoom_source_uri,
     reproject_to_web_mercator,
     tile_uri_to_tiles_geojson,
 )
-from app.tasks.raster_tile_set_assets.utils import JOB_ENV
+from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_gdaldem_job
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri, split_s3_path
 
@@ -48,7 +47,7 @@ async def no_symbology(
         raise RuntimeError("No source URI set.")
 
 
-async def pixetl_symbology(
+async def colormap_symbology(
     dataset: str,
     version: str,
     source_asset_co: RasterTileSetSourceCreationOptions,
@@ -56,15 +55,15 @@ async def pixetl_symbology(
     max_zoom: int,
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
-    """Create RGBA raster which gradient symbology based on input raster."""
+    """Create an RGBA raster with gradient or discrete symbology."""
     assert source_asset_co.symbology  # make mypy happy
-    pixel_meaning = f"{source_asset_co.pixel_meaning}_{source_asset_co.symbology.type}"
-    parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
+
     source_uri = (
         [tile_uri_to_tiles_geojson(uri) for uri in source_asset_co.source_uri]
         if source_asset_co.source_uri
         else None
     )
+    pixel_meaning = f"{source_asset_co.pixel_meaning}_{source_asset_co.symbology.type}"
 
     creation_options = source_asset_co.copy(
         deep=True,
@@ -76,14 +75,40 @@ async def pixetl_symbology(
             "pixel_meaning": pixel_meaning,
         },
     )
+
+    new_asset_uri = get_asset_uri(
+        dataset,
+        version,
+        AssetType.raster_tile_set,
+        creation_options.dict(by_alias=True),
+        "epsg:3857",
+    )
+
+    # Create an asset record
+    asset_options = AssetCreateIn(
+        asset_type=AssetType.raster_tile_set,
+        asset_uri=new_asset_uri,
+        is_managed=True,
+        creation_options=creation_options,
+        metadata=RasterTileSetMetadata(),
+    ).dict(by_alias=True)
+    symbology_asset_record = await create_asset(dataset, version, **asset_options)
+
+    logger.debug(f"Created asset record for {new_asset_uri}")
+
+    parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
     job_name = sanitize_batch_job_name(
         f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
     )
-    job, uri = await create_wm_tile_set_job(
-        dataset, version, creation_options, job_name, parents
+    job = await create_gdaldem_job(
+        dataset,
+        version,
+        creation_options,
+        job_name,
+        callback_constructor(symbology_asset_record.asset_id),
+        parents=parents,
     )
-
-    return [job], uri
+    return [job], new_asset_uri
 
 
 async def date_conf_intensity_symbology(
@@ -247,8 +272,8 @@ async def _merge_intensity_and_date_conf(
         environment=JOB_ENV,
         callback=callback,
         parents=[rgb_encoding_job.job_name],
-        vcpus=MAX_CORES,
-        memory=MAX_MEM,
+        vcpus=1,
+        memory=2500,
     )
 
     return (
@@ -259,8 +284,8 @@ async def _merge_intensity_and_date_conf(
 
 _symbology_constructor: Dict[str, SymbologyFuncType] = {
     ColorMapType.date_conf_intensity: date_conf_intensity_symbology,
-    ColorMapType.gradient: pixetl_symbology,
-    ColorMapType.discrete: pixetl_symbology,
+    ColorMapType.gradient: colormap_symbology,
+    ColorMapType.discrete: colormap_symbology,
 }
 
 symbology_constructor: DefaultDict[str, SymbologyFuncType] = defaultdict(
