@@ -234,6 +234,16 @@ def print_logs(logs):
                 print(event["message"])
 
 
+def delete_logs(logs):
+    if logs:
+        resp = logs.describe_log_streams(logGroupName="/aws/batch/job")
+
+        for stream in resp["logStreams"]:
+            ls_name = stream["logStreamName"]
+
+            logs.delete_log_stream(logGroupName="/aws/batch/job", logStreamName=ls_name)
+
+
 async def check_tasks_status(async_client, logs, asset_ids) -> None:
     tasks = list()
 
