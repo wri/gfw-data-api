@@ -130,11 +130,11 @@ int main(int argc, char* argv[])
             }
         }
         OUTBAND1->RasterIO(GF_Write, 0, y, xsize, 1, out_data1, xsize, 1, GDT_Byte, 0, 0);
-        OUTBAND1->SetNoDataValue(0);
+//        OUTBAND1->SetNoDataValue(0);
         OUTBAND2->RasterIO(GF_Write, 0, y, xsize, 1, out_data2, xsize, 1, GDT_Byte, 0, 0);
-        OUTBAND2->SetNoDataValue(0);
+//        OUTBAND2->SetNoDataValue(0);
         OUTBAND3->RasterIO(GF_Write, 0, y, xsize, 1, out_data3, xsize, 1, GDT_Byte, 0, 0);
-        OUTBAND3->SetNoDataValue(0);
+//        OUTBAND3->SetNoDataValue(0);
     }
 
     //close GDAL
