@@ -540,7 +540,7 @@ async def _test_raster_tile_cache(
         max_vals = [arr.max() for arr in img.read()]
 
     assert (
-        3 >= len(nodata_vals) >= 4
+        3 <= len(nodata_vals) <= 4
     ), f"File should have either 3 (RGB) or 4 (RGBA) bands. Band count: {len(nodata_vals)}"
     assert all(
         val == 0 for val in nodata_vals
