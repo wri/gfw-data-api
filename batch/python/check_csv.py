@@ -4,8 +4,7 @@ from typing import Type
 from urllib.parse import urlparse
 
 import boto3
-
-from .logger import get_logger
+from logger import get_logger
 
 LOGGER = get_logger(__name__)
 

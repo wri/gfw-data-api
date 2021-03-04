@@ -8,11 +8,10 @@ from typing import List, Set, Tuple
 
 import asyncpg
 from asyncpg.exceptions import ConnectionDoesNotExistError
+from logger import get_logger
 from sqlalchemy import Table, column, literal_column, select, table, text
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import TextClause
-
-from .logger import get_logger
 
 PGPASSWORD = os.environ.get("PGPASSWORD", None)
 PGHOST = os.environ.get("PGHOST", None)

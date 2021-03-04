@@ -2,8 +2,7 @@ import sys
 
 import boto3
 import rasterio
-
-from .logger import get_logger
+from logger import get_logger
 
 LOGGER = get_logger(__name__)
 

@@ -8,8 +8,7 @@ from tempfile import TemporaryDirectory
 
 import boto3
 import click
-
-from .logger import get_logger
+from logger import get_logger
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
