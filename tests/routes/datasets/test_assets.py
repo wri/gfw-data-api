@@ -530,14 +530,20 @@ async def _test_raster_tile_cache(
         check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
     with rasterio.Env(**GDAL_ENV), rasterio.open(
-        f"/vsis3/{DATA_LAKE_BUCKET}/test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif"
+        f"s3://{DATA_LAKE_BUCKET}/test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif"
     ) as img:
         nodata_vals = img.nodatavals
         max_vals = [arr.max() for arr in img.read()]
 
-    assert 3 >= len(nodata_vals) >= 4
-    assert all(val == 0 for val in nodata_vals)
-    assert max(max_vals) > 0
+    assert (
+        3 >= len(nodata_vals) >= 4
+    ), f"File should have either 3 (RGB) or 4 (RGBA) bands. Band count: {len(nodata_vals)}"
+    assert all(
+        val == 0 for val in nodata_vals
+    ), f"All no data values must be 0. Values: {nodata_vals}"
+    assert (
+        max(max_vals) > 0
+    ), f"There should be at least one band value larger than 0. Values: {max_vals}"
 
     check_s3_file_present(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/1/0.png"]

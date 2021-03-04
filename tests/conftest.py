@@ -74,7 +74,7 @@ GDAL_ENV = {
     "AWS_ENDPOINT_URL": "motoserver-s3:5000",
     "AWS_HTTPS": "NO",
     "AWS_VIRTUAL_HOSTING": False,
-    "GDAL_DISABLE_READDIR_ON_OPEN": "YES",
+    "GDAL_DISABLE_READDIR_ON_OPEN": "NO",
 }
 
 
