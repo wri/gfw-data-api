@@ -129,14 +129,14 @@ async def poll_jobs(job_ids: List[str], logs=None, async_client=None) -> str:
         )
 
         for job in response["jobs"]:
-            print(
-                f"Container for job {job['jobId']} exited with status {job['status']}"
-            )
+            # print(
+            #     f"Container for job {job['jobId']} exited with status {job['status']}"
+            # )
             if job["status"] == "SUCCEEDED":
                 print(f"Container for job {job['jobId']} succeeded")
 
                 completed_jobs.add(job["jobId"])
-            if job["status"] == "FAILED":
+            elif job["status"] == "FAILED":
                 print(f"Container for job {job['jobId']} failed")
 
                 failed_jobs.add(job["jobId"])
