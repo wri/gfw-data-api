@@ -527,7 +527,7 @@ async def _test_raster_tile_cache(
             f"{pixetl_output_files_prefix}/{pixel_meaning}/{test_file}"
             for test_file in pixetl_test_files
         ]
-        check_s3_file_present(TILE_CACHE_BUCKET, test_files)
+        check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
     #############
     s3_client.download_file(
