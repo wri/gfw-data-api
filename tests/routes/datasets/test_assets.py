@@ -15,7 +15,7 @@ from app.models.pydantic.jobs import GDAL2TilesJob, PixETLJob
 from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.aws import get_s3_client
-from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
+from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS, GDAL_ENV
 from tests.tasks import MockCloudfrontClient
 from tests.utils import (
     check_s3_file_present,
@@ -529,30 +529,15 @@ async def _test_raster_tile_cache(
         ]
         check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
-    #############
-    s3_client.download_file(
-        DATA_LAKE_BUCKET,
-        f"test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/tiles.geojson",
-        "tiles.geojson",
-    )
-    with open("tiles.geojson") as src:
-        print(src.read())
+    with rasterio.Env(**GDAL_ENV), rasterio.open(
+        f"/vsis3/{DATA_LAKE_BUCKET}/test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif"
+    ) as img:
+        nodata_vals = img.nodatavals
+        max_vals = [arr.max() for arr in img.read()]
 
-    try:
-        s3_client.download_file(
-            DATA_LAKE_BUCKET,
-            f"test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif",
-            "localcopy.tif",
-        )
-
-        with rasterio.open("localcopy.tif") as img:
-            print("NO DATA VALS: ", img.nodatavals)
-            print("MAX DATA VALs: ", [arr.max() for arr in img.read()])
-    except Exception:
-        print(
-            f"cannot find file test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif"
-        )
-    ##########
+    assert 3 >= len(nodata_vals) >= 4
+    assert all(val == 0 for val in nodata_vals)
+    assert max(max_vals) > 0
 
     check_s3_file_present(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/1/0.png"]
@@ -561,8 +546,15 @@ async def _test_raster_tile_cache(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/0/0/0.png"]
     )
 
-    with pytest.raises(AssertionError):
-        # This is an empty tile and should not exist
+    # There should be no empty tiles for files with an alpha band
+    if len(nodata_vals) == 4:
+        with pytest.raises(AssertionError):
+            # This is an empty tile and should not exist
+            check_s3_file_present(
+                TILE_CACHE_BUCKET,
+                [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"],
+            )
+    else:
         check_s3_file_present(
             TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"]
         )
