@@ -22,6 +22,7 @@ from ...settings.globals import (
     RASTER_ANALYSIS_LAMBDA_NAME,
 )
 from ...utils.geostore import get_geostore_geometry
+from .. import DATE_REGEX
 
 router = APIRouter()
 
@@ -45,13 +46,13 @@ async def zonal_statistics_get(
         None,
         title="Start Date",
         description="Must be either year or YYYY-MM-DD date format.",
-        regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",
+        regex=DATE_REGEX,
     ),
     end_date: Optional[str] = Query(
         None,
         title="End Date",
         description="Must be either year or YYYY-MM-DD date format.",
-        regex="^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$",
+        regex=DATE_REGEX,
     ),
 ):
     """Calculate zonal statistics on any registered raster layers in a

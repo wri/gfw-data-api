@@ -4,6 +4,9 @@ from typing import Type
 from urllib.parse import urlparse
 
 import boto3
+from logger import get_logger
+
+LOGGER = get_logger(__name__)
 
 s3_uri = sys.argv[1]
 s3 = boto3.client("s3", region_name="us-east-1")
@@ -21,4 +24,4 @@ try:
 except csv.Error:
     raise TypeError("Not a valid CSV file")
 
-print(dialect.delimiter)
+LOGGER.debug(dialect.delimiter)

@@ -16,6 +16,8 @@ from .static_vector_1x1_assets import static_vector_1x1_asset
 from .static_vector_file_assets import static_vector_file_asset
 from .static_vector_tile_cache_assets import static_vector_tile_cache_asset
 
+Pipeline = Callable[[str, str, UUID, Dict[str, Any]], Coroutine[Any, Any, ChangeLog]]
+
 ASSET_PIPELINES: FrozenSet[AssetType] = frozenset(
     {
         AssetType.shapefile: static_vector_file_asset,
@@ -32,9 +34,6 @@ ASSET_PIPELINES: FrozenSet[AssetType] = frozenset(
         AssetType.raster_tile_set: raster_tile_set_asset,
     }.items()
 )
-
-
-Pipeline = Callable[[str, str, UUID, Dict[str, Any]], Coroutine[Any, Any, ChangeLog]]
 
 
 async def put_asset(

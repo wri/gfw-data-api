@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 from pydantic import Extra, Field, StrictInt
 
+from ...routes import DATE_REGEX
 from ..enum.assets import AssetType
 from ..enum.pg_types import PGType
 from .base import StrictBaseModel
@@ -40,7 +41,7 @@ class DatasetMetadata(StrictBaseModel):
     added_date: Optional[str] = Field(
         None,
         description="Date the data were added to GFW website",
-        regex="^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$",
+        regex=DATE_REGEX,
     )
     why_added: Optional[str]
     other: Optional[str]
@@ -52,12 +53,12 @@ class VersionMetadata(DatasetMetadata):
     content_date: Optional[str] = Field(
         None,
         description="Date content was created",
-        regex="^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$",
+        regex=DATE_REGEX,
     )
     last_update: Optional[str] = Field(
         None,
         description="Date the data were last updated",
-        regex="^\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])$",
+        regex=DATE_REGEX,
     )
     download: Optional[str]
     analysis: Optional[str]

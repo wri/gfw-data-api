@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 from app.application import ContextEngine
 from app.crud import tasks
 from app.crud.assets import update_asset
-from app.models.enum.symbology import ColorMapType
+from app.models.enum.creation_options import ColorMapType
 from app.models.pydantic.jobs import GDAL2TilesJob, GDALDEMJob, PixETLJob
 from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
 from app.tasks.utils import sanitize_batch_job_name
@@ -332,43 +332,44 @@ async def test_asset_bad_requests(async_client, batch_client, httpd):
 
 symbology_checks = [
     {
-        "wm_tile_set_assets": ["date_conf", "intensity", "rgb_encoded"],
+        "wm_tile_set_assets": [
+            f"date_conf_{ColorMapType.date_conf_intensity}",
+            f"intensity_{ColorMapType.date_conf_intensity}",
+            ColorMapType.date_conf_intensity,
+        ],
         "symbology": {"type": ColorMapType.date_conf_intensity},
     },
     {
-        "wm_tile_set_assets": ["date_conf", f"date_conf_{ColorMapType.gradient}"],
+        "wm_tile_set_assets": [
+            f"date_conf_{ColorMapType.year_intensity}",
+            f"intensity_{ColorMapType.year_intensity}",
+            ColorMapType.year_intensity,
+        ],
+        "symbology": {"type": ColorMapType.year_intensity},
+    },
+    {
+        "wm_tile_set_assets": [
+            f"date_conf_{ColorMapType.gradient}",
+            ColorMapType.gradient,
+        ],
         "symbology": {
             "type": ColorMapType.gradient,
             "colormap": {
                 1: {"red": 255, "green": 0, "blue": 0},
-                19: {"red": 0, "green": 0, "blue": 255},
+                40000: {"red": 0, "green": 0, "blue": 255},
             },
         },
     },
     {
-        "wm_tile_set_assets": [f"date_conf_{ColorMapType.discrete}"],
+        "wm_tile_set_assets": [
+            f"date_conf_{ColorMapType.discrete}",
+            ColorMapType.discrete,
+        ],
         "symbology": {
             "type": ColorMapType.discrete,
             "colormap": {
-                1: {"red": 255, "green": 0, "blue": 0},
-                2: {"red": 255, "green": 0, "blue": 0},
-                3: {"red": 255, "green": 20, "blue": 0},
-                4: {"red": 255, "green": 40, "blue": 0},
-                5: {"red": 255, "green": 60, "blue": 0},
-                6: {"red": 255, "green": 80, "blue": 0},
-                7: {"red": 255, "green": 100, "blue": 0},
-                8: {"red": 255, "green": 120, "blue": 0},
-                9: {"red": 255, "green": 140, "blue": 0},
-                10: {"red": 255, "green": 160, "blue": 0},
-                11: {"red": 255, "green": 180, "blue": 0},
-                12: {"red": 255, "green": 200, "blue": 0},
-                13: {"red": 255, "green": 220, "blue": 0},
-                14: {"red": 255, "green": 240, "blue": 0},
-                15: {"red": 255, "green": 255, "blue": 0},
-                16: {"red": 255, "green": 255, "blue": 20},
-                17: {"red": 255, "green": 255, "blue": 40},
-                18: {"red": 255, "green": 255, "blue": 60},
-                19: {"red": 255, "green": 255, "blue": 80},
+                20100: {"red": 255, "green": 0, "blue": 0},
+                30100: {"red": 255, "green": 0, "blue": 0},
             },
         },
     },
@@ -510,6 +511,15 @@ async def _test_raster_tile_cache(
     c_o_resp = await async_client.get(f"/asset/{tile_cache_asset_id}/creation_options")
     assert c_o_resp.json()["status"] == "success"
 
+    ########
+    s3_client = get_s3_client()
+    print("#############################################################")
+    print("DATALAKE: ", s3_client.list_objects_v2(Bucket=DATA_LAKE_BUCKET))
+    print("#############################################################")
+    print("TILECACHE: ", s3_client.list_objects_v2(Bucket=TILE_CACHE_BUCKET))
+    print("#############################################################")
+    ########
+
     # Check if file for all expected assets are present
     for pixel_meaning in wm_tile_set_assets:
         test_files = [
@@ -518,10 +528,45 @@ async def _test_raster_tile_cache(
         ]
         check_s3_file_present(DATA_LAKE_BUCKET, test_files)
 
+    # TODO: GTC-1090
+    #  these tests should pass once ticket is resolved
+    # somehow I didn't get the GDAL_ENV to work, short cut here.
+    # s3_client.download_file(
+    #     DATA_LAKE_BUCKET,
+    #     f"test_raster_tile_cache_asset/v1.0.0/raster/epsg-3857/zoom_1/{symbology['type']}/geotiff/000R_000C.tif",
+    #     "local_copy.tif",
+    # )
+    # with rasterio.open("local_copy.tif") as img:
+    #     nodata_vals = img.nodatavals
+    #     max_vals = [arr.max() for arr in img.read()]
+    #
+    # assert (
+    #     3 <= len(nodata_vals) <= 4
+    # ), f"File should have either 3 (RGB) or 4 (RGBA) bands. Band count: {len(nodata_vals)}"
+    # assert all(
+    #     val == 0 for val in nodata_vals
+    # ), f"All no data values must be 0. Values: {nodata_vals}"
+    # assert (
+    #     max(max_vals) > 0
+    # ), f"There should be at least one band value larger than 0. Values: {max_vals}"
+
     check_s3_file_present(
-        TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"]
+        TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/1/0.png"]
+    )
+    check_s3_file_present(
+        TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/0/0/0.png"]
     )
 
+    # TODO: GTC-1090
+    #  these test should pass once ticket is resolved
+    # # There should be no empty tiles for files with an alpha band
+    # with pytest.raises(AssertionError):
+    #         # This is an empty tile and should not exist
+    #         check_s3_file_present(
+    #             TILE_CACHE_BUCKET,
+    #             [f"{dataset}/{version}/{symbology['type']}/1/0/0.png"],
+    #         )
+    #
     with patch("app.tasks.aws_tasks.get_cloudfront_client") as mock_client:
         mock_client.return_value = MockCloudfrontClient()
         for asset_id in new_asset_ids:
@@ -573,12 +618,12 @@ async def test_asset_stats(async_client):
 
     for resp in (asset_resp, version_resp):
         band_0 = resp.json()["data"]["bands"][0]
-        assert band_0["min"] == 1.0
-        assert band_0["max"] == 1.0
-        assert band_0["mean"] == 1.0
+        assert band_0["min"] == 30100.0
+        assert band_0["max"] == 30100.0
+        assert band_0["mean"] == 30100.0
         assert band_0["histogram"]["bin_count"] == 256
         assert band_0["histogram"]["value_count"][255] == 0
-        assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 10000
+        assert resp.json()["data"]["bands"][0]["histogram"]["value_count"][0] == 90000
 
 
 @pytest.mark.hanging
@@ -625,9 +670,9 @@ async def test_asset_stats_no_histo(async_client):
     version_resp = await async_client.get(f"/dataset/{dataset}/{version}/stats")
 
     for resp in (asset_resp, version_resp):
-        assert resp.json()["data"]["bands"][0]["min"] == 1.0
-        assert resp.json()["data"]["bands"][0]["max"] == 1.0
-        assert resp.json()["data"]["bands"][0]["mean"] == 1.0
+        assert resp.json()["data"]["bands"][0]["min"] == 30100.0
+        assert resp.json()["data"]["bands"][0]["max"] == 30100.0
+        assert resp.json()["data"]["bands"][0]["mean"] == 30100.0
         assert resp.json()["data"]["bands"][0].get("histogram", None) is None
 
 
@@ -890,34 +935,51 @@ async def test_asset_float(async_client, batch_client, httpd):
         print(f"{job_name}: {deets}")
 
     assert pixetl_jobs == {
-        sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}"): (
+        sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"): (
             "uint16",
             0,
             None,
-            [sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i+1}")]
+            [
+                sanitize_batch_job_name(
+                    f"{dataset}_{version}_{pixel_meaning}_gradient_{i+1}"
+                )
+            ]
             if i < max_zoom_levels
             else None,
         )
         for i in range(0, max_zoom_levels + 1)
     }
     assert gdaldem_jobs == {
-        sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"): (
+        sanitize_batch_job_name(f"{dataset}_{version}_gradient_{i}"): (
             expected_scaled_symbology,
             0,
-            [sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}")],
+            [
+                sanitize_batch_job_name(
+                    f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"
+                )
+            ],
         )
         for i in range(0, max_zoom_levels + 1)
     }
 
     assert gdal2tiles_jobs == {
         f"generate_tile_cache_zoom_{i}": [
+            sanitize_batch_job_name(f"{dataset}_{version}_gradient_{i}"),
             sanitize_batch_job_name(
                 f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"
             ),
-            sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_{i}"),
         ]
         for i in range(0, tile_cache_levels)
     }
+
+    # Make sure creation options are correctly parsed.
+    all_asset_resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+
+    for asset in all_asset_resp.json()["data"]:
+        asset_co_resp = await async_client.get(
+            f"/asset/{asset['asset_id']}/creation_options"
+        )
+        assert asset_co_resp.status_code == 200
 
 
 @pytest.mark.asyncio

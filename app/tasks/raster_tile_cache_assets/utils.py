@@ -1,14 +1,18 @@
+import math
 import os
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
 from fastapi.logger import logger
 
 from app.crud.assets import create_asset
 from app.models.enum.assets import AssetType
+from app.models.enum.pixetl import DataType
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import GDAL2TilesJob, Job
 from app.models.pydantic.metadata import RasterTileSetMetadata
+from app.models.pydantic.statistics import RasterStats
 from app.settings.globals import MAX_CORES, MAX_MEM, TILE_CACHE_BUCKET
 from app.tasks import Callback, callback_constructor
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_pixetl_job
@@ -102,9 +106,8 @@ async def create_wm_tile_set_job(
         parents=parents,
     )
 
-    # use max instance resources
-    job.memory = MAX_MEM
-    job.vcpus = MAX_CORES
+    zoom_level = int(creation_options.grid.strip("zoom_"))
+    job = scale_wm_job(job, zoom_level)
 
     return job, asset_uri
 
@@ -126,7 +129,7 @@ async def create_tile_cache(
         f"CREATING TILE CACHE JOB FOR ZOOM LEVEL {zoom_level} WITH PREFIX {asset_prefix}"
     )
 
-    command: List[str] = [
+    cmd: List[str] = [
         "raster_tile_cache.sh",
         "-d",
         dataset,
@@ -138,16 +141,26 @@ async def create_tile_cache(
         TILE_CACHE_BUCKET,
         "--zoom_level",
         str(zoom_level),
-        asset_prefix,
     ]
+    # TODO: GTC-1090, GTC 1091
+    #  this should be the default. However there seems to be an issue
+    #  with some of the symbology function (discrete, date-conf-intensity)
+    #  which generate empty tiles at least during tests.
+    #
+    if zoom_level > 9:
+        cmd += ["--skip"]
+
+    cmd += [asset_prefix]
 
     tile_cache_job = GDAL2TilesJob(
         job_name=f"generate_tile_cache_zoom_{zoom_level}",
-        command=command,
+        command=cmd,
         environment=JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents],
     )
+
+    tile_cache_job = scale_wm_job(tile_cache_job, zoom_level)
 
     return tile_cache_job
 
@@ -182,3 +195,60 @@ def get_zoom_source_uri(
     return (
         [tile_uri_to_tiles_geojson(uri) for uri in source_uri] if source_uri else None
     )
+
+
+def generate_stats(stats) -> RasterStats:
+    if stats is None:
+        raise NotImplementedError()
+    return RasterStats(**stats)
+
+
+def convert_float_to_int(
+    stats: Optional[Dict[str, Any]],
+    source_asset_co: RasterTileSetSourceCreationOptions,
+) -> Tuple[RasterTileSetSourceCreationOptions, str]:
+    stats = generate_stats(stats)
+
+    assert len(stats.bands) == 1
+    stats_min = stats.bands[0].min
+    stats_max = stats.bands[0].max
+    value_range = math.fabs(stats_max - stats_min)
+
+    # Shift by 1 (and add 1 later) so any values of zero don't get counted as no_data
+    uint16_max = np.iinfo(np.uint16).max - 1
+    # Expand or squeeze to fit into a uint16
+    mult_factor = int(math.floor(uint16_max / value_range)) if value_range else 1
+
+    if isinstance(source_asset_co.no_data, list):
+        raise RuntimeError("Cannot apply colormap on multi band image")
+    elif source_asset_co.no_data is None:
+        old_no_data: str = "None"
+    elif source_asset_co.no_data == str(np.nan):
+        old_no_data = "np.nan"
+    else:
+        old_no_data = str(source_asset_co.no_data)
+
+    calc_str = (
+        f"(A != {old_no_data}).astype(bool) * "
+        f"(1 + (A - {stats_min}) * {mult_factor}).astype(np.uint16)"
+    )
+
+    source_asset_co.data_type = DataType.uint16
+    source_asset_co.no_data = 0
+
+    if source_asset_co.symbology and source_asset_co.symbology.colormap is not None:
+        source_asset_co.symbology.colormap = {
+            (1 + (float(k) - stats_min) * mult_factor): v
+            for k, v in source_asset_co.symbology.colormap.items()
+        }
+
+    return source_asset_co, calc_str
+
+
+def scale_wm_job(job: Job, zoom_level: int):
+    """Use up to maximum resources for higher and scale down for lower zoom
+    levels."""
+    job.vcpus = min(MAX_CORES, math.ceil(2 ** (zoom_level - 4)))
+    job.memory = (MAX_MEM / MAX_CORES) * job.vcpus
+
+    return job
