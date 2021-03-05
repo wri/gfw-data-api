@@ -176,7 +176,7 @@ async def raster_tile_cache_validator(
             detail="Dataset and version of source asset must match dataset and version of current asset.",
         )
 
-    if source_asset.creation_options.get("band_count") > 1:
+    if source_asset.creation_options.get("band_count", 1) > 1:
         raise HTTPException(
             status_code=400, detail="Cannot apply colormap on multi-band image."
         )
