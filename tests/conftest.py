@@ -47,7 +47,7 @@ from . import (
     is_service_account_mocked,
     setup_clients,
 )
-from .utils import delete_logs, upload_fake_data
+from .utils import delete_logs, print_logs, upload_fake_data
 
 FAKE_INT_DATA_PARAMS = {
     "dtype": rasterio.uint16,
@@ -67,14 +67,6 @@ FAKE_FLOAT_DATA_PARAMS = {
             numpy.ones((50, 100), rasterio.float32) * (-0.5),
         )
     ),
-}
-
-
-GDAL_ENV = {
-    "AWS_ENDPOINT_URL": "motoserver-s3:5000",
-    "AWS_HTTPS": "NO",
-    "AWS_VIRTUAL_HOSTING": False,
-    "GDAL_DISABLE_READDIR_ON_OPEN": "NO",
 }
 
 
@@ -176,6 +168,7 @@ def batch_client():
 def logs(batch_client):
     _, logs = batch_client
     yield
+    print_logs(logs)
     delete_logs(logs)
 
 
