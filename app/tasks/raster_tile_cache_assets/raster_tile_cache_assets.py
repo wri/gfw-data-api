@@ -52,6 +52,15 @@ async def raster_tile_cache_asset(
     # Get the creation options from the original raster tile set asset and overwrite settings
     # make sure source_type and source_driver are set in case it is an auxiliary asset
 
+    new_source_uri = [
+        get_asset_uri(
+            dataset,
+            version,
+            AssetType.raster_tile_set,
+            source_asset.creation_options,
+        ).replace("{tile_id}.tif", "tiles.geojson")
+    ]
+
     source_asset_co = RasterTileSetSourceCreationOptions(
         # TODO: With python 3.9, we can use the `|` operator here
         #  waiting for https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker/pull/67
@@ -60,6 +69,7 @@ async def raster_tile_cache_asset(
             **{
                 "source_type": RasterSourceType.raster,
                 "source_driver": RasterDrivers.geotiff,
+                "source_uri": new_source_uri,
                 "calc": None,
                 "resampling": resampling,
                 "compute_stats": False,
@@ -68,15 +78,6 @@ async def raster_tile_cache_asset(
             },
         }
     )
-
-    source_asset_co.source_uri = [
-        get_asset_uri(
-            dataset,
-            version,
-            AssetType.raster_tile_set,
-            source_asset_co.dict(by_alias=True),
-        ).replace("{tile_id}.tif", "tiles.geojson")
-    ]
 
     # If float data type, convert to int in derivative assets for performance
     max_zoom_calc = None
