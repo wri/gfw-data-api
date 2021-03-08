@@ -1,5 +1,4 @@
-import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 from uuid import UUID
 
 import numpy as np
@@ -7,69 +6,26 @@ from fastapi import HTTPException
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
-from app.models.enum.pixetl import DataType
+from app.models.enum.creation_options import RasterDrivers
+from app.models.enum.sources import RasterSourceType
 from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import Job
-from app.models.pydantic.statistics import RasterStats
 from app.models.pydantic.symbology import Symbology
 from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.batch import execute
-from app.tasks.raster_tile_cache_assets.symbology import symbology_constructor
+from app.tasks.raster_tile_cache_assets.symbology import (
+    no_symbology,
+    symbology_constructor,
+)
 from app.tasks.raster_tile_cache_assets.utils import (
+    convert_float_to_int,
     create_tile_cache,
     reproject_to_web_mercator,
 )
 from app.utils.path import get_asset_uri
-
-
-def generate_stats(stats) -> RasterStats:
-    if stats is None:
-        raise NotImplementedError()
-    return RasterStats(**stats)
-
-
-def convert_float_to_int(
-    stats: Optional[Dict[str, Any]],
-    source_asset_co: RasterTileSetSourceCreationOptions,
-) -> Tuple[RasterTileSetSourceCreationOptions, str]:
-    stats = generate_stats(stats)
-
-    assert len(stats.bands) == 1
-    stats_min = stats.bands[0].min
-    stats_max = stats.bands[0].max
-    value_range = math.fabs(stats_max - stats_min)
-
-    # Shift by 1 (and add 1 later) so any values of zero don't get counted as no_data
-    uint16_max = np.iinfo(np.uint16).max - 1
-    # Expand or squeeze to fit into a uint16
-    mult_factor = int(math.floor(uint16_max / value_range)) if value_range else 1
-
-    old_no_data = source_asset_co.no_data
-    if old_no_data is None:
-        old_no_data = "None"
-    elif old_no_data == str(np.nan):
-        old_no_data = "np.nan"
-    else:
-        old_no_data = float(old_no_data)
-
-    calc_str = (
-        f"(A != {old_no_data}).astype(bool) * "
-        f"(1 + (A - {stats_min}) * {mult_factor}).astype(np.uint16)"
-    )
-
-    source_asset_co.data_type = DataType.uint16
-    source_asset_co.no_data = 0
-
-    if source_asset_co.symbology and source_asset_co.symbology.colormap is not None:
-        source_asset_co.symbology.colormap = {
-            (1 + (float(k) - stats_min) * mult_factor): v
-            for k, v in source_asset_co.symbology.colormap.items()
-        }
-
-    return source_asset_co, calc_str
 
 
 async def raster_tile_cache_asset(
@@ -93,30 +49,37 @@ async def raster_tile_cache_asset(
         input_data["creation_options"]["source_asset_id"]
     )
 
-    # Get the creation options from the original raster tile set asset
-    source_asset_co = RasterTileSetSourceCreationOptions(
-        **source_asset.creation_options
-    )
+    # Get the creation options from the original raster tile set asset and overwrite settings
+    # make sure source_type and source_driver are set in case it is an auxiliary asset
 
-    source_asset_co.calc = None
-    source_asset_co.source_uri = [
+    new_source_uri = [
         get_asset_uri(
             dataset,
             version,
             AssetType.raster_tile_set,
-            source_asset_co.dict(by_alias=True),
+            source_asset.creation_options,
         ).replace("{tile_id}.tif", "tiles.geojson")
     ]
 
-    source_asset_co.resampling = resampling
-    source_asset_co.compute_stats = False
-    source_asset_co.compute_histogram = False
-
-    job_list: List[Job] = []
-    jobs_dict: Dict[int, Dict[str, Job]] = dict()
+    source_asset_co = RasterTileSetSourceCreationOptions(
+        # TODO: With python 3.9, we can use the `|` operator here
+        #  waiting for https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker/pull/67
+        **{
+            **source_asset.creation_options,
+            **{
+                "source_type": RasterSourceType.raster,
+                "source_driver": RasterDrivers.geotiff,
+                "source_uri": new_source_uri,
+                "calc": None,
+                "resampling": resampling,
+                "compute_stats": False,
+                "compute_histogram": False,
+                "symbology": Symbology(**symbology),
+            },
+        }
+    )
 
     # If float data type, convert to int in derivative assets for performance
-    source_asset_co.symbology = Symbology(**symbology)
     max_zoom_calc = None
     if np.issubdtype(np.dtype(source_asset_co.data_type), np.floating):
         source_asset_co, max_zoom_calc = convert_float_to_int(
@@ -125,6 +88,18 @@ async def raster_tile_cache_asset(
 
     assert source_asset_co.symbology is not None
     symbology_function = symbology_constructor[source_asset_co.symbology.type]
+
+    # We want to make sure that the final RGB asset is named after the implementation of the tile cache
+    # And that the source_asset name is not already used by another intermediate asset.
+    if symbology_function == no_symbology:
+        source_asset_co.pixel_meaning = implementation
+    else:
+        source_asset_co.pixel_meaning = (
+            f"{source_asset_co.pixel_meaning}_{implementation}"
+        )
+
+    job_list: List[Job] = []
+    jobs_dict: Dict[int, Dict[str, Job]] = dict()
 
     for zoom_level in range(max_zoom, min_zoom - 1, -1):
         jobs_dict[zoom_level] = dict()
@@ -161,6 +136,7 @@ async def raster_tile_cache_asset(
         symbology_jobs, symbology_uri = await symbology_function(
             dataset,
             version,
+            implementation,
             symbology_co,
             zoom_level,
             max_zoom,
@@ -199,4 +175,9 @@ async def raster_tile_cache_validator(
         raise HTTPException(
             status_code=400,
             detail="Dataset and version of source asset must match dataset and version of current asset.",
+        )
+
+    if source_asset.creation_options.get("band_count", 1) > 1:
+        raise HTTPException(
+            status_code=400, detail="Cannot apply colormap on multi-band image."
         )

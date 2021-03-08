@@ -149,6 +149,10 @@ do
       shift # past argument
       shift # past value
       ;;
+      --skip)
+      SKIP="TRUE"
+      shift # past argument
+      ;;
       --subset)
       SUBSET="$2"
       shift # past argument

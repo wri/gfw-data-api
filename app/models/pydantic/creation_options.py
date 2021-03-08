@@ -2,8 +2,8 @@ from datetime import date
 from typing import Any, Dict, List, Optional, Type, Union
 from uuid import UUID
 
-from pydantic import Field, StrictInt, root_validator, validator
-from pydantic.types import PositiveInt
+from pydantic import Field, root_validator, validator
+from pydantic.types import PositiveInt, StrictInt
 
 from ...settings.globals import PIXETL_DEFAULT_RESAMPLING
 from ..enum.assets import AssetType, is_default_asset
@@ -22,6 +22,7 @@ from ..enum.pixetl import (
     Grid,
     NonNumericFloat,
     Order,
+    PhotometricType,
     RasterizeMethod,
     ResamplingMethod,
 )
@@ -38,6 +39,8 @@ from .symbology import Symbology
 COLUMN_REGEX = r"^[a-z][a-zA-Z0-9_-]{2,}$"
 PARTITION_SUFFIX_REGEX = r"^[a-z0-9_-]{3,}$"
 STR_VALUE_REGEX = r"^[a-zA-Z0-9_-]{1,}$"
+
+NoDataType = Union[StrictInt, NonNumericFloat]
 
 
 class Index(StrictBaseModel):
@@ -95,10 +98,11 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     pixel_meaning: str
     data_type: DataType
     nbits: Optional[int]
-    no_data: Optional[Union[StrictInt, NonNumericFloat]]
+    calc: Optional[str]
+    band_count: int = 1
+    no_data: Optional[Union[List[NoDataType], NoDataType]]
     rasterize_method: Optional[RasterizeMethod]
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
-    calc: Optional[str]
     order: Optional[Order]
     overwrite: bool = False
     subset: Optional[str]
@@ -108,6 +112,26 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     compute_histogram: bool = False
     process_locally: bool = True
     auxiliary_assets: Optional[List[UUID]] = None
+    photometric: Optional[PhotometricType] = None
+
+    @validator("no_data")
+    def validate_no_data(cls, v, values, **kwargs):
+        if isinstance(v, list):
+            assert len(v) == int(
+                values.get("band_count")
+            ), f"Length of no data ({v}) list must match band count ({values.get('band_count')})."
+            assert (
+                len(set(v)) == 1
+            ), "No data values must be the same for all bands"  # RasterIO does not support different no data values for bands
+        return v
+
+    @validator("band_count")
+    def validate_band_count(cls, v, values, **kwargs):
+        if v > 1:
+            assert values.get(
+                "calc"
+            ), "Output raster with more than one band require calc"
+        return v
 
 
 class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
@@ -131,9 +155,13 @@ class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
 
 
 class RasterTileSetSourceCreationOptions(PixETLCreationOptions):
+    # Keep source_type and source_driver mandatory without default value
+    # This will help Pydantic to differentiate between
+    # RasterTileSetSourceCreationOptions and RasterTileSetAssetCreationOptions
     source_type: RasterSourceType = Field(..., description="Source type of input file.")
     source_driver: RasterDrivers = Field(
-        ..., description="Driver of source file. Must be an OGR driver"
+        ...,
+        description="Driver of source file. Must be an OGR driver",
     )
 
 

@@ -11,6 +11,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import boto3
+import rasterio
 from gfw_pixetl.pixetl_prep import create_geojsons
 from pydantic import BaseModel, Extra, Field, StrictInt
 from typer import Option, run
@@ -201,6 +202,9 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
         except GDALError:
             LOGGER.error(f"Could not create Color Relief for tile_id {tile_id}")
             raise
+
+        with rasterio.open(local_src_file_path, "r+") as src:
+            src.nodata = 0
 
         # Now upload the file to S3
         target_key = os.path.join(target_prefix, os.path.basename(local_src_file_path))

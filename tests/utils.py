@@ -147,7 +147,7 @@ async def poll_jobs(job_ids: List[str], logs=None, async_client=None) -> str:
             status = "failed"
 
         if status:
-            print_logs(logs)
+            # print_logs(logs)
             await check_callbacks(job_ids, async_client)
             return status
 
@@ -234,6 +234,16 @@ def print_logs(logs):
                 print(event["message"])
 
 
+def delete_logs(logs):
+    if logs:
+        resp = logs.describe_log_streams(logGroupName="/aws/batch/job")
+
+        for stream in resp["logStreams"]:
+            ls_name = stream["logStreamName"]
+
+            logs.delete_log_stream(logGroupName="/aws/batch/job", logStreamName=ls_name)
+
+
 async def check_tasks_status(async_client, logs, asset_ids) -> None:
     tasks = list()
 
@@ -268,7 +278,13 @@ def upload_fake_data(dtype, dtype_name, no_data, prefix, data):
                 "geometry": {
                     "type": "Polygon",
                     "coordinates": [
-                        [[1.0, 1.0], [2.0, 1.0], [2.0, 0.0], [1.0, 0.0], [1.0, 1.0]]
+                        [
+                            [10.0, 10.0],
+                            [12.0, 11.0],
+                            [12.0, 10.0],
+                            [11.0, 10.0],
+                            [11.0, 11.0],
+                        ]
                     ],
                 },
                 "properties": {
@@ -283,13 +299,13 @@ def upload_fake_data(dtype, dtype_name, no_data, prefix, data):
         "dtype": dtype,
         "nodata": no_data,
         "count": 1,
-        "width": 100,
-        "height": 100,
-        "blockxsize": 100,
-        "blockysize": 100,
+        "width": 300,
+        "height": 300,
+        # "blockxsize": 100,
+        # "blockysize": 100,
         "crs": CRS.from_epsg(4326),
         # 0.003332345971563981 is the pixel size of 90/27008
-        "transform": Affine(0.003332345971563981, 0, 1, 0, -0.003332345971563981, 1),
+        "transform": Affine(0.003332345971563981, 0, 10, 0, -0.003332345971563981, 10),
     }
 
     with tempfile.TemporaryDirectory() as tmpdir:

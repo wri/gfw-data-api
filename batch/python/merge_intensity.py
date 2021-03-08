@@ -3,18 +3,18 @@
 import json
 import os
 import subprocess
-from logging import getLogger
 from multiprocessing import Pool, cpu_count
 from tempfile import TemporaryDirectory
 
 import boto3
 import click
+from logger import get_logger
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
 CORES = int(os.environ.get("CORES", cpu_count()))
 
-logger = getLogger("merge_intensity")
+logger = get_logger(__name__)
 
 
 def get_s3_client(aws_region=AWS_REGION, endpoint_url=AWS_ENDPOINT_URL):

@@ -72,3 +72,10 @@ class PGType(str, Enum):
     timestamp = "timestamp"
     uuid = "uuid"
     xml = "xml"
+
+
+class ColorMapType(str, Enum):
+    discrete = "discrete"
+    gradient = "gradient"
+    date_conf_intensity = "date_conf_intensity"
+    year_intensity = "year_intensity"

@@ -2,6 +2,9 @@ import sys
 
 import boto3
 import fiona
+from logger import get_logger
+
+LOGGER = get_logger(__name__)
 
 s3_uri = sys.argv[1]
 zipped = sys.argv[2]
@@ -12,4 +15,4 @@ if zipped:
 
 with fiona.open(s3_uri) as src:
     driver = src.driver
-    print(driver)
+    LOGGER.debug(driver)

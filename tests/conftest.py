@@ -47,14 +47,14 @@ from . import (
     is_service_account_mocked,
     setup_clients,
 )
-from .utils import upload_fake_data
+from .utils import delete_logs, print_logs, upload_fake_data
 
 FAKE_INT_DATA_PARAMS = {
     "dtype": rasterio.uint16,
     "no_data": 0,
     "dtype_name": "uint16",
     "prefix": "test/v1.1.1/raw/uint16",
-    "data": numpy.ones((100, 100), rasterio.uint16),
+    "data": (numpy.ones((300, 300), rasterio.uint16) * 30100).astype("uint16"),
 }
 FAKE_FLOAT_DATA_PARAMS = {
     "dtype": rasterio.float32,
@@ -162,6 +162,14 @@ def batch_client():
 
     # aws_mock.print_logs()
     aws_mock.stop_services()
+
+
+@pytest.fixture(autouse=True)
+def logs(batch_client):
+    _, logs = batch_client
+    yield
+    print_logs(logs)
+    delete_logs(logs)
 
 
 # @pytest.fixture(scope="session", autouse=True)

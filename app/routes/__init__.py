@@ -11,6 +11,7 @@ from ..utils.rw_api import who_am_i
 
 DATASET_REGEX = r"^[a-z][a-z0-9_-]{2,}$"
 VERSION_REGEX = r"^v\d{1,8}(\.\d{1,3}){0,2}?$|^latest$"
+DATE_REGEX = r"^\d{4}(\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]))?$"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 

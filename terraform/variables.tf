@@ -61,3 +61,8 @@ variable "git_sha" {
 variable "lambda_analysis_workspace" {
   type = string
 }
+
+variable "data_lake_max_vcpus" {
+  type = number
+  default = 576
+}

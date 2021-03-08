@@ -140,8 +140,8 @@ async def update_version(
             asset_types=[
                 AssetType.dynamic_vector_tile_cache,
                 AssetType.static_vector_tile_cache,
-                AssetType.raster_tile_cache
-            ]
+                AssetType.raster_tile_cache,
+            ],
         )
 
         if tile_cache_assets:
