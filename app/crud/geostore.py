@@ -2,7 +2,7 @@ from typing import List
 from uuid import UUID
 
 from asyncpg.exceptions import UniqueViolationError
-from fastapi.encoders import jsonable_encoder
+from fastapi.logger import logger
 from sqlalchemy import Column, Table
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import TextClause
@@ -65,11 +65,12 @@ async def create_user_area(geometry: Geometry) -> Geostore:
     # Sanitize the JSON by doing a round-trip with Postgres. We want the sort
     # order, whitespace, etc. to match what would be saved via other means
     # (in particular, via batch/scripts/add_gfw_fields.sh)
-    geometry_str = jsonable_encoder(geometry)
+    geometry_str = geometry.json()
 
     sql = db.text("SELECT ST_AsGeoJSON(ST_GeomFromGeoJSON(:geo)::geometry);")
     bind_vals = {"geo": geometry_str}
     sql = sql.bindparams(**bind_vals)
+    logger.debug(sql)
     sanitized_json = await db.scalar(sql)
 
     bbox: List[float] = await db.scalar(
@@ -112,27 +113,3 @@ async def create_user_area(geometry: Geometry) -> Geostore:
         geostore = await get_geostore_from_anywhere(geo_id)
 
     return geostore
-
-
-#
-# def hydrate_geostore(geo: Geostore) -> GeostoreHydrated:
-#     geometry = Geometry.parse_raw(geo.gfw_geojson)
-#
-#     feature = geoFeature(geometry=geometry.dict())
-#     feature_collection = wrap_feature_in_geojson(feature)
-#
-#     ret_val: GeostoreHydrated = GeostoreHydrated.parse_obj(
-#         {
-#             "gfw_geostore_id": geo.gfw_geostore_id,
-#             "gfw_geojson": feature_collection,
-#             "gfw_area__ha": geo.gfw_area__ha,
-#             "gfw_bbox": geo.gfw_bbox,
-#             "created_on": geo.created_on,
-#             "updated_on": geo.updated_on,
-#         }
-#     )
-#     return ret_val
-#
-#
-# def wrap_feature_in_geojson(feature: Feature) -> geoFeatureCollection:
-#     return geoFeatureCollection([feature])

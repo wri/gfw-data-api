@@ -1,5 +1,8 @@
+import json
 from typing import Any, Dict, List, Optional
 from uuid import UUID
+
+from pydantic import validator
 
 from .base import BaseRecord, StrictBaseModel
 from .responses import Response
@@ -28,13 +31,12 @@ class Geostore(BaseRecord):
     gfw_area__ha: float
     gfw_bbox: List[float]
 
-
-# # API responds returns a feature collection with one feature
-# class GeostoreHydrated(BaseRecord):
-#     gfw_geostore_id: UUID
-#     gfw_geojson: FeatureCollection
-#     gfw_area__ha: float
-#     gfw_bbox: List[float]
+    @validator("gfw_geojson", pre=True)
+    def convert_to_dict(cls, v):
+        if isinstance(v, str):
+            return json.loads(v)
+        else:
+            return v
 
 
 class GeostoreIn(StrictBaseModel):
