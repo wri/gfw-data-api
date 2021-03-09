@@ -24,21 +24,22 @@ class FeatureCollection(StrictBaseModel):
 
 class Geostore(BaseRecord):
     gfw_geostore_id: UUID
-    gfw_geojson: str
+    gfw_geojson: Geometry
     gfw_area__ha: float
     gfw_bbox: List[float]
 
 
-class GeostoreHydrated(BaseRecord):
-    gfw_geostore_id: UUID
-    gfw_geojson: FeatureCollection
-    gfw_area__ha: float
-    gfw_bbox: List[float]
+# # API responds returns a feature collection with one feature
+# class GeostoreHydrated(BaseRecord):
+#     gfw_geostore_id: UUID
+#     gfw_geojson: FeatureCollection
+#     gfw_area__ha: float
+#     gfw_bbox: List[float]
 
 
-class GeostoreIn(FeatureCollection):
-    pass
+class GeostoreIn(StrictBaseModel):
+    geometry: Geometry
 
 
 class GeostoreResponse(Response):
-    data: GeostoreHydrated
+    data: Geostore
