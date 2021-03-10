@@ -14,13 +14,15 @@ from app.models.pydantic.jobs import GDAL2TilesJob, GDALDEMJob, PixETLJob
 from app.settings.globals import TILE_CACHE_BUCKET
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.aws import get_s3_client
-from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
+from tests import DATA_LAKE_BUCKET
 from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import (
     check_s3_file_present,
     check_tasks_status,
+    create_dataset,
     create_default_asset,
+    create_version,
     delete_s3_files,
     generate_uuid,
     poll_jobs,
@@ -99,11 +101,12 @@ async def test_assets_vector_source_max_parents(async_client):
     version = "v20210310"
 
     vector_source_payload = {
-        "metadata": {},
         "creation_options": {
             "source_type": "vector",
-            "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
-            "source_driver": "ESRI Shapefile",
+            "source_uri": [
+                "s3://gfw-data-lake/gfw_planted_forests/v20201209/raw/plantations_v3_1.gdb.zip"
+            ],
+            "source_driver": "FileGDB",
             "layers": [
                 "aus_plant",
                 "chl_plant",
@@ -132,20 +135,30 @@ async def test_assets_vector_source_max_parents(async_client):
         },
     }
 
-    with patch(
+    await create_dataset(dataset, async_client, {"metadata": {}})
+
+    with patch("app.routes.datasets.versions._verify_source_file_access"), patch(
+        "app.tasks.vector_source_assets.is_zipped", return_value=True
+    ), patch(
         "app.tasks.batch.submit_batch_job", side_effect=generate_uuid
     ) as mock_submit:
-        _ = await create_default_asset(
-            dataset,
-            version,
-            async_client=async_client,
-            version_payload=vector_source_payload,
-            execute_batch_jobs=True,
+        await create_version(
+            dataset, version, async_client, payload=vector_source_payload
         )
 
+    load_vector_data_jobs = list()
     for mock_call in mock_submit.call_args_list:
+        print(mock_call[0])
         job_obj = mock_call[0][0]
-        assert len(job_obj.parents) <= 19
+        if job_obj.job_name == "load_vector_data":
+            print(
+                f"PARENT LIST LENGTH: {len(job_obj.parents) if job_obj.parents else 0}"
+            )
+            assert len(job_obj.parents) <= 19
+            load_vector_data_jobs.append(job_obj)
+    assert len(load_vector_data_jobs) == len(
+        vector_source_payload["creation_options"]["layers"]
+    )
 
 
 @pytest.mark.hanging
