@@ -8,6 +8,7 @@ from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
 from ..utils.path import get_layer_name, is_zipped
 from . import Callback, callback_constructor, writer_secrets
 from .batch import execute
+from .utils import RingOfLists
 
 
 async def vector_source_asset(
@@ -58,9 +59,18 @@ async def vector_source_asset(
         callback=callback,
     )
 
-    load_vector_data_jobs: List[Job] = list()
+    # AWS Batch jobs can't have more than 20 parents. In case of excessive
+    # numbers of layers, create multiple "queues" of dependent jobs, with
+    # the next phase being dependent on the last job of each queue.
+    num_queues = min(16, len(layers))
+    job_queues: RingOfLists = RingOfLists(num_queues)
     for layer in layers:
-        load_vector_data_jobs.append(
+        queue = next(job_queues)
+        if not queue:
+            parents: List[str] = [create_vector_schema_job.job_name]
+        else:
+            parents = [queue[-1].job_name]
+        queue.append(
             GdalPythonImportJob(
                 job_name="load_vector_data",
                 command=[
@@ -78,16 +88,18 @@ async def vector_source_asset(
                     "-X",
                     str(zipped),
                 ],
-                parents=[create_vector_schema_job.job_name],
+                parents=parents,
                 environment=job_env,
                 callback=callback,
             )
         )
+    # Flatten list of all load vector data jobs to pass to execute, later
+    load_vector_data_jobs = [item for sublist in job_queues.all() for item in sublist]
 
     gfw_attribute_job = PostgresqlClientJob(
         job_name="enrich_gfw_attributes",
         command=["add_gfw_fields.sh", "-d", dataset, "-v", version],
-        parents=[job.job_name for job in load_vector_data_jobs],
+        parents=[queue[-1].job_name for queue in job_queues.all()],
         environment=job_env,
         callback=callback,
     )
