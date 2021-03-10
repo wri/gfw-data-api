@@ -64,37 +64,36 @@ async def vector_source_asset(
     # the next phase being dependent on the last job of each queue.
     num_queues = min(16, len(layers))
     job_queues: RingOfLists = RingOfLists(num_queues)
-    for layer in layers:
+    load_vector_data_jobs: List[GdalPythonImportJob] = list()
+    for i, layer in enumerate(layers):
         queue = next(job_queues)
         if not queue:
             parents: List[str] = [create_vector_schema_job.job_name]
         else:
             parents = [queue[-1].job_name]
-        queue.append(
-            GdalPythonImportJob(
-                job_name="load_vector_data",
-                command=[
-                    "load_vector_data.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "-s",
-                    source_uri,
-                    "-l",
-                    layer,
-                    "-f",
-                    local_file,
-                    "-X",
-                    str(zipped),
-                ],
-                parents=parents,
-                environment=job_env,
-                callback=callback,
-            )
+        job = GdalPythonImportJob(
+            job_name=f"load_vector_data_layer_{i}",
+            command=[
+                "load_vector_data.sh",
+                "-d",
+                dataset,
+                "-v",
+                version,
+                "-s",
+                source_uri,
+                "-l",
+                layer,
+                "-f",
+                local_file,
+                "-X",
+                str(zipped),
+            ],
+            parents=parents,
+            environment=job_env,
+            callback=callback,
         )
-    # Flatten list of all load vector data jobs to pass to execute, later
-    load_vector_data_jobs = [item for sublist in job_queues.all() for item in sublist]
+        queue.append(job)
+        load_vector_data_jobs.append(job)
 
     gfw_attribute_job = PostgresqlClientJob(
         job_name="enrich_gfw_attributes",

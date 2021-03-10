@@ -14,7 +14,7 @@ from app.models.pydantic.jobs import GDAL2TilesJob, GDALDEMJob, PixETLJob
 from app.settings.globals import TILE_CACHE_BUCKET
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.aws import get_s3_client
-from tests import DATA_LAKE_BUCKET
+from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
 from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import (
@@ -103,9 +103,7 @@ async def test_assets_vector_source_max_parents(async_client):
     vector_source_payload = {
         "creation_options": {
             "source_type": "vector",
-            "source_uri": [
-                "s3://gfw-data-lake/gfw_planted_forests/v20201209/raw/plantations_v3_1.gdb.zip"
-            ],
+            "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
             "source_driver": "FileGDB",
             "layers": [
                 "aus_plant",
@@ -137,9 +135,7 @@ async def test_assets_vector_source_max_parents(async_client):
 
     await create_dataset(dataset, async_client, {"metadata": {}})
 
-    with patch("app.routes.datasets.versions._verify_source_file_access"), patch(
-        "app.tasks.vector_source_assets.is_zipped", return_value=True
-    ), patch(
+    with patch(
         "app.tasks.batch.submit_batch_job", side_effect=generate_uuid
     ) as mock_submit:
         await create_version(
@@ -148,14 +144,12 @@ async def test_assets_vector_source_max_parents(async_client):
 
     load_vector_data_jobs = list()
     for mock_call in mock_submit.call_args_list:
-        print(mock_call[0])
         job_obj = mock_call[0][0]
-        if job_obj.job_name == "load_vector_data":
-            print(
-                f"PARENT LIST LENGTH: {len(job_obj.parents) if job_obj.parents else 0}"
-            )
+        if job_obj.parents is not None:
             assert len(job_obj.parents) <= 19
+        if "load_vector_data_layer_" in job_obj.job_name:
             load_vector_data_jobs.append(job_obj)
+
     assert len(load_vector_data_jobs) == len(
         vector_source_payload["creation_options"]["layers"]
     )
