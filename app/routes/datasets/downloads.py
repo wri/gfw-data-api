@@ -15,8 +15,11 @@ from ...main import logger
 from ...models.enum.assets import AssetType
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pixetl import Grid
+from ...models.pydantic.downloads import DownloadCSVIn
+from ...models.pydantic.geostore import Geometry
 from ...responses import CSVStreamingResponse
 from ...utils.aws import get_s3_client
+from ...utils.geostore import get_geostore_geometry
 from ...utils.path import split_s3_path
 from .. import dataset_version_dependency
 from .queries import _query_dataset
@@ -48,12 +51,48 @@ async def download_csv(
     """
 
     dataset, version = dataset_version
-    data: List[RowProxy] = await _query_dataset(
-        dataset, version, sql, geostore_id, geostore_origin
-    )
+
+    if geostore_id:
+        geometry: Optional[Geometry] = await get_geostore_geometry(
+            geostore_id, geostore_origin
+        )
+    else:
+        geometry = None
+
+    data: List[RowProxy] = await _query_dataset(dataset, version, sql, geometry)
 
     with orm_to_csv(data, delimiter) as stream:
         response = CSVStreamingResponse(iter([stream.getvalue()]), filename=filename)
+        return response
+
+
+@router.post(
+    "/{dataset}/{version}/download/csv",
+    response_class=CSVStreamingResponse,
+    tags=["Download"],
+)
+async def download_csv_post(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    request: DownloadCSVIn,
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented).
+
+    Return results as downloadable CSV file. This endpoint only works
+    for datasets with (geo-)database tables.
+    """
+
+    dataset, version = dataset_version
+
+    data: List[RowProxy] = await _query_dataset(
+        dataset, version, request.sql, request.geometry
+    )
+
+    with orm_to_csv(data, request.delimiter) as stream:
+        response = CSVStreamingResponse(
+            iter([stream.getvalue()]), filename=request.filename
+        )
         return response
 
 

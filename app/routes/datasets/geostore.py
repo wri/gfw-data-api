@@ -6,7 +6,7 @@ from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
 from ...errors import RecordNotFoundError
-from ...models.pydantic.geostore import GeostoreHydrated, GeostoreResponse
+from ...models.pydantic.geostore import Geostore, GeostoreResponse
 from ...routes import dataset_version_dependency
 
 router = APIRouter()
@@ -30,7 +30,7 @@ async def get_geostore_by_version(
     """
     dataset, version = dv
     try:
-        result: GeostoreHydrated = await geostore.get_geostore_by_version(
+        result: Geostore = await geostore.get_geostore_by_version(
             dataset, version, geostore_id
         )
     except RecordNotFoundError as e:
