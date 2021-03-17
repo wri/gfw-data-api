@@ -24,17 +24,10 @@ async def test_user_area_geostore(async_client):
     }
 
     payload = {
-        "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "properties": {},
-                "geometry": {
-                    "type": "MultiPolygon",
-                    "coordinates": [[[[8, 51], [11, 55], [12, 49], [8, 51]]]],
-                },
-            }
-        ],
+        "geometry": {
+            "type": "MultiPolygon",
+            "coordinates": [[[[8, 51], [11, 55], [12, 49], [8, 51]]]],
+        }
     }
     # POST the new geostore
     post_resp = await async_client.post("/geostore", json=payload)
@@ -122,17 +115,10 @@ async def test_dataset_version_geostore(async_client, batch_client):
     # The new one should not be findable via the dataset.version
     # endpoint. Let's test that.
     payload = {
-        "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "properties": {},
-                "geometry": {
-                    "type": "MultiPolygon",
-                    "coordinates": [[[[8, 51], [11, 55], [12, 49], [8, 51]]]],
-                },
-            }
-        ],
+        "geometry": {
+            "type": "MultiPolygon",
+            "coordinates": [[[[8, 51], [11, 55], [12, 49], [8, 51]]]],
+        }
     }
     # This is the gfw_geostore_id returned when POSTing the payload with Postman
     second_sample_geojson_hash = "b44a9213-4fc2-14e6-02e3-96faf0d89499"
@@ -183,12 +169,12 @@ async def test_user_area_geostore_bad_requests(async_client, batch_client):
             },
         ],
     }
-    expected_message = "Please submit one and only one feature per request"
+    # expected_message = "Please submit one and only one feature per request"
 
     post_resp = await async_client.post("/geostore", json=bad_payload_1)
-    assert post_resp.status_code == 400
-    assert post_resp.json()["message"] == expected_message
+    assert post_resp.status_code == 422
+    # assert post_resp.json()["message"] == expected_message
 
     post_resp = await async_client.post("/geostore", json=bad_payload_2)
-    assert post_resp.status_code == 400
-    assert post_resp.json()["message"] == expected_message
+    assert post_resp.status_code == 422
+    # assert post_resp.json()["message"] == expected_message

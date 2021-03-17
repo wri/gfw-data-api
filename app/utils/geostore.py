@@ -8,7 +8,7 @@ from fastapi.logger import logger
 from app.crud.geostore import get_geostore_from_anywhere
 from app.errors import BadResponseError, InvalidResponseError, RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
-from app.models.pydantic.geostore import Geometry, GeostoreHydrated
+from app.models.pydantic.geostore import Geometry, Geostore
 from app.utils import rw_api
 
 
@@ -17,8 +17,8 @@ async def _get_gfw_geostore_geometry(geostore_id: UUID) -> Geometry:
     """Get GFW Geostore geometry."""
 
     try:
-        geo: GeostoreHydrated = await get_geostore_from_anywhere(geostore_id)
-        geometry: Optional[Geometry] = geo.gfw_geojson.features[0].geometry
+        geostore: Geostore = await get_geostore_from_anywhere(geostore_id)
+        geometry: Optional[Geometry] = geostore.gfw_geojson
     except (KeyError, RecordNotFoundError) as ex:
         logger.exception(ex)
         raise BadResponseError("Cannot fetch geostore geometry")

@@ -11,15 +11,18 @@ from app.crud import tasks
 from app.crud.assets import update_asset
 from app.models.enum.creation_options import ColorMapType
 from app.models.pydantic.jobs import GDAL2TilesJob, GDALDEMJob, PixETLJob
-from app.settings.globals import DATA_LAKE_BUCKET, TILE_CACHE_BUCKET
+from app.settings.globals import TILE_CACHE_BUCKET
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.aws import get_s3_client
+from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
 from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import (
     check_s3_file_present,
     check_tasks_status,
+    create_dataset,
     create_default_asset,
+    create_version,
     delete_s3_files,
     generate_uuid,
     poll_jobs,
@@ -86,6 +89,69 @@ async def test_assets(async_client):
     assert create_asset_resp.json()["status"] == "failed"
     assert create_asset_resp.json()["message"] == (
         "Version status is `failed`. Cannot add any assets."
+    )
+
+
+@pytest.mark.asyncio
+async def test_assets_vector_source_max_parents(async_client):
+    """Make sure that vector source assets with > 20 layers stay within AWS
+    parents limit."""
+    # Add a dataset, version, and default asset
+    dataset = "test_vector_source_max_parents"
+    version = "v20210310"
+
+    vector_source_payload = {
+        "creation_options": {
+            "source_type": "vector",
+            "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
+            "source_driver": "FileGDB",
+            "layers": [
+                "aus_plant",
+                "chl_plant",
+                "chn_plant",
+                "civ_plant",
+                "cmr_plant",
+                "cod_plant",
+                "col_plant",
+                "cri_plant",
+                "ecu_plant",
+                "eu_plant",
+                "gab_plant",
+                "gha_plant",
+                "gtm_plant",
+                "hnd_plant",
+                "idn_plant",
+                "ind_plant",
+                "jpn_plant",
+                "ken_plant",
+                "khm_plant",
+                "kor_plant",
+                "lbr_plant",
+                "lka_plant",
+                "mex_plant",
+            ],
+        },
+    }
+
+    await create_dataset(dataset, async_client, {"metadata": {}})
+
+    with patch(
+        "app.tasks.batch.submit_batch_job", side_effect=generate_uuid
+    ) as mock_submit:
+        await create_version(
+            dataset, version, async_client, payload=vector_source_payload
+        )
+
+    load_vector_data_jobs = list()
+    for mock_call in mock_submit.call_args_list:
+        job_obj = mock_call[0][0]
+        if job_obj.parents is not None:
+            assert len(job_obj.parents) <= 19
+        if "load_vector_data_layer_" in job_obj.job_name:
+            load_vector_data_jobs.append(job_obj)
+
+    assert len(load_vector_data_jobs) == len(
+        vector_source_payload["creation_options"]["layers"]
     )
 
 
@@ -923,16 +989,8 @@ async def test_asset_float(async_client, batch_client, httpd):
                 job_obj.parents,
             )
             gdaldem_jobs[job_obj.job_name] = job
-        # else:
-        #     raise Exception("Unknown job type found")
-
-    print("GDALDEM JOBS:")
-    for job_name, deets in gdaldem_jobs.items():
-        print(f"{job_name}: {deets}")
-
-    print("PIXETL JOBS:")
-    for job_name, deets in pixetl_jobs.items():
-        print(f"{job_name}: {deets}")
+        else:
+            raise Exception("Unknown job type found")
 
     assert pixetl_jobs == {
         sanitize_batch_job_name(f"{dataset}_{version}_{pixel_meaning}_gradient_{i}"): (

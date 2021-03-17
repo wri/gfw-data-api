@@ -1,11 +1,12 @@
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from ..enum.analysis import RasterLayer
 from .base import StrictBaseModel
+from .geostore import Geometry
 
 
 class ZonalAnalysisRequestIn(StrictBaseModel):
-    geometry: Dict[str, Any]
+    geometry: Geometry
     sum: List[RasterLayer]
     group_by: List[RasterLayer] = list()
     filters: List[RasterLayer] = list()
