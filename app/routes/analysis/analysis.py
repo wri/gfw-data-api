@@ -1,6 +1,7 @@
 """Run analysis on registered datasets."""
+from io import StringIO
 from json.decoder import JSONDecodeError
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 
 import boto3
@@ -13,9 +14,10 @@ from httpx_auth import AWS4Auth
 
 from ...models.enum.analysis import RasterLayer
 from ...models.enum.geostore import GeostoreOrigin
-from ...models.pydantic.analysis import ZonalAnalysisRequestIn
+from ...models.pydantic.analysis import ZonalAnalysisRequestIn, RasterQueryRequestIn
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.responses import Response
+from ...responses import CSVStreamingResponse
 from ...settings.globals import (
     AWS_REGION,
     LAMBDA_ENTRYPOINT_URL,
@@ -58,7 +60,6 @@ async def zonal_statistics_get(
     """Calculate zonal statistics on any registered raster layers in a
     geostore."""
     geometry: Geometry = await get_geostore_geometry(geostore_id, geostore_origin)
-
     return await _zonal_statistics(
         geometry,
         sum_layers,
@@ -86,21 +87,118 @@ async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
     )
 
 
+@router.get(
+    "/raster/query",
+    response_class=ORJSONResponse,
+    response_model=Response,
+    tags=["Analysis"],
+)
+async def raster_query_get(
+    *,
+    geostore_id: UUID = Path(..., title="Geostore ID"),
+    geostore_origin: GeostoreOrigin = Query(
+        GeostoreOrigin.gfw, title="Origin service of geostore ID"
+    ),
+    sql: str = Query(..., title="Query")
+):
+    geometry: Geometry = await get_geostore_geometry(geostore_id, geostore_origin)
+    return await _raster_query(
+        geometry,
+        sql
+    )
+
+
+@router.get(
+    "/raster/download",
+    response_class=ORJSONResponse,
+    response_model=CSVStreamingResponse,
+    tags=["Analysis"],
+)
+async def raster_download_get(
+    *,
+    geostore_id: UUID = Path(..., title="Geostore ID"),
+    geostore_origin: GeostoreOrigin = Query(
+        GeostoreOrigin.gfw, title="Origin service of geostore ID"
+    ),
+    sql: str = Query(..., title="Query"),
+    filename: str = Query("export.csv", description="Name of export file."),
+):
+    geometry: Geometry = await get_geostore_geometry(geostore_id, geostore_origin)
+    data = await _raster_query(
+        geometry,
+        sql,
+        format="csv"
+    )
+
+    return CSVStreamingResponse(iter([data]), filename=filename)
+
+
+@router.post(
+    "/raster/query",
+    response_class=ORJSONResponse,
+    response_model=Response,
+    tags=["Analysis"],
+)
+async def raster_query_post(request: RasterQueryRequestIn):
+    return await _raster_query(
+        request.geometry,
+        request.sql
+    )
+
+
 async def _zonal_statistics(
+        geometry: Dict[str, Any],
+        sum_layers: List[RasterLayer],
+        group_by: List[RasterLayer],
+        filters: List[RasterLayer],
+        start_date: Optional[str],
+        end_date: Optional[str],
+):
+    selectors = ",".join([f"sum({lyr.value})" for lyr in sum_layers])
+    groups = ",".join([lyr.value for lyr in group_by])
+
+    where_clauses = []
+    for lyr in filters:
+        if "umd_tree_cover_density" in lyr.value:
+            where_clauses.append(f"{lyr.value[:-2]}__threshold = {lyr.value[-2:]}")
+        else:
+            where_clauses.append(f"{lyr.value} != 0")
+
+    if start_date:
+        where_clauses.append(_get_date_filter(start_date, ">="))
+
+    if end_date:
+        where_clauses.append(_get_date_filter(end_date, "<"))
+
+    where = " and ".join(filters)
+
+    query = f"select {selectors} from data"
+    if where:
+        query += f" where {where}"
+    query += f"group by {groups}"
+
+    return await _raster_query(
+        geometry,
+        query
+    )
+
+
+def _get_date_filter(date: str, op: str):
+    if len(date) == 4:
+        return f"umd_tree_cover_loss__year {op} {date}"
+    else:
+        return f"umd_glad_alerts__date {op} {date}"
+
+
+async def _raster_query(
     geometry: Geometry,
-    sum_layers: List[RasterLayer],
-    group_by: List[RasterLayer],
-    filters: List[RasterLayer],
-    start_date: Optional[str],
-    end_date: Optional[str],
+    query: str,
+    format: Optional[str] = "json"
 ):
     payload = {
         "geometry": jsonable_encoder(geometry),
-        "group_by": group_by,
-        "filters": filters,
-        "sum": sum_layers,
-        "start_date": start_date,
-        "end_date": end_date,
+        "query": query,
+        "format": format
     }
 
     try:

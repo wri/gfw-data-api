@@ -12,3 +12,8 @@ class ZonalAnalysisRequestIn(StrictBaseModel):
     filters: List[RasterLayer] = list()
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+
+
+class RasterQueryRequestIn(StrictBaseModel):
+    geometry: Geometry
+    sql: str
