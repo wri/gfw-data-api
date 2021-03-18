@@ -50,6 +50,8 @@ from ...models.enum.pg_sys_functions import (
     transaction_ids_and_snapshots,
 )
 from ...models.orm.assets import Asset as AssetORM
+from ...models.pydantic.geostore import Geometry
+from ...models.pydantic.query import QueryRequestIn
 from ...models.pydantic.responses import Response
 from ...utils.geostore import get_geostore_geometry
 from .. import dataset_version_dependency
@@ -76,19 +78,43 @@ async def query_dataset(
     implemented)."""
 
     dataset, version = dataset_version
+    if geostore_id:
+        geometry: Optional[Geometry] = await get_geostore_geometry(
+            geostore_id, geostore_origin
+        )
+    else:
+        geometry = None
+
+    data: List[RowProxy] = await _query_dataset(dataset, version, sql, geometry)
+
+    return Response(data=data)
+
+
+@router.post(
+    "/{dataset}/{version}/query",
+    response_class=ORJSONResponse,
+    response_model=Response,
+    tags=["Query"],
+)
+async def query_dataset_post(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    request: QueryRequestIn,
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented)."""
+
+    dataset, version = dataset_version
+
     data: List[RowProxy] = await _query_dataset(
-        dataset, version, sql, geostore_id, geostore_origin
+        dataset, version, request.sql, request.geometry
     )
 
     return Response(data=data)
 
 
 async def _query_dataset(
-    dataset: str,
-    version: str,
-    sql: str,
-    geostore_id: Optional[UUID],
-    geostore_origin: str,
+    dataset: str, version: str, sql: str, geometry: Optional[Geometry]
 ) -> List[RowProxy]:
 
     # Make sure we can query the dataset
@@ -124,8 +150,8 @@ async def _query_dataset(
         "relname"
     ] = version
 
-    if geostore_id:
-        parsed = await _add_geostore_filter(parsed, geostore_id, geostore_origin)
+    if geometry:
+        parsed = await _add_geometry_filter(parsed, geometry)
 
     # convert back to text
     sql = RawStream()(Node(parsed))
@@ -257,8 +283,7 @@ def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, An
     return values
 
 
-async def _add_geostore_filter(parsed_sql, geostore_id: UUID, geostore_origin: str):
-    geometry = await get_geostore_geometry(geostore_id, geostore_origin)
+async def _add_geometry_filter(parsed_sql, geometry: Geometry):
 
     # make empty select statement with where clause including filter
     # this way we can later parse it as AST

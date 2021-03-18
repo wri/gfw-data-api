@@ -1,6 +1,6 @@
 """Run analysis on registered datasets."""
 from json.decoder import JSONDecodeError
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 import boto3
@@ -58,10 +58,9 @@ async def zonal_statistics_get(
     """Calculate zonal statistics on any registered raster layers in a
     geostore."""
     geometry: Geometry = await get_geostore_geometry(geostore_id, geostore_origin)
-    safe_geo = jsonable_encoder(geometry)
 
     return await _zonal_statistics(
-        safe_geo,
+        geometry,
         sum_layers,
         group_by,
         filters,
@@ -88,7 +87,7 @@ async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
 
 
 async def _zonal_statistics(
-    geometry: Dict[str, Any],
+    geometry: Geometry,
     sum_layers: List[RasterLayer],
     group_by: List[RasterLayer],
     filters: List[RasterLayer],
@@ -96,7 +95,7 @@ async def _zonal_statistics(
     end_date: Optional[str],
 ):
     payload = {
-        "geometry": geometry,
+        "geometry": jsonable_encoder(geometry),
         "group_by": group_by,
         "filters": filters,
         "sum": sum_layers,

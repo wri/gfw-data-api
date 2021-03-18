@@ -8,7 +8,7 @@ from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
 from ...errors import BadRequestError, RecordNotFoundError
-from ...models.pydantic.geostore import GeostoreHydrated, GeostoreIn, GeostoreResponse
+from ...models.pydantic.geostore import Geostore, GeostoreIn, GeostoreResponse
 
 router = APIRouter()
 
@@ -18,6 +18,7 @@ router = APIRouter()
     response_class=ORJSONResponse,
     response_model=GeostoreResponse,
     status_code=201,
+    tags=["Geostore"],
 )
 async def add_new_geostore(
     *,
@@ -26,10 +27,8 @@ async def add_new_geostore(
 ):
     """Add geostore feature to user area of geostore."""
 
-    input_data = request.dict(exclude_none=True, by_alias=True)
-
     try:
-        new_user_area: GeostoreHydrated = await geostore.create_user_area(**input_data)
+        new_user_area: Geostore = await geostore.create_user_area(request.geometry)
     except BadRequestError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -42,13 +41,11 @@ async def add_new_geostore(
     response_model=GeostoreResponse,
     tags=["Geostore"],
 )
-async def get_geostore_root(*, geostore_id: UUID = Path(..., title="geostore_id")):
+async def get_any_geostore(*, geostore_id: UUID = Path(..., title="geostore_id")):
     """Retrieve GeoJSON representation for a given geostore ID of any
     dataset."""
     try:
-        result: GeostoreHydrated = await geostore.get_geostore_from_anywhere(
-            geostore_id
-        )
+        result: Geostore = await geostore.get_geostore_from_anywhere(geostore_id)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
