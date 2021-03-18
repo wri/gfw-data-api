@@ -22,7 +22,7 @@ continuous) # Continuous polygon features
   STRATEGY=("--coalesce-densest-as-needed" "--extend-zooms-if-still-dropping")
   ;;
 keep_all) # never drop or coalesce feature, ignore size and feature count
-  STRATEGY=("--no-feature-limit" "--no-tile-size-limit")
+  STRATEGY=("-r1")
   ;;
 *)
   echo "Invalid Tile Cache option -${TILE_STRATEGY}"
