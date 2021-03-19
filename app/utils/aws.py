@@ -1,6 +1,10 @@
-import boto3
+from typing import Dict, Any
 
-from ..settings.globals import AWS_REGION, S3_ENTRYPOINT_URL
+import boto3
+import httpx
+from httpx_auth import AWS4Auth
+
+from ..settings.globals import AWS_REGION, S3_ENTRYPOINT_URL, LAMBDA_ENTRYPOINT_URL
 
 
 def client_constructor(service: str, entrypoint_url=None):
@@ -25,3 +29,29 @@ get_batch_client = client_constructor("batch")
 get_cloudfront_client = client_constructor("cloudfront")
 get_ecs_client = client_constructor("ecs")
 get_lambda_client = client_constructor("lambda")
+
+
+async def invoke_lambda(lambda_name: str, payload: Dict[str, Any], timeout: int=55) -> httpx.Response:
+    session = boto3.Session()
+    cred = session.get_credentials()
+
+    aws = AWS4Auth(
+        access_id=cred.access_key,
+        secret_key=cred.secret_key,
+        security_token=cred.token,
+        region=AWS_REGION,
+        service="lambda",
+    )
+
+    headers = {"X-Amz-Invocation-Type": "RequestResponse"}
+
+    async with httpx.AsyncClient() as client:
+        response: httpx.Response = await client.post(
+            f"{LAMBDA_ENTRYPOINT_URL}/2015-03-31/functions/{lambda_name}/invocations",
+            json=payload,
+            auth=aws,
+            timeout=timeout,
+            headers=headers,
+        )
+
+    return response

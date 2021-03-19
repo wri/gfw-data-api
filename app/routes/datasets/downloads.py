@@ -2,7 +2,7 @@
 import csv
 from contextlib import contextmanager
 from io import StringIO
-from typing import Iterator, List, Optional, Tuple
+from typing import Iterator, List, Optional, Tuple, Dict, Any
 from uuid import UUID
 
 from aiohttp import ClientError
@@ -59,11 +59,9 @@ async def download_csv(
     else:
         geometry = None
 
-    data: List[RowProxy] = await _query_dataset(dataset, version, sql, geometry)
-
-    with orm_to_csv(data, delimiter) as stream:
-        response = CSVStreamingResponse(iter([stream.getvalue()]), filename=filename)
-        return response
+    data: StringIO = await _query_dataset(dataset, version, sql, geometry, format="csv")
+    response = CSVStreamingResponse(iter([data.getvalue()]), filename=filename)
+    return response
 
 
 @router.post(
@@ -85,15 +83,14 @@ async def download_csv_post(
 
     dataset, version = dataset_version
 
-    data: List[RowProxy] = await _query_dataset(
-        dataset, version, request.sql, request.geometry
+    data: StringIO = await _query_dataset(
+        dataset, version, request.sql, request.geometry, request.delimiter
     )
 
-    with orm_to_csv(data, request.delimiter) as stream:
-        response = CSVStreamingResponse(
-            iter([stream.getvalue()]), filename=request.filename
-        )
-        return response
+    response = CSVStreamingResponse(
+        iter([data.getvalue()]), filename=request.filename
+    )
+    return response
 
 
 @router.get(
@@ -172,27 +169,6 @@ async def download_geopackage(
     presigned_url = await _get_presigned_url(bucket, key)
 
     return RedirectResponse(url=presigned_url)
-
-
-@contextmanager
-def orm_to_csv(data: List[RowProxy], delimiter=",") -> Iterator[StringIO]:
-
-    """Create a new csv file that represents generated data.
-
-    Response will return a temporary redirect to download URL.
-    """
-
-    csv_file = StringIO()
-    try:
-        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
-        field_names = data[0].keys()
-        wr.writerow(field_names)
-        for row in data:
-            wr.writerow(row.values())
-        csv_file.seek(0)
-        yield csv_file
-    finally:
-        csv_file.close()
 
 
 async def _get_raster_tile_set_asset_url(

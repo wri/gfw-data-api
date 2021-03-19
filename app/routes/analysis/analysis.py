@@ -12,17 +12,12 @@ from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 from httpx_auth import AWS4Auth
 
+from ..datasets.queries import _query_raster, _query_raster_lambda
 from ...models.enum.analysis import RasterLayer
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.pydantic.analysis import ZonalAnalysisRequestIn, RasterQueryRequestIn
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.responses import Response
-from ...responses import CSVStreamingResponse
-from ...settings.globals import (
-    AWS_REGION,
-    LAMBDA_ENTRYPOINT_URL,
-    RASTER_ANALYSIS_LAMBDA_NAME,
-)
 from ...utils.geostore import get_geostore_geometry
 from .. import DATE_REGEX
 
@@ -87,65 +82,6 @@ async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
     )
 
 
-@router.get(
-    "/raster/query",
-    response_class=ORJSONResponse,
-    response_model=Response,
-    tags=["Analysis"],
-)
-async def raster_query_get(
-    *,
-    geostore_id: UUID = Path(..., title="Geostore ID"),
-    geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, title="Origin service of geostore ID"
-    ),
-    sql: str = Query(..., title="Query")
-):
-    geometry: Geometry = await get_geostore_geometry(geostore_id, geostore_origin)
-    return await _raster_query(
-        geometry,
-        sql
-    )
-
-
-@router.get(
-    "/raster/download",
-    response_class=ORJSONResponse,
-    response_model=CSVStreamingResponse,
-    tags=["Analysis"],
-)
-async def raster_download_get(
-    *,
-    geostore_id: UUID = Path(..., title="Geostore ID"),
-    geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, title="Origin service of geostore ID"
-    ),
-    sql: str = Query(..., title="Query"),
-    filename: str = Query("export.csv", description="Name of export file."),
-):
-    geometry: Geometry = await get_geostore_geometry(geostore_id, geostore_origin)
-    data = await _raster_query(
-        geometry,
-        sql,
-        format="csv"
-    )
-
-    return CSVStreamingResponse(iter([data]), filename=filename)
-
-
-@router.post(
-    "/raster/query",
-    response_class=ORJSONResponse,
-    response_model=Response,
-    tags=["Analysis"],
-)
-async def raster_query_post(request: RasterQueryRequestIn):
-    return await _raster_query(
-        request.geometry,
-        request.sql
-    )
-
-
 async def _zonal_statistics(
         geometry: Dict[str, Any],
         sum_layers: List[RasterLayer],
@@ -154,6 +90,7 @@ async def _zonal_statistics(
         start_date: Optional[str],
         end_date: Optional[str],
 ):
+    base = sum_layers[0].value
     selectors = ",".join([f"sum({lyr.value})" for lyr in sum_layers])
     groups = ",".join([lyr.value for lyr in group_by])
 
@@ -172,12 +109,12 @@ async def _zonal_statistics(
 
     where = " and ".join(filters)
 
-    query = f"select {selectors} from data"
+    query = f"select {selectors} from {base}"
     if where:
         query += f" where {where}"
     query += f"group by {groups}"
 
-    return await _raster_query(
+    return await _query_raster_lambda(
         geometry,
         query
     )
@@ -188,58 +125,3 @@ def _get_date_filter(date: str, op: str):
         return f"umd_tree_cover_loss__year {op} {date}"
     else:
         return f"umd_glad_alerts__date {op} {date}"
-
-
-async def _raster_query(
-    geometry: Geometry,
-    query: str,
-    format: Optional[str] = "json"
-):
-    payload = {
-        "geometry": jsonable_encoder(geometry),
-        "query": query,
-        "format": format
-    }
-
-    try:
-        response = await _invoke_lambda(payload)
-    except httpx.TimeoutException:
-        raise HTTPException(500, "Query took too long to process.")
-
-    try:
-        response_data = response.json()["body"]["data"]
-    except (JSONDecodeError, KeyError):
-        logger.error(
-            f"Raster analysis lambda experienced an error. Full response: {response.text}"
-        )
-        raise HTTPException(
-            500, "Raster analysis geoprocessor experienced an error. See logs."
-        )
-
-    return Response(data=response_data)
-
-
-async def _invoke_lambda(payload, timeout=55) -> httpx.Response:
-    session = boto3.Session()
-    cred = session.get_credentials()
-
-    aws = AWS4Auth(
-        access_id=cred.access_key,
-        secret_key=cred.secret_key,
-        security_token=cred.token,
-        region=AWS_REGION,
-        service="lambda",
-    )
-
-    headers = {"X-Amz-Invocation-Type": "RequestResponse"}
-
-    async with httpx.AsyncClient() as client:
-        response: httpx.Response = await client.post(
-            f"{LAMBDA_ENTRYPOINT_URL}/2015-03-31/functions/{RASTER_ANALYSIS_LAMBDA_NAME}/invocations",
-            json=payload,
-            auth=aws,
-            timeout=timeout,
-            headers=headers,
-        )
-
-    return response
