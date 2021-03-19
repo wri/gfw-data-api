@@ -1,11 +1,18 @@
 """Run analysis on registered datasets."""
+from io import StringIO
+from json.decoder import JSONDecodeError
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Path, Query
+import boto3
+import httpx
+from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi.encoders import jsonable_encoder
+from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
+from httpx_auth import AWS4Auth
 
-from ..datasets.queries import _query_raster_lambda
+from ..datasets.queries import _query_raster, _query_raster_lambda
 from ...models.enum.analysis import RasterLayer
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.pydantic.analysis import ZonalAnalysisRequestIn, RasterQueryRequestIn

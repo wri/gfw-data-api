@@ -1,5 +1,6 @@
 """Explore data entries for a given dataset version using standard SQL."""
 import csv
+from contextlib import contextmanager
 from io import StringIO
 from json import JSONDecodeError
 from typing import Any, Dict, List, Optional, Tuple, Union
