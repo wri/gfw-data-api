@@ -1,18 +1,18 @@
 """Run analysis on registered datasets."""
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Path, Query
 from fastapi.responses import ORJSONResponse
 
-from ..datasets.queries import _query_raster_lambda
 from ...models.enum.analysis import RasterLayer
 from ...models.enum.geostore import GeostoreOrigin
-from ...models.pydantic.analysis import ZonalAnalysisRequestIn, RasterQueryRequestIn
+from ...models.pydantic.analysis import ZonalAnalysisRequestIn
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.responses import Response
 from ...utils.geostore import get_geostore_geometry
 from .. import DATE_REGEX
+from ..datasets.queries import _query_raster_lambda
 
 router = APIRouter()
 
@@ -76,12 +76,12 @@ async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
 
 
 async def _zonal_statistics(
-        geometry: Dict[str, Any],
-        sum_layers: List[RasterLayer],
-        group_by: List[RasterLayer],
-        filters: List[RasterLayer],
-        start_date: Optional[str],
-        end_date: Optional[str],
+    geometry: Dict[str, Any],
+    sum_layers: List[RasterLayer],
+    group_by: List[RasterLayer],
+    filters: List[RasterLayer],
+    start_date: Optional[str],
+    end_date: Optional[str],
 ):
     base = sum_layers[0].value
     selectors = ",".join([f"sum({lyr.value})" for lyr in sum_layers])
@@ -107,10 +107,7 @@ async def _zonal_statistics(
         query += f" where {where}"
     query += f"group by {groups}"
 
-    return await _query_raster_lambda(
-        geometry,
-        query
-    )
+    return await _query_raster_lambda(geometry, query)
 
 
 def _get_date_filter(date: str, op: str):

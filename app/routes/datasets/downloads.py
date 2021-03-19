@@ -1,6 +1,6 @@
 """Download dataset in different formats."""
 from io import StringIO
-from typing import Iterator, List, Optional, Tuple, Dict, Any
+from typing import Optional, Tuple
 from uuid import UUID
 
 from aiohttp import ClientError
@@ -84,9 +84,7 @@ async def download_csv_post(
         dataset, version, request.sql, request.geometry, request.delimiter
     )
 
-    response = CSVStreamingResponse(
-        iter([data.getvalue()]), filename=request.filename
-    )
+    response = CSVStreamingResponse(iter([data.getvalue()]), filename=request.filename)
     return response
 
 

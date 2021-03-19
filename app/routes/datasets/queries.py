@@ -15,8 +15,8 @@ from asyncpg import (
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import ORJSONResponse
 from fastapi.logger import logger
+from fastapi.responses import ORJSONResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
@@ -121,7 +121,12 @@ async def query_dataset_post(
 
 
 async def _query_dataset(
-    dataset: str, version: str, sql: str, geometry: Optional[Geometry], format: Optional[str] = "json", delimiter: Optional[str] = ","
+    dataset: str,
+    version: str,
+    sql: str,
+    geometry: Optional[Geometry],
+    format: Optional[str] = "json",
+    delimiter: Optional[str] = ",",
 ) -> Union[List[Dict[str, Any]], StringIO]:
     # Make sure we can query the dataset
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
@@ -133,10 +138,11 @@ async def _query_dataset(
     elif default_asset.asset_type == AssetType.raster_tile_set:
         if not geometry:
             raise HTTPException(
-                status_code=422,
-                detail="Raster tile set queries require a geometry."
+                status_code=422, detail="Raster tile set queries require a geometry."
             )
-        return await _query_raster(dataset, default_asset, sql, geometry, format, delimiter)
+        return await _query_raster(
+            dataset, default_asset, sql, geometry, format, delimiter
+        )
     else:
         raise HTTPException(
             status_code=501,
@@ -145,7 +151,12 @@ async def _query_dataset(
 
 
 async def _query_table(
-    dataset: str, version: str, sql: str, geometry: Optional[Geometry], format: Optional[str] = "json", delimiter: Optional[str] = ","
+    dataset: str,
+    version: str,
+    sql: str,
+    geometry: Optional[Geometry],
+    format: Optional[str] = "json",
+    delimiter: Optional[str] = ",",
 ) -> Union[List[Dict[str, Any]], StringIO]:
     # parse and validate SQL statement
     try:
@@ -343,17 +354,29 @@ async def _add_geometry_filter(parsed_sql, geometry: Geometry):
 
 
 async def _query_raster(
-    dataset: str, asset: AssetORM, sql: str, geometry: Geometry, format: Optional[str] = "json", delimiter: Optional[str] = ","
+    dataset: str,
+    asset: AssetORM,
+    sql: str,
+    geometry: Geometry,
+    format: Optional[str] = "json",
+    delimiter: Optional[str] = ",",
 ) -> List:
     # use default data type to get default raster layer for dataset
     default_type = asset.creation_options["pixel_meaning"]
-    default_layer = f"{default_type}__{dataset}" if default_type == "is" else f"{dataset}__{default_type}"
+    default_layer = (
+        f"{default_type}__{dataset}"
+        if default_type == "is"
+        else f"{dataset}__{default_type}"
+    )
     sql = sql.lower().replace(f"from {dataset}", f"from {default_layer}")
     return await _query_raster_lambda(geometry, sql, format, delimiter)
 
 
 async def _query_raster_lambda(
-    geometry: Geometry, sql: str, format: Optional[str] = "json", delimiter: Optional[str] = ","
+    geometry: Geometry,
+    sql: str,
+    format: Optional[str] = "json",
+    delimiter: Optional[str] = ",",
 ) -> Union[List[Dict[str, Any]], StringIO]:
     payload = {
         "geometry": jsonable_encoder(geometry),
@@ -379,5 +402,3 @@ async def _query_raster_lambda(
         )
 
     return response_data
-
-
