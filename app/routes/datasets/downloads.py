@@ -1,6 +1,4 @@
 """Download dataset in different formats."""
-import csv
-from contextlib import contextmanager
 from io import StringIO
 from typing import Iterator, List, Optional, Tuple, Dict, Any
 from uuid import UUID
@@ -8,7 +6,6 @@ from uuid import UUID
 from aiohttp import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
-from sqlalchemy.engine import RowProxy
 
 from ...crud.assets import get_assets_by_filter
 from ...main import logger
