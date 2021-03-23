@@ -4,6 +4,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Path, Query
 from fastapi.responses import ORJSONResponse
+from sqlalchemy import column, select, table, and_
+from sqlalchemy.sql.functions import sum
 
 from ...models.enum.analysis import RasterLayer
 from ...models.enum.geostore import GeostoreOrigin
@@ -86,41 +88,34 @@ async def _zonal_statistics(
     end_date: Optional[str],
 ):
     if filters:
-        base = filters[0].value
+        base = table(filters[0].value)
     elif group_by:
-        base = group_by[0].value
+        base = table(group_by[0].value)
     else:
-        base = "table"
+        base = table("table")
 
-    selectors = ",".join([f"sum({lyr.value})" for lyr in sum_layers])
-    groups = ",".join([lyr.value for lyr in group_by])
+    selectors = [sum(column({lyr.value})) for lyr in sum_layers]
+    groups = [column(lyr.value) for lyr in group_by]
 
     where_clauses = []
     for lyr in filters:
         if "umd_tree_cover_density" in lyr.value:
-            where_clauses.append(f"{lyr.value[:-2]}__threshold = {lyr.value[-2:]}")
+            where_clauses.append(column(f"{lyr.value[:-2]}__threshold") >= int(lyr.value[-2:]))
         else:
-            where_clauses.append(f"{lyr.value} != 0")
+            where_clauses.append(column(lyr.value) != 0)
 
     if start_date:
-        where_clauses.append(_get_date_filter(start_date, ">="))
+        where_clauses.append(_get_date_column(start_date) >= start_date)
 
     if end_date:
-        where_clauses.append(_get_date_filter(end_date, "<"))
+        where_clauses.append(_get_date_column(end_date) < end_date)
 
-    where = " and ".join(filters)
+    query = select(groups + selectors).select_from(base).where(and_(*where_clauses)).group_by(*groups)
+    query_str = str(query.compile(compile_kwargs={"literal_binds": True}))
 
-    query = f"select {selectors} from {base}"
-    if where:
-        query += f" where {where}"
-    query += f" group by {groups}"
-
-    data = await _query_raster_lambda(geometry, query)
+    data = await _query_raster_lambda(geometry, query_str)
     return Response(data=data)
 
 
-def _get_date_filter(date: str, op: str):
-    if len(date) == 4:
-        return f"umd_tree_cover_loss__year {op} {date}"
-    else:
-        return f"umd_glad_alerts__date {op} {date}"
+def _get_date_column(date: str):
+    return column("umd_tree_cover_loss__year") if len(date) == 4 else column("umd_glad_alerts__date")
