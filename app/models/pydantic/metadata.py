@@ -48,12 +48,29 @@ class DatasetMetadata(StrictBaseModel):
     learn_more: Optional[str]
 
 
+class ContentDateRange(StrictBaseModel):
+    min: str = Field(
+        ...,
+        description="Beginning date covered by data",
+        regex=DATE_REGEX,
+    )
+    max: str = Field(
+        ...,
+        description="End date covered by data",
+        regex=DATE_REGEX,
+    )
+
+
 class VersionMetadata(DatasetMetadata):
     version_number: Optional[str]
     content_date: Optional[str] = Field(
         None,
         description="Date content was created",
         regex=DATE_REGEX,
+    )
+    content_date_range: Optional[ContentDateRange] = Field(
+        None,
+        description="Date range covered by the content",
     )
     last_update: Optional[str] = Field(
         None,
