@@ -237,6 +237,7 @@ async def test_version_metadata(async_client):
         "learn_more": None,
         "version_number": version,
         "content_date": None,
+        "content_date_range": None,
         "last_update": None,
         "download": None,
         "analysis": None,
