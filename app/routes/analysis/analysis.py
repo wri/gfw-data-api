@@ -1,5 +1,5 @@
 """Run analysis on registered datasets."""
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Path, Query
@@ -22,6 +22,7 @@ router = APIRouter()
     response_class=ORJSONResponse,
     response_model=Response,
     tags=["Analysis"],
+    deprecated=True,
 )
 async def zonal_statistics_get(
     *,
@@ -63,6 +64,7 @@ async def zonal_statistics_get(
     response_class=ORJSONResponse,
     response_model=Response,
     tags=["Analysis"],
+    deprecated=True,
 )
 async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
     return await _zonal_statistics(
@@ -76,14 +78,20 @@ async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
 
 
 async def _zonal_statistics(
-    geometry: Dict[str, Any],
+    geometry: Geometry,
     sum_layers: List[RasterLayer],
     group_by: List[RasterLayer],
     filters: List[RasterLayer],
     start_date: Optional[str],
     end_date: Optional[str],
 ):
-    base = sum_layers[0].value
+    if filters:
+        base = filters[0].value
+    elif group_by:
+        base = group_by[0].value
+    else:
+        base = "table"
+
     selectors = ",".join([f"sum({lyr.value})" for lyr in sum_layers])
     groups = ",".join([lyr.value for lyr in group_by])
 
@@ -105,9 +113,10 @@ async def _zonal_statistics(
     query = f"select {selectors} from {base}"
     if where:
         query += f" where {where}"
-    query += f"group by {groups}"
+    query += f" group by {groups}"
 
-    return await _query_raster_lambda(geometry, query)
+    data = await _query_raster_lambda(geometry, query)
+    return Response(data=data)
 
 
 def _get_date_filter(date: str, op: str):

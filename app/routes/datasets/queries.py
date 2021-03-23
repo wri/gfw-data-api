@@ -1,5 +1,6 @@
 """Explore data entries for a given dataset version using standard SQL."""
 import csv
+import re
 from io import StringIO
 from json import JSONDecodeError
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -54,6 +55,7 @@ from ...models.enum.pg_sys_functions import (
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
+from ...models.enum.queries import QueryFormat, CsvDelimiter
 from ...models.orm.assets import Asset as AssetORM
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.query import QueryRequestIn
@@ -125,8 +127,8 @@ async def _query_dataset(
     version: str,
     sql: str,
     geometry: Optional[Geometry],
-    format: Optional[str] = "json",
-    delimiter: Optional[str] = ",",
+    format: QueryFormat = QueryFormat.json,
+    delimiter: CsvDelimiter = CsvDelimiter.comma,
 ) -> Union[List[Dict[str, Any]], StringIO]:
     # Make sure we can query the dataset
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
@@ -155,8 +157,8 @@ async def _query_table(
     version: str,
     sql: str,
     geometry: Optional[Geometry],
-    format: Optional[str] = "json",
-    delimiter: Optional[str] = ",",
+    format: QueryFormat = QueryFormat.json,
+    delimiter: CsvDelimiter = CsvDelimiter.comma,
 ) -> Union[List[Dict[str, Any]], StringIO]:
     # parse and validate SQL statement
     try:
@@ -198,20 +200,20 @@ async def _query_table(
     except (UndefinedColumnError, InvalidTextRepresentationError) as e:
         raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
 
-    if format == "csv":
+    if format == QueryFormat.csv:
         response = _orm_to_csv(response, delimiter=delimiter)
 
     return response
 
 
-def _orm_to_csv(data: List[RowProxy], delimiter=",") -> StringIO:
+def _orm_to_csv(data: List[RowProxy], delimiter: CsvDelimiter = CsvDelimiter.comma) -> StringIO:
     """Create a new csv file that represents generated data.
 
     Response will return a temporary redirect to download URL.
     """
     csv_file = StringIO()
 
-    wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
+    wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter.value)
     field_names = data[0].keys()
     wr.writerow(field_names)
     for row in data:
@@ -358,8 +360,8 @@ async def _query_raster(
     asset: AssetORM,
     sql: str,
     geometry: Geometry,
-    format: Optional[str] = "json",
-    delimiter: Optional[str] = ",",
+    format: QueryFormat = QueryFormat.json,
+    delimiter: CsvDelimiter = CsvDelimiter.comma,
 ) -> List:
     # use default data type to get default raster layer for dataset
     default_type = asset.creation_options["pixel_meaning"]
@@ -368,20 +370,20 @@ async def _query_raster(
         if default_type == "is"
         else f"{dataset}__{default_type}"
     )
-    sql = sql.lower().replace(f"from {dataset}", f"from {default_layer}")
+    sql = re.sub('from \w+', f"from {default_layer}", sql.lower())
     return await _query_raster_lambda(geometry, sql, format, delimiter)
 
 
 async def _query_raster_lambda(
     geometry: Geometry,
     sql: str,
-    format: Optional[str] = "json",
-    delimiter: Optional[str] = ",",
+    format: QueryFormat = QueryFormat.json,
+    delimiter: CsvDelimiter = CsvDelimiter.comma,
 ) -> Union[List[Dict[str, Any]], StringIO]:
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
-        "format": format,
+        "format": format.value,
     }
 
     try:
@@ -391,7 +393,7 @@ async def _query_raster_lambda(
 
     try:
         response_data = response.json()["body"]["data"]
-        if format == "csv":
+        if format == QueryFormat.csv:
             response_data = StringIO(response_data)
     except (JSONDecodeError, KeyError):
         logger.error(
