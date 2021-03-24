@@ -55,7 +55,8 @@ from ...models.enum.pg_sys_functions import (
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
-from ...models.enum.queries import QueryFormat, CsvDelimiter
+from ...models.enum.queries import QueryFormat
+from ...models.enum.creation_options import Delimiters
 from ...models.orm.assets import Asset as AssetORM
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.query import QueryRequestIn
@@ -128,7 +129,7 @@ async def _query_dataset(
     sql: str,
     geometry: Optional[Geometry],
     format: QueryFormat = QueryFormat.json,
-    delimiter: CsvDelimiter = CsvDelimiter.comma,
+    delimiter: Delimiters = Delimiters.comma,
 ) -> Union[List[Dict[str, Any]], StringIO]:
     # Make sure we can query the dataset
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
@@ -158,7 +159,7 @@ async def _query_table(
     sql: str,
     geometry: Optional[Geometry],
     format: QueryFormat = QueryFormat.json,
-    delimiter: CsvDelimiter = CsvDelimiter.comma,
+    delimiter: Delimiters = Delimiters.comma,
 ) -> Union[List[Dict[str, Any]], StringIO]:
     # parse and validate SQL statement
     try:
@@ -206,14 +207,14 @@ async def _query_table(
     return response
 
 
-def _orm_to_csv(data: List[RowProxy], delimiter: CsvDelimiter = CsvDelimiter.comma) -> StringIO:
+def _orm_to_csv(data: List[RowProxy], delimiter: Delimiters = Delimiters.comma) -> StringIO:
     """Create a new csv file that represents generated data.
 
     Response will return a temporary redirect to download URL.
     """
     csv_file = StringIO()
 
-    wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter.value)
+    wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
     field_names = data[0].keys()
     wr.writerow(field_names)
     for row in data:
@@ -361,7 +362,7 @@ async def _query_raster(
     sql: str,
     geometry: Geometry,
     format: QueryFormat = QueryFormat.json,
-    delimiter: CsvDelimiter = CsvDelimiter.comma,
+    delimiter: Delimiters = Delimiters.comma,
 ) -> List:
     # use default data type to get default raster layer for dataset
     default_type = asset.creation_options["pixel_meaning"]
@@ -378,12 +379,12 @@ async def _query_raster_lambda(
     geometry: Geometry,
     sql: str,
     format: QueryFormat = QueryFormat.json,
-    delimiter: CsvDelimiter = CsvDelimiter.comma,
+    delimiter: Delimiters = Delimiters.comma,
 ) -> Union[List[Dict[str, Any]], StringIO]:
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
-        "format": format.value,
+        "format": format,
     }
 
     try:
