@@ -1,4 +1,5 @@
 FROM globalforestwatch/pixetl:v1.5.1
+LABEL version="1.5.1"
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/
