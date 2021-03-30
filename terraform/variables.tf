@@ -55,6 +55,9 @@ variable "key_pair" {
 variable "service_url" {
   type = string
 }
+variable "rw_api_url" {
+  type = string
+}
 variable "git_sha" {
   type = string
 }
