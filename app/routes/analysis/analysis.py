@@ -108,7 +108,7 @@ async def _zonal_statistics(
     if end_date:
         where_clauses.append(_get_date_filter(end_date, "<"))
 
-    where = " and ".join(filters)
+    where = " and ".join(where_clauses)
 
     query = f"select {selectors} from {base}"
     if where:
@@ -123,4 +123,4 @@ def _get_date_filter(date: str, op: str):
     if len(date) == 4:
         return f"umd_tree_cover_loss__year {op} {date}"
     else:
-        return f"umd_glad_alerts__date {op} {date}"
+        return f"umd_glad_landsat_alerts__date {op} {date}"
