@@ -17,6 +17,7 @@ from fastapi.responses import ORJSONResponse
 
 from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
+from ...models.enum.analysis import RASTER_FIELDS
 from ...models.enum.assets import AssetStatus, AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
@@ -306,7 +307,17 @@ async def get_stats(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
 async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     dataset, version = dv
     asset = await assets.get_default_asset(dataset, version)
-    fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
+    if asset.asset_type in [
+        AssetType.geo_database_table,
+        AssetType.database_table,
+    ]:
+        fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
+    elif asset.asset_type == AssetType.raster_tile_set:
+        # TODO hacky so we have documentation, but this should draw from the API itself
+        # TODO instead of being hardcoded
+        fields: List[FieldMetadata] = [
+            FieldMetadata(**field) for field in RASTER_FIELDS
+        ]
 
     return FieldMetadataResponse(data=fields)
 
