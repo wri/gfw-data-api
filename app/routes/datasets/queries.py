@@ -84,8 +84,30 @@ async def query_dataset(
         GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
 ):
-    """Execute a READ-ONLY SQL query on the given dataset version (if
-    implemented)."""
+    """Execute a READ-ONLY SQL query on the given dataset version (if implemented).
+
+    If the default asset is a table, this will execute a postgres/postgis query.
+
+    If the default asset is a raster tile set, this will execute an on-the-fly raster
+    analysis. This will translate a subset of SQL to a raster analysis query, allowing you
+    to analyze raster tile sets across the API in a given geostore.
+
+    The raster SQL currently supports:
+    - SELECT
+    - WHERE (only AND conjunctions, with operators =, !=, <, >, <=, >=, booleans must be quoted)
+    - GROUP BY
+    - SUM/AVG/COUNT
+
+    The raster SQL does not support:
+    - SELECT * (must choose specific fields)
+    - AS
+    - LIMIT
+    - ORDER BY
+    - LIKE
+    - MIN/MAX/STDDEV/DISTINCT
+
+    An example raster SQL query might be:
+    `SELECT SUM(area__ha) FROM umd_tree_cover_loss WHERE umd_tree_cover_density_2000__threshold >= 30 GROUP BY umd_tree_cover_loss__year`"""
 
     dataset, version = dataset_version
     if geostore_id:
