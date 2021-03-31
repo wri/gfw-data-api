@@ -12,7 +12,8 @@ from ...main import logger
 from ...models.enum.assets import AssetType
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pixetl import Grid
-from ...models.enum.queries import CsvDelimiter, QueryFormat
+from ...models.enum.queries import QueryFormat
+from ...models.enum.creation_options import Delimiters
 from ...models.pydantic.downloads import DownloadCSVIn
 from ...models.pydantic.geostore import Geometry
 from ...responses import CSVStreamingResponse
@@ -39,7 +40,7 @@ async def download_csv(
         GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
     filename: str = Query("export.csv", description="Name of export file."),
-    delimiter: CsvDelimiter = Query(CsvDelimiter.comma, description="Delimiter to use for CSV file."),
+    delimiter: Delimiters = Query(Delimiters.comma, description="Delimiter to use for CSV file."),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented).
