@@ -57,6 +57,7 @@ class RasterLayer(str, Enum):
     umd_tree_cover_density_2010__75 = "umd_tree_cover_density_2010__75"
 
 
+# TODO this is temporarily hardcoded, should be dynamically generated (see GTC-1159)
 RASTER_FIELDS = [
     {
         "field_name_": "area__ha",
