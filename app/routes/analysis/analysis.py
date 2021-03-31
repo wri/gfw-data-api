@@ -1,28 +1,20 @@
 """Run analysis on registered datasets."""
-from json.decoder import JSONDecodeError
 from typing import List, Optional
 from uuid import UUID
 
-import boto3
-import httpx
-from fastapi import APIRouter, HTTPException, Path, Query
-from fastapi.encoders import jsonable_encoder
-from fastapi.logger import logger
+from fastapi import APIRouter, Path, Query
 from fastapi.responses import ORJSONResponse
-from httpx_auth import AWS4Auth
+from sqlalchemy import column, select, table, and_
+from sqlalchemy.sql.functions import sum
 
 from ...models.enum.analysis import RasterLayer
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.pydantic.analysis import ZonalAnalysisRequestIn
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.responses import Response
-from ...settings.globals import (
-    AWS_REGION,
-    LAMBDA_ENTRYPOINT_URL,
-    RASTER_ANALYSIS_LAMBDA_NAME,
-)
 from ...utils.geostore import get_geostore_geometry
 from .. import DATE_REGEX
+from ..datasets.queries import _query_raster_lambda
 
 router = APIRouter()
 
@@ -32,6 +24,7 @@ router = APIRouter()
     response_class=ORJSONResponse,
     response_model=Response,
     tags=["Analysis"],
+    deprecated=True,
 )
 async def zonal_statistics_get(
     *,
@@ -58,7 +51,6 @@ async def zonal_statistics_get(
     """Calculate zonal statistics on any registered raster layers in a
     geostore."""
     geometry: Geometry = await get_geostore_geometry(geostore_id, geostore_origin)
-
     return await _zonal_statistics(
         geometry,
         sum_layers,
@@ -74,6 +66,7 @@ async def zonal_statistics_get(
     response_class=ORJSONResponse,
     response_model=Response,
     tags=["Analysis"],
+    deprecated=True,
 )
 async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
     return await _zonal_statistics(
@@ -94,54 +87,35 @@ async def _zonal_statistics(
     start_date: Optional[str],
     end_date: Optional[str],
 ):
-    payload = {
-        "geometry": jsonable_encoder(geometry),
-        "group_by": group_by,
-        "filters": filters,
-        "sum": sum_layers,
-        "start_date": start_date,
-        "end_date": end_date,
-    }
+    if filters:
+        base = table(filters[0].value)
+    elif group_by:
+        base = table(group_by[0].value)
+    else:
+        base = table("table")
 
-    try:
-        response = await _invoke_lambda(payload)
-    except httpx.TimeoutException:
-        raise HTTPException(500, "Query took too long to process.")
+    selectors = [sum(column({lyr.value})) for lyr in sum_layers]
+    groups = [column(lyr.value) for lyr in group_by]
 
-    try:
-        response_data = response.json()["body"]["data"]
-    except (JSONDecodeError, KeyError):
-        logger.error(
-            f"Raster analysis lambda experienced an error. Full response: {response.text}"
-        )
-        raise HTTPException(
-            500, "Raster analysis geoprocessor experienced an error. See logs."
-        )
+    where_clauses = []
+    for lyr in filters:
+        if "umd_tree_cover_density" in lyr.value:
+            where_clauses.append(column(f"{lyr.value[:-2]}__threshold") >= int(lyr.value[-2:]))
+        else:
+            where_clauses.append(column(lyr.value) != 0)
 
-    return Response(data=response_data)
+    if start_date:
+        where_clauses.append(_get_date_column(start_date) >= start_date)
+
+    if end_date:
+        where_clauses.append(_get_date_column(end_date) < end_date)
+
+    query = select(groups + selectors).select_from(base).where(and_(*where_clauses)).group_by(*groups)
+    query_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+
+    data = await _query_raster_lambda(geometry, query_str)
+    return Response(data=data)
 
 
-async def _invoke_lambda(payload, timeout=55) -> httpx.Response:
-    session = boto3.Session()
-    cred = session.get_credentials()
-
-    aws = AWS4Auth(
-        access_id=cred.access_key,
-        secret_key=cred.secret_key,
-        security_token=cred.token,
-        region=AWS_REGION,
-        service="lambda",
-    )
-
-    headers = {"X-Amz-Invocation-Type": "RequestResponse"}
-
-    async with httpx.AsyncClient() as client:
-        response: httpx.Response = await client.post(
-            f"{LAMBDA_ENTRYPOINT_URL}/2015-03-31/functions/{RASTER_ANALYSIS_LAMBDA_NAME}/invocations",
-            json=payload,
-            auth=aws,
-            timeout=timeout,
-            headers=headers,
-        )
-
-    return response
+def _get_date_column(date: str):
+    return column("umd_tree_cover_loss__year") if len(date) == 4 else column("umd_glad_alerts__date")

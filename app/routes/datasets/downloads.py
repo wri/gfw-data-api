@@ -1,20 +1,19 @@
 """Download dataset in different formats."""
-import csv
-from contextlib import contextmanager
 from io import StringIO
-from typing import Iterator, List, Optional, Tuple
+from typing import Optional, Tuple
 from uuid import UUID
 
 from aiohttp import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
-from sqlalchemy.engine import RowProxy
 
 from ...crud.assets import get_assets_by_filter
 from ...main import logger
 from ...models.enum.assets import AssetType
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pixetl import Grid
+from ...models.enum.queries import QueryFormat
+from ...models.enum.creation_options import Delimiters
 from ...models.pydantic.downloads import DownloadCSVIn
 from ...models.pydantic.geostore import Geometry
 from ...responses import CSVStreamingResponse
@@ -41,7 +40,7 @@ async def download_csv(
         GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
     filename: str = Query("export.csv", description="Name of export file."),
-    delimiter: str = Query(",", description="Delimiter to use for CSV file."),
+    delimiter: Delimiters = Query(Delimiters.comma, description="Delimiter to use for CSV file."),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented).
@@ -59,11 +58,9 @@ async def download_csv(
     else:
         geometry = None
 
-    data: List[RowProxy] = await _query_dataset(dataset, version, sql, geometry)
-
-    with orm_to_csv(data, delimiter) as stream:
-        response = CSVStreamingResponse(iter([stream.getvalue()]), filename=filename)
-        return response
+    data: StringIO = await _query_dataset(dataset, version, sql, geometry, format=QueryFormat.csv, delimiter=delimiter)
+    response = CSVStreamingResponse(iter([data.getvalue()]), filename=filename)
+    return response
 
 
 @router.post(
@@ -85,15 +82,12 @@ async def download_csv_post(
 
     dataset, version = dataset_version
 
-    data: List[RowProxy] = await _query_dataset(
-        dataset, version, request.sql, request.geometry
+    data: StringIO = await _query_dataset(
+        dataset, version, request.sql, request.geometry, request.delimiter
     )
 
-    with orm_to_csv(data, request.delimiter) as stream:
-        response = CSVStreamingResponse(
-            iter([stream.getvalue()]), filename=request.filename
-        )
-        return response
+    response = CSVStreamingResponse(iter([data.getvalue()]), filename=request.filename)
+    return response
 
 
 @router.get(
@@ -172,27 +166,6 @@ async def download_geopackage(
     presigned_url = await _get_presigned_url(bucket, key)
 
     return RedirectResponse(url=presigned_url)
-
-
-@contextmanager
-def orm_to_csv(data: List[RowProxy], delimiter=",") -> Iterator[StringIO]:
-
-    """Create a new csv file that represents generated data.
-
-    Response will return a temporary redirect to download URL.
-    """
-
-    csv_file = StringIO()
-    try:
-        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
-        field_names = data[0].keys()
-        wr.writerow(field_names)
-        for row in data:
-            wr.writerow(row.values())
-        csv_file.seek(0)
-        yield csv_file
-    finally:
-        csv_file.close()
 
 
 async def _get_raster_tile_set_asset_url(
