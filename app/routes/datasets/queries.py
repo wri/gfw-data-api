@@ -69,6 +69,8 @@ from ...utils.geostore import get_geostore_geometry
 from ...utils.serialization import jsonencoder_lite
 from .. import dataset_version_dependency
 
+from fastapi.responses import Response as FastApiResponse
+
 router = APIRouter()
 
 
@@ -99,9 +101,13 @@ async def query_dataset(
         geometry = None
 
     data: List[Dict[str, Any]]= await _query_dataset(dataset, version, sql, geometry)
-    serialized_data = orjson.dumps(data, default=jsonencoder_lite())
+    response = {
+        "data": data,
+        "status": "success"
+    }
+    serialized_response = orjson.dumps(response, default=jsonencoder_lite())
 
-    return Response(content=serialized_data, media_type="application/json")
+    return FastApiResponse(content=serialized_response, media_type="application/json")
 
 
 @router.post(
