@@ -1,6 +1,5 @@
 """Explore data entries for a given dataset version using standard SQL."""
 import csv
-import decimal
 import re
 from io import StringIO
 from json import JSONDecodeError
@@ -20,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
+from fastapi.responses import Response as FastApiResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
@@ -29,6 +29,7 @@ from sqlalchemy.engine import RowProxy
 from ...application import db
 from ...crud import assets
 from ...models.enum.assets import AssetType
+from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pg_admin_functions import (
     advisory_lock_functions,
@@ -58,7 +59,6 @@ from ...models.enum.pg_sys_functions import (
     transaction_ids_and_snapshots,
 )
 from ...models.enum.queries import QueryFormat
-from ...models.enum.creation_options import Delimiters
 from ...models.orm.assets import Asset as AssetORM
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.query import QueryRequestIn
@@ -68,8 +68,6 @@ from ...utils.aws import invoke_lambda
 from ...utils.geostore import get_geostore_geometry
 from ...utils.serialization import jsonencoder_lite
 from .. import dataset_version_dependency
-
-from fastapi.responses import Response as FastApiResponse
 
 router = APIRouter()
 
@@ -100,12 +98,9 @@ async def query_dataset(
     else:
         geometry = None
 
-    data: List[Dict[str, Any]]= await _query_dataset(dataset, version, sql, geometry)
-    response = {
-        "data": data,
-        "status": "success"
-    }
-    serialized_response = orjson.dumps(response, default=jsonencoder_lite())
+    data = await _query_dataset(dataset, version, sql, geometry)
+    response = {"data": data, "status": "success"}
+    serialized_response = orjson.dumps(response, default=jsonencoder_lite)
 
     return FastApiResponse(content=serialized_response, media_type="application/json")
 
@@ -126,9 +121,7 @@ async def query_dataset_post(
 
     dataset, version = dataset_version
 
-    data: List[Dict[str, Any]] = await _query_dataset(
-        dataset, version, request.sql, request.geometry
-    )
+    data = await _query_dataset(dataset, version, request.sql, request.geometry)
 
     return Response(data=data)
 
@@ -201,7 +194,7 @@ async def _query_table(
 
     try:
         rows = await db.all(sql)
-        response = [dict(row) for row in rows]
+        response: List[Dict[str, Any]] = [dict(row) for row in rows]
     except InsufficientPrivilegeError:
         raise HTTPException(
             status_code=403, detail="Not authorized to execute this query."
@@ -212,12 +205,14 @@ async def _query_table(
         raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
 
     if format == QueryFormat.csv:
-        response = _orm_to_csv(response, delimiter=delimiter)
+        return _orm_to_csv(response, delimiter=delimiter)
 
     return response
 
 
-def _orm_to_csv(data: List[RowProxy], delimiter: Delimiters = Delimiters.comma) -> StringIO:
+def _orm_to_csv(
+    data: List[RowProxy], delimiter: Delimiters = Delimiters.comma
+) -> Union[List[Dict[str, Any]], StringIO]:
     """Create a new csv file that represents generated data.
 
     Response will return a temporary redirect to download URL.
@@ -373,7 +368,7 @@ async def _query_raster(
     geometry: Geometry,
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
-) -> List:
+) -> Union[List[Dict[str, Any]], StringIO]:
     # use default data type to get default raster layer for dataset
     default_type = asset.creation_options["pixel_meaning"]
     default_layer = (
@@ -381,7 +376,7 @@ async def _query_raster(
         if default_type == "is"
         else f"{dataset}__{default_type}"
     )
-    sql = re.sub('from \w+', f"from {default_layer}", sql.lower())
+    sql = re.sub("from \w+", f"from {default_layer}", sql.lower())
     return await _query_raster_lambda(geometry, sql, format, delimiter)
 
 
