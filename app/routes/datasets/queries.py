@@ -1,5 +1,6 @@
 """Explore data entries for a given dataset version using standard SQL."""
 import csv
+import decimal
 import re
 from io import StringIO
 from json import JSONDecodeError
@@ -8,6 +9,7 @@ from urllib.parse import unquote
 from uuid import UUID
 
 import httpx
+import orjson
 from asyncpg import (
     InsufficientPrivilegeError,
     InvalidTextRepresentationError,
@@ -64,6 +66,7 @@ from ...models.pydantic.responses import Response
 from ...settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
 from ...utils.aws import invoke_lambda
 from ...utils.geostore import get_geostore_geometry
+from ...utils.serialization import jsonencoder_lite
 from .. import dataset_version_dependency
 
 router = APIRouter()
@@ -95,9 +98,10 @@ async def query_dataset(
     else:
         geometry = None
 
-    data: List[RowProxy] = await _query_dataset(dataset, version, sql, geometry)
+    data: List[Dict[str, Any]]= await _query_dataset(dataset, version, sql, geometry)
+    serialized_data = orjson.dumps(data, default=jsonencoder_lite())
 
-    return Response(data=data)
+    return Response(content=serialized_data, media_type="application/json")
 
 
 @router.post(
