@@ -9,7 +9,7 @@ assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
 from copy import deepcopy
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from botocore.exceptions import ClientError, ParamValidationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
@@ -87,18 +87,36 @@ async def add_new_version(
 ):
     """Create or update a version for a given dataset."""
 
-    input_data = request.dict(exclude_none=True, by_alias=True)
+    input_data: Dict[str, Any] = request.dict(exclude_none=True, by_alias=True)
 
-    creation_options = input_data.pop("creation_options")
+    creation_options: Dict[str, Any] = input_data.pop("creation_options")
     _verify_source_file_access(creation_options["source_uri"])
+
+    retrying: bool = False
 
     # Register version with DB
     try:
         new_version: ORMVersion = await versions.create_version(
             dataset, version, **input_data
         )
-    except (RecordAlreadyExistsError, RecordNotFoundError) as e:
+    except RecordNotFoundError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except RecordAlreadyExistsError as e:
+        if creation_options.get("retry") is True:
+            new_version = await versions.get_version(dataset, version)
+            retrying = True
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    if retrying:
+        existing_asset: ORMAsset = await assets.get_default_asset(dataset, version)
+        existing_creation_options: CreationOptions = creation_option_factory(
+            existing_asset.asset_type, existing_asset.creation_options
+        )
+        for k, v in creation_options.items():
+            if v != getattr(existing_creation_options, k, None):
+                msg = "When retrying, creation_options must match original attempt"
+                raise HTTPException(status_code=400, detail=msg)
 
     input_data["creation_options"] = creation_options
 
