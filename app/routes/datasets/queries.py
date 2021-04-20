@@ -8,7 +8,6 @@ from urllib.parse import unquote
 from uuid import UUID
 
 import httpx
-import orjson
 from asyncpg import (
     InsufficientPrivilegeError,
     InvalidTextRepresentationError,
@@ -18,8 +17,6 @@ from asyncpg import (
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
-from fastapi.responses import ORJSONResponse
-from fastapi.responses import Response as FastApiResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
@@ -63,10 +60,10 @@ from ...models.orm.assets import Asset as AssetORM
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.query import QueryRequestIn
 from ...models.pydantic.responses import Response
+from ...responses import ORJSONLiteResponse
 from ...settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
 from ...utils.aws import invoke_lambda
 from ...utils.geostore import get_geostore_geometry
-from ...utils.serialization import jsonencoder_lite
 from .. import dataset_version_dependency
 
 router = APIRouter()
@@ -74,7 +71,7 @@ router = APIRouter()
 
 @router.get(
     "/{dataset}/{version}/query",
-    response_class=ORJSONResponse,
+    response_class=ORJSONLiteResponse,
     response_model=Response,
     tags=["Query"],
 )
@@ -99,15 +96,12 @@ async def query_dataset(
         geometry = None
 
     data = await _query_dataset(dataset, version, sql, geometry)
-    response = {"data": data, "status": "success"}
-    serialized_response = orjson.dumps(response, default=jsonencoder_lite)
-
-    return FastApiResponse(content=serialized_response, media_type="application/json")
+    return Response(data=data)
 
 
 @router.post(
     "/{dataset}/{version}/query",
-    response_class=ORJSONResponse,
+    response_class=ORJSONLiteResponse,
     response_model=Response,
     tags=["Query"],
 )
@@ -122,7 +116,6 @@ async def query_dataset_post(
     dataset, version = dataset_version
 
     data = await _query_dataset(dataset, version, request.sql, request.geometry)
-
     return Response(data=data)
 
 
