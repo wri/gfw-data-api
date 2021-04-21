@@ -17,7 +17,7 @@ from app.errors import http_error_handler
 
 from .application import app
 from .middleware import redirect_latest, set_db_mode
-from .routes import security
+from .routes import authentication
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.datasets import asset as version_asset
@@ -105,7 +105,7 @@ app.add_middleware(
 # AUTHENTICATION
 ################
 
-app.include_router(security.router, tags=["Authentication"])
+app.include_router(authentication.router, tags=["Authentication"])
 
 ###############
 # DATASET API

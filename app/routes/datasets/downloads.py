@@ -1,6 +1,6 @@
 """Download dataset in different formats."""
 from io import StringIO
-from typing import Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
 from aiohttp import ClientError
@@ -10,10 +10,10 @@ from fastapi.responses import RedirectResponse
 from ...crud.assets import get_assets_by_filter
 from ...main import logger
 from ...models.enum.assets import AssetType
+from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat
-from ...models.enum.creation_options import Delimiters
 from ...models.pydantic.downloads import DownloadCSVIn
 from ...models.pydantic.geostore import Geometry
 from ...responses import CSVStreamingResponse
@@ -40,7 +40,9 @@ async def download_csv(
         GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
     filename: str = Query("export.csv", description="Name of export file."),
-    delimiter: Delimiters = Query(Delimiters.comma, description="Delimiter to use for CSV file."),
+    delimiter: Delimiters = Query(
+        Delimiters.comma, description="Delimiter to use for CSV file."
+    ),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented).
@@ -58,7 +60,13 @@ async def download_csv(
     else:
         geometry = None
 
-    data: StringIO = await _query_dataset(dataset, version, sql, geometry, format=QueryFormat.csv, delimiter=delimiter)
+    data: Union[List[Dict[str, Any]], StringIO] = await _query_dataset(
+        dataset, version, sql, geometry, format=QueryFormat.csv, delimiter=delimiter
+    )
+
+    # FIXME: the upstream method _query_dataset should only return one type
+    #  main reseason for type mixing is the raster analysis lambda function which can either return a CSV or JSON
+    assert isinstance(data, StringIO), "Not a StringIO"
     response = CSVStreamingResponse(iter([data.getvalue()]), filename=filename)
     return response
 
@@ -82,11 +90,20 @@ async def download_csv_post(
 
     dataset, version = dataset_version
 
-    data: StringIO = await _query_dataset(
-        dataset, version, request.sql, request.geometry, request.delimiter
+    data: Union[List[Dict[str, Any]], StringIO] = await _query_dataset(
+        dataset,
+        version,
+        request.sql,
+        request.geometry,
+        format=QueryFormat.csv,
+        delimiter=request.delimiter,
     )
 
+    # FIXME: the upstream method _query_dataset should only return one type
+    #  main reseason for type mixing is the raster analysis lambda function which can either return a CSV or JSON
+    assert isinstance(data, StringIO), "Not a StringIO"
     response = CSVStreamingResponse(iter([data.getvalue()]), filename=request.filename)
+
     return response
 
 

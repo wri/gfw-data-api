@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 
-from app.routes import is_admin, is_service_account
+from app.authentication.token import is_admin, is_service_account
 from app.utils.rw_api import who_am_i
 
 

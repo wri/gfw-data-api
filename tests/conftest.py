@@ -14,7 +14,7 @@ from docker.models.containers import ContainerCollection
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from app.routes import is_admin, is_service_account
+from app.authentication.token import is_admin, is_service_account
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
     AURORA_JOB_QUEUE_FAST,
