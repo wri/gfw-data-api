@@ -15,6 +15,7 @@ from asyncpg import (
     UndefinedFunctionError,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from pglast import printers  # noqa
@@ -76,7 +77,7 @@ router = APIRouter()
     tags=["Query"],
 )
 async def query_dataset(
-    *,
+    response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
@@ -96,6 +97,8 @@ async def query_dataset(
         geometry = None
 
     data = await _query_dataset(dataset, version, sql, geometry)
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
     return Response(data=data)
 
 
