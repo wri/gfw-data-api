@@ -44,7 +44,7 @@ async def get_api_key(
     api_key_cookie: Tuple[Optional[str], Optional[str]] = Security(
         APIKeyOriginCookie(name=API_KEY_NAME, auto_error=False)
     ),
-):
+) -> Tuple[Optional[str], Optional[str]]:
     for api_key, origin in [api_key_query, api_key_header, api_key_cookie]:
         if api_key and origin:
             try:

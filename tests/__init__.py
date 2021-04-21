@@ -2,9 +2,10 @@ import contextlib
 import io
 import json
 import os
+import uuid
 import zipfile
 from http.server import BaseHTTPRequestHandler
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import boto3
 from moto import mock_batch, mock_ec2, mock_ecs, mock_iam, mock_lambda, mock_logs
@@ -300,6 +301,10 @@ async def is_admin_mocked():
 
 async def is_service_account_mocked():
     return True
+
+
+async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
+    return str(uuid.uuid4()), "localhost"
 
 
 def setup_clients(ec2_client, iam_client):

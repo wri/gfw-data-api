@@ -42,3 +42,21 @@ async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
         raise HTTPException(status_code=401, detail="Unauthorized")
     else:
         return True
+
+
+async def get_user_id(token: str = Depends(oauth2_scheme)) -> str:
+    """Calls GFW API to authorize user.
+
+    This functions check is user of any level is associated with the GFW
+    app and returns the user ID
+    """
+
+    response: Response = await who_am_i(token)
+
+    if response.status_code == 401 or not (
+        "gfw" in response.json()["extraUserData"]["apps"]
+    ):
+        logger.info("Unauthorized user")
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    else:
+        return response.json()["id"]

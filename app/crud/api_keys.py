@@ -7,15 +7,16 @@ from app.models.orm.api_keys import ApiKey as ORMApiKey
 
 
 async def create_api_key(
-    organization: str, email: str, domains: List[str]
+    user_id: str, organization: str, email: str, domains: List[str]
 ) -> ORMApiKey:
 
     new_api_key: ORMApiKey = await ORMApiKey.create(
+        user_id=user_id,
         api_key=uuid.uuid4(),
         organization=organization,
         email=email,
         domains=domains,
-        expiration_date=_next_year(),
+        expires_on=_next_year(),
     )
 
     return new_api_key
@@ -27,6 +28,19 @@ async def get_api_key(api_key: uuid.UUID) -> ORMApiKey:
         raise RecordNotFoundError(f"Could not find requested api_key {api_key}")
 
     return api_key_record
+
+
+async def get_api_keys_from_user(user_id: str) -> List[ORMApiKey]:
+    rows = await ORMApiKey.query.where(ORMApiKey.user_id == user_id).gino.all()
+
+    return rows
+
+
+async def delete_api_key(api_key: uuid.UUID) -> ORMApiKey:
+    row: ORMApiKey = await get_api_key(api_key)
+    await ORMApiKey.delete.where(ORMApiKey.api_key == api_key).gino.status()
+
+    return row
 
 
 def _next_year():
