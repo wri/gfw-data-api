@@ -153,6 +153,7 @@ async def create_tile_cache(
     cmd += [asset_prefix]
 
     tile_cache_job = GDAL2TilesJob(
+        dataset=dataset,
         job_name=f"generate_tile_cache_zoom_{zoom_level}",
         command=cmd,
         environment=JOB_ENV,

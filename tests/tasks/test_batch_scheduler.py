@@ -67,12 +67,14 @@ async def test_batch_scheduler(batch_client, httpd, async_client):
     ############################
 
     job1 = PostgresqlClientJob(
+        dataset=dataset,
         job_name="job1",
         command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
         environment=job_env,
         callback=callback,
     )
     job2 = GdalPythonImportJob(
+        dataset=dataset,
         job_name="job2",
         command=[
             "test_mock_s3_ogr2ogr.sh",
@@ -92,6 +94,7 @@ async def test_batch_scheduler(batch_client, httpd, async_client):
         callback=callback,
     )
     job3 = GdalPythonExportJob(
+        dataset=dataset,
         job_name="job3",
         command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
         environment=job_env,
@@ -99,6 +102,7 @@ async def test_batch_scheduler(batch_client, httpd, async_client):
         callback=callback,
     )
     job4 = TileCacheJob(
+        dataset=dataset,
         job_name="job4",
         command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
         environment=job_env,

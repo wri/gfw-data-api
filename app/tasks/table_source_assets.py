@@ -57,7 +57,11 @@ async def table_source_asset(
     ]
 
     create_table_job = PostgresqlClientJob(
-        job_name="create_table", command=command, environment=job_env, callback=callback
+        dataset=dataset,
+        job_name="create_table",
+        command=command,
+        environment=job_env,
+        callback=callback,
     )
 
     # Create partitions
@@ -105,6 +109,7 @@ async def table_source_asset(
 
         load_data_jobs.append(
             PostgresqlClientJob(
+                dataset=dataset,
                 job_name=f"load_data_{i}",
                 command=command,
                 environment=job_env,
@@ -118,6 +123,7 @@ async def table_source_asset(
     if creation_options.latitude and creation_options.longitude:
         geometry_jobs.append(
             PostgresqlClientJob(
+                dataset=dataset,
                 job_name="add_point_geometry",
                 command=[
                     "add_point_geometry.sh",
@@ -144,6 +150,7 @@ async def table_source_asset(
     for index in creation_options.indices:
         index_jobs.append(
             PostgresqlClientJob(
+                dataset=dataset,
                 job_name=f"create_index_{'_'.join(index.column_names)}_{index.index_type}",
                 command=[
                     "create_index.sh",
@@ -240,6 +247,7 @@ async def append_table_source_asset(
 
         load_data_jobs.append(
             PostgresqlClientJob(
+                dataset=dataset,
                 job_queue=AURORA_JOB_QUEUE_FAST,
                 job_name=f"load_data_{i}",
                 command=command,
@@ -254,6 +262,7 @@ async def append_table_source_asset(
     if creation_options.latitude and creation_options.longitude:
         geometry_jobs.append(
             PostgresqlClientJob(
+                dataset=dataset,
                 job_queue=AURORA_JOB_QUEUE_FAST,
                 job_name="update_point_geometry",
                 command=[
@@ -340,6 +349,7 @@ def _partition_job(
     callback: Callback,
 ) -> PostgresqlClientJob:
     return PostgresqlClientJob(
+        dataset=dataset,
         job_name=f"create_partitions_{suffix}",
         command=[
             "create_partitions.sh",
@@ -420,6 +430,7 @@ def _create_cluster_jobs(
     else:
         # Without partitions we can cluster the main table directly
         job = PostgresqlClientJob(
+            dataset=dataset,
             job_name="cluster_table",
             command=[
                 "cluster_table.sh",
@@ -469,6 +480,7 @@ def _cluster_partition_job(
     ]
 
     return PostgresqlClientJob(
+        dataset=dataset,
         job_name=f"cluster_partitions_{index}",
         command=command,
         environment=job_env,
