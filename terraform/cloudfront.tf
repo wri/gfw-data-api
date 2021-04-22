@@ -2,7 +2,7 @@ resource "aws_cloudfront_distribution" "data_api" {
   enabled             = true
   is_ipv6_enabled     = true
   price_class         = "PriceClass_All"
-  aliases             = [var.service_url]
+  #aliases             = [var.service_url]
 
   origin {
     domain_name = module.fargate_autoscaling.lb_dns_name
@@ -49,7 +49,7 @@ resource "aws_cloudfront_distribution" "data_api" {
   }
 
   viewer_certificate {
-    acm_certificate_arn            = ""
+    acm_certificate_arn            = data.terraform_remote_state.core.outputs.acm_certificate
     cloudfront_default_certificate = false
     minimum_protocol_version       = "TLSv1.1_2016"
     ssl_support_method             = "sni-only"
