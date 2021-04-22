@@ -2,7 +2,7 @@ resource "aws_cloudfront_distribution" "data_api" {
   enabled             = true
   is_ipv6_enabled     = true
   price_class         = "PriceClass_All"
-  #aliases             = [var.service_url]
+  aliases             = [replace(var.service_url, "https://", "")]
 
   origin {
     domain_name = module.fargate_autoscaling.lb_dns_name
@@ -23,11 +23,11 @@ resource "aws_cloudfront_distribution" "data_api" {
 
   default_cache_behavior {
     target_origin_id       = "default"
-    default_ttl            = 31536000 # 1y
+    default_ttl            = 0
     min_ttl                = 0
     max_ttl                = 31536000 # 1y
 
-    allowed_methods = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods  = ["GET", "HEAD"]
     viewer_protocol_policy = "redirect-to-https"
 
