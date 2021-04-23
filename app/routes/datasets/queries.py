@@ -143,17 +143,18 @@ async def _query_dataset(
         )
 
 
-async def _get_query_type(default_asset: AssetORM, geometry: Optional[Geometry]):
+def _get_query_type(default_asset: AssetORM, geometry: Optional[Geometry]):
     if default_asset.asset_type in [
         AssetType.geo_database_table,
         AssetType.database_table,
     ]:
-        pass
+        return QueryType.table
     elif default_asset.asset_type == AssetType.raster_tile_set:
         if not geometry:
             raise HTTPException(
                 status_code=422, detail="Raster tile set queries require a geometry."
             )
+        return QueryType.raster
     else:
         raise HTTPException(
             status_code=501,

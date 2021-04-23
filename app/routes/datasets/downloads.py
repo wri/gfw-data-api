@@ -4,7 +4,7 @@ from typing import Optional, Tuple, cast
 from uuid import UUID
 
 from aiohttp import ClientError
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import RedirectResponse
 
 from ...crud.assets import get_assets_by_filter, get_default_asset
@@ -33,7 +33,7 @@ router: APIRouter = APIRouter()
     tags=["Download"],
 )
 async def download_csv(
-    *,
+    response: Response,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
@@ -65,6 +65,8 @@ async def download_csv(
         dataset, version, sql, geometry, delimiter=delimiter
     )
     response = CSVStreamingResponse(iter([data.getvalue()]), filename=filename)
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
     return response
 
 
