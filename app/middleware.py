@@ -74,8 +74,8 @@ async def no_cache_response_header(request: Request, call_next):
     By default, specify no-cache. Individual endpoints can override this
     header.
     """
-
     response = await call_next(request)
-    response.headers["Cache-Control"] = "no-cache"
+    if "Cache-Control" not in response.headers:
+        response.headers["Cache-Control"] = "no-cache"
 
     return response
