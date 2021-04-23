@@ -122,8 +122,8 @@ MAX_CORES = config("MAX_CORES", cast=int, default=96)
 MAX_MEM = config("MAX_MEM", cast=int, default=760000)
 PIXETL_JOB_DEFINITION = config("PIXETL_JOB_DEFINITION", cast=str)
 PIXETL_JOB_QUEUE = config("PIXETL_JOB_QUEUE", cast=str)
-PIXETL_CORES = config("PIXETL_CORES", cast=int, default=48)
-PIXETL_MAX_MEM = config("PIXETL_MAX_MEM", cast=int, default=380000)
+PIXETL_CORES = config("PIXETL_CORES", cast=int, default=1)
+PIXETL_MAX_MEM = config("PIXETL_MAX_MEM", cast=int, default=2500)
 PIXETL_DEFAULT_RESAMPLING = config(
     "DEFAULT_RESAMPLING", cast=str, default=ResamplingMethod.nearest.value
 )
