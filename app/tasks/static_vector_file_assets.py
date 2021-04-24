@@ -79,6 +79,7 @@ async def static_vector_file_asset(
     ]
 
     export_shp = GdalPythonExportJob(
+        dataset=dataset,
         job_name="export_shp",
         command=command,
         environment=reader_secrets,

@@ -315,6 +315,7 @@ async def _merge_intensity_and_date_conf(
     callback = callback_constructor(asset.asset_id)
 
     rgb_encoding_job = BuildRGBJob(
+        dataset=dataset,
         job_name=f"merge_intensity_zoom_{zoom_level}",
         command=cmd,
         environment=JOB_ENV,
@@ -336,6 +337,7 @@ async def _merge_intensity_and_date_conf(
         prefix,
     ]
     tiles_geojson_job = PixETLJob(
+        dataset=dataset,
         job_name=f"generate_tiles_geojson_{zoom_level}",
         command=cmd,
         environment=JOB_ENV,

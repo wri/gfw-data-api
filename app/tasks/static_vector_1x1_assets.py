@@ -58,6 +58,7 @@ async def static_vector_1x1_asset(
     ]
 
     export_1x1_grid = PostgresqlClientJob(
+        dataset=dataset,
         job_name="export_1x1_grid",
         job_queue=DATA_LAKE_JOB_QUEUE,
         command=command,
