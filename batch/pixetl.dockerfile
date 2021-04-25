@@ -15,6 +15,9 @@ ENV PATH="/opt/python:${PATH}"
 
 WORKDIR /tmp
 
+# DEBUGGING: Compile libleak
+RUN apt install -y git && cd $WORKDIR && git clone --recursive https://github.com/WuBingzheng/libleak.git && cd libleak && make
+
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
