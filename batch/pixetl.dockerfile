@@ -1,4 +1,4 @@
-FROM globalforestwatch/pixetl:v1.5.3
+FROM globalforestwatch/pixetl:v1.5.4
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/
@@ -14,9 +14,6 @@ ENV PATH="/opt/scripts:${PATH}"
 ENV PATH="/opt/python:${PATH}"
 
 WORKDIR /tmp
-
-# DEBUGGING: Compile libleak
-RUN apt install -y git && cd $WORKDIR && git clone --recursive https://github.com/WuBingzheng/libleak.git && cd libleak && make
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
