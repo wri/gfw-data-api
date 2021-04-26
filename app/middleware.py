@@ -74,8 +74,13 @@ async def no_cache_response_header(request: Request, call_next):
     By default, specify no-cache. Individual endpoints can override this
     header.
     """
+    no_cache_endpoints = ["/", "/openapi.json", "docs"]
     response = await call_next(request)
-    if "Cache-Control" not in response.headers:
+
+    if request.method == "GET" and request.url.path in no_cache_endpoints:
         response.headers["Cache-Control"] = "no-cache"
+    elif request.method == "GET" and response.status_code < 300:
+        max_age = response.headers.get("Cache-Control", "max-age=0")
+        response.headers["Cache-Control"] = max_age
 
     return response
