@@ -127,6 +127,7 @@ def submit_batch_job(
             "evaluateOnExit": [{"onStatusReason": "Host EC2*", "action": "RETRY"}],
         },
         "timeout": {"attemptDurationSeconds": job.attempt_duration_seconds},
+        "tags": {"Job": "Data-API Batch Job", "Dataset": job.dataset},
     }
 
     logger.info(f"Submit batch job with payload: {payload}")

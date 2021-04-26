@@ -66,6 +66,6 @@ variable "lambda_analysis_workspace" {
 }
 
 variable "data_lake_max_vcpus" {
-  type = number
+  type    = number
   default = 576
 }

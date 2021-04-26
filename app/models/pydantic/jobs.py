@@ -21,6 +21,7 @@ from .base import StrictBaseModel
 
 
 class Job(StrictBaseModel):
+    dataset: str  # used for tagging resources
     job_name: str
     job_queue: str
     job_definition: str

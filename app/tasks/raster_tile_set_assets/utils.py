@@ -78,6 +78,7 @@ async def create_pixetl_job(
         kwargs = {}
 
     return PixETLJob(
+        dataset=dataset,
         job_name=job_name,
         command=command,
         environment=JOB_ENV,
@@ -130,6 +131,7 @@ async def create_gdaldem_job(
     ]
 
     return GDALDEMJob(
+        dataset=dataset,
         job_name=job_name,
         command=command,
         environment=JOB_ENV,

@@ -40,12 +40,14 @@ async def test_batch_failure():
     # Can't have two parents with same name
 
     job1 = PostgresqlClientJob(
+        dataset=dataset,
         job_name="job1",
         command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
         environment=job_env,
         callback=callback,
     )
     job2 = PostgresqlClientJob(
+        dataset=dataset,
         job_name="job1",
         command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
         environment=job_env,
@@ -53,6 +55,7 @@ async def test_batch_failure():
     )
 
     job3 = PostgresqlClientJob(
+        dataset=dataset,
         job_name="job3",
         command=["test_mock_s3_awscli.sh", "-s", f"s3://{BUCKET}/{GEOJSON_NAME}"],
         environment=job_env,
