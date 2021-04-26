@@ -88,7 +88,16 @@ async def query_dataset(
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
-    implemented)."""
+    implemented).
+
+    Adding a geostore ID to the query will apply a spatial filter to the
+    query, only returning results for features intersecting with the
+    geostore geometry. For vector datasets, this filter will not clip
+    feature geometries to the geostore boundaries. Hence any spatial
+    transformation such as area calculations will be applied on the
+    entire feature geometry, including areas outside the geostore
+    boundaries.
+    """
 
     dataset, version = dataset_version
     if geostore_id:

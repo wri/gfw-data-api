@@ -1,16 +1,21 @@
 import uuid
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from app.errors import RecordNotFoundError
 from app.models.orm.api_keys import ApiKey as ORMApiKey
 
 
 async def create_api_key(
-    user_id: str, organization: str, email: str, domains: List[str]
+    user_id: str,
+    alias: Optional[str],
+    organization: str,
+    email: str,
+    domains: List[str],
 ) -> ORMApiKey:
 
     new_api_key: ORMApiKey = await ORMApiKey.create(
+        alias=alias,
         user_id=user_id,
         api_key=uuid.uuid4(),
         organization=organization,

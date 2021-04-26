@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import Query
@@ -9,8 +9,27 @@ from app.models.pydantic.base import BaseRecord, StrictBaseModel
 from app.models.pydantic.responses import Response
 
 
+class SignUpRequestIn(StrictBaseModel):
+    name: str = Query(..., description="Full user name")
+    email: EmailStr = Query(..., description="User's email address")
+
+
+class SignUp(StrictBaseModel):
+    id: str
+    name: str
+    email: EmailStr
+    createdAt: datetime
+    role: str
+    extraUserData: Dict[str, Any]
+
+
+class SignUpResponse(Response):
+    data: SignUp
+
+
 class APIKeyRequestIn(StrictBaseModel):
 
+    alias: Optional[str] = Query(None, description="Nick name for API Key")
     organization: str = Query(..., description="Name of organization or Website")
     email: EmailStr = Query(..., description="Email address of POC")
     domains: List[str] = Query(
@@ -25,6 +44,7 @@ class APIKeyRequestIn(StrictBaseModel):
 
 
 class ApiKey(BaseRecord):
+    alias: Optional[str]
     user_id: str
     api_key: UUID
     organization: str

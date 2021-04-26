@@ -13,10 +13,18 @@ from ..models.pydantic.authentication import (
     APIKeyRequestIn,
     ApiKeyResponse,
     ApiKeysResponse,
+    SignUpRequestIn,
+    SignUpResponse,
 )
-from ..utils.rw_api import login
+from ..utils.rw_api import login, signup
 
 router = APIRouter()
+
+
+@router.post("sign-up")
+async def sign_up(request: SignUpRequestIn):
+    data = await signup(request.name, request.email)
+    return SignUpResponse(data=data)
 
 
 @router.post("/token", tags=["Authentication"])

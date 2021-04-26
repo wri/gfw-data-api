@@ -4,6 +4,7 @@ from app.models.orm.base import Base
 
 class ApiKey(Base):
     __tablename__ = "api_keys"
+    nick_name = db.Column(db.String, nullable=True)
     user_id = db.Column(db.String, nullable=False)
     api_key = db.Column(db.UUID, primary_key=True)
     organization = db.Column(db.String, nullable=False)

@@ -105,7 +105,7 @@ app.add_middleware(
 # AUTHENTICATION
 ################
 
-app.include_router(authentication.router, tags=["Authentication"])
+app.include_router(authentication.router, prefix="/auth")
 
 ###############
 # DATASET API
@@ -180,7 +180,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title="GFW DATA API",
-        version="0.2.0",
+        version="0.3.0",
         description="Use GFW DATA API to explore, manage and access data.",
         routes=app.routes,
     )
