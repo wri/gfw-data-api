@@ -12,6 +12,7 @@ jobs:
 
     - name: Test with pytest
       run: |
+        ./scripts/test_v2
         ./scripts/test
 
     - name: Run codacy-coverage-reporter

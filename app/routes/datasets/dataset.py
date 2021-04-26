@@ -8,6 +8,7 @@ from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 from ...application import db
+from ...authentication.token import is_admin
 from ...crud import datasets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.datasets import Dataset as ORMDataset
@@ -18,7 +19,7 @@ from ...models.pydantic.datasets import (
     DatasetResponse,
     DatasetUpdateIn,
 )
-from ...routes import dataset_dependency, is_admin
+from ...routes import dataset_dependency
 from ...settings.globals import READER_USERNAME
 
 router = APIRouter()
