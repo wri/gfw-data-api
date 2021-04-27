@@ -1,19 +1,20 @@
 """Download dataset in different formats."""
 from io import StringIO
-from typing import Optional, Tuple
+from typing import Optional, Tuple, cast
 from uuid import UUID
 
 from aiohttp import ClientError
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import RedirectResponse
 
-from ...crud.assets import get_assets_by_filter
+from ...crud.assets import get_assets_by_filter, get_default_asset
 from ...main import logger
 from ...models.enum.assets import AssetType
+from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pixetl import Grid
-from ...models.enum.queries import QueryFormat
-from ...models.enum.creation_options import Delimiters
+from ...models.enum.queries import QueryFormat, QueryType
+from ...models.orm.assets import Asset as AssetORM
 from ...models.pydantic.downloads import DownloadCSVIn
 from ...models.pydantic.geostore import Geometry
 from ...responses import CSVStreamingResponse
@@ -21,7 +22,7 @@ from ...utils.aws import get_s3_client
 from ...utils.geostore import get_geostore_geometry
 from ...utils.path import split_s3_path
 from .. import dataset_version_dependency
-from .queries import _query_dataset
+from .queries import _get_query_type, _orm_to_csv, _query_raster, _query_table
 
 router: APIRouter = APIRouter()
 
@@ -32,7 +33,7 @@ router: APIRouter = APIRouter()
     tags=["Download"],
 )
 async def download_csv(
-    *,
+    response: Response,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
@@ -40,7 +41,9 @@ async def download_csv(
         GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
     filename: str = Query("export.csv", description="Name of export file."),
-    delimiter: Delimiters = Query(Delimiters.comma, description="Delimiter to use for CSV file."),
+    delimiter: Delimiters = Query(
+        Delimiters.comma, description="Delimiter to use for CSV file."
+    ),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented).
@@ -58,8 +61,12 @@ async def download_csv(
     else:
         geometry = None
 
-    data: StringIO = await _query_dataset(dataset, version, sql, geometry, format=QueryFormat.csv, delimiter=delimiter)
+    data: StringIO = await _download_dataset(
+        dataset, version, sql, geometry, delimiter=delimiter
+    )
     response = CSVStreamingResponse(iter([data.getvalue()]), filename=filename)
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
     return response
 
 
@@ -82,7 +89,7 @@ async def download_csv_post(
 
     dataset, version = dataset_version
 
-    data: StringIO = await _query_dataset(
+    data: StringIO = await _download_dataset(
         dataset, version, request.sql, request.geometry, request.delimiter
     )
 
@@ -166,6 +173,34 @@ async def download_geopackage(
     presigned_url = await _get_presigned_url(bucket, key)
 
     return RedirectResponse(url=presigned_url)
+
+
+async def _download_dataset(
+    dataset: str,
+    version: str,
+    sql: str,
+    geometry: Optional[Geometry],
+    delimiter: Delimiters = Delimiters.comma,
+) -> StringIO:
+    # Make sure we can query the dataset
+    default_asset: AssetORM = await get_default_asset(dataset, version)
+    query_type = _get_query_type(default_asset, geometry)
+    if query_type == QueryType.table:
+        response = await _query_table(
+            dataset, version, sql, geometry, QueryFormat.csv, delimiter
+        )
+        return _orm_to_csv(response, delimiter=delimiter)
+    elif query_type == QueryType.raster:
+        geometry = cast(Geometry, geometry)
+        results = await _query_raster(
+            dataset, default_asset, sql, geometry, QueryFormat.csv, delimiter
+        )
+        return StringIO(results["data"])
+    else:
+        raise HTTPException(
+            status_code=501,
+            detail="This endpoint is not implemented for the given dataset.",
+        )
 
 
 async def _get_raster_tile_set_asset_url(
