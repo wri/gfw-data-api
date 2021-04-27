@@ -144,6 +144,7 @@ module "batch_data_lake_writer" {
   ]
   key_pair  = var.key_pair
   max_vcpus = var.data_lake_max_vcpus
+  instance_types = ["r5d.large", "r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge", "c5d.12xlarge", "c5d.18xlarge", "c5d.24xlarge"]
   project   = local.project
   security_group_ids = [data.terraform_remote_state.core.outputs.default_security_group_id,
   data.terraform_remote_state.core.outputs.postgresql_security_group_id]
