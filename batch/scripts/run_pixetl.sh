@@ -34,5 +34,7 @@ fi
 
 ARG_ARRAY+=("${JSON}")
 
+export LD_PRELOAD=/usr/local/app/libleak.so
+
 # Run pixetl with the array of arguments
 pixetl "${ARG_ARRAY[@]}"
