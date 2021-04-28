@@ -9,6 +9,7 @@ def test_jobs_model():
     callback = callback_constructor(uuid4())
 
     job = Job(
+        dataset="test",
         job_name="test",
         job_queue="test",
         job_definition="test",

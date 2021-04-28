@@ -85,6 +85,7 @@ async def static_vector_tile_cache_asset(
     ]
 
     export_ndjson = GdalPythonExportJob(
+        dataset=dataset,
         job_name="export_ndjson",
         job_queue=TILE_CACHE_JOB_QUEUE,
         command=command,
@@ -111,6 +112,7 @@ async def static_vector_tile_cache_asset(
     ]
 
     create_vector_tile_cache = TileCacheJob(
+        dataset=dataset,
         job_name="create_vector_tile_cache",
         command=command,
         parents=[export_ndjson.job_name],
