@@ -401,9 +401,7 @@ async def _query_raster_lambda(
         raise HTTPException(500, "Query took too long to process.")
 
     try:
-        response_data = response.json()["body"]["data"]
-        if format == QueryFormat.csv:
-            response_data = StringIO(response_data)
+        response_data = response.json()["body"]
     except (JSONDecodeError, KeyError):
         logger.error(
             f"Raster analysis lambda experienced an error. Full response: {response.text}"
