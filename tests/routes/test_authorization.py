@@ -38,6 +38,6 @@ async def test_who_am_i():
 @pytest.mark.asyncio
 async def test_login(async_client):
     response = await async_client.post(
-        "/token", data={"username": "name", "password": "secret"}
+        "/auth/token", data={"username": "name", "password": "secret"}
     )
     assert response.status_code == 401
