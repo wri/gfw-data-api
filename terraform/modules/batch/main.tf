@@ -109,10 +109,8 @@ data "template_file" "pixetl_container_properties" {
     job_role_arn       = aws_iam_role.aws_ecs_service_role.arn
     clone_role_arn     = aws_iam_role.aws_ecs_service_role_clone.arn
     gcs_key_secret_arn = var.gcs_secret
-    //    cpu                = 48
-    //    memory             = 380000
-    cpu                = 2
-    memory             = 16000
+    cpu                = 48
+    memory             = 380000
     hardULimit         = 1024
     softULimit         = 1024
     //    maxSwap        = 600000
