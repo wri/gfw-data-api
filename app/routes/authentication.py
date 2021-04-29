@@ -1,10 +1,11 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.security import OAuth2PasswordRequestForm
 
-from ..authentication.token import get_user_id
+from ..authentication.api_keys import api_key_is_valid
+from ..authentication.token import get_user_id, is_admin
 from ..crud import api_keys
 from ..errors import RecordNotFoundError, UnauthorizedError
 from ..models.orm.api_keys import ApiKey as ORMApiKey
@@ -13,6 +14,8 @@ from ..models.pydantic.authentication import (
     APIKeyRequestIn,
     ApiKeyResponse,
     ApiKeysResponse,
+    ApiKeyValidation,
+    ApiKeyValidationResponse,
     SignUpRequestIn,
     SignUpResponse,
 )
@@ -72,6 +75,28 @@ async def get_apikeys(
     data = [ApiKey.from_orm(row) for row in rows]
 
     return ApiKeysResponse(data=data)
+
+
+@router.get("/apikey/{api_key}/validate", tags=["Authentication"])
+async def validate_apikey(
+    api_key: UUID = Path(
+        ..., description="Api Key to delete. Must be owned by authenticated user."
+    ),
+    origin: str = Query(..., description="Origin used with API Key"),
+    is_authorized: bool = Depends(is_admin),
+):
+    """Check if a given API key is valid."""
+    try:
+        row: ORMApiKey = await api_keys.get_api_key(api_key)
+    except RecordNotFoundError:
+        raise HTTPException(
+            status_code=404, detail="The requested API key does not exists."
+        )
+
+    data = ApiKeyValidation(
+        is_valid=api_key_is_valid(row.domains, row.expires_on, origin)
+    )
+    return ApiKeyValidationResponse(data=data)
 
 
 @router.delete("/apikey/{api_key}", tags=["Authentication"])

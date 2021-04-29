@@ -53,9 +53,17 @@ class ApiKey(BaseRecord):
     expires_on: datetime
 
 
+class ApiKeyValidation(StrictBaseModel):
+    is_valid: bool
+
+
 class ApiKeyResponse(Response):
     data: ApiKey
 
 
 class ApiKeysResponse(Response):
     data: List[ApiKey]
+
+
+class ApiKeyValidationResponse(Response):
+    data: ApiKeyValidation

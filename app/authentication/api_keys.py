@@ -1,10 +1,10 @@
 import re
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 from uuid import UUID
 
 from fastapi import HTTPException, Request, Security
-from fastapi.security import APIKeyCookie, APIKeyHeader, APIKeyQuery
+from fastapi.security import APIKeyHeader, APIKeyQuery
 from starlette.status import HTTP_403_FORBIDDEN
 
 from ..crud import api_keys
@@ -27,13 +27,6 @@ class APIKeyOriginHeader(APIKeyHeader):
         return _api_key_origin_auto_error(api_key, origin, self.auto_error)
 
 
-class APIKeyOriginCookie(APIKeyCookie):
-    async def __call__(self, request: Request) -> Tuple[Optional[str], Optional[str]]:
-        api_key = request.cookies.get(self.model.name)
-        origin: Optional[str] = request.headers.get("origin")
-        return _api_key_origin_auto_error(api_key, origin, self.auto_error)
-
-
 async def get_api_key(
     api_key_query: Tuple[Optional[str], Optional[str]] = Security(
         APIKeyOriginQuery(name=API_KEY_NAME, auto_error=False)
@@ -41,27 +34,28 @@ async def get_api_key(
     api_key_header: Tuple[Optional[str], Optional[str]] = Security(
         APIKeyOriginHeader(name=API_KEY_NAME, auto_error=False)
     ),
-    api_key_cookie: Tuple[Optional[str], Optional[str]] = Security(
-        APIKeyOriginCookie(name=API_KEY_NAME, auto_error=False)
-    ),
 ) -> Tuple[Optional[str], Optional[str]]:
-    for api_key, origin in [api_key_query, api_key_header, api_key_cookie]:
+    for api_key, origin in [api_key_query, api_key_header]:
         if api_key and origin:
             try:
                 row: ORMApiKey = await api_keys.get_api_key(UUID(api_key))
             except RecordNotFoundError:
                 pass
             else:
-                if (
-                    any(
-                        [re.search(_to_regex(domain), origin) for domain in row.domains]
-                    )
-                    and row.expiration_date >= datetime.now()
-                ):
+                if api_key_is_valid(row.domains, row.expires_on, origin):
                     return api_key, origin
 
     raise HTTPException(
         status_code=HTTP_403_FORBIDDEN, detail="No valid API Key found."
+    )
+
+
+def api_key_is_valid(
+    domains: List[str], expiration_date: datetime, origin: str
+) -> bool:
+    return (
+        any([re.search(_to_regex(domain), origin) for domain in domains])
+        and expiration_date >= datetime.now()
     )
 
 
