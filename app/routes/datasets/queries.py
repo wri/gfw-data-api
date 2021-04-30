@@ -3,7 +3,7 @@ import csv
 import re
 from io import StringIO
 from json import JSONDecodeError
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, cast
 from urllib.parse import unquote
 from uuid import UUID
 
@@ -15,13 +15,13 @@ from asyncpg import (
     UndefinedFunctionError,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
-from sqlalchemy.engine import RowProxy
 
 from ...application import db
 from ...crud import assets
@@ -55,7 +55,7 @@ from ...models.enum.pg_sys_functions import (
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
-from ...models.enum.queries import QueryFormat
+from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.query import QueryRequestIn
@@ -76,7 +76,7 @@ router = APIRouter()
     tags=["Query"],
 )
 async def query_dataset(
-    *,
+    response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
@@ -95,7 +95,9 @@ async def query_dataset(
     else:
         geometry = None
 
-    data = await _query_dataset(dataset, version, sql, geometry)
+    data: List[Dict[str, Any]] = await _query_dataset(dataset, version, sql, geometry)
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
     return Response(data=data)
 
 
@@ -124,24 +126,35 @@ async def _query_dataset(
     version: str,
     sql: str,
     geometry: Optional[Geometry],
-    format: QueryFormat = QueryFormat.json,
-    delimiter: Delimiters = Delimiters.comma,
-) -> Union[List[Dict[str, Any]], StringIO]:
+) -> List[Dict[str, Any]]:
     # Make sure we can query the dataset
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
+    query_type = _get_query_type(default_asset, geometry)
+    if query_type == QueryType.table:
+        return await _query_table(dataset, version, sql, geometry, QueryFormat.json)
+    elif query_type == QueryType.raster:
+        geometry = cast(Geometry, geometry)
+        results = await _query_raster(dataset, default_asset, sql, geometry)
+        return results["data"]
+    else:
+        raise HTTPException(
+            status_code=501,
+            detail="This endpoint is not implemented for the given dataset.",
+        )
+
+
+def _get_query_type(default_asset: AssetORM, geometry: Optional[Geometry]):
     if default_asset.asset_type in [
         AssetType.geo_database_table,
         AssetType.database_table,
     ]:
-        return await _query_table(dataset, version, sql, geometry, format, delimiter)
+        return QueryType.table
     elif default_asset.asset_type == AssetType.raster_tile_set:
         if not geometry:
             raise HTTPException(
                 status_code=422, detail="Raster tile set queries require a geometry."
             )
-        return await _query_raster(
-            dataset, default_asset, sql, geometry, format, delimiter
-        )
+        return QueryType.raster
     else:
         raise HTTPException(
             status_code=501,
@@ -156,7 +169,7 @@ async def _query_table(
     geometry: Optional[Geometry],
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
-) -> Union[List[Dict[str, Any]], StringIO]:
+) -> List[Dict[str, Any]]:
     # parse and validate SQL statement
     try:
         parsed = parse_sql(unquote(sql))
@@ -197,15 +210,12 @@ async def _query_table(
     except (UndefinedColumnError, InvalidTextRepresentationError) as e:
         raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
 
-    if format == QueryFormat.csv:
-        return _orm_to_csv(response, delimiter=delimiter)
-
     return response
 
 
 def _orm_to_csv(
-    data: List[RowProxy], delimiter: Delimiters = Delimiters.comma
-) -> Union[List[Dict[str, Any]], StringIO]:
+    data: List[Dict[str, Any]], delimiter: Delimiters = Delimiters.comma
+) -> StringIO:
     """Create a new csv file that represents generated data.
 
     Response will return a temporary redirect to download URL.
@@ -361,7 +371,7 @@ async def _query_raster(
     geometry: Geometry,
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
-) -> Union[List[Dict[str, Any]], StringIO]:
+) -> Dict[str, Any]:
     # use default data type to get default raster layer for dataset
     default_type = asset.creation_options["pixel_meaning"]
     default_layer = (
@@ -378,7 +388,7 @@ async def _query_raster_lambda(
     sql: str,
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
-) -> Union[List[Dict[str, Any]], StringIO]:
+) -> Dict[str, Any]:
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
@@ -391,9 +401,7 @@ async def _query_raster_lambda(
         raise HTTPException(500, "Query took too long to process.")
 
     try:
-        response_data = response.json()["body"]["data"]
-        if format == QueryFormat.csv:
-            response_data = StringIO(response_data)
+        response_data = response.json()["body"]
     except (JSONDecodeError, KeyError):
         logger.error(
             f"Raster analysis lambda experienced an error. Full response: {response.text}"

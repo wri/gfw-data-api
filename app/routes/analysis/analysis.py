@@ -115,8 +115,8 @@ async def _zonal_statistics(
         query += f" where {where}"
     query += f" group by {groups}"
 
-    data = await _query_raster_lambda(geometry, query)
-    return Response(data=data)
+    resp = await _query_raster_lambda(geometry, query)
+    return Response(data=resp["data"])
 
 
 def _get_date_filter(date: str, op: str):
