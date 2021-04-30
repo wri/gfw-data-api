@@ -155,7 +155,6 @@ async def test_assets_vector_source_max_parents(async_client):
     )
 
 
-@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     """"""
@@ -256,7 +255,6 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
             raise AssertionError(f"Key {key} doesn't exist!")
 
 
-@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     """"""

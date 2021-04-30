@@ -13,6 +13,8 @@ from tests.conftest import FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import create_dataset, create_default_asset
 
+s3_client = get_s3_client()
+
 payload = {
     "metadata": {
         "title": "string",
@@ -51,7 +53,7 @@ version_payload = {
 async def test_versions(async_client):
     """Test version path operations.
 
-    We patch/ disable background tasks here, as they run asynchronously.
+    We patch/disable background tasks here, as they run asynchronously.
     Such tasks are tested separately in a different module
     """
     dataset = "test"
@@ -407,15 +409,12 @@ async def test_put_latest(async_client):
     )
 
 
-@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_version_put_raster(async_client):
     """Test raster source version operations."""
 
     dataset = "test_version_put_raster"
     version = "v1.0.0"
-
-    s3_client = get_s3_client()
 
     pixetl_output_files = [
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/extent.geojson",
