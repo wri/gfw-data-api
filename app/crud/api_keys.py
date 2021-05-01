@@ -14,6 +14,10 @@ async def create_api_key(
     domains: List[str],
 ) -> ORMApiKey:
 
+    # If a simple string is used for domains, sqlalchemy will still inject this into db,
+    # using every character as a list item. We don't want this to happen
+    assert isinstance(domains, list), "Domains must be of type List[str]"
+
     new_api_key: ORMApiKey = await ORMApiKey.create(
         alias=alias,
         user_id=user_id,
@@ -48,14 +52,13 @@ async def delete_api_key(api_key: uuid.UUID) -> ORMApiKey:
     return row
 
 
-def _next_year():
+def _next_year(now=datetime.now()):
     """Return a date that's 1 year after the now.
 
     Return the same calendar date (month and day) in the destination
     year, if it exists, otherwise use the following day (thus changing
     February 29 to March 1).
     """
-    now = datetime.now()
     try:
         return now.replace(year=now.year + 1)
     except ValueError:

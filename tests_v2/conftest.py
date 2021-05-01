@@ -32,6 +32,28 @@ def db():
     main(["--raiseerr", "downgrade", "base"])
 
 
+@pytest.fixture(scope="module")
+def module_db():
+    """make sure that the db is only initialized and teared down once per
+    module."""
+    main(["--raiseerr", "upgrade", "head"])
+    yield
+
+    main(["--raiseerr", "downgrade", "base"])
+
+
+@pytest.fixture()
+def init_db():
+    """We need to inialize the database before running test.
+
+    We can do that using the Test Client
+    """
+    from app.main import app
+
+    with TestClient(app):
+        yield
+
+
 @pytest.fixture()
 def client(db) -> Generator[Session, None, None]:
     """Synchronous Test Client."""

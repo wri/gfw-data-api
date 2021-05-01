@@ -29,7 +29,7 @@ class SignUpResponse(Response):
 
 class APIKeyRequestIn(StrictBaseModel):
 
-    alias: Optional[str] = Query(None, description="Nick name for API Key")
+    alias: str = Query(..., description="Nick name for API Key")
     organization: str = Query(..., description="Name of organization or Website")
     email: EmailStr = Query(..., description="Email address of POC")
     domains: List[str] = Query(

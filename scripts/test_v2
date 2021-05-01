@@ -42,7 +42,7 @@ if [ "${BUILD}" = true ]; then
 fi
 
 set +e
-docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test run --rm --name app_test app_test  tests_v2/"$*"
+docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test run --rm --name app_test app_test --cov-report xml:/app/tests_v2/cobertura.xml tests_v2/"$*"
 exit_code=$?
 docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test down --remove-orphans
 exit $exit_code
