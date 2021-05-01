@@ -1,6 +1,6 @@
 environment               = "dev"
 log_level                 = "debug"
-service_url               = terraform.workspace   # fake, needed for CloudFront
+service_url               = "https://dev-data-api.globalforestwatch.org"  # fake, needed for CloudFront
 rw_api_url                = "https://staging-api.resourcewatch.org"
 desired_count             = 1
 auto_scaling_min_capacity = 1
