@@ -1,7 +1,7 @@
 """Datasets are just a bucket, for datasets which share the same core
 metadata."""
 
-from typing import Any, List
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
@@ -56,7 +56,7 @@ async def create_dataset(
 ) -> DatasetResponse:
     """Create or update a dataset."""
 
-    input_data = request.dict(exclude_none=True, by_alias=True)
+    input_data: Dict = request.dict(exclude_none=True, by_alias=True)
 
     try:
         new_dataset: ORMDataset = await datasets.create_dataset(dataset, **input_data)
@@ -90,7 +90,7 @@ async def update_dataset(
     Only metadata field can be updated. All other fields will be
     ignored.
     """
-    input_data = request.dict(exclude_none=True, by_alias=True)
+    input_data: Dict = request.dict(exclude_none=True, by_alias=True)
     row: ORMDataset = await datasets.update_dataset(dataset, **input_data)
 
     return await _dataset_response(dataset, row)
@@ -132,7 +132,7 @@ async def delete_dataset(
 
 async def _dataset_response(dataset: str, orm: ORMDataset) -> DatasetResponse:
     _versions: List[Any] = await versions.get_version_names(dataset)
-    data = Dataset.from_orm(orm).dict(by_alias=True)
+    data: Dict = Dataset.from_orm(orm).dict(by_alias=True)
     data["versions"] = [version[0] for version in _versions]
 
     return DatasetResponse(data=Dataset(**data))

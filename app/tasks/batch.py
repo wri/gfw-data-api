@@ -103,7 +103,7 @@ async def schedule(jobs: List[Job]) -> Dict[str, UUID]:
         i += 1
         if i > 10:
             raise TooManyRetriesError(
-                message="Too many retries while scheduling jobs. Abort.",
+                message="Too many retries while scheduling jobs. Aborting.",
                 detail=f"Failed to schedule job {[job.job_name for job in jobs if job.job_name not in scheduled_jobs]} ",
             )
 
@@ -138,7 +138,7 @@ def submit_batch_job(
         "tags": {"Job": "Data-API Batch Job", "Dataset": job.dataset},
     }
 
-    logger.info(f"Submit batch job with payload: {payload}")
+    logger.info(f"Submitting batch job with payload: {payload}")
 
     response = client.submit_job(**payload)
 

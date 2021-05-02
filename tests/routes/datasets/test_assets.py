@@ -28,6 +28,8 @@ from tests.utils import (
     poll_jobs,
 )
 
+s3_client = get_s3_client()
+
 
 @pytest.mark.asyncio
 async def test_assets(async_client):
@@ -166,8 +168,6 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
     primary_grid = "90/27008"
     auxiliary_grid = "90/9984"
 
-    s3_client = get_s3_client()
-
     pixetl_output_files = [
         f"{dataset}/{version}/raster/epsg-4326/{auxiliary_grid}/gfw_fid/gdal-geotiff/extent.geojson",
         f"{dataset}/{version}/raster/epsg-4326/{auxiliary_grid}/gfw_fid/geotiff/extent.geojson",
@@ -263,8 +263,6 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     # Add a dataset, version, and default asset
     dataset = "test_vector"
     version = "v1.1.1"
-
-    s3_client = get_s3_client()
 
     pixetl_output_files = [
         f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/gdal-geotiff/extent.geojson",
@@ -576,7 +574,6 @@ async def _test_raster_tile_cache(
     assert c_o_resp.json()["status"] == "success"
 
     ########
-    s3_client = get_s3_client()
     print("#############################################################")
     print("DATALAKE: ", s3_client.list_objects_v2(Bucket=DATA_LAKE_BUCKET))
     print("#############################################################")
