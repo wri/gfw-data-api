@@ -45,6 +45,14 @@ async def schedule(jobs: List[Job]) -> Dict[str, UUID]:
     with the parent job names.
     """
 
+    # Since we currently use a dictionary with the job name as key,
+    # we can't support scheduling multiple identically-named jobs
+    # at the same time.
+    if len(set([job.job_name for job in jobs])) != len(jobs):
+        raise ValueError(
+            "Can't schedule multiple jobs with the same name at the same time"
+        )
+
     scheduled_jobs = dict()
 
     # first schedule all independent jobs
