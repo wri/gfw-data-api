@@ -57,6 +57,7 @@ from ...models.enum.pg_sys_functions import (
 )
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
+from ...models.orm.versions import Version as VersionORM
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.query import QueryRequestIn
 from ...models.pydantic.responses import Response
@@ -389,9 +390,11 @@ async def _query_raster_lambda(
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
 ) -> Dict[str, Any]:
+    data_environment = await _get_data_environment()
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
+        "environment": data_environment,
         "format": format,
     }
 
@@ -411,3 +414,90 @@ async def _query_raster_lambda(
         )
 
     return response_data
+
+
+async def _get_data_environment():
+    # get all Raster tile set assets
+    latest_tile_sets = (
+        await AssetORM.query()
+        .join(VersionORM)
+        .where(
+            AssetORM.asset_type
+            == AssetType.raster_tile_set & VersionORM.is_latest
+            # == True
+        )
+        .gino.all()
+    )
+
+    # create layers
+    layers = []
+    for row in latest_tile_sets:
+        source_layer_name = f"{row.dataset}__{row.creation_options['pixel_meaning']}"
+        layers.append(_get_source_layer(row, source_layer_name))
+
+        if row.creation_options["pixel_meaning"] == "date_conf":
+            layers += _get_date_conf_derived_layers(row, source_layer_name)
+
+        if row.creation_options["pixel_meaning"].endswith("_ha-1"):
+            layers.append(_get_area_density_layer(row, source_layer_name))
+
+    return layers
+
+
+def _get_source_layer(row, source_layer_name: str):
+    return {
+        "source_uri": row.asset_uri,
+        "tile_scheme": "nw",
+        "grid": row.creation_options["grid"],
+        "name": source_layer_name,
+        "pixel_encoding": row.metadata["pixel_encoding"],
+    }
+
+
+def _get_date_conf_derived_layers(row, source_layer_name):
+    """Get derived layers that decode our date_conf layers for alert
+    systems."""
+    # TODO should these somehow be in the metadata or creation options instead of hardcoded?
+    # 16435 is number of days from 1970-01-01 and 2015-01-01, and can be used to convet
+    # our encoding of days since 2015 to a number that can be used generally for datetimes
+    decode_expression = "(A + 16435).astype('datetime64[D]').astype(str)"
+    encode_expression = "(datetime64(A) - 16435).astype(uint16)"
+
+    return [
+        {
+            "source_layer": source_layer_name,
+            "name": source_layer_name.replace("__date_conf", "__date"),
+            "calc": "A % 10000",
+            "decode_expression": encode_expression,
+            "encode_expression": decode_expression,
+        },
+        {
+            "source_layer": source_layer_name,
+            "name": source_layer_name.replace("__date_conf", "__confidence"),
+            "calc": "floor(A / 10000)",
+            "pixel_encoding": {2: "", 3: "high"},
+        },
+    ]
+
+
+def _get_area_density_layer(row, source_layer_name):
+    """Get the derived gross layer for whose values represent density per pixel
+    area."""
+    return {
+        "source_layer": source_layer_name,
+        "name": source_layer_name.replace("_ha-1", ""),
+        "calc": "A * area",
+    }
+
+
+def _get_predefined_layers(row, source_layer_name):
+    """Return predefined derived layers we use for analysis but don't actually
+    exist as tile sets."""
+    if source_layer_name == "whrc_aboveground_biomass_stock_2000__Mg_ha-1":
+        return [
+            {
+                "source_layer": source_layer_name,
+                "name": "whrc_aboveground_co2_emissions__Mg",
+                "calc": "A * area * (0.5 * 44 / 12)",
+            }
+        ]
