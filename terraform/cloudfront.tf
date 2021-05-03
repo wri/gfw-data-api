@@ -2,7 +2,7 @@ resource "aws_cloudfront_distribution" "data_api" {
   enabled             = true
   is_ipv6_enabled     = true
   price_class         = "PriceClass_All"
-  aliases             = [replace(var.service_url, "https://", "")]
+  aliases             = [var.environment == "dev"? "${local.project}-data-api.globalforestwatch.org" : replace(var.service_url, "https://", "")]
 
   origin {
     domain_name = module.fargate_autoscaling.lb_dns_name
