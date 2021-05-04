@@ -2,7 +2,6 @@
 import csv
 import re
 from io import StringIO
-from json import JSONDecodeError
 from typing import Any, Dict, List, Optional, Tuple, cast
 from urllib.parse import unquote
 from uuid import UUID
@@ -22,7 +21,6 @@ from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
-from sqlalchemy import join
 from sqlalchemy.sql import and_
 
 from ...application import db
@@ -423,7 +421,7 @@ async def _get_data_environment():
     # get all Raster tile set assets
     query = (
         AssetORM.join(VersionORM)
-        .select(
+        .with_only_columns(
             [
                 AssetORM.dataset,
                 AssetORM.version,
@@ -433,6 +431,7 @@ async def _get_data_environment():
                 VersionORM.is_latest,
             ]
         )
+        .select()
         .where(
             and_(
                 AssetORM.asset_type == AssetType.raster_tile_set.value,
