@@ -2,7 +2,6 @@
 import csv
 import re
 from io import StringIO
-from json import JSONDecodeError
 from typing import Any, Dict, List, Optional, Tuple, cast
 from urllib.parse import unquote
 from uuid import UUID
@@ -400,9 +399,8 @@ async def _query_raster_lambda(
     except httpx.TimeoutException:
         raise HTTPException(500, "Query took too long to process.")
 
-    try:
-        response_data = response.json()["body"]
-    except (JSONDecodeError, KeyError):
+    response_data = response.json()["body"]
+    if response_data["status"] != "success":
         logger.error(
             f"Raster analysis lambda experienced an error. Full response: {response.text}"
         )
