@@ -204,7 +204,7 @@ async def test_delete_api_key(user_id, alias, organization, email, domains):
 
 
 @pytest.mark.parametrize(
-    "input, expected_result",
+    "input_date, expected_result",
     [
         (datetime(year=2021, month=4, day=30), datetime(year=2022, month=4, day=30)),
         (datetime(year=2021, month=12, day=31), datetime(year=2022, month=12, day=31)),
@@ -213,6 +213,6 @@ async def test_delete_api_key(user_id, alias, organization, email, domains):
 )
 @pytest.mark.asyncio
 async def test__next_year(
-    input, expected_result
+    input_date, expected_result
 ):  # needs to be async due to auto use fixtures
-    assert _next_year(input) == expected_result
+    assert _next_year(input_date) == expected_result
