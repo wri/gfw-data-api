@@ -19,7 +19,7 @@ async def test_query_dataset_without_api_key(
 async def test_query_dataset_with_api_key(
     async_client: AsyncClient, generic_vector_source_version, apikey
 ):
-    dataset_name, version_name, version_metadata = generic_vector_source_version
+    dataset_name, version_name, _ = generic_vector_source_version
     api_key, origin = apikey
 
     headers = {"origin": origin, "x-api-key": api_key}
