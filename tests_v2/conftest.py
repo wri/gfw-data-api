@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, Tuple
 
 import pytest
@@ -7,14 +8,16 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from app.authentication.token import get_user_id, is_admin, is_service_account
+from app.models.enum.change_log import ChangeLogStatus
+from app.models.pydantic.change_log import ChangeLog
 from app.routes.datasets import versions
 from app.tasks import batch, delete_assets, vector_source_assets
 from tests_v2.fixtures.creation_options.versions import VECTOR_SOURCE_CREATION_OPTIONS
 from tests_v2.utils import (
+    BatchJobMock,
     _create_vector_source_assets,
     dict_function_closure,
     false_function,
-    generate_uuid,
     get_user_id_mocked,
     int_function_closure,
     is_admin_mocked,
@@ -111,8 +114,9 @@ async def generic_vector_source_version(
     version_metadata: Dict[str, Any] = {}
 
     # patch all functions which reach out to external services
+    batch_job_mock = BatchJobMock()
     monkeypatch.setattr(versions, "_verify_source_file_access", void_function)
-    monkeypatch.setattr(batch, "submit_batch_job", generate_uuid)
+    monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
     monkeypatch.setattr(vector_source_assets, "is_zipped", false_function)
     monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
     monkeypatch.setattr(
@@ -130,6 +134,29 @@ async def generic_vector_source_version(
 
     # mock batch processes
     await _create_vector_source_assets(dataset_name, version_name)
+
+    # Set all pending tasks to success
+    for job_id in batch_job_mock.jobs:
+        payload = {
+            "change_log": [
+                ChangeLog(
+                    date_time=datetime.now(),
+                    status=ChangeLogStatus.success,
+                    message="Job set to success via fixture",
+                    detail="",
+                ).dict()
+            ]
+        }
+
+        # convert datetime obt to string
+        payload["change_log"][0]["date_time"] = str(
+            payload["change_log"][0]["date_time"]
+        )
+        await async_client.patch(f"/task/{job_id}", json=payload)
+
+    # Assert that version is saved, just to make sure
+    response = await async_client.get(f"/dataset/{dataset_name}/{version_name}")
+    assert response.json()["data"]["status"] == "saved"
 
     # yield version
     yield dataset_name, version_name, version_metadata

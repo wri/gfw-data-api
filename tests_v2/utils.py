@@ -6,6 +6,16 @@ from typing import Callable, Dict, Optional, Tuple
 from app.application import ContextEngine
 
 
+class BatchJobMock:
+    def __init__(self):
+        self.jobs = list()
+
+    def submit_batch_job(self, *args, **kwargs) -> uuid.UUID:
+        job_id = uuid.uuid4()
+        self.jobs.append(job_id)
+        return job_id
+
+
 async def is_admin_mocked() -> bool:
     return True
 
@@ -20,10 +30,6 @@ async def get_user_id_mocked() -> str:
 
 async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
     return str(uuid.uuid4()), "localhost"
-
-
-def generate_uuid(*args, **kwargs) -> uuid.UUID:
-    return uuid.uuid4()
 
 
 def void_function(*args, **kwargs) -> None:
