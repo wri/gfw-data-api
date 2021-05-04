@@ -103,6 +103,7 @@ class RasterTileSetMetadata(VersionMetadata):
     data_type: Optional[str]
     compression: Optional[str]
     no_data_value: Optional[str]
+    pixel_encoding: Optional[Dict[Any, Any]]
 
 
 class StaticVectorTileCacheMetadata(VersionMetadata):

@@ -22,6 +22,8 @@ from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
+from sqlalchemy import join
+from sqlalchemy.sql import and_
 
 from ...application import db
 from ...crud import assets
@@ -398,14 +400,15 @@ async def _query_raster_lambda(
         "format": format,
     }
 
+    logger.info(f"Submitting raster analysis lambda request with payload: {payload}")
+
     try:
         response = await invoke_lambda(RASTER_ANALYSIS_LAMBDA_NAME, payload)
     except httpx.TimeoutException:
         raise HTTPException(500, "Query took too long to process.")
 
-    try:
-        response_data = response.json()["body"]
-    except (JSONDecodeError, KeyError):
+    response_data = response.json()["body"]
+    if response_data["status"] != "success":
         logger.error(
             f"Raster analysis lambda experienced an error. Full response: {response.text}"
         )
@@ -418,16 +421,28 @@ async def _query_raster_lambda(
 
 async def _get_data_environment():
     # get all Raster tile set assets
-    latest_tile_sets = (
-        await AssetORM.query()
-        .join(VersionORM)
-        .where(
-            AssetORM.asset_type
-            == AssetType.raster_tile_set & VersionORM.is_latest
-            # == True
+    query = (
+        AssetORM.join(VersionORM)
+        .select(
+            [
+                AssetORM.dataset,
+                AssetORM.version,
+                AssetORM.creation_options,
+                AssetORM.asset_uri,
+                AssetORM.metadata,
+                VersionORM.is_latest,
+            ]
         )
-        .gino.all()
+        .where(
+            and_(
+                AssetORM.asset_type == AssetType.raster_tile_set.value,
+                VersionORM.is_latest == True,
+            )
+        )
     )
+
+    logger.info(f"Data environment query: {str(query)}")
+    latest_tile_sets = await query.gino.all()
 
     # create layers
     layers = []
