@@ -1,5 +1,9 @@
+import json
+import os
 import uuid
 from typing import Callable, Dict, Optional, Tuple
+
+from app.application import ContextEngine
 
 
 async def is_admin_mocked() -> bool:
@@ -42,3 +46,21 @@ def dict_function_closure(value: Dict) -> Callable:
         return value
 
     return dict_function
+
+
+async def _create_vector_source_assets(dataset_name, version_name):
+    # TODO: we currently only do the bare minimum here.
+    #  still need to add gfw columns
+    #  and check back in all task so that asset and versions are correctly set to saved
+    from app.application import db
+
+    with open(f"{os.path.dirname(__file__)}/fixtures/geojson/test.geojson") as src:
+        geojson = json.load(src)
+
+    async with ContextEngine("WRITE"):
+        await db.all(
+            f"""CREATE TABLE "{dataset_name}"."{version_name}" (fid integer, geom geometry);"""
+        )
+        await db.all(
+            f"""INSERT INTO "{dataset_name}"."{version_name}" (fid, geom) SELECT 1,  ST_GeomFromGeoJSON('{json.dumps(geojson["features"][0]["geometry"])}');"""
+        )
