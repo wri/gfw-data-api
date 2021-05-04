@@ -6,7 +6,11 @@ from app.models.orm.api_keys import ApiKey as ORMApiKey
 
 @pytest.fixture(scope="module", autouse=True)
 def crud_module_db(module_db):
-    """auto use module db."""
+    """auto use module db.
+
+    Module level fixtures have cannot be async, because the event loop
+    is closed between tests.
+    """
     yield
 
 

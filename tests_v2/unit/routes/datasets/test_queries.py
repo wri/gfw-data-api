@@ -4,9 +4,9 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_query_dataset_without_api_key(
-    async_client: AsyncClient, generic_vector_source_version_async
+    async_client: AsyncClient, generic_vector_source_version
 ):
-    dataset_name, version_name, version_metadata = generic_vector_source_version_async
+    dataset_name, version_name, version_metadata = generic_vector_source_version
 
     response = await async_client.get(
         f"/dataset/{dataset_name}/{version_name}/query?sql=select * from data"
@@ -17,10 +17,10 @@ async def test_query_dataset_without_api_key(
 
 @pytest.mark.asyncio
 async def test_query_dataset_with_api_key(
-    async_client: AsyncClient, generic_vector_source_version_async, apikey
+    async_client: AsyncClient, generic_vector_source_version, apikey
 ):
+    dataset_name, version_name, version_metadata = generic_vector_source_version
     api_key, origin = apikey
-    dataset_name, version_name, version_metadata = generic_vector_source_version_async
 
     headers = {"origin": origin, "x-api-key": api_key}
 

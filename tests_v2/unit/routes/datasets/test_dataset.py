@@ -1,25 +1,32 @@
 from typing import Any, Dict, Tuple
 
-from requests import Session
+import pytest
+from httpx import AsyncClient
 
 from app.models.pydantic.datasets import DatasetResponse
 from app.models.pydantic.metadata import DatasetMetadata
 from tests_v2.unit.routes.utils import assert_jsend
 
 
-def test_get_dataset(client: Session, generic_dataset: Tuple[str, str]) -> None:
+@pytest.mark.asyncio
+async def test_get_dataset(
+    async_client: AsyncClient, generic_dataset: Tuple[str, str]
+) -> None:
     dataset_name, _ = generic_dataset
-    resp = client.get(f"/dataset/{dataset_name}")
+    resp = await async_client.get(f"/dataset/{dataset_name}")
     assert resp.status_code == 200
     _validate_dataset_response(resp.json(), dataset_name)
 
 
 # TODO: Use mark.paramterize to test variations
-def test_create_dataset(client: Session) -> None:
+@pytest.mark.asyncio
+async def test_create_dataset(async_client: AsyncClient) -> None:
     dataset_name = "my_first_dataset"
     metadata: Dict[str, Any] = {}
 
-    resp = client.put("/dataset/my_first_dataset", json={"metadata": metadata})
+    resp = await async_client.put(
+        "/dataset/my_first_dataset", json={"metadata": metadata}
+    )
     assert resp.status_code == 201
     _validate_dataset_response(resp.json(), dataset_name)
 

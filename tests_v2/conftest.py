@@ -1,11 +1,10 @@
-from typing import Any, AsyncGenerator, Dict, Generator, Tuple
+from typing import Any, AsyncGenerator, Dict, Tuple
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from alembic.config import main
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from requests import Session
 
 from app.authentication.token import get_user_id, is_admin, is_service_account
 from app.routes.datasets import versions
@@ -25,7 +24,8 @@ from tests_v2.utils import (
 
 
 @pytest.fixture()
-def db():
+@pytest.mark.asyncio
+async def db():
     """In between tests, tear down/set up all DBs."""
     main(["--raiseerr", "upgrade", "head"])
     yield
@@ -44,39 +44,25 @@ def module_db():
 
 @pytest.fixture()
 def init_db():
-    """We need to inialize the database before running test.
+    """Initialize database.
 
-    We can do that using the Test Client
+    This fixture is necessary when testing database connections outside
+    the test client.
     """
     from app.main import app
 
+    # It is easiest to do this using the standard test client
     with TestClient(app):
         yield
 
 
 @pytest.fixture()
-def client(db) -> Generator[Session, None, None]:
-    """Synchronous Test Client."""
-
-    from app.main import app
-
-    app.dependency_overrides[is_admin] = is_admin_mocked
-    app.dependency_overrides[is_service_account] = is_service_account_mocked
-    app.dependency_overrides[get_user_id] = get_user_id_mocked
-    # app.dependency_overrides[get_api_key] = get_api_key_mocked
-
-    with TestClient(app) as client:
-        yield client
-
-    app.dependency_overrides = {}
-
-
-@pytest.fixture()
 @pytest.mark.asyncio
-async def async_client(db) -> AsyncGenerator[AsyncClient, None]:
+async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
 
+    # mock authentification function to avoid having to reach out to RW API during tests
     app.dependency_overrides[is_admin] = is_admin_mocked
     app.dependency_overrides[is_service_account] = is_service_account_mocked
     app.dependency_overrides[get_user_id] = get_user_id_mocked
@@ -85,67 +71,53 @@ async def async_client(db) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
         yield client
 
+    # Clean up
     app.dependency_overrides = {}
 
 
 @pytest.fixture()
-def generic_dataset(
-    client: Session,
-) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
+@pytest.mark.asyncio()
+async def generic_dataset(
+    async_client: AsyncClient,
+) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
     """Create generic dataset."""
 
+    # Create dataset
     dataset_name: str = "my_first_dataset"
     dataset_metadata: Dict[str, Any] = {}
 
-    client.put(f"/dataset/{dataset_name}", json={"metadata": dataset_metadata})
-    yield dataset_name, dataset_metadata
-
-    client.delete(f"/dataset/{dataset_name}")
-
-
-@pytest.fixture()
-def generic_vector_source_version(
-    client: Session, generic_dataset: Tuple[str, str]
-) -> Generator[Tuple[str, str, Dict[str, Any]], None, None]:
-    """Create generic vector source version."""
-
-    monkeypatch_version()
-
-    dataset_name, _ = generic_dataset
-    version_name: str = "v1"
-    version_metadata: Dict[str, Any] = {}
-
-    creation_options = VECTOR_SOURCE_CREATION_OPTIONS
-
-    # Create version
-    client.put(
-        f"/dataset/{generic_dataset}/{version_name}",
-        json={
-            "metadata": version_metadata,
-            "creation_options": creation_options,
-        },
+    await async_client.put(
+        f"/dataset/{dataset_name}", json={"metadata": dataset_metadata}
     )
 
-    # mock batch processes
-    # TODO: create vector layer
+    # Yield dataset name and associated metadata
+    yield dataset_name, dataset_metadata
 
-    # yield version
-    yield dataset_name, version_name, version_metadata
-
-    # clean up
-    client.delete(f"/dataset/{dataset_name}/{version_name}")
+    # Clean up
+    await async_client.delete(f"/dataset/{dataset_name}")
 
 
 @pytest.fixture()
 @pytest.mark.asyncio()
-async def generic_vector_source_version_async(
-    async_client: AsyncClient, generic_dataset: Tuple[str, str], monkeypatch_version
+async def generic_vector_source_version(
+    async_client: AsyncClient,
+    generic_dataset: Tuple[str, str],
+    monkeypatch: MonkeyPatch,
 ) -> AsyncGenerator[Tuple[str, str, Dict[str, Any]], None]:
     """Create generic vector source version."""
 
     dataset_name, _ = generic_dataset
     version_name: str = "v1"
     version_metadata: Dict[str, Any] = {}
+
+    # patch all functions which reach out to external services
+    monkeypatch.setattr(versions, "_verify_source_file_access", void_function)
+    monkeypatch.setattr(batch, "submit_batch_job", generate_uuid)
+    monkeypatch.setattr(vector_source_assets, "is_zipped", false_function)
+    monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
+    monkeypatch.setattr(
+        delete_assets, "flush_cloudfront_cache", dict_function_closure({})
+    )
 
     # Create version
     await async_client.put(
@@ -168,7 +140,9 @@ async def generic_vector_source_version_async(
 
 @pytest.fixture()
 @pytest.mark.asyncio()
-async def apikey(async_client: AsyncClient):
+async def apikey(async_client: AsyncClient) -> AsyncGenerator[Tuple[str, str], None]:
+
+    # Get API Key
     payload = {
         "alias": "test",
         "organization": "Global Forest Watch",
@@ -177,23 +151,11 @@ async def apikey(async_client: AsyncClient):
     }
 
     response = await async_client.post("/auth/apikey", json=payload)
-    print(response.json())
     api_key = response.json()["data"]["api_key"]
     origin = "www.globalforestwatch.org"
 
+    # yield api key and associated origin
     yield api_key, origin
 
+    # Clean up
     await async_client.delete(f"auth/apikey/{api_key}")
-
-
-@pytest.fixture()
-def monkeypatch_version(monkeypatch: MonkeyPatch):
-    # patch all functions which reach out to external services
-    monkeypatch.setattr(versions, "_verify_source_file_access", void_function)
-    monkeypatch.setattr(batch, "submit_batch_job", generate_uuid)
-    monkeypatch.setattr(vector_source_assets, "is_zipped", false_function)
-    monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
-    monkeypatch.setattr(
-        delete_assets, "flush_cloudfront_cache", dict_function_closure({})
-    )
-    yield
