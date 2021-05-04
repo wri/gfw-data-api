@@ -1,3 +1,5 @@
+import json
+import os
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, Tuple
 
@@ -186,3 +188,22 @@ async def apikey(async_client: AsyncClient) -> AsyncGenerator[Tuple[str, str], N
 
     # Clean up
     await async_client.delete(f"auth/apikey/{api_key}")
+
+
+@pytest.fixture()
+@pytest.mark.asyncio()
+async def geostore(async_client: AsyncClient) -> AsyncGenerator[str, None]:
+    with open(f"{os.path.dirname(__file__)}/fixtures/geojson/test.geojson") as src:
+        geojson = json.load(src)
+    # Get geostore ID
+    payload = {
+        "geometry": geojson["features"][0]["geometry"],
+    }
+
+    response = await async_client.post("/geostore", json=payload)
+    assert response.status_code == 201
+
+    yield response.json()["data"]["gfw_geostore_id"]
+
+    # Clean up
+    # Nothing to do here. No clean up function for geostore.
