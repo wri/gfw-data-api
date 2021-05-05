@@ -82,9 +82,14 @@ class VersionMetadata(DatasetMetadata):
     data_updates: Optional[str]
 
 
-class RasterTable(StrictBaseModel):
+class RasterTableRow(StrictBaseModel):
     value: int
-    description: str
+    meaning: Any
+
+
+class RasterTable(StrictBaseModel):
+    rows: List[RasterTableRow]
+    default_meaning: Optional[Any] = None
 
 
 class RasterTileCacheMetadata(VersionMetadata):
@@ -98,12 +103,11 @@ class RasterTileCacheMetadata(VersionMetadata):
 class RasterTileSetMetadata(VersionMetadata):
     # Raster Files/ Raster Tilesets
     raster_statistics: Optional[Dict[str, Any]]
-    raster_table: Optional[List[RasterTable]]
+    raster_table: Optional[RasterTable]
     raster_tiles: Optional[List[str]]
     data_type: Optional[str]
     compression: Optional[str]
     no_data_value: Optional[str]
-    pixel_encoding: Optional[Dict[Any, Any]]
 
 
 class StaticVectorTileCacheMetadata(VersionMetadata):

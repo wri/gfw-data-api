@@ -419,8 +419,9 @@ async def _query_raster_lambda(
 
 async def _get_data_environment():
     # get all Raster tile set assets
-    query = (
+    latest_tile_sets = await (
         AssetORM.join(VersionORM)
+        .select()
         .with_only_columns(
             [
                 AssetORM.dataset,
@@ -431,17 +432,13 @@ async def _get_data_environment():
                 VersionORM.is_latest,
             ]
         )
-        .select()
         .where(
             and_(
                 AssetORM.asset_type == AssetType.raster_tile_set.value,
-                VersionORM.is_latest == True,
+                VersionORM.is_latest == True,  # noqa: E712
             )
         )
-    )
-
-    logger.info(f"Data environment query: {str(query)}")
-    latest_tile_sets = await query.gino.all()
+    ).gino.all()
 
     # create layers
     layers = []
@@ -464,7 +461,7 @@ def _get_source_layer(row, source_layer_name: str):
         "tile_scheme": "nw",
         "grid": row.creation_options["grid"],
         "name": source_layer_name,
-        "pixel_encoding": row.metadata["pixel_encoding"],
+        "raster_table": row.metadata.get("raster_table", {}),
     }
 
 
