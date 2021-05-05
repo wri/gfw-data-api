@@ -405,8 +405,18 @@ async def _query_raster_lambda(
     except httpx.TimeoutException:
         raise HTTPException(500, "Query took too long to process.")
 
+    if response.status_code >= 300:
+        logger.error(f"Lambda returned invalid response code f{response.status}")
+        raise HTTPException(
+            500, "Raster analysis geoprocessor experienced an error. See logs."
+        )
+
     response_data = response.json()["body"]
-    if response_data["status"] != "success":
+    if (
+        "status" not in response_data
+        or "data" not in response_data
+        or response_data["status"] != "success"
+    ):
         logger.error(
             f"Raster analysis lambda experienced an error. Full response: {response.text}"
         )

@@ -95,7 +95,7 @@ async def _zonal_statistics(
     for lyr in filters:
         # translate ad hoc TCD layer names to actual equality
         if "umd_tree_cover_density" in lyr.value:
-            where_clauses.append(f"{lyr.value[:-2]}threshold => {lyr.value[-2:]}")
+            where_clauses.append(f"{lyr.value[:-2]}threshold >= {lyr.value[-2:]}")
         else:
             where_clauses.append(f"{lyr.value} != 0")
 
