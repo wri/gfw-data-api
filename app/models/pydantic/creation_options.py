@@ -139,8 +139,9 @@ class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
     source_type: Union[RasterSourceType, VectorSourceType]
     source_driver: Optional[RasterDrivers] = None
     source_uri: Optional[List[str]] = Field(
-        description="List of input files. Must a be tile.geojson file located on S3. "
-        "Input tiles must have path either starting with /vsis3/ or /vsigs/",
+        description="List of input sources. Sources must be the URI of either a "
+        "tiles.geojson file on S3 or a folder (prefix) on S3 or GCS. "
+        "Features in tiles.geojson must have path starting with either /vsis3/ or /vsigs/",
     )
     num_processes: Optional[StrictInt] = None
     timeout_sec: Optional[StrictInt] = None
