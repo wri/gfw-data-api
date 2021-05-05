@@ -170,7 +170,7 @@ async def download_geopackage(
     asset_url = await _get_asset_url(dataset, version, AssetType.geopackage)
     bucket, key = split_s3_path(asset_url)
 
-    presigned_url = await _get_presigned_url(bucket, key)
+    presigned_url: str = await _get_presigned_url(bucket, key)
 
     return RedirectResponse(url=presigned_url)
 

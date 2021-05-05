@@ -31,6 +31,7 @@ class Job(StrictBaseModel):
     memory: int
     attempts: int
     attempt_duration_seconds: int
+    num_processes: Optional[int] = None
     parents: Optional[List[str]] = None
     # somehow mypy doesn't like the type when declared here?
     callback: Any  # Callable[[UUID, ChangeLog], Coroutine[Any, Any, Awaitable[None]]]
@@ -39,11 +40,21 @@ class Job(StrictBaseModel):
     def update_environment(cls, v, *, values, **kwargs):
         v = cls._update_environment(v, "CORES", values.get("vcpus"))
         v = cls._update_environment(v, "MAX_MEM", values.get("memory"))
+        v = cls._update_environment(
+            v, "NUM_PROCESSES", values.get("num_processes", values.get("vcpus"))
+        )
         return v
 
     @validator("vcpus", pre=True, always=True, allow_reuse=True)
     def update_max_cores(cls, v, *, values, **kwargs):
         cls.environment = cls._update_environment(values["environment"], "CORES", v)
+        return v
+
+    @validator("num_processes", pre=True, always=True, allow_reuse=True)
+    def update_num_processes(cls, v, *, values, **kwargs):
+        cls.environment = cls._update_environment(
+            values["environment"], "NUM_PROCESSES", v
+        )
         return v
 
     @validator("memory", pre=True, always=True)
