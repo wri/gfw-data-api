@@ -13,8 +13,6 @@ from tests.conftest import FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import create_dataset, create_default_asset
 
-s3_client = get_s3_client()
-
 payload = {
     "metadata": {
         "title": "string",
@@ -415,6 +413,8 @@ async def test_version_put_raster(async_client):
 
     dataset = "test_version_put_raster"
     version = "v1.0.0"
+
+    s3_client = get_s3_client()
 
     pixetl_output_files = [
         f"{dataset}/{version}/raster/epsg-4326/90/27008/percent/gdal-geotiff/extent.geojson",
