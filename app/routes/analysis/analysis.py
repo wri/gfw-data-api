@@ -85,20 +85,17 @@ async def _zonal_statistics(
     start_date: Optional[str],
     end_date: Optional[str],
 ):
-    if filters:
-        base = filters[0].value
-    elif group_by:
-        base = group_by[0].value
-    else:
-        base = "table"
+    # OTF will just not apply a base filter
+    base = "data"
 
     selectors = ",".join([f"sum({lyr.value})" for lyr in sum_layers])
     groups = ",".join([lyr.value for lyr in group_by])
 
     where_clauses = []
     for lyr in filters:
+        # translate ad hoc TCD layer names to actual equality
         if "umd_tree_cover_density" in lyr.value:
-            where_clauses.append(f"{lyr.value[:-2]}__threshold = {lyr.value[-2:]}")
+            where_clauses.append(f"{lyr.value[:-2]}threshold >= {lyr.value[-2:]}")
         else:
             where_clauses.append(f"{lyr.value} != 0")
 
@@ -113,7 +110,9 @@ async def _zonal_statistics(
     query = f"select {selectors} from {base}"
     if where:
         query += f" where {where}"
-    query += f" group by {groups}"
+
+    if groups:
+        query += f" group by {groups}"
 
     resp = await _query_raster_lambda(geometry, query)
     return Response(data=resp["data"])
