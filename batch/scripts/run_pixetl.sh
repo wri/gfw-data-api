@@ -35,4 +35,7 @@ fi
 ARG_ARRAY+=("${JSON}")
 
 # Run pixetl with the array of arguments
-mprof run -M -C -T 1 --python /usr/local/app/gfw_pixetl/pixetl.py "${ARG_ARRAY[@]}"
+pixetl.py "${ARG_ARRAY[@]}"
+
+# Use this command instead when debugging memory issues
+#mprof run -M -C -T 1 --python /usr/local/app/gfw_pixetl/pixetl.py "${ARG_ARRAY[@]}"

@@ -76,8 +76,8 @@ async def create_pixetl_job(
         kwargs["num_processes"] = MAX_CORES
         # ...and float64 jobs require twice the memory for the same number of processes.
         # We can't increase the memory anymore, so halve the processes
-        # if "float64" in co.data_type:
-        #     kwargs["num_processes"] = int(MAX_CORES / 2)
+        if "float64" in co.data_type:
+            kwargs["num_processes"] = int(MAX_CORES / 2)
 
     # ...but allow the user to override parallelism and timeout values
     if co.num_processes is not None:
