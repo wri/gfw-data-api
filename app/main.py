@@ -17,9 +17,9 @@ from app.errors import http_error_handler
 
 from .application import app
 from .middleware import no_cache_response_header, redirect_latest, set_db_mode
-from .routes import authentication
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
+from .routes.authentication import authentication
 from .routes.datasets import asset as version_asset
 from .routes.datasets import (
     dataset,
@@ -163,6 +163,7 @@ for r in analysis_routers:
 
 
 tags_metadata = [
+    {"name": "Authentication", "description": authentication.__doc__},
     {"name": "Dataset", "description": datasets.__doc__},
     {"name": "Version", "description": versions.__doc__},
     {"name": "Assets", "description": asset.__doc__},
@@ -188,6 +189,7 @@ def custom_openapi():
     openapi_schema["tags"] = tags_metadata
     openapi_schema["info"]["x-logo"] = {"url": "/static/gfw-data-api.png"}
     openapi_schema["x-tagGroups"] = [
+        {"name": "Authentication API", "tags": ["Authentication"]},
         {"name": "Dataset API", "tags": ["Datasets", "Versions", "Assets"]},
         {"name": "Geostore API", "tags": ["Geostore"]},
         {"name": "Query API", "tags": ["Query"]},
