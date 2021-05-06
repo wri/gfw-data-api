@@ -55,6 +55,7 @@ from ...models.enum.pg_sys_functions import (
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
+from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
 from ...models.orm.versions import Version as VersionORM
@@ -390,7 +391,7 @@ async def _query_raster_lambda(
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
 ) -> Dict[str, Any]:
-    data_environment = await _get_data_environment()
+    data_environment = await _get_data_environment(grids=[Grid.ten_by_forty_thousand, Grid.ten_by_one_hundred_thousand])
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
@@ -427,7 +428,7 @@ async def _query_raster_lambda(
     return response_data
 
 
-async def _get_data_environment():
+async def _get_data_environment(grids: List[Grid] = []) -> List[Dict[str, Any]]:
     # get all Raster tile set assets
     latest_tile_sets = await (
         AssetORM.join(VersionORM)
@@ -439,12 +440,11 @@ async def _get_data_environment():
                 AssetORM.creation_options,
                 AssetORM.asset_uri,
                 AssetORM.metadata,
-                VersionORM.is_latest,
             ]
         )
         .where(
             and_(
-                AssetORM.asset_type == AssetType.raster_tile_set.value,
+                AssetORM.asset_type == AssetType.raster_tile_set,
                 VersionORM.is_latest == True,  # noqa: E712
             )
         )
@@ -453,6 +453,10 @@ async def _get_data_environment():
     # create layers
     layers = []
     for row in latest_tile_sets:
+        if grids and row.creation_options["grid"] not in grids:
+            # skip if not on the right grid
+            continue
+
         source_layer_name = f"{row.dataset}__{row.creation_options['pixel_meaning']}"
         layers.append(_get_source_layer(row, source_layer_name))
 
@@ -471,7 +475,7 @@ def _get_source_layer(row, source_layer_name: str):
         "tile_scheme": "nw",
         "grid": row.creation_options["grid"],
         "name": source_layer_name,
-        "raster_table": row.metadata.get("raster_table", {}),
+        "raster_table": row.metadata.get("raster_table", None),
     }
 
 

@@ -14,10 +14,13 @@ from typing import List, Optional, Tuple
 from botocore.exceptions import ClientError, ParamValidationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
+from fastapi.logger import logger
 
+from .queries import _get_latest_assets, _get_data_environment
 from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
+from ...models.enum.pixetl import Grid
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
@@ -27,7 +30,7 @@ from ...models.pydantic.creation_options import (
     creation_option_factory,
 )
 from ...models.pydantic.extent import Extent, ExtentResponse
-from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
+from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse, RasterFieldMetadata
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.versions import (
     Version,
@@ -306,7 +309,33 @@ async def get_stats(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
 async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     dataset, version = dv
     asset = await assets.get_default_asset(dataset, version)
-    fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
+
+    logger.debug(f"Processing default asset type {asset.asset_type}")
+    if asset.asset_type == AssetType.raster_tile_set:
+        fields: List[RasterFieldMetadata] = []
+
+        grids = [Grid.ten_by_forty_thousand]
+        if asset.creation_options["grid"] == Grid.ten_by_one_hundred_thousand:
+            grids.append(Grid.ten_by_one_hundred_thousand)
+
+        raster_data_environment = await _get_data_environment(grids=grids)
+
+        logger.debug(f"Processing data environment f{raster_data_environment}")
+        for layer in raster_data_environment:
+            field_kwargs = {
+                "field_name": layer["name"],
+            }
+
+            if "raster_table" in layer and layer["raster_table"]:
+                field_kwargs["field_values"] = [row["value"] for row in layer["raster_table"]["rows"]]
+                if "default_meaning" in layer["raster_table"]:
+                    field_kwargs["field_values"].append(layer["raster_table"]["default_meaning"])
+
+            fields.append(RasterFieldMetadata(**field_kwargs))
+
+        logger.debug(f"Returning fields f{[field.dict() for field in fields]}")
+    else:
+        fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
 
     return FieldMetadataResponse(data=fields)
 
