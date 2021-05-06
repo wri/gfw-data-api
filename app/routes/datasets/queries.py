@@ -391,7 +391,9 @@ async def _query_raster_lambda(
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
 ) -> Dict[str, Any]:
-    data_environment = await _get_data_environment(grids=[Grid.ten_by_forty_thousand, Grid.ten_by_one_hundred_thousand])
+    data_environment = await _get_data_environment(
+        grids=[Grid.ten_by_forty_thousand, Grid.ten_by_one_hundred_thousand]
+    )
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
@@ -455,6 +457,10 @@ async def _get_data_environment(grids: List[Grid] = []) -> List[Dict[str, Any]]:
     for row in latest_tile_sets:
         if grids and row.creation_options["grid"] not in grids:
             # skip if not on the right grid
+            continue
+
+        # TODO skip intermediate raster for tile cache until field is in metadata
+        if "tcd" in row.creation_options["pixel_meaning"]:
             continue
 
         source_layer_name = f"{row.dataset}__{row.creation_options['pixel_meaning']}"

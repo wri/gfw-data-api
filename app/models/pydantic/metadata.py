@@ -26,7 +26,7 @@ class RasterFieldMetadata(StrictBaseModel):
     field_name_: str = Field(..., alias="field_name")
     field_alias: Optional[str]
     field_description: Optional[str]
-    field_values: Optional[List[str]]
+    field_values: Optional[List[Any]]
 
     class Config:
         extra = Extra.forbid

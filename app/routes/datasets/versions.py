@@ -9,14 +9,13 @@ assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
 from copy import deepcopy
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from botocore.exceptions import ClientError, ParamValidationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
-from fastapi.responses import ORJSONResponse
 from fastapi.logger import logger
+from fastapi.responses import ORJSONResponse
 
-from .queries import _get_latest_assets, _get_data_environment
 from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
@@ -30,7 +29,11 @@ from ...models.pydantic.creation_options import (
     creation_option_factory,
 )
 from ...models.pydantic.extent import Extent, ExtentResponse
-from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse, RasterFieldMetadata
+from ...models.pydantic.metadata import (
+    FieldMetadata,
+    FieldMetadataResponse,
+    RasterFieldMetadata,
+)
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.versions import (
     Version,
@@ -51,6 +54,7 @@ from ...tasks.default_assets import append_default_asset, create_default_asset
 from ...tasks.delete_assets import delete_all_assets
 from ...utils.aws import get_s3_client
 from ...utils.path import split_s3_path
+from .queries import _get_data_environment
 
 router = APIRouter()
 
@@ -311,33 +315,41 @@ async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     asset = await assets.get_default_asset(dataset, version)
 
     logger.debug(f"Processing default asset type {asset.asset_type}")
+    fields: Union[List[FieldMetadata], List[RasterFieldMetadata]] = []
     if asset.asset_type == AssetType.raster_tile_set:
-        fields: List[RasterFieldMetadata] = []
-
-        grids = [Grid.ten_by_forty_thousand]
-        if asset.creation_options["grid"] == Grid.ten_by_one_hundred_thousand:
-            grids.append(Grid.ten_by_one_hundred_thousand)
-
-        raster_data_environment = await _get_data_environment(grids=grids)
-
-        logger.debug(f"Processing data environment f{raster_data_environment}")
-        for layer in raster_data_environment:
-            field_kwargs = {
-                "field_name": layer["name"],
-            }
-
-            if "raster_table" in layer and layer["raster_table"]:
-                field_kwargs["field_values"] = [row["value"] for row in layer["raster_table"]["rows"]]
-                if "default_meaning" in layer["raster_table"]:
-                    field_kwargs["field_values"].append(layer["raster_table"]["default_meaning"])
-
-            fields.append(RasterFieldMetadata(**field_kwargs))
-
-        logger.debug(f"Returning fields f{[field.dict() for field in fields]}")
+        fields = await _get_raster_fields(asset)
     else:
-        fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
+        fields = [FieldMetadata(**field) for field in asset.fields]
 
     return FieldMetadataResponse(data=fields)
+
+
+async def _get_raster_fields(asset: ORMAsset) -> List[RasterFieldMetadata]:
+    fields: List[RasterFieldMetadata] = []
+    grids = [Grid.ten_by_forty_thousand]
+    if asset.creation_options["grid"] == Grid.ten_by_one_hundred_thousand:
+        grids.append(Grid.ten_by_one_hundred_thousand)
+
+    raster_data_environment = await _get_data_environment(grids=grids)
+
+    logger.debug(f"Processing data environment f{raster_data_environment}")
+    for layer in raster_data_environment:
+        field_kwargs = {
+            "field_name": layer["name"],
+        }
+
+        if "raster_table" in layer and layer["raster_table"]:
+            field_kwargs["field_values"] = [
+                row["meaning"] for row in layer["raster_table"]["rows"]
+            ]
+            if "default_meaning" in layer["raster_table"]:
+                field_kwargs["field_values"].append(
+                    layer["raster_table"]["default_meaning"]
+                )
+
+        fields.append(RasterFieldMetadata(**field_kwargs))
+
+    return fields
 
 
 async def _version_response(
