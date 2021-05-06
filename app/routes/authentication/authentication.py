@@ -4,12 +4,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.security import OAuth2PasswordRequestForm
 
-from ..authentication.api_keys import api_key_is_valid
-from ..authentication.token import get_user_id, is_admin
-from ..crud import api_keys
-from ..errors import RecordNotFoundError, UnauthorizedError
-from ..models.orm.api_keys import ApiKey as ORMApiKey
-from ..models.pydantic.authentication import (
+from ...authentication.api_keys import api_key_is_valid
+from ...authentication.token import get_user_id, is_admin
+from ...crud import api_keys
+from ...errors import RecordNotFoundError, UnauthorizedError
+from ...models.orm.api_keys import ApiKey as ORMApiKey
+from ...models.pydantic.authentication import (
     ApiKey,
     APIKeyRequestIn,
     ApiKeyResponse,
@@ -19,7 +19,7 @@ from ..models.pydantic.authentication import (
     SignUpRequestIn,
     SignUpResponse,
 )
-from ..utils.rw_api import login, signup
+from ...utils.rw_api import login, signup
 
 router = APIRouter()
 
