@@ -61,6 +61,12 @@ from ...models.orm.assets import Asset as AssetORM
 from ...models.orm.versions import Version as VersionORM
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.query import QueryRequestIn
+from ...models.pydantic.raster_analysis import (
+    DataEnvironment,
+    DerivedLayer,
+    Layer,
+    SourceLayer,
+)
 from ...models.pydantic.responses import Response
 from ...responses import ORJSONLiteResponse
 from ...settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
@@ -397,7 +403,7 @@ async def _query_raster_lambda(
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
-        "environment": data_environment,
+        "environment": data_environment.dict()["layers"],
         "format": format,
     }
 
@@ -430,7 +436,7 @@ async def _query_raster_lambda(
     return response_data
 
 
-async def _get_data_environment(grids: List[Grid] = []) -> List[Dict[str, Any]]:
+async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
     # get all Raster tile set assets
     latest_tile_sets = await (
         AssetORM.join(VersionORM)
@@ -453,7 +459,7 @@ async def _get_data_environment(grids: List[Grid] = []) -> List[Dict[str, Any]]:
     ).gino.all()
 
     # create layers
-    layers = []
+    layers: List[Layer] = []
     for row in latest_tile_sets:
         if grids and row.creation_options["grid"] not in grids:
             # skip if not on the right grid
@@ -472,20 +478,28 @@ async def _get_data_environment(grids: List[Grid] = []) -> List[Dict[str, Any]]:
         if row.creation_options["pixel_meaning"].endswith("_ha-1"):
             layers.append(_get_area_density_layer(row, source_layer_name))
 
-    return layers
+    return DataEnvironment(layers=layers)
 
 
-def _get_source_layer(row, source_layer_name: str):
-    return {
-        "source_uri": row.asset_uri,
-        "tile_scheme": "nw",
-        "grid": row.creation_options["grid"],
-        "name": source_layer_name,
-        "raster_table": row.metadata.get("raster_table", None),
-    }
+def _get_source_layer(row, source_layer_name: str) -> SourceLayer:
+    # TODO we need to start uploading GLAD directly to the data API
+    if source_layer_name == "umd_glad_landsat_alerts__date_conf":
+        source_uri = "s3://gfw2-data/forest_change/umd_landsat_alerts/prod/analysis/{tile_id}.tif"
+        tile_scheme = "nwse"
+    else:
+        source_uri = row.asset_uri
+        tile_scheme = "nw"
+
+    return SourceLayer(
+        source_uri=source_uri,
+        tile_scheme=tile_scheme,
+        grid=row.creation_options["grid"],
+        name=source_layer_name,
+        raster_table=row.metadata.get("raster_table", None),
+    )
 
 
-def _get_date_conf_derived_layers(row, source_layer_name):
+def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
     """Get derived layers that decode our date_conf layers for alert
     systems."""
     # TODO should these somehow be in the metadata or creation options instead of hardcoded?
@@ -495,30 +509,30 @@ def _get_date_conf_derived_layers(row, source_layer_name):
     encode_expression = "(datetime64(A) - 16435).astype(uint16)"
 
     return [
-        {
-            "source_layer": source_layer_name,
-            "name": source_layer_name.replace("__date_conf", "__date"),
-            "calc": "A % 10000",
-            "decode_expression": encode_expression,
-            "encode_expression": decode_expression,
-        },
-        {
-            "source_layer": source_layer_name,
-            "name": source_layer_name.replace("__date_conf", "__confidence"),
-            "calc": "floor(A / 10000)",
-            "pixel_encoding": {2: "", 3: "high"},
-        },
+        DerivedLayer(
+            source_layer=source_layer_name,
+            name=source_layer_name.replace("__date_conf", "__date"),
+            calc="A % 10000",
+            decode_expression=encode_expression,
+            encode_expression=decode_expression,
+        ),
+        DerivedLayer(
+            source_layer=source_layer_name,
+            name=source_layer_name.replace("__date_conf", "__confidence"),
+            calc="floor(A / 10000)",
+            pixel_encoding={2: "", 3: "high"},
+        ),
     ]
 
 
-def _get_area_density_layer(row, source_layer_name):
+def _get_area_density_layer(row, source_layer_name) -> DerivedLayer:
     """Get the derived gross layer for whose values represent density per pixel
     area."""
-    return {
-        "source_layer": source_layer_name,
-        "name": source_layer_name.replace("_ha-1", ""),
-        "calc": "A * area",
-    }
+    return DerivedLayer(
+        source_layer=source_layer_name,
+        name=source_layer_name.replace("_ha-1", ""),
+        calc="A * area",
+    )
 
 
 def _get_predefined_layers(row, source_layer_name):

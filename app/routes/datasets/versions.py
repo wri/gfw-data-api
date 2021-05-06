@@ -9,7 +9,7 @@ assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
 from copy import deepcopy
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from botocore.exceptions import ClientError, ParamValidationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
@@ -333,19 +333,17 @@ async def _get_raster_fields(asset: ORMAsset) -> List[RasterFieldMetadata]:
     raster_data_environment = await _get_data_environment(grids=grids)
 
     logger.debug(f"Processing data environment f{raster_data_environment}")
-    for layer in raster_data_environment:
-        field_kwargs = {
-            "field_name": layer["name"],
+    for layer in raster_data_environment.layers:
+        field_kwargs: Dict[str, Any] = {
+            "field_name": layer.name,
         }
 
-        if "raster_table" in layer and layer["raster_table"]:
+        if layer.raster_table:
             field_kwargs["field_values"] = [
-                row["meaning"] for row in layer["raster_table"]["rows"]
+                row.meaning for row in layer.raster_table.rows
             ]
-            if "default_meaning" in layer["raster_table"]:
-                field_kwargs["field_values"].append(
-                    layer["raster_table"]["default_meaning"]
-                )
+            if layer.raster_table.default_meaning:
+                field_kwargs["field_values"].append(layer.raster_table.default_meaning)
 
         fields.append(RasterFieldMetadata(**field_kwargs))
 
