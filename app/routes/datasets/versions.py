@@ -15,6 +15,7 @@ from botocore.exceptions import ClientError, ParamValidationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.responses import ORJSONResponse
 
+from ...authentication.token import is_admin
 from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
@@ -36,12 +37,7 @@ from ...models.pydantic.versions import (
     VersionResponse,
     VersionUpdateIn,
 )
-from ...routes import (
-    dataset_dependency,
-    dataset_version_dependency,
-    is_admin,
-    version_dependency,
-)
+from ...routes import dataset_dependency, dataset_version_dependency, version_dependency
 from ...settings.globals import TILE_CACHE_CLOUDFRONT_ID
 from ...tasks.aws_tasks import flush_cloudfront_cache
 from ...tasks.default_assets import append_default_asset, create_default_asset

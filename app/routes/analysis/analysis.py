@@ -2,9 +2,11 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, Depends, Path, Query
+from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
+from ...authentication.api_keys import get_api_key
 from ...models.enum.analysis import RasterLayer
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.pydantic.analysis import ZonalAnalysisRequestIn
@@ -45,6 +47,7 @@ async def zonal_statistics_get(
         description="Must be either year or YYYY-MM-DD date format.",
         regex=DATE_REGEX,
     ),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """Calculate zonal statistics on any registered raster layers in a
     geostore."""
@@ -66,7 +69,9 @@ async def zonal_statistics_get(
     tags=["Analysis"],
     deprecated=True,
 )
-async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
+async def zonal_statistics_post(
+    request: ZonalAnalysisRequestIn, api_key: APIKey = Depends(get_api_key)
+):
     return await _zonal_statistics(
         request.geometry,
         request.sum,

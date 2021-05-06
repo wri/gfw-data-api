@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 
 from ...application import ContextEngine, db
+from ...authentication.token import is_service_account
 from ...crud import assets, tasks, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus
@@ -30,7 +31,6 @@ from ...tasks.raster_tile_set_assets.raster_tile_set_assets import (
     raster_tile_set_post_completion_task,
 )
 from ...utils.tile_cache import redeploy_tile_cache_service
-from .. import is_service_account
 from . import task_response
 
 router = APIRouter()

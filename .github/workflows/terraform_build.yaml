@@ -12,13 +12,14 @@ jobs:
 
     - name: Test with pytest
       run: |
+        ./scripts/test_v2
         ./scripts/test
 
     - name: Run codacy-coverage-reporter
       uses: codacy/codacy-coverage-reporter-action@master
       with:
         project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
-        coverage-reports: tests/cobertura.xml
+        coverage-reports: tests/cobertura.xml, tests_v2/cobertura.xml
 
     - name: Deploy production
       if: success() && contains(github.ref, 'master')
