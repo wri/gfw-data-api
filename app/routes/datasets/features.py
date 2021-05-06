@@ -68,7 +68,7 @@ async def get_nasa_viirs_fire_alerts_features(
     except UndefinedTableError:
         raise HTTPException(
             status_code=501,
-            detail=f"Endpoint not implement for {dataset}.{version}."
+            detail=f"Endpoint not implemented for {dataset}.{version}."
             "Not a table or vector asset.",
         )
 
@@ -96,7 +96,7 @@ async def get_features(
     except UndefinedTableError:
         raise HTTPException(
             status_code=501,
-            detail=f"Endpoint not implement for {dataset}.{version}."
+            detail=f"Endpoint not implemented for {dataset}.{version}."
             "Not a table or vector asset.",
         )
 

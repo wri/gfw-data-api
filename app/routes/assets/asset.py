@@ -189,7 +189,7 @@ async def get_tasks(*, asset_id: UUID = Path(...)) -> TasksResponse:
     tags=["Assets"],
     response_model=ChangeLogResponse,
 )
-async def get_change_log(asset_id: UUID = Path(...)):
+async def get_change_log(asset_id: UUID = Path(...)) -> ChangeLogResponse:
     asset: ORMAsset = await assets.get_asset(asset_id)
     change_logs: List[ChangeLog] = [
         ChangeLog(**change_log) for change_log in asset.change_log

@@ -1,6 +1,6 @@
 """Datasets can have different versions.
 
-Versions aer usually linked to different releases. Versions can be
+Versions are usually linked to different releases. Versions can be
 either mutable (data can change) or immutable (data cannot change). By
 default versions are immutable. Every version needs one or many source
 files. These files can be a remote, publicly accessible URL or an
