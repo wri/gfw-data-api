@@ -12,6 +12,10 @@ High-performance Async REST API, in Python. FastAPI + GINO + Uvicorn (powered by
 * Generate a DB Migration: `./scripts/migrate` (note `app/settings/prestart.sh` will run migrations automatically when running `/scripts/develop`)
 * Run tests: `./scripts/test`
 * Run specific tests: `./scripts/test tasks/test_vector_source_assets.py::test_vector_source_asset`
+* Debug memory usage of Batch jobs with memory_profiler:
+    1. Install memory_profiler in the job's Dockerfile
+    2. Modify the job's script to run with memory_profiler. Ex: `pixetl "${ARG_ARRAY[@]}"` -> `mprof run -M -C -T 1 --python /usr/local/app/gfw_pixetl/pixetl.py "${ARG_ARRAY[@]}"`
+    3. scp memory_profiler's .dat files off of the Batch instance (found in /tmp by default) while the instance is still up
 
 ## Features
 ### Core Dependencies

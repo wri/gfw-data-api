@@ -67,15 +67,23 @@ async def create_pixetl_job(
     if subset:
         command += ["--subset", subset]
 
-    # allowing float jobs to run longer
+    kwargs = dict()
+    # Experience indicates float jobs take longer...
     if "float" in co.data_type:
-        kwargs = {
-            "attempt_duration_seconds": int(DEFAULT_JOB_DURATION * 3),
-            "vcpus": MAX_CORES,
-            "memory": MAX_MEM,
-        }
-    else:
-        kwargs = {}
+        kwargs["attempt_duration_seconds"] = int(DEFAULT_JOB_DURATION * 3)
+        kwargs["vcpus"] = MAX_CORES
+        kwargs["memory"] = MAX_MEM
+        kwargs["num_processes"] = MAX_CORES
+        # ...and float64 jobs require twice the memory for the same number of processes.
+        # We can't increase the memory anymore, so halve the processes
+        if "float64" in co.data_type:
+            kwargs["num_processes"] = int(MAX_CORES / 2)
+
+    # ...but allow the user to override parallelism and timeout values
+    if co.num_processes is not None:
+        kwargs["num_processes"] = co.num_processes
+    if co.timeout_sec is not None:
+        kwargs["attempt_duration_seconds"] = co.timeout_sec
 
     return PixETLJob(
         dataset=dataset,

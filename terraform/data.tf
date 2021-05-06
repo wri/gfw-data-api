@@ -69,6 +69,7 @@ data "template_file" "container_definition" {
     pixetl_job_queue            = module.batch_job_queues.pixetl_job_queue_arn
     raster_analysis_lambda_name = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_lambda_name
     service_url                 = local.service_url
+    rw_api_url                  = var.rw_api_url
     api_token_secret_arn        = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
     aws_gcs_key_secret_arn      = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
   }

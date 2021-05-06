@@ -51,7 +51,7 @@ version_payload = {
 async def test_versions(async_client):
     """Test version path operations.
 
-    We patch/ disable background tasks here, as they run asynchronously.
+    We patch/disable background tasks here, as they run asynchronously.
     Such tasks are tested separately in a different module
     """
     dataset = "test"
@@ -237,6 +237,7 @@ async def test_version_metadata(async_client):
         "learn_more": None,
         "version_number": version,
         "content_date": None,
+        "content_date_range": None,
         "last_update": None,
         "download": None,
         "analysis": None,
@@ -406,7 +407,6 @@ async def test_put_latest(async_client):
     )
 
 
-@pytest.mark.hanging
 @pytest.mark.asyncio
 async def test_version_put_raster(async_client):
     """Test raster source version operations."""

@@ -1,9 +1,12 @@
 """Explore data entries for a given dataset version using standard SQL."""
-
-from typing import Any, Dict, List, Optional, Tuple
+import csv
+import re
+from io import StringIO
+from typing import Any, Dict, List, Optional, Tuple, cast
 from urllib.parse import unquote
 from uuid import UUID
 
+import httpx
 from asyncpg import (
     InsufficientPrivilegeError,
     InvalidTextRepresentationError,
@@ -11,16 +14,18 @@ from asyncpg import (
     UndefinedFunctionError,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import ORJSONResponse
+from fastapi import Response as FastApiResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi.logger import logger
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
-from sqlalchemy.engine import RowProxy
 
 from ...application import db
 from ...crud import assets
 from ...models.enum.assets import AssetType
+from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pg_admin_functions import (
     advisory_lock_functions,
@@ -49,10 +54,14 @@ from ...models.enum.pg_sys_functions import (
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
+from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.query import QueryRequestIn
 from ...models.pydantic.responses import Response
+from ...responses import ORJSONLiteResponse
+from ...settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
+from ...utils.aws import invoke_lambda
 from ...utils.geostore import get_geostore_geometry
 from .. import dataset_version_dependency
 
@@ -61,12 +70,12 @@ router = APIRouter()
 
 @router.get(
     "/{dataset}/{version}/query",
-    response_class=ORJSONResponse,
+    response_class=ORJSONLiteResponse,
     response_model=Response,
     tags=["Query"],
 )
 async def query_dataset(
-    *,
+    response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
@@ -85,14 +94,15 @@ async def query_dataset(
     else:
         geometry = None
 
-    data: List[RowProxy] = await _query_dataset(dataset, version, sql, geometry)
+    data: List[Dict[str, Any]] = await _query_dataset(dataset, version, sql, geometry)
 
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
     return Response(data=data)
 
 
 @router.post(
     "/{dataset}/{version}/query",
-    response_class=ORJSONResponse,
+    response_class=ORJSONLiteResponse,
     response_model=Response,
     tags=["Query"],
 )
@@ -106,28 +116,59 @@ async def query_dataset_post(
 
     dataset, version = dataset_version
 
-    data: List[RowProxy] = await _query_dataset(
-        dataset, version, request.sql, request.geometry
-    )
-
+    data = await _query_dataset(dataset, version, request.sql, request.geometry)
     return Response(data=data)
 
 
 async def _query_dataset(
-    dataset: str, version: str, sql: str, geometry: Optional[Geometry]
-) -> List[RowProxy]:
-
+    dataset: str,
+    version: str,
+    sql: str,
+    geometry: Optional[Geometry],
+) -> List[Dict[str, Any]]:
     # Make sure we can query the dataset
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
-    if default_asset.asset_type not in [
-        AssetType.geo_database_table,
-        AssetType.database_table,
-    ]:
+    query_type = _get_query_type(default_asset, geometry)
+    if query_type == QueryType.table:
+        return await _query_table(dataset, version, sql, geometry, QueryFormat.json)
+    elif query_type == QueryType.raster:
+        geometry = cast(Geometry, geometry)
+        results = await _query_raster(dataset, default_asset, sql, geometry)
+        return results["data"]
+    else:
         raise HTTPException(
             status_code=501,
             detail="This endpoint is not implemented for the given dataset.",
         )
 
+
+def _get_query_type(default_asset: AssetORM, geometry: Optional[Geometry]):
+    if default_asset.asset_type in [
+        AssetType.geo_database_table,
+        AssetType.database_table,
+    ]:
+        return QueryType.table
+    elif default_asset.asset_type == AssetType.raster_tile_set:
+        if not geometry:
+            raise HTTPException(
+                status_code=422, detail="Raster tile set queries require a geometry."
+            )
+        return QueryType.raster
+    else:
+        raise HTTPException(
+            status_code=501,
+            detail="This endpoint is not implemented for the given dataset.",
+        )
+
+
+async def _query_table(
+    dataset: str,
+    version: str,
+    sql: str,
+    geometry: Optional[Geometry],
+    format: QueryFormat = QueryFormat.json,
+    delimiter: Delimiters = Delimiters.comma,
+) -> List[Dict[str, Any]]:
     # parse and validate SQL statement
     try:
         parsed = parse_sql(unquote(sql))
@@ -157,7 +198,8 @@ async def _query_dataset(
     sql = RawStream()(Node(parsed))
 
     try:
-        response = await db.all(sql)
+        rows = await db.all(sql)
+        response: List[Dict[str, Any]] = [dict(row) for row in rows]
     except InsufficientPrivilegeError:
         raise HTTPException(
             status_code=403, detail="Not authorized to execute this query."
@@ -168,6 +210,24 @@ async def _query_dataset(
         raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
 
     return response
+
+
+def _orm_to_csv(
+    data: List[Dict[str, Any]], delimiter: Delimiters = Delimiters.comma
+) -> StringIO:
+    """Create a new csv file that represents generated data.
+
+    Response will return a temporary redirect to download URL.
+    """
+    csv_file = StringIO()
+
+    wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
+    field_names = data[0].keys()
+    wr.writerow(field_names)
+    for row in data:
+        wr.writerow(row.values())
+    csv_file.seek(0)
+    return csv_file
 
 
 def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
@@ -284,7 +344,6 @@ def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, An
 
 
 async def _add_geometry_filter(parsed_sql, geometry: Geometry):
-
     # make empty select statement with where clause including filter
     # this way we can later parse it as AST
     intersect_filter = f"SELECT WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON('{geometry.json()}'),4326))"
@@ -302,3 +361,61 @@ async def _add_geometry_filter(parsed_sql, geometry: Geometry):
         parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = filter_where
 
     return parsed_sql
+
+
+async def _query_raster(
+    dataset: str,
+    asset: AssetORM,
+    sql: str,
+    geometry: Geometry,
+    format: QueryFormat = QueryFormat.json,
+    delimiter: Delimiters = Delimiters.comma,
+) -> Dict[str, Any]:
+    # use default data type to get default raster layer for dataset
+    default_type = asset.creation_options["pixel_meaning"]
+    default_layer = (
+        f"{default_type}__{dataset}"
+        if default_type == "is"
+        else f"{dataset}__{default_type}"
+    )
+    sql = re.sub("from \w+", f"from {default_layer}", sql.lower())
+    return await _query_raster_lambda(geometry, sql, format, delimiter)
+
+
+async def _query_raster_lambda(
+    geometry: Geometry,
+    sql: str,
+    format: QueryFormat = QueryFormat.json,
+    delimiter: Delimiters = Delimiters.comma,
+) -> Dict[str, Any]:
+    payload = {
+        "geometry": jsonable_encoder(geometry),
+        "query": sql,
+        "format": format,
+    }
+
+    try:
+        response = await invoke_lambda(RASTER_ANALYSIS_LAMBDA_NAME, payload)
+    except httpx.TimeoutException:
+        raise HTTPException(500, "Query took too long to process.")
+
+    if response.status_code >= 300:
+        logger.error(f"Lambda returned invalid response code f{response.status}")
+        raise HTTPException(
+            500, "Raster analysis geoprocessor experienced an error. See logs."
+        )
+
+    response_data = response.json()["body"]
+    if (
+        "status" not in response_data
+        or "data" not in response_data
+        or response_data["status"] != "success"
+    ):
+        logger.error(
+            f"Raster analysis lambda experienced an error. Full response: {response.text}"
+        )
+        raise HTTPException(
+            500, "Raster analysis geoprocessor experienced an error. See logs."
+        )
+
+    return response_data

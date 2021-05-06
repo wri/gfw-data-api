@@ -139,16 +139,19 @@ class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
     source_type: Union[RasterSourceType, VectorSourceType]
     source_driver: Optional[RasterDrivers] = None
     source_uri: Optional[List[str]] = Field(
-        description="List of input files. Must a be tile.geojson file located on S3. "
-        "Input tiles must have path either starting with /vsis3/ or /vsigs/",
+        description="List of input sources. Sources must be the URI of either a "
+        "tiles.geojson file on S3 or a folder (prefix) on S3 or GCS. "
+        "Features in tiles.geojson must have path starting with either /vsis3/ or /vsigs/",
     )
+    num_processes: Optional[StrictInt] = None
+    timeout_sec: Optional[StrictInt] = None
 
     @validator("source_uri")
     def validate_source_uri(cls, v, values, **kwargs):
         if values.get("source_type") == SourceType.raster:
             assert v, "Raster source types require source_uri"
             if len(v) > 1:
-                assert values.get("calc"), "More than one source_uri require calc"
+                assert values.get("calc"), "More than one source_uri requires calc"
         else:
             assert not v, "Only raster source type require source_uri"
         return v
