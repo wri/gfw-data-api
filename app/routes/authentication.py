@@ -24,7 +24,7 @@ from ..utils.rw_api import login, signup
 router = APIRouter()
 
 
-@router.post("sign-up")
+@router.post("/sign-up", tags=["Authentication"])
 async def sign_up(request: SignUpRequestIn):
     data = await signup(request.name, request.email)
     return SignUpResponse(data=data)

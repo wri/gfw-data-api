@@ -163,6 +163,7 @@ for r in analysis_routers:
 
 
 tags_metadata = [
+    {"name": "Authentication", "description": authentication.__doc__},
     {"name": "Dataset", "description": datasets.__doc__},
     {"name": "Version", "description": versions.__doc__},
     {"name": "Assets", "description": asset.__doc__},
