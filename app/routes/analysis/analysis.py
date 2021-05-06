@@ -105,7 +105,7 @@ async def _zonal_statistics(
             where_clauses.append(date_filter)
 
     if end_date:
-        date_filter = _get_date_filter(end_date, "<", group_by + filters)
+        date_filter = _get_date_filter(end_date, "<=", group_by + filters)
         if date_filter:
             where_clauses.append(date_filter)
 
