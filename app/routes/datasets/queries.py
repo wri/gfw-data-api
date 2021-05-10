@@ -427,26 +427,29 @@ async def _query_raster_lambda(
     except httpx.TimeoutException:
         raise HTTPException(500, "Query took too long to process.")
 
+    # invalid response codes are reserved by Lambda specific issues (e.g. too many requests)
     if response.status_code >= 300:
-        logger.error(f"Lambda returned invalid response code f{response.status}")
         raise HTTPException(
-            500, "Raster analysis geoprocessor experienced an error. See logs."
+            500,
+            f"Raster analysis geoprocessor returned invalid response code {response.status_code}",
         )
 
-    response_data = response.json()["body"]
-    if (
-        "status" not in response_data
-        or "data" not in response_data
-        or response_data["status"] != "success"
-    ):
-        logger.error(
-            f"Raster analysis lambda experienced an error. Full response: {response.text}"
-        )
+    # response must be in JSEND format or something unexpected happened
+    response_body = response.json()
+    if "status" not in response_body or "data" not in response_body:
         raise HTTPException(
-            500, "Raster analysis geoprocessor experienced an error. See logs."
+            500,
+            f"Raster analysis lambda received an unexpected response: {response.text}",
         )
 
-    return response_data
+    if response_body["status"] == "fail":
+        # validation error
+        raise HTTPException(422, response_body["message"])
+    elif response_body["status"] == "error":
+        # geoprocessing error
+        raise HTTPException(500, response_body["message"])
+
+    return response_body
 
 
 async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
