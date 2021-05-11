@@ -22,6 +22,7 @@ from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
+from sqlalchemy.sql import and_
 
 from ...application import db
 from ...authentication.api_keys import get_api_key
@@ -56,10 +57,18 @@ from ...models.enum.pg_sys_functions import (
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
+from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
+from ...models.orm.versions import Version as VersionORM
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.query import QueryRequestIn
+from ...models.pydantic.raster_analysis import (
+    DataEnvironment,
+    DerivedLayer,
+    Layer,
+    SourceLayer,
+)
 from ...models.pydantic.responses import Response
 from ...responses import ORJSONLiteResponse
 from ...settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
@@ -401,11 +410,17 @@ async def _query_raster_lambda(
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
 ) -> Dict[str, Any]:
+    data_environment = await _get_data_environment(
+        grids=[Grid.ten_by_forty_thousand, Grid.ten_by_one_hundred_thousand]
+    )
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
+        "environment": data_environment.dict()["layers"],
         "format": format,
     }
+
+    logger.info(f"Submitting raster analysis lambda request with payload: {payload}")
 
     try:
         response = await invoke_lambda(RASTER_ANALYSIS_LAMBDA_NAME, payload)
@@ -432,3 +447,115 @@ async def _query_raster_lambda(
         )
 
     return response_data
+
+
+async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
+    # get all Raster tile set assets
+    latest_tile_sets = await (
+        AssetORM.join(VersionORM)
+        .select()
+        .with_only_columns(
+            [
+                AssetORM.dataset,
+                AssetORM.version,
+                AssetORM.creation_options,
+                AssetORM.asset_uri,
+                AssetORM.metadata,
+            ]
+        )
+        .where(
+            and_(
+                AssetORM.asset_type == AssetType.raster_tile_set,
+                VersionORM.is_latest == True,  # noqa: E712
+            )
+        )
+    ).gino.all()
+
+    # create layers
+    layers: List[Layer] = []
+    for row in latest_tile_sets:
+        if grids and row.creation_options["grid"] not in grids:
+            # skip if not on the right grid
+            continue
+
+        # TODO skip intermediate raster for tile cache until field is in metadata
+        if "tcd" in row.creation_options["pixel_meaning"]:
+            continue
+
+        source_layer_name = f"{row.dataset}__{row.creation_options['pixel_meaning']}"
+        layers.append(_get_source_layer(row, source_layer_name))
+
+        if row.creation_options["pixel_meaning"] == "date_conf":
+            layers += _get_date_conf_derived_layers(row, source_layer_name)
+
+        if row.creation_options["pixel_meaning"].endswith("_ha-1"):
+            layers.append(_get_area_density_layer(row, source_layer_name))
+
+    return DataEnvironment(layers=layers)
+
+
+def _get_source_layer(row, source_layer_name: str) -> SourceLayer:
+    # TODO we need to start uploading GLAD directly to the data API
+    if source_layer_name == "umd_glad_landsat_alerts__date_conf":
+        source_uri = "s3://gfw2-data/forest_change/umd_landsat_alerts/prod/analysis/{tile_id}.tif"
+        tile_scheme = "nwse"
+    else:
+        source_uri = row.asset_uri
+        tile_scheme = "nw"
+
+    return SourceLayer(
+        source_uri=source_uri,
+        tile_scheme=tile_scheme,
+        grid=row.creation_options["grid"],
+        name=source_layer_name,
+        raster_table=row.metadata.get("raster_table", None),
+    )
+
+
+def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
+    """Get derived layers that decode our date_conf layers for alert
+    systems."""
+    # TODO should these somehow be in the metadata or creation options instead of hardcoded?
+    # 16435 is number of days from 1970-01-01 and 2015-01-01, and can be used to convet
+    # our encoding of days since 2015 to a number that can be used generally for datetimes
+    decode_expression = "(A + 16435).astype('datetime64[D]').astype(str)"
+    encode_expression = "(datetime64(A) - 16435).astype(uint16)"
+
+    return [
+        DerivedLayer(
+            source_layer=source_layer_name,
+            name=source_layer_name.replace("__date_conf", "__date"),
+            calc="A % 10000",
+            decode_expression=encode_expression,
+            encode_expression=decode_expression,
+        ),
+        DerivedLayer(
+            source_layer=source_layer_name,
+            name=source_layer_name.replace("__date_conf", "__confidence"),
+            calc="floor(A / 10000)",
+            pixel_encoding={2: "", 3: "high"},
+        ),
+    ]
+
+
+def _get_area_density_layer(row, source_layer_name) -> DerivedLayer:
+    """Get the derived gross layer for whose values represent density per pixel
+    area."""
+    return DerivedLayer(
+        source_layer=source_layer_name,
+        name=source_layer_name.replace("_ha-1", ""),
+        calc="A * area",
+    )
+
+
+def _get_predefined_layers(row, source_layer_name):
+    """Return predefined derived layers we use for analysis but don't actually
+    exist as tile sets."""
+    if source_layer_name == "whrc_aboveground_biomass_stock_2000__Mg_ha-1":
+        return [
+            {
+                "source_layer": source_layer_name,
+                "name": "whrc_aboveground_co2_emissions__Mg",
+                "calc": "A * area * (0.5 * 44 / 12)",
+            }
+        ]
