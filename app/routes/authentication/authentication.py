@@ -1,11 +1,11 @@
-from typing import List
+from typing import List, Optional, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.security import OAuth2PasswordRequestForm
 
 from ...authentication.api_keys import api_key_is_valid
-from ...authentication.token import get_user_id, is_admin
+from ...authentication.token import get_user, is_admin
 from ...crud import api_keys
 from ...errors import RecordNotFoundError, UnauthorizedError
 from ...models.orm.api_keys import ApiKey as ORMApiKey
@@ -19,6 +19,7 @@ from ...models.pydantic.authentication import (
     SignUpRequestIn,
     SignUpResponse,
 )
+from ...models.pydantic.responses import Response
 from ...utils.rw_api import login, signup
 
 router = APIRouter()
@@ -39,23 +40,38 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends()):
         raise HTTPException(status_code=401, detail=str(e))
 
     else:
-        return {
-            "access_token": token,
-            "token_type": "bearer",
-        }
+        return Response(
+            data={
+                "access_token": token,
+                "token_type": "bearer",
+            }
+        )
 
 
 @router.post("/apikey", tags=["Authentication"], status_code=201)
 async def create_apikey(
     request: APIKeyRequestIn,
-    user_id: str = Depends(get_user_id),
+    user: Tuple[str, str] = Depends(get_user),
 ):
     """Request a new API key.
 
     Default keys are valid for one year
     """
 
-    input_data = request.dict(exclude_none=True, by_alias=True)
+    user_id, user_role = user
+    if len(request.domains) == 0 and user_role != "ADMIN":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Users with role {user_role} must list at least one domain.",
+        )
+
+    if request.never_expires and user_role != "ADMIN":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Users with role {user_role} cannot set `never_expires` to True.",
+        )
+
+    input_data = request.dict(by_alias=True)
 
     row: ORMApiKey = await api_keys.create_api_key(user_id=user_id, **input_data)
 
@@ -64,7 +80,7 @@ async def create_apikey(
 
 @router.get("/apikeys", tags=["Authentication"])
 async def get_apikeys(
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user),
 ):
     """Request a new API key.
 
@@ -82,7 +98,10 @@ async def validate_apikey(
     api_key: UUID = Path(
         ..., description="Api Key to delete. Must be owned by authenticated user."
     ),
-    origin: str = Query(..., description="Origin used with API Key"),
+    origin: Optional[str] = Query(None, description="Origin used with API Key"),
+    referrer: Optional[str] = Query(
+        None, description="Referrer of call used with API Key"
+    ),
     is_authorized: bool = Depends(is_admin),
 ):
     """Check if a given API key is valid."""
@@ -94,7 +113,7 @@ async def validate_apikey(
         )
 
     data = ApiKeyValidation(
-        is_valid=api_key_is_valid(row.domains, row.expires_on, origin)
+        is_valid=api_key_is_valid(row.domains, row.expires_on, origin, referrer)
     )
     return ApiKeyValidationResponse(data=data)
 
@@ -104,7 +123,7 @@ async def delete_apikey(
     api_key: UUID = Path(
         ..., description="Api Key to delete. Must be owned by authenticated user."
     ),
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user),
 ):
     """Delete existing API key.
 

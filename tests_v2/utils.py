@@ -24,8 +24,8 @@ async def is_service_account_mocked() -> bool:
     return True
 
 
-async def get_user_id_mocked() -> str:
-    return "userid_123"
+async def get_user_mocked() -> Tuple[str, str]:
+    return "userid_123", "USER"
 
 
 async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:

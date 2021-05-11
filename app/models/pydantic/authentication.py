@@ -34,12 +34,16 @@ class APIKeyRequestIn(StrictBaseModel):
     email: EmailStr = Query(..., description="Email address of POC")
     domains: List[str] = Query(
         ...,
-        description="List of domains which can be used this API key. "
+        description="List of domains which can be used this API key. There must be at least one domain listed, unless user is an admin."
         "When making request using the API key, make sure you add the correct `orgin` header matching a whitelisted domain."
         "You can use wildcards for subdomains such as *.yourdomain.com. "
         "Our validation methoerd for wildcard will allow only subdomains. So make sure you also add yourdomain.com if you use root without any subdomains."
         "www.yourdomain.com and yourdomain.com are two different domains in terms of security. Include www. if required.",
         regex=r"^(\*\.)?([\w-]+\.)+[\w-]+$|(localhost)",
+    )
+    never_expires: bool = Query(
+        False,
+        description="Set API Key to never expire, only admin uses can set this to True",
     )
 
 

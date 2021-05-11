@@ -14,10 +14,36 @@ from tests_v2.fixtures.authentication.api_keys import (
 
 
 @pytest.mark.parametrize(
+    "org,email,domain, never_expires",
+    list(
+        zip(
+            cycle(GOOD_ORGANIZATIONS),
+            cycle(GOOD_EMAILS),
+            GOOD_DOMAINS,
+            cycle([False, True]),
+        )
+    ),
+)
+def test_APIKeyRequestIn(org, email, domain, never_expires):
+
+    request = APIKeyRequestIn(
+        alias="my alias",
+        organization=org,
+        email=email,
+        domains=[domain],
+        never_expires=never_expires,
+    )
+    assert request.organization == org
+    assert request.email == email
+    assert request.domains == [domain]
+    assert request.never_expires == never_expires
+
+
+@pytest.mark.parametrize(
     "org,email,domain",
     list(zip(cycle(GOOD_ORGANIZATIONS), cycle(GOOD_EMAILS), GOOD_DOMAINS)),
 )
-def test_APIKeyRequestIn(org, email, domain):
+def test_APIKeyRequestIn_never_expires_default(org, email, domain):
 
     request = APIKeyRequestIn(
         alias="my alias", organization=org, email=email, domains=[domain]
@@ -25,6 +51,7 @@ def test_APIKeyRequestIn(org, email, domain):
     assert request.organization == org
     assert request.email == email
     assert request.domains == [domain]
+    assert request.never_expires is False
 
 
 @pytest.mark.parametrize(
@@ -52,9 +79,17 @@ def test_APIKeyRequestIn_bad_domain(org, email, domain):
 
 
 @pytest.mark.parametrize(
-    "org,email,domain",
-    list(zip(cycle(GOOD_ORGANIZATIONS), cycle(GOOD_EMAILS), GOOD_DOMAINS)),
+    "org,email",
+    list(zip(cycle(GOOD_ORGANIZATIONS), GOOD_EMAILS)),
 )
-def test_APIKeyRequestIn_no_alias(org, email, domain):
-    with pytest.raises(ValidationError):
-        APIKeyRequestIn(alias=None, organization=org, email=email, domains=[domain])
+def test_APIKeyRequestIn_empty_domains(org, email):
+
+    request = APIKeyRequestIn(
+        alias="my alias", organization=org, email=email, domains=[]
+    )
+
+    assert request.alias == "my alias"
+    assert request.organization == org
+    assert request.email == email
+    assert request.domains == []
+    assert request.never_expires is False

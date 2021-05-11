@@ -12,6 +12,7 @@ async def create_api_key(
     organization: str,
     email: str,
     domains: List[str],
+    never_expires: bool,
 ) -> ORMApiKey:
 
     # If a simple string is used for domains, sqlalchemy will still inject this into db,
@@ -25,7 +26,7 @@ async def create_api_key(
         organization=organization,
         email=email,
         domains=domains,
-        expires_on=_next_year(),
+        expires_on=None if never_expires else _next_year(),
     )
 
     return new_api_key
