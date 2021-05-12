@@ -218,7 +218,7 @@ def convert_float_to_int(
     # Shift by 1 (and add 1 later) so any values of zero don't get counted as no_data
     uint16_max = np.iinfo(np.uint16).max - 1
     # Expand or squeeze to fit into a uint16
-    mult_factor = int(math.floor(uint16_max / value_range)) if value_range else 1
+    mult_factor = (uint16_max / value_range) if value_range else 1
 
     if isinstance(source_asset_co.no_data, list):
         raise RuntimeError("Cannot apply colormap on multi band image")
