@@ -40,7 +40,7 @@ async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
         response.json()["role"] == "ADMIN"
         and "gfw" in response.json()["extraUserData"]["apps"]
     ):
-        logger.info("Unauthorized user")
+        logger.warning(f"ADMIN privileges required. Unauthorized user: {response.text}")
         raise HTTPException(status_code=401, detail="Unauthorized")
     else:
         return True
