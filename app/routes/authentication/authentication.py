@@ -80,13 +80,13 @@ async def create_apikey(
 
 @router.get("/apikeys", tags=["Authentication"])
 async def get_apikeys(
-    user_id: str = Depends(get_user),
+    user: Tuple[str, str] = Depends(get_user),
 ):
     """Request a new API key.
 
     Default keys are valid for one year
     """
-
+    user_id, _ = user
     rows: List[ORMApiKey] = await api_keys.get_api_keys_from_user(user_id)
     data = [ApiKey.from_orm(row) for row in rows]
 
@@ -123,12 +123,13 @@ async def delete_apikey(
     api_key: UUID = Path(
         ..., description="Api Key to delete. Must be owned by authenticated user."
     ),
-    user_id: str = Depends(get_user),
+    user: Tuple[str, str] = Depends(get_user),
 ):
     """Delete existing API key.
 
     API Key must belong to user.
     """
+    user_id, _ = user
     try:
         row: ORMApiKey = await api_keys.get_api_key(api_key)
     except RecordNotFoundError:
