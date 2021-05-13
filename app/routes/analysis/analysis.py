@@ -105,10 +105,14 @@ async def _zonal_statistics(
             where_clauses.append(f"{lyr.value} != 0")
 
     if start_date:
-        where_clauses.append(_get_date_filter(start_date, ">="))
+        date_filter = _get_date_filter(start_date, ">=", group_by + filters)
+        if date_filter:
+            where_clauses.append(date_filter)
 
     if end_date:
-        where_clauses.append(_get_date_filter(end_date, "<"))
+        date_filter = _get_date_filter(end_date, "<=", group_by + filters)
+        if date_filter:
+            where_clauses.append(date_filter)
 
     where = " and ".join(where_clauses)
 
@@ -123,8 +127,15 @@ async def _zonal_statistics(
     return Response(data=resp["data"])
 
 
-def _get_date_filter(date: str, op: str):
-    if len(date) == 4:
+def _get_date_filter(
+    date: str, op: str, filter_layers: List[RasterLayer]
+) -> Optional[str]:
+    if RasterLayer.umd_tree_cover_loss__year in filter_layers:
+        # only get year for TCL
+        date = date if len(date) == 4 else date[:4]
         return f"umd_tree_cover_loss__year {op} {date}"
+    elif RasterLayer.umd_glad_alerts__date:
+        return f"umd_glad_landsat_alerts__date {op} '{date}'"
     else:
-        return f"umd_glad_landsat_alerts__date {op} {date}"
+        # no date layer to filter by
+        return None
