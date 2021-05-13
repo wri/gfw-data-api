@@ -26,12 +26,20 @@ GOOD_PAYLOAD = (
 )
 
 
+@pytest.fixture(autouse=True)
+@pytest.mark.asyncio
+async def delete_api_keys():
+    yield
+    async with ContextEngine("WRITE"):
+        await ORMApiKey.delete.gino.status()
+
+
 @pytest.mark.parametrize("user_id, alias, organization, email, domains", [GOOD_PAYLOAD])
 @pytest.mark.asyncio
 async def test_create_api_key(user_id, alias, organization, email, domains):
     async with ContextEngine("WRITE"):
         row: ORMApiKey = await create_api_key(
-            user_id, alias, organization, email, domains
+            user_id, alias, organization, email, domains, never_expires=False
         )
 
     assert isinstance(row.api_key, UUID)
@@ -49,14 +57,60 @@ async def test_create_api_key(user_id, alias, organization, email, domains):
 
 @pytest.mark.parametrize("user_id, alias, organization, email, domains", [GOOD_PAYLOAD])
 @pytest.mark.asyncio
+async def test_create_api_key_never_expires(
+    user_id, alias, organization, email, domains
+):
+    async with ContextEngine("WRITE"):
+        row: ORMApiKey = await create_api_key(
+            user_id, alias, organization, email, domains, never_expires=True
+        )
+
+    assert isinstance(row.api_key, UUID)
+    assert row.user_id == user_id
+    assert row.alias == alias
+    assert row.organization == organization
+    assert row.email == email
+    assert row.domains == domains
+    assert row.expires_on is None
+    assert isinstance(row.created_on, datetime)
+    assert isinstance(row.updated_on, datetime)
+
+
+@pytest.mark.parametrize("user_id, alias, organization, email, domains", [GOOD_PAYLOAD])
+@pytest.mark.asyncio
+async def test_create_api_key_empty_domains(
+    user_id, alias, organization, email, domains
+):
+    async with ContextEngine("WRITE"):
+        row: ORMApiKey = await create_api_key(
+            user_id, alias, organization, email, domains=[], never_expires=True
+        )
+
+    assert isinstance(row.api_key, UUID)
+    assert row.user_id == user_id
+    assert row.alias == alias
+    assert row.organization == organization
+    assert row.email == email
+    assert row.domains == []
+    assert row.expires_on is None
+    assert isinstance(row.created_on, datetime)
+    assert isinstance(row.updated_on, datetime)
+
+
+@pytest.mark.parametrize("user_id, alias, organization, email, domains", [GOOD_PAYLOAD])
+@pytest.mark.asyncio
 async def test_create_api_key_unique_constraint(
     user_id, alias, organization, email, domains
 ):
     """We should be able to submit the same payload twice."""
     async with ContextEngine("WRITE"):
-        await create_api_key(user_id, alias, organization, email, domains)
+        await create_api_key(
+            user_id, alias, organization, email, domains, never_expires=False
+        )
         with pytest.raises(asyncpg.exceptions.UniqueViolationError):
-            await create_api_key(user_id, alias, organization, email, domains)
+            await create_api_key(
+                user_id, alias, organization, email, domains, never_expires=False
+            )
 
 
 @pytest.mark.parametrize(
@@ -74,7 +128,9 @@ async def test_create_api_key_missing_value(
 ):
     async with ContextEngine("WRITE"):
         with pytest.raises(asyncpg.exceptions.NotNullViolationError):
-            await create_api_key(user_id, alias, organization, email, domains)
+            await create_api_key(
+                user_id, alias, organization, email, domains, never_expires=False
+            )
 
 
 @pytest.mark.parametrize(
@@ -94,7 +150,9 @@ async def test_create_api_key_missing_value(
 async def test_create_api_key_wrong_type(user_id, alias, organization, email, domains):
     async with ContextEngine("WRITE"):
         with pytest.raises(asyncpg.exceptions.DataError):
-            await create_api_key(user_id, alias, organization, email, domains)
+            await create_api_key(
+                user_id, alias, organization, email, domains, never_expires=False
+            )
 
 
 @pytest.mark.parametrize(
@@ -111,7 +169,9 @@ async def test_create_api_key_domains_not_list(
 ):
     async with ContextEngine("WRITE"):
         with pytest.raises(AssertionError):
-            await create_api_key(user_id, alias, organization, email, domains)
+            await create_api_key(
+                user_id, alias, organization, email, domains, never_expires=False
+            )
 
 
 @pytest.mark.parametrize("user_id, alias, organization, email, domains", [GOOD_PAYLOAD])
@@ -119,7 +179,7 @@ async def test_create_api_key_domains_not_list(
 async def test_get_api_key(user_id, alias, organization, email, domains):
     async with ContextEngine("WRITE"):
         create_row: ORMApiKey = await create_api_key(
-            user_id, alias, organization, email, domains
+            user_id, alias, organization, email, domains, never_expires=False
         )
         get_row: ORMApiKey = await get_api_key(create_row.api_key)
 
@@ -157,17 +217,24 @@ async def test_get_api_key_from_user(user_id, alias, organization, email, domain
     async with ContextEngine("WRITE"):
 
         row: ORMApiKey = await create_api_key(
-            user_id, alias, organization, email, domains
+            user_id, alias, organization, email, domains, never_expires=False
         )
         api_keys1.append(row.api_key)
 
         row = await create_api_key(
-            user_id, str(uuid.uuid4()), organization, email, domains
+            user_id,
+            str(uuid.uuid4()),
+            organization,
+            email,
+            domains,
+            never_expires=False,
         )
         api_keys1.append(row.api_key)
 
         new_user_id = str(uuid.uuid4())
-        row = await create_api_key(new_user_id, alias, organization, email, domains)
+        row = await create_api_key(
+            new_user_id, alias, organization, email, domains, never_expires=False
+        )
         api_keys2.append(row.api_key)
 
         rows = await get_api_keys_from_user(user_id)
@@ -186,7 +253,7 @@ async def test_get_api_key_from_user(user_id, alias, organization, email, domain
 async def test_delete_api_key(user_id, alias, organization, email, domains):
     async with ContextEngine("WRITE"):
         create_row: ORMApiKey = await create_api_key(
-            user_id, alias, organization, email, domains
+            user_id, alias, organization, email, domains, never_expires=False
         )
 
         delete_row: ORMApiKey = await delete_api_key(create_row.api_key)

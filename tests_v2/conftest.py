@@ -9,7 +9,7 @@ from alembic.config import main
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from app.authentication.token import get_user_id, is_admin, is_service_account
+from app.authentication.token import get_user, is_admin, is_service_account
 from app.models.enum.change_log import ChangeLogStatus
 from app.models.pydantic.change_log import ChangeLog
 from app.routes.datasets import versions
@@ -20,7 +20,7 @@ from tests_v2.utils import (
     _create_vector_source_assets,
     dict_function_closure,
     false_function,
-    get_user_id_mocked,
+    get_user_mocked,
     int_function_closure,
     is_admin_mocked,
     is_service_account_mocked,
@@ -70,7 +70,7 @@ async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     # mock authentification function to avoid having to reach out to RW API during tests
     app.dependency_overrides[is_admin] = is_admin_mocked
     app.dependency_overrides[is_service_account] = is_service_account_mocked
-    app.dependency_overrides[get_user_id] = get_user_id_mocked
+    app.dependency_overrides[get_user] = get_user_mocked
     # app.dependency_overrides[get_api_key] = get_api_key_mocked
 
     async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:

@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from fastapi import Depends, HTTPException
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
@@ -44,7 +46,7 @@ async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
         return True
 
 
-async def get_user_id(token: str = Depends(oauth2_scheme)) -> str:
+async def get_user(token: str = Depends(oauth2_scheme)) -> Tuple[str, str]:
     """Calls GFW API to authorize user.
 
     This functions check is user of any level is associated with the GFW
@@ -59,4 +61,4 @@ async def get_user_id(token: str = Depends(oauth2_scheme)) -> str:
         logger.info("Unauthorized user")
         raise HTTPException(status_code=401, detail="Unauthorized")
     else:
-        return response.json()["id"]
+        return response.json()["id"], response.json()["role"]
