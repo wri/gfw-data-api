@@ -8,7 +8,13 @@ from tests_v2.fixtures.authentication.api_keys import BAD_DOMAINS, GOOD_DOMAINS
 
 @pytest.mark.parametrize(
     "origin",
-    ["www.globalforestwatch.org", "pro.globalforestwatch.org", "globalforestwatch.org"],
+    [
+        "www.globalforestwatch.org",
+        "pro.globalforestwatch.org",
+        "globalforestwatch.org",
+        "https://www.globalforestwatch.org",
+        "https://www.globalforestwatch.org:9000",
+    ],
 )
 def test_api_key_is_valid_good_origins(origin):
     domains = GOOD_DOMAINS
@@ -36,7 +42,7 @@ def test_api_key_is_valid_ignore_origin(origin):
 @pytest.mark.parametrize(
     "referrer",
     [
-        "https://www.globalforestwatch.org",
+        "www.globalforestwatch.org",
         "http://pro.globalforestwatch.org",
         "https://globalforestwatch.org",
         "https://globalforestwatch.org/abc",
@@ -52,7 +58,11 @@ def test_api_key_is_valid_good_referrers(referrer):
 
 @pytest.mark.parametrize(
     "referrer",
-    ["www.globalforestwatch.org", "http://www.globalforestwatch.test.org"],
+    [
+        "www.*.org",
+        "http://www.globalforestwatch.test.org",
+        "www.globalforestwatch.org/test",
+    ],
 )
 def test_api_key_is_valid_bad_referrers(referrer):
     domains = GOOD_DOMAINS
