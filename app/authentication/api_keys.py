@@ -71,10 +71,18 @@ def api_key_is_valid(
     if not domains:
         is_valid = True
     elif origin and domains:
-        is_valid = any([re.search(_to_regex(domain), origin) for domain in domains])
+        is_valid = any(
+            [
+                re.search(_to_regex(domain), _extract_domain(origin))
+                for domain in domains
+            ]
+        )
     elif referrer and domains:
         is_valid = any(
-            [re.search(_to_regex(domain), _get_origin(referrer)) for domain in domains]
+            [
+                re.search(_to_regex(domain), _extract_domain(referrer))
+                for domain in domains
+            ]
         )
 
     # The expiration date if any must be in the future
@@ -105,5 +113,10 @@ def _to_regex(domain):
     return fr"^{result}$"
 
 
-def _get_origin(referrer: str) -> str:
-    return urlparse(referrer).netloc.split(":")[0]
+def _extract_domain(url: str) -> str:
+    parts = urlparse(url)
+
+    if parts.netloc:
+        return parts.netloc.split(":")[0]
+    else:
+        return parts.path.split(":")[0]
