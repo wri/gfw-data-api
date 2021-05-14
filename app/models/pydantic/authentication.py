@@ -54,7 +54,7 @@ class ApiKey(BaseRecord):
     organization: str
     email: str
     domains: List[str]
-    expires_on: datetime
+    expires_on: Optional[datetime]
 
 
 class ApiKeyValidation(StrictBaseModel):
