@@ -442,7 +442,7 @@ async def _query_raster_lambda(
             f"Raster analysis lambda received an unexpected response: {response.text}",
         )
 
-    if response_body["status"] == "fail":
+    if response_body["status"] == "failed":
         # validation error
         raise HTTPException(422, response_body["message"])
     elif response_body["status"] == "error":
