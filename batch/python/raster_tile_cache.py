@@ -99,7 +99,7 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int
         s3_client.download_file(tile[0], tile[1], tile_name)
 
         cmd = [
-            "gdal2tiles.py",
+            "16bpp_gdal2tiles.py",
             f"--zoom={zoom_level}",
             "--s_srs",
             "EPSG:3857",
