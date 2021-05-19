@@ -529,8 +529,8 @@ def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__date"),
             calc="A % 10000",
-            decode_expression=encode_expression,
-            encode_expression=decode_expression,
+            decode_expression=decode_expression,
+            encode_expression=encode_expression,
         ),
         DerivedLayer(
             source_layer=source_layer_name,
