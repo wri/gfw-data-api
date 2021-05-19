@@ -93,7 +93,7 @@ module "fargate_autoscaling" {
   auto_scaling_max_capacity = var.auto_scaling_max_capacity
   auto_scaling_max_cpu_util = var.auto_scaling_max_cpu_util
   auto_scaling_min_capacity = var.auto_scaling_min_capacity
-  acm_certificate_arn       = var.environment == "dev" ? null : data.terraform_remote_state.core.outputs.acm_certificate
+//  acm_certificate_arn       = var.environment == "dev" ? null : data.terraform_remote_state.core.outputs.acm_certificate
   security_group_ids        = [data.terraform_remote_state.core.outputs.postgresql_security_group_id]
   task_role_policies = [data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     aws_iam_policy.run_batch_jobs.arn,

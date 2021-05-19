@@ -32,7 +32,7 @@ resource "aws_cloudfront_distribution" "data_api" {
     viewer_protocol_policy = "redirect-to-https"
 
     forwarded_values {
-      headers                 = ["Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method"]
+      headers                 = ["Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method", "x-api-key", "Referer", "Authorization"]
       query_string            = true
 
       cookies {
