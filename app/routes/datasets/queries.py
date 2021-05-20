@@ -540,7 +540,15 @@ async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
         if "tcd" in row.creation_options["pixel_meaning"]:
             continue
 
-        source_layer_name = f"{row.dataset}__{row.creation_options['pixel_meaning']}"
+        if {row.creation_options["pixel_meaning"]} == "is":
+            source_layer_name = (
+                f"{row.creation_options['pixel_meaning']}__{row.dataset}"
+            )
+        else:
+            source_layer_name = (
+                f"{row.dataset}__{row.creation_options['pixel_meaning']}"
+            )
+
         layers.append(_get_source_layer(row, source_layer_name))
 
         if row.creation_options["pixel_meaning"] == "date_conf":
