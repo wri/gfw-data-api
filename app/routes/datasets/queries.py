@@ -70,7 +70,7 @@ from ...models.pydantic.raster_analysis import (
     SourceLayer,
 )
 from ...models.pydantic.responses import Response
-from ...responses import ORJSONLiteResponse
+from ...responses import CSVStreamingResponse, ORJSONLiteResponse
 from ...settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
 from ...utils.aws import invoke_lambda
 from ...utils.geostore import get_geostore_geometry
@@ -81,8 +81,6 @@ router = APIRouter()
 
 @router.get(
     "/{dataset}/{version}/query",
-    response_class=ORJSONLiteResponse,
-    response_model=Response,
     tags=["Query"],
 )
 async def query_dataset(
@@ -92,6 +90,12 @@ async def query_dataset(
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Origin service of geostore ID."
+    ),
+    format: QueryFormat = Query(
+        QueryFormat.json, description="Format to return query."
+    ),
+    delimiter: Delimiters = Query(
+        Delimiters.comma, description="Delimiter to use for CSV file."
     ),
     api_key: APIKey = Depends(get_api_key),
 ):
@@ -115,10 +119,21 @@ async def query_dataset(
     else:
         geometry = None
 
-    data: List[Dict[str, Any]] = await _query_dataset(dataset, version, sql, geometry)
-
     response.headers["Cache-Control"] = "max-age=7200"  # 2h
-    return Response(data=data)
+    if format == QueryFormat.json:
+        json_data: List[Dict[str, Any]] = await _query_dataset_json(
+            dataset, version, sql, geometry
+        )
+        return ORJSONLiteResponse(Response(data=json_data).dict())
+    elif format == QueryFormat.csv:
+        csv_data: StringIO = await _query_dataset_csv(
+            dataset, version, sql, geometry, delimiter=delimiter
+        )
+        return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
+    else:
+        raise HTTPException(
+            status_code=422, detail=f"Invalid return format for query {format}."
+        )
 
 
 @router.post(
@@ -138,11 +153,23 @@ async def query_dataset_post(
 
     dataset, version = dataset_version
 
-    data = await _query_dataset(dataset, version, request.sql, request.geometry)
-    return Response(data=data)
+    if request.format == QueryFormat.json:
+        json_data: List[Dict[str, Any]] = await _query_dataset_json(
+            dataset, version, request.sql, request.geometry
+        )
+        return ORJSONLiteResponse(Response(data=json_data).dict())
+    elif request.format == QueryFormat.csv:
+        csv_data: StringIO = await _query_dataset_csv(
+            dataset, version, request.sql, request.geometry, delimiter=request.delimiter
+        )
+        return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
+    else:
+        raise HTTPException(
+            status_code=422, detail=f"Invalid return format for query {format}."
+        )
 
 
-async def _query_dataset(
+async def _query_dataset_json(
     dataset: str,
     version: str,
     sql: str,
@@ -157,6 +184,34 @@ async def _query_dataset(
         geometry = cast(Geometry, geometry)
         results = await _query_raster(dataset, default_asset, sql, geometry)
         return results["data"]
+    else:
+        raise HTTPException(
+            status_code=501,
+            detail="This endpoint is not implemented for the given dataset.",
+        )
+
+
+async def _query_dataset_csv(
+    dataset: str,
+    version: str,
+    sql: str,
+    geometry: Optional[Geometry],
+    delimiter: Delimiters = Delimiters.comma,
+) -> StringIO:
+    # Make sure we can query the dataset
+    default_asset: AssetORM = await assets.get_default_asset(dataset, version)
+    query_type = _get_query_type(default_asset, geometry)
+    if query_type == QueryType.table:
+        response = await _query_table(
+            dataset, version, sql, geometry, QueryFormat.csv, delimiter
+        )
+        return _orm_to_csv(response, delimiter=delimiter)
+    elif query_type == QueryType.raster:
+        geometry = cast(Geometry, geometry)
+        results = await _query_raster(
+            dataset, default_asset, sql, geometry, QueryFormat.csv, delimiter
+        )
+        return StringIO(results["data"])
     else:
         raise HTTPException(
             status_code=501,
