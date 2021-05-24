@@ -13,8 +13,9 @@ from asyncpg import (
     UndefinedColumnError,
     UndefinedFunctionError,
 )
+from fastapi.responses import RedirectResponse
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi import Response as FastApiResponse
+from fastapi import Response as FastApiResponse, Request as FastApiRequest
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
@@ -81,9 +82,44 @@ router = APIRouter()
 
 @router.get(
     "/{dataset}/{version}/query",
+    response_class=RedirectResponse,
     tags=["Query"],
+    status_code=301,
+    deprecated=True,
 )
 async def query_dataset(
+    request: FastApiRequest,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    sql: str = Query(..., description="SQL query."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_origin: GeostoreOrigin = Query(
+        GeostoreOrigin.gfw, description="Origin service of geostore ID."
+    ),
+    api_key: APIKey = Depends(get_api_key),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented) and return response in JSON format.
+
+    Adding a geostore ID to the query will apply a spatial filter to the
+    query, only returning results for features intersecting with the
+    geostore geometry. For vector datasets, this filter will not clip
+    feature geometries to the geostore boundaries. Hence any spatial
+    transformation such as area calculations will be applied on the
+    entire feature geometry, including areas outside the geostore
+    boundaries.
+
+    This path is deprecated and will reroute to /query/json.
+    """
+    return RedirectResponse(url=f"{request.url}/json?{request.query_params}")
+
+
+@router.get(
+    "/{dataset}/{version}/query/json",
+    response_model=Response,
+    response_class=ORJSONLiteResponse,
+    tags=["Query"],
+)
+async def query_dataset_json(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
@@ -91,16 +127,10 @@ async def query_dataset(
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
-    format: QueryFormat = Query(
-        QueryFormat.json, description="Format to return query."
-    ),
-    delimiter: Delimiters = Query(
-        Delimiters.comma, description="Delimiter to use for CSV file."
-    ),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
-    implemented).
+    implemented) and return response in JSON format.
 
     Adding a geostore ID to the query will apply a spatial filter to the
     query, only returning results for features intersecting with the
@@ -120,20 +150,55 @@ async def query_dataset(
         geometry = None
 
     response.headers["Cache-Control"] = "max-age=7200"  # 2h
-    if format == QueryFormat.json:
-        json_data: List[Dict[str, Any]] = await _query_dataset_json(
-            dataset, version, sql, geometry
+    json_data: List[Dict[str, Any]] = await _query_dataset_json(
+        dataset, version, sql, geometry
+    )
+    return Response(data=json_data)
+
+
+@router.get(
+    "/{dataset}/{version}/query/csv",
+    response_class=CSVStreamingResponse,
+    tags=["Query"],
+)
+async def query_dataset_csv(
+    response: FastApiResponse,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    sql: str = Query(..., description="SQL query."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_origin: GeostoreOrigin = Query(
+        GeostoreOrigin.gfw, description="Origin service of geostore ID."
+    ),
+    delimiter: Delimiters = Query(
+        Delimiters.comma, description="Delimiter to use for CSV file."
+    ),
+    api_key: APIKey = Depends(get_api_key),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented) and return response in CSV format.
+
+    Adding a geostore ID to the query will apply a spatial filter to the
+    query, only returning results for features intersecting with the
+    geostore geometry. For vector datasets, this filter will not clip
+    feature geometries to the geostore boundaries. Hence any spatial
+    transformation such as area calculations will be applied on the
+    entire feature geometry, including areas outside the geostore
+    boundaries.
+    """
+
+    dataset, version = dataset_version
+    if geostore_id:
+        geometry: Optional[Geometry] = await get_geostore_geometry(
+            geostore_id, geostore_origin
         )
-        return ORJSONLiteResponse(Response(data=json_data).dict())
-    elif format == QueryFormat.csv:
-        csv_data: StringIO = await _query_dataset_csv(
-            dataset, version, sql, geometry, delimiter=delimiter
-        )
-        return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
     else:
-        raise HTTPException(
-            status_code=422, detail=f"Invalid return format for query {format}."
-        )
+        geometry = None
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
+    csv_data: StringIO = await _query_dataset_csv(
+        dataset, version, sql, geometry, delimiter=delimiter
+    )
+    return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
 
 
 @router.post(
