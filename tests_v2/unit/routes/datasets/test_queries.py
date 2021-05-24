@@ -4,7 +4,7 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_query_dataset_without_api_key(
-    async_client: AsyncClient, generic_vector_source_version
+    generic_vector_source_version, async_client: AsyncClient
 ):
     dataset_name, version_name, _ = generic_vector_source_version
 
@@ -17,10 +17,11 @@ async def test_query_dataset_without_api_key(
 
 @pytest.mark.asyncio
 async def test_query_dataset_with_api_key(
-    async_client: AsyncClient, generic_vector_source_version, apikey
+    generic_vector_source_version, apikey, async_client: AsyncClient
 ):
     dataset_name, version_name, _ = generic_vector_source_version
-    api_key, origin = apikey
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
 
     headers = {"origin": origin, "x-api-key": api_key}
 

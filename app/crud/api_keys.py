@@ -47,10 +47,10 @@ async def get_api_keys_from_user(user_id: str) -> List[ORMApiKey]:
 
 
 async def delete_api_key(api_key: uuid.UUID) -> ORMApiKey:
-    row: ORMApiKey = await get_api_key(api_key)
+    api_key_record: ORMApiKey = await get_api_key(api_key)
     await ORMApiKey.delete.where(ORMApiKey.api_key == api_key).gino.status()
 
-    return row
+    return api_key_record
 
 
 def _next_year(now=datetime.now()):

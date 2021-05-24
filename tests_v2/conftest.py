@@ -18,12 +18,11 @@ from tests_v2.fixtures.creation_options.versions import VECTOR_SOURCE_CREATION_O
 from tests_v2.utils import (
     BatchJobMock,
     _create_vector_source_assets,
+    bool_function_closure,
     dict_function_closure,
-    false_function,
+    get_admin_mocked,
     get_user_mocked,
     int_function_closure,
-    is_admin_mocked,
-    is_service_account_mocked,
     void_function,
 )
 
@@ -67,11 +66,47 @@ async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
 
-    # mock authentification function to avoid having to reach out to RW API during tests
-    app.dependency_overrides[is_admin] = is_admin_mocked
-    app.dependency_overrides[is_service_account] = is_service_account_mocked
+    # mock authentication function to avoid having to reach out to RW API during tests
+    app.dependency_overrides[is_admin] = bool_function_closure(True, with_args=False)
+    app.dependency_overrides[is_service_account] = bool_function_closure(
+        True, with_args=False
+    )
+    app.dependency_overrides[get_user] = get_admin_mocked
+
+    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
+        yield client
+
+    # Clean up
+    app.dependency_overrides = {}
+
+
+@pytest.fixture()
+@pytest.mark.asyncio
+async def async_client_unauthenticated(
+    db, init_db
+) -> AsyncGenerator[AsyncClient, None]:
+    """Async Test Client."""
+    from app.main import app
+
+    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
+        yield client
+
+    # Clean up
+    app.dependency_overrides = {}
+
+
+@pytest.fixture()
+@pytest.mark.asyncio
+async def async_client_no_admin(db, init_db) -> AsyncGenerator[AsyncClient, None]:
+    """Async Test Client."""
+    from app.main import app
+
+    # mock authentication function to avoid having to reach out to RW API during tests
+    app.dependency_overrides[is_admin] = bool_function_closure(False, with_args=False)
+    app.dependency_overrides[is_service_account] = bool_function_closure(
+        False, with_args=False
+    )
     app.dependency_overrides[get_user] = get_user_mocked
-    # app.dependency_overrides[get_api_key] = get_api_key_mocked
 
     async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
         yield client
@@ -119,7 +154,9 @@ async def generic_vector_source_version(
     batch_job_mock = BatchJobMock()
     monkeypatch.setattr(versions, "_verify_source_file_access", void_function)
     monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
-    monkeypatch.setattr(vector_source_assets, "is_zipped", false_function)
+    monkeypatch.setattr(
+        vector_source_assets, "is_zipped", bool_function_closure(False, with_args=False)
+    )
     monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
     monkeypatch.setattr(
         delete_assets, "flush_cloudfront_cache", dict_function_closure({})
@@ -169,25 +206,27 @@ async def generic_vector_source_version(
 
 @pytest.fixture()
 @pytest.mark.asyncio()
-async def apikey(async_client: AsyncClient) -> AsyncGenerator[Tuple[str, str], None]:
+async def apikey(
+    async_client: AsyncClient,
+) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
 
     # Get API Key
     payload = {
         "alias": "test",
         "organization": "Global Forest Watch",
         "email": "admin@globalforestwatch.org",
-        "domains": ["*.globalforestwatch.org"],
+        "domains": ["www.globalforestwatch.org"],
+        "never_expires": False,
     }
 
     response = await async_client.post("/auth/apikey", json=payload)
     api_key = response.json()["data"]["api_key"]
-    origin = "www.globalforestwatch.org"
 
     # yield api key and associated origin
-    yield api_key, origin
+    yield api_key, payload
 
     # Clean up
-    await async_client.delete(f"auth/apikey/{api_key}")
+    await async_client.delete(f"/auth/apikey/{api_key}")
 
 
 @pytest.fixture()
