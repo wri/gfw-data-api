@@ -154,9 +154,7 @@ async def generic_vector_source_version(
     batch_job_mock = BatchJobMock()
     monkeypatch.setattr(versions, "_verify_source_file_access", void_function)
     monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
-    monkeypatch.setattr(
-        vector_source_assets, "is_zipped", bool_function_closure(False, with_args=False)
-    )
+    monkeypatch.setattr(vector_source_assets, "is_zipped", bool_function_closure(False))
     monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
     monkeypatch.setattr(
         delete_assets, "flush_cloudfront_cache", dict_function_closure({})
