@@ -11,7 +11,7 @@ router = APIRouter()
 @router.get(
     "/ping",
     response_class=ORJSONResponse,
-    tags=["Health Check API"],
+    tags=["Health"],
     response_model=Response,
 )
 async def ping():

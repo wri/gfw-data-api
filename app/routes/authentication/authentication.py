@@ -83,9 +83,9 @@ async def get_apikey(
     api_key: UUID = Path(..., description="API Key"),
     user: Tuple[str, str] = Depends(get_user),
 ):
-    """Request a new API key.
+    """Get details for a specific API Key.
 
-    Default keys are valid for one year
+    User must own API Key or must be Admin to see details.
     """
     user_id, role = user
     try:
