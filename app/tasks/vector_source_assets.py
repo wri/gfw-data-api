@@ -9,7 +9,7 @@ from ..models.pydantic.creation_options import VectorSourceCreationOptions
 from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
 from ..utils.path import get_layer_name, is_zipped
 from . import Callback, callback_constructor, writer_secrets
-from .batch import execute, BATCH_DEPENDENCY_LIMIT
+from .batch import BATCH_DEPENDENCY_LIMIT, execute
 from .utils import RingOfLists
 
 
@@ -21,9 +21,6 @@ async def vector_source_asset(
 ) -> ChangeLog:
 
     source_uris: List[str] = input_data["creation_options"].get("source_uri", [])
-
-    if len(source_uris) != 1:
-        raise AssertionError("Vector sources require one and only one input file")
 
     creation_options = VectorSourceCreationOptions(**input_data["creation_options"])
     callback: Callback = callback_constructor(asset_id)
@@ -62,15 +59,17 @@ async def vector_source_asset(
         callback=callback,
     )
 
+    load_vector_data_jobs: List[GdalPythonImportJob] = list()
     if creation_options.source_driver == VectorDrivers.csv:
         chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
         uri_chunks = [
-            source_uris[x: x + chunk_size] for x in range(0, len(source_uris), chunk_size)
+            source_uris[x : x + chunk_size]
+            for x in range(0, len(source_uris), chunk_size)
         ]
 
         for i, uri_chunk in enumerate(uri_chunks):
             command = [
-                "load_vector_data.sh",
+                "load_vector_csv_data.sh",
                 "-d",
                 dataset,
                 "-v",
@@ -84,32 +83,25 @@ async def vector_source_asset(
             job = GdalPythonImportJob(
                 dataset=dataset,
                 job_name=f"load_vector_data_layer_{i}",
-                command=[
-                    "load_vector_data.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "-s",
-                    source_uri,
-                    "-f",
-                    local_file,
-                    "-X",
-                    str(zipped),
-                ],
-                parents=create_vector_schema_job.job_name,
+                command=command,
+                parents=[create_vector_schema_job.job_name],
                 environment=job_env,
                 callback=callback,
             )
-            queue.append(job)
             load_vector_data_jobs.append(job)
+
+        load_data_parents = [job.job_name for job in load_vector_data_jobs]
     else:
+        if len(source_uris) != 1:
+            raise AssertionError(
+                "Non-CSV vector sources require one and only one input file"
+            )
+
         # AWS Batch jobs can't have more than 20 parents. In case of excessive
         # numbers of layers, create multiple "queues" of dependent jobs, with
         # the next phase being dependent on the last job of each queue.
         num_queues = min(16, len(layers))
         job_queues: RingOfLists = RingOfLists(num_queues)
-        load_vector_data_jobs: List[GdalPythonImportJob] = list()
         for i, layer in enumerate(layers):
             queue = next(job_queues)
             if not queue:
@@ -142,7 +134,7 @@ async def vector_source_asset(
             queue.append(job)
             load_vector_data_jobs.append(job)
 
-            load_data_parents = [queue[-1].job_name for queue in job_queues.all() if queue]
+        load_data_parents = [queue[-1].job_name for queue in job_queues.all() if queue]
 
     gfw_attribute_job = PostgresqlClientJob(
         dataset=dataset,
