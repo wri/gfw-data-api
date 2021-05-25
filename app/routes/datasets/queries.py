@@ -62,6 +62,7 @@ from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
 from ...models.orm.versions import Version as VersionORM
 from ...models.pydantic.geostore import Geometry
+from ...models.pydantic.metadata import RasterTable, RasterTableRow
 from ...models.pydantic.query import QueryRequestIn
 from ...models.pydantic.raster_analysis import (
     DataEnvironment,
@@ -427,26 +428,29 @@ async def _query_raster_lambda(
     except httpx.TimeoutException:
         raise HTTPException(500, "Query took too long to process.")
 
+    # invalid response codes are reserved by Lambda specific issues (e.g. too many requests)
     if response.status_code >= 300:
-        logger.error(f"Lambda returned invalid response code f{response.status}")
         raise HTTPException(
-            500, "Raster analysis geoprocessor experienced an error. See logs."
+            500,
+            f"Raster analysis geoprocessor returned invalid response code {response.status_code}",
         )
 
-    response_data = response.json()["body"]
-    if (
-        "status" not in response_data
-        or "data" not in response_data
-        or response_data["status"] != "success"
-    ):
-        logger.error(
-            f"Raster analysis lambda experienced an error. Full response: {response.text}"
-        )
+    # response must be in JSEND format or something unexpected happened
+    response_body = response.json()
+    if "status" not in response_body or "data" not in response_body:
         raise HTTPException(
-            500, "Raster analysis geoprocessor experienced an error. See logs."
+            500,
+            f"Raster analysis lambda received an unexpected response: {response.text}",
         )
 
-    return response_data
+    if response_body["status"] == "failed":
+        # validation error
+        raise HTTPException(422, response_body["message"])
+    elif response_body["status"] == "error":
+        # geoprocessing error
+        raise HTTPException(500, response_body["message"])
+
+    return response_body
 
 
 async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
@@ -520,20 +524,26 @@ def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
     # our encoding of days since 2015 to a number that can be used generally for datetimes
     decode_expression = "(A + 16435).astype('datetime64[D]').astype(str)"
     encode_expression = "(datetime64(A) - 16435).astype(uint16)"
+    conf_encoding = RasterTable(
+        rows=[
+            RasterTableRow(value=2, meaning=""),
+            RasterTableRow(value=3, meaning="high"),
+        ]
+    )
 
     return [
         DerivedLayer(
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__date"),
             calc="A % 10000",
-            decode_expression=encode_expression,
-            encode_expression=decode_expression,
+            decode_expression=decode_expression,
+            encode_expression=encode_expression,
         ),
         DerivedLayer(
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__confidence"),
             calc="floor(A / 10000)",
-            pixel_encoding={2: "", 3: "high"},
+            raster_table=conf_encoding,
         ),
     ]
 
