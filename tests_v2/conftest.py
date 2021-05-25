@@ -229,6 +229,31 @@ async def apikey(
 
 @pytest.fixture()
 @pytest.mark.asyncio()
+async def apikey_unrestricted(
+    async_client: AsyncClient,
+) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
+
+    # Get API Key
+    payload = {
+        "alias": "unrestricted",
+        "organization": "Global Forest Watch",
+        "email": "admin@globalforestwatch.org",
+        "domains": [],
+        "never_expires": True,
+    }
+
+    response = await async_client.post("/auth/apikey", json=payload)
+    api_key = response.json()["data"]["api_key"]
+
+    # yield api key and associated origin
+    yield api_key, payload
+
+    # Clean up
+    await async_client.delete(f"/auth/apikey/{api_key}")
+
+
+@pytest.fixture()
+@pytest.mark.asyncio()
 async def geostore(async_client: AsyncClient) -> AsyncGenerator[str, None]:
     with open(f"{os.path.dirname(__file__)}/fixtures/geojson/test.geojson") as src:
         geojson = json.load(src)
