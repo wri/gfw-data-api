@@ -154,3 +154,5 @@ RW_API_URL = config("RW_API_URL", cast=str, default=None)
 
 HOUR: int = int(60 * 60)
 DEFAULT_JOB_DURATION: int = int(HOUR * 2)
+
+API_KEY_NAME = config("API_KEY_NAME", cast=str, default="x-api-key")

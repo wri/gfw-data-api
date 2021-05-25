@@ -10,6 +10,7 @@ services:
     volumes:
       - ./app:/app/app:ro
       - ./tests:/app/tests
+      - ./tests_v2:/app/tests_v2
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - ENV=test
@@ -54,7 +55,7 @@ services:
       - RW_API_URL=https://staging-api.resourcewatch.org
 #      - AWS_GCS_KEY_SECRET_ARN=testing
 #      - AWS_SECRETSMANAGER_URL=http://motoserver-secretsmanager:5001
-    entrypoint: wait_for_postgres.sh pytest --timeout 360 -vv --cov-report term --cov-report xml:/app/tests/cobertura.xml --cov=app
+    entrypoint: wait_for_postgres.sh pytest --timeout 360 -vv --cov-report term  --cov=app
     depends_on:
       - test_database
       - motoserver-s3

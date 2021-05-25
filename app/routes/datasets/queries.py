@@ -21,6 +21,7 @@ from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
+from sqlalchemy.sql import and_
 
 from ...application import db
 from ...crud import assets
@@ -54,10 +55,19 @@ from ...models.enum.pg_sys_functions import (
     system_catalog_information_functions,
     transaction_ids_and_snapshots,
 )
+from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
+from ...models.orm.versions import Version as VersionORM
 from ...models.pydantic.geostore import Geometry
+from ...models.pydantic.metadata import RasterTable, RasterTableRow
 from ...models.pydantic.query import QueryRequestIn
+from ...models.pydantic.raster_analysis import (
+    DataEnvironment,
+    DerivedLayer,
+    Layer,
+    SourceLayer,
+)
 from ...models.pydantic.responses import Response
 from ...responses import ORJSONLiteResponse
 from ...settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
@@ -82,9 +92,19 @@ async def query_dataset(
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
-    implemented)."""
+    implemented).
+
+    Adding a geostore ID to the query will apply a spatial filter to the
+    query, only returning results for features intersecting with the
+    geostore geometry. For vector datasets, this filter will not clip
+    feature geometries to the geostore boundaries. Hence any spatial
+    transformation such as area calculations will be applied on the
+    entire feature geometry, including areas outside the geostore
+    boundaries.
+    """
 
     dataset, version = dataset_version
     if geostore_id:
@@ -110,6 +130,7 @@ async def query_dataset_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -388,34 +409,161 @@ async def _query_raster_lambda(
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
 ) -> Dict[str, Any]:
+    data_environment = await _get_data_environment(
+        grids=[Grid.ten_by_forty_thousand, Grid.ten_by_one_hundred_thousand]
+    )
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
+        "environment": data_environment.dict()["layers"],
         "format": format,
     }
+
+    logger.info(f"Submitting raster analysis lambda request with payload: {payload}")
 
     try:
         response = await invoke_lambda(RASTER_ANALYSIS_LAMBDA_NAME, payload)
     except httpx.TimeoutException:
         raise HTTPException(500, "Query took too long to process.")
 
+    # invalid response codes are reserved by Lambda specific issues (e.g. too many requests)
     if response.status_code >= 300:
-        logger.error(f"Lambda returned invalid response code f{response.status}")
         raise HTTPException(
-            500, "Raster analysis geoprocessor experienced an error. See logs."
+            500,
+            f"Raster analysis geoprocessor returned invalid response code {response.status_code}",
         )
 
-    response_data = response.json()["body"]
-    if (
-        "status" not in response_data
-        or "data" not in response_data
-        or response_data["status"] != "success"
-    ):
-        logger.error(
-            f"Raster analysis lambda experienced an error. Full response: {response.text}"
-        )
+    # response must be in JSEND format or something unexpected happened
+    response_body = response.json()
+    if "status" not in response_body or "data" not in response_body:
         raise HTTPException(
-            500, "Raster analysis geoprocessor experienced an error. See logs."
+            500,
+            f"Raster analysis lambda received an unexpected response: {response.text}",
         )
 
-    return response_data
+    if response_body["status"] == "failed":
+        # validation error
+        raise HTTPException(422, response_body["message"])
+    elif response_body["status"] == "error":
+        # geoprocessing error
+        raise HTTPException(500, response_body["message"])
+
+    return response_body
+
+
+async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
+    # get all Raster tile set assets
+    latest_tile_sets = await (
+        AssetORM.join(VersionORM)
+        .select()
+        .with_only_columns(
+            [
+                AssetORM.dataset,
+                AssetORM.version,
+                AssetORM.creation_options,
+                AssetORM.asset_uri,
+                AssetORM.metadata,
+            ]
+        )
+        .where(
+            and_(
+                AssetORM.asset_type == AssetType.raster_tile_set,
+                VersionORM.is_latest == True,  # noqa: E712
+            )
+        )
+    ).gino.all()
+
+    # create layers
+    layers: List[Layer] = []
+    for row in latest_tile_sets:
+        if grids and row.creation_options["grid"] not in grids:
+            # skip if not on the right grid
+            continue
+
+        # TODO skip intermediate raster for tile cache until field is in metadata
+        if "tcd" in row.creation_options["pixel_meaning"]:
+            continue
+
+        source_layer_name = f"{row.dataset}__{row.creation_options['pixel_meaning']}"
+        layers.append(_get_source_layer(row, source_layer_name))
+
+        if row.creation_options["pixel_meaning"] == "date_conf":
+            layers += _get_date_conf_derived_layers(row, source_layer_name)
+
+        if row.creation_options["pixel_meaning"].endswith("_ha-1"):
+            layers.append(_get_area_density_layer(row, source_layer_name))
+
+    return DataEnvironment(layers=layers)
+
+
+def _get_source_layer(row, source_layer_name: str) -> SourceLayer:
+    # TODO we need to start uploading GLAD directly to the data API
+    if source_layer_name == "umd_glad_landsat_alerts__date_conf":
+        source_uri = "s3://gfw2-data/forest_change/umd_landsat_alerts/prod/analysis/{tile_id}.tif"
+        tile_scheme = "nwse"
+    else:
+        source_uri = row.asset_uri
+        tile_scheme = "nw"
+
+    return SourceLayer(
+        source_uri=source_uri,
+        tile_scheme=tile_scheme,
+        grid=row.creation_options["grid"],
+        name=source_layer_name,
+        raster_table=row.metadata.get("raster_table", None),
+    )
+
+
+def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
+    """Get derived layers that decode our date_conf layers for alert
+    systems."""
+    # TODO should these somehow be in the metadata or creation options instead of hardcoded?
+    # 16435 is number of days from 1970-01-01 and 2015-01-01, and can be used to convet
+    # our encoding of days since 2015 to a number that can be used generally for datetimes
+    decode_expression = "(A + 16435).astype('datetime64[D]').astype(str)"
+    encode_expression = "(datetime64(A) - 16435).astype(uint16)"
+    conf_encoding = RasterTable(
+        rows=[
+            RasterTableRow(value=2, meaning=""),
+            RasterTableRow(value=3, meaning="high"),
+        ]
+    )
+
+    return [
+        DerivedLayer(
+            source_layer=source_layer_name,
+            name=source_layer_name.replace("__date_conf", "__date"),
+            calc="A % 10000",
+            decode_expression=decode_expression,
+            encode_expression=encode_expression,
+        ),
+        DerivedLayer(
+            source_layer=source_layer_name,
+            name=source_layer_name.replace("__date_conf", "__confidence"),
+            calc="floor(A / 10000)",
+            raster_table=conf_encoding,
+        ),
+    ]
+
+
+def _get_area_density_layer(row, source_layer_name) -> DerivedLayer:
+    """Get the derived gross layer for whose values represent density per pixel
+    area."""
+    return DerivedLayer(
+        source_layer=source_layer_name,
+        name=source_layer_name.replace("_ha-1", ""),
+        calc="A * area",
+    )
+
+
+def _get_predefined_layers(row, source_layer_name):
+    """Return predefined derived layers we use for analysis but don't actually
+    exist as tile sets."""
+    if source_layer_name == "whrc_aboveground_biomass_stock_2000__Mg_ha-1":
+        return [
+            {
+                "source_layer": source_layer_name,
+                "name": "whrc_aboveground_co2_emissions__Mg",
+                "calc": "A * area * (0.5 * 44 / 12)",
+            }
+        ]

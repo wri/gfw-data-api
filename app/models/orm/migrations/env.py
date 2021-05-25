@@ -18,6 +18,7 @@ from app.models.orm.geostore import Geostore  # noqa: F401
 from app.models.orm.tasks import Task  # noqa: F401
 from app.models.orm.user_areas import UserArea  # noqa: F401
 from app.models.orm.versions import Version  # noqa: F401
+from app.models.orm.api_keys import ApiKey  # noqa: F401
 
 ###############################################################################
 

@@ -2,6 +2,7 @@ from typing import Optional
 
 from pydantic import Field
 
+from app.models.enum.creation_options import Delimiters
 from app.models.pydantic.base import StrictBaseModel
 from app.models.pydantic.geostore import Geometry
 
@@ -12,4 +13,6 @@ class DownloadCSVIn(StrictBaseModel):
         None, description="A geojson geometry to be used as spatial filter."
     )
     filename: str = Field("export.csv", description="Name of export file.")
-    delimiter: str = Field(",", description="Delimiter to use for CSV file.")
+    delimiter: Delimiters = Field(
+        Delimiters.comma, description="Delimiter to use for CSV file."
+    )

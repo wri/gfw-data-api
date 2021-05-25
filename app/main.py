@@ -17,9 +17,10 @@ from app.errors import http_error_handler
 
 from .application import app
 from .middleware import no_cache_response_header, redirect_latest, set_db_mode
-from .routes import security
+from .routes import health
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
+from .routes.authentication import authentication
 from .routes.datasets import asset as version_asset
 from .routes.datasets import (
     dataset,
@@ -105,7 +106,7 @@ app.add_middleware(
 # AUTHENTICATION
 ################
 
-app.include_router(security.router, tags=["Authentication"])
+app.include_router(authentication.router, prefix="/auth")
 
 ###############
 # DATASET API
@@ -153,9 +154,22 @@ task_routers = (task.router,)
 for r in task_routers:
     app.include_router(r, prefix="/task")
 
+###############
+# ANALYSIS API
+###############
+
 analysis_routers = (analysis.router,)
 for r in analysis_routers:
     app.include_router(r, prefix="/analysis")
+
+###############
+# HEALTH API
+###############
+
+health_routers = (health.router,)
+for r in health_routers:
+    app.include_router(r, prefix="")
+
 
 #######################
 # OPENAPI Documentation
@@ -163,6 +177,7 @@ for r in analysis_routers:
 
 
 tags_metadata = [
+    {"name": "Authentication", "description": authentication.__doc__},
     {"name": "Dataset", "description": datasets.__doc__},
     {"name": "Version", "description": versions.__doc__},
     {"name": "Assets", "description": asset.__doc__},
@@ -171,6 +186,7 @@ tags_metadata = [
     {"name": "Geostore", "description": geostore.__doc__},
     {"name": "Tasks", "description": task.__doc__},
     {"name": "Analysis", "description": analysis.__doc__},
+    {"name": "Health", "description": health.__doc__},
 ]
 
 
@@ -180,7 +196,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title="GFW DATA API",
-        version="0.2.0",
+        version="0.3.0",
         description="Use GFW DATA API to explore, manage and access data.",
         routes=app.routes,
     )
@@ -188,12 +204,14 @@ def custom_openapi():
     openapi_schema["tags"] = tags_metadata
     openapi_schema["info"]["x-logo"] = {"url": "/static/gfw-data-api.png"}
     openapi_schema["x-tagGroups"] = [
+        {"name": "Authentication API", "tags": ["Authentication"]},
         {"name": "Dataset API", "tags": ["Datasets", "Versions", "Assets"]},
         {"name": "Geostore API", "tags": ["Geostore"]},
         {"name": "Query API", "tags": ["Query"]},
         {"name": "Download API", "tags": ["Download"]},
         {"name": "Task API", "tags": ["Tasks"]},
         {"name": "Analysis API", "tags": ["Analysis"]},
+        {"name": "Health API", "tags": ["Health"]},
     ]
 
     app.openapi_schema = openapi_schema

@@ -15,6 +15,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 from starlette.responses import JSONResponse
 
+from ...authentication.token import is_admin
 from ...crud import assets, tasks
 from ...errors import RecordNotFoundError
 from ...models.enum.assets import is_database_asset, is_single_file_asset
@@ -31,7 +32,6 @@ from ...models.pydantic.extent import Extent, ExtentResponse
 from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.tasks import TasksResponse
-from ...routes import is_admin
 from ...tasks.delete_assets import (
     delete_database_table_asset,
     delete_dynamic_vector_tile_cache_assets,

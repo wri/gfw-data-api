@@ -7,6 +7,7 @@ from httpx import AsyncClient, ReadTimeout
 from httpx import Response as HTTPXResponse
 
 from ..errors import BadResponseError, InvalidResponseError, UnauthorizedError
+from ..models.pydantic.authentication import SignUp
 from ..models.pydantic.geostore import Geometry
 from ..settings.globals import RW_API_URL
 
@@ -91,3 +92,43 @@ async def login(user_name: str, password: str) -> str:
         raise UnauthorizedError("Authentication failed")
 
     return response.json()["data"]["token"]
+
+
+async def signup(name: str, email: str) -> SignUp:
+    """Obtain a token form RW API using given user name and password."""
+
+    headers = {"Content-Type": "application/json"}
+    payload = {"name": name, "email": email, "apps": ["gfw"]}
+
+    logger.debug(f"Create user account for user {name} with email {email}")
+
+    url = f"{RW_API_URL}/auth/sign-up"
+
+    try:
+        async with AsyncClient() as client:
+            response: HTTPXResponse = await client.post(
+                url, json=payload, headers=headers
+            )
+    except ReadTimeout:
+        raise HTTPException(
+            status_code=500,
+            detail="Call to authorization server timed-out. Please try again.",
+        )
+
+    if response.status_code == 422:
+        raise HTTPException(
+            status_code=422,
+            detail="An account already exists for the provided email address.",
+        )
+
+    elif response.status_code != 200:
+        logger.error(
+            "An error occurred while trying to create a new user account",
+            response.json(),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while trying to create a new user account. Please try again.",
+        )
+
+    return SignUp(**response.json()["data"])

@@ -45,6 +45,7 @@ async def zonal_statistics_get(
         description="Must be either year or YYYY-MM-DD date format.",
         regex=DATE_REGEX,
     ),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Calculate zonal statistics on any registered raster layers in a
     geostore."""
@@ -66,7 +67,9 @@ async def zonal_statistics_get(
     tags=["Analysis"],
     deprecated=True,
 )
-async def zonal_statistics_post(request: ZonalAnalysisRequestIn):
+async def zonal_statistics_post(
+    request: ZonalAnalysisRequestIn,  # api_key: APIKey = Depends(get_api_key)
+):
     return await _zonal_statistics(
         request.geometry,
         request.sum,

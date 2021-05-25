@@ -14,6 +14,7 @@ from typing import List, Optional, Tuple
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import ORJSONResponse
 
+from ...authentication.token import is_admin
 from ...crud import assets
 from ...errors import RecordAlreadyExistsError
 from ...models.orm.assets import Asset as ORMAsset
@@ -23,7 +24,7 @@ from ...models.pydantic.assets import (
     AssetsResponse,
     AssetType,
 )
-from ...routes import dataset_version_dependency, is_admin
+from ...routes import dataset_version_dependency
 from ...tasks.assets import put_asset
 from ...utils.path import get_asset_uri
 from ..assets import asset_response, assets_response

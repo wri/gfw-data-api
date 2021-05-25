@@ -22,6 +22,16 @@ class FieldMetadata(StrictBaseModel):
         extra = Extra.forbid
 
 
+class RasterFieldMetadata(StrictBaseModel):
+    field_name_: str = Field(..., alias="field_name")
+    field_alias: Optional[str]
+    field_description: Optional[str]
+    field_values: Optional[List[Any]]
+
+    class Config:
+        extra = Extra.forbid
+
+
 class DatasetMetadata(StrictBaseModel):
     title: Optional[str]
     subtitle: Optional[str]
@@ -82,9 +92,14 @@ class VersionMetadata(DatasetMetadata):
     data_updates: Optional[str]
 
 
-class RasterTable(StrictBaseModel):
+class RasterTableRow(StrictBaseModel):
     value: int
-    description: str
+    meaning: Any
+
+
+class RasterTable(StrictBaseModel):
+    rows: List[RasterTableRow]
+    default_meaning: Optional[Any] = None
 
 
 class RasterTileCacheMetadata(VersionMetadata):
@@ -98,7 +113,7 @@ class RasterTileCacheMetadata(VersionMetadata):
 class RasterTileSetMetadata(VersionMetadata):
     # Raster Files/ Raster Tilesets
     raster_statistics: Optional[Dict[str, Any]]
-    raster_table: Optional[List[RasterTable]]
+    raster_table: Optional[RasterTable]
     raster_tiles: Optional[List[str]]
     data_type: Optional[str]
     compression: Optional[str]
@@ -137,7 +152,7 @@ AssetMetadata = Union[
 
 
 class FieldMetadataResponse(Response):
-    data: List[FieldMetadata]
+    data: Union[List[FieldMetadata], List[RasterFieldMetadata]]
 
 
 def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMetadata:
