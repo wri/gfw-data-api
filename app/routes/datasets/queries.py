@@ -13,12 +13,13 @@ from asyncpg import (
     UndefinedColumnError,
     UndefinedFunctionError,
 )
-from fastapi.responses import RedirectResponse
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi import Response as FastApiResponse, Request as FastApiRequest
+from fastapi import Request as FastApiRequest
+from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
+from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
@@ -84,18 +85,18 @@ router = APIRouter()
     "/{dataset}/{version}/query",
     response_class=RedirectResponse,
     tags=["Query"],
-    status_code=301,
+    status_code=308,
     deprecated=True,
 )
 async def query_dataset(
     request: FastApiRequest,
-    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
-    sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
-    geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, description="Origin service of geostore ID."
-    ),
-    api_key: APIKey = Depends(get_api_key),
+    # dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    # sql: str = Query(..., description="SQL query."),
+    # geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    # geostore_origin: GeostoreOrigin = Query(
+    #     GeostoreOrigin.gfw, description="Origin service of geostore ID."
+    # ),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in JSON format.
@@ -110,7 +111,7 @@ async def query_dataset(
 
     This path is deprecated and will reroute to /query/json.
     """
-    return RedirectResponse(url=f"{request.url}/json?{request.query_params}")
+    return RedirectResponse(url=f"{request.url.path}/json?{request.query_params}")
 
 
 @router.get(
@@ -202,12 +203,12 @@ async def query_dataset_csv(
 
 
 @router.post(
-    "/{dataset}/{version}/query",
+    "/{dataset}/{version}/query/json",
     response_class=ORJSONLiteResponse,
     response_model=Response,
     tags=["Query"],
 )
-async def query_dataset_post(
+async def query_dataset_json_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
@@ -218,20 +219,32 @@ async def query_dataset_post(
 
     dataset, version = dataset_version
 
-    if request.format == QueryFormat.json:
-        json_data: List[Dict[str, Any]] = await _query_dataset_json(
-            dataset, version, request.sql, request.geometry
-        )
-        return ORJSONLiteResponse(Response(data=json_data).dict())
-    elif request.format == QueryFormat.csv:
-        csv_data: StringIO = await _query_dataset_csv(
-            dataset, version, request.sql, request.geometry, delimiter=request.delimiter
-        )
-        return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
-    else:
-        raise HTTPException(
-            status_code=422, detail=f"Invalid return format for query {format}."
-        )
+    json_data: List[Dict[str, Any]] = await _query_dataset_json(
+        dataset, version, request.sql, request.geometry
+    )
+    return ORJSONLiteResponse(Response(data=json_data).dict())
+
+
+@router.post(
+    "/{dataset}/{version}/query/csv",
+    response_class=CSVStreamingResponse,
+    tags=["Query"],
+)
+async def query_dataset_csv_post(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    request: QueryRequestIn,
+    api_key: APIKey = Depends(get_api_key),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented)."""
+
+    dataset, version = dataset_version
+
+    csv_data: StringIO = await _query_dataset_csv(
+        dataset, version, request.sql, request.geometry, delimiter=request.delimiter
+    )
+    return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
 
 
 async def _query_dataset_json(
