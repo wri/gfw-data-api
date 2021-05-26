@@ -3,7 +3,8 @@ from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_analysis_without_api_key(async_client: AsyncClient, geostore):
+@pytest.mark.skip(reason="temporary disable api keys")
+async def test_analysis_without_api_key(geostore, async_client: AsyncClient):
 
     response = await async_client.get(f"/analysis/zonal/{geostore}")
 
@@ -12,9 +13,11 @@ async def test_analysis_without_api_key(async_client: AsyncClient, geostore):
 
 @pytest.mark.asyncio
 async def test_analysis_with_api_key_in_header(
-    async_client: AsyncClient, geostore, apikey
+    geostore, apikey, async_client: AsyncClient
 ):
-    api_key, origin = apikey
+    api_key, payload = apikey
+
+    origin = "https://" + payload["domains"][0]
 
     headers = {"origin": origin, "x-api-key": api_key}
     response = await async_client.get(f"/analysis/zonal/{geostore}", headers=headers)
@@ -25,9 +28,10 @@ async def test_analysis_with_api_key_in_header(
 
 @pytest.mark.asyncio
 async def test_analysis_with_api_key_as_param(
-    async_client: AsyncClient, geostore, apikey
+    geostore, apikey, async_client: AsyncClient
 ):
-    api_key, origin = apikey
+    api_key, payload = apikey
+    origin = payload["domains"][0]
 
     headers = {"origin": origin}
     params = {"x-api-key": api_key}

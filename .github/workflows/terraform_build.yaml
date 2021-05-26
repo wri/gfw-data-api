@@ -20,7 +20,14 @@ jobs:
       with:
         project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
         coverage-reports: tests/cobertura.xml, tests_v2/cobertura.xml
-
+    - uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: tests/cobertura.xml, tests_v2/cobertura.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        verbose: false
     - name: Deploy production
       if: success() && contains(github.ref, 'master')
       env:

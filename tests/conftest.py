@@ -14,7 +14,7 @@ from docker.models.containers import ContainerCollection
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from app.authentication.api_keys import get_api_key
+# from app.authentication.api_keys import get_api_key
 from app.authentication.token import is_admin, is_service_account
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
@@ -31,7 +31,7 @@ from app.settings.globals import (
 )
 from app.utils.aws import get_s3_client
 
-from . import (
+from . import (  # get_api_key_mocked,
     APPEND_TSV_NAME,
     APPEND_TSV_PATH,
     BUCKET,
@@ -44,7 +44,6 @@ from . import (
     TSV_PATH,
     AWSMock,
     MemoryServer,
-    get_api_key_mocked,
     is_admin_mocked,
     is_service_account_mocked,
     setup_clients,
@@ -194,7 +193,7 @@ def client():
     main(["--raiseerr", "upgrade", "head"])
     app.dependency_overrides[is_admin] = is_admin_mocked
     app.dependency_overrides[is_service_account] = is_service_account_mocked
-    app.dependency_overrides[get_api_key] = get_api_key_mocked
+    # app.dependency_overrides[get_api_key] = get_api_key_mocked
 
     with TestClient(app) as client:
         yield client
@@ -236,7 +235,7 @@ async def async_client():
     # main(["--raiseerr", "upgrade", "head"])
     app.dependency_overrides[is_admin] = is_admin_mocked
     app.dependency_overrides[is_service_account] = is_service_account_mocked
-    app.dependency_overrides[get_api_key] = get_api_key_mocked
+    # app.dependency_overrides[get_api_key] = get_api_key_mocked
 
     async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
         yield client

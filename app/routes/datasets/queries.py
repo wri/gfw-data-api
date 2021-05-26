@@ -17,7 +17,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
-from fastapi.openapi.models import APIKey
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
@@ -25,7 +24,6 @@ from pglast.printer import RawStream
 from sqlalchemy.sql import and_
 
 from ...application import db
-from ...authentication.api_keys import get_api_key
 from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
@@ -62,6 +60,7 @@ from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
 from ...models.orm.versions import Version as VersionORM
 from ...models.pydantic.geostore import Geometry
+from ...models.pydantic.metadata import RasterTable, RasterTableRow
 from ...models.pydantic.query import QueryRequestIn
 from ...models.pydantic.raster_analysis import (
     DataEnvironment,
@@ -93,7 +92,7 @@ async def query_dataset(
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented).
@@ -131,7 +130,7 @@ async def query_dataset_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -523,20 +522,26 @@ def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
     # our encoding of days since 2015 to a number that can be used generally for datetimes
     decode_expression = "(A + 16435).astype('datetime64[D]').astype(str)"
     encode_expression = "(datetime64(A) - 16435).astype(uint16)"
+    conf_encoding = RasterTable(
+        rows=[
+            RasterTableRow(value=2, meaning=""),
+            RasterTableRow(value=3, meaning="high"),
+        ]
+    )
 
     return [
         DerivedLayer(
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__date"),
             calc="A % 10000",
-            decode_expression=encode_expression,
-            encode_expression=decode_expression,
+            decode_expression=decode_expression,
+            encode_expression=encode_expression,
         ),
         DerivedLayer(
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__confidence"),
             calc="floor(A / 10000)",
-            pixel_encoding={2: "", 3: "high"},
+            raster_table=conf_encoding,
         ),
     ]
 
