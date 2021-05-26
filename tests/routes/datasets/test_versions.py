@@ -328,9 +328,6 @@ async def test_invalid_source_uri(async_client):
 
     source_uri = [
         "s3://doesnotexist",
-        "s3://bucket/key",
-        "http://domain/file",
-        f"s3://{BUCKET}/{SHP_NAME}",
     ]
     version_payload = {
         "creation_options": {
@@ -350,8 +347,7 @@ async def test_invalid_source_uri(async_client):
     assert response.status_code == 400
     assert response.json()["status"] == "failed"
     assert (
-        response.json()["message"]
-        == "Cannot access source files ['s3://doesnotexist', 's3://bucket/key', 'http://domain/file']"
+        response.json()["message"] == "Cannot access source files ['s3://doesnotexist']"
     )
 
     # Create a version with a valid source_uri so we have something to append to
@@ -372,8 +368,7 @@ async def test_invalid_source_uri(async_client):
     assert response.status_code == 400
     assert response.json()["status"] == "failed"
     assert (
-        response.json()["message"]
-        == "Cannot access source files ['s3://doesnotexist', 's3://bucket/key', 'http://domain/file']"
+        response.json()["message"] == "Cannot access source files ['s3://doesnotexist']"
     )
 
     # Test appending to a version that DOESN'T exist
