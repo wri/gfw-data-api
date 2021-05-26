@@ -30,7 +30,7 @@ ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbnam
      -nlt PROMOTE_TO_MULTI -nln "$DATASET.$VERSION" \
      -lco GEOMETRY_NAME="$GEOMETRY_NAME" -lco SPATIAL_INDEX=NONE -lco FID="$FID_NAME" \
      -oo GEOM_POSSIBLE_NAMES="$GEOMETRY_NAME" -oo KEEP_GEOM_COLUMNS=NO \
-     -t_srs EPSG:4326 -s_srs EPSG:4326 -limit 0
+     -t_srs EPSG:4326 -limit 0
 
 
 # Set storage to external for faster querying

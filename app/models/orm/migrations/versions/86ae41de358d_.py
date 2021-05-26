@@ -177,7 +177,7 @@ def downgrade():
         f"ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE SELECT ON TABLES FROM {READER_USERNAME};"
     )
     op.execute(f"REVOKE CONNECT ON DATABASE {READER_DBNAME} FROM {READER_USERNAME};")
-    # op.execute(f"""DROP USER IF EXISTS {READER_USERNAME};""")
+    op.execute(f"""DROP USER IF EXISTS {READER_USERNAME};""")
 
     # Delete extensions
     op.execute("""DROP EXTENSION IF EXISTS "uuid-ossp";""")

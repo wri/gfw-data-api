@@ -21,7 +21,7 @@ aws s3 cp "${SRC}" - | head -100 | csvsql -i postgresql --no-constraints --table
 set -e
 
 # csvsql sets the quotes for schema and table wrong. It is saver to set the schema separately
-sed -i "1s/^/SET SCHEMA '$DATASET';\nSET search_path = public,$DATASET;\n/" create_table.sql
+sed -i "1s/^/SET SCHEMA '$DATASET';\n/" create_table.sql
 
 # update field types
 # This expect a JSON List like this '[{"field_name":"name1", "field_type":"type1"},{"field_name":"name2", "field_type":"type2"}]'
