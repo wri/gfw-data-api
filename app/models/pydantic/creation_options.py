@@ -200,6 +200,14 @@ class VectorSourceCreationOptions(StrictBaseModel):
         description="Include features to geostore, to make geometries searchable via geostore endpoint.",
     )
 
+    @validator("source_uri")
+    def validate_source_uri(cls, v, values, **kwargs):
+        if values.get("source_driver") != VectorDrivers.csv:
+            assert (
+                len(v) == 1
+            ), "Non-CSV vector sources require one and only one input file"
+        return v
+
 
 class TableAssetCreationOptions(StrictBaseModel):
     has_header: bool = Field(True, description="Input file has header. Must be true")

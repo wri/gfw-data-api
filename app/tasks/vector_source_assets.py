@@ -92,11 +92,6 @@ async def vector_source_asset(
 
         load_data_parents = [job.job_name for job in load_vector_data_jobs]
     else:
-        if len(source_uris) != 1:
-            raise AssertionError(
-                "Non-CSV vector sources require one and only one input file"
-            )
-
         # AWS Batch jobs can't have more than 20 parents. In case of excessive
         # numbers of layers, create multiple "queues" of dependent jobs, with
         # the next phase being dependent on the last job of each queue.
