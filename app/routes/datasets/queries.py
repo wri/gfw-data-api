@@ -64,7 +64,7 @@ from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
 from ...models.orm.versions import Version as VersionORM
 from ...models.pydantic.geostore import Geometry
-from ...models.pydantic.query import QueryRequestIn
+from ...models.pydantic.query import CsvQueryRequestIn, QueryRequestIn
 from ...models.pydantic.raster_analysis import (
     DataEnvironment,
     DerivedLayer,
@@ -90,13 +90,6 @@ router = APIRouter()
 )
 async def query_dataset(
     request: FastApiRequest,
-    # dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
-    # sql: str = Query(..., description="SQL query."),
-    # geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
-    # geostore_origin: GeostoreOrigin = Query(
-    #     GeostoreOrigin.gfw, description="Origin service of geostore ID."
-    # ),
-    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in JSON format.
@@ -203,6 +196,25 @@ async def query_dataset_csv(
 
 
 @router.post(
+    "/{dataset}/{version}/query",
+    response_class=FastApiResponse,
+    tags=["Query"],
+    deprecated=True,
+)
+async def query_dataset_post(
+    request: FastApiRequest,
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented).
+
+    This path is deprecated and will reroute to /query/json.
+    """
+    # RedirectResponse doesn't work for POST requests, so just manually construct the redirect
+    content = await request.body()
+    return FastApiResponse(content, url=f"{request.url.path}/json", status_code=308)
+
+
+@router.post(
     "/{dataset}/{version}/query/json",
     response_class=ORJSONLiteResponse,
     response_model=Response,
@@ -233,7 +245,7 @@ async def query_dataset_json_post(
 async def query_dataset_csv_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
-    request: QueryRequestIn,
+    request: CsvQueryRequestIn,
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -257,7 +269,7 @@ async def _query_dataset_json(
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
     query_type = _get_query_type(default_asset, geometry)
     if query_type == QueryType.table:
-        return await _query_table(dataset, version, sql, geometry, QueryFormat.json)
+        return await _query_table(dataset, version, sql, geometry)
     elif query_type == QueryType.raster:
         geometry = cast(Geometry, geometry)
         results = await _query_raster(dataset, default_asset, sql, geometry)
@@ -280,9 +292,7 @@ async def _query_dataset_csv(
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
     query_type = _get_query_type(default_asset, geometry)
     if query_type == QueryType.table:
-        response = await _query_table(
-            dataset, version, sql, geometry, QueryFormat.csv, delimiter
-        )
+        response = await _query_table(dataset, version, sql, geometry)
         return _orm_to_csv(response, delimiter=delimiter)
     elif query_type == QueryType.raster:
         geometry = cast(Geometry, geometry)
@@ -321,8 +331,6 @@ async def _query_table(
     version: str,
     sql: str,
     geometry: Optional[Geometry],
-    format: QueryFormat = QueryFormat.json,
-    delimiter: Delimiters = Delimiters.comma,
 ) -> List[Dict[str, Any]]:
     # parse and validate SQL statement
     try:
