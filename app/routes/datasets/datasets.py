@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/",
+    "",
     response_class=ORJSONResponse,
     tags=["Datasets"],
     response_model=DatasetsResponse,
