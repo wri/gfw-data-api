@@ -78,6 +78,31 @@ async def create_apikey(
     return ApiKeyResponse(data=row)
 
 
+@router.get("/apikey/{api_key}", tags=["Authentication"])
+async def get_apikey(
+    api_key: UUID = Path(..., description="API Key"),
+    user: Tuple[str, str] = Depends(get_user),
+):
+    """Get details for a specific API Key.
+
+    User must own API Key or must be Admin to see details.
+    """
+    user_id, role = user
+    try:
+        row: ORMApiKey = await api_keys.get_api_key(api_key)
+    except RecordNotFoundError:
+        raise HTTPException(status_code=404, detail="The API Key does not exist.")
+
+    if role != "ADMIN" and row.user_id != user_id:
+        raise HTTPException(
+            status_code=403, detail="API Key is not associate with current user."
+        )
+
+    data = ApiKey.from_orm(row)
+
+    return ApiKeyResponse(data=data)
+
+
 @router.get("/apikeys", tags=["Authentication"])
 async def get_apikeys(
     user: Tuple[str, str] = Depends(get_user),

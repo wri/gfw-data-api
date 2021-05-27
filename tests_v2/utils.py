@@ -16,16 +16,12 @@ class BatchJobMock:
         return job_id
 
 
-async def is_admin_mocked() -> bool:
-    return True
-
-
-async def is_service_account_mocked() -> bool:
-    return True
-
-
 async def get_user_mocked() -> Tuple[str, str]:
     return "userid_123", "USER"
+
+
+async def get_admin_mocked() -> Tuple[str, str]:
+    return "adminid_123", "ADMIN"
 
 
 async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
@@ -36,8 +32,17 @@ def void_function(*args, **kwargs) -> None:
     return
 
 
-def false_function(*args, **kwargs) -> bool:
-    return False
+def bool_function_closure(value: bool, with_args=True) -> Callable:
+    def bool_function(*args, **kwargs) -> bool:
+        return value
+
+    def simple_bool_function() -> bool:
+        return value
+
+    if with_args:
+        return bool_function
+    else:
+        return simple_bool_function
 
 
 def int_function_closure(value: int) -> Callable:
