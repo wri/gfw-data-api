@@ -87,6 +87,7 @@ async def vector_source_asset(
                 parents=[create_vector_schema_job.job_name],
                 environment=job_env,
                 callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
             )
             load_vector_data_jobs.append(job)
 
@@ -125,6 +126,7 @@ async def vector_source_asset(
                 parents=parents,
                 environment=job_env,
                 callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
             )
             queue.append(job)
             load_vector_data_jobs.append(job)
@@ -138,6 +140,7 @@ async def vector_source_asset(
         parents=load_data_parents,
         environment=job_env,
         callback=callback,
+        attempt_duration_seconds=creation_options.timeout,
     )
 
     index_jobs: List[Job] = list()
@@ -161,6 +164,7 @@ async def vector_source_asset(
                 parents=[gfw_attribute_job.job_name],
                 environment=job_env,
                 callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
             )
         )
 
@@ -173,6 +177,7 @@ async def vector_source_asset(
             parents=[job.job_name for job in index_jobs],
             environment=job_env,
             callback=callback,
+            attempt_duration_seconds=creation_options.timeout,
         )
         inherit_geostore_jobs.append(inherit_geostore_job)
 
