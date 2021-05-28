@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import Field, root_validator, validator
 from pydantic.types import PositiveInt, StrictInt
 
-from ...settings.globals import PIXETL_DEFAULT_RESAMPLING
+from ...settings.globals import DEFAULT_JOB_DURATION, PIXETL_DEFAULT_RESAMPLING
 from ..enum.assets import AssetType, is_default_asset
 from ..enum.creation_options import (
     Delimiters,
@@ -228,6 +228,7 @@ class TableAssetCreationOptions(StrictBaseModel):
         "when geographic columns are present. "
         "Disable this option by setting value to `false`",
     )
+    timeout: int = DEFAULT_JOB_DURATION
 
 
 class TableSourceCreationOptions(TableAssetCreationOptions):
