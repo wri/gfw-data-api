@@ -14,10 +14,12 @@ from asyncpg import (
     UndefinedFunctionError,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
+from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
@@ -63,7 +65,7 @@ from ...models.orm.assets import Asset as AssetORM
 from ...models.orm.versions import Version as VersionORM
 from ...models.pydantic.geostore import Geometry
 from ...models.pydantic.metadata import RasterTable, RasterTableRow
-from ...models.pydantic.query import QueryRequestIn
+from ...models.pydantic.query import CsvQueryRequestIn, QueryRequestIn
 from ...models.pydantic.raster_analysis import (
     DataEnvironment,
     DerivedLayer,
@@ -71,7 +73,7 @@ from ...models.pydantic.raster_analysis import (
     SourceLayer,
 )
 from ...models.pydantic.responses import Response
-from ...responses import ORJSONLiteResponse
+from ...responses import CSVStreamingResponse, ORJSONLiteResponse
 from ...settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
 from ...utils.aws import invoke_lambda
 from ...utils.geostore import get_geostore_geometry
@@ -82,11 +84,37 @@ router = APIRouter()
 
 @router.get(
     "/{dataset}/{version}/query",
-    response_class=ORJSONLiteResponse,
-    response_model=Response,
+    response_class=RedirectResponse,
     tags=["Query"],
+    status_code=308,
+    deprecated=True,
 )
 async def query_dataset(
+    request: FastApiRequest,
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented) and return response in JSON format.
+
+    Adding a geostore ID to the query will apply a spatial filter to the
+    query, only returning results for features intersecting with the
+    geostore geometry. For vector datasets, this filter will not clip
+    feature geometries to the geostore boundaries. Hence any spatial
+    transformation such as area calculations will be applied on the
+    entire feature geometry, including areas outside the geostore
+    boundaries.
+
+    This path is deprecated and will reroute to /query/json.
+    """
+    return RedirectResponse(url=f"{request.url.path}/json?{request.query_params}")
+
+
+@router.get(
+    "/{dataset}/{version}/query/json",
+    response_model=Response,
+    response_class=ORJSONLiteResponse,
+    tags=["Query"],
+)
+async def query_dataset_json(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
@@ -97,7 +125,7 @@ async def query_dataset(
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
-    implemented).
+    implemented) and return response in JSON format.
 
     Adding a geostore ID to the query will apply a spatial filter to the
     query, only returning results for features intersecting with the
@@ -116,19 +144,84 @@ async def query_dataset(
     else:
         geometry = None
 
-    data: List[Dict[str, Any]] = await _query_dataset(dataset, version, sql, geometry)
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
+    json_data: List[Dict[str, Any]] = await _query_dataset_json(
+        dataset, version, sql, geometry
+    )
+    return Response(data=json_data)
+
+
+@router.get(
+    "/{dataset}/{version}/query/csv",
+    response_class=CSVStreamingResponse,
+    tags=["Query"],
+)
+async def query_dataset_csv(
+    response: FastApiResponse,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    sql: str = Query(..., description="SQL query."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_origin: GeostoreOrigin = Query(
+        GeostoreOrigin.gfw, description="Origin service of geostore ID."
+    ),
+    delimiter: Delimiters = Query(
+        Delimiters.comma, description="Delimiter to use for CSV file."
+    ),
+    api_key: APIKey = Depends(get_api_key),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented) and return response in CSV format.
+
+    Adding a geostore ID to the query will apply a spatial filter to the
+    query, only returning results for features intersecting with the
+    geostore geometry. For vector datasets, this filter will not clip
+    feature geometries to the geostore boundaries. Hence any spatial
+    transformation such as area calculations will be applied on the
+    entire feature geometry, including areas outside the geostore
+    boundaries.
+    """
+
+    dataset, version = dataset_version
+    if geostore_id:
+        geometry: Optional[Geometry] = await get_geostore_geometry(
+            geostore_id, geostore_origin
+        )
+    else:
+        geometry = None
 
     response.headers["Cache-Control"] = "max-age=7200"  # 2h
-    return Response(data=data)
+    csv_data: StringIO = await _query_dataset_csv(
+        dataset, version, sql, geometry, delimiter=delimiter
+    )
+    return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
 
 
 @router.post(
     "/{dataset}/{version}/query",
+    response_class=FastApiResponse,
+    tags=["Query"],
+    deprecated=True,
+)
+async def query_dataset_post(
+    request: FastApiRequest,
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented).
+
+    This path is deprecated and will reroute to /query/json.
+    """
+    # RedirectResponse doesn't work for POST requests, so just manually construct the redirect
+    content = await request.body()
+    return FastApiResponse(content, url=f"{request.url.path}/json", status_code=308)
+
+
+@router.post(
+    "/{dataset}/{version}/query/json",
     response_class=ORJSONLiteResponse,
     response_model=Response,
     tags=["Query"],
 )
-async def query_dataset_post(
+async def query_dataset_json_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
@@ -139,11 +232,35 @@ async def query_dataset_post(
 
     dataset, version = dataset_version
 
-    data = await _query_dataset(dataset, version, request.sql, request.geometry)
-    return Response(data=data)
+    json_data: List[Dict[str, Any]] = await _query_dataset_json(
+        dataset, version, request.sql, request.geometry
+    )
+    return ORJSONLiteResponse(Response(data=json_data).dict())
 
 
-async def _query_dataset(
+@router.post(
+    "/{dataset}/{version}/query/csv",
+    response_class=CSVStreamingResponse,
+    tags=["Query"],
+)
+async def query_dataset_csv_post(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    request: CsvQueryRequestIn,
+    api_key: APIKey = Depends(get_api_key),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented)."""
+
+    dataset, version = dataset_version
+
+    csv_data: StringIO = await _query_dataset_csv(
+        dataset, version, request.sql, request.geometry, delimiter=request.delimiter
+    )
+    return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
+
+
+async def _query_dataset_json(
     dataset: str,
     version: str,
     sql: str,
@@ -153,11 +270,37 @@ async def _query_dataset(
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
     query_type = _get_query_type(default_asset, geometry)
     if query_type == QueryType.table:
-        return await _query_table(dataset, version, sql, geometry, QueryFormat.json)
+        return await _query_table(dataset, version, sql, geometry)
     elif query_type == QueryType.raster:
         geometry = cast(Geometry, geometry)
         results = await _query_raster(dataset, default_asset, sql, geometry)
         return results["data"]
+    else:
+        raise HTTPException(
+            status_code=501,
+            detail="This endpoint is not implemented for the given dataset.",
+        )
+
+
+async def _query_dataset_csv(
+    dataset: str,
+    version: str,
+    sql: str,
+    geometry: Optional[Geometry],
+    delimiter: Delimiters = Delimiters.comma,
+) -> StringIO:
+    # Make sure we can query the dataset
+    default_asset: AssetORM = await assets.get_default_asset(dataset, version)
+    query_type = _get_query_type(default_asset, geometry)
+    if query_type == QueryType.table:
+        response = await _query_table(dataset, version, sql, geometry)
+        return _orm_to_csv(response, delimiter=delimiter)
+    elif query_type == QueryType.raster:
+        geometry = cast(Geometry, geometry)
+        results = await _query_raster(
+            dataset, default_asset, sql, geometry, QueryFormat.csv, delimiter
+        )
+        return StringIO(results["data"])
     else:
         raise HTTPException(
             status_code=501,
@@ -189,8 +332,6 @@ async def _query_table(
     version: str,
     sql: str,
     geometry: Optional[Geometry],
-    format: QueryFormat = QueryFormat.json,
-    delimiter: Delimiters = Delimiters.comma,
 ) -> List[Dict[str, Any]]:
     # parse and validate SQL statement
     try:
@@ -486,7 +627,15 @@ async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
         if "tcd" in row.creation_options["pixel_meaning"]:
             continue
 
-        source_layer_name = f"{row.dataset}__{row.creation_options['pixel_meaning']}"
+        if {row.creation_options["pixel_meaning"]} == "is":
+            source_layer_name = (
+                f"{row.creation_options['pixel_meaning']}__{row.dataset}"
+            )
+        else:
+            source_layer_name = (
+                f"{row.dataset}__{row.creation_options['pixel_meaning']}"
+            )
+
         layers.append(_get_source_layer(row, source_layer_name))
 
         if row.creation_options["pixel_meaning"] == "date_conf":
