@@ -43,11 +43,11 @@ async def get_api_key(
     ),
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     for api_key, origin, referrer in [api_key_query, api_key_header]:
-        if api_key and (origin or referrer):
+        if api_key:
             try:
                 row: ORMApiKey = await api_keys.get_api_key(UUID(api_key))
             except RecordNotFoundError:
-                pass
+                pass  # we will catch this at the end of this function
             else:
                 if api_key_is_valid(row.domains, row.expires_on, origin, referrer):
                     return api_key, origin, referrer

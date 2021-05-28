@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import Field, root_validator, validator
 from pydantic.types import PositiveInt, StrictInt
 
-from ...settings.globals import PIXETL_DEFAULT_RESAMPLING
+from ...settings.globals import DEFAULT_JOB_DURATION, PIXETL_DEFAULT_RESAMPLING
 from ..enum.assets import AssetType, is_default_asset
 from ..enum.creation_options import (
     Delimiters,
@@ -199,6 +199,15 @@ class VectorSourceCreationOptions(StrictBaseModel):
         True,
         description="Include features to geostore, to make geometries searchable via geostore endpoint.",
     )
+    timeout: int = DEFAULT_JOB_DURATION
+
+    @validator("source_uri")
+    def validate_source_uri(cls, v, values, **kwargs):
+        if values.get("source_driver") != VectorDrivers.csv:
+            assert (
+                len(v) == 1
+            ), "Non-CSV vector sources require one and only one input file"
+        return v
 
 
 class TableAssetCreationOptions(StrictBaseModel):

@@ -17,6 +17,7 @@ from app.errors import http_error_handler
 
 from .application import app
 from .middleware import no_cache_response_header, redirect_latest, set_db_mode
+from .routes import health
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.authentication import authentication
@@ -153,9 +154,22 @@ task_routers = (task.router,)
 for r in task_routers:
     app.include_router(r, prefix="/task")
 
+###############
+# ANALYSIS API
+###############
+
 analysis_routers = (analysis.router,)
 for r in analysis_routers:
     app.include_router(r, prefix="/analysis")
+
+###############
+# HEALTH API
+###############
+
+health_routers = (health.router,)
+for r in health_routers:
+    app.include_router(r, prefix="")
+
 
 #######################
 # OPENAPI Documentation
@@ -172,6 +186,7 @@ tags_metadata = [
     {"name": "Geostore", "description": geostore.__doc__},
     {"name": "Tasks", "description": task.__doc__},
     {"name": "Analysis", "description": analysis.__doc__},
+    {"name": "Health", "description": health.__doc__},
 ]
 
 
@@ -196,6 +211,7 @@ def custom_openapi():
         {"name": "Download API", "tags": ["Download"]},
         {"name": "Task API", "tags": ["Tasks"]},
         {"name": "Analysis API", "tags": ["Analysis"]},
+        {"name": "Health API", "tags": ["Health"]},
     ]
 
     app.openapi_schema = openapi_schema

@@ -24,13 +24,19 @@ if [ "${ZIPPED}" == "True" ]; then
   LOCAL_FILE="/vsizip/${LOCAL_FILE}"
 fi
 
-echo "OGR2OGR: Create table schema for \"${DATASET}\".\"${VERSION}\" from ${LOCAL_FILE} ${SRC_LAYER}"
-ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=$PGDATABASE user=$PGUSER" \
+args=(-f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=$PGDATABASE user=$PGUSER" \
      "$LOCAL_FILE" "$SRC_LAYER" \
      -nlt PROMOTE_TO_MULTI -nln "$DATASET.$VERSION" \
      -lco GEOMETRY_NAME="$GEOMETRY_NAME" -lco SPATIAL_INDEX=NONE -lco FID="$FID_NAME" \
-     -t_srs EPSG:4326 -limit 0
+     -t_srs EPSG:4326 -limit 0)
 
+# If source is CSV, there's no SRS information so add it manually
+if [[ "$SRC" == *".csv" ]]; then
+  args+=(-s_srs EPSG:4326 -oo GEOM_POSSIBLE_NAMES="$GEOMETRY_NAME" -oo KEEP_GEOM_COLUMNS=NO)
+fi
+
+echo "OGR2OGR: Create table schema for \"${DATASET}\".\"${VERSION}\" from ${LOCAL_FILE} ${SRC_LAYER}"
+ogr2ogr "${args[@]}"
 
 # Set storage to external for faster querying
 # http://blog.cleverelephant.ca/2018/09/postgis-external-storage.html
