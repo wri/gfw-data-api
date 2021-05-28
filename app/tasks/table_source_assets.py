@@ -62,7 +62,7 @@ async def table_source_asset(
         command=command,
         environment=job_env,
         callback=callback,
-        timeout=creation_options.timeout,
+        attempt_duration_seconds=creation_options.timeout,
     )
 
     # Create partitions
@@ -117,7 +117,7 @@ async def table_source_asset(
                 environment=job_env,
                 parents=parents,
                 callback=callback,
-                timeout=creation_options.timeout,
+                attempt_duration_seconds=creation_options.timeout,
             )
         )
 
@@ -142,7 +142,7 @@ async def table_source_asset(
                 environment=job_env,
                 parents=[job.job_name for job in load_data_jobs],
                 callback=callback,
-                timeout=creation_options.timeout,
+                attempt_duration_seconds=creation_options.timeout,
             ),
         )
 
@@ -170,7 +170,7 @@ async def table_source_asset(
                 parents=parents,
                 environment=job_env,
                 callback=callback,
-                timeout=creation_options.timeout,
+                attempt_duration_seconds=creation_options.timeout,
             )
         )
 
@@ -259,7 +259,7 @@ async def append_table_source_asset(
                 command=command,
                 environment=job_env,
                 callback=callback,
-                timeout=creation_options.timeout,
+                attempt_duration_seconds=creation_options.timeout,
             )
         )
 
@@ -286,7 +286,7 @@ async def append_table_source_asset(
                 environment=job_env,
                 parents=[job.job_name for job in load_data_jobs],
                 callback=callback,
-                timeout=creation_options.timeout,
+                attempt_duration_seconds=creation_options.timeout,
             ),
         )
 
@@ -377,7 +377,7 @@ def _partition_job(
         environment=job_env,
         parents=parents,
         callback=callback,
-        timeout=timeout,
+        attempt_duration_seconds=timeout,
     )
 
 
@@ -462,7 +462,7 @@ def _create_cluster_jobs(
             environment=job_env,
             parents=parents,
             callback=callback,
-            timeout=timeout,
+            attempt_duration_seconds=timeout,
         )
         cluster_jobs.append(job)
     return cluster_jobs
@@ -504,7 +504,7 @@ def _cluster_partition_job(
         environment=job_env,
         parents=parents,
         callback=callback,
-        timeout=timeout,
+        attempt_duration_seconds=timeout,
     )
 
 
