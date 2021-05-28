@@ -237,6 +237,7 @@ class TableAssetCreationOptions(StrictBaseModel):
         "when geographic columns are present. "
         "Disable this option by setting value to `false`",
     )
+    timeout: int = DEFAULT_JOB_DURATION
 
 
 class TableSourceCreationOptions(TableAssetCreationOptions):
