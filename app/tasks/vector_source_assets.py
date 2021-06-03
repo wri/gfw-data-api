@@ -1,3 +1,4 @@
+import json
 import math
 import os
 from typing import Any, Dict, List
@@ -10,6 +11,7 @@ from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
 from ..utils.path import get_layer_name, is_zipped
 from . import Callback, callback_constructor, writer_secrets
 from .batch import BATCH_DEPENDENCY_LIMIT, execute
+from .table_source_assets import _create_cluster_jobs, _create_partition_jobs
 from .utils import RingOfLists
 
 
@@ -37,27 +39,58 @@ async def vector_source_asset(
 
     job_env = writer_secrets + [{"name": "ASSET_ID", "value": str(asset_id)}]
 
+    command = [
+        "create_vector_schema.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+        "-s",
+        source_uri,
+        "-l",
+        layers[0],
+        "-f",
+        local_file,
+        "-X",
+        str(zipped),
+        "-m",
+        json.dumps(creation_options.dict(by_alias=True)["table_schema"]),
+    ]
+
+    if creation_options.partitions:
+        command.extend(
+            [
+                "-p",
+                creation_options.partitions.partition_type,
+                "-c",
+                creation_options.partitions.partition_column,
+            ]
+        )
+
     create_vector_schema_job = GdalPythonImportJob(
         dataset=dataset,
         job_name="import_vector_data",
-        command=[
-            "create_vector_schema.sh",
-            "-d",
-            dataset,
-            "-v",
-            version,
-            "-s",
-            source_uri,
-            "-l",
-            layers[0],
-            "-f",
-            local_file,
-            "-X",
-            str(zipped),
-        ],
+        command=command,
         environment=job_env,
         callback=callback,
     )
+
+    # Create partitions
+    if creation_options.partitions:
+        partition_jobs: List[Job] = _create_partition_jobs(
+            dataset,
+            version,
+            creation_options.partitions,
+            [create_vector_schema_job.job_name],
+            job_env,
+            callback,
+            creation_options.timeout,
+        )
+    else:
+        partition_jobs = list()
+
+    parents = [create_vector_schema_job.job_name]
+    parents.extend([job.job_name for job in partition_jobs])
 
     load_vector_data_jobs: List[GdalPythonImportJob] = list()
     if creation_options.source_driver == VectorDrivers.csv:
@@ -84,7 +117,7 @@ async def vector_source_asset(
                 dataset=dataset,
                 job_name=f"load_vector_data_layer_{i}",
                 command=command,
-                parents=[create_vector_schema_job.job_name],
+                parents=parents,
                 environment=job_env,
                 callback=callback,
                 attempt_duration_seconds=creation_options.timeout,
@@ -100,9 +133,7 @@ async def vector_source_asset(
         job_queues: RingOfLists = RingOfLists(num_queues)
         for i, layer in enumerate(layers):
             queue = next(job_queues)
-            if not queue:
-                parents: List[str] = [create_vector_schema_job.job_name]
-            else:
+            if queue:
                 parents = [queue[-1].job_name]
 
             job = GdalPythonImportJob(
@@ -168,13 +199,27 @@ async def vector_source_asset(
             )
         )
 
+    if creation_options.cluster:
+        cluster_jobs: List[Job] = _create_cluster_jobs(
+            dataset,
+            version,
+            creation_options.partitions,
+            creation_options.cluster,
+            parents,
+            job_env,
+            callback,
+            creation_options.timeout,
+        )
+    else:
+        cluster_jobs = list()
+
     inherit_geostore_jobs = list()
     if creation_options.add_to_geostore:
         inherit_geostore_job = PostgresqlClientJob(
             dataset=dataset,
             job_name="inherit_from_geostore",
             command=["inherit_geostore.sh", "-d", dataset, "-v", version],
-            parents=[job.job_name for job in index_jobs],
+            parents=[job.job_name for job in cluster_jobs],
             environment=job_env,
             callback=callback,
             attempt_duration_seconds=creation_options.timeout,
@@ -184,9 +229,11 @@ async def vector_source_asset(
     log: ChangeLog = await execute(
         [
             create_vector_schema_job,
+            *partition_jobs,
             *load_vector_data_jobs,
             gfw_attribute_job,
             *index_jobs,
+            *cluster_jobs,
             *inherit_geostore_jobs,
         ]
     )
