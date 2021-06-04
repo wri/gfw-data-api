@@ -24,15 +24,9 @@ if [ "${ZIPPED}" == "True" ]; then
   LOCAL_FILE="/vsizip/${LOCAL_FILE}"
 fi
 
-# if partitioning, first create temp table
-TABLE_NAME="$DATASET.$VERSION"
-if [[ -n "${PARTITION_TYPE}" ]]; then
-  TABLE_NAME+=".temp"
-fi
-
 args=(-f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=$PGDATABASE user=$PGUSER" \
      "$LOCAL_FILE" "$SRC_LAYER" \
-     -nlt PROMOTE_TO_MULTI -nln "$TABLE_NAME" \
+     -nlt PROMOTE_TO_MULTI -nln "$DATASET.$VERSION" \
      -lco GEOMETRY_NAME="$GEOMETRY_NAME" -lco SPATIAL_INDEX=NONE -lco FID="$FID_NAME" \
      -t_srs EPSG:4326 -limit 0)
 
@@ -58,13 +52,6 @@ fi
 
 echo "OGR2OGR: Create table schema for \"${DATASET}\".\"${VERSION}\" from ${LOCAL_FILE} ${SRC_LAYER}"
 ogr2ogr "${args[@]}"
-
-# If partitioning, create partitioned table using schema from ogr2ogr, and delete temp table
-if [[ -n "${PARTITION_TYPE}" ]]; then
-  echo "CREATE PARTITIONED TABLE"
-  psql -c "CREATE TABLE \"$DATASET\".\"$VERSION\" (LIKE \"$DATASET\".\"$VERSION.temp\") PARTITION BY $PARTITION_TYPE ($COLUMN_NAME);"
-  psql -c "DROP TABLE \"$DATASET\".\"$VERSION.temp\""
-fi
 
 # Set storage to external for faster querying
 # http://blog.cleverelephant.ca/2018/09/postgis-external-storage.html

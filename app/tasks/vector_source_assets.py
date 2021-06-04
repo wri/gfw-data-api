@@ -11,7 +11,6 @@ from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
 from ..utils.path import get_layer_name, is_zipped
 from . import Callback, callback_constructor, writer_secrets
 from .batch import BATCH_DEPENDENCY_LIMIT, execute
-from .table_source_assets import _create_cluster_jobs, _create_partition_jobs
 from .utils import RingOfLists
 
 
@@ -57,16 +56,6 @@ async def vector_source_asset(
         json.dumps(creation_options.dict(by_alias=True)["table_schema"]),
     ]
 
-    if creation_options.partitions:
-        command.extend(
-            [
-                "-p",
-                creation_options.partitions.partition_type,
-                "-c",
-                creation_options.partitions.partition_column,
-            ]
-        )
-
     create_vector_schema_job = GdalPythonImportJob(
         dataset=dataset,
         job_name="import_vector_data",
@@ -75,22 +64,7 @@ async def vector_source_asset(
         callback=callback,
     )
 
-    # Create partitions
-    if creation_options.partitions:
-        partition_jobs: List[Job] = _create_partition_jobs(
-            dataset,
-            version,
-            creation_options.partitions,
-            [create_vector_schema_job.job_name],
-            job_env,
-            callback,
-            creation_options.timeout,
-        )
-    else:
-        partition_jobs = list()
-
     parents = [create_vector_schema_job.job_name]
-    parents.extend([job.job_name for job in partition_jobs])
 
     load_vector_data_jobs: List[GdalPythonImportJob] = list()
     if creation_options.source_driver == VectorDrivers.csv:
@@ -200,16 +174,27 @@ async def vector_source_asset(
         )
 
     if creation_options.cluster:
-        cluster_jobs: List[Job] = _create_cluster_jobs(
-            dataset,
-            version,
-            creation_options.partitions,
-            creation_options.cluster,
-            parents,
-            job_env,
-            callback,
-            creation_options.timeout,
-        )
+        cluster_jobs: List[Job] = [
+            PostgresqlClientJob(
+                dataset=dataset,
+                job_name="cluster_table",
+                command=[
+                    "cluster_table.sh",
+                    "-d",
+                    dataset,
+                    "-v",
+                    version,
+                    "-C",
+                    ",".join(creation_options.cluster.column_names),
+                    "-x",
+                    creation_options.cluster.index_type,
+                ],
+                environment=job_env,
+                parents=[job.job_name for job in index_jobs],
+                callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
+            )
+        ]
     else:
         cluster_jobs = list()
 
@@ -229,7 +214,6 @@ async def vector_source_asset(
     log: ChangeLog = await execute(
         [
             create_vector_schema_job,
-            *partition_jobs,
             *load_vector_data_jobs,
             gfw_attribute_job,
             *index_jobs,
