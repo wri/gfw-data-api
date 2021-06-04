@@ -193,9 +193,6 @@ class VectorSourceCreationOptions(StrictBaseModel):
     cluster: Optional[Index] = Field(
         None, description="Index to use for clustering (optional)."
     )
-    partitions: Optional[Partitions] = Field(
-        None, description="Partitioning schema (optional)"
-    )
     table_schema: Optional[List[FieldType]] = Field(
         None,
         description="List of Field Types. Missing field types will be inferred. (optional)",
