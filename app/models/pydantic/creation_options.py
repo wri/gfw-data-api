@@ -190,9 +190,7 @@ class VectorSourceCreationOptions(StrictBaseModel):
         ],
         description="List of indices to add to table",
     )
-    cluster: Optional[Index] = Field(
-        None, description="Index to use for clustering (optional)."
-    )
+    cluster: Optional[Index] = Field(None, description="Index to use for clustering.")
     table_schema: Optional[List[FieldType]] = Field(
         None,
         description="List of Field Types. Missing field types will be inferred. (optional)",
