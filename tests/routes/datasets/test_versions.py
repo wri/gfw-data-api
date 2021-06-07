@@ -109,6 +109,8 @@ async def test_versions(async_client):
         "create_dynamic_vector_tile_cache": True,
         "add_to_geostore": True,
         "timeout": 7200,
+        "cluster": None,
+        "table_schema": None,
     }
 
     response = await async_client.get(f"/dataset/{dataset}/{version}/creation_options")
