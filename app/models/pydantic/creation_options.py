@@ -190,6 +190,11 @@ class VectorSourceCreationOptions(StrictBaseModel):
         ],
         description="List of indices to add to table",
     )
+    cluster: Optional[Index] = Field(None, description="Index to use for clustering.")
+    table_schema: Optional[List[FieldType]] = Field(
+        None,
+        description="List of Field Types. Missing field types will be inferred. (optional)",
+    )
     create_dynamic_vector_tile_cache: bool = Field(
         True,
         description="By default, vector sources will implicitly create a dynamic vector tile cache. "
