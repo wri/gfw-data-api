@@ -181,24 +181,26 @@ async def vector_source_asset(
 
     cluster_jobs: List[PostgresqlClientJob] = list()
     if creation_options.cluster:
-        cluster_jobs = PostgresqlClientJob(
-            dataset=dataset,
-            job_name="cluster_table",
-            command=[
-                "cluster_table.sh",
-                "-d",
-                dataset,
-                "-v",
-                version,
-                "-C",
-                ",".join(creation_options.cluster.column_names),
-                "-x",
-                creation_options.cluster.index_type,
-            ],
-            environment=job_env,
-            parents=[job.job_name for job in index_jobs],
-            callback=callback,
-            attempt_duration_seconds=creation_options.timeout,
+        cluster_jobs.append(
+            PostgresqlClientJob(
+                dataset=dataset,
+                job_name="cluster_table",
+                command=[
+                    "cluster_table.sh",
+                    "-d",
+                    dataset,
+                    "-v",
+                    version,
+                    "-C",
+                    ",".join(creation_options.cluster.column_names),
+                    "-x",
+                    creation_options.cluster.index_type,
+                ],
+                environment=job_env,
+                parents=[job.job_name for job in index_jobs],
+                callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
+            )
         )
 
     parents += [job.job_name for job in cluster_jobs]
