@@ -3,6 +3,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query
+from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
@@ -122,6 +123,15 @@ async def _zonal_statistics(
 
     if groups:
         query += f" group by {groups}"
+
+    # replace deprecated layers
+    query = query.replace(
+        "umd_glad_alerts__isoweek", "isoweek(umd_glad_landsat_alerts__date)"
+    )
+    query = query.replace("umd_glad_alerts__date", "umd_glad_landsat_alerts__date")
+    query = query.replace("sum(alert__count)", "count(*)")
+
+    logger.info(f"Executing analysis query: {query}")
 
     resp = await _query_raster_lambda(geometry, query)
     return Response(data=resp["data"])
