@@ -627,7 +627,7 @@ async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
         if "tcd" in row.creation_options["pixel_meaning"]:
             continue
 
-        if {row.creation_options["pixel_meaning"]} == "is":
+        if row.creation_options["pixel_meaning"] == "is":
             source_layer_name = (
                 f"{row.creation_options['pixel_meaning']}__{row.dataset}"
             )
