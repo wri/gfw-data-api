@@ -578,7 +578,9 @@ async def _query_raster_lambda(
 
     # response must be in JSEND format or something unexpected happened
     response_body = response.json()
-    if "status" not in response_body or "data" not in response_body:
+    if "status" not in response_body or (
+        "data" not in response_body and "message" not in response_body
+    ):
         raise HTTPException(
             500,
             f"Raster analysis lambda received an unexpected response: {response.text}",
@@ -627,7 +629,7 @@ async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
         if "tcd" in row.creation_options["pixel_meaning"]:
             continue
 
-        if {row.creation_options["pixel_meaning"]} == "is":
+        if row.creation_options["pixel_meaning"] == "is":
             source_layer_name = (
                 f"{row.creation_options['pixel_meaning']}__{row.dataset}"
             )
