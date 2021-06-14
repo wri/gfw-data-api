@@ -144,7 +144,7 @@ def _get_date_filter(
         # only get year for TCL
         date = date if len(date) == 4 else date[:4]
         return f"umd_tree_cover_loss__year {op} {date}"
-    elif RasterLayer.umd_glad_alerts__date:
+    elif RasterLayer.umd_glad_alerts__date in filter_layers:
         return f"umd_glad_landsat_alerts__date {op} '{date}'"
     else:
         # no date layer to filter by
