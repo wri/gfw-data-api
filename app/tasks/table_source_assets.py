@@ -62,6 +62,7 @@ async def table_source_asset(
         command=command,
         environment=job_env,
         callback=callback,
+        attempt_duration_seconds=creation_options.timeout,
     )
 
     # Create partitions
@@ -73,6 +74,7 @@ async def table_source_asset(
             [create_table_job.job_name],
             job_env,
             callback,
+            creation_options.timeout,
         )
     else:
         partition_jobs = list()
@@ -115,6 +117,7 @@ async def table_source_asset(
                 environment=job_env,
                 parents=parents,
                 callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
             )
         )
 
@@ -139,6 +142,7 @@ async def table_source_asset(
                 environment=job_env,
                 parents=[job.job_name for job in load_data_jobs],
                 callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
             ),
         )
 
@@ -166,6 +170,7 @@ async def table_source_asset(
                 parents=parents,
                 environment=job_env,
                 callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
             )
         )
 
@@ -182,6 +187,7 @@ async def table_source_asset(
             parents,
             job_env,
             callback,
+            creation_options.timeout,
         )
     else:
         cluster_jobs = list()
@@ -253,6 +259,7 @@ async def append_table_source_asset(
                 command=command,
                 environment=job_env,
                 callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
             )
         )
 
@@ -279,6 +286,7 @@ async def append_table_source_asset(
                 environment=job_env,
                 parents=[job.job_name for job in load_data_jobs],
                 callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
             ),
         )
 
@@ -294,6 +302,7 @@ def _create_partition_jobs(
     parents,
     job_env: List[Dict[str, str]],
     callback: Callback,
+    timeout: int,
 ) -> List[PostgresqlClientJob]:
     """Create partition job depending on the partition type.
 
@@ -317,6 +326,7 @@ def _create_partition_jobs(
                 i,
                 job_env,
                 callback,
+                timeout,
             )
 
             partition_jobs.append(job)
@@ -332,6 +342,7 @@ def _create_partition_jobs(
             0,
             job_env,
             callback,
+            timeout,
         )
         partition_jobs.append(job)
 
@@ -347,6 +358,7 @@ def _partition_job(
     suffix: int,
     job_env: List[Dict[str, str]],
     callback: Callback,
+    timeout: int,
 ) -> PostgresqlClientJob:
     return PostgresqlClientJob(
         dataset=dataset,
@@ -365,6 +377,7 @@ def _partition_job(
         environment=job_env,
         parents=parents,
         callback=callback,
+        attempt_duration_seconds=timeout,
     )
 
 
@@ -376,6 +389,7 @@ def _create_cluster_jobs(
     parents: List[str],
     job_env: List[Dict[str, str]],
     callback: Callback,
+    timeout: int,
 ) -> List[PostgresqlClientJob]:
     # Cluster tables. This is a full lock operation.
     cluster_jobs: List[PostgresqlClientJob] = list()
@@ -404,6 +418,7 @@ def _create_cluster_jobs(
                     i,
                     job_env,
                     callback,
+                    timeout,
                 )
                 cluster_jobs.append(job)
                 parents = [job.job_name]
@@ -424,6 +439,7 @@ def _create_cluster_jobs(
                 0,
                 job_env,
                 callback,
+                timeout,
             )
             cluster_jobs.append(job)
 
@@ -446,6 +462,7 @@ def _create_cluster_jobs(
             environment=job_env,
             parents=parents,
             callback=callback,
+            attempt_duration_seconds=timeout,
         )
         cluster_jobs.append(job)
     return cluster_jobs
@@ -462,6 +479,7 @@ def _cluster_partition_job(
     index: int,
     job_env: List[Dict[str, str]],
     callback: Callback,
+    timeout: int,
 ):
     command = [
         "cluster_partitions.sh",
@@ -486,6 +504,7 @@ def _cluster_partition_job(
         environment=job_env,
         parents=parents,
         callback=callback,
+        attempt_duration_seconds=timeout,
     )
 
 

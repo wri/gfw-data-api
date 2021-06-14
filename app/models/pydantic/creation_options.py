@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import Field, root_validator, validator
 from pydantic.types import PositiveInt, StrictInt
 
-from ...settings.globals import PIXETL_DEFAULT_RESAMPLING
+from ...settings.globals import DEFAULT_JOB_DURATION, PIXETL_DEFAULT_RESAMPLING
 from ..enum.assets import AssetType, is_default_asset
 from ..enum.creation_options import (
     Delimiters,
@@ -190,6 +190,11 @@ class VectorSourceCreationOptions(StrictBaseModel):
         ],
         description="List of indices to add to table",
     )
+    cluster: Optional[Index] = Field(None, description="Index to use for clustering.")
+    table_schema: Optional[List[FieldType]] = Field(
+        None,
+        description="List of Field Types. Missing field types will be inferred. (optional)",
+    )
     create_dynamic_vector_tile_cache: bool = Field(
         True,
         description="By default, vector sources will implicitly create a dynamic vector tile cache. "
@@ -199,6 +204,15 @@ class VectorSourceCreationOptions(StrictBaseModel):
         True,
         description="Include features to geostore, to make geometries searchable via geostore endpoint.",
     )
+    timeout: int = DEFAULT_JOB_DURATION
+
+    @validator("source_uri")
+    def validate_source_uri(cls, v, values, **kwargs):
+        if values.get("source_driver") != VectorDrivers.csv:
+            assert (
+                len(v) == 1
+            ), "Non-CSV vector sources require one and only one input file"
+        return v
 
 
 class TableAssetCreationOptions(StrictBaseModel):
@@ -228,6 +242,7 @@ class TableAssetCreationOptions(StrictBaseModel):
         "when geographic columns are present. "
         "Disable this option by setting value to `false`",
     )
+    timeout: int = DEFAULT_JOB_DURATION
 
 
 class TableSourceCreationOptions(TableAssetCreationOptions):

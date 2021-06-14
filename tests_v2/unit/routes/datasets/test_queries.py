@@ -3,7 +3,6 @@ from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="temporary disable api keys")
 async def test_query_dataset_without_api_key(
     generic_vector_source_version, async_client: AsyncClient
 ):
