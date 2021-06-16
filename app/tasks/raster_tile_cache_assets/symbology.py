@@ -127,10 +127,10 @@ async def date_conf_intensity_symbology(
     intensity raster into one.
 
     At native resolution (max_zoom) it will create intensity raster
-    based on given source. For lower zoom levels if will resample higher
+    based on given source. For lower zoom levels it will resample higher
     zoom level tiles using bilinear resampling method. Once intensity
-    raster tile set is created it will combine it with ource (date_conf)
-    raster into rbg encoded raster.
+    raster tile set is created it will combine it with source
+    (date_conf) raster into RGB-encoded raster.
     """
     return await _date_intensity_symbology(
         dataset,
@@ -159,10 +159,10 @@ async def year_intensity_symbology(
     raster into one.
 
     At native resolution (max_zoom) it will create intensity raster
-    based on given source. For lower zoom levels if will resample higher
-    zoom level tiles using mean resampling method. Once intensity raster
-    tile set is created it will combine it with source (year) raster
-    into rbg encoded raster.
+    based on given source. For lower zoom levels it will resample higher
+    zoom level tiles using average resampling method. Once intensity
+    raster tile set is created it will combine it with source (year)
+    raster into RGB-encoded raster.
     """
     return await _date_intensity_symbology(
         dataset,
@@ -257,7 +257,7 @@ async def _merge_intensity_and_date_conf(
     zoom_level: int,
     parents: List[Job],
 ) -> Tuple[List[Job], str]:
-    """Create RGB encoded raster tile set based on date_conf and intensity
+    """Create RGB-encoded raster tile set based on date_conf and intensity
     raster tile sets."""
 
     encoded_co = RasterTileSetSourceCreationOptions(
