@@ -32,7 +32,24 @@ args=(-f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=
 
 # If source is CSV, there's no SRS information so add it manually
 if [[ "$SRC" == *".csv" ]]; then
+  echo "OGR2OGR: Add creation options for CSV source"
   args+=(-s_srs EPSG:4326 -oo GEOM_POSSIBLE_NAMES="$GEOMETRY_NAME" -oo KEEP_GEOM_COLUMNS=NO)
+fi
+
+if [[ -n "${FIELD_MAP}" ]]; then
+  echo "OGR2OGR: Override table schema in creation options"
+  COLUMN_TYPES=""
+  for row in $(echo "${FIELD_MAP}" | jq -r '.[] | @base64'); do
+      _jq() {
+       echo "${row}" | base64 --decode | jq -r "${1}"
+      }
+     FIELD_NAME=$(_jq '.field_name')
+     FIELD_TYPE=$(_jq '.field_type')
+
+     COLUMN_TYPES+="$FIELD_NAME=$FIELD_TYPE,"
+  done
+
+  args+=(-lco COLUMN_TYPES=${COLUMN_TYPES%?})
 fi
 
 echo "OGR2OGR: Create table schema for \"${DATASET}\".\"${VERSION}\" from ${LOCAL_FILE} ${SRC_LAYER}"

@@ -1,3 +1,4 @@
+import json
 import math
 import os
 from typing import Any, Dict, List
@@ -37,24 +38,32 @@ async def vector_source_asset(
 
     job_env = writer_secrets + [{"name": "ASSET_ID", "value": str(asset_id)}]
 
+    command = [
+        "create_vector_schema.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+        "-s",
+        source_uri,
+        "-l",
+        layers[0],
+        "-f",
+        local_file,
+        "-X",
+        str(zipped),
+    ]
+
+    if creation_options.table_schema:
+        command += [
+            "-m",
+            json.dumps(creation_options.dict(by_alias=True)["table_schema"]),
+        ]
+
     create_vector_schema_job = GdalPythonImportJob(
         dataset=dataset,
         job_name="import_vector_data",
-        command=[
-            "create_vector_schema.sh",
-            "-d",
-            dataset,
-            "-v",
-            version,
-            "-s",
-            source_uri,
-            "-l",
-            layers[0],
-            "-f",
-            local_file,
-            "-X",
-            str(zipped),
-        ],
+        command=command,
         environment=job_env,
         callback=callback,
     )
@@ -168,13 +177,41 @@ async def vector_source_asset(
             )
         )
 
+    parents = [job.job_name for job in index_jobs]
+
+    cluster_jobs: List[PostgresqlClientJob] = list()
+    if creation_options.cluster:
+        cluster_jobs.append(
+            PostgresqlClientJob(
+                dataset=dataset,
+                job_name="cluster_table",
+                command=[
+                    "cluster_table.sh",
+                    "-d",
+                    dataset,
+                    "-v",
+                    version,
+                    "-C",
+                    ",".join(creation_options.cluster.column_names),
+                    "-x",
+                    creation_options.cluster.index_type,
+                ],
+                environment=job_env,
+                parents=[job.job_name for job in index_jobs],
+                callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
+            )
+        )
+
+    parents += [job.job_name for job in cluster_jobs]
+
     inherit_geostore_jobs = list()
     if creation_options.add_to_geostore:
         inherit_geostore_job = PostgresqlClientJob(
             dataset=dataset,
             job_name="inherit_from_geostore",
             command=["inherit_geostore.sh", "-d", dataset, "-v", version],
-            parents=[job.job_name for job in index_jobs],
+            parents=parents,
             environment=job_env,
             callback=callback,
             attempt_duration_seconds=creation_options.timeout,
@@ -187,6 +224,7 @@ async def vector_source_asset(
             *load_vector_data_jobs,
             gfw_attribute_job,
             *index_jobs,
+            *cluster_jobs,
             *inherit_geostore_jobs,
         ]
     )
