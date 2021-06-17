@@ -39,7 +39,7 @@ services:
       - TILE_CACHE_SERVICE=tile_cache_service
       - PIXETL_JOB_QUEUE=pixetl_jq
       - API_URL=http://app_dev:80
-      - RASTER_ANALYSIS_LAMBDA_NAME=raster-analysis-tiled_raster_analysis-feature-DataEnvironment
+      - RASTER_ANALYSIS_LAMBDA_NAME=raster-analysis-tiled_raster_analysis-default
       - RW_API_URL=https://staging-api.resourcewatch.org
     ports:
       - 8008:80

@@ -16,10 +16,12 @@ class CSVStreamingResponse(StreamingResponse):
         headers: dict = None,
         background: BackgroundTask = None,
         filename: str = "export.csv",
+        download: bool = True,
     ) -> None:
         if not headers:
             headers = dict()
-        headers["Content-Disposition"] = f"attachment; filename={filename}"
+        if download:
+            headers["Content-Disposition"] = f"attachment; filename={filename}"
 
         super().__init__(content, status_code, headers, self.media_type, background)
 

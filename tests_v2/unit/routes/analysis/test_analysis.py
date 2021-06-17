@@ -2,8 +2,8 @@ import pytest
 from httpx import AsyncClient
 
 
+@pytest.mark.skip("Temporarily skip until we require API keys")
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="temporary disable api keys")
 async def test_analysis_without_api_key(geostore, async_client: AsyncClient):
 
     response = await async_client.get(f"/analysis/zonal/{geostore}")
