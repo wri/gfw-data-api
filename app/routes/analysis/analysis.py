@@ -1,5 +1,5 @@
 """Run analysis on registered datasets."""
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -134,7 +134,21 @@ async def _zonal_statistics(
     logger.info(f"Executing analysis query: {query}")
 
     resp = await _query_raster_lambda(geometry, query)
-    return Response(data=resp["data"])
+    data = _postprocess(resp["data"])
+
+    # keep deprecate column names
+    return Response(data=data)
+
+
+def _postprocess(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    for row in data:
+        for col, val in list(row.items()):
+            if "umd_glad_landsat_alerts" in col:
+                new_col = col.replace("umd_glad_landsat_alerts", "umd_glad_alerts")
+                row[new_col] = val
+                del row[col]
+
+    return data
 
 
 def _get_date_filter(
