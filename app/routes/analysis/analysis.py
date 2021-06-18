@@ -147,6 +147,9 @@ def _postprocess(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 new_col = col.replace("umd_glad_landsat_alerts", "umd_glad_alerts")
                 row[new_col] = val
                 del row[col]
+            elif col == "count":
+                row["alert__count"] = val
+                del row[col]
 
     return data
 
