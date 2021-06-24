@@ -21,7 +21,13 @@ class BatchJobMock:
                             "container": {
                                 "reason": "OutOfMemoryError: Container killed due to memory usage"
                             }
-                        }
+                        },
+                        {"container": {"reason": "Something else"}},
+                        {
+                            "container": {
+                                "reason": "OutOfMemoryError: Container killed due to memory usage"
+                            }
+                        },
                     ],
                 }
             ]

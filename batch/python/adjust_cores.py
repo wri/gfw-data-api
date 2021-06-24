@@ -25,7 +25,7 @@ if __name__ == "__main__":
     job_id = UUID(os.getenv("AWS_BATCH_JOB_ID"))
     original_cores = os.getenv("CORES", os.cpu_count())
     if original_cores is None:
-        raise ValueError("Damn you, mypy")
+        raise ValueError("This makes mypy happy")
     else:
         original_cores = int(original_cores)
 
