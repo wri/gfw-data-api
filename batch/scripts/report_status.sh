@@ -2,7 +2,7 @@
 
 # Use Python json.dumps to escape special characters for JSON payload
 json_escape () {
-    python -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])'
+  python -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])'
 }
 
 # SERVICE_ACCOUNT_TOKEN, STATUS_URL are put in the env from WRITER_SECRETS
@@ -11,6 +11,12 @@ HEADERS="Authorization: Bearer $SERVICE_ACCOUNT_TOKEN"
 URL=${STATUS_URL}/${AWS_BATCH_JOB_ID}
 
 OUTPUT_FILE="/tmp/${AWS_BATCH_JOB_ID}_output.txt"
+
+# If this is not the first attempt, and previous attempts failed due to OOM,
+# reduce the CORES value (thus increasing memory per process)
+if [ -n $AWS_BATCH_JOB_ATTEMPT ] && [ $AWS_BATCH_JOB_ATTEMPT -gt 1 ]; then
+  export CORES=$(adjust_cores.py)
+fi
 
 # Execute command, save the exit code and output (stdout AND stderr)
 "$@" 2>&1 | tee $OUTPUT_FILE
