@@ -9,6 +9,7 @@ services:
     container_name: app_test
     volumes:
       - ./app:/app/app:ro
+      - ./batch:/app/batch:ro
       - ./tests:/app/tests
       - ./tests_v2:/app/tests_v2
       - /var/run/docker.sock:/var/run/docker.sock:ro
