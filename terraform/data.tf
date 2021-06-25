@@ -22,7 +22,7 @@ data "terraform_remote_state" "raster_analysis_lambda" {
 # import tile_cache state
 # This might cause a chicken/ egg problem on new deployments.
 # B/C tile cache state also imports data-api state
-# In our case, we only need the S3 bucket name here which already exists in all envionments.
+# In our case, we only need the S3 bucket name here which already exists in all environments.
 # If we were to migrate this project to a different account, you would need to create bucket manually first
 # and import into tile cache state for this to work
 data "terraform_remote_state" "tile_cache" {

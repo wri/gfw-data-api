@@ -1,36 +1,19 @@
 import json
 import os
 import uuid
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from app.application import ContextEngine
 
 
 class BatchJobMock:
-    def __init__(self):
-        self.jobs = list()
+    def __init__(self, job_desc: Sequence[Dict[str, Any]] = tuple()):
+        self.jobs: List[uuid.UUID] = list()
+        self.job_descriptions = job_desc
 
     def describe_jobs(self, *, jobs: List[uuid.UUID]) -> Dict[str, Any]:
-        # TODO: Minimized to what I need, fill-out as necessary
         return {
-            "jobs": [
-                {
-                    "jobId": "blah blah blah",
-                    "attempts": [
-                        {
-                            "container": {
-                                "reason": "OutOfMemoryError: Container killed due to memory usage"
-                            }
-                        },
-                        {"container": {"reason": "Something else"}},
-                        {
-                            "container": {
-                                "reason": "OutOfMemoryError: Container killed due to memory usage"
-                            }
-                        },
-                    ],
-                }
-            ]
+            "jobs": [desc for desc in self.job_descriptions if desc["jobId"] in jobs]
         }
 
     def submit_batch_job(self, *args, **kwargs) -> uuid.UUID:
