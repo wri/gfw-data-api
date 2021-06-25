@@ -12,7 +12,9 @@ from logger import get_logger
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
-CORES = int(os.environ.get("CORES", cpu_count()))
+NUM_PROCESSES = int(
+    os.environ.get("NUM_PROCESSES", os.environ.get("CORES", cpu_count()))
+)
 
 logger = get_logger(__name__)
 
@@ -72,7 +74,7 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
     tiles = zip(date_conf_tiles, intensity_tiles, output_tiles)
 
     # Process in parallel
-    with Pool(processes=CORES) as pool:
+    with Pool(processes=NUM_PROCESSES) as pool:
         pool.starmap(process_rasters, tiles)
 
 

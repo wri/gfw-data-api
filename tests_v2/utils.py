@@ -11,7 +11,7 @@ class BatchJobMock:
         self.jobs: List[uuid.UUID] = list()
         self.job_descriptions = job_desc
 
-    def describe_jobs(self, *, jobs: List[uuid.UUID]) -> Dict[str, Any]:
+    def describe_jobs(self, *, jobs: List[str]) -> Dict[str, Any]:
         return {
             "jobs": [desc for desc in self.job_descriptions if desc["jobId"] in jobs]
         }

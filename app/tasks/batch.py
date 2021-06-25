@@ -135,7 +135,7 @@ def submit_batch_job(
             "evaluateOnExit": [
                 # Retry when our instance gets recalled
                 {"onStatusReason": "Host EC2*", "action": "RETRY"},
-                # Retry when we run out of memory (report_status.sh will reduce CORES)
+                # Retry when we run out of memory (report_status.sh will reduce NUM_PROCESSES)
                 {"onReason": "OutOfMemoryError*", "action": "RETRY"},
                 # Otherwise exit
                 {"onReason": "*", "action": "EXIT"},
