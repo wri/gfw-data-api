@@ -4,12 +4,12 @@ import tempfile
 import uuid
 from time import sleep
 from typing import Any, Dict, List, Set
+from unittest.mock import patch
 
 import httpx
 import rasterio
 from affine import Affine
 from botocore.exceptions import ClientError
-from mock import patch
 from rasterio.crs import CRS
 
 from app.crud import tasks
