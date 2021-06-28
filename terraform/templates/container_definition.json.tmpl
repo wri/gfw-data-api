@@ -89,30 +89,30 @@
       "name": "AWS_GCS_KEY_SECRET_ARN",
       "value": "${aws_gcs_key_secret_arn}"
     }
-    ],
+  ],
   "secrets": [
-      {
-        "name": "DB_WRITER_SECRET",
-        "valueFrom": "${writer_secret_arn}"
-      },
-       {
-        "name": "DB_READER_SECRET",
-        "valueFrom": "${reader_secret_arn}"
-      },
-      {
-        "name": "SERVICE_ACCOUNT_SECRET",
-        "valueFrom": "${api_token_secret_arn}"
-      }
-    ],
+    {
+      "name": "DB_WRITER_SECRET",
+      "valueFrom": "${writer_secret_arn}"
+    },
+    {
+      "name": "DB_READER_SECRET",
+      "valueFrom": "${reader_secret_arn}"
+    },
+    {
+      "name": "SERVICE_ACCOUNT_SECRET",
+      "valueFrom": "${api_token_secret_arn}"
+    }
+  ],
   "portMappings": [
-      {
-        "containerPort": ${container_port},
-        "hostPort": ${container_port}
-      }
-      ],
+    {
+      "containerPort": ${container_port},
+      "hostPort": ${container_port}
+    }
+  ],
   "logConfiguration": {
-      "logDriver": "awslogs",
-      "options": {
+    "logDriver": "awslogs",
+    "options": {
       "awslogs-group": "${log_group}",
       "awslogs-region": "${aws_region}",
       "awslogs-stream-prefix": "${container_name}"
