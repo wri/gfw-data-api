@@ -73,6 +73,8 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
     ]
     tiles = zip(date_conf_tiles, intensity_tiles, output_tiles)
 
+    logger.info(f"Running build_rgb in {NUM_PROCESSES} parallel processes")
+
     # Process in parallel
     with Pool(processes=NUM_PROCESSES) as pool:
         pool.starmap(process_rasters, tiles)
@@ -115,7 +117,6 @@ def process_rasters(date_conf_uri, intensity_uri, output_uri):
 
         logger.info(f"Uploading {local_output_path} to {output_uri}...")
         s3_client.upload_file(local_output_path, bucket, key)
-    return
 
 
 if __name__ == "__main__":
