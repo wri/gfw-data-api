@@ -40,9 +40,7 @@ class Job(StrictBaseModel):
     def update_environment(cls, v, *, values, **kwargs):
         v = cls._update_environment(v, "CORES", values.get("vcpus"))
         v = cls._update_environment(v, "MAX_MEM", values.get("memory"))
-        v = cls._update_environment(
-            v, "NUM_PROCESSES", values.get("num_processes", values.get("vcpus"))
-        )
+        v = cls._update_environment(v, "NUM_PROCESSES", values.get("num_processes"))
         return v
 
     @validator("vcpus", pre=True, always=True, allow_reuse=True)
