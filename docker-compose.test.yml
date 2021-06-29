@@ -48,7 +48,9 @@ services:
       - TILE_CACHE_SERVICE=tile_cache_service
       - PIXETL_JOB_QUEUE=pixetl_jq
       - PIXETL_CORES=4
+      - MAX_CORES=4
       - PIXETL_MAX_MEM=3800
+      - MAX_MEM=3800
       - API_URL=http://app_test:9000
       - S3_ENTRYPOINT_URL=http://motoserver-s3:5000
       - SERVICE_ACCOUNT_TOKEN=testing

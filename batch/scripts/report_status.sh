@@ -7,7 +7,7 @@ json_escape () {
 
 # SERVICE_ACCOUNT_TOKEN, STATUS_URL are put in the env from WRITER_SECRETS
 # AWS_BATCH_JOB_ID is put in the env by AWS Batch/moto
-HEADERS="Authorization: Bearer $SERVICE_ACCOUNT_TOKEN"
+AUTH_HEADERS="Authorization: Bearer $SERVICE_ACCOUNT_TOKEN"
 URL=${STATUS_URL}/${AWS_BATCH_JOB_ID}
 
 OUTPUT_FILE="/tmp/${AWS_BATCH_JOB_ID}_output.txt"
@@ -71,7 +71,7 @@ EOF
 
 echo "$(generate_payload)"
 
-curl -s -X PATCH -H "${HEADERS}" -d "$(generate_payload)" "${URL}"
+curl -s -X PATCH -H "${AUTH_HEADERS}" -H "Content-Type:application/json" -d "$(generate_payload)" "${URL}"
 
 
 # Try to clean up to free space for potential other batch jobs on the same node
@@ -81,7 +81,6 @@ WORK_DIR="/tmp/$AWS_BATCH_JOB_ID"
 rm -R "$WORK_DIR"
 rm "$OUTPUT_FILE"
 set -e
-
 
 if [ "$EXIT_CODE" -eq 0 ]; then
     exit 0
