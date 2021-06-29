@@ -14,7 +14,7 @@ OUTPUT_FILE="/tmp/${AWS_BATCH_JOB_ID}_output.txt"
 
 # If this is not the first attempt, and previous attempts failed due to OOM,
 # reduce the NUM_PROCESSES value (thus increasing memory per process)
-if [ -n $AWS_BATCH_JOB_ATTEMPT ] && [ $AWS_BATCH_JOB_ATTEMPT -gt 1 ]; then
+if [[ -n $AWS_BATCH_JOB_ATTEMPT ]] && [[ $AWS_BATCH_JOB_ATTEMPT -gt 1 ]]; then
   export NUM_PROCESSES=$(adjust_num_processes.py)
 fi
 
