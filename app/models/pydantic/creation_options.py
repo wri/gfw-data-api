@@ -100,6 +100,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     nbits: Optional[int]
     calc: Optional[str]
     band_count: int = 1
+    union_bands: bool = False
     no_data: Optional[Union[List[NoDataType], NoDataType]]
     rasterize_method: Optional[RasterizeMethod]
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
