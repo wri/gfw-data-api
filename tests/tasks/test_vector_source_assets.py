@@ -1,10 +1,10 @@
 import json
 from typing import List
+from unittest.mock import patch
 from uuid import UUID
 
 import httpx
 import pytest
-from mock import patch
 
 from app.application import ContextEngine, db
 from app.models.orm.geostore import Geostore

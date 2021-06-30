@@ -1,9 +1,9 @@
 import json
+from unittest.mock import patch
 from urllib.parse import urlparse
 
 import httpx
 import pytest
-from mock import patch
 
 from app.models.enum.assets import AssetType
 from app.settings.globals import DATA_LAKE_BUCKET, S3_ENTRYPOINT_URL, TILE_CACHE_BUCKET
