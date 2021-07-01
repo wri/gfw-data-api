@@ -1,4 +1,3 @@
-import json
 from unittest.mock import patch
 
 import pytest
@@ -41,7 +40,7 @@ async def test_datasets(async_client):
     assert response.status_code == 200
     assert response.json() == {"data": [], "status": "success"}
 
-    response = await async_client.put(f"/dataset/{dataset}", data=json.dumps(payload))
+    response = await async_client.put(f"/dataset/{dataset}", json=payload)
     assert response.status_code == 201
     assert response.json()["data"]["metadata"] == payload["metadata"]
 
@@ -62,9 +61,7 @@ async def test_datasets(async_client):
     assert len(rows) == 1
 
     new_payload = {"metadata": {"title": "New Title"}}
-    response = await async_client.patch(
-        f"/dataset/{dataset}", data=json.dumps(new_payload)
-    )
+    response = await async_client.patch(f"/dataset/{dataset}", json=new_payload)
     assert response.status_code == 200
     assert response.json()["data"]["metadata"] != payload["metadata"]
     assert response.json()["data"]["metadata"]["title"] == "New Title"
