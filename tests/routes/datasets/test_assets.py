@@ -35,7 +35,7 @@ s3_client = get_s3_client()
 async def test_assets(async_client):
     """Basic tests of asset endpoint behavior."""
     # Add a dataset, version, and default asset
-    dataset = "test"
+    dataset = "test_assets"
     version = "v20200626"
 
     asset = await create_default_asset(
@@ -158,10 +158,8 @@ async def test_assets_vector_source_max_parents(async_client):
 
 
 @pytest.mark.asyncio
-async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
+async def test_auxiliary_raster_asset(async_client, httpd, logs):
     """"""
-    _, logs = batch_client
-
     # Add a dataset, version, and default asset
     dataset = "test_auxiliary_raster_asset"
     version = "v1.8"
@@ -194,8 +192,7 @@ async def test_auxiliary_raster_asset(async_client, batch_client, httpd):
             "resampling": "nearest",
             "overwrite": True,
             "subset": "90N_000E",
-        },
-        "metadata": {},
+        }
     }
     asset = await create_default_asset(
         dataset,

@@ -22,7 +22,7 @@ data "terraform_remote_state" "raster_analysis_lambda" {
 # import tile_cache state
 # This might cause a chicken/ egg problem on new deployments.
 # B/C tile cache state also imports data-api state
-# In our case, we only need the S3 bucket name here which already exists in all envionments.
+# In our case, we only need the S3 bucket name here which already exists in all environments.
 # If we were to migrate this project to a different account, you would need to create bucket manually first
 # and import into tile cache state for this to work
 data "terraform_remote_state" "tile_cache" {
@@ -73,16 +73,16 @@ data "template_file" "container_definition" {
     api_token_secret_arn        = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
     aws_gcs_key_secret_arn      = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
   }
-  depends_on = [module.batch_job_queues.aurora_job_definition,
+  depends_on = [
+    module.batch_job_queues.aurora_job_definition,
     module.batch_job_queues.data_lake_job_definition,
     module.batch_job_queues.tile_cache_job_definition,
-  module.batch_job_queues.pixetl_job_definition]
-
-
+    module.batch_job_queues.pixetl_job_definition
+  ]
 }
 
 data "template_file" "task_batch_policy" {
-  template = file("${path.root}/templates/batch_policy.json.tmpl")
+  template = file("${path.root}/templates/run_batch_policy.json.tmpl")
   vars = {
     aurora_job_definition_arn     = module.batch_job_queues.aurora_job_definition_arn
     aurora_job_queue_arn          = module.batch_job_queues.aurora_job_queue_arn
@@ -94,10 +94,16 @@ data "template_file" "task_batch_policy" {
     pixetl_job_definition_arn     = module.batch_job_queues.pixetl_job_definition_arn
     pixetl_job_queue_arn          = module.batch_job_queues.pixetl_job_queue_arn
   }
-  depends_on = [module.batch_job_queues.aurora_job_definition,
+  depends_on = [
+    module.batch_job_queues.aurora_job_definition,
     module.batch_job_queues.data_lake_job_definition,
     module.batch_job_queues.tile_cache_job_definition,
-  module.batch_job_queues.pixetl_job_definition]
+    module.batch_job_queues.pixetl_job_definition
+  ]
+}
+
+data "template_file" "query_batch_task_policy" {
+  template = file("${path.root}/templates/query_batch_policy.json.tmpl")
 }
 
 data "local_file" "iam_s3_read_only" {
