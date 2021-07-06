@@ -103,7 +103,7 @@ async def _zonal_statistics(
         if "umd_tree_cover_density" in lyr.value:
             where_clauses.append(f"{lyr.value[:-2]}threshold >= {lyr.value[-2:]}")
         else:
-            where_clauses.append(f"{lyr.value} != 0")
+            where_clauses.append(f"{lyr.value} != 'false'")
 
     if start_date:
         date_filter = _get_date_filter(start_date, ">=", group_by + filters)
