@@ -1,9 +1,12 @@
 import json
 import os
 import uuid
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple, Any
+
+import httpx
 
 from app.application import ContextEngine
+from app.models.pydantic.extent import Extent
 
 
 class BatchJobMock:
@@ -26,6 +29,16 @@ async def get_admin_mocked() -> Tuple[str, str]:
 
 async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
     return str(uuid.uuid4()), "localhost"
+
+
+async def get_extent_mocked(asset_id: str) -> Optional[Extent]:
+    return None
+
+
+async def invoke_lambda_mocked(
+    function_name: str, params: Dict[str, Any]
+) -> httpx.Response:
+    return httpx.Response(200, json={"status": "success", "data": []})
 
 
 def void_function(*args, **kwargs) -> None:
