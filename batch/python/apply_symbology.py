@@ -18,7 +18,11 @@ from typer import Option, run
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
-CORES = int(os.environ.get("CORES", multiprocessing.cpu_count()))
+NUM_PROCESSES = int(
+    os.environ.get(
+        "NUM_PROCESSES", os.environ.get("CORES", multiprocessing.cpu_count())
+    )
+)
 
 OrderedColorMap = Dict[Union[int, float], Tuple[int, int, int, int]]
 
@@ -253,7 +257,7 @@ def apply_symbology(
 
         # Cannot use normal pool here since we run sub-processes
         # https://stackoverflow.com/a/61470465/1410317
-        with ProcessPoolExecutor(max_workers=CORES) as executor:
+        with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
             for tile_id in executor.map(create_rgb_tile, process_args):
                 print(f"Processed tile {tile_id}")
 

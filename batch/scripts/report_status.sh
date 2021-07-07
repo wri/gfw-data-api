@@ -2,7 +2,7 @@
 
 # Use Python json.dumps to escape special characters for JSON payload
 json_escape () {
-    python -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])'
+  python -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])'
 }
 
 # SERVICE_ACCOUNT_TOKEN, STATUS_URL are put in the env from WRITER_SECRETS
@@ -11,6 +11,12 @@ AUTH_HEADER="Authorization: Bearer $SERVICE_ACCOUNT_TOKEN"
 URL=${STATUS_URL}/${AWS_BATCH_JOB_ID}
 
 OUTPUT_FILE="/tmp/${AWS_BATCH_JOB_ID}_output.txt"
+
+# If this is not the first attempt, and previous attempts failed due to OOM,
+# reduce the NUM_PROCESSES value (thus increasing memory per process)
+if [[ -n $AWS_BATCH_JOB_ATTEMPT ]] && [[ $AWS_BATCH_JOB_ATTEMPT -gt 1 ]]; then
+  export NUM_PROCESSES=$(adjust_num_processes.py)
+fi
 
 # Execute command, save the exit code and output (stdout AND stderr)
 "$@" 2>&1 | tee $OUTPUT_FILE
@@ -66,9 +72,7 @@ EOF
 echo "$(generate_payload)"
 
 CTYPE_HEADER="Content-Type:application/json"
-
 curl -s -X PATCH -H "${AUTH_HEADER}" -H "${CTYPE_HEADER}" -d "$(generate_payload)" "${URL}"
-
 
 # Try to clean up to free space for potential other batch jobs on the same node
 set +e
@@ -77,7 +81,6 @@ WORK_DIR="/tmp/$AWS_BATCH_JOB_ID"
 rm -R "$WORK_DIR"
 rm "$OUTPUT_FILE"
 set -e
-
 
 if [ "$EXIT_CODE" -eq 0 ]; then
     exit 0

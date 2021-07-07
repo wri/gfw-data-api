@@ -1,14 +1,20 @@
 import json
 import os
 import uuid
-from typing import Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from app.application import ContextEngine
 
 
 class BatchJobMock:
-    def __init__(self):
-        self.jobs = list()
+    def __init__(self, job_desc: Sequence[Dict[str, Any]] = tuple()):
+        self.jobs: List[uuid.UUID] = list()
+        self.job_descriptions = job_desc
+
+    def describe_jobs(self, *, jobs: List[str]) -> Dict[str, Any]:
+        return {
+            "jobs": [desc for desc in self.job_descriptions if desc["jobId"] in jobs]
+        }
 
     def submit_batch_job(self, *args, **kwargs) -> uuid.UUID:
         job_id = uuid.uuid4()

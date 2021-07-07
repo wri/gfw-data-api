@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import math
 import multiprocessing
 import os
@@ -14,7 +15,11 @@ from typer import Argument, Option, run
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
-CORES = int(os.environ.get("CORES", multiprocessing.cpu_count()))
+NUM_PROCESSES = int(
+    os.environ.get(
+        "NUM_PROCESSES", os.environ.get("CORES", multiprocessing.cpu_count())
+    )
+)
 
 LOGGER = get_logger(__name__)
 
@@ -90,7 +95,7 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int
         implementation,
         zoom_level,
         skip_empty_tiles,
-        cores,
+        num_processes,
     ) = args
 
     with TemporaryDirectory() as download_dir, TemporaryDirectory() as tiles_dir:
@@ -104,7 +109,7 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int
             "--s_srs",
             "EPSG:3857",
             "--resampling=near",
-            f"--processes={cores}",
+            f"--processes={num_processes}",
             "--xyz",
         ]
 
@@ -120,7 +125,7 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int
             tiles_dir,
             dataset,
             version,
-            cores=cores,
+            cores=num_processes,
             bucket=target_bucket,
             implementation=implementation,
         )
@@ -148,7 +153,7 @@ def raster_tile_cache(
         LOGGER.info("No input files! I guess we're good then?")
         return
 
-    sub_processes = max(math.floor(CORES / len(tiles)), 1)
+    sub_processes = max(math.floor(NUM_PROCESSES / len(tiles)), 1)
 
     args = [
         (
@@ -166,7 +171,7 @@ def raster_tile_cache(
 
     # Cannot use normal pool here, since we run sub-processes
     # https://stackoverflow.com/a/61470465/1410317
-    with ProcessPoolExecutor(max_workers=CORES) as executor:
+    with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
         for tile in executor.map(create_tiles, args):
             print(f"Processed tile {os.path.basename(tile[1])}")
 

@@ -1,7 +1,11 @@
 resource "aws_iam_policy" "run_batch_jobs" {
   name   = "${local.project}-run_batch_jobs${local.name_suffix}"
   policy = data.template_file.task_batch_policy.rendered
+}
 
+resource "aws_iam_policy" "query_batch_jobs" {
+  name   = "${local.project}-query_batch_jobs${local.name_suffix}"
+  policy = data.template_file.query_batch_task_policy.rendered
 }
 
 resource "aws_iam_policy" "s3_read_only" {
