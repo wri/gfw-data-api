@@ -463,8 +463,12 @@ def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
         for fn in function_names:
             function_name = fn["String"]["str"]
 
-            # block functions which start with `pg_` or `_`
-            if function_name[:3] == "pg_" or function_name[:1] == "_":
+            # block functions which start with `pg_`, `PostGIS` or `_`
+            if (
+                function_name[:3] == "pg_"
+                or function_name[:1] == "_"
+                or function_name[:7] == "PostGIS"
+            ):
                 raise HTTPException(
                     status_code=400,
                     detail="Use of admin, system or private functions is not allowed.",

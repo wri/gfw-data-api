@@ -160,6 +160,16 @@ async def test_versions(async_client):
     assert response.status_code == 400
     assert response.json()["message"] == "Must not use sub queries."
 
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=SELECT PostGIS_Full_Version() FROM data;"
+    )
+    print(response.json())
+    assert response.status_code == 400
+    assert (
+        response.json()["message"]
+        == "Use of admin, system or private functions is not allowed."
+    )
+
 
 @pytest.mark.asyncio
 async def test_version_metadata(async_client):
