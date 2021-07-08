@@ -1,4 +1,3 @@
-import json
 from unittest.mock import patch
 from urllib.parse import urlparse
 
@@ -317,7 +316,7 @@ async def test_latest_middleware(async_client):
     assert response.status_code == 404
 
     response = await async_client.patch(
-        f"/dataset/{dataset}/{version}", data=json.dumps({"is_latest": True})
+        f"/dataset/{dataset}/{version}", json={"is_latest": True}
     )
     print(response.json())
     assert response.status_code == 200

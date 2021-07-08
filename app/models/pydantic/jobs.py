@@ -40,9 +40,7 @@ class Job(StrictBaseModel):
     def update_environment(cls, v, *, values, **kwargs):
         v = cls._update_environment(v, "CORES", values.get("vcpus"))
         v = cls._update_environment(v, "MAX_MEM", values.get("memory"))
-        v = cls._update_environment(
-            v, "NUM_PROCESSES", values.get("num_processes", values.get("vcpus"))
-        )
+        v = cls._update_environment(v, "NUM_PROCESSES", values.get("num_processes"))
         return v
 
     @validator("vcpus", pre=True, always=True, allow_reuse=True)
@@ -139,8 +137,9 @@ class GDALDEMJob(Job):
 
     job_queue = PIXETL_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION
-    vcpus = max(int(PIXETL_CORES / 2), 1)
+    vcpus = PIXETL_CORES
     memory = PIXETL_MAX_MEM
+    num_processes = max(int(PIXETL_CORES / 2), 1)
     attempts = 4
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 
@@ -152,6 +151,7 @@ class BuildRGBJob(Job):
     job_definition = GDAL_PYTHON_JOB_DEFINITION
     vcpus = MAX_CORES
     memory = MAX_MEM
+    num_processes = max(int(MAX_CORES / 2), 1)
     attempts = 4
     attempt_duration_seconds = DEFAULT_JOB_DURATION
 

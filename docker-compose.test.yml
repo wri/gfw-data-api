@@ -9,6 +9,7 @@ services:
     container_name: app_test
     volumes:
       - ./app:/app/app:ro
+      - ./batch:/app/batch:ro
       - ./tests:/app/tests
       - ./tests_v2:/app/tests_v2
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -47,7 +48,10 @@ services:
       - TILE_CACHE_SERVICE=tile_cache_service
       - PIXETL_JOB_QUEUE=pixetl_jq
       - PIXETL_CORES=4
+      - MAX_CORES=4
+      - NUM_PROCESSES=4
       - PIXETL_MAX_MEM=3800
+      - MAX_MEM=3800
       - API_URL=http://app_test:9000
       - S3_ENTRYPOINT_URL=http://motoserver-s3:5000
       - SERVICE_ACCOUNT_TOKEN=testing
@@ -55,7 +59,7 @@ services:
       - RW_API_URL=https://staging-api.resourcewatch.org
 #      - AWS_GCS_KEY_SECRET_ARN=testing
 #      - AWS_SECRETSMANAGER_URL=http://motoserver-secretsmanager:5001
-    entrypoint: wait_for_postgres.sh pytest --timeout 360 -vv --cov-report term  --cov=app
+    entrypoint: wait_for_postgres.sh pytest --timeout 480 -vv --cov-report term  --cov=app
     depends_on:
       - test_database_12
       - motoserver-s3
