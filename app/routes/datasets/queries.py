@@ -546,7 +546,7 @@ async def _query_raster(
         if default_type == "is"
         else f"{dataset}__{default_type}"
     )
-    sql = re.sub("from \w+", f"from {default_layer}", sql.lower())
+    sql = re.sub("from \w+", f"from {default_layer}", sql)
     return await _query_raster_lambda(geometry, sql, format, delimiter)
 
 
