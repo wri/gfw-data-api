@@ -18,7 +18,8 @@ from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
-from fastapi.openapi.models import APIKey
+
+# from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
@@ -27,7 +28,8 @@ from pglast.printer import RawStream
 from sqlalchemy.sql import and_
 
 from ...application import db
-from ...authentication.api_keys import get_api_key
+
+# from ...authentication.api_keys import get_api_key
 from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
@@ -122,7 +124,7 @@ async def query_dataset_json(
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in JSON format.
@@ -167,7 +169,7 @@ async def query_dataset_csv(
     delimiter: Delimiters = Query(
         Delimiters.comma, description="Delimiter to use for CSV file."
     ),
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in CSV format.
@@ -225,7 +227,7 @@ async def query_dataset_json_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -247,7 +249,7 @@ async def query_dataset_csv_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: CsvQueryRequestIn,
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -385,12 +387,14 @@ def _orm_to_csv(
     """
     csv_file = StringIO()
 
-    wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
-    field_names = data[0].keys()
-    wr.writerow(field_names)
-    for row in data:
-        wr.writerow(row.values())
-    csv_file.seek(0)
+    if data:
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
+        field_names = data[0].keys()
+        wr.writerow(field_names)
+        for row in data:
+            wr.writerow(row.values())
+        csv_file.seek(0)
+
     return csv_file
 
 
@@ -546,7 +550,7 @@ async def _query_raster(
         if default_type == "is"
         else f"{dataset}__{default_type}"
     )
-    sql = re.sub("from \w+", f"from {default_layer}", sql.lower())
+    sql = re.sub("from \w+", f"from {default_layer}", sql)
     return await _query_raster_lambda(geometry, sql, format, delimiter)
 
 

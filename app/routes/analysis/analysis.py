@@ -1,5 +1,5 @@
 """Run analysis on registered datasets."""
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -48,7 +48,7 @@ async def zonal_statistics_get(
         description="Must be either year or YYYY-MM-DD date format.",
         regex=DATE_REGEX,
     ),
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Calculate zonal statistics on any registered raster layers in a
     geostore."""
@@ -103,7 +103,7 @@ async def _zonal_statistics(
         if "umd_tree_cover_density" in lyr.value:
             where_clauses.append(f"{lyr.value[:-2]}threshold >= {lyr.value[-2:]}")
         else:
-            where_clauses.append(f"{lyr.value} != 0")
+            where_clauses.append(f"{lyr.value} != 'false'")
 
     if start_date:
         date_filter = _get_date_filter(start_date, ">=", group_by + filters)
@@ -134,7 +134,24 @@ async def _zonal_statistics(
     logger.info(f"Executing analysis query: {query}")
 
     resp = await _query_raster_lambda(geometry, query)
-    return Response(data=resp["data"])
+    data = _postprocess(resp["data"])
+
+    # keep deprecate column names
+    return Response(data=data)
+
+
+def _postprocess(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    for row in data:
+        for col, val in list(row.items()):
+            if "umd_glad_landsat_alerts" in col:
+                new_col = col.replace("umd_glad_landsat_alerts", "umd_glad_alerts")
+                row[new_col] = val
+                del row[col]
+            elif col == "count":
+                row["alert__count"] = val
+                del row[col]
+
+    return data
 
 
 def _get_date_filter(
@@ -144,7 +161,7 @@ def _get_date_filter(
         # only get year for TCL
         date = date if len(date) == 4 else date[:4]
         return f"umd_tree_cover_loss__year {op} {date}"
-    elif RasterLayer.umd_glad_alerts__date:
+    elif RasterLayer.umd_glad_alerts__date in filter_layers:
         return f"umd_glad_landsat_alerts__date {op} '{date}'"
     else:
         # no date layer to filter by

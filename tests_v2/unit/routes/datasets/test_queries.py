@@ -1,7 +1,12 @@
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient
 
+from app.routes.datasets import queries
+from tests_v2.utils import invoke_lambda_mocked
 
+
+@pytest.mark.skip("Temporarily skip until we require API keys")
 @pytest.mark.asyncio
 async def test_query_dataset_without_api_key(
     generic_vector_source_version, async_client: AsyncClient
@@ -51,3 +56,29 @@ async def test_query_dataset_with_unrestricted_api_key(
 
     assert response.status_code == 200
     assert response.json()["data"][0]["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_query_dataset_raster(
+    generic_raster_version,
+    apikey,
+    geostore,
+    monkeypatch: MonkeyPatch,
+    async_client: AsyncClient,
+):
+    dataset_name, version_name, _ = generic_raster_version
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+
+    headers = {"origin": origin, "x-api-key": api_key}
+
+    monkeypatch.setattr(queries, "invoke_lambda", invoke_lambda_mocked)
+
+    response = await async_client.get(
+        f"/dataset/{dataset_name}/{version_name}/query?sql=select count(*) from data&geostore_id={geostore}",
+        headers=headers,
+    )
+
+    print(response.json())
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
