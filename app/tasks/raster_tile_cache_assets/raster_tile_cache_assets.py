@@ -61,6 +61,12 @@ async def raster_tile_cache_asset(
         ).replace("{tile_id}.tif", "tiles.geojson")
     ]
 
+    # band_count = source_asset.creation_options["band_count"]
+    # if band_count > 1:
+    #     calc: Optional[str] = f"np.ma.array(list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'[:{band_count}]))"
+    # else:
+    #     calc = None
+
     source_asset_co = RasterTileSetSourceCreationOptions(
         # TODO: With python 3.9, we can use the `|` operator here
         #  waiting for https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker/pull/67
@@ -75,6 +81,7 @@ async def raster_tile_cache_asset(
                 "compute_stats": False,
                 "compute_histogram": False,
                 "symbology": Symbology(**symbology),
+                "subset": None,
             },
         }
     )
@@ -177,7 +184,7 @@ async def raster_tile_cache_validator(
             detail="Dataset and version of source asset must match dataset and version of current asset.",
         )
 
-    if source_asset.creation_options.get("band_count", 1) > 1:
-        raise HTTPException(
-            status_code=400, detail="Cannot apply colormap on multi-band image."
-        )
+    # if source_asset.creation_options.get("band_count", 1) > 1:
+    #     raise HTTPException(
+    #         status_code=400, detail="Cannot apply colormap on multi-band image."
+    #     )

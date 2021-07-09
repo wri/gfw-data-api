@@ -241,7 +241,7 @@ async def _date_intensity_symbology(
         deep=True,
         update={
             "source_uri": source_uri,
-            "no_data": None,
+            # "no_data": None,
             "pixel_meaning": f"intensity_{pixel_meaning}",
             "resampling": resampling,
         },
@@ -587,7 +587,7 @@ async def _merge_intensity_and_year(
 
 _symbology_constructor: Dict[str, SymbologyFuncType] = {
     ColorMapType.date_conf_intensity: date_conf_intensity_symbology,
-    ColorMapType.date_conf_intensity_multi_band: date_conf_density_multi_band_symbology,
+    ColorMapType.date_conf_density_multi_band: date_conf_density_multi_band_symbology,
     ColorMapType.year_intensity: year_intensity_symbology,
     ColorMapType.gradient: colormap_symbology,
     ColorMapType.discrete: colormap_symbology,
