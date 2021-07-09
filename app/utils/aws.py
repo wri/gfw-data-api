@@ -5,7 +5,6 @@ import httpx
 from httpx_auth import AWS4Auth
 
 from ..settings.globals import AWS_REGION, LAMBDA_ENTRYPOINT_URL, S3_ENTRYPOINT_URL
-from .path import split_s3_path
 
 
 def client_constructor(service: str, entrypoint_url=None):
@@ -51,13 +50,17 @@ async def invoke_lambda(
     return response
 
 
-async def head_s3(s3_path: str) -> bool:
+async def head_s3(bucket: str, key: str) -> bool:
     auth = _aws_auth("s3")
-    bucket, key = split_s3_path(s3_path)
+
+    if S3_ENTRYPOINT_URL:
+        s3_entrypoint_url = f"{S3_ENTRYPOINT_URL}/{bucket}"
+    else:
+        s3_entrypoint_url = f"https://{bucket}.s3.amazonaws.com"
 
     async with httpx.AsyncClient() as client:
         response: httpx.Response = await client.head(
-            f"https://{bucket}.s3.amazonaws.com/{key}", auth=auth
+            f"{s3_entrypoint_url}/{key}", auth=auth
         )
 
     return response.status_code == 200

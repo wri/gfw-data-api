@@ -18,8 +18,6 @@ from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
-
-# from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
@@ -27,9 +25,8 @@ from pglast.parser import ParseError
 from pglast.printer import RawStream
 from sqlalchemy.sql import and_
 
-from ...application import db
-
 # from ...authentication.api_keys import get_api_key
+from ...application import db
 from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
@@ -469,9 +466,9 @@ def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
 
             # block functions which start with `pg_`, `PostGIS` or `_`
             if (
-                function_name[:3] == "pg_"
-                or function_name[:1] == "_"
-                or function_name[:7] == "PostGIS"
+                function_name[:3].lower() == "pg_"
+                or function_name[:1].lower() == "_"
+                or function_name[:7].lower() == "postgis"
             ):
                 raise HTTPException(
                     status_code=400,
