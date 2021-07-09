@@ -14,7 +14,7 @@ from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pixetl import Grid
 from ...models.pydantic.downloads import DownloadCSVIn
-from ...models.pydantic.geostore import Geometry
+from ...models.pydantic.geostore import GeostoreCommon
 from ...responses import CSVStreamingResponse
 from ...utils.aws import get_s3_client
 from ...utils.geostore import get_geostore_geometry
@@ -53,14 +53,14 @@ async def download_csv(
     dataset, version = dataset_version
 
     if geostore_id:
-        geometry: Optional[Geometry] = await get_geostore_geometry(
+        geostore: Optional[GeostoreCommon] = await get_geostore_geometry(
             geostore_id, geostore_origin
         )
     else:
-        geometry = None
+        geostore = None
 
     data: StringIO = await _query_dataset_csv(
-        dataset, version, sql, geometry, delimiter=delimiter
+        dataset, version, sql, geostore, delimiter=delimiter
     )
     response = CSVStreamingResponse(iter([data.getvalue()]), filename=filename)
 

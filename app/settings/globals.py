@@ -156,3 +156,6 @@ HOUR: int = int(60 * 60)
 DEFAULT_JOB_DURATION: int = int(HOUR * 2)
 
 API_KEY_NAME = config("API_KEY_NAME", cast=str, default="x-api-key")
+GEOSTORE_SIZE_LIMIT_OTF = config(
+    "GEOSTORE_SIZE_LIMIT_OTF", cast=int, default=1000000000
+)

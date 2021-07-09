@@ -8,12 +8,12 @@ from httpx import Response as HTTPXResponse
 
 from ..errors import BadResponseError, InvalidResponseError, UnauthorizedError
 from ..models.pydantic.authentication import SignUp
-from ..models.pydantic.geostore import Geometry
+from ..models.pydantic.geostore import Geometry, GeostoreCommon
 from ..settings.globals import RW_API_URL
 
 
 @alru_cache(maxsize=128)
-async def get_geostore_geometry(geostore_id: UUID) -> Geometry:
+async def get_geostore_geometry(geostore_id: UUID) -> GeostoreCommon:
     """Get RW Geostore geometry."""
 
     geostore_id_str: str = str(geostore_id).replace("-", "")
@@ -25,13 +25,19 @@ async def get_geostore_geometry(geostore_id: UUID) -> Geometry:
     if response.status_code != 200:
         raise InvalidResponseError("Call to Geostore failed")
     try:
-        geometry = response.json()["data"]["attributes"]["geojson"]["features"][0][
-            "geometry"
-        ]
+        data = response.json()["data"]["attributes"]
+        geojson = data["geojson"]["features"][0]["geometry"]
+        geometry = Geometry(**geojson)
+        geostore = GeostoreCommon(
+            geostore_id=data["hash"],
+            geojson=geometry,
+            area__ha=data["areaHa"],
+            bbox=data["bbox"],
+        )
     except KeyError:
         raise BadResponseError("Cannot fetch geostore geometry")
 
-    return Geometry(**geometry)
+    return geostore
 
 
 async def who_am_i(token) -> Response:

@@ -3,6 +3,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query
+from fastapi.exceptions import HTTPException
 from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
@@ -11,8 +12,9 @@ from ...authentication.api_keys import get_api_key
 from ...models.enum.analysis import RasterLayer
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.pydantic.analysis import ZonalAnalysisRequestIn
-from ...models.pydantic.geostore import Geometry
+from ...models.pydantic.geostore import Geometry, GeostoreCommon
 from ...models.pydantic.responses import Response
+from ...settings.globals import GEOSTORE_SIZE_LIMIT_OTF
 from ...utils.geostore import get_geostore_geometry
 from .. import DATE_REGEX
 from ..datasets.queries import _query_raster_lambda
@@ -52,9 +54,16 @@ async def zonal_statistics_get(
 ):
     """Calculate zonal statistics on any registered raster layers in a
     geostore."""
-    geometry: Geometry = await get_geostore_geometry(geostore_id, geostore_origin)
+    geostore: GeostoreCommon = await get_geostore_geometry(geostore_id, geostore_origin)
+
+    if geostore.area__ha > GEOSTORE_SIZE_LIMIT_OTF:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Geostore area exceeds limit of {GEOSTORE_SIZE_LIMIT_OTF} ha for raster analysis.",
+        )
+
     return await _zonal_statistics(
-        geometry,
+        geostore.geojson,
         sum_layers,
         group_by,
         filters,
