@@ -385,12 +385,14 @@ def _orm_to_csv(
     """
     csv_file = StringIO()
 
-    wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
-    field_names = data[0].keys()
-    wr.writerow(field_names)
-    for row in data:
-        wr.writerow(row.values())
-    csv_file.seek(0)
+    if data:
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
+        field_names = data[0].keys()
+        wr.writerow(field_names)
+        for row in data:
+            wr.writerow(row.values())
+        csv_file.seek(0)
+
     return csv_file
 
 
@@ -548,8 +550,9 @@ async def _query_raster(
         if default_type == "is"
         else f"{dataset}__{default_type}"
     )
-    sql = re.sub("from \w+", f"from {default_layer}", sql.lower())
-    return await _query_raster_lambda(geostore.geojson, sql, format, delimiter)
+
+    sql = re.sub("from \w+", f"from {default_layer}", sql)
+    return await _query_raster_lambda(geostore, sql, format, delimiter)
 
 
 async def _query_raster_lambda(
