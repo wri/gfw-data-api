@@ -89,6 +89,8 @@ router = APIRouter()
     deprecated=True,
 )
 async def query_dataset(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: FastApiRequest,
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -102,9 +104,11 @@ async def query_dataset(
     entire feature geometry, including areas outside the geostore
     boundaries.
 
-    This path is deprecated and will reroute to /query/json.
+    This path is deprecated and will permanently redirect to /query/json.
     """
-    return RedirectResponse(url=f"{request.url.path}/json?{request.query_params}")
+    dataset, version = dataset_version
+
+    return f"/dataset/{dataset}/{version}/query/json?{request.query_params}"
 
 
 @router.get(
@@ -197,21 +201,25 @@ async def query_dataset_csv(
 
 @router.post(
     "/{dataset}/{version}/query",
-    response_class=FastApiResponse,
+    response_class=RedirectResponse,
+    status_code=308,
     tags=["Query"],
     deprecated=True,
 )
 async def query_dataset_post(
-    request: FastApiRequest,
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    request: QueryRequestIn,
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented).
 
-    This path is deprecated and will reroute to /query/json.
+    This path is deprecated and will permanently redirect to
+    /query/json.
     """
-    # RedirectResponse doesn't work for POST requests, so just manually construct the redirect
-    content = await request.body()
-    return FastApiResponse(content, url=f"{request.url.path}/json", status_code=308)
+    dataset, version = dataset_version
+
+    return f"/dataset/{dataset}/{version}/query/json"
 
 
 @router.post(
@@ -495,6 +503,7 @@ def _no_forbidden_value_functions(parsed: List[Dict[str, Any]]) -> None:
 
 def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Return all functions in an AST."""
+
     # loop through statement recursively and yield all functions
     def walk_dict(d):
         for k, v in d.items():

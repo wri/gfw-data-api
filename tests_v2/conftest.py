@@ -327,11 +327,16 @@ async def apikey_unrestricted(
 
 
 @pytest.fixture()
-@pytest.mark.asyncio()
-async def geostore(async_client: AsyncClient) -> AsyncGenerator[str, None]:
+def geojson():
     with open(f"{os.path.dirname(__file__)}/fixtures/geojson/test.geojson") as src:
         geojson = json.load(src)
-    # Get geostore ID
+
+    return geojson
+
+
+@pytest.fixture()
+@pytest.mark.asyncio()
+async def geostore(async_client: AsyncClient, geojson) -> AsyncGenerator[str, None]:
     payload = {
         "geometry": geojson["features"][0]["geometry"],
     }
