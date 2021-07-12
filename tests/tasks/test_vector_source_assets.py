@@ -94,7 +94,7 @@ async def test_vector_source_asset(batch_client, async_client):
             geostore = GeostoreCommon(
                 geojson=geom,
                 geostore_id="17076d5ea9f214a5bdb68cc40433addb",
-                area__ha=[214324],
+                area__ha=214324,
                 bbox=[0, 0, 10, 10],
             )
             with patch(
@@ -115,7 +115,7 @@ async def test_vector_source_asset(batch_client, async_client):
             geostore = GeostoreCommon(
                 geojson=geom,
                 geostore_id="17076d5ea9f214a5bdb68cc40433addb",
-                area__ha=[214324],
+                area__ha=214324,
                 bbox=[0, 0, 10, 10],
             )
             with patch(
