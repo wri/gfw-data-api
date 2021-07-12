@@ -18,8 +18,6 @@ from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
-
-# from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
@@ -28,8 +26,6 @@ from pglast.printer import RawStream
 from sqlalchemy.sql import and_
 
 from ...application import db
-
-# from ...authentication.api_keys import get_api_key
 from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
@@ -387,12 +383,14 @@ def _orm_to_csv(
     """
     csv_file = StringIO()
 
-    wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
-    field_names = data[0].keys()
-    wr.writerow(field_names)
-    for row in data:
-        wr.writerow(row.values())
-    csv_file.seek(0)
+    if data:
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
+        field_names = data[0].keys()
+        wr.writerow(field_names)
+        for row in data:
+            wr.writerow(row.values())
+        csv_file.seek(0)
+
     return csv_file
 
 
@@ -544,7 +542,7 @@ async def _query_raster(
         if default_type == "is"
         else f"{dataset}__{default_type}"
     )
-    sql = re.sub("from \w+", f"from {default_layer}", sql.lower())
+    sql = re.sub("from \w+", f"from {default_layer}", sql)
     return await _query_raster_lambda(geometry, sql, format, delimiter)
 
 
