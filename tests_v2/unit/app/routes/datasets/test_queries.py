@@ -66,7 +66,7 @@ async def test_query_dataset_with_unrestricted_api_key(
 
 
 @pytest.mark.asyncio
-async def test_query_dataset_raster(
+async def test_query_dataset_raster_get(
     generic_raster_version,
     apikey,
     geostore,
@@ -85,6 +85,37 @@ async def test_query_dataset_raster(
     response = await async_client.get(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
+        headers=headers,
+    )
+
+    print(response.json())
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_query_dataset_raster_post(
+    generic_raster_version,
+    apikey,
+    geojson,
+    monkeypatch: MonkeyPatch,
+    async_client: AsyncClient,
+):
+    dataset_name, version_name, _ = generic_raster_version
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+
+    headers = {"origin": origin, "x-api-key": api_key}
+
+    monkeypatch.setattr(queries, "invoke_lambda", invoke_lambda_mocked)
+    payload = {
+        "sql": "select count(*) from data",
+        "geometry": geojson["features"][0]["geometry"],
+    }
+
+    response = await async_client.post(
+        f"/dataset/{dataset_name}/{version_name}/query",
+        json=payload,
         headers=headers,
     )
 
