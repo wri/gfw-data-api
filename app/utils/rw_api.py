@@ -13,7 +13,7 @@ from ..settings.globals import RW_API_URL
 
 
 @alru_cache(maxsize=128)
-async def get_geostore_geometry(geostore_id: UUID) -> GeostoreCommon:
+async def get_geostore(geostore_id: UUID) -> GeostoreCommon:
     """Get RW Geostore geometry."""
 
     geostore_id_str: str = str(geostore_id).replace("-", "")

@@ -79,6 +79,26 @@ async def test_query_dataset_raster(
         headers=headers,
     )
 
-    print(response.json())
     assert response.status_code == 200
     assert response.json()["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_query_dataset_raster_geostore_huge(
+    generic_raster_version,
+    apikey,
+    geostore_huge,
+    async_client: AsyncClient,
+):
+    dataset_name, version_name, _ = generic_raster_version
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+
+    headers = {"origin": origin, "x-api-key": api_key}
+
+    response = await async_client.get(
+        f"/dataset/{dataset_name}/{version_name}/query?sql=select count(*) from data&geostore_id={geostore_huge}",
+        headers=headers,
+    )
+
+    assert response.status_code == 400

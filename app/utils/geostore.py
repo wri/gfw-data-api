@@ -12,7 +12,7 @@ from app.utils import rw_api
 
 
 @alru_cache(maxsize=128)
-async def _get_gfw_geostore_geometry(geostore_id: UUID) -> GeostoreCommon:
+async def _get_gfw_geostore(geostore_id: UUID) -> GeostoreCommon:
     """Get GFW Geostore geometry."""
 
     try:
@@ -34,12 +34,10 @@ async def _get_gfw_geostore_geometry(geostore_id: UUID) -> GeostoreCommon:
     return geostore_common
 
 
-async def get_geostore_geometry(
-    geostore_id: UUID, geostore_origin: str
-) -> GeostoreCommon:
+async def get_geostore(geostore_id: UUID, geostore_origin: str) -> GeostoreCommon:
     geostore_constructor = {
-        GeostoreOrigin.gfw: _get_gfw_geostore_geometry,
-        GeostoreOrigin.rw: rw_api.get_geostore_geometry,
+        GeostoreOrigin.gfw: _get_gfw_geostore,
+        GeostoreOrigin.rw: rw_api.get_geostore,
     }
 
     try:

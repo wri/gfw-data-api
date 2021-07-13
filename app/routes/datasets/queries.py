@@ -74,7 +74,7 @@ from ...models.pydantic.responses import Response
 from ...responses import CSVStreamingResponse, ORJSONLiteResponse
 from ...settings.globals import GEOSTORE_SIZE_LIMIT_OTF, RASTER_ANALYSIS_LAMBDA_NAME
 from ...utils.aws import invoke_lambda
-from ...utils.geostore import get_geostore_geometry
+from ...utils.geostore import get_geostore
 from .. import dataset_version_dependency
 
 router = APIRouter()
@@ -136,7 +136,7 @@ async def query_dataset_json(
 
     dataset, version = dataset_version
     if geostore_id:
-        geostore: Optional[GeostoreCommon] = await get_geostore_geometry(
+        geostore: Optional[GeostoreCommon] = await get_geostore(
             geostore_id, geostore_origin
         )
     else:
@@ -181,7 +181,7 @@ async def query_dataset_csv(
 
     dataset, version = dataset_version
     if geostore_id:
-        geostore: Optional[GeostoreCommon] = await get_geostore_geometry(
+        geostore: Optional[GeostoreCommon] = await get_geostore(
             geostore_id, geostore_origin
         )
     else:
@@ -539,7 +539,7 @@ async def _query_raster(
 ) -> Dict[str, Any]:
     if geostore.area__ha > GEOSTORE_SIZE_LIMIT_OTF:
         raise HTTPException(
-            status_code=413,
+            status_code=400,
             detail=f"Geostore area exceeds limit of {GEOSTORE_SIZE_LIMIT_OTF} ha for raster analysis.",
         )
 
@@ -702,7 +702,7 @@ def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
         DerivedLayer(
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__confidence"),
-            calc="floor(A / 10000)",
+            calc="floor(A / 10000).astype(uint8)",
             raster_table=conf_encoding,
         ),
     ]

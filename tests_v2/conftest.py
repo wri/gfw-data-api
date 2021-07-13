@@ -330,6 +330,29 @@ async def geostore(async_client: AsyncClient) -> AsyncGenerator[str, None]:
     with open(f"{os.path.dirname(__file__)}/fixtures/geojson/test.geojson") as src:
         geojson = json.load(src)
     # Get geostore ID
+    geostore_id = await _create_geostore(geojson, async_client)
+
+    yield geostore_id
+
+    # Clean up
+    # Nothing to do here. No clean up function for geostore.
+
+
+@pytest.fixture()
+@pytest.mark.asyncio()
+async def geostore_huge(async_client: AsyncClient) -> AsyncGenerator[str, None]:
+    with open(f"{os.path.dirname(__file__)}/fixtures/geojson/test_huge.geojson") as src:
+        geojson = json.load(src)
+    # Get geostore ID
+    geostore_id = await _create_geostore(geojson, async_client)
+
+    yield geostore_id
+
+    # Clean up
+    # Nothing to do here. No clean up function for geostore.
+
+
+async def _create_geostore(geojson: Dict[str, Any], async_client: AsyncClient) -> str:
     payload = {
         "geometry": geojson["features"][0]["geometry"],
     }
@@ -337,7 +360,4 @@ async def geostore(async_client: AsyncClient) -> AsyncGenerator[str, None]:
     response = await async_client.post("/geostore", json=payload)
     assert response.status_code == 201
 
-    yield response.json()["data"]["gfw_geostore_id"]
-
-    # Clean up
-    # Nothing to do here. No clean up function for geostore.
+    return response.json()["data"]["gfw_geostore_id"]

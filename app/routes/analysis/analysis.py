@@ -15,7 +15,7 @@ from ...models.pydantic.analysis import ZonalAnalysisRequestIn
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
 from ...models.pydantic.responses import Response
 from ...settings.globals import GEOSTORE_SIZE_LIMIT_OTF
-from ...utils.geostore import get_geostore_geometry
+from ...utils.geostore import get_geostore
 from .. import DATE_REGEX
 from ..datasets.queries import _query_raster_lambda
 
@@ -54,11 +54,11 @@ async def zonal_statistics_get(
 ):
     """Calculate zonal statistics on any registered raster layers in a
     geostore."""
-    geostore: GeostoreCommon = await get_geostore_geometry(geostore_id, geostore_origin)
+    geostore: GeostoreCommon = await get_geostore(geostore_id, geostore_origin)
 
     if geostore.area__ha > GEOSTORE_SIZE_LIMIT_OTF:
         raise HTTPException(
-            status_code=413,
+            status_code=400,
             detail=f"Geostore area exceeds limit of {GEOSTORE_SIZE_LIMIT_OTF} ha for raster analysis.",
         )
 

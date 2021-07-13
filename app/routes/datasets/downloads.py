@@ -17,7 +17,7 @@ from ...models.pydantic.downloads import DownloadCSVIn
 from ...models.pydantic.geostore import GeostoreCommon
 from ...responses import CSVStreamingResponse
 from ...utils.aws import get_s3_client
-from ...utils.geostore import get_geostore_geometry
+from ...utils.geostore import get_geostore
 from ...utils.path import split_s3_path
 from .. import dataset_version_dependency
 from .queries import _query_dataset_csv
@@ -53,7 +53,7 @@ async def download_csv(
     dataset, version = dataset_version
 
     if geostore_id:
-        geostore: Optional[GeostoreCommon] = await get_geostore_geometry(
+        geostore: Optional[GeostoreCommon] = await get_geostore(
             geostore_id, geostore_origin
         )
     else:
