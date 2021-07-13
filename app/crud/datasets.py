@@ -1,11 +1,13 @@
-from typing import List
+from typing import Any, Dict, List
 
 from asyncpg import UniqueViolationError
 
 from ..application import db
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
+from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.queries.datasets import all_datasets
+from ..models.orm.versions import Version as ORMVersion
 from . import update_data
 
 
@@ -35,8 +37,11 @@ async def create_dataset(dataset: str, **data) -> ORMDataset:
 
 async def update_dataset(dataset: str, **data) -> ORMDataset:
     row: ORMDataset = await get_dataset(dataset)
+    new_row = await update_data(row, data)
 
-    return await update_data(row, data)
+    await _update_is_downloadable(dataset, data)
+
+    return new_row
 
 
 async def delete_dataset(dataset: str) -> ORMDataset:
@@ -44,3 +49,30 @@ async def delete_dataset(dataset: str) -> ORMDataset:
     await ORMDataset.delete.where(ORMDataset.dataset == dataset).gino.status()
 
     return row
+
+
+async def _update_is_downloadable(dataset: str, data: Dict[str, Any]) -> None:
+    """Populate is_downloadable attribute to all downstream versions and
+    assets.
+
+    Using gino loader instead of own crud methods to avoid circular
+    imports.
+    """
+    if data.get("is_downloadable") is not None:
+
+        # FIXME:
+        #  I tried using gino.iterate() so that I could use an async for loop
+        #  however this somehow throw an error: No Connection in context, please provide one.
+        #  I still need to figure out if this is a gino issue, or something on our end.
+        #  The current implementation works, but could be faster.
+        versions = await ORMVersion.query.where(
+            ORMVersion.dataset == dataset
+        ).gino.all()
+        for version in versions:
+            await version.update(is_downloadable=data.get("is_downloadable")).apply()
+
+            assets = await ORMAsset.query.where(
+                ORMAsset.dataset == dataset and ORMAsset.version == version
+            ).gino.all()
+            for asset in assets:
+                await asset.update(is_downloadable=data.get("is_downloadable")).apply()
