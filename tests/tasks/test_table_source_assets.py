@@ -138,7 +138,8 @@ async def test_table_source_asset(batch_client, async_client):
 
     assert count == 99
     assert partition_count == len(partition_schema)
-    assert index_count == partition_count * len(
+    # postgres12 also addes indices to the main table, hence there are more indices than partitions
+    assert index_count == (partition_count + 1) * len(
         input_data["creation_options"]["indices"]
     )
     assert cluster_count == len(partition_schema)
@@ -326,7 +327,8 @@ async def test_table_source_asset_parallel(batch_client, async_client):
 
     assert count == 9900
     assert partition_count == len(partition_schema)
-    assert index_count == partition_count * len(
+    # postgres12 also addes indices to the main table, hence there are more indices than partitions
+    assert index_count == (partition_count + 1) * len(
         input_data["creation_options"]["indices"]
     )
     assert cluster_count == len(partition_schema)

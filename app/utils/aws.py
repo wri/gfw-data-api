@@ -34,26 +34,46 @@ get_lambda_client = client_constructor("lambda")
 async def invoke_lambda(
     lambda_name: str, payload: Dict[str, Any], timeout: int = 55
 ) -> httpx.Response:
-    session = boto3.Session()
-    cred = session.get_credentials()
 
-    aws = AWS4Auth(
-        access_id=cred.access_key,
-        secret_key=cred.secret_key,
-        security_token=cred.token,
-        region=AWS_REGION,
-        service="lambda",
-    )
-
+    auth = _aws_auth("lambda")
     headers = {"X-Amz-Invocation-Type": "RequestResponse"}
 
     async with httpx.AsyncClient() as client:
         response: httpx.Response = await client.post(
             f"{LAMBDA_ENTRYPOINT_URL}/2015-03-31/functions/{lambda_name}/invocations",
             json=payload,
-            auth=aws,
+            auth=auth,
             timeout=timeout,
             headers=headers,
         )
 
     return response
+
+
+async def head_s3(bucket: str, key: str) -> bool:
+    auth = _aws_auth("s3")
+
+    if S3_ENTRYPOINT_URL:
+        s3_entrypoint_url = f"{S3_ENTRYPOINT_URL}/{bucket}"
+    else:
+        s3_entrypoint_url = f"https://{bucket}.s3.amazonaws.com"
+
+    async with httpx.AsyncClient() as client:
+        response: httpx.Response = await client.head(
+            f"{s3_entrypoint_url}/{key}", auth=auth
+        )
+
+    return response.status_code == 200
+
+
+def _aws_auth(service: str) -> AWS4Auth:
+    session = boto3.Session()
+    cred = session.get_credentials()
+
+    return AWS4Auth(
+        access_id=cred.access_key,
+        secret_key=cred.secret_key,
+        security_token=cred.token,
+        region=AWS_REGION,
+        service=service,
+    )

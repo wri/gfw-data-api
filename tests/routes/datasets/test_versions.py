@@ -159,6 +159,16 @@ async def test_versions(async_client):
     assert response.status_code == 400
     assert response.json()["message"] == "Must not use sub queries."
 
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=SELECT PostGIS_Full_Version() FROM data;"
+    )
+    print(response.json())
+    assert response.status_code == 400
+    assert (
+        response.json()["message"]
+        == "Use of admin, system or private functions is not allowed."
+    )
+
 
 @pytest.mark.asyncio
 async def test_version_metadata(async_client):
@@ -349,7 +359,8 @@ async def test_invalid_source_uri(async_client):
     assert response.status_code == 400
     assert response.json()["status"] == "failed"
     assert (
-        response.json()["message"] == "Cannot access source files ['s3://doesnotexist']"
+        response.json()["message"]
+        == "Cannot access all of the source files ['s3://doesnotexist']"
     )
 
     # Create a version with a valid source_uri so we have something to append to
@@ -370,7 +381,8 @@ async def test_invalid_source_uri(async_client):
     assert response.status_code == 400
     assert response.json()["status"] == "failed"
     assert (
-        response.json()["message"] == "Cannot access source files ['s3://doesnotexist']"
+        response.json()["message"]
+        == "Cannot access all of the source files ['s3://doesnotexist']"
     )
 
     # Test appending to a version that DOESN'T exist
