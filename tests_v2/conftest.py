@@ -28,7 +28,7 @@ from tests_v2.utils import (
     get_extent_mocked,
     get_user_mocked,
     int_function_closure,
-    void_function,
+    void_coroutine,
 )
 
 
@@ -157,7 +157,7 @@ async def generic_vector_source_version(
 
     # patch all functions which reach out to external services
     batch_job_mock = BatchJobMock()
-    monkeypatch.setattr(versions, "_verify_source_file_access", void_function)
+    monkeypatch.setattr(versions, "_verify_source_file_access", void_coroutine)
     monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
     monkeypatch.setattr(vector_source_assets, "is_zipped", bool_function_closure(False))
     monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
@@ -166,13 +166,15 @@ async def generic_vector_source_version(
     )
 
     # Create version
-    await async_client.put(
+    response = await async_client.put(
         f"/dataset/{dataset_name}/{version_name}",
         json={
             "metadata": version_metadata,
             "creation_options": VECTOR_SOURCE_CREATION_OPTIONS,
         },
     )
+
+    assert response.status_code == 202
 
     # mock batch processes
     await _create_vector_source_assets(dataset_name, version_name)
@@ -222,7 +224,7 @@ async def generic_raster_version(
 
     # patch all functions which reach out to external services
     batch_job_mock = BatchJobMock()
-    monkeypatch.setattr(versions, "_verify_source_file_access", void_function)
+    monkeypatch.setattr(versions, "_verify_source_file_access", void_coroutine)
     monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
     monkeypatch.setattr(vector_source_assets, "is_zipped", bool_function_closure(False))
     monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
@@ -325,11 +327,16 @@ async def apikey_unrestricted(
 
 
 @pytest.fixture()
-@pytest.mark.asyncio()
-async def geostore(async_client: AsyncClient) -> AsyncGenerator[str, None]:
+def geojson():
     with open(f"{os.path.dirname(__file__)}/fixtures/geojson/test.geojson") as src:
         geojson = json.load(src)
-    # Get geostore ID
+
+    return geojson
+
+
+@pytest.fixture()
+@pytest.mark.asyncio()
+async def geostore(async_client: AsyncClient, geojson) -> AsyncGenerator[str, None]:
     payload = {
         "geometry": geojson["features"][0]["geometry"],
     }

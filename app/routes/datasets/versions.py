@@ -8,10 +8,10 @@ uploaded file. Based on the source file(s), users can create additional
 assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
+import asyncio
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from botocore.exceptions import ClientError, ParamValidationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
@@ -48,7 +48,7 @@ from ...settings.globals import TILE_CACHE_CLOUDFRONT_ID
 from ...tasks.aws_tasks import flush_cloudfront_cache
 from ...tasks.default_assets import append_default_asset, create_default_asset
 from ...tasks.delete_assets import delete_all_assets
-from ...utils.aws import get_s3_client
+from ...utils.aws import head_s3
 from ...utils.path import split_s3_path
 from .queries import _get_data_environment
 
@@ -91,9 +91,9 @@ async def add_new_version(
     """Create or update a version for a given dataset."""
 
     input_data = request.dict(exclude_none=True, by_alias=True)
-
     creation_options = input_data.pop("creation_options")
-    _verify_source_file_access(creation_options["source_uri"])
+
+    await _verify_source_file_access(creation_options["source_uri"])
 
     # Register version with DB
     try:
@@ -177,7 +177,7 @@ async def append_to_version(
     files.
     """
     dataset, version = dv
-    _verify_source_file_access(request.dict()["source_uri"])
+    await _verify_source_file_access(request.dict()["source_uri"])
 
     default_asset: ORMAsset = await assets.get_default_asset(dataset, version)
 
@@ -365,18 +365,11 @@ async def _version_response(
     return VersionResponse(data=Version(**data))
 
 
-def _verify_source_file_access(s3_sources):
-    s3_client = get_s3_client()
-    invalid_sources = list()
-
-    for s3_source in s3_sources:
-        try:
-            bucket, key = split_s3_path(s3_source)
-            s3_client.head_object(Bucket=bucket, Key=key)
-        except (ClientError, ParamValidationError):
-            invalid_sources.append(s3_source)
-
-    if invalid_sources:
+async def _verify_source_file_access(s3_sources: List[str]) -> None:
+    head_calls = [head_s3(*split_s3_path(s3_source)) for s3_source in s3_sources]
+    results = await asyncio.gather(*head_calls)
+    if not all(results):
         raise HTTPException(
-            status_code=400, detail=f"Cannot access source files {invalid_sources}"
+            status_code=400,
+            detail=f"Cannot access all of the source files {s3_sources}",
         )

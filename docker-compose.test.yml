@@ -15,12 +15,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - ENV=test
-      - DB_HOST=test_database
+      - DB_HOST=test_database_12
       - DATABASE=_test
       - DB_USER=gfw
       - DB_PASSWORD=postgres  # pragma: allowlist secret
       - DB_PORT=5432
-      - DB_HOST_RO=test_database
+      - DB_HOST_RO=test_database_12
       - DATABASE_RO=_test
       - DB_USER_RO=gfw_readonly
       - DB_PASSWORD_RO=readonly  # pragma: allowlist secret
@@ -61,13 +61,13 @@ services:
 #      - AWS_SECRETSMANAGER_URL=http://motoserver-secretsmanager:5001
     entrypoint: wait_for_postgres.sh pytest --timeout 480 -vv --cov-report term  --cov=app
     depends_on:
-      - test_database
+      - test_database_12
       - motoserver-s3
 #      - motoserver-secretsmanager
 
-  test_database:
-    container_name: gfw-data-api-test-database
-    image: postgis/postgis:11-3.0-alpine
+  test_database_12:
+    container_name: gfw-data-api-test-database-12
+    image: postgis/postgis:12-2.5-alpine
     ports:
       - 54321:5432
     environment:
@@ -76,24 +76,16 @@ services:
       - POSTGRES_USER=gfw
       - POSTGRES_PASSWORD=postgres  # pragma: allowlist secret
     volumes:
-      - test_database_data:/var/lib/postgresql/data
+      - test_database_data_12:/var/lib/postgresql/data
     restart: on-failure
 
   motoserver-s3:
     container_name: motoserver-s3
-    image: motoserver/moto:1.3.16
+    image: motoserver/moto:2.0.10
     ports:
       - 5000:5000
     entrypoint: moto_server s3 -H 0.0.0.0
     restart: on-failure
 
-#  motoserver-secretsmanager:
-#    container_name: motoserver-secretsmanager
-#    image: motoserver/moto:1.3.16
-#    ports:
-#      - 5001:5001
-#    entrypoint: moto_server secretsmanager -p 5001 -H 0.0.0.0
-#    restart: on-failure
-
 volumes:
-  test_database_data:
+  test_database_data_12:

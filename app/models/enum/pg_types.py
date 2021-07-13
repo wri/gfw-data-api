@@ -22,7 +22,6 @@ class PGNumericType(str, Enum):
     smallint = "smallint"
 
 
-
 class PGTextType(str, Enum):
     __doc__ = "Text PostgreSQL data types"
     character_varying = "character varying"
