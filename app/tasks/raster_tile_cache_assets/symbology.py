@@ -136,16 +136,17 @@ async def date_conf_density_multi_band_symbology(
     raster tile set is created it will combine it with source
     (date_conf) raster into RGB-encoded raster.
     """
+    intensity_co = source_asset_co.copy(deep=True, update={"band_count": 1})
     return await _date_intensity_symbology(
         dataset,
         version,
         pixel_meaning,
-        source_asset_co,
+        intensity_co,
         zoom_level,
         max_zoom,
         jobs_dict,
-        "(A>0)*100",
-        ResamplingMethod.average,
+        "np.ma.array([(A>0 + B>0 + C>0) /3 *100])",
+        ResamplingMethod.mode,
         _merge_density_and_date_conf_multi_band,
     )
 
@@ -241,7 +242,7 @@ async def _date_intensity_symbology(
         deep=True,
         update={
             "source_uri": source_uri,
-            # "no_data": None,
+            "no_data": None,
             "pixel_meaning": f"intensity_{pixel_meaning}",
             "resampling": resampling,
         },
