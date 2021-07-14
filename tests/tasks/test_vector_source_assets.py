@@ -98,7 +98,7 @@ async def test_vector_source_asset(batch_client, async_client):
                 bbox=[0, 0, 10, 10],
             )
             with patch(
-                "app.utils.rw_api.get_geostore_geometry",
+                "app.utils.rw_api.get_geostore",
                 return_value=geostore,
             ):
                 response = await async_client.get(
@@ -119,7 +119,7 @@ async def test_vector_source_asset(batch_client, async_client):
                 bbox=[0, 0, 10, 10],
             )
             with patch(
-                "app.utils.rw_api.get_geostore_geometry",
+                "app.utils.rw_api.get_geostore",
                 return_value=geostore,
             ):
                 response = await async_client.get(
