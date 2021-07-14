@@ -1,7 +1,7 @@
 """Download dataset in different formats."""
 from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from aiohttp import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -15,10 +15,10 @@ from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pixetl import Grid
 from ...models.pydantic.downloads import DownloadCSVIn, DownloadJSONIn
-from ...models.pydantic.geostore import Geometry
+from ...models.pydantic.geostore import GeostoreCommon
 from ...responses import CSVStreamingResponse, ORJSONStreamingResponse
 from ...utils.aws import get_s3_client
-from ...utils.geostore import get_geostore_geometry
+from ...utils.geostore import get_geostore
 from ...utils.path import split_s3_path
 from .. import dataset_version_dependency
 from .queries import _query_dataset_csv, _query_dataset_json
@@ -52,14 +52,14 @@ async def download_json(
     await _check_downloadability(dataset, version)
 
     if geostore_id:
-        geometry: Optional[Geometry] = await get_geostore_geometry(
+        geostore: Optional[GeostoreCommon] = await get_geostore(
             geostore_id, geostore_origin
         )
     else:
-        geometry = None
+        geostore = None
 
     data: List[Dict[str, Any]] = await _query_dataset_json(
-        dataset, version, sql, geometry
+        dataset, version, sql, geostore
     )
 
     response = ORJSONStreamingResponse(data, filename=filename)
@@ -89,8 +89,16 @@ async def download_json_post(
 
     await _check_downloadability(dataset, version)
 
+    # create geostore with unknowns as blank
+    if request.geometry:
+        geostore: Optional[GeostoreCommon] = GeostoreCommon(
+            geojson=request.geometry, geostore_id=uuid4(), area__ha=0, bbox=[0, 0, 0, 0]
+        )
+    else:
+        geostore = None
+
     data: List[Dict[str, Any]] = await _query_dataset_json(
-        dataset, version, request.sql, request.geometry
+        dataset, version, request.sql, geostore
     )
 
     response = ORJSONStreamingResponse(data, filename=request.filename)
@@ -128,14 +136,14 @@ async def download_csv(
     await _check_downloadability(dataset, version)
 
     if geostore_id:
-        geometry: Optional[Geometry] = await get_geostore_geometry(
+        geostore: Optional[GeostoreCommon] = await get_geostore(
             geostore_id, geostore_origin
         )
     else:
-        geometry = None
+        geostore = None
 
     data: StringIO = await _query_dataset_csv(
-        dataset, version, sql, geometry, delimiter=delimiter
+        dataset, version, sql, geostore, delimiter=delimiter
     )
     response = CSVStreamingResponse(iter([data.getvalue()]), filename=filename)
 
