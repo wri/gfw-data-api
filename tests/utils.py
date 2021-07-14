@@ -147,7 +147,7 @@ async def poll_jobs(job_ids: List[str], logs=None, async_client=None) -> str:
             status = "failed"
 
         if status:
-            # print_logs(logs)
+            print_logs(logs)
             await check_callbacks(job_ids, async_client)
             return status
 

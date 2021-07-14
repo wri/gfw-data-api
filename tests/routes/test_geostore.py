@@ -91,7 +91,7 @@ async def test_dataset_version_geostore(async_client, batch_client):
     ############################
 
     # This is the hash obtained by POSTing the sample GeoJSON with Postman
-    sample_geojson_hash = "b9faa657-34c9-96d4-fce4-8bb8a1507cb3"
+    sample_geojson_hash = "41b67a74-4ea2-df3f-c3f3-d7131a645f9a"
 
     # The geometry should be accessible via the geostore table
     async with ContextEngine("READ"):

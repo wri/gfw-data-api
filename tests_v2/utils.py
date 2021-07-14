@@ -51,6 +51,10 @@ def void_function(*args, **kwargs) -> None:
     return
 
 
+async def void_coroutine(*args, **kwargs) -> None:
+    return
+
+
 def bool_function_closure(value: bool, with_args=True) -> Callable:
     def bool_function(*args, **kwargs) -> bool:
         return value

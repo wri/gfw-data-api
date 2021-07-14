@@ -1,28 +1,110 @@
 """Download dataset in different formats."""
 from io import StringIO
-from typing import Optional, Tuple
-from uuid import UUID
+from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID, uuid4
 
 from aiohttp import ClientError
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
 
 from ...crud.assets import get_assets_by_filter
+from ...crud.versions import get_version
 from ...main import logger
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.enum.pixetl import Grid
-from ...models.pydantic.downloads import DownloadCSVIn
+from ...models.pydantic.downloads import DownloadCSVIn, DownloadJSONIn
 from ...models.pydantic.geostore import GeostoreCommon
-from ...responses import CSVStreamingResponse
+from ...responses import CSVStreamingResponse, ORJSONStreamingResponse
 from ...utils.aws import get_s3_client
 from ...utils.geostore import get_geostore
 from ...utils.path import split_s3_path
 from .. import dataset_version_dependency
-from .queries import _query_dataset_csv
+from .queries import _query_dataset_csv, _query_dataset_json
 
 router: APIRouter = APIRouter()
+
+
+@router.get(
+    "/{dataset}/{version}/download/json",
+    response_class=CSVStreamingResponse,
+    tags=["Download"],
+)
+async def download_json(
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    sql: str = Query(..., description="SQL query."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_origin: GeostoreOrigin = Query(
+        GeostoreOrigin.gfw, description="Origin service of geostore ID."
+    ),
+    filename: str = Query("export.json", description="Name of export file."),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented).
+
+    Return results as downloadable CSV file. This endpoint only works
+    for datasets with (geo-)database tables.
+    """
+
+    dataset, version = dataset_version
+
+    await _check_downloadability(dataset, version)
+
+    if geostore_id:
+        geostore: Optional[GeostoreCommon] = await get_geostore(
+            geostore_id, geostore_origin
+        )
+    else:
+        geostore = None
+
+    data: List[Dict[str, Any]] = await _query_dataset_json(
+        dataset, version, sql, geostore
+    )
+
+    response = ORJSONStreamingResponse(data, filename=filename)
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
+    return response
+
+
+@router.post(
+    "/{dataset}/{version}/download/json",
+    response_class=CSVStreamingResponse,
+    tags=["Download"],
+)
+async def download_json_post(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    request: DownloadJSONIn,
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented).
+
+    Return results as downloadable CSV file. This endpoint only works
+    for datasets with (geo-)database tables.
+    """
+
+    dataset, version = dataset_version
+
+    await _check_downloadability(dataset, version)
+
+    # create geostore with unknowns as blank
+    if request.geometry:
+        geostore: Optional[GeostoreCommon] = GeostoreCommon(
+            geojson=request.geometry, geostore_id=uuid4(), area__ha=0, bbox=[0, 0, 0, 0]
+        )
+    else:
+        geostore = None
+
+    data: List[Dict[str, Any]] = await _query_dataset_json(
+        dataset, version, request.sql, geostore
+    )
+
+    response = ORJSONStreamingResponse(data, filename=request.filename)
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
+    return response
 
 
 @router.get(
@@ -31,7 +113,6 @@ router: APIRouter = APIRouter()
     tags=["Download"],
 )
 async def download_csv(
-    response: Response,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
@@ -51,6 +132,8 @@ async def download_csv(
     """
 
     dataset, version = dataset_version
+
+    await _check_downloadability(dataset, version)
 
     if geostore_id:
         geostore: Optional[GeostoreCommon] = await get_geostore(
@@ -87,6 +170,8 @@ async def download_csv_post(
 
     dataset, version = dataset_version
 
+    await _check_downloadability(dataset, version)
+
     data: StringIO = await _query_dataset_csv(
         dataset, version, request.sql, request.geometry, request.delimiter
     )
@@ -111,6 +196,8 @@ async def download_geotiff(
     """Download geotiff raster tile."""
 
     dataset, version = dataset_version
+
+    await _check_downloadability(dataset, version)
 
     asset_url = await _get_raster_tile_set_asset_url(
         dataset, version, grid, pixel_meaning
@@ -140,6 +227,8 @@ async def download_shapefile(
 
     dataset, version = dataset_version
 
+    await _check_downloadability(dataset, version)
+
     asset_url = await _get_asset_url(dataset, version, AssetType.shapefile)
     bucket, key = split_s3_path(asset_url)
 
@@ -164,6 +253,8 @@ async def download_geopackage(
     """
 
     dataset, version = dataset_version
+
+    await _check_downloadability(dataset, version)
 
     asset_url = await _get_asset_url(dataset, version, AssetType.geopackage)
     bucket, key = split_s3_path(asset_url)
@@ -225,3 +316,11 @@ async def _get_presigned_url(bucket, key):
             status_code=404, detail="Requested resources does not exist."
         )
     return presigned_url
+
+
+async def _check_downloadability(dataset, version):
+    v = await get_version(dataset, version)
+    if not v.is_downloadable:
+        raise HTTPException(
+            status_code=403, detail="This dataset is not available for download"
+        )
