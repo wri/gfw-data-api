@@ -9,8 +9,6 @@ from alembic import op
 from sqlalchemy import column, table
 
 # revision identifiers, used by Alembic.
-
-
 revision = "4763f4b8141a"  # pragma: allowlist secret
 down_revision = "d62a9b15f844"  # pragma: allowlist secret
 branch_labels = None
@@ -30,8 +28,6 @@ def upgrade():
         op.execute(
             t.update().where(t.c.is_downloadable is None).values(is_downloadable=True)
         )
-
-        op.alter_column(table_name, column_name, nullable=False)
 
 
 def downgrade():
