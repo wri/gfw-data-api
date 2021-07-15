@@ -21,7 +21,7 @@ column_name = "is_downloadable"
 def upgrade():
     for table_name in tables:
 
-        op.add_column(table_name, sa.Column(column_name, sa.Boolean()))
+        op.add_column(table_name, sa.Column(column_name, sa.Boolean(), nullable=True))
 
         t = table(table_name, column(column_name))
 
