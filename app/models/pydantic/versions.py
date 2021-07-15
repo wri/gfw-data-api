@@ -21,6 +21,11 @@ class Version(BaseRecord):
 
 
 class VersionCreateIn(StrictBaseModel):
+    is_downloadable: Optional[bool] = Field(
+        None,
+        description="Flag to specify if assets associated with version can be downloaded."
+        "If not set, value will default to settings of underlying dataset",
+    )
     metadata: Optional[VersionMetadata] = Field(
         None,
         description="Version metadata. Version will inherit metadata from dataset. "
@@ -33,6 +38,11 @@ class VersionCreateIn(StrictBaseModel):
 
 
 class VersionUpdateIn(StrictBaseModel):
+    is_downloadable: Optional[bool] = Field(
+        None,
+        description="Flag to specify if assets associated with version can be downloaded."
+        "If not set, value will default to settings of underlying dataset",
+    )
     is_latest: Optional[bool] = Field(
         None,
         description="Indicate if the current version should be tagged `latest`. "

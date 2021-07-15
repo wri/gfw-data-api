@@ -39,6 +39,13 @@ class Geostore(BaseRecord):
             return v
 
 
+class GeostoreCommon(StrictBaseModel):
+    geostore_id: UUID
+    geojson: Geometry
+    area__ha: float
+    bbox: List[float]
+
+
 class GeostoreIn(StrictBaseModel):
     geometry: Geometry
 

@@ -11,6 +11,7 @@ class Asset(Base):
     status = db.Column(db.String, nullable=False, default="pending")
     is_managed = db.Column(db.Boolean, nullable=False, default=True)
     is_default = db.Column(db.Boolean, nullable=False, default=False)
+    is_downloadable = db.Column(db.Boolean, nullable=False, default=True)
     creation_options = db.Column(db.JSONB, nullable=False, default=dict())
     metadata = db.Column(db.JSONB, nullable=False, default=dict())
     fields = db.Column(db.JSONB, nullable=False, default=list())

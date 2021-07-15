@@ -89,7 +89,7 @@ async def create_user_area(geometry: Geometry) -> Geostore:
         SELECT ST_Area(
             ST_GeomFromGeoJSON(
                 '{sanitized_json}'
-            )
+            )::geography
         )
         """
     )
