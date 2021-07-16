@@ -41,12 +41,12 @@ async def test_analysis_with_api_key_as_param(
     origin = payload["domains"][0]
 
     headers = {"origin": origin}
-    params = {"x-api-key": api_key}
+    params = {"x-api-key": api_key, "sum": "area__ha"}
 
     monkeypatch.setattr(queries, "invoke_lambda", invoke_lambda_mocked)
 
     response = await async_client.get(
-        f"/analysis/zonal/{geostore}?sum=area__ha", headers=headers, params=params
+        f"/analysis/zonal/{geostore}", headers=headers, params=params
     )
 
     # this only tests if api key is correctly processed, but query will fail
@@ -62,9 +62,9 @@ async def test_analysis_with_huge_geostore(
     origin = payload["domains"][0]
 
     headers = {"origin": origin}
-    params = {"x-api-key": api_key}
+    params = {"x-api-key": api_key, "sum": "area__ha"}
     response = await async_client.get(
-        f"/analysis/zonal/{geostore_huge}?sum=area__ha", headers=headers, params=params
+        f"/analysis/zonal/{geostore_huge}", headers=headers, params=params
     )
 
     assert response.status_code == 400
