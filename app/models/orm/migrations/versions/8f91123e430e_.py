@@ -1,4 +1,4 @@
-"""Set is_downloadable columns to not nullable.
+"""Set default value for rows where is_downloadable is NULL.
 
 Revision ID: 8f91123e430e
 Revises: 4763f4b8141a
@@ -23,9 +23,7 @@ def upgrade():
         op.execute(
             t.update().where(t.c.is_downloadable is None).values(is_downloadable=True)
         )
-        op.alter_column(table_name, column_name, nullable=False)
 
 
 def downgrade():
-    for table_name in tables:
-        op.alter_column(table_name, column_name, nullable=True)
+    pass
