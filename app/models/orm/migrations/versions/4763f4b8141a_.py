@@ -6,7 +6,6 @@ Create Date: 2021-07-13 01:10:24.418512
 """
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy import column, table
 
 # revision identifiers, used by Alembic.
 revision = "4763f4b8141a"  # pragma: allowlist secret
@@ -20,14 +19,7 @@ column_name = "is_downloadable"
 
 def upgrade():
     for table_name in tables:
-
         op.add_column(table_name, sa.Column(column_name, sa.Boolean(), nullable=True))
-
-        t = table(table_name, column(column_name))
-
-        op.execute(
-            t.update().where(t.c.is_downloadable is None).values(is_downloadable=True)
-        )
 
 
 def downgrade():
