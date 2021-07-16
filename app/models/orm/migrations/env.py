@@ -71,6 +71,7 @@ def run_migrations_offline():
         target_metadata=target_metadata,
         literal_binds=True,
         include_object=include_object,
+        transaction_per_migration=True,
     )
 
     with context.begin_transaction():
