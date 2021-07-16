@@ -68,6 +68,9 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
     if data.get("is_downloadable") is None:
         data["is_downloadable"] = d.is_downloadable
 
+    if data.get("is_latest"):
+        await _reset_is_latest(dataset, version)
+
     try:
         new_version: ORMVersion = await ORMVersion.create(
             dataset=dataset, version=version, **data
@@ -86,6 +89,9 @@ async def update_version(dataset: str, version: str, **data) -> ORMVersion:
     row = await update_data(row, data)
 
     await _update_is_downloadable(dataset, version, data)
+
+    if data.get("is_latest"):
+        await _reset_is_latest(dataset, version)
 
     d: ORMDataset = await datasets.get_dataset(dataset)
 
@@ -124,3 +130,10 @@ async def _update_is_downloadable(
         ).gino.all()
         for asset in assets:
             await asset.update(is_downloadable=data.get("is_downloadable")).apply()
+
+
+async def _reset_is_latest(dataset: str, version: str) -> None:
+    versions = await get_versions(dataset)
+    for version_orm in versions:
+        if version_orm.version != version:
+            await update_version(dataset, version, is_latest=False)
