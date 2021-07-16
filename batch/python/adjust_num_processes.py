@@ -23,10 +23,10 @@ def calc_num_processes(job_id: str, original_num_proc, batch_client):
 if __name__ == "__main__":
     job_id = os.getenv("AWS_BATCH_JOB_ID")
     if job_id is None:
-        raise ValueError("This makes mypy happy")
+        raise ValueError("No AWS Batch Job ID found")
     original_num_proc = os.getenv("NUM_PROCESSES", os.getenv("CORES", os.cpu_count()))
     if original_num_proc is None:
-        raise ValueError("This makes mypy happy")
+        raise ValueError("Neither number of processes nor number of cores are set")
     else:
         original_num_proc = int(original_num_proc)
 

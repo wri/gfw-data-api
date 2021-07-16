@@ -43,7 +43,7 @@ async def download_json(
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented).
 
-    Return results as downloadable CSV file. This endpoint only works
+    Return results as downloadable JSON file. This endpoint only works
     for datasets with (geo-)database tables.
     """
 
@@ -81,7 +81,7 @@ async def download_json_post(
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented).
 
-    Return results as downloadable CSV file. This endpoint only works
+    Return results as downloadable JSON file. This endpoint only works
     for datasets with (geo-)database tables.
     """
 

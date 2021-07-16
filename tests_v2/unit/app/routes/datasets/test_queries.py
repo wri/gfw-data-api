@@ -12,9 +12,10 @@ async def test_query_dataset_without_api_key(
     generic_vector_source_version, async_client: AsyncClient
 ):
     dataset_name, version_name, _ = generic_vector_source_version
+    params = {"sql": "select * from data"}
 
     response = await async_client.get(
-        f"/dataset/{dataset_name}/{version_name}/query?sql=select * from data"
+        f"/dataset/{dataset_name}/{version_name}/query", params=params
     )
 
     assert response.status_code == 403
@@ -202,9 +203,10 @@ async def test_query_dataset_raster_geostore_huge(
     origin = "https://" + payload["domains"][0]
 
     headers = {"origin": origin, "x-api-key": api_key}
-
+    params = {"sql": "select count(*) from data", "geostore_id": geostore_huge}
     response = await async_client.get(
-        f"/dataset/{dataset_name}/{version_name}/query?sql=select count(*) from data&geostore_id={geostore_huge}",
+        f"/dataset/{dataset_name}/{version_name}/query",
+        params=params,
         headers=headers,
     )
 
