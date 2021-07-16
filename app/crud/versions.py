@@ -136,4 +136,4 @@ async def _reset_is_latest(dataset: str, version: str) -> None:
     version_gen = list_to_async_generator(versions)
     async for version_orm in version_gen:
         if version_orm.version != version:
-            await update_version(dataset, version, is_latest=False)
+            await update_version(dataset, version_orm.version, is_latest=False)
