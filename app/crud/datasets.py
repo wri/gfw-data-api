@@ -8,6 +8,7 @@ from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.queries.datasets import all_datasets
 from ..models.orm.versions import Version as ORMVersion
+from ..utils.generators import list_to_async_generator
 from . import update_data
 
 
@@ -60,19 +61,18 @@ async def _update_is_downloadable(dataset: str, data: Dict[str, Any]) -> None:
     """
     if data.get("is_downloadable") is not None:
 
-        # FIXME:
-        #  I tried using gino.iterate() so that I could use an async for loop
-        #  however this somehow throw an error: No Connection in context, please provide one.
-        #  I still need to figure out if this is a gino issue, or something on our end.
-        #  The current implementation works, but could be faster.
+        # I tried using gino.iterate() instead of creating a generator
+        # however this somehow throw an error: No Connection in context, please provide one.
         versions = await ORMVersion.query.where(
             ORMVersion.dataset == dataset
         ).gino.all()
-        for version in versions:
+        version_gen = list_to_async_generator(versions)
+        async for version in version_gen:
             await version.update(is_downloadable=data.get("is_downloadable")).apply()
 
             assets = await ORMAsset.query.where(
                 ORMAsset.dataset == dataset and ORMAsset.version == version
             ).gino.all()
-            for asset in assets:
+            asset_gen = list_to_async_generator(assets)
+            async for asset in asset_gen:
                 await asset.update(is_downloadable=data.get("is_downloadable")).apply()

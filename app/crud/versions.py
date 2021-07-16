@@ -6,6 +6,7 @@ from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
+from ..utils.generators import list_to_async_generator
 from . import datasets, update_data
 from .metadata import update_all_metadata, update_metadata
 
@@ -120,20 +121,19 @@ async def _update_is_downloadable(
     """
     if data.get("is_downloadable") is not None:
 
-        # FIXME:
-        #  I tried using gino.iterate() so that I could use an async for loop
-        #  however this somehow throw an error: No Connection in context, please provide one.
-        #  I still need to figure out if this is a gino issue, or something on our end.
-        #  The current implementation works, but could be faster.
+        # I tried using gino.iterate() instead of creating a generator
+        # however this somehow throw an error: No Connection in context, please provide one.
         assets = await ORMAsset.query.where(
             ORMAsset.dataset == dataset and ORMAsset.version == version
         ).gino.all()
-        for asset in assets:
+        asset_gen = list_to_async_generator(assets)
+        async for asset in asset_gen:
             await asset.update(is_downloadable=data.get("is_downloadable")).apply()
 
 
 async def _reset_is_latest(dataset: str, version: str) -> None:
     versions = await get_versions(dataset)
-    for version_orm in versions:
+    version_gen = list_to_async_generator(versions)
+    async for version_orm in version_gen:
         if version_orm.version != version:
             await update_version(dataset, version, is_latest=False)
