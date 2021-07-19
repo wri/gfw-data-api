@@ -1,4 +1,5 @@
-from typing import Any, Dict, List
+import string
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import numpy as np
@@ -61,11 +62,13 @@ async def raster_tile_cache_asset(
         ).replace("{tile_id}.tif", "tiles.geojson")
     ]
 
-    # band_count = source_asset.creation_options["band_count"]
-    # if band_count > 1:
-    #     calc: Optional[str] = f"np.ma.array(list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'[:{band_count}]))"
-    # else:
-    #     calc = None
+    band_count = source_asset.creation_options["band_count"]
+    if band_count > 1:
+        # This could be more elegant, probably.
+        bands_string = str(list(string.ascii_uppercase[:band_count])).replace("'", "")
+        calc: Optional[str] = f"np.ma.array({bands_string})"
+    else:
+        calc = None
 
     source_asset_co = RasterTileSetSourceCreationOptions(
         # TODO: With python 3.9, we can use the `|` operator here
@@ -76,7 +79,7 @@ async def raster_tile_cache_asset(
                 "source_type": RasterSourceType.raster,
                 "source_driver": RasterDrivers.geotiff,
                 "source_uri": new_source_uri,
-                "calc": None,
+                "calc": calc,
                 "resampling": resampling,
                 "compute_stats": False,
                 "compute_histogram": False,
