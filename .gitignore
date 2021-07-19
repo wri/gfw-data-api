@@ -11,3 +11,13 @@
 
 # Environment Files
 /.env
+
+# Test stuff
+tests/cobertura.xml
+tests_v2/cobertura.xml
+
+# TF stuff
+terraform/*
+
+# Virtualenvs
+.venv/*
