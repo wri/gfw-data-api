@@ -12,7 +12,7 @@ def calc_num_processes(job_id: str, original_num_proc, batch_client):
 
     # For each previous attempt resulting in OOM, divide NUM_PROCESSES by 2
     for attempt in jobs_desc["jobs"][0]["attempts"]:
-        if attempt["container"].get("exitCode") == 137:
+        if attempt["container"]["exitCode"] == 137:
             new_num_proc = max(1, int(new_num_proc / 2))
 
     return new_num_proc
