@@ -99,8 +99,9 @@ async def raster_tile_cache_asset(
     assert source_asset_co.symbology is not None
     symbology_function = symbology_constructor[source_asset_co.symbology.type]
 
-    # We want to make sure that the final RGB asset is named after the implementation of the tile cache
-    # And that the source_asset name is not already used by another intermediate asset.
+    # We want to make sure that the final RGB asset is named after the
+    # implementation of the tile cache and that the source_asset name is not
+    # already used by another intermediate asset.
     if symbology_function == no_symbology:
         source_asset_co.pixel_meaning = implementation
     else:

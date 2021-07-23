@@ -128,6 +128,7 @@ class PixETLJob(Job):
     job_definition = PIXETL_JOB_DEFINITION
     vcpus = MAX_CORES
     memory = MAX_MEM
+    num_processes = max(int(MAX_CORES * 2 / 3), 1)
     attempts = 4
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 

@@ -118,7 +118,7 @@ async def colormap_symbology(
     return [job], new_asset_uri
 
 
-async def date_conf_density_multi_band_symbology(
+async def date_conf_intensity_multi_band_symbology(
     dataset: str,
     version: str,
     pixel_meaning: str,
@@ -147,7 +147,7 @@ async def date_conf_density_multi_band_symbology(
         jobs_dict,
         "np.ma.array([(1*(A>0) + 1*(B>0) + 1*(C>0)) /3 *100])",
         ResamplingMethod.mode,
-        _merge_density_and_date_conf_multi_band,
+        _merge_intensity_and_date_conf_multi_band,
     )
 
 
@@ -285,17 +285,17 @@ async def _date_intensity_symbology(
     return [intensity_job, *merge_jobs], dst_uri
 
 
-async def _merge_density_and_date_conf_multi_band(
+async def _merge_intensity_and_date_conf_multi_band(
     dataset: str,
     version: str,
     pixel_meaning: str,
     date_conf_uri: str,
-    density_uri: str,
+    intensity_uri: str,
     zoom_level: int,
     parents: List[Job],
 ) -> Tuple[List[Job], str]:
-    """Create RGB-encoded raster tile set based on date_conf and density raster
-    tile sets."""
+    """Create RGB-encoded raster tile set based on date_conf and intensity
+    raster tile sets."""
 
     encoded_co = RasterTileSetSourceCreationOptions(
         pixel_meaning=pixel_meaning,
@@ -305,12 +305,11 @@ async def _merge_density_and_date_conf_multi_band(
         resampling=ResamplingMethod.mode,
         overwrite=False,
         grid=Grid(f"zoom_{zoom_level}"),
-        symbology=Symbology(type=ColorMapType.date_conf_density_multi_band),
         compute_stats=False,
         compute_histogram=False,
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
-        source_uri=[date_conf_uri, density_uri],
+        source_uri=[date_conf_uri, intensity_uri],
         calc="np.ma.array([A, B, C, D], dtype=np.uint16, fill_value=0)",
     )
 
@@ -341,56 +340,12 @@ async def _merge_density_and_date_conf_multi_band(
         f"ZOOM LEVEL {zoom_level} MERGED ASSET CREATED WITH ASSET_ID {asset.asset_id}"
     )
 
-    # cmd = [
-    #     "merge_intensity.sh",
-    #     date_conf_uri,
-    #     density_uri,
-    #     asset_prefix,
-    # ]
-    #
-    # callback = callback_constructor(asset.asset_id)
-    #
-    # rgb_encoding_job = BuildRGBJob(
-    #     dataset=dataset,
-    #     job_name=f"merge_intensity_zoom_{zoom_level}",
-    #     command=cmd,
-    #     environment=JOB_ENV,
-    #     callback=callback,
-    #     parents=[parent.job_name for parent in parents],
-    # )
-    #
-    # rgb_encoding_job = scale_batch_job(rgb_encoding_job, zoom_level)
-    #
-    # _prefix = split_s3_path(asset_prefix)[1].split("/")
-    # prefix = "/".join(_prefix[2:-1]) + "/"
-    # cmd = [
-    #     "run_pixetl_prep.sh",
-    #     "-s",
-    #     asset_prefix,
-    #     "-d",
-    #     dataset,
-    #     "-v",
-    #     version,
-    #     "--prefix",
-    #     prefix,
-    # ]
-    # tiles_geojson_job = PixETLJob(
-    #     dataset=dataset,
-    #     job_name=f"generate_tiles_geojson_{zoom_level}",
-    #     command=cmd,
-    #     environment=JOB_ENV,
-    #     callback=callback,
-    #     parents=[rgb_encoding_job.job_name],
-    #     vcpus=1,
-    #     memory=2500,
-    # )
-
     callback = callback_constructor(asset.asset_id)
     pixetl_job = await create_pixetl_job(
         dataset,
         version,
         encoded_co,
-        job_name=f"merge_year_intensity_zoom_{zoom_level}",
+        job_name=f"merge_intensity_and_date_conf_multi_band_zoom_{zoom_level}",
         callback=callback,
         parents=parents,
     )
@@ -585,7 +540,7 @@ async def _merge_intensity_and_year(
 
 _symbology_constructor: Dict[str, SymbologyFuncType] = {
     ColorMapType.date_conf_intensity: date_conf_intensity_symbology,
-    ColorMapType.date_conf_density_multi_band: date_conf_density_multi_band_symbology,
+    ColorMapType.date_conf_intensity_multi_band: date_conf_intensity_multi_band_symbology,
     ColorMapType.year_intensity: year_intensity_symbology,
     ColorMapType.gradient: colormap_symbology,
     ColorMapType.discrete: colormap_symbology,
