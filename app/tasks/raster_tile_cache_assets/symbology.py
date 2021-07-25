@@ -145,7 +145,7 @@ async def date_conf_intensity_multi_band_symbology(
         zoom_level,
         max_zoom,
         jobs_dict,
-        "np.ma.array([(1*(A>0) + 1*(B>0) + 1*(C>0)) /3 *100])",
+        "np.ma.array([100 * (1*(A>0) + 1*(B>0) + 1*(C>0)) /3]).astype(np.uint16)",
         ResamplingMethod.mode,
         _merge_intensity_and_date_conf_multi_band,
     )
@@ -301,7 +301,7 @@ async def _merge_intensity_and_date_conf_multi_band(
         pixel_meaning=pixel_meaning,
         data_type=DataType.uint16,
         band_count=4,
-        no_data=[0, 0, 0, 0],
+        # no_data=[0, 0, 0, 0],
         resampling=ResamplingMethod.mode,
         overwrite=False,
         grid=Grid(f"zoom_{zoom_level}"),
