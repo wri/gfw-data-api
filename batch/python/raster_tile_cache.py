@@ -66,21 +66,25 @@ def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str
 
 
 def get_input_tiles(prefix: str) -> List[Tuple[str, str]]:
+    bucket, prefix = get_s3_path_parts(prefix)
+
+    tiles: List[Tuple[str, str]] = list()
+
     s3_client = get_s3_client()
 
-    bucket, prefix = get_s3_path_parts(prefix)
-    resp = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    paginator = s3_client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        try:
+            contents = page["Contents"]
+        except KeyError:
+            break
 
-    if resp["KeyCount"] == 0:
-        raise Exception(f"No files found in tile set prefix {prefix}")
-
-    tiles: List[Tuple[str, str]] = []
-    for obj in resp["Contents"]:
-        key = str(obj["Key"])
-        if key.endswith(".tif"):
-            LOGGER.info(f"Found remote TIFF: {key}")
-            tile = (bucket, key)
-            tiles.append(tile)
+        for obj in contents:
+            key = str(obj["Key"])
+            if key.endswith(".tif"):
+                LOGGER.info(f"Found remote TIFF: {key}")
+                tile = (bucket, key)
+                tiles.append(tile)
 
     return tiles
 
@@ -138,11 +142,11 @@ def raster_tile_cache(
     version: str = Option(..., help="Version number."),
     zoom_level: int = Option(..., help="Zoom level."),
     implementation: str = Option(..., help="Implementation name/ pixel meaning."),
-    target_bucket: str = Option(..., help="Target bucket,"),
+    target_bucket: str = Option(..., help="Target bucket."),
     skip_empty_tiles: bool = Option(
         False, "--skip_empty_tiles", help="Do not write empty tiles to tile cache."
     ),
-    tile_set_prefix: str = Argument(..., help="Tile prefix,"),
+    tile_set_prefix: str = Argument(..., help="Tile prefix."),
 ):
     LOGGER.info(f"Raster tile set asset prefix: {tile_set_prefix}")
 
