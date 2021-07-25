@@ -301,7 +301,7 @@ async def _merge_intensity_and_date_conf_multi_band(
         pixel_meaning=pixel_meaning,
         data_type=DataType.uint16,
         band_count=4,
-        # no_data=[0, 0, 0, 0],
+        no_data=[0, 0, 0, 0],
         resampling=ResamplingMethod.mode,
         overwrite=False,
         grid=Grid(f"zoom_{zoom_level}"),
@@ -311,6 +311,7 @@ async def _merge_intensity_and_date_conf_multi_band(
         source_driver=RasterDrivers.geotiff,
         source_uri=[date_conf_uri, intensity_uri],
         calc="np.ma.array([A, B, C, D], dtype=np.uint16, fill_value=0)",
+        union_bands=True,
     )
 
     asset_uri = get_asset_uri(
