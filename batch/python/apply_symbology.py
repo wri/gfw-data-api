@@ -273,7 +273,7 @@ def apply_symbology(
         try:
             with ThreadPoolExecutor(max_workers=NUM_PROCESSES) as executor:
                 future_to_tile = {
-                    executor.submit(create_rgb_tile, *process_args): arg_tuple[0]
+                    executor.submit(create_rgb_tile, *arg_tuple): arg_tuple[0]
                     for arg_tuple in process_args
                 }
                 for future in concurrent.futures.as_completed(future_to_tile):
