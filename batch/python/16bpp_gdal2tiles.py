@@ -2331,29 +2331,6 @@ class GDAL2Tiles(object):
             north, east = min(85.05112878, north), min(180.0, east)
             self.swne = (south, west, north, east)
 
-            # Generate googlemaps.html
-            if (
-                self.options.webviewer in ("all", "google")
-                and self.options.profile == "mercator"
-            ):
-                if not self.options.resume or not os.path.exists(
-                    os.path.join(self.output_folder, "googlemaps.html")
-                ):
-                    with open(
-                        os.path.join(self.output_folder, "googlemaps.html"), "wb"
-                    ) as f:
-                        f.write(self.generate_googlemaps().encode("utf-8"))
-
-            # Generate leaflet.html
-            if self.options.webviewer in ("all", "leaflet"):
-                if not self.options.resume or not os.path.exists(
-                    os.path.join(self.output_folder, "leaflet.html")
-                ):
-                    with open(
-                        os.path.join(self.output_folder, "leaflet.html"), "wb"
-                    ) as f:
-                        f.write(self.generate_leaflet().encode("utf-8"))
-
         elif self.options.profile == "geodetic":
 
             west, south = self.ominx, self.ominy
@@ -2371,73 +2348,6 @@ class GDAL2Tiles(object):
 
         else:
             self.swne = None
-
-        # Generate openlayers.html
-        if self.options.webviewer in ("all", "openlayers"):
-            if not self.options.resume or not os.path.exists(
-                os.path.join(self.output_folder, "openlayers.html")
-            ):
-                with open(
-                    os.path.join(self.output_folder, "openlayers.html"), "wb"
-                ) as f:
-                    f.write(self.generate_openlayers().encode("utf-8"))
-
-        # Generate tilemapresource.xml.
-        if (
-            not self.options.xyz
-            and self.swne is not None
-            and (
-                not self.options.resume
-                or not os.path.exists(
-                    os.path.join(self.output_folder, "tilemapresource.xml")
-                )
-            )
-        ):
-            with open(
-                os.path.join(self.output_folder, "tilemapresource.xml"), "wb"
-            ) as f:
-                f.write(self.generate_tilemapresource().encode("utf-8"))
-
-        # Generate mapml file
-        if (
-            self.options.webviewer in ("all", "mapml")
-            and self.options.xyz
-            and self.options.profile != "raster"
-            and (self.options.profile != "geodetic" or self.options.tmscompatible)
-            and (
-                not self.options.resume
-                or not os.path.exists(os.path.join(self.output_folder, "mapml.mapml"))
-            )
-        ):
-            with open(os.path.join(self.output_folder, "mapml.mapml"), "wb") as f:
-                f.write(self.generate_mapml().encode("utf-8"))
-
-        if self.kml and self.tileswne is not None:
-            # TODO: Maybe problem for not automatically generated tminz
-            # The root KML should contain links to all tiles in the tminz level
-            children = []
-            xmin, ymin, xmax, ymax = self.tminmax[self.tminz]
-            for x in range(xmin, xmax + 1):
-                for y in range(ymin, ymax + 1):
-                    children.append([x, y, self.tminz])
-            # Generate Root KML
-            if self.kml:
-                if not self.options.resume or not os.path.exists(
-                    os.path.join(self.output_folder, "doc.kml")
-                ):
-                    with open(os.path.join(self.output_folder, "doc.kml"), "wb") as f:
-                        f.write(
-                            generate_kml(
-                                None,
-                                None,
-                                None,
-                                self.tileext,
-                                self.tile_size,
-                                self.tileswne,
-                                self.options,
-                                children,
-                            ).encode("utf-8")
-                        )
 
     def generate_base_tiles(self):
         """Generation of the base tiles (the lowest in the pyramid) directly
