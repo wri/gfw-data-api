@@ -1,10 +1,12 @@
 #!/usr/bin/env python
+import concurrent
 import copy
 import json
 import multiprocessing
 import os
 import subprocess as sp
-from concurrent.futures import ProcessPoolExecutor
+import sys
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from logging import getLogger
 from tempfile import TemporaryDirectory
@@ -12,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import boto3
 import rasterio
+from gfw_pixetl.decorators import SubprocessKilledError, processify
 from gfw_pixetl.pixetl_prep import create_geojsons
 from pydantic import BaseModel, Extra, Field, StrictInt
 from typer import Option, run
@@ -125,7 +128,10 @@ def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str
         LOGGER.error(f"Exit code {p.returncode} for command {cmd}")
         LOGGER.error(f"Standard output: {o}")
         LOGGER.error(f"Standard error: {e}")
-        raise GDALError(e)
+        if p.returncode == int(-9):
+            raise SubprocessKilledError()
+        else:
+            raise GDALError(e)
 
     return o, e
 
@@ -155,7 +161,13 @@ def _sort_colormap(
     return ordered_gdal_colormap
 
 
-def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
+@processify
+def create_rgb_tile(
+    source_tile_uri: str,
+    target_prefix: str,
+    symbology_type: ColorMapType,
+    colormap_path: str,
+) -> str:
     """Add symbology to output raster.
 
     Gradient colormap: Use linear interpolation based on provided
@@ -164,14 +176,14 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
     configuration file. If no matching color entry is found, the
     “0,0,0,0” RGBA quadruplet will be used.
     """
-    source_tile_uri, target_prefix, symbology_type, colormap_path = args
-
     tile_id = os.path.splitext(os.path.basename(source_tile_uri))[0]
 
     with TemporaryDirectory() as work_dir:
         local_src_file_path = os.path.join(work_dir, os.path.basename(source_tile_uri))
         s3_client = get_s3_client()
         bucket, source_key = get_s3_path_parts(source_tile_uri)
+
+        LOGGER.info(f"Downloading {source_tile_uri} to {local_src_file_path}")
         s3_client.download_file(bucket, source_key, local_src_file_path)
 
         local_dest_file_path = os.path.join(work_dir, f"{tile_id}_colored.tif")
@@ -201,6 +213,8 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
 
         cmd += [local_src_file_path, colormap_path, local_dest_file_path]
 
+        LOGGER.info(f"Running subcommand {cmd}")
+
         try:
             run_gdal_subcommand(cmd)
         except GDALError:
@@ -212,6 +226,7 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
 
         # Now upload the file to S3
         target_key = os.path.join(target_prefix, os.path.basename(local_src_file_path))
+        LOGGER.info(f"Uploading {local_src_file_path} to {target_key}")
         s3_client.upload_file(local_dest_file_path, bucket, target_key)
 
     return tile_id
@@ -255,11 +270,18 @@ def apply_symbology(
             for tile_uri in tile_uris
         )
 
-        # Cannot use normal pool here since we run sub-processes
-        # https://stackoverflow.com/a/61470465/1410317
-        with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
-            for tile_id in executor.map(create_rgb_tile, process_args):
-                print(f"Processed tile {tile_id}")
+        try:
+            with ThreadPoolExecutor(max_workers=NUM_PROCESSES) as executor:
+                future_to_tile = {
+                    executor.submit(create_rgb_tile, *process_args): arg_tuple[0]
+                    for arg_tuple in process_args
+                }
+                for future in concurrent.futures.as_completed(future_to_tile):
+                    print(f"Finished processing tile {future.result()}")
+
+        except SubprocessKilledError:
+            print("A subprocess was killed! Exiting with code 137")
+            sys.exit(137)
 
     # Now run pixetl_prep.create_geojsons to generate a tiles.geojson and
     # extent.geojson in the target prefix. But that code appends /geotiff
@@ -267,6 +289,7 @@ def apply_symbology(
     create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1].replace(
         "/geotiff", ""
     )
+    LOGGER.info(f"Uploading tiles.geojson to {create_geojsons_prefix}")
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
 
 

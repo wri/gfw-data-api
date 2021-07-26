@@ -1,13 +1,16 @@
 #!/usr/bin/env python
-
+import concurrent
 import json
 import os
 import subprocess
-from multiprocessing import Pool, cpu_count
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from multiprocessing import cpu_count
 from tempfile import TemporaryDirectory
 
 import boto3
 import click
+from gfw_pixetl.decorators import SubprocessKilledError, processify
 from logger import get_logger
 
 AWS_REGION = os.environ.get("AWS_REGION")
@@ -76,11 +79,21 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
     logger.info(f"Running build_rgb in {NUM_PROCESSES} parallel processes")
 
     # Process in parallel
-    with Pool(processes=NUM_PROCESSES) as pool:
-        pool.starmap(process_rasters, tiles)
+    try:
+        with ThreadPoolExecutor(max_workers=NUM_PROCESSES) as executor:
+            future_to_tile = {
+                executor.submit(process_rasters, *tile): tile for tile in tiles
+            }
+            for future in concurrent.futures.as_completed(future_to_tile):
+                print(f"Finished processing tile {future.result()}")
+
+    except SubprocessKilledError:
+        print("A subprocess was killed! Exiting with code 137")
+        sys.exit(137)
 
 
-def process_rasters(date_conf_uri, intensity_uri, output_uri):
+@processify
+def process_rasters(date_conf_uri: str, intensity_uri: str, output_uri: str):
     s3_client = get_s3_client()
 
     # Download both files into a temporary directory
@@ -110,13 +123,18 @@ def process_rasters(date_conf_uri, intensity_uri, output_uri):
         )
         logger.info(proc.stdout)
         logger.error(proc.stderr)
-        proc.check_returncode()
+
+        if proc.returncode == int(-9):
+            raise SubprocessKilledError()
+        else:
+            proc.check_returncode()
 
         # Upload resulting output file to S3
         bucket, key = get_s3_path_parts(output_uri)
 
         logger.info(f"Uploading {local_output_path} to {output_uri}...")
         s3_client.upload_file(local_output_path, bucket, key)
+        return os.path.basename(key)
 
 
 if __name__ == "__main__":
