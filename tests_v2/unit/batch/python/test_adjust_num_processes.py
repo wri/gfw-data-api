@@ -7,17 +7,9 @@ job_descriptions = [
     {
         "jobId": "8e76ecf5-99a0-43a1-9b97-8e6616b90983",
         "attempts": [
-            {
-                "container": {
-                    "reason": "OutOfMemoryError: Container killed due to memory usage"
-                }
-            },
-            {"container": {"reason": "Something else"}},
-            {
-                "container": {
-                    "reason": "OutOfMemoryError: Container killed due to memory usage"
-                }
-            },
+            {"container": {"exitCode": 137}},
+            {"container": {"exitCode": 1}},
+            {"container": {"exitCode": 137}},
         ],
     }
 ]
