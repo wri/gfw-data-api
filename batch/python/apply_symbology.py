@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-import concurrent
+
 import copy
 import json
 import multiprocessing
 import os
 import subprocess as sp
 import sys
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from enum import Enum
 from logging import getLogger
 from tempfile import TemporaryDirectory
@@ -271,16 +271,16 @@ def apply_symbology(
         )
 
         try:
-            with ThreadPoolExecutor(max_workers=NUM_PROCESSES) as executor:
+            with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
                 future_to_tile = {
                     executor.submit(create_rgb_tile, *arg_tuple): arg_tuple[0]
                     for arg_tuple in process_args
                 }
-                for future in concurrent.futures.as_completed(future_to_tile):
-                    print(f"Finished processing tile {future.result()}")
+                for future in as_completed(future_to_tile):
+                    LOGGER.info(f"Finished processing tile {future.result()}")
 
         except SubprocessKilledError:
-            print("A subprocess was killed! Exiting with code 137")
+            LOGGER.error("A subprocess was killed! Exiting with code 137")
             sys.exit(137)
 
     # Now run pixetl_prep.create_geojsons to generate a tiles.geojson and

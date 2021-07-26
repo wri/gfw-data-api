@@ -32,9 +32,9 @@ def processify(func):
 
         q.put((ret, error))
 
-    # register original function with different name
+    # register the original function with a different name
     # in sys.modules so it is picklable
-    process_func.__name__ = func.__name__ + "processify_func"
+    process_func.__name__ = func.__name__ + "_processify_func"
     setattr(sys.modules[__name__], process_func.__name__, process_func)
 
     @wraps(func)

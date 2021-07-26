@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
-import concurrent
 import math
 import multiprocessing
 import os
 import subprocess as sp
 import sys
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from tempfile import TemporaryDirectory
 from typing import Dict, List, Optional, Tuple
 
@@ -181,16 +180,16 @@ def raster_tile_cache(
     )
 
     try:
-        with ThreadPoolExecutor(max_workers=NUM_PROCESSES) as executor:
+        with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
             future_to_tile = {
                 executor.submit(create_tiles, *arg_tuple): arg_tuple[0]
                 for arg_tuple in args
             }
-            for future in concurrent.futures.as_completed(future_to_tile):
-                print(f"Finished processing {future.result()}")
+            for future in as_completed(future_to_tile):
+                LOGGER.info(f"Finished processing {future.result()}")
 
     except SubprocessKilledError:
-        print("A subprocess was killed! Exiting with code 137")
+        LOGGER.error("A subprocess was killed! Exiting with code 137")
         sys.exit(137)
 
 

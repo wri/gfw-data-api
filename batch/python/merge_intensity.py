@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-import concurrent
 import json
 import os
 import subprocess
 import sys
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import cpu_count
 from tempfile import TemporaryDirectory
 
@@ -80,15 +79,15 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
 
     # Process in parallel
     try:
-        with ThreadPoolExecutor(max_workers=NUM_PROCESSES) as executor:
+        with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
             future_to_tile = {
                 executor.submit(process_rasters, *tile): tile for tile in tiles
             }
-            for future in concurrent.futures.as_completed(future_to_tile):
-                print(f"Finished processing tile {future.result()}")
+            for future in as_completed(future_to_tile):
+                logger.info(f"Finished processing tile {future.result()}")
 
     except SubprocessKilledError:
-        print("A subprocess was killed! Exiting with code 137")
+        logger.error("A subprocess was killed! Exiting with code 137")
         sys.exit(137)
 
 
