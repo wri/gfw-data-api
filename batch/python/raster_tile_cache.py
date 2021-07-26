@@ -11,10 +11,10 @@ from tempfile import TemporaryDirectory
 from typing import Dict, List, Optional, Tuple
 
 import boto3
-from gfw_pixetl.decorators import SubprocessKilledError, processify
 from logger import get_logger
 from tileputty.upload_tiles import upload_tiles
 from typer import Argument, Option, run
+from utils import SubprocessKilledError, processify
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
