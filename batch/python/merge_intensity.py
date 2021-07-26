@@ -10,8 +10,8 @@ from tempfile import TemporaryDirectory
 
 import boto3
 import click
-from gfw_pixetl.decorators import SubprocessKilledError, processify
 from logger import get_logger
+from utils import SubprocessKilledError, processify
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
