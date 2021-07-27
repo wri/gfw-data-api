@@ -7,6 +7,7 @@ class Version(Base):
     version = db.Column(db.String, primary_key=True)
     is_latest = db.Column(db.Boolean, nullable=False, default=False)
     is_mutable = db.Column(db.Boolean, nullable=False, default=False)
+    is_downloadable = db.Column(db.Boolean, nullable=False, default=True)
     # source_type = db.Column(db.String, nullable=False)
     # source_uri = db.Column(db.ARRAY(db.String), default=list())
     status = db.Column(db.String, nullable=False, default="pending")

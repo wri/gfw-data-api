@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import math
 import multiprocessing
 import os
@@ -14,7 +15,11 @@ from typer import Argument, Option, run
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
-CORES = int(os.environ.get("CORES", multiprocessing.cpu_count()))
+NUM_PROCESSES = int(
+    os.environ.get(
+        "NUM_PROCESSES", os.environ.get("CORES", multiprocessing.cpu_count())
+    )
+)
 
 LOGGER = get_logger(__name__)
 
@@ -61,21 +66,25 @@ def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str
 
 
 def get_input_tiles(prefix: str) -> List[Tuple[str, str]]:
+    bucket, prefix = get_s3_path_parts(prefix)
+
+    tiles: List[Tuple[str, str]] = list()
+
     s3_client = get_s3_client()
 
-    bucket, prefix = get_s3_path_parts(prefix)
-    resp = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    paginator = s3_client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        try:
+            contents = page["Contents"]
+        except KeyError:
+            break
 
-    if resp["KeyCount"] == 0:
-        raise Exception(f"No files found in tile set prefix {prefix}")
-
-    tiles: List[Tuple[str, str]] = []
-    for obj in resp["Contents"]:
-        key = str(obj["Key"])
-        if key.endswith(".tif"):
-            LOGGER.info(f"Found remote TIFF: {key}")
-            tile = (bucket, key)
-            tiles.append(tile)
+        for obj in contents:
+            key = str(obj["Key"])
+            if key.endswith(".tif"):
+                LOGGER.info(f"Found remote TIFF: {key}")
+                tile = (bucket, key)
+                tiles.append(tile)
 
     return tiles
 
@@ -90,7 +99,7 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int
         implementation,
         zoom_level,
         skip_empty_tiles,
-        cores,
+        num_processes,
     ) = args
 
     with TemporaryDirectory() as download_dir, TemporaryDirectory() as tiles_dir:
@@ -104,7 +113,7 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int
             "--s_srs",
             "EPSG:3857",
             "--resampling=near",
-            f"--processes={cores}",
+            f"--processes={num_processes}",
             "--xyz",
         ]
 
@@ -120,7 +129,7 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int
             tiles_dir,
             dataset,
             version,
-            cores=cores,
+            cores=num_processes,
             bucket=target_bucket,
             implementation=implementation,
         )
@@ -133,11 +142,11 @@ def raster_tile_cache(
     version: str = Option(..., help="Version number."),
     zoom_level: int = Option(..., help="Zoom level."),
     implementation: str = Option(..., help="Implementation name/ pixel meaning."),
-    target_bucket: str = Option(..., help="Target bucket,"),
+    target_bucket: str = Option(..., help="Target bucket."),
     skip_empty_tiles: bool = Option(
         False, "--skip_empty_tiles", help="Do not write empty tiles to tile cache."
     ),
-    tile_set_prefix: str = Argument(..., help="Tile prefix,"),
+    tile_set_prefix: str = Argument(..., help="Tile prefix."),
 ):
     LOGGER.info(f"Raster tile set asset prefix: {tile_set_prefix}")
 
@@ -148,7 +157,7 @@ def raster_tile_cache(
         LOGGER.info("No input files! I guess we're good then?")
         return
 
-    sub_processes = max(math.floor(CORES / len(tiles)), 1)
+    sub_processes = max(math.floor(NUM_PROCESSES / len(tiles)), 1)
 
     args = [
         (
@@ -166,7 +175,7 @@ def raster_tile_cache(
 
     # Cannot use normal pool here, since we run sub-processes
     # https://stackoverflow.com/a/61470465/1410317
-    with ProcessPoolExecutor(max_workers=CORES) as executor:
+    with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
         for tile in executor.map(create_tiles, args):
             print(f"Processed tile {os.path.basename(tile[1])}")
 

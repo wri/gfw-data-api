@@ -23,10 +23,17 @@ async def set_db_mode(request: Request, call_next):
 
 
 async def redirect_latest(request: Request, call_next):
-    """Redirect all GET requests using latest version to actual version
-    number."""
+    """Redirect all GET requests using latest version to actual version number.
 
-    if request.method == "GET" and "latest" in request.url.path:
+    Redirect only POST requests to for query and download endpoints, as
+    other POST endpoints will require to list version number explicitly.
+    """
+
+    if (request.method == "GET" and "latest" in request.url.path) or (
+        request.method == "POST"
+        and "latest" in request.url.path
+        and ("query" in request.url.path or "download" in request.url.path)
+    ):
         try:
             path_items = request.url.path.split("/")
 
@@ -39,7 +46,9 @@ async def redirect_latest(request: Request, call_next):
                 raise BadRequestError("Invalid URI")
             path_items[i] = await get_latest_version(path_items[i - 1])
             url = "/".join(path_items)
-            return RedirectResponse(url=f"{url}?{request.query_params}")
+            if request.query_params:
+                url = f"{url}?{request.query_params}"
+            return RedirectResponse(url=url)
 
         except BadRequestError as e:
             return ORJSONResponse(

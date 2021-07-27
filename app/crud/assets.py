@@ -6,10 +6,10 @@ from fastapi.encoders import jsonable_encoder
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
-from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.creation_options import CreationOptions, creation_option_factory
-from . import datasets, update_all_metadata, update_data, update_metadata, versions
+from . import update_data, versions
+from .metadata import update_all_metadata, update_metadata
 
 
 async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
@@ -24,10 +24,7 @@ async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
             f"No assets for version with name {dataset}.{version} found"
         )
 
-    d: ORMDataset = await datasets.get_dataset(dataset)
     v: ORMVersion = await versions.get_version(dataset, version)
-
-    v = update_metadata(v, d)
 
     return update_all_metadata(rows, v)
 
@@ -76,9 +73,7 @@ async def get_asset(asset_id: UUID) -> ORMAsset:
     if row is None:
         raise RecordNotFoundError(f"Could not find requested asset {asset_id}")
 
-    dataset: ORMDataset = await datasets.get_dataset(row.dataset)
     version: ORMVersion = await versions.get_version(row.dataset, row.version)
-    version = update_metadata(version, dataset)
 
     return update_metadata(row, version)
 
@@ -95,16 +90,21 @@ async def get_default_asset(dataset: str, version: str) -> ORMAsset:
             f"Could not find default asset for {dataset}.{version}"
         )
 
-    d: ORMDataset = await datasets.get_dataset(row.dataset)
     v: ORMVersion = await versions.get_version(row.dataset, row.version)
-    v = update_metadata(v, d)
 
     return update_metadata(row, v)
 
 
 async def create_asset(dataset, version, **data) -> ORMAsset:
+    v: ORMVersion = await versions.get_version(dataset, version)
+
+    # default to version.is_downloadable if not set
+    if data.get("is_downloadable") is None:
+        data["is_downloadable"] = v.is_downloadable
+
     data = _validate_creation_options(**data)
     jsonable_data = jsonable_encoder(data)
+
     try:
         new_asset: ORMAsset = await ORMAsset.create(
             dataset=dataset, version=version, **jsonable_data
@@ -114,10 +114,6 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
             f"Cannot create asset of type {data['asset_type']}. "
             f"Asset uri must be unique. An asset with uri {data['asset_uri']} already exists"
         )
-
-    d: ORMDataset = await datasets.get_dataset(dataset)
-    v: ORMVersion = await versions.get_version(dataset, version)
-    v = update_metadata(v, d)
 
     return update_metadata(new_asset, v)
 
@@ -129,9 +125,7 @@ async def update_asset(asset_id: UUID, **data) -> ORMAsset:
     row: ORMAsset = await get_asset(asset_id)
     row = await update_data(row, jsonable_data)
 
-    dataset: ORMDataset = await datasets.get_dataset(row.dataset)
     version: ORMVersion = await versions.get_version(row.dataset, row.version)
-    version = update_metadata(version, dataset)
 
     return update_metadata(row, version)
 
@@ -140,9 +134,7 @@ async def delete_asset(asset_id: UUID) -> ORMAsset:
     row: ORMAsset = await get_asset(asset_id)
     await ORMAsset.delete.where(ORMAsset.asset_id == asset_id).gino.status()
 
-    dataset: ORMDataset = await datasets.get_dataset(row.dataset)
     version: ORMVersion = await versions.get_version(row.dataset, row.version)
-    version = update_metadata(version, dataset)
 
     return update_metadata(row, version)
 
@@ -150,9 +142,7 @@ async def delete_asset(asset_id: UUID) -> ORMAsset:
 async def _update_all_asset_metadata(assets) -> List[ORMAsset]:
     new_rows: List[ORMAsset] = list()
     for row in assets:
-        dataset: ORMDataset = await datasets.get_dataset(row.dataset)
         version: ORMVersion = await versions.get_version(row.dataset, row.version)
-        version = update_metadata(version, dataset)
         new_row = update_metadata(row, version)
         new_rows.append(new_row)
 

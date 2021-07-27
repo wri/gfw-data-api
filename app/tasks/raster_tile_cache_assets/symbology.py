@@ -19,6 +19,7 @@ from app.tasks import callback_constructor
 from app.tasks.raster_tile_cache_assets.utils import (
     get_zoom_source_uri,
     reproject_to_web_mercator,
+    scale_batch_job,
     tile_uri_to_tiles_geojson,
 )
 from app.tasks.raster_tile_set_assets.utils import (
@@ -111,6 +112,9 @@ async def colormap_symbology(
         callback_constructor(symbology_asset_record.asset_id),
         parents=parents,
     )
+
+    job = scale_batch_job(job, zoom_level)
+
     return [job], new_asset_uri
 
 
@@ -323,6 +327,8 @@ async def _merge_intensity_and_date_conf(
         parents=[parent.job_name for parent in parents],
     )
 
+    rgb_encoding_job = scale_batch_job(rgb_encoding_job, zoom_level)
+
     _prefix = split_s3_path(asset_prefix)[1].split("/")
     prefix = "/".join(_prefix[2:-1]) + "/"
     cmd = [
@@ -417,6 +423,8 @@ async def _merge_intensity_and_year(
         callback=callback,
         parents=parents,
     )
+
+    pixetl_job = scale_batch_job(pixetl_job, zoom_level)
 
     return (
         [pixetl_job],

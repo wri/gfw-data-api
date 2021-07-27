@@ -4,7 +4,7 @@ import re
 from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple, cast
 from urllib.parse import unquote
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import httpx
 from asyncpg import (
@@ -18,8 +18,6 @@ from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
-
-# from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
@@ -27,9 +25,8 @@ from pglast.parser import ParseError
 from pglast.printer import RawStream
 from sqlalchemy.sql import and_
 
-from ...application import db
-
 # from ...authentication.api_keys import get_api_key
+from ...application import db
 from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
@@ -65,7 +62,7 @@ from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
 from ...models.orm.versions import Version as VersionORM
-from ...models.pydantic.geostore import Geometry
+from ...models.pydantic.geostore import Geometry, GeostoreCommon
 from ...models.pydantic.metadata import RasterTable, RasterTableRow
 from ...models.pydantic.query import CsvQueryRequestIn, QueryRequestIn
 from ...models.pydantic.raster_analysis import (
@@ -76,9 +73,9 @@ from ...models.pydantic.raster_analysis import (
 )
 from ...models.pydantic.responses import Response
 from ...responses import CSVStreamingResponse, ORJSONLiteResponse
-from ...settings.globals import RASTER_ANALYSIS_LAMBDA_NAME
+from ...settings.globals import GEOSTORE_SIZE_LIMIT_OTF, RASTER_ANALYSIS_LAMBDA_NAME
 from ...utils.aws import invoke_lambda
-from ...utils.geostore import get_geostore_geometry
+from ...utils.geostore import get_geostore
 from .. import dataset_version_dependency
 
 router = APIRouter()
@@ -92,6 +89,8 @@ router = APIRouter()
     deprecated=True,
 )
 async def query_dataset(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: FastApiRequest,
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -105,9 +104,11 @@ async def query_dataset(
     entire feature geometry, including areas outside the geostore
     boundaries.
 
-    This path is deprecated and will reroute to /query/json.
+    This path is deprecated and will permanently redirect to /query/json.
     """
-    return RedirectResponse(url=f"{request.url.path}/json?{request.query_params}")
+    dataset, version = dataset_version
+
+    return f"/dataset/{dataset}/{version}/query/json?{request.query_params}"
 
 
 @router.get(
@@ -140,15 +141,15 @@ async def query_dataset_json(
 
     dataset, version = dataset_version
     if geostore_id:
-        geometry: Optional[Geometry] = await get_geostore_geometry(
+        geostore: Optional[GeostoreCommon] = await get_geostore(
             geostore_id, geostore_origin
         )
     else:
-        geometry = None
+        geostore = None
 
     response.headers["Cache-Control"] = "max-age=7200"  # 2h
     json_data: List[Dict[str, Any]] = await _query_dataset_json(
-        dataset, version, sql, geometry
+        dataset, version, sql, geostore
     )
     return Response(data=json_data)
 
@@ -185,36 +186,40 @@ async def query_dataset_csv(
 
     dataset, version = dataset_version
     if geostore_id:
-        geometry: Optional[Geometry] = await get_geostore_geometry(
+        geostore: Optional[GeostoreCommon] = await get_geostore(
             geostore_id, geostore_origin
         )
     else:
-        geometry = None
+        geostore = None
 
     response.headers["Cache-Control"] = "max-age=7200"  # 2h
     csv_data: StringIO = await _query_dataset_csv(
-        dataset, version, sql, geometry, delimiter=delimiter
+        dataset, version, sql, geostore, delimiter=delimiter
     )
     return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
 
 
 @router.post(
     "/{dataset}/{version}/query",
-    response_class=FastApiResponse,
+    response_class=RedirectResponse,
+    status_code=308,
     tags=["Query"],
     deprecated=True,
 )
 async def query_dataset_post(
-    request: FastApiRequest,
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    request: QueryRequestIn,
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented).
 
-    This path is deprecated and will reroute to /query/json.
+    This path is deprecated and will permanently redirect to
+    /query/json.
     """
-    # RedirectResponse doesn't work for POST requests, so just manually construct the redirect
-    content = await request.body()
-    return FastApiResponse(content, url=f"{request.url.path}/json", status_code=308)
+    dataset, version = dataset_version
+
+    return f"/dataset/{dataset}/{version}/query/json"
 
 
 @router.post(
@@ -234,8 +239,16 @@ async def query_dataset_json_post(
 
     dataset, version = dataset_version
 
+    # create geostore with unknowns as blank
+    if request.geometry:
+        geostore: Optional[GeostoreCommon] = GeostoreCommon(
+            geojson=request.geometry, geostore_id=uuid4(), area__ha=0, bbox=[0, 0, 0, 0]
+        )
+    else:
+        geostore = None
+
     json_data: List[Dict[str, Any]] = await _query_dataset_json(
-        dataset, version, request.sql, request.geometry
+        dataset, version, request.sql, geostore
     )
     return ORJSONLiteResponse(Response(data=json_data).dict())
 
@@ -256,8 +269,16 @@ async def query_dataset_csv_post(
 
     dataset, version = dataset_version
 
+    # create geostore with unknowns as blank
+    if request.geometry:
+        geostore: Optional[GeostoreCommon] = GeostoreCommon(
+            geojson=request.geometry, geostore_id=uuid4(), area__ha=0, bbox=[0, 0, 0, 0]
+        )
+    else:
+        geostore = None
+
     csv_data: StringIO = await _query_dataset_csv(
-        dataset, version, request.sql, request.geometry, delimiter=request.delimiter
+        dataset, version, request.sql, geostore, delimiter=request.delimiter
     )
     return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
 
@@ -266,16 +287,17 @@ async def _query_dataset_json(
     dataset: str,
     version: str,
     sql: str,
-    geometry: Optional[Geometry],
+    geostore: Optional[GeostoreCommon],
 ) -> List[Dict[str, Any]]:
     # Make sure we can query the dataset
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
-    query_type = _get_query_type(default_asset, geometry)
+    query_type = _get_query_type(default_asset, geostore)
     if query_type == QueryType.table:
+        geometry = geostore.geojson if geostore else None
         return await _query_table(dataset, version, sql, geometry)
     elif query_type == QueryType.raster:
-        geometry = cast(Geometry, geometry)
-        results = await _query_raster(dataset, default_asset, sql, geometry)
+        geostore = cast(GeostoreCommon, geostore)
+        results = await _query_raster(dataset, default_asset, sql, geostore)
         return results["data"]
     else:
         raise HTTPException(
@@ -288,19 +310,20 @@ async def _query_dataset_csv(
     dataset: str,
     version: str,
     sql: str,
-    geometry: Optional[Geometry],
+    geostore: Optional[GeostoreCommon],
     delimiter: Delimiters = Delimiters.comma,
 ) -> StringIO:
     # Make sure we can query the dataset
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
-    query_type = _get_query_type(default_asset, geometry)
+    query_type = _get_query_type(default_asset, geostore)
     if query_type == QueryType.table:
+        geometry = geostore.geojson if geostore else None
         response = await _query_table(dataset, version, sql, geometry)
         return _orm_to_csv(response, delimiter=delimiter)
     elif query_type == QueryType.raster:
-        geometry = cast(Geometry, geometry)
+        geostore = cast(GeostoreCommon, geostore)
         results = await _query_raster(
-            dataset, default_asset, sql, geometry, QueryFormat.csv, delimiter
+            dataset, default_asset, sql, geostore, QueryFormat.csv, delimiter
         )
         return StringIO(results["data"])
     else:
@@ -310,14 +333,14 @@ async def _query_dataset_csv(
         )
 
 
-def _get_query_type(default_asset: AssetORM, geometry: Optional[Geometry]):
+def _get_query_type(default_asset: AssetORM, geostore: Optional[GeostoreCommon]):
     if default_asset.asset_type in [
         AssetType.geo_database_table,
         AssetType.database_table,
     ]:
         return QueryType.table
     elif default_asset.asset_type == AssetType.raster_tile_set:
-        if not geometry:
+        if not geostore:
             raise HTTPException(
                 status_code=422, detail="Raster tile set queries require a geometry."
             )
@@ -467,8 +490,12 @@ def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
         for fn in function_names:
             function_name = fn["String"]["str"]
 
-            # block functions which start with `pg_` or `_`
-            if function_name[:3] == "pg_" or function_name[:1] == "_":
+            # block functions which start with `pg_`, `PostGIS` or `_`
+            if (
+                function_name[:3].lower() == "pg_"
+                or function_name[:1].lower() == "_"
+                or function_name[:7].lower() == "postgis"
+            ):
                 raise HTTPException(
                     status_code=400,
                     detail="Use of admin, system or private functions is not allowed.",
@@ -494,6 +521,7 @@ def _no_forbidden_value_functions(parsed: List[Dict[str, Any]]) -> None:
 
 def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Return all functions in an AST."""
+
     # loop through statement recursively and yield all functions
     def walk_dict(d):
         for k, v in d.items():
@@ -535,10 +563,16 @@ async def _query_raster(
     dataset: str,
     asset: AssetORM,
     sql: str,
-    geometry: Geometry,
+    geostore: GeostoreCommon,
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
 ) -> Dict[str, Any]:
+    if geostore.area__ha > GEOSTORE_SIZE_LIMIT_OTF:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Geostore area exceeds limit of {GEOSTORE_SIZE_LIMIT_OTF} ha for raster analysis.",
+        )
+
     # use default data type to get default raster layer for dataset
     default_type = asset.creation_options["pixel_meaning"]
     default_layer = (
@@ -546,8 +580,9 @@ async def _query_raster(
         if default_type == "is"
         else f"{dataset}__{default_type}"
     )
+
     sql = re.sub("from \w+", f"from {default_layer}", sql)
-    return await _query_raster_lambda(geometry, sql, format, delimiter)
+    return await _query_raster_lambda(geostore, sql, format, delimiter)
 
 
 async def _query_raster_lambda(
@@ -697,7 +732,7 @@ def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
         DerivedLayer(
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__confidence"),
-            calc="floor(A / 10000)",
+            calc="floor(A / 10000).astype(uint8)",
             raster_table=conf_encoding,
         ),
     ]

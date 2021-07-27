@@ -1,14 +1,14 @@
 import json
 from typing import List
+from unittest.mock import patch
 from uuid import UUID
 
 import httpx
 import pytest
-from mock import patch
 
 from app.application import ContextEngine, db
 from app.models.orm.geostore import Geostore
-from app.models.pydantic.geostore import Geometry
+from app.models.pydantic.geostore import Geometry, GeostoreCommon
 
 from .. import BUCKET, GEOJSON_NAME, GEOJSON_PATH, GEOJSON_PATH2, PORT, SHP_NAME
 from ..utils import create_default_asset
@@ -75,7 +75,7 @@ async def test_vector_source_asset(batch_client, async_client):
             rows: List[Geostore] = await Geostore.query.gino.all()
 
         assert len(rows) == 1 + i
-        assert rows[0].gfw_geostore_id == UUID("23866dd0-9b1a-d742-a7e3-21dd255481dd")
+        assert rows[0].gfw_geostore_id == UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
         await check_dynamic_vector_tile_cache_status(dataset, version)
 
@@ -91,9 +91,15 @@ async def test_vector_source_asset(batch_client, async_client):
         with open(GEOJSON_PATH, "r") as geojson:
             raw_geom = json.load(geojson)["features"][0]["geometry"]
             geom = Geometry(type=raw_geom["type"], coordinates=raw_geom["coordinates"])
+            geostore = GeostoreCommon(
+                geojson=geom,
+                geostore_id="17076d5ea9f214a5bdb68cc40433addb",
+                area__ha=214324,
+                bbox=[0, 0, 10, 10],
+            )
             with patch(
-                "app.utils.rw_api.get_geostore_geometry",
-                return_value=geom,
+                "app.utils.rw_api.get_geostore",
+                return_value=geostore,
             ):
                 response = await async_client.get(
                     f"/dataset/{dataset}/{version}/query?sql=SELECT count(*) FROM mytable&geostore_id=17076d5ea9f214a5bdb68cc40433addb&geostore_origin=rw"
@@ -106,9 +112,15 @@ async def test_vector_source_asset(batch_client, async_client):
         with open(GEOJSON_PATH2, "r") as geojson:
             raw_geom = json.load(geojson)["features"][0]["geometry"]
             geom = Geometry(type=raw_geom["type"], coordinates=raw_geom["coordinates"])
+            geostore = GeostoreCommon(
+                geojson=geom,
+                geostore_id="17076d5ea9f214a5bdb68cc40433addb",
+                area__ha=214324,
+                bbox=[0, 0, 10, 10],
+            )
             with patch(
-                "app.utils.rw_api.get_geostore_geometry",
-                return_value=geom,
+                "app.utils.rw_api.get_geostore",
+                return_value=geostore,
             ):
                 response = await async_client.get(
                     f"/dataset/{dataset}/{version}/query?sql=SELECT count(*) FROM mytable&geostore_id=17076d5ea9f214a5bdb68cc40433addb&geostore_origin=rw"

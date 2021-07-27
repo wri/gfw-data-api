@@ -1,11 +1,14 @@
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
-from asyncpg import ForeignKeyViolationError, UniqueViolationError
+from asyncpg import UniqueViolationError
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
+from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
-from . import datasets, update_all_metadata, update_data, update_metadata
+from ..utils.generators import list_to_async_generator
+from . import datasets, update_data
+from .metadata import update_all_metadata, update_metadata
 
 
 async def get_versions(dataset: str) -> List[ORMVersion]:
@@ -56,6 +59,19 @@ async def get_latest_version(dataset) -> str:
 
 async def create_version(dataset: str, version: str, **data) -> ORMVersion:
     """Create new version record if version does not yet exist."""
+    d: ORMDataset = await datasets.get_dataset(dataset)
+    if d is None:
+        raise RecordNotFoundError(
+            f"Cannot create version. Dataset with name {dataset} does not exist."
+        )
+
+    # default to dataset.is_downloadable if not set
+    if data.get("is_downloadable") is None:
+        data["is_downloadable"] = d.is_downloadable
+
+    if data.get("is_latest"):
+        await _reset_is_latest(dataset, version)
+
     try:
         new_version: ORMVersion = await ORMVersion.create(
             dataset=dataset, version=version, **data
@@ -64,11 +80,6 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
         raise RecordAlreadyExistsError(
             f"Version with name {dataset}.{version} already exists."
         )
-    except ForeignKeyViolationError:
-        raise RecordNotFoundError(
-            f"Cannot create version. Dataset with name {dataset} does not exist."
-        )
-    d: ORMDataset = await datasets.get_dataset(dataset)
 
     return update_metadata(new_version, d)
 
@@ -77,6 +88,11 @@ async def update_version(dataset: str, version: str, **data) -> ORMVersion:
     """Update fields of version."""
     row: ORMVersion = await get_version(dataset, version)
     row = await update_data(row, data)
+
+    await _update_is_downloadable(dataset, version, data)
+
+    if data.get("is_latest"):
+        await _reset_is_latest(dataset, version)
 
     d: ORMDataset = await datasets.get_dataset(dataset)
 
@@ -93,3 +109,31 @@ async def delete_version(dataset: str, version: str) -> ORMVersion:
     d: ORMDataset = await datasets.get_dataset(dataset)
 
     return update_metadata(row, d)
+
+
+async def _update_is_downloadable(
+    dataset: str, version: str, data: Dict[str, Any]
+) -> None:
+    """Populate is_downloadable attribute to all downstream assets.
+
+    Using gino loader instead of own crud methods to avoid circular
+    imports.
+    """
+    if data.get("is_downloadable") is not None:
+
+        # I tried using gino.iterate() instead of creating a generator
+        # however this somehow throw an error: No Connection in context, please provide one.
+        assets = await ORMAsset.query.where(
+            ORMAsset.dataset == dataset and ORMAsset.version == version
+        ).gino.all()
+        asset_gen = list_to_async_generator(assets)
+        async for asset in asset_gen:
+            await asset.update(is_downloadable=data.get("is_downloadable")).apply()
+
+
+async def _reset_is_latest(dataset: str, version: str) -> None:
+    versions = await get_versions(dataset)
+    version_gen = list_to_async_generator(versions)
+    async for version_orm in version_gen:
+        if version_orm.version != version:
+            await update_version(dataset, version_orm.version, is_latest=False)

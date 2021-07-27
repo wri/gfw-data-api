@@ -5,7 +5,7 @@ from uuid import UUID
 import pytest
 from httpx import AsyncClient
 
-from tests_v2.unit.routes.utils import assert_is_datetime, assert_jsend
+from tests_v2.unit.app.routes.utils import assert_is_datetime, assert_jsend
 
 TEST_DATA = [
     (

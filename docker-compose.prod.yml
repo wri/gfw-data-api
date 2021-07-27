@@ -45,7 +45,7 @@ services:
 
   database:
     container_name: gfw-data-api-database
-    image: postgis/postgis:11-3.0-alpine
+    image: postgis/postgis:12-2.5-alpine
     restart: on-failure
     ports:
       - 54320:5432

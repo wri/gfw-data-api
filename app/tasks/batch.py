@@ -132,7 +132,14 @@ def submit_batch_job(
         },
         "retryStrategy": {
             "attempts": job.attempts,
-            "evaluateOnExit": [{"onStatusReason": "Host EC2*", "action": "RETRY"}],
+            "evaluateOnExit": [
+                # Retry when our instance gets recalled
+                {"onStatusReason": "Host EC2*", "action": "RETRY"},
+                # Retry when we run out of memory (report_status.sh will reduce NUM_PROCESSES)
+                {"onReason": "OutOfMemoryError*", "action": "RETRY"},
+                # Otherwise exit
+                {"onReason": "*", "action": "EXIT"},
+            ],
         },
         "timeout": {"attemptDurationSeconds": job.attempt_duration_seconds},
         "tags": {"Job": "Data-API Batch Job", "Dataset": job.dataset},

@@ -66,7 +66,7 @@ async def timeout_error_handler(
 async def httpexception_error_handler(
     request: Request, exc: HTTPException
 ) -> ORJSONResponse:
-    """Use JSEND protocol for HTTP execptions."""
+    """Use JSEND protocol for HTTP exceptions."""
     return http_error_handler(exc)
 
 

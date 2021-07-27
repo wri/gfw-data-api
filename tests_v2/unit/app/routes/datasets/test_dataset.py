@@ -5,7 +5,7 @@ from httpx import AsyncClient
 
 from app.models.pydantic.datasets import DatasetResponse
 from app.models.pydantic.metadata import DatasetMetadata
-from tests_v2.unit.routes.utils import assert_jsend
+from tests_v2.unit.app.routes.utils import assert_jsend
 
 
 @pytest.mark.asyncio
