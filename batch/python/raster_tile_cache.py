@@ -5,15 +5,16 @@ import multiprocessing
 import os
 import subprocess as sp
 import sys
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from tempfile import TemporaryDirectory
 from typing import Dict, List, Optional, Tuple
 
 import boto3
+from errors import GDALError, SubprocessKilledError
 from logger import get_logger
 from tileputty.upload_tiles import upload_tiles
 from typer import Argument, Option, run
-from utils import SubprocessKilledError, processify
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
@@ -22,12 +23,7 @@ NUM_PROCESSES = int(
         "NUM_PROCESSES", os.environ.get("CORES", multiprocessing.cpu_count())
     )
 )
-
 LOGGER = get_logger(__name__)
-
-
-class GDALError(Exception):
-    pass
 
 
 def get_s3_client(aws_region=AWS_REGION, endpoint_url=AWS_ENDPOINT_URL):
@@ -61,7 +57,7 @@ def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str
         o = str(o_byte)
         e = str(e_byte)
 
-    if p.returncode == int(-9):
+    if p.returncode < 0:
         raise SubprocessKilledError()
     elif p.returncode != 0:
         raise GDALError(e)
@@ -93,17 +89,18 @@ def get_input_tiles(prefix: str) -> List[Tuple[str, str]]:
     return tiles
 
 
-@processify
-def create_tiles(
-    tile: Tuple[str, str],
-    dataset: str,
-    version: str,
-    target_bucket: str,
-    implementation: str,
-    zoom_level: int,
-    skip_empty_tiles: bool,
-    sub_processes: int,
-) -> str:
+def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int]):
+    (
+        tile,
+        dataset,
+        version,
+        target_bucket,
+        implementation,
+        zoom_level,
+        skip_empty_tiles,
+        sub_processes,
+    ) = args
+
     with TemporaryDirectory() as download_dir, TemporaryDirectory() as tiles_dir:
         tile_name = os.path.basename(tile[1])
         tile_path = os.path.join(download_dir, tile_name)
@@ -179,19 +176,16 @@ def raster_tile_cache(
         for tile in tiles
     )
 
-    try:
-        with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
-            future_to_tile = {
-                executor.submit(create_tiles, *arg_tuple): arg_tuple[0]
-                for arg_tuple in args
-            }
-            for future in as_completed(future_to_tile):
-                LOGGER.info(f"Finished processing {future.result()}")
-
-    except SubprocessKilledError:
-        LOGGER.error("A subprocess was killed! Exiting with code 137")
-        sys.exit(137)
+    # Cannot use normal pool here, since we run sub-processes
+    # https://stackoverflow.com/a/61470465/1410317
+    with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
+        for tile in executor.map(create_tiles, args):
+            LOGGER.info(f"Finished processing tile {tile}")
 
 
 if __name__ == "__main__":
-    run(raster_tile_cache)
+    try:
+        run(raster_tile_cache)
+    except (BrokenProcessPool, SubprocessKilledError):
+        LOGGER.error("One of our subprocesses as killed! Exiting with 137")
+        sys.exit(137)
