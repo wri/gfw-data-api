@@ -1,16 +1,18 @@
 #!/usr/bin/env python
+
 import json
 import os
 import subprocess
 import sys
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from multiprocessing import cpu_count
 from tempfile import TemporaryDirectory
 
 import boto3
 import click
+from errors import SubprocessKilledError
 from logger import get_logger
-from utils import SubprocessKilledError, processify
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
@@ -61,7 +63,6 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
     common_tile_ids = set(date_conf_tile_ids) & set(intensity_tile_ids)
 
     # Recreating full path
-
     date_conf_tiles = [
         os.path.join(os.path.dirname(date_conf_uri), tile_id)
         for tile_id in common_tile_ids
@@ -78,20 +79,11 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
     logger.info(f"Running build_rgb in {NUM_PROCESSES} parallel processes")
 
     # Process in parallel
-    try:
-        with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
-            future_to_tile = {
-                executor.submit(process_rasters, *tile): tile for tile in tiles
-            }
-            for future in as_completed(future_to_tile):
-                logger.info(f"Finished processing tile {future.result()}")
-
-    except SubprocessKilledError:
-        logger.error("A subprocess was killed! Exiting with code 137")
-        sys.exit(137)
+    with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
+        for tile in executor.map(process_rasters, tiles):
+            logger.info(f"Finished processing tile {tile}")
 
 
-@processify
 def process_rasters(date_conf_uri: str, intensity_uri: str, output_uri: str):
     s3_client = get_s3_client()
 
@@ -123,7 +115,7 @@ def process_rasters(date_conf_uri: str, intensity_uri: str, output_uri: str):
         logger.info(proc.stdout)
         logger.error(proc.stderr)
 
-        if proc.returncode == int(-9):
+        if proc.returncode < 0:
             raise SubprocessKilledError()
         else:
             proc.check_returncode()
@@ -137,4 +129,8 @@ def process_rasters(date_conf_uri: str, intensity_uri: str, output_uri: str):
 
 
 if __name__ == "__main__":
-    exit(merge_intensity())
+    try:
+        exit(merge_intensity())
+    except (BrokenProcessPool, SubprocessKilledError):
+        logger.error("One of our subprocesses as killed! Exiting with 137")
+        sys.exit(137)
