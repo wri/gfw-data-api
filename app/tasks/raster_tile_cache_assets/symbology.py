@@ -136,17 +136,17 @@ async def date_conf_intensity_multi_band_symbology(
     raster tile set is created it will combine it with source
     (date_conf) raster into RGB-encoded raster.
     """
-    intensity_co = source_asset_co.copy(deep=True, update={"band_count": 1})
+    # intensity_co = source_asset_co.copy(deep=True)
     return await _date_intensity_symbology(
         dataset,
         version,
         pixel_meaning,
-        intensity_co,
+        source_asset_co,
         zoom_level,
         max_zoom,
         jobs_dict,
-        "np.ma.array([100 * (1*(A>0) + 1*(B>0) + 1*(C>0)) /3]).astype(np.uint16)",
-        ResamplingMethod.mode,
+        "np.ma.array([(A>0)*31, (B>0)*31, (C>0)*31]).astype(np.uint8)",
+        ResamplingMethod.bilinear,
         _merge_intensity_and_date_conf_multi_band,
     )
 
@@ -302,7 +302,7 @@ async def _merge_intensity_and_date_conf_multi_band(
         data_type=DataType.uint16,
         band_count=4,
         no_data=[0, 0, 0, 0],
-        resampling=ResamplingMethod.mode,
+        resampling=PIXETL_DEFAULT_RESAMPLING,
         overwrite=False,
         grid=Grid(f"zoom_{zoom_level}"),
         compute_stats=False,
@@ -310,8 +310,9 @@ async def _merge_intensity_and_date_conf_multi_band(
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
         source_uri=[date_conf_uri, intensity_uri],
-        calc="np.ma.array([A, B, C, D], dtype=np.uint16, fill_value=0)",
-        union_bands=True,
+        calc="np.ma.array([A, B, C, ((D << 11) | (E << 6) | (F << 1))])",
+        # union_bands=True,
+        # photometric=PhotometricType.rgb,
     )
 
     asset_uri = get_asset_uri(
@@ -490,7 +491,7 @@ async def _merge_intensity_and_year(
         source_driver=RasterDrivers.geotiff,
         source_uri=[intensity_uri, year_uri],
         band_count=3,
-        no_data=0,
+        no_data=0,  # FIXME: Shouldn't this be [0, 0, 0]?
         photometric=PhotometricType.rgb,
         calc="np.ma.array([A, np.ma.zeros(A.shape, dtype='uint8'), B], fill_value=0).astype('uint8')",
     )
