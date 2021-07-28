@@ -581,8 +581,8 @@ async def _query_raster(
         else f"{dataset}__{default_type}"
     )
 
-    sql = re.sub("from \w+", f"from {default_layer}", sql)
-    return await _query_raster_lambda(geostore, sql, format, delimiter)
+    sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
+    return await _query_raster_lambda(geostore.geojson, sql, format, delimiter)
 
 
 async def _query_raster_lambda(
