@@ -118,7 +118,7 @@ async def colormap_symbology(
     return [job], new_asset_uri
 
 
-async def date_conf_intensity_multi_band_symbology(
+async def date_conf_intensity_multi_8_symbology(
     dataset: str,
     version: str,
     pixel_meaning: str,
@@ -136,7 +136,11 @@ async def date_conf_intensity_multi_band_symbology(
     raster tile set is created it will combine it with source
     (date_conf) raster into RGB-encoded raster.
     """
-    # intensity_co = source_asset_co.copy(deep=True)
+    # intensity_co = source_asset_co.copy(
+    #     deep=True, update={"data_type": DataType.uint8}
+    # )
+    # "np.minimum(A, np.minimum((B > 0) * (20000 + 10000 * (B > 1) + C + 1461), D))"
+    # Create another asset to contain confidence of each system (2 bits each)
     return await _date_intensity_symbology(
         dataset,
         version,
@@ -145,9 +149,42 @@ async def date_conf_intensity_multi_band_symbology(
         zoom_level,
         max_zoom,
         jobs_dict,
+        "(np.minimum(A, np.minimum(B, C)) > 0) * 55",
+        ResamplingMethod.bilinear,
+        _merge_intensity_and_date_conf_multi_8,
+    )
+
+
+async def date_conf_intensity_multi_16_symbology(
+    dataset: str,
+    version: str,
+    pixel_meaning: str,
+    source_asset_co: RasterTileSetSourceCreationOptions,
+    zoom_level: int,
+    max_zoom: int,
+    jobs_dict: Dict,
+) -> Tuple[List[Job], str]:
+    """Create Raster Tile Set asset which combines date_conf raster and
+    intensity raster into one.
+
+    At native resolution (max_zoom) it will create intensity raster
+    based on given source. For lower zoom levels it will resample higher
+    zoom level tiles using bilinear resampling method. Once intensity
+    raster tile set is created it will combine it with source
+    (date_conf) raster into RGB-encoded raster.
+    """
+    intensity_co = source_asset_co.copy(deep=True, update={"data_type": DataType.uint8})
+    return await _date_intensity_symbology(
+        dataset,
+        version,
+        pixel_meaning,
+        intensity_co,
+        zoom_level,
+        max_zoom,
+        jobs_dict,
         "np.ma.array([(A>0)*31, (B>0)*31, (C>0)*31]).astype(np.uint8)",
         ResamplingMethod.bilinear,
-        _merge_intensity_and_date_conf_multi_band,
+        _merge_intensity_and_date_conf_multi_16,
     )
 
 
@@ -285,7 +322,86 @@ async def _date_intensity_symbology(
     return [intensity_job, *merge_jobs], dst_uri
 
 
-async def _merge_intensity_and_date_conf_multi_band(
+async def _merge_intensity_and_date_conf_multi_8(
+    dataset: str,
+    version: str,
+    pixel_meaning: str,
+    date_conf_uri: str,
+    intensity_uri: str,
+    zoom_level: int,
+    parents: List[Job],
+) -> Tuple[List[Job], str]:
+    """Create RGB-encoded raster tile set based on date_conf and intensity
+    raster tile sets."""
+    # import numpy as np
+    # A = B = C = D = np.ma.MaskedArray(np.zeros((3, 3)))
+    # blah = [((A - ((A >= 30000) * 10000) - ((A >= 20000) * 20000)) * (A >= 20000)/255).astype('uint8'), ((A - ((A >= 30000) * 10000) - ((A >= 20000) * 20000)) * (A >= 20000) % 255).astype('uint8'), (((A >= 30000) + 1)*100 + B).astype('uint8')]
+    # blah = [((np.minimum(A, np.minimum(B, C)) - ((np.minimum(A, np.minimum(B, C)) >= 30000) * 10000) - ((np.minimum(A, np.minimum(B, C)) >= 20000) * 20000)) * (np.minimum(A, np.minimum(B, C)) >= 20000)/255).astype('uint8'), ((np.minimum(A, np.minimum(B, C)) - ((np.minimum(A, np.minimum(B, C)) >= 30000) * 10000) - ((np.minimum(A, np.minimum(B, C)) >= 20000) * 20000)) * (np.minimum(A, np.minimum(B, C)) >= 20000) % 255).astype('uint8'), (((np.minimum(A, np.minimum(B, C)) >= 30000) + 1)*100 + D).astype('uint8'), ((((A>=30000)*2 + (A>0)*1) << 6) | (((B>=30000)*2 + (B>0)*1) << 4) | (((C>=30000)*2 + (C>0)*1) << 2))]
+    encoded_co = RasterTileSetSourceCreationOptions(
+        pixel_meaning=pixel_meaning,
+        data_type=DataType.uint8,
+        band_count=4,
+        no_data=[0, 0, 0, 0],
+        resampling=PIXETL_DEFAULT_RESAMPLING,
+        overwrite=False,
+        grid=Grid(f"zoom_{zoom_level}"),
+        compute_stats=False,
+        compute_histogram=False,
+        source_type=RasterSourceType.raster,
+        source_driver=RasterDrivers.geotiff,
+        source_uri=[date_conf_uri, intensity_uri],
+        # calc="np.ma.array([A, B, C, ((D << 11) | (E << 6) | (F << 1))])",
+        calc="[((np.minimum(A, np.minimum(B, C)) - ((np.minimum(A, np.minimum(B, C)) >= 30000) * 10000) - ((np.minimum(A, np.minimum(B, C)) >= 20000) * 20000)) * (np.minimum(A, np.minimum(B, C)) >= 20000)/255).astype('uint8'), ((np.minimum(A, np.minimum(B, C)) - ((np.minimum(A, np.minimum(B, C)) >= 30000) * 10000) - ((np.minimum(A, np.minimum(B, C)) >= 20000) * 20000)) * (np.minimum(A, np.minimum(B, C)) >= 20000) % 255).astype('uint8'), (((np.minimum(A, np.minimum(B, C)) >= 30000) + 1)*100 + D).astype('uint8'), ((((A>=30000)*2 + (A>0)*1) << 6) | (((B>=30000)*2 + (B>0)*1) << 4) | (((C>=30000)*2 + (C>0)*1) << 2)).astype('uint8')]"
+        # union_bands=True,
+        # photometric=PhotometricType.rgb,
+    )
+
+    asset_uri = get_asset_uri(
+        dataset,
+        version,
+        AssetType.raster_tile_set,
+        encoded_co.dict(by_alias=True),
+        "epsg:3857",
+    )
+    asset_prefix = asset_uri.rsplit("/", 1)[0]
+
+    logger.debug(
+        f"ATTEMPTING TO CREATE MERGED ASSET WITH THESE CREATION OPTIONS: {encoded_co}"
+    )
+
+    # Create an asset record
+    asset_options = AssetCreateIn(
+        asset_type=AssetType.raster_tile_set,
+        asset_uri=asset_uri,
+        is_managed=True,
+        creation_options=encoded_co,
+        metadata=RasterTileSetMetadata(),
+    ).dict(by_alias=True)
+
+    asset = await create_asset(dataset, version, **asset_options)
+    logger.debug(
+        f"ZOOM LEVEL {zoom_level} MERGED ASSET CREATED WITH ASSET_ID {asset.asset_id}"
+    )
+
+    callback = callback_constructor(asset.asset_id)
+    pixetl_job = await create_pixetl_job(
+        dataset,
+        version,
+        encoded_co,
+        job_name=f"merge_intensity_and_date_conf_multi_8_zoom_{zoom_level}",
+        callback=callback,
+        parents=parents,
+    )
+
+    pixetl_job = scale_batch_job(pixetl_job, zoom_level)
+
+    return (
+        [pixetl_job],
+        os.path.join(asset_prefix, "tiles.geojson"),
+    )
+
+
+async def _merge_intensity_and_date_conf_multi_16(
     dataset: str,
     version: str,
     pixel_meaning: str,
@@ -542,7 +658,8 @@ async def _merge_intensity_and_year(
 
 _symbology_constructor: Dict[str, SymbologyFuncType] = {
     ColorMapType.date_conf_intensity: date_conf_intensity_symbology,
-    ColorMapType.date_conf_intensity_multi_band: date_conf_intensity_multi_band_symbology,
+    ColorMapType.date_conf_intensity_multi_8: date_conf_intensity_multi_8_symbology,
+    ColorMapType.date_conf_intensity_multi_16: date_conf_intensity_multi_16_symbology,
     ColorMapType.year_intensity: year_intensity_symbology,
     ColorMapType.gradient: colormap_symbology,
     ColorMapType.discrete: colormap_symbology,
