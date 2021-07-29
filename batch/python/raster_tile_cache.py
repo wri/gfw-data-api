@@ -89,7 +89,7 @@ def get_input_tiles(prefix: str) -> List[Tuple[str, str]]:
     return tiles
 
 
-def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int]):
+def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int, int]):
     (
         tile,
         dataset,
@@ -99,6 +99,7 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int
         zoom_level,
         skip_empty_tiles,
         sub_processes,
+        bit_depth,
     ) = args
 
     with TemporaryDirectory() as download_dir, TemporaryDirectory() as tiles_dir:
@@ -108,9 +109,13 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int
         LOGGER.info(f"Beginning download of {tile_name}")
         get_s3_client().download_file(tile[0], tile[1], tile_path)
 
-        cmd = [
-            # "16bpp_gdal2tiles.py",
-            "gdal2tiles.py",
+        if bit_depth == 8:
+            gdal2tiles: str = "gdal2tiles.py"
+        else:
+            gdal2tiles = "16bpp_gdal2tiles.py"
+
+        cmd: List[str] = [
+            gdal2tiles,
             f"--zoom={zoom_level}",
             "--s_srs",
             "EPSG:3857",
@@ -149,6 +154,7 @@ def raster_tile_cache(
     skip_empty_tiles: bool = Option(
         False, "--skip_empty_tiles", help="Do not write empty tiles to tile cache."
     ),
+    bit_depth: int = Option(8, help="Number of bits per channel to use."),
     tile_set_prefix: str = Argument(..., help="Tile prefix."),
 ):
     LOGGER.info(f"Raster tile set asset prefix: {tile_set_prefix}")
@@ -173,6 +179,7 @@ def raster_tile_cache(
             zoom_level,
             skip_empty_tiles,
             sub_processes,
+            bit_depth,
         )
         for tile in tiles
     )
@@ -188,5 +195,5 @@ if __name__ == "__main__":
     try:
         run(raster_tile_cache)
     except (BrokenProcessPool, SubprocessKilledError):
-        LOGGER.error("One of our subprocesses as killed! Exiting with 137")
+        LOGGER.error("One of our subprocesses was killed! Exiting with 137")
         sys.exit(137)
