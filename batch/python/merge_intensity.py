@@ -8,6 +8,7 @@ from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from multiprocessing import cpu_count
 from tempfile import TemporaryDirectory
+from typing import Tuple
 
 import boto3
 import click
@@ -84,7 +85,9 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
             logger.info(f"Finished processing tile {tile}")
 
 
-def process_rasters(date_conf_uri: str, intensity_uri: str, output_uri: str):
+def process_rasters(args: Tuple[str, str, str]):
+    (date_conf_uri, intensity_uri, output_uri) = args
+
     s3_client = get_s3_client()
 
     # Download both files into a temporary directory
