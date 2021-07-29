@@ -3,11 +3,16 @@
 import json
 import os
 import subprocess
-from multiprocessing import Pool, cpu_count
+import sys
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
+from multiprocessing import cpu_count
 from tempfile import TemporaryDirectory
+from typing import Tuple
 
 import boto3
 import click
+from errors import SubprocessKilledError
 from logger import get_logger
 
 AWS_REGION = os.environ.get("AWS_REGION")
@@ -59,7 +64,6 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
     common_tile_ids = set(date_conf_tile_ids) & set(intensity_tile_ids)
 
     # Recreating full path
-
     date_conf_tiles = [
         os.path.join(os.path.dirname(date_conf_uri), tile_id)
         for tile_id in common_tile_ids
@@ -76,11 +80,14 @@ def merge_intensity(date_conf_uri, intensity_uri, destination_prefix):
     logger.info(f"Running build_rgb in {NUM_PROCESSES} parallel processes")
 
     # Process in parallel
-    with Pool(processes=NUM_PROCESSES) as pool:
-        pool.starmap(process_rasters, tiles)
+    with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
+        for tile in executor.map(process_rasters, tiles):
+            logger.info(f"Finished processing tile {tile}")
 
 
-def process_rasters(date_conf_uri, intensity_uri, output_uri):
+def process_rasters(args: Tuple[str, str, str]):
+    (date_conf_uri, intensity_uri, output_uri) = args
+
     s3_client = get_s3_client()
 
     # Download both files into a temporary directory
@@ -110,14 +117,23 @@ def process_rasters(date_conf_uri, intensity_uri, output_uri):
         )
         logger.info(proc.stdout)
         logger.error(proc.stderr)
-        proc.check_returncode()
+
+        if proc.returncode < 0:
+            raise SubprocessKilledError()
+        else:
+            proc.check_returncode()
 
         # Upload resulting output file to S3
         bucket, key = get_s3_path_parts(output_uri)
 
         logger.info(f"Uploading {local_output_path} to {output_uri}...")
         s3_client.upload_file(local_output_path, bucket, key)
+        return os.path.basename(key)
 
 
 if __name__ == "__main__":
-    exit(merge_intensity())
+    try:
+        exit(merge_intensity())
+    except (BrokenProcessPool, SubprocessKilledError):
+        logger.error("One of our subprocesses as killed! Exiting with 137")
+        sys.exit(137)
