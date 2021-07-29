@@ -1,10 +1,13 @@
 #!/usr/bin/env python
+
 import copy
 import json
 import multiprocessing
 import os
 import subprocess as sp
+import sys
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from enum import Enum
 from logging import getLogger
 from tempfile import TemporaryDirectory
@@ -12,6 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import boto3
 import rasterio
+from errors import GDALError, SubprocessKilledError
 from gfw_pixetl.pixetl_prep import create_geojsons
 from pydantic import BaseModel, Extra, Field, StrictInt
 from typer import Option, run
@@ -23,11 +27,10 @@ NUM_PROCESSES = int(
         "NUM_PROCESSES", os.environ.get("CORES", multiprocessing.cpu_count())
     )
 )
-
-OrderedColorMap = Dict[Union[int, float], Tuple[int, int, int, int]]
-
 GEOTIFF_COMPRESSION = "DEFLATE"
 GDAL_GEOTIFF_COMPRESSION = "DEFLATE"
+
+OrderedColorMap = Dict[Union[int, float], Tuple[int, int, int, int]]
 
 LOGGER = getLogger("apply_symbology")
 
@@ -35,10 +38,6 @@ LOGGER = getLogger("apply_symbology")
 class ColorMapType(str, Enum):
     discrete = "discrete"
     gradient = "gradient"
-
-
-class GDALError(Exception):
-    pass
 
 
 class StrictBaseModel(BaseModel):
@@ -125,7 +124,10 @@ def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str
         LOGGER.error(f"Exit code {p.returncode} for command {cmd}")
         LOGGER.error(f"Standard output: {o}")
         LOGGER.error(f"Standard error: {e}")
-        raise GDALError(e)
+        if p.returncode < 0:
+            raise SubprocessKilledError()
+        else:
+            raise GDALError(e)
 
     return o, e
 
@@ -165,13 +167,14 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
     “0,0,0,0” RGBA quadruplet will be used.
     """
     source_tile_uri, target_prefix, symbology_type, colormap_path = args
-
     tile_id = os.path.splitext(os.path.basename(source_tile_uri))[0]
 
     with TemporaryDirectory() as work_dir:
         local_src_file_path = os.path.join(work_dir, os.path.basename(source_tile_uri))
         s3_client = get_s3_client()
         bucket, source_key = get_s3_path_parts(source_tile_uri)
+
+        LOGGER.info(f"Downloading {source_tile_uri} to {local_src_file_path}")
         s3_client.download_file(bucket, source_key, local_src_file_path)
 
         local_dest_file_path = os.path.join(work_dir, f"{tile_id}_colored.tif")
@@ -201,6 +204,8 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
 
         cmd += [local_src_file_path, colormap_path, local_dest_file_path]
 
+        LOGGER.info(f"Running subcommand {cmd}")
+
         try:
             run_gdal_subcommand(cmd)
         except GDALError:
@@ -212,6 +217,7 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
 
         # Now upload the file to S3
         target_key = os.path.join(target_prefix, os.path.basename(local_src_file_path))
+        LOGGER.info(f"Uploading {local_src_file_path} to {target_key}")
         s3_client.upload_file(local_dest_file_path, bucket, target_key)
 
     return tile_id
@@ -259,7 +265,7 @@ def apply_symbology(
         # https://stackoverflow.com/a/61470465/1410317
         with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
             for tile_id in executor.map(create_rgb_tile, process_args):
-                print(f"Processed tile {tile_id}")
+                LOGGER.info(f"Finished processing tile {tile_id}")
 
     # Now run pixetl_prep.create_geojsons to generate a tiles.geojson and
     # extent.geojson in the target prefix. But that code appends /geotiff
@@ -267,8 +273,13 @@ def apply_symbology(
     create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1].replace(
         "/geotiff", ""
     )
+    LOGGER.info(f"Uploading tiles.geojson to {create_geojsons_prefix}")
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
 
 
 if __name__ == "__main__":
-    run(apply_symbology)
+    try:
+        run(apply_symbology)
+    except (BrokenProcessPool, SubprocessKilledError):
+        LOGGER.error("One of our subprocesses as killed! Exiting with 137")
+        sys.exit(137)

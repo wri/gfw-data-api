@@ -133,10 +133,12 @@ def submit_batch_job(
         "retryStrategy": {
             "attempts": job.attempts,
             "evaluateOnExit": [
-                # Retry when our instance gets recalled
+                # Retry when our spot instance gets recalled
                 {"onStatusReason": "Host EC2*", "action": "RETRY"},
-                # Retry when we run out of memory (report_status.sh will reduce NUM_PROCESSES)
-                {"onReason": "OutOfMemoryError*", "action": "RETRY"},
+                # Retry when a process has been killed involuntarily
+                # This is likely due to OOM, and report_status.sh will
+                # halve NUM_PROCESSES for retry
+                {"onExitCode": "137", "action": "RETRY"},
                 # Otherwise exit
                 {"onReason": "*", "action": "EXIT"},
             ],

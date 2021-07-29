@@ -120,6 +120,7 @@ async def create_tile_cache(
     implementation: str,
     callback: Callback,
     parents: List[Job],
+    bit_depth: int,
 ):
     """Create batch job to generate raster tile cache for given zoom level."""
 
@@ -141,6 +142,8 @@ async def create_tile_cache(
         TILE_CACHE_BUCKET,
         "--zoom_level",
         str(zoom_level),
+        "--bit_depth",
+        str(bit_depth),
     ]
     # TODO: GTC-1090, GTC 1091
     #  this should be the default. However there seems to be an issue

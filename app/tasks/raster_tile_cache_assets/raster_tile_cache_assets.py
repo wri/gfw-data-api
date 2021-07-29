@@ -7,7 +7,8 @@ from fastapi import HTTPException
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
-from app.models.enum.creation_options import RasterDrivers
+from app.models.enum.creation_options import ColorMapType, RasterDrivers
+from app.models.enum.pixetl import DataType
 from app.models.enum.sources import RasterSourceType
 from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.change_log import ChangeLog
@@ -91,7 +92,9 @@ async def raster_tile_cache_asset(
 
     # If float data type, convert to int in derivative assets for performance
     max_zoom_calc = None
-    if np.issubdtype(np.dtype(source_asset_co.data_type), np.floating):
+    if source_asset_co.data_type == DataType.boolean:
+        pass  # So the next line doesn't break
+    elif np.issubdtype(np.dtype(source_asset_co.data_type), np.floating):
         source_asset_co, max_zoom_calc = convert_float_to_int(
             source_asset.stats, source_asset_co
         )
@@ -155,6 +158,12 @@ async def raster_tile_cache_asset(
         )
         job_list += symbology_jobs
 
+        # FIXME
+        if symbology == ColorMapType.date_conf_intensity_multi_16:
+            bit_depth: int = 16
+        else:
+            bit_depth = 8
+
         if zoom_level <= max_static_zoom:
             tile_cache_job: Job = await create_tile_cache(
                 dataset,
@@ -164,6 +173,7 @@ async def raster_tile_cache_asset(
                 implementation,
                 callback_constructor(asset_id),
                 symbology_jobs + [source_reprojection_job],
+                bit_depth,
             )
             job_list.append(tile_cache_job)
 

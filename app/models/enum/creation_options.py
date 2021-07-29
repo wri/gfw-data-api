@@ -78,5 +78,6 @@ class ColorMapType(str, Enum):
     discrete = "discrete"
     gradient = "gradient"
     date_conf_intensity = "date_conf_intensity"
-    date_conf_intensity_multi_band = "date_conf_intensity_multi_band"
+    date_conf_intensity_multi_8 = "date_conf_intensity_multi_8"
+    date_conf_intensity_multi_16 = "date_conf_intensity_multi_16"
     year_intensity = "year_intensity"

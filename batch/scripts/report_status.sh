@@ -43,7 +43,11 @@ ESC_OUTPUT="$(cat $OUTPUT_FILE \
   | json_escape
 )"
 
-if [ "$EXIT_CODE" -eq 0 ]; then
+# If a process was killed involuntarily, we probably ran out of memory.
+# Exit with code 137 to trigger the retry logic. Better luck next time!
+if [ "$EXIT_CODE" -eq 137 ]; then
+    exit 137
+elif [ "$EXIT_CODE" -eq 0 ]; then
     STATUS="success"
     MESSAGE="Successfully ran command [ $ESC_COMMAND ]"
     DETAIL=""
