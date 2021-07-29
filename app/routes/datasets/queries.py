@@ -7,12 +7,7 @@ from urllib.parse import unquote
 from uuid import UUID, uuid4
 
 import httpx
-from asyncpg import (
-    InsufficientPrivilegeError,
-    InvalidTextRepresentationError,
-    UndefinedColumnError,
-    UndefinedFunctionError,
-)
+from asyncpg import DataError, InsufficientPrivilegeError, SyntaxOrAccessError
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
@@ -393,9 +388,7 @@ async def _query_table(
         raise HTTPException(
             status_code=403, detail="Not authorized to execute this query."
         )
-    except UndefinedFunctionError:
-        raise HTTPException(status_code=400, detail="Bad request. Unknown function.")
-    except (UndefinedColumnError, InvalidTextRepresentationError) as e:
+    except (SyntaxOrAccessError, DataError) as e:
         raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
 
     return response
@@ -581,8 +574,8 @@ async def _query_raster(
         else f"{dataset}__{default_type}"
     )
 
-    sql = re.sub("from \w+", f"from {default_layer}", sql)
-    return await _query_raster_lambda(geostore, sql, format, delimiter)
+    sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
+    return await _query_raster_lambda(geostore.geojson, sql, format, delimiter)
 
 
 async def _query_raster_lambda(
