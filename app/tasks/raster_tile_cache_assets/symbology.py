@@ -136,16 +136,16 @@ async def date_conf_intensity_multi_8_symbology(
     raster tile set is created it will combine it with source
     (date_conf) raster into RGB-encoded raster.
     """
-    # intensity_co = source_asset_co.copy(
-    #     deep=True, update={"data_type": DataType.uint8}
-    # )
+    intensity_co = source_asset_co.copy(
+        deep=True, update={"data_type": DataType.uint8, "band_count": 1}
+    )
     # "np.minimum(A, np.minimum((B > 0) * (20000 + 10000 * (B > 1) + C + 1461), D))"
     # Create another asset to contain confidence of each system (2 bits each)
     return await _date_intensity_symbology(
         dataset,
         version,
         pixel_meaning,
-        source_asset_co,
+        intensity_co,
         zoom_level,
         max_zoom,
         jobs_dict,
