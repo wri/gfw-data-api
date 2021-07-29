@@ -137,9 +137,8 @@ async def date_conf_intensity_multi_8_symbology(
     (date_conf) raster into RGB-encoded raster.
     """
     intensity_co = source_asset_co.copy(
-        deep=True, update={"data_type": DataType.uint8, "band_count": 1}
+        deep=True, update={"calc": None, "data_type": DataType.uint8, "band_count": 1}
     )
-    # "np.minimum(A, np.minimum((B > 0) * (20000 + 10000 * (B > 1) + C + 1461), D))"
     # Create another asset to contain confidence of each system (2 bits each)
     return await _date_intensity_symbology(
         dataset,
