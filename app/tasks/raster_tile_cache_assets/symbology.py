@@ -349,10 +349,9 @@ async def _merge_intensity_and_date_conf_multi_8(
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
         source_uri=[date_conf_uri, intensity_uri],
-        # calc="np.ma.array([A, B, C, ((D << 11) | (E << 6) | (F << 1))])",
-        calc="np.ma.array([((np.minimum(A, np.minimum(B, C)) - ((np.minimum(A, np.minimum(B, C)) >= 30000) * 10000) - ((np.minimum(A, np.minimum(B, C)) >= 20000) * 20000)) * (np.minimum(A, np.minimum(B, C)) >= 20000)/255).astype('uint8'), ((np.minimum(A, np.minimum(B, C)) - ((np.minimum(A, np.minimum(B, C)) >= 30000) * 10000) - ((np.minimum(A, np.minimum(B, C)) >= 20000) * 20000)) * (np.minimum(A, np.minimum(B, C)) >= 20000) % 255).astype('uint8'), (((np.minimum(A, np.minimum(B, C)) >= 30000) + 1)*100 + D).astype('uint8'), ((((A>=30000)*2 + (A>0)*1) << 6) | (((B>=30000)*2 + (B>0)*1) << 4) | (((C>=30000)*2 + (C>0)*1) << 2)).astype('uint8')])"
+        calc="np.ma.array([((np.minimum(A, np.minimum(B, C)) - ((np.minimum(A, np.minimum(B, C)) >= 30000) * 10000) - ((np.minimum(A, np.minimum(B, C)) >= 20000) * 20000)) * (np.minimum(A, np.minimum(B, C)) >= 20000)/255).astype('uint8'), ((np.minimum(A, np.minimum(B, C)) - ((np.minimum(A, np.minimum(B, C)) >= 30000) * 10000) - ((np.minimum(A, np.minimum(B, C)) >= 20000) * 20000)) * (np.minimum(A, np.minimum(B, C)) >= 20000) % 255).astype('uint8'), (((np.minimum(A, np.minimum(B, C)) >= 30000) + 1)*100 + D).astype('uint8'), ((((A>=30000)*2 + (A>0)*1) << 6) | (((B>=30000)*2 + (B>0)*1) << 4) | (((C>=30000)*2 + (C>0)*1) << 2)).astype('uint8')])",
         # union_bands=True,
-        # photometric=PhotometricType.rgb,
+        photometric=PhotometricType.rgb,
     )
 
     asset_uri = get_asset_uri(
@@ -427,7 +426,7 @@ async def _merge_intensity_and_date_conf_multi_16(
         source_uri=[date_conf_uri, intensity_uri],
         calc="np.ma.array([A, B, C, ((D << 11) | (E << 6) | (F << 1))])",
         # union_bands=True,
-        # photometric=PhotometricType.rgb,
+        photometric=PhotometricType.rgb,
     )
 
     asset_uri = get_asset_uri(
