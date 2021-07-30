@@ -339,9 +339,57 @@ async def _merge_intensity_and_date_conf_multi_8(
     """Create RGB-encoded raster tile set based on date_conf and intensity
     raster tile sets."""
     # import numpy as np
-    # A = B = C = D = np.ma.MaskedArray(np.zeros((3, 3)))
-    # blah = [((A - ((A >= 30000) * 10000) - ((A >= 20000) * 20000)) * (A >= 20000)/255).astype('uint8'), ((A - ((A >= 30000) * 10000) - ((A >= 20000) * 20000)) * (A >= 20000) % 255).astype('uint8'), (((A >= 30000) + 1)*100 + B).astype('uint8')]
-    # blah = [((np.minimum(A, np.minimum(B, C)) - ((np.minimum(A, np.minimum(B, C)) >= 30000) * 10000) - ((np.minimum(A, np.minimum(B, C)) >= 20000) * 20000)) * (np.minimum(A, np.minimum(B, C)) >= 20000)/255).astype('uint8'), ((np.minimum(A, np.minimum(B, C)) - ((np.minimum(A, np.minimum(B, C)) >= 30000) * 10000) - ((np.minimum(A, np.minimum(B, C)) >= 20000) * 20000)) * (np.minimum(A, np.minimum(B, C)) >= 20000) % 255).astype('uint8'), (((np.minimum(A, np.minimum(B, C)) >= 30000) + 1)*100 + D).astype('uint8'), ((((A>=30000)*2 + (A>0)*1) << 6) | (((B>=30000)*2 + (B>0)*1) << 4) | (((C>=30000)*2 + (C>0)*1) << 2))]
+    # A = np.ma.array([21040, 21040, 21040], dtype=np.uint16)
+    # B = np.ma.array([22060, 20034, 22060], dtype=np.uint16)
+    # C = np.ma.array([27030, 27030, 27030], dtype=np.uint16)
+    # D = np.ma.array([55, 34, 0], dtype=np.uint8)
+
+    # Here's how we would do it for one system, labeled A
+    # DAY = "(A - ((A>=30000) * 10000 + (A>=20000) * 20000))"
+    # CONFIDENCE = "((A>=30000) * 1)"
+    # INTENSITY = "(D)"
+    #
+    # RED = "(DAY / 255).astype(np.uint8)"
+    # GREEN = "(DAY % 255).astype(np.uint8)"
+    # BLUE = "(((CONFIDENCE + 1) * 100) + INTENSITY).astype(np.uint8)"
+
+    # But we've got three systems, and we want the minimum (first detection)
+    # in any. np.minimum doesn't exclude masked values, so we have to replace
+    # them with something bigger than our data... and then re-mask the
+    # previously masked values afterwards. So unless I'm mistaken, just to
+    # get the minimum of the three alert systems requires:
+    # np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask))
+    # Oye. What a monster...
+    # Or could we do (A>0)*A ? Looks like it might work, in which case it would be only:
+    # np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C))
+
+    FIRST_ALERT = "(np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))"
+
+    # So now our values look like
+    DAY = f"({FIRST_ALERT} - (({FIRST_ALERT}>=30000) * 10000 + ({FIRST_ALERT}>=20000) * 20000))"
+    CONFIDENCE = f"(({FIRST_ALERT}>=30000) * 1)"
+    INTENSITY = "(D)"
+
+    RED = f"({DAY} / 255)"
+    GREEN = f"({DAY} % 255)"
+    BLUE = f"((({CONFIDENCE} + 1) * 100) + {INTENSITY})"
+
+    GLAD_CONF = "((A >= 30000)*2 + (A >= 20000) * 1)"
+    GLADS2_CONF = "((B >= 30000)*2 + (B >= 20000) * 1)"
+    RADD_CONF = "((C >= 30000)*2 + (C >= 20000) * 1)"
+
+    ALPHA = f"(({GLAD_CONF} << 6) | ({GLADS2_CONF} << 4) | ({RADD_CONF} << 2))"
+
+    calc_str = f"np.ma.array([{RED}, {GREEN}, {BLUE}, {ALPHA}], dtype=np.uint8)"
+
+    # Which looks like the following:
+    # np.ma.array([(((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C))) - (((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=30000) * 10000 + ((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=20000) * 20000)) / 255), (((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C))) - (((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=30000) * 10000 + ((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=20000) * 20000)) % 255), ((((((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=30000) * 1) + 1) * 100) + (D)), ((((A >= 30000)*2 + (A >= 20000) * 1) << 6) | (((B >= 30000)*2 + (B >= 20000) * 1) << 4) | (((C >= 30000)*2 + (C >= 20000) * 1) << 2))], dtype=np.uint8)
+    # Checking our work:
+    # rR, rG, rB, rA = np.ma.array([(((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C))) - (((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=30000) * 10000 + ((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=20000) * 20000)) / 255), (((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C))) - (((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=30000) * 10000 + ((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=20000) * 20000)) % 255), ((((((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=30000) * 1) + 1) * 100) + (D)), ((((A >= 30000)*2 + (A >= 20000) * 1) << 6) | (((B >= 30000)*2 + (B >= 20000) * 1) << 4) | (((C >= 30000)*2 + (C >= 20000) * 1) << 2))], dtype=np.uint8)
+    # (rR.astype(np.uint16) * 255) + rG.astype(np.uint16) == 1040
+    # floor(rB.astype(np.uint16) / 100) - 1
+    # rB.astype(np.uint16) % 100 == 55
+
     encoded_co = RasterTileSetSourceCreationOptions(
         pixel_meaning=pixel_meaning,
         data_type=DataType.uint8,
@@ -354,17 +402,8 @@ async def _merge_intensity_and_date_conf_multi_8(
         compute_histogram=False,
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
-        # symbology=Symbology(type=ColorMapType.date_conf_intensity_multi_8),
         source_uri=[date_conf_uri, intensity_uri],
-        # We want the minimum of the arrays (alert systems) excluding
-        # masked values (i.e. 0, which should be masked). np.minimum
-        # doesn't exclude masked values, so replace them with something
-        # bigger than our data... and then re-mask the previously masked
-        # values afterwards. So unless I'm mistaken, just to get the minimum
-        # of the three alert systems requires
-        # np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask))
-        # Oye. What a monster...
-        calc="np.ma.array([((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) - ((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) >= 30000) * 10000) - ((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) >= 20000) * 20000)) * (np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) >= 20000)/255).astype('uint8'), ((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) - ((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) >= 30000) * 10000) - ((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) >= 20000) * 20000)) * np.ma.array((np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))) >= 20000), mask=(A.mask & B.mask & C.mask)) % 255).astype('uint8'), (((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) >= 30000) + 1)*100 + D).astype('uint8'), ((((A >= 30000)*2 + (A > 0)*1) << 6).filled(0) | (((B >= 30000)*2 + (B > 0)*1) << 4).filled(0) | (((C >= 30000)*2 + (C > 0)*1) << 2).filled(0)).astype('uint8')])",
+        calc=calc_str,
         photometric=PhotometricType.rgb,
     )
 
@@ -437,9 +476,8 @@ async def _merge_intensity_and_date_conf_multi_16(
         compute_histogram=False,
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
-        # symbology=Symbology(type=ColorMapType.date_conf_intensity_multi_16),
         source_uri=[date_conf_uri, intensity_uri],
-        calc="np.ma.array([A, B, C, (D << 11) | (E << 6) | (F << 1)])",
+        calc="np.ma.array([A, B, C, (D.astype(np.uint16) << 11) | (E.astype(np.uint16) << 6) | (F.astype(np.uint16) << 1)])",
         photometric=PhotometricType.rgb,
     )
 
