@@ -352,7 +352,7 @@ async def _merge_intensity_and_date_conf_multi_8(
         compute_histogram=False,
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
-        symbology=Symbology(type=ColorMapType.date_conf_intensity_multi_8),
+        # symbology=Symbology(type=ColorMapType.date_conf_intensity_multi_8),
         source_uri=[date_conf_uri, intensity_uri],
         # We want the minimum of the arrays (alert systems) excluding
         # masked values (i.e. 0, which should be masked). np.minimum
@@ -435,7 +435,7 @@ async def _merge_intensity_and_date_conf_multi_16(
         compute_histogram=False,
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
-        symbology=Symbology(type=ColorMapType.date_conf_intensity_multi_16),
+        # symbology=Symbology(type=ColorMapType.date_conf_intensity_multi_16),
         source_uri=[date_conf_uri, intensity_uri],
         calc="np.ma.array([A, B, C, (D << 11) | (E << 6) | (F << 1)])",
         photometric=PhotometricType.rgb,
