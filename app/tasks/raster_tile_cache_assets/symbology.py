@@ -139,7 +139,6 @@ async def date_conf_intensity_multi_8_symbology(
     intensity_co = source_asset_co.copy(
         deep=True, update={"calc": None, "data_type": DataType.uint8, "band_count": 1}
     )
-    # Create another asset to contain confidence of each system (2 bits each)
     return await _date_intensity_symbology(
         dataset,
         version,
@@ -148,7 +147,13 @@ async def date_conf_intensity_multi_8_symbology(
         zoom_level,
         max_zoom,
         jobs_dict,
-        "(np.minimum(A, np.minimum(B, C)) > 0) * 55",
+        # What we want is a value of 55 (max intensity) anywhere there is
+        # an alert in any system. We can't just do
+        # "((A > 0) | (B > 0) | (C > 0)) * 55" because "A | B" includes only
+        # those values unmasked in both A and B. So first replace masked
+        # values with 0 and then re-mask them later
+        # "np.ma.array(((A.filled(0) | B.filled(0) | C.filled(0)) > 0) * 55, mask=(A.mask & B.mask & C.mask))",
+        "np.ma.array((((A>=20000)*A.filled(0) | (B>=20000)*B.filled(0) | (C>=20000)*C.filled(0)) > 0) * 55, mask=(A.mask & B.mask & C.mask))",  # Scrub bad (<20000) values
         ResamplingMethod.bilinear,
         _merge_intensity_and_date_conf_multi_8,
     )
@@ -181,7 +186,8 @@ async def date_conf_intensity_multi_16_symbology(
         zoom_level,
         max_zoom,
         jobs_dict,
-        "np.ma.array([(A>0)*31, (B>0)*31, (C>0)*31]).astype(np.uint8)",
+        # "np.ma.array([(A>0)*31, (B>0)*31, (C>0)*31])",
+        "np.ma.array([(A>=20000)*31, (B>=20000)*31, (C>=20000)*31])",  # Scrub bad (<20000) values
         ResamplingMethod.bilinear,
         _merge_intensity_and_date_conf_multi_16,
     )
@@ -348,11 +354,18 @@ async def _merge_intensity_and_date_conf_multi_8(
         compute_histogram=False,
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
+        # symbology=Symbology(type=ColorMapType.date_conf_intensity_multi_8),
         source_uri=[date_conf_uri, intensity_uri],
-        # calc="np.ma.array([A, B, C, ((D << 11) | (E << 6) | (F << 1))])",
-        calc="np.ma.array([((np.minimum(A, np.minimum(B, C)) - ((np.minimum(A, np.minimum(B, C)) >= 30000) * 10000) - ((np.minimum(A, np.minimum(B, C)) >= 20000) * 20000)) * (np.minimum(A, np.minimum(B, C)) >= 20000)/255).astype('uint8'), ((np.minimum(A, np.minimum(B, C)) - ((np.minimum(A, np.minimum(B, C)) >= 30000) * 10000) - ((np.minimum(A, np.minimum(B, C)) >= 20000) * 20000)) * (np.minimum(A, np.minimum(B, C)) >= 20000) % 255).astype('uint8'), (((np.minimum(A, np.minimum(B, C)) >= 30000) + 1)*100 + D).astype('uint8'), ((((A>=30000)*2 + (A>0)*1) << 6) | (((B>=30000)*2 + (B>0)*1) << 4) | (((C>=30000)*2 + (C>0)*1) << 2)).astype('uint8')])"
-        # union_bands=True,
-        # photometric=PhotometricType.rgb,
+        # We want the minimum of the arrays (alert systems) excluding
+        # masked values (i.e. 0, which should be masked). np.minimum
+        # doesn't exclude masked values, so replace them with something
+        # bigger than our data... and then re-mask the previously masked
+        # values afterwards. So unless I'm mistaken, just to get the minimum
+        # of the three alert systems requires
+        # np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask))
+        # Oye. What a monster...
+        calc="np.ma.array([((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) - ((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) >= 30000) * 10000) - ((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) >= 20000) * 20000)) * (np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) >= 20000)/255).astype('uint8'), ((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) - ((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) >= 30000) * 10000) - ((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) >= 20000) * 20000)) * np.ma.array((np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))) >= 20000), mask=(A.mask & B.mask & C.mask)) % 255).astype('uint8'), (((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)) >= 30000) + 1)*100 + D).astype('uint8'), ((((A >= 30000)*2 + (A > 0)*1) << 6).filled(0) | (((B >= 30000)*2 + (B > 0)*1) << 4).filled(0) | (((C >= 30000)*2 + (C > 0)*1) << 2).filled(0)).astype('uint8')])",
+        photometric=PhotometricType.rgb,
     )
 
     asset_uri = get_asset_uri(
@@ -424,10 +437,10 @@ async def _merge_intensity_and_date_conf_multi_16(
         compute_histogram=False,
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
+        # symbology=Symbology(type=ColorMapType.date_conf_intensity_multi_16),
         source_uri=[date_conf_uri, intensity_uri],
-        calc="np.ma.array([A, B, C, ((D << 11) | (E << 6) | (F << 1))])",
-        # union_bands=True,
-        # photometric=PhotometricType.rgb,
+        calc="np.ma.array([A, B, C, (D << 11) | (E << 6) | (F << 1)])",
+        photometric=PhotometricType.rgb,
     )
 
     asset_uri = get_asset_uri(
@@ -462,7 +475,7 @@ async def _merge_intensity_and_date_conf_multi_16(
         dataset,
         version,
         encoded_co,
-        job_name=f"merge_intensity_and_date_conf_multi_band_zoom_{zoom_level}",
+        job_name=f"merge_intensity_and_date_conf_multi_16_zoom_{zoom_level}",
         callback=callback,
         parents=parents,
     )
