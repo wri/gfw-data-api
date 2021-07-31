@@ -475,7 +475,7 @@ async def _merge_intensity_and_date_conf_multi_16(
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
         source_uri=[date_conf_uri, intensity_uri],
-        calc="np.ma.array([A, B, C, (D.astype(np.uint16) << 11) | (E.astype(np.uint16) << 6) | (F.astype(np.uint16) << 1)])",
+        calc="np.ma.array([A, B, C, (D.astype(np.uint16).data << 11) | (E.astype(np.uint16).data << 6) | (F.astype(np.uint16).data << 1)])",
         photometric=PhotometricType.rgb,
     )
 
