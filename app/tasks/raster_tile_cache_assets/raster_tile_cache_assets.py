@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
-from app.models.enum.creation_options import ColorMapType, RasterDrivers
+from app.models.enum.creation_options import RasterDrivers
 from app.models.enum.pixetl import DataType
 from app.models.enum.sources import RasterSourceType
 from app.models.orm.assets import Asset as ORMAsset
@@ -19,6 +19,7 @@ from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.batch import execute
 from app.tasks.raster_tile_cache_assets.symbology import (
+    date_conf_intensity_multi_16_symbology,
     no_symbology,
     symbology_constructor,
 )
@@ -159,7 +160,7 @@ async def raster_tile_cache_asset(
         job_list += symbology_jobs
 
         # FIXME
-        if symbology == ColorMapType.date_conf_intensity_multi_16:
+        if symbology_function == date_conf_intensity_multi_16_symbology:
             bit_depth: int = 16
         else:
             bit_depth = 8
