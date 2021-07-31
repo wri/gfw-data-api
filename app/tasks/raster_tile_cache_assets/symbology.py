@@ -152,8 +152,7 @@ async def date_conf_intensity_multi_8_symbology(
         # "((A > 0) | (B > 0) | (C > 0)) * 55" because "A | B" includes only
         # those values unmasked in both A and B. So first replace masked
         # values with 0 and then re-mask them later
-        # "np.ma.array(((A.filled(0) | B.filled(0) | C.filled(0)) > 0) * 55, mask=(A.mask & B.mask & C.mask))",
-        "np.ma.array((((A>=20000)*A.filled(0) | (B>=20000)*B.filled(0) | (C>=20000)*C.filled(0)) > 0) * 55, mask=(A.mask & B.mask & C.mask))",  # Scrub bad (<20000) values
+        "np.ma.array((((A.filled(0)>=20000)*A.filled(0) | (B.filled(0)>=20000)*B.filled(0) | (C.filled(0)>=20000)*C.filled(0)) > 0) * 55, mask=(A.mask & B.mask & C.mask))",  # Scrub bad (<20000) values
         ResamplingMethod.bilinear,
         _merge_intensity_and_date_conf_multi_8,
     )
