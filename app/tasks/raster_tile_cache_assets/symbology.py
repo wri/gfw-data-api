@@ -185,7 +185,6 @@ async def date_conf_intensity_multi_16_symbology(
         zoom_level,
         max_zoom,
         jobs_dict,
-        # "np.ma.array([(A>0)*31, (B>0)*31, (C>0)*31])",
         "np.ma.array([(A>=20000)*31, (B>=20000)*31, (C>=20000)*31])",  # Scrub bad (<20000) values
         ResamplingMethod.bilinear,
         _merge_intensity_and_date_conf_multi_16,
@@ -348,9 +347,9 @@ async def _merge_intensity_and_date_conf_multi_8(
     # CONFIDENCE = "((A>=30000) * 1)"
     # INTENSITY = "(D)"
     #
-    # RED = "(DAY / 255).astype(np.uint8)"
-    # GREEN = "(DAY % 255).astype(np.uint8)"
-    # BLUE = "(((CONFIDENCE + 1) * 100) + INTENSITY).astype(np.uint8)"
+    # RED = "(DAY / 255)"
+    # GREEN = "(DAY % 255)"
+    # BLUE = "(((CONFIDENCE + 1) * 100) + INTENSITY)"
 
     # But we've got three systems, and we want the minimum (first detection)
     # in any. np.minimum doesn't exclude masked values, so we have to replace
@@ -359,35 +358,35 @@ async def _merge_intensity_and_date_conf_multi_8(
     # get the minimum of the three alert systems requires:
     # np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask))
     # Oye. What a monster...
-    # Or could we do (A>0)*A ? Looks like it might work, in which case it would be only:
-    # np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C))
 
-    FIRST_ALERT = "(np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))"
+    FIRST_ALERT = "(np.ma.array((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)).filled(0)), mask=(A.mask & B.mask & C.mask)))"
 
     # So now our values look like
-    DAY = f"({FIRST_ALERT} - (({FIRST_ALERT}>=30000) * 10000 + ({FIRST_ALERT}>=20000) * 20000))"
-    CONFIDENCE = f"(({FIRST_ALERT}>=30000) * 1)"
+    DAY = f"({FIRST_ALERT} - (({FIRST_ALERT} >= 30000) * 10000 + ({FIRST_ALERT} >= 20000) * 20000))"
+    CONFIDENCE = f"(({FIRST_ALERT} >= 30000) * 1)"
     INTENSITY = "(D)"
 
     RED = f"({DAY} / 255)"
     GREEN = f"({DAY} % 255)"
     BLUE = f"((({CONFIDENCE} + 1) * 100) + {INTENSITY})"
 
-    GLAD_CONF = "((A >= 30000)*2 + (A >= 20000) * 1)"
-    GLADS2_CONF = "((B >= 30000)*2 + (B >= 20000) * 1)"
-    RADD_CONF = "((C >= 30000)*2 + (C >= 20000) * 1)"
+    GLAD_CONF = "((A.filled(0) >= 30000)*2 + (A.filled(0) >= 20000) * 1)"
+    GLADS2_CONF = "((B.filled(0) >= 30000)*2 + (B.filled(0) >= 20000) * 1)"
+    RADD_CONF = "((C.filled(0) >= 30000)*2 + (C.filled(0) >= 20000) * 1)"
 
     ALPHA = f"(({GLAD_CONF} << 6) | ({GLADS2_CONF} << 4) | ({RADD_CONF} << 2))"
 
     calc_str = f"np.ma.array([{RED}, {GREEN}, {BLUE}, {ALPHA}], dtype=np.uint8)"
 
-    # Which looks like the following:
-    # np.ma.array([(((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C))) - (((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=30000) * 10000 + ((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=20000) * 20000)) / 255), (((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C))) - (((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=30000) * 10000 + ((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=20000) * 20000)) % 255), ((((((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=30000) * 1) + 1) * 100) + (D)), ((((A >= 30000)*2 + (A >= 20000) * 1) << 6) | (((B >= 30000)*2 + (B >= 20000) * 1) << 4) | (((C >= 30000)*2 + (C >= 20000) * 1) << 2))], dtype=np.uint8)
     # Checking our work:
-    # rR, rG, rB, rA = np.ma.array([(((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C))) - (((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=30000) * 10000 + ((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=20000) * 20000)) / 255), (((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C))) - (((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=30000) * 10000 + ((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=20000) * 20000)) % 255), ((((((np.minimum((A>0)*A, np.minimum((B>0)*B, (C>0)*C)))>=30000) * 1) + 1) * 100) + (D)), ((((A >= 30000)*2 + (A >= 20000) * 1) << 6) | (((B >= 30000)*2 + (B >= 20000) * 1) << 4) | (((C >= 30000)*2 + (C >= 20000) * 1) << 2))], dtype=np.uint8)
-    # (rR.astype(np.uint16) * 255) + rG.astype(np.uint16) == 1040
-    # floor(rB.astype(np.uint16) / 100) - 1
-    # rB.astype(np.uint16) % 100 == 55
+    # rR, rG, rB, rA = ...
+    # first_alert_dates = (rR.astype(np.uint16) * 255) + rG.astype(np.uint16)
+    # first_alert_confidences = floor(rB.astype(np.uint16) / 100) - 1
+    # intensities = rB.astype(np.uint16) % 100
+    # packed_confidences:
+    # rGLADCONF = (rA >>6) & 3
+    # rGLADS2CONF = (rAlpha >>4) & 3
+    # rRADDCONF = (rAlpha >>2) & 3
 
     encoded_co = RasterTileSetSourceCreationOptions(
         pixel_meaning=pixel_meaning,
