@@ -335,10 +335,20 @@ async def _merge_intensity_and_date_conf_multi_8(
     """Create RGB-encoded raster tile set based on date_conf and intensity
     raster tile sets."""
     # import numpy as np
-    # A = np.ma.array([21040, 21040, 21040], dtype=np.uint16)
-    # B = np.ma.array([22060, 20034, 22060], dtype=np.uint16)
-    # C = np.ma.array([27030, 27030, 27030], dtype=np.uint16)
-    # D = np.ma.array([55, 34, 0], dtype=np.uint8)
+
+    # Plausible raw values:
+    # A = np.ma.array([30080, 20060, 21040, 0], dtype=np.uint16)
+    # B = np.ma.array([1, 1, 2, 0], dtype=np.uint8)
+    # C = np.ma.array([140, 200, 1000, 0], dtype=np.uint16)
+    # D = np.ma.array([31040, 21040, 20040, 0], dtype=np.uint16)
+
+    # Once imported as date_conf:
+    # A, B, C = np.ma.array([(A>=20000) * (2 * (A - (20000 + (A>=30000) * 10000)) + (A<30000) * 1), (B>0) * (2 * (C + 1461) + (B<2) * 1), (D>=20000) * (2 * (D - (20000 + (D>=30000) * 10000)) + (D<30000) * 1)], dtype=np.uint16)
+
+    # Plus the new intensity bands
+    # D = np.ma.array([50, 21, 0, 16], dtype=np.uint8)
+    # E = np.ma.array([55, 34, 16, 20], dtype=np.uint8)
+    # F = np.ma.array([0, 15, 0, 45], dtype=np.uint8)
 
     # Here's how we would do it for one system, labeled A
     # DAY = "(A - ((A>=30000) * 10000 + (A>=20000) * 20000))"
@@ -359,57 +369,34 @@ async def _merge_intensity_and_date_conf_multi_8(
 
     FIRST_ALERT = "(np.ma.array((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)).filled(0)), mask=(A.mask & B.mask & C.mask)))"
 
-    # OLD ENCODING:
-    # DAY = f"({FIRST_ALERT} - (({FIRST_ALERT} >= 30000) * 10000 + ({FIRST_ALERT} >= 20000) * 20000))"
-    # CONFIDENCE = f"(({FIRST_ALERT} >= 30000) * 1)"
-    # INTENSITY = "(D)"
-    #
-    # RED = f"({DAY} / 255)"
-    # GREEN = f"({DAY} % 255)"
-    # BLUE = f"((({CONFIDENCE} + 1) * 100) + {INTENSITY})"
-    #
-    # GLAD_CONF = "((A.filled(0) >= 30000)*2 + (A.filled(0) >= 20000) * 1)"
-    # GLADS2_CONF = "((B.filled(0) >= 30000)*2 + (B.filled(0) >= 20000) * 1)"
-    # RADD_CONF = "((C.filled(0) >= 30000)*2 + (C.filled(0) >= 20000) * 1)"
-    #
-    # ALPHA = f"(({GLAD_CONF} << 6) | ({GLADS2_CONF} << 4) | ({RADD_CONF} << 2))"
-    #
-    # calc_str = f"np.ma.array([{RED}, {GREEN}, {BLUE}, {ALPHA}], dtype=np.uint8)"
-
-    # Checking our work:
-    # rR, rG, rB, rA = ...
-    # first_alert_dates = (rR.astype(np.uint16) * 255) + rG.astype(np.uint16)
-    # first_alert_confidences = floor(rB.astype(np.uint16) / 100) - 1
-    # intensities = rB.astype(np.uint16) % 100
-    # packed_confidences:
-    # rGLADCONF = (rA >>6) & 3
-    # rGLADS2CONF = (rAlpha >>4) & 3
-    # rRADDCONF = (rAlpha >>2) & 3
-
     # NEW ENCODING:
     FIRST_DAY = f"({FIRST_ALERT} >> 1)"
-    FIRST_CONFIDENCE = f"((({FIRST_ALERT} & 1) == 0) * 1)"
+
+    # Confidence is (now) encoded as 1 for high, 0 for low
+    # Reverse that here for use in the Blue channel
+    # Note that in the GLAD etc. conf variables we
+    FIRST_CONFIDENCE = f"(({FIRST_DAY}>0) * (({FIRST_ALERT} & 1) == 0) * 1)"
 
     MAX_INTENSITY = "(np.maximum(np.maximum(D.filled(0), E.filled(0)), F.filled(0)))"
 
-    RED = f"({FIRST_DAY} / 255)"
-    GREEN = f"({FIRST_DAY} % 255)"
-    BLUE = f"((({FIRST_CONFIDENCE} + 1) * 100) + {MAX_INTENSITY})"
+    RED = f"({FIRST_DAY} / 255).astype(np.uint8)"
+    GREEN = f"({FIRST_DAY} % 255).astype(np.uint8)"
+    BLUE = f"(({FIRST_DAY}>0) * (({FIRST_CONFIDENCE} + 1) * 100 + {MAX_INTENSITY})).astype(np.uint8)"
 
     GLAD_CONF = "(A.filled(0)>0) * (((A.filled(0) & 1) == 0) * 2 + (A.filled(0) & 1))"
     GLADS2_CONF = "(B.filled(0)>0) * (((B.filled(0) & 1) == 0) * 2 + (B.filled(0) & 1))"
     RADD_CONF = "(C.filled(0)>0) * (((C.filled(0) & 1) == 0) * 2 + (C.filled(0) & 1))"
 
-    ALPHA = f"(({GLAD_CONF} << 6) | ({GLADS2_CONF} << 4) | ({RADD_CONF} << 2))"
+    ALPHA = f"({GLAD_CONF} << 6) | ({GLADS2_CONF} << 4) | ({RADD_CONF} << 2)"
 
-    calc_str = f"np.ma.array([{RED}, {GREEN}, {BLUE}, {ALPHA}], dtype=np.uint8)"
+    calc_str = f"np.ma.array([{RED}, {GREEN}, {BLUE}, {ALPHA}])"
 
     encoded_co = RasterTileSetSourceCreationOptions(
         pixel_meaning=pixel_meaning,
         data_type=DataType.uint8,
         band_count=4,
         no_data=[0, 0, 0, 0],
-        resampling=PIXETL_DEFAULT_RESAMPLING,
+        resampling=ResamplingMethod.nearest,
         overwrite=False,
         grid=Grid(f"zoom_{zoom_level}"),
         compute_stats=False,
@@ -489,7 +476,7 @@ async def _merge_intensity_and_date_conf_multi_16(
         data_type=DataType.uint16,
         band_count=4,
         no_data=[0, 0, 0, 0],
-        resampling=PIXETL_DEFAULT_RESAMPLING,
+        resampling=ResamplingMethod.nearest,
         overwrite=False,
         grid=Grid(f"zoom_{zoom_level}"),
         compute_stats=False,
