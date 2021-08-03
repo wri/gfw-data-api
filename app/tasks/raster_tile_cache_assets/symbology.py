@@ -150,7 +150,7 @@ async def date_conf_intensity_multi_8_symbology(
         # "((A > 0) | (B > 0) | (C > 0)) * 55" because "A | B" includes only
         # those values unmasked in both A and B. So first replace masked
         # values with 0 and then re-mask them later
-        "np.ma.array([(A.filled(0)>0)*55, (B.filled(0)>0)*55, (C.filled(0)>0)*55])",
+        "np.ma.array([((A.filled(0) >> 1) > 0) * 55, ((B.filled(0) >> 1) > 0) * 55, ((C.filled(0) >> 1) > 0) * 55])",
         ResamplingMethod.bilinear,
         _merge_intensity_and_date_conf_multi_8,
     )
@@ -183,7 +183,7 @@ async def date_conf_intensity_multi_16_symbology(
         zoom_level,
         max_zoom,
         jobs_dict,
-        "np.ma.array([(A.filled(0)>0)*31, (B.filled(0)>0)*31, (C.filled(0)>0)*31])",
+        "np.ma.array([((A.filled(0) >> 1) > 0) * 31, ((B.filled(0) >> 1) > 0) * 31, ((C.filled(0) >> 1) > 0) * 31])",
         ResamplingMethod.bilinear,
         _merge_intensity_and_date_conf_multi_16,
     )
@@ -383,9 +383,15 @@ async def _merge_intensity_and_date_conf_multi_8(
     GREEN = f"({FIRST_DAY} % 255).astype(np.uint8)"
     BLUE = f"(({FIRST_DAY}>0) * (({FIRST_CONFIDENCE} + 1) * 100 + {MAX_INTENSITY})).astype(np.uint8)"
 
-    GLAD_CONF = "(A.filled(0)>0) * (((A.filled(0) & 1) == 0) * 2 + (A.filled(0) & 1))"
-    GLADS2_CONF = "(B.filled(0)>0) * (((B.filled(0) & 1) == 0) * 2 + (B.filled(0) & 1))"
-    RADD_CONF = "(C.filled(0)>0) * (((C.filled(0) & 1) == 0) * 2 + (C.filled(0) & 1))"
+    GLAD_CONF = (
+        "((A.filled(0) >> 1) > 0) * (((A.filled(0) & 1) == 0) * 2 + (A.filled(0) & 1))"
+    )
+    GLADS2_CONF = (
+        "((B.filled(0) >> 1) > 0) * (((B.filled(0) & 1) == 0) * 2 + (B.filled(0) & 1))"
+    )
+    RADD_CONF = (
+        "((C.filled(0) >> 1) > 0) * (((C.filled(0) & 1) == 0) * 2 + (C.filled(0) & 1))"
+    )
 
     ALPHA = f"({GLAD_CONF} << 6) | ({GLADS2_CONF} << 4) | ({RADD_CONF} << 2)"
 
@@ -466,10 +472,10 @@ async def _merge_intensity_and_date_conf_multi_16(
     raster tile sets."""
 
     # Change back to the format the frontend is expecting
-    RED = "(A.filled(0) > 0) * ((A.filled(0) >> 1) + 20000 + (10000 * (A.filled(0) & 1 == 0)))"
-    GREEN = "(B.filled(0) > 0) * ((B.filled(0) >> 1) + 20000 + (10000 * (B.filled(0) & 1 == 0)))"
-    BLUE = "(C.filled(0) > 0) * ((C.filled(0) >> 1) + 20000 + (10000 * (C.filled(0) & 1 == 0)))"
-    ALPHA = "(D.astype(np.uint16).data << 11) | (E.astype(np.uint16).data << 6) | (F.astype(np.uint16).data << 1)"
+    RED = "((A.filled(0) >> 1) > 0) * ((A.filled(0) >> 1) + 20000 + (10000 * (A.filled(0) & 1 == 0)))"
+    GREEN = "((B.filled(0) >> 1) > 0) * ((B.filled(0) >> 1) + 20000 + (10000 * (B.filled(0) & 1 == 0)))"
+    BLUE = "((C.filled(0) >> 1)> 0) * ((C.filled(0) >> 1) + 20000 + (10000 * (C.filled(0) & 1 == 0)))"
+    ALPHA = "((D.astype(np.uint16).data << 11) | (E.astype(np.uint16).data << 6) | (F.astype(np.uint16).data << 1)"
 
     encoded_co = RasterTileSetSourceCreationOptions(
         pixel_meaning=pixel_meaning,
