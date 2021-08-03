@@ -475,7 +475,7 @@ async def _merge_intensity_and_date_conf_multi_16(
     RED = "((A.filled(0) >> 1) > 0) * ((A.filled(0) >> 1) + 20000 + (10000 * (A.filled(0) & 1 == 0)))"
     GREEN = "((B.filled(0) >> 1) > 0) * ((B.filled(0) >> 1) + 20000 + (10000 * (B.filled(0) & 1 == 0)))"
     BLUE = "((C.filled(0) >> 1)> 0) * ((C.filled(0) >> 1) + 20000 + (10000 * (C.filled(0) & 1 == 0)))"
-    ALPHA = "((D.astype(np.uint16).data << 11) | (E.astype(np.uint16).data << 6) | (F.astype(np.uint16).data << 1)"
+    ALPHA = "(D.astype(np.uint16).data << 11) | (E.astype(np.uint16).data << 6) | (F.astype(np.uint16).data << 1)"
 
     encoded_co = RasterTileSetSourceCreationOptions(
         pixel_meaning=pixel_meaning,
