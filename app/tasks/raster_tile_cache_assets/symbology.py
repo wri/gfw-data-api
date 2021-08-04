@@ -336,35 +336,46 @@ async def _merge_intensity_and_date_conf_multi_8(
     raster tile sets."""
     # import numpy as np
 
-    # Plausible raw values:
+    # Plausible raw values, bands as seen when creating the raster tile set
     # A = np.ma.array([30080, 20060, 21040, 0], dtype=np.uint16)
     # B = np.ma.array([1, 1, 2, 0], dtype=np.uint8)
     # C = np.ma.array([140, 200, 1000, 0], dtype=np.uint16)
     # D = np.ma.array([31040, 21040, 20040, 0], dtype=np.uint16)
 
-    # Once imported as date_conf:
-    # A, B, C = np.ma.array([(A>=20000) * (2 * (A - (20000 + (A>=30000) * 10000)) + (A<30000) * 1), (B>0) * (2 * (C + 1461) + (B<2) * 1), (D>=20000) * (2 * (D - (20000 + (D>=30000) * 10000)) + (D<30000) * 1)], dtype=np.uint16)
+    # The new encoding can be summarized as
+    # value = 2 * DAY + (1 if low confidence else 0)
+    # So if matrix X is in the new encoding,
+    # DAY = X >> 1 and
+    # CONFIDENCE = X & 1 where a CONFIDENCE value of 1 = low, and 0 -= high
 
-    # Plus the new intensity bands
+    # Anyway, this the calc function I specify when creating the raster
+    # tile set, resulting in the A, B, and C seen coming into this function,
+    # which are in the new encoding.
+    # A, B, C = np.ma.array([
+    #     (A>=20000) * (2 * (A - (20000 + (A>=30000) * 10000)) + (A<30000) * 1),
+    #     (B>0) * (2 * (C + 1461) + (B<2) * 1),
+    #     (D>=20000) * (2 * (D - (20000 + (D>=30000) * 10000)) + (D<30000) * 1)
+    # ], dtype=np.uint16)
+
+    # Also at this point we have the new intensity bands
     # D = np.ma.array([50, 21, 0, 16], dtype=np.uint8)
     # E = np.ma.array([55, 34, 16, 20], dtype=np.uint8)
     # F = np.ma.array([0, 15, 0, 45], dtype=np.uint8)
 
-    # Here's how we would do it for one system, labeled A
-    # DAY = "(A - ((A>=30000) * 10000 + (A>=20000) * 20000))"
-    # CONFIDENCE = "((A>=30000) * 1)"
-    # INTENSITY = "(D)"
-
+    # This is how we want the final channels encoded
     # RED = "(DAY / 255)"
     # GREEN = "(DAY % 255)"
     # BLUE = "(((CONFIDENCE + 1) * 100) + INTENSITY)"
+    # ALPHA = First 2 bits GLAD confidence, then 2 bits for GLAD-S2 confidence,
+    #         then 2 bits for RADD confidence, then 2 unused bits.
+    #         Confidences should be a vaue of 2 for high, 1 for low, 0
+    #         for not detected.
 
     # But we've got three systems, and we want the minimum (first detection)
     # in any. np.minimum doesn't exclude masked values, so we have to replace
     # them with something bigger than our data... and then re-mask the
     # previously masked values afterwards. So unless I'm mistaken, just to
-    # get the minimum of the three alert systems requires:
-    # np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask))
+    # get the minimum of the three alert systems requires something like this:
     # Oye. What a monster...
 
     FIRST_ALERT = "(np.ma.array((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)).filled(0)), mask=(A.mask & B.mask & C.mask)))"
@@ -372,9 +383,8 @@ async def _merge_intensity_and_date_conf_multi_8(
     # NEW ENCODING:
     FIRST_DAY = f"({FIRST_ALERT} >> 1)"
 
-    # Confidence is (now) encoded as 1 for high, 0 for low
+    # Confidence is (now) encoded as 0 for high, 1 for low
     # Reverse that here for use in the Blue channel
-    # Note that in the GLAD etc. conf variables we
     FIRST_CONFIDENCE = f"(({FIRST_DAY}>0) * (({FIRST_ALERT} & 1) == 0) * 1)"
 
     MAX_INTENSITY = "(np.maximum(np.maximum(D.filled(0), E.filled(0)), F.filled(0)))"
