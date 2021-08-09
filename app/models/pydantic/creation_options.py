@@ -126,13 +126,14 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
             ), "No data values must be the same for all bands"  # RasterIO does not support different no data values for bands
         return v
 
-    # @validator("band_count")
-    # def validate_band_count(cls, v, values, **kwargs):
-    #     if v > 1:
-    #         assert values.get(
-    #             "calc"
-    #         ), "Output raster with more than one band require calc"
-    #     return v
+    @validator("band_count")
+    def validate_band_count(cls, v, values, **kwargs):
+        # Should we really require this or make pixetl more flexible?
+        if v > 1:
+            assert values.get(
+                "calc"
+            ), "Output raster with more than one band requires a calc field"
+        return v
 
 
 class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
@@ -149,10 +150,13 @@ class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
 
     @validator("source_uri")
     def validate_source_uri(cls, v, values, **kwargs):
+        # Should we really require this or make pixetl more flexible?
+        # And if we require it, shouldn't we also enforce in case of
+        # multi-band inputs?
         if values.get("source_type") == SourceType.raster:
             assert v, "Raster source types require source_uri"
-            # if len(v) > 1:
-            #     assert values.get("calc"), "More than one source_uri requires calc"
+            if len(v) > 1:
+                assert values.get("calc"), "More than one source_uri requires calc"
         else:
             assert not v, "Only raster source type require source_uri"
         return v

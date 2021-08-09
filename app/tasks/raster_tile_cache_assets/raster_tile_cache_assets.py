@@ -64,9 +64,10 @@ async def raster_tile_cache_asset(
         ).replace("{tile_id}.tif", "tiles.geojson")
     ]
 
+    # Create a generic calc string when a raster tile cache is being
+    # created from a multi-band raster tile set.
     band_count = source_asset.creation_options["band_count"]
     if band_count > 1:
-        # This could be more elegant, probably.
         bands_string = str(list(string.ascii_uppercase[:band_count])).replace("'", "")
         calc: Optional[str] = f"np.ma.array({bands_string})"
     else:
@@ -92,6 +93,7 @@ async def raster_tile_cache_asset(
     )
 
     # If float data type, convert to int in derivative assets for performance
+    # FIXME: Make this work for multi-band inputs
     max_zoom_calc = None
     if source_asset_co.data_type == DataType.boolean:
         pass  # So the next line doesn't break
@@ -159,7 +161,13 @@ async def raster_tile_cache_asset(
         )
         job_list += symbology_jobs
 
-        # FIXME
+        # FIXME: Surely this could be done better.
+        # Maybe make a lookup table of bit depths for symbology types?
+        # The larger question is should we infer the bit depth from the
+        # symbology (or even from the data in the source) or give people
+        # the flexibility/responsibility of specifying it?
+        # Doing this for the moment as it's the only case in which we
+        # want 16-bit PNGs
         if symbology_function == date_conf_intensity_multi_16_symbology:
             bit_depth: int = 16
         else:
