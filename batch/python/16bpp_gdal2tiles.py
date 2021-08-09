@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+# NOTICE: This is a copy of the gdal2tiles.py script hacked to suit our
+# particular needs. In particular it avoids some of the fancy logic
+# around masks and alpha channels, and writes PNGs with 16 bits per channel
+# rather than the usual 8. Also, I wanted something that would just
+# take a 4 channel TIFF and generate 4 channel PNGs as-is, because we
+# are using the alpha channel as just another place to put data, not
+# as a mask. At some point I would like to write a much simpler program
+# to do just that rather than include this hacked copy of gdal2tiles.
+
+
 # ******************************************************************************
 #  $Id: gdal2tiles.py c793e83ae7f219bdbdc06432ef707c25ae260aad 2020-10-26 12:15:22 +0100 Even Rouault $
 #
