@@ -12,6 +12,7 @@ from ..models.pydantic.jobs import Job
 from ..utils.aws import get_batch_client
 
 BATCH_DEPENDENCY_LIMIT = 14
+OOM_ERROR = "OutOfMemoryError: Container killed due to memory usage"
 
 
 async def execute(
@@ -139,6 +140,8 @@ def submit_batch_job(
                 # This is likely due to OOM, and report_status.sh will
                 # halve NUM_PROCESSES for retry
                 {"onExitCode": "137", "action": "RETRY"},
+                # Catch OOM situations which somehow didn't exit with 137
+                {"onReason": OOM_ERROR, "action": "RETRY"},
                 # Otherwise exit
                 {"onReason": "*", "action": "EXIT"},
             ],
