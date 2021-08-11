@@ -113,6 +113,8 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     process_locally: bool = True
     auxiliary_assets: Optional[List[UUID]] = None
     photometric: Optional[PhotometricType] = None
+    num_processes: Optional[StrictInt] = None
+    timeout_sec: Optional[StrictInt] = None
 
     @validator("no_data")
     def validate_no_data(cls, v, values, **kwargs):
@@ -143,8 +145,6 @@ class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
         "tiles.geojson file on S3 or a folder (prefix) on S3 or GCS. "
         "Features in tiles.geojson must have path starting with either /vsis3/ or /vsigs/",
     )
-    num_processes: Optional[StrictInt] = None
-    timeout_sec: Optional[StrictInt] = None
 
     @validator("source_uri")
     def validate_source_uri(cls, v, values, **kwargs):
