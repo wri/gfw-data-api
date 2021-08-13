@@ -127,14 +127,21 @@ async def date_conf_intensity_multi_8_symbology(
     max_zoom: int,
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
-    """Create Raster Tile Set asset which combines date_conf raster and
-    intensity raster into one.
+    """Create a Raster Tile Set asset which combines the earliest detected
+    alerts of three date_conf bands/alert systems (new encoding) with a new
+    derived intensity asset, and the confidences of each of the original
+    alerts.
 
-    At native resolution (max_zoom) it will create intensity raster
-    based on given source. For lower zoom levels it will resample higher
-    zoom level tiles using bilinear resampling method. Once intensity
-    raster tile set is created it will combine it with source
-    (date_conf) raster into RGB-encoded raster.
+    At native resolution (max_zoom) it creates a three band "intensity"
+    asset (one band per original band) which contains the value 31
+    everywhere there is data in the source (date_conf) band. For lower
+    zoom levels it resamples the previous zoom level intensity asset
+    using the bilinear resampling method, causing isolated pixels to
+    "fade". Finally the merge function takes the alert with the minimum
+    date of the three bands and encodes its date, confidence, and the
+    maximum of the three intensities into three 8-bit bands according to
+    the formula the front end expects, and also adds a fourth band which
+    encodes the confidences of all three original alert systems.
     """
     intensity_co = source_asset_co.copy(deep=True, update={"data_type": DataType.uint8})
     return await _date_intensity_symbology(
@@ -165,14 +172,19 @@ async def date_conf_intensity_multi_16_symbology(
     max_zoom: int,
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
-    """Create Raster Tile Set asset which combines date_conf raster and
-    intensity raster into one.
+    """Create a Raster Tile Set asset which combines a three band/alert system
+    date_conf asset (new encoding) with a new derived intensity asset.
 
-    At native resolution (max_zoom) it will create intensity raster
-    based on given source. For lower zoom levels it will resample higher
-    zoom level tiles using bilinear resampling method. Once intensity
-    raster tile set is created it will combine it with source
-    (date_conf) raster into RGB-encoded raster.
+    At native resolution (max_zoom) it creates a three band "intensity"
+    asset (one band per original band) which contains the value 31
+    everywhere there is data in the source (date_conf) asset. For lower
+    zoom levels it resamples the previous zoom level intensity asset
+    using the bilinear resampling method, causing isolated pixels to
+    "fade". Finally the merge function combines the date_conf and
+    intensity assets into a four band 16-bit-per-band asset suitable for
+    converting to 16-bit PNGs with a modified gdal2tiles in the final
+    stage of raster_tile_cache_asset. The final merged asset is saved in
+    the legacy GLAD/RADD date_conf format.
     """
     intensity_co = source_asset_co.copy(deep=True, update={"data_type": DataType.uint8})
     return await _date_intensity_symbology(
@@ -198,14 +210,17 @@ async def date_conf_intensity_symbology(
     max_zoom: int,
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
-    """Create Raster Tile Set asset which combines date_conf raster and
-    intensity raster into one.
+    """Create a Raster Tile Set asset which is the combination of a date_conf
+    asset and a new derived intensity asset.
 
-    At native resolution (max_zoom) it will create intensity raster
-    based on given source. For lower zoom levels it will resample higher
-    zoom level tiles using bilinear resampling method. Once intensity
-    raster tile set is created it will combine it with source
-    (date_conf) raster into RGB-encoded raster.
+    At native resolution (max_zoom) it creates an "intensity" asset
+    which contains the value 55 everywhere there is data in the source
+    (date_conf) raster. For lower zoom levels it resamples the higher
+    zoom level intensity tiles using the bilinear resampling method,
+    causing isolated pixels to "fade". Finally the merge function
+    combines the date_conf and intensity assets into a three band RGB-
+    encoded asset suitable for converting to PNGs with gdal2tiles in the
+    final stage of raster_tile_cache_asset
     """
     return await _date_intensity_symbology(
         dataset,

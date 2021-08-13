@@ -64,8 +64,10 @@ async def raster_tile_cache_asset(
         ).replace("{tile_id}.tif", "tiles.geojson")
     ]
 
-    # Create a generic calc string when a raster tile cache is being
-    # created from a multi-band raster tile set.
+    # Create a generic calc string (because pixetl requires one) that just
+    # passes bands through unmodified when a raster tile cache is being
+    # created from a multi-band raster tile set. So for a source RTS with
+    # three bands, generate the calc string "np.ma.array([A, B, C])"
     band_count = source_asset.creation_options["band_count"]
     if band_count > 1:
         bands_string = str(list(string.ascii_uppercase[:band_count])).replace("'", "")
