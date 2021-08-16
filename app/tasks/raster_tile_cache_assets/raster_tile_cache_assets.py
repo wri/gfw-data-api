@@ -19,7 +19,6 @@ from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.batch import execute
 from app.tasks.raster_tile_cache_assets.symbology import (
-    date_conf_intensity_multi_16_symbology,
     no_symbology,
     symbology_constructor,
 )
@@ -105,7 +104,7 @@ async def raster_tile_cache_asset(
         )
 
     assert source_asset_co.symbology is not None
-    symbology_function = symbology_constructor[source_asset_co.symbology.type]
+    symbology_function = symbology_constructor[source_asset_co.symbology.type].function
 
     # We want to make sure that the final RGB asset is named after the
     # implementation of the tile cache and that the source_asset name is not
@@ -163,17 +162,7 @@ async def raster_tile_cache_asset(
         )
         job_list += symbology_jobs
 
-        # FIXME: Surely this could be done better.
-        # Maybe make a lookup table of bit depths for symbology types?
-        # The larger question is should we infer the bit depth from the
-        # symbology (or even from the data in the source) or give people
-        # the flexibility/responsibility of specifying it?
-        # Doing this for the moment as it's the only case in which we
-        # want 16-bit PNGs
-        if symbology_function == date_conf_intensity_multi_16_symbology:
-            bit_depth: int = 16
-        else:
-            bit_depth = 8
+        bit_depth: int = symbology_constructor[source_asset_co.symbology.type].bit_depth
 
         if zoom_level <= max_static_zoom:
             tile_cache_job: Job = await create_tile_cache(
@@ -197,19 +186,27 @@ async def raster_tile_cache_validator(
 ) -> None:
     """Validate Raster Tile Cache Creation Options.
 
-    Used in asset route. If validation fails, it will raise a
+    Used in asset route. If validation fails, it will raise an
     HTTPException visible to user.
     """
     source_asset: ORMAsset = await get_asset(
         input_data["creation_options"]["source_asset_id"]
     )
     if (source_asset.dataset != dataset) or (source_asset.version != version):
-        raise HTTPException(
-            status_code=400,
-            detail="Dataset and version of source asset must match dataset and version of current asset.",
+        message: str = (
+            "Dataset and version of source asset must match dataset and "
+            "version of current asset."
         )
+        raise HTTPException(status_code=400, detail=message)
 
-    # if source_asset.creation_options.get("band_count", 1) > 1:
-    #     raise HTTPException(
-    #         status_code=400, detail="Cannot apply colormap on multi-band image."
-    #     )
+    symbology_info = symbology_constructor[source_asset.symbology.type]
+    req_input_bands: Optional[int] = symbology_info.req_input_bands
+
+    if req_input_bands and (
+        req_input_bands != source_asset.creation_options.get("band_count", 1)
+    ):
+        message = (
+            f"Symbology {source_asset.symbology.type} requires a source "
+            f"asset with {req_input_bands} bands"
+        )
+        raise HTTPException(status_code=400, detail=message)

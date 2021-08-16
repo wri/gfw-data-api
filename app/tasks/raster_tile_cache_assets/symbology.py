@@ -1,6 +1,17 @@
 import os
 from collections import defaultdict
-from typing import Any, Callable, Coroutine, DefaultDict, Dict, List, Optional, Tuple
+from typing import (
+    Any,
+    Callable,
+    Coroutine,
+    DefaultDict,
+    Dict,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Tuple,
+)
 
 from fastapi.logger import logger
 
@@ -34,6 +45,12 @@ SymbologyFuncType = Callable[
     [str, str, str, RasterTileSetSourceCreationOptions, int, int, Dict[Any, Any]],
     Coroutine[Any, Any, Tuple[List[Job], str]],
 ]
+
+
+class SymbologyInfo(NamedTuple):
+    bit_depth: Literal[8, 16]
+    req_input_bands: Optional[int]
+    function: SymbologyFuncType
 
 
 async def no_symbology(
@@ -186,6 +203,12 @@ async def date_conf_intensity_multi_16_symbology(
     stage of raster_tile_cache_asset. The final merged asset is saved in
     the legacy GLAD/RADD date_conf format.
     """
+    # What we want is a value of 31 anywhere there is an alert, band-by-band.
+    # Why is 31 the maximum instead of 55 like in the 8-bit symbology?
+    # Because in the end we have to pack the intensities into one 16-bit
+    # band. That means (unless we want to get really complicated) we have
+    # 5 bits for each intensity value with 1 bit left over. 2^5 = 32, so the
+    # largest value we can have for intensity in the 16-bit symbology is 31.
     intensity_co = source_asset_co.copy(deep=True, update={"data_type": DataType.uint8})
     return await _date_intensity_symbology(
         dataset,
@@ -252,7 +275,7 @@ async def year_intensity_symbology(
     based on given source. For lower zoom levels it will resample higher
     zoom level tiles using average resampling method. Once intensity
     raster tile set is created it will combine it with source (year)
-    raster into RGB-encoded raster.
+    raster into an RGB-encoded raster.
     """
     return await _date_intensity_symbology(
         dataset,
@@ -744,16 +767,22 @@ async def _merge_intensity_and_year(
     )
 
 
-_symbology_constructor: Dict[str, SymbologyFuncType] = {
-    ColorMapType.date_conf_intensity: date_conf_intensity_symbology,
-    ColorMapType.date_conf_intensity_multi_8: date_conf_intensity_multi_8_symbology,
-    ColorMapType.date_conf_intensity_multi_16: date_conf_intensity_multi_16_symbology,
-    ColorMapType.year_intensity: year_intensity_symbology,
-    ColorMapType.gradient: colormap_symbology,
-    ColorMapType.discrete: colormap_symbology,
+_symbology_constructor: Dict[str, SymbologyInfo] = {
+    ColorMapType.date_conf_intensity: SymbologyInfo(
+        8, 1, date_conf_intensity_symbology
+    ),
+    ColorMapType.date_conf_intensity_multi_8: SymbologyInfo(
+        8, 3, date_conf_intensity_multi_8_symbology
+    ),
+    ColorMapType.date_conf_intensity_multi_16: SymbologyInfo(
+        16, 3, date_conf_intensity_multi_16_symbology
+    ),
+    ColorMapType.year_intensity: SymbologyInfo(8, 1, year_intensity_symbology),
+    ColorMapType.gradient: SymbologyInfo(8, 1, colormap_symbology),
+    ColorMapType.discrete: SymbologyInfo(8, 1, colormap_symbology),
 }
 
-symbology_constructor: DefaultDict[str, SymbologyFuncType] = defaultdict(
-    lambda: no_symbology
+symbology_constructor: DefaultDict[str, SymbologyInfo] = defaultdict(
+    lambda: SymbologyInfo(8, None, no_symbology)
 )
 symbology_constructor.update(**_symbology_constructor)
