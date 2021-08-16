@@ -41,6 +41,9 @@ from app.tasks.raster_tile_set_assets.utils import (
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri, split_s3_path
 
+MAX_8_BIT_INTENSITY = 55
+MAX_16_BIT_INTENSITY = 31
+
 SymbologyFuncType = Callable[
     [str, str, str, RasterTileSetSourceCreationOptions, int, int, Dict[Any, Any]],
     Coroutine[Any, Any, Tuple[List[Job], str]],
@@ -150,7 +153,7 @@ async def date_conf_intensity_multi_8_symbology(
     alerts.
 
     At native resolution (max_zoom) it creates a three band "intensity"
-    asset (one band per original band) which contains the value 31
+    asset (one band per original band) which contains the value 55
     everywhere there is data in the source (date_conf) band. For lower
     zoom levels it resamples the previous zoom level intensity asset
     using the bilinear resampling method, causing isolated pixels to
@@ -161,6 +164,19 @@ async def date_conf_intensity_multi_8_symbology(
     encodes the confidences of all three original alert systems.
     """
     intensity_co = source_asset_co.copy(deep=True, update={"data_type": DataType.uint8})
+
+    # What we want is a value of 55 (max intensity for the 8-bit scenario)
+    # anywhere there is an alert in any system. We can't just do
+    # "((A > 0) | (B > 0) | (C > 0)) * 55" because "A | B" includes only
+    # those values unmasked in both A and B. In fact we don't want masked
+    # values at all! So first replace masked values with 0
+    max_zoom_calc_string = (
+        "np.ma.array(["
+        f"((A.filled(0) >> 1) > 0) * {MAX_8_BIT_INTENSITY},"  # GLAD-L
+        f"((B.filled(0) >> 1) > 0) * {MAX_8_BIT_INTENSITY},"  # GLAD-S2
+        f"((C.filled(0) >> 1) > 0) * {MAX_8_BIT_INTENSITY}"  # RADD
+        "])"
+    )
     return await _date_intensity_symbology(
         dataset,
         version,
@@ -169,12 +185,7 @@ async def date_conf_intensity_multi_8_symbology(
         zoom_level,
         max_zoom,
         jobs_dict,
-        # What we want is a value of 55 (max intensity) anywhere there is
-        # an alert in any system. We can't just do
-        # "((A > 0) | (B > 0) | (C > 0)) * 55" because "A | B" includes only
-        # those values unmasked in both A and B. So first replace masked
-        # values with 0 and then re-mask them later
-        "np.ma.array([((A.filled(0) >> 1) > 0) * 55, ((B.filled(0) >> 1) > 0) * 55, ((C.filled(0) >> 1) > 0) * 55])",
+        max_zoom_calc_string,
         ResamplingMethod.bilinear,
         _merge_intensity_and_date_conf_multi_8,
     )
@@ -201,15 +212,24 @@ async def date_conf_intensity_multi_16_symbology(
     intensity assets into a four band 16-bit-per-band asset suitable for
     converting to 16-bit PNGs with a modified gdal2tiles in the final
     stage of raster_tile_cache_asset. The final merged asset is saved in
-    the legacy GLAD/RADD date_conf format.
+    the legacy GLAD-L/RADD date_conf format.
     """
+    intensity_co = source_asset_co.copy(deep=True, update={"data_type": DataType.uint8})
+
     # What we want is a value of 31 anywhere there is an alert, band-by-band.
     # Why is 31 the maximum instead of 55 like in the 8-bit symbology?
     # Because in the end we have to pack the intensities into one 16-bit
     # band. That means (unless we want to get really complicated) we have
     # 5 bits for each intensity value with 1 bit left over. 2^5 = 32, so the
     # largest value we can have for intensity in the 16-bit symbology is 31.
-    intensity_co = source_asset_co.copy(deep=True, update={"data_type": DataType.uint8})
+    max_zoom_calc_string = (
+        "np.ma.array(["
+        f"((A.filled(0) >> 1) > 0) * {MAX_16_BIT_INTENSITY},"  # GLAD-L
+        f"((B.filled(0) >> 1) > 0) * {MAX_16_BIT_INTENSITY},"  # GLAD-S2
+        f"((C.filled(0) >> 1) > 0) * {MAX_16_BIT_INTENSITY}"  # RADD
+        "])"
+    )
+
     return await _date_intensity_symbology(
         dataset,
         version,
@@ -218,7 +238,7 @@ async def date_conf_intensity_multi_16_symbology(
         zoom_level,
         max_zoom,
         jobs_dict,
-        "np.ma.array([((A.filled(0) >> 1) > 0) * 31, ((B.filled(0) >> 1) > 0) * 31, ((C.filled(0) >> 1) > 0) * 31])",
+        max_zoom_calc_string,
         ResamplingMethod.bilinear,
         _merge_intensity_and_date_conf_multi_16,
     )
@@ -253,7 +273,7 @@ async def date_conf_intensity_symbology(
         zoom_level,
         max_zoom,
         jobs_dict,
-        "(A>0)*55",
+        f"(A > 0) * {MAX_8_BIT_INTENSITY}",
         ResamplingMethod.bilinear,
         _merge_intensity_and_date_conf,
     )
@@ -285,7 +305,7 @@ async def year_intensity_symbology(
         zoom_level,
         max_zoom,
         jobs_dict,
-        "(A>0)*255",
+        "(A > 0) * 255",
         ResamplingMethod.average,
         _merge_intensity_and_year,
     )
@@ -404,9 +424,9 @@ async def _merge_intensity_and_date_conf_multi_8(
     # RED = "(DAY / 255)"
     # GREEN = "(DAY % 255)"
     # BLUE = "(((CONFIDENCE + 1) * 100) + INTENSITY)"
-    # ALPHA = First 2 bits GLAD confidence, then 2 bits for GLAD-S2 confidence,
+    # ALPHA = First 2 bits GLAD-L confidence, then 2 bits for GLAD-S2 confidence,
     #         then 2 bits for RADD confidence, then 2 unused bits.
-    #         Confidences should be a vaue of 2 for high, 1 for low, 0
+    #         Confidences should be a value of 2 for high, 1 for low, 0
     #         for not detected.
 
     # But we've got three systems, and we want the minimum (first detection)
@@ -414,36 +434,66 @@ async def _merge_intensity_and_date_conf_multi_8(
     # them with something bigger than our data... and then re-mask the
     # previously masked values afterwards. So unless I'm mistaken, just to
     # get the minimum of the three alert systems requires something like this:
-    # Oye. What a monster...
 
-    FIRST_ALERT = "(np.ma.array((np.ma.array(np.minimum(A.filled(65535), np.minimum(B.filled(65535), C.filled(65535))), mask=(A.mask & B.mask & C.mask)).filled(0)), mask=(A.mask & B.mask & C.mask)))"
+    _first_alert = """
+    np.ma.array(
+        np.ma.array(
+            np.minimum(
+                A.filled(65535),
+                np.minimum(
+                    B.filled(65535),
+                    C.filled(65535)
+                )
+            ),
+            mask=(A.mask & B.mask & C.mask)
+        ).filled(0),
+        mask=(A.mask & B.mask & C.mask)
+    )
+    """
+    first_alert = "".join(_first_alert.split())
 
-    # NEW ENCODING:
-    FIRST_DAY = f"({FIRST_ALERT} >> 1)"
+    first_day = f"({first_alert} >> 1)"
 
-    # Confidence is (now) encoded as 0 for high, 1 for low
+    # At this point confidence is encoded as 0 for high, 1 for low.
     # Reverse that here for use in the Blue channel
-    FIRST_CONFIDENCE = f"(({FIRST_DAY}>0) * (({FIRST_ALERT} & 1) == 0) * 1)"
+    first_confidence = f"(({first_day} > 0) * " f"(({first_alert} & 1) == 0) * 1)"
 
-    MAX_INTENSITY = "(np.maximum(np.maximum(D.filled(0), E.filled(0)), F.filled(0)))"
+    # Use the maximum intensity of the three alert systems
+    _max_intensity = """
+        np.maximum(
+            D.filled(0),
+            np.maximum(
+                E.filled(0),
+                F.filled(0)
+            )
+        )
+    """
+    max_intensity = "".join(_max_intensity.split())
 
-    RED = f"({FIRST_DAY} / 255).astype(np.uint8)"
-    GREEN = f"({FIRST_DAY} % 255).astype(np.uint8)"
-    BLUE = f"(({FIRST_DAY}>0) * (({FIRST_CONFIDENCE} + 1) * 100 + {MAX_INTENSITY})).astype(np.uint8)"
-
-    GLAD_CONF = (
-        "((A.filled(0) >> 1) > 0) * (((A.filled(0) & 1) == 0) * 2 + (A.filled(0) & 1))"
+    red = f"({first_day} / 255).astype(np.uint8)"
+    green = f"({first_day} % 255).astype(np.uint8)"
+    blue = (
+        f"(({first_day} > 0) * "
+        f"(({first_confidence} + 1) * 100 + {max_intensity}))"
+        ".astype(np.uint8)"
     )
-    GLADS2_CONF = (
-        "((B.filled(0) >> 1) > 0) * (((B.filled(0) & 1) == 0) * 2 + (B.filled(0) & 1))"
+
+    gladl_conf = (
+        "((A.filled(0) >> 1) > 0) * "
+        "(((A.filled(0) & 1) == 0) * 2 + (A.filled(0) & 1))"
     )
-    RADD_CONF = (
-        "((C.filled(0) >> 1) > 0) * (((C.filled(0) & 1) == 0) * 2 + (C.filled(0) & 1))"
+    glads2_conf = (
+        "((B.filled(0) >> 1) > 0) * "
+        "(((B.filled(0) & 1) == 0) * 2 + (B.filled(0) & 1))"
+    )
+    radd_conf = (
+        "((C.filled(0) >> 1) > 0) * "
+        "(((C.filled(0) & 1) == 0) * 2 + (C.filled(0) & 1))"
     )
 
-    ALPHA = f"({GLAD_CONF} << 6) | ({GLADS2_CONF} << 4) | ({RADD_CONF} << 2)"
+    alpha = f"({gladl_conf} << 6) | " f"({glads2_conf} << 4) | " f"({radd_conf} << 2)"
 
-    calc_str = f"np.ma.array([{RED}, {GREEN}, {BLUE}, {ALPHA}])"
+    calc_str = f"np.ma.array([{red}, {green}, {blue}, {alpha}])"
 
     encoded_co = RasterTileSetSourceCreationOptions(
         pixel_meaning=pixel_meaning,
@@ -519,11 +569,34 @@ async def _merge_intensity_and_date_conf_multi_16(
     """Create RGB-encoded raster tile set based on date_conf and intensity
     raster tile sets."""
 
-    # Change back to the format the frontend is expecting
-    RED = "((A.filled(0) >> 1) > 0) * ((A.filled(0) >> 1) + 20000 + (10000 * (A.filled(0) & 1 == 0)))"
-    GREEN = "((B.filled(0) >> 1) > 0) * ((B.filled(0) >> 1) + 20000 + (10000 * (B.filled(0) & 1 == 0)))"
-    BLUE = "((C.filled(0) >> 1)> 0) * ((C.filled(0) >> 1) + 20000 + (10000 * (C.filled(0) & 1 == 0)))"
-    ALPHA = "(D.astype(np.uint16).data << 11) | (E.astype(np.uint16).data << 6) | (F.astype(np.uint16).data << 1)"
+    # Change back to the encoding the frontend is expecting
+    # As a reminder, that is as follows:
+    # The leading integer of the decimal representation is 2 for a low-confidence
+    # alert and 3 for a high-confidence alert, followed by the number of days
+    # since December 31 2014.
+    # 0 is the no-data value
+
+    # GLAD-L date and confidence
+    red = (
+        "((A.filled(0) >> 1) > 0) * "
+        "((A.filled(0) >> 1) + 20000 + (10000 * (A.filled(0) & 1 == 0)))"
+    )
+    # GLAD-S2 date and confidence
+    green = (
+        "((B.filled(0) >> 1) > 0) * "
+        "((B.filled(0) >> 1) + 20000 + (10000 * (B.filled(0) & 1 == 0)))"
+    )
+    # RADD date and confidence
+    blue = (
+        "((C.filled(0) >> 1)> 0) * "
+        "((C.filled(0) >> 1) + 20000 + (10000 * (C.filled(0) & 1 == 0)))"
+    )
+    # GLAD-L, GLAD-S2, and RADD intensities
+    alpha = (
+        "(D.astype(np.uint16).data << 11) | "
+        "(E.astype(np.uint16).data << 6) | "
+        "(F.astype(np.uint16).data << 1)"
+    )
 
     encoded_co = RasterTileSetSourceCreationOptions(
         pixel_meaning=pixel_meaning,
@@ -538,7 +611,7 @@ async def _merge_intensity_and_date_conf_multi_16(
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
         source_uri=[date_conf_uri, intensity_uri],
-        calc=f"np.ma.array([{RED}, {GREEN}, {BLUE}, {ALPHA}])",
+        calc=f"np.ma.array([{red}, {green}, {blue}, {alpha}])",
         photometric=PhotometricType.rgb,
     )
 
