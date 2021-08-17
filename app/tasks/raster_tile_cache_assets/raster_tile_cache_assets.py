@@ -38,6 +38,8 @@ async def raster_tile_cache_asset(
 ) -> ChangeLog:
     """Generate Raster Tile Cache Assets."""
 
+    # TODO: Refactor to be easier to test
+
     min_zoom = input_data["creation_options"]["min_zoom"]
     max_zoom = input_data["creation_options"]["max_zoom"]
     max_static_zoom = input_data["creation_options"]["max_static_zoom"]
@@ -51,8 +53,9 @@ async def raster_tile_cache_asset(
         input_data["creation_options"]["source_asset_id"]
     )
 
-    # Get the creation options from the original raster tile set asset and overwrite settings
-    # make sure source_type and source_driver are set in case it is an auxiliary asset
+    # Get the creation options from the original raster tile set asset and
+    # overwrite settings. Make sure source_type and source_driver are set in
+    # case it is an auxiliary asset
 
     new_source_uri = [
         get_asset_uri(
@@ -63,10 +66,14 @@ async def raster_tile_cache_asset(
         ).replace("{tile_id}.tif", "tiles.geojson")
     ]
 
-    # Create a generic calc string (because pixetl requires one) that just
-    # passes bands through unmodified when a raster tile cache is being
-    # created from a multi-band raster tile set. So for a source RTS with
-    # three bands, generate the calc string "np.ma.array([A, B, C])"
+    # The first thing we do for each zoom level is re-project the source asset
+    # to web-mercator. We don't want the calc string (if any) used to
+    # create the source asset to be applied again to the already transformed
+    # data, so set it to None. But wait, PixETL currently requires a calc
+    # string when band_count > 1, so for such cases make a generic calc
+    # string that just pass through the source bands as-is. So for a source
+    # RTS with three bands, set the calc string to "np.ma.array([A, B, C])"
+    # TODO: When pixetl allows it just set the calc string to None
     band_count = source_asset.creation_options["band_count"]
     if band_count > 1:
         bands_string = str(list(string.ascii_uppercase[:band_count])).replace("'", "")
@@ -109,6 +116,8 @@ async def raster_tile_cache_asset(
     # We want to make sure that the final RGB asset is named after the
     # implementation of the tile cache and that the source_asset name is not
     # already used by another intermediate asset.
+    # TODO: Actually make sure the intermediate assets aren't going to
+    # overwrite any existing assets
     if symbology_function == no_symbology:
         source_asset_co.pixel_meaning = implementation
     else:
