@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List, Sequence
 
 import boto3
 import httpx
@@ -64,6 +64,30 @@ async def head_s3(bucket: str, key: str) -> bool:
         )
 
     return response.status_code == 200
+
+
+def get_aws_files(
+    bucket: str, prefix: str, extensions: Sequence[str] = (".tif",)
+) -> List[str]:
+    """Get all matching files in S3."""
+
+    files: List[str] = list()
+
+    s3_client = get_s3_client()
+    paginator = s3_client.get_paginator("list_objects_v2")
+
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        try:
+            contents = page["Contents"]
+        except KeyError:
+            break
+
+        for obj in contents:
+            key = str(obj["Key"])
+            if any(key.endswith(ext) for ext in extensions):
+                files.append(f"/vsis3/{bucket}/{key}")
+
+    return files
 
 
 def _aws_auth(service: str) -> AWS4Auth:

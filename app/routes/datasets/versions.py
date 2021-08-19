@@ -8,9 +8,9 @@ uploaded file. Based on the source file(s), users can create additional
 assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
-import asyncio
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple, Union
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.logger import logger
@@ -48,8 +48,8 @@ from ...settings.globals import TILE_CACHE_CLOUDFRONT_ID
 from ...tasks.aws_tasks import flush_cloudfront_cache
 from ...tasks.default_assets import append_default_asset, create_default_asset
 from ...tasks.delete_assets import delete_all_assets
-from ...utils.aws import head_s3
-from ...utils.path import split_s3_path
+from ...utils.aws import get_aws_files, head_s3
+from ...utils.google import get_gs_files
 from .queries import _get_data_environment
 
 router = APIRouter()
@@ -365,11 +365,39 @@ async def _version_response(
     return VersionResponse(data=Version(**data))
 
 
-async def _verify_source_file_access(s3_sources: List[str]) -> None:
-    head_calls = [head_s3(*split_s3_path(s3_source)) for s3_source in s3_sources]
-    results = await asyncio.gather(*head_calls)
-    if not all(results):
+async def _verify_source_file_access(sources: List[str]) -> None:
+
+    # head_calls = [head_s3(*split_s3_path(source)) for source in sources]
+    # results = await asyncio.gather(*head_calls)
+
+    # TODO: This has much opportunity for optimization
+    # In particular rather than get the entire list of files in a prefix
+    # we could just make sure that at least 1 file exists there and call it
+    # a day.
+    # Also while the head_s3 call is awaitable the others are not.
+    # Making all of them async would allow us to use asyncio.gather to make
+    # them non-blocking. Might need to use the asyncio boto3 package for
+    # aws, but what about for gcs? Use HTTPS?
+
+    invalid_sources: List[str] = list()
+
+    for source in sources:
+        o = urlparse(source, allow_fragments=False)
+        if o.scheme.lower() == "gs":
+            if not len(get_gs_files(o.netloc, o.path.lstrip("/"))) > 0:
+                invalid_sources.append(source)
+        elif o.scheme.lower() == "s3":
+            if o.path.endswith("tiles.geojson"):
+                if not await head_s3(o.netloc, o.path.lstrip("/")):
+                    invalid_sources.append(source)
+            else:
+                if not len(get_aws_files(o.netloc, o.path.lstrip("/"))) > 0:
+                    invalid_sources.append(source)
+        else:
+            invalid_sources.append(source)
+
+    if invalid_sources:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot access all of the source files {s3_sources}",
+            detail=f"Cannot access all of the source files. Invalid sources: {invalid_sources}",
         )
