@@ -373,8 +373,10 @@ async def _verify_source_file_access(sources: List[str]) -> None:
     # a day.
     # Also while the head_s3 call is awaitable the others are not.
     # Making all of them async would allow us to use asyncio.gather to make
-    # them non-blocking. Might need to use the asyncio boto3 package for
-    # aws, but what about for gcs? Use HTTPS?
+    # them non-blocking. Perhaps use the aioboto3 package for
+    # aws, gcloud-aio-storage for gcs. The reason I haven't is that I
+    # remember aioboto3 placing rather annoying/strict version requirements
+    # on which boto3 and botocore versions we can use.
 
     invalid_sources: List[str] = list()
 
