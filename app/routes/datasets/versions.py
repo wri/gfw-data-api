@@ -8,6 +8,7 @@ uploaded file. Based on the source file(s), users can create additional
 assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
+
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse

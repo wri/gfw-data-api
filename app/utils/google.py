@@ -1,25 +1,61 @@
+import os
 from typing import List, Sequence
 
-# from google.auth.exceptions import DefaultCredentialsError
-# from google.cloud import storage
+from fastapi.logger import logger
+from google.auth.exceptions import DefaultCredentialsError
+from google.cloud import storage
+from retrying import retry
+
+from ..settings.globals import AWS_GCS_KEY_SECRET_ARN, GOOGLE_APPLICATION_CREDENTIALS
+from .aws import get_secret_client
 
 
+def set_google_application_credentials(exception: Exception) -> bool:
+    # We will not reach out to AWS Secret Manager if no secret is set.
+    if not isinstance(exception, DefaultCredentialsError):
+        return False
+    elif not AWS_GCS_KEY_SECRET_ARN:
+        logger.error(
+            "No AWS_GCS_KEY_SECRET_ARN set. Cannot write Google Application Credential file."
+        )
+        return False
+    # ...Or if we don't know where to write the credential file.
+    elif not GOOGLE_APPLICATION_CREDENTIALS:
+        logger.error(
+            "No GOOGLE_APPLICATION_CREDENTIALS set. Cannot write Google Application Credential file"
+        )
+        return False
+    else:
+        logger.info("GCS key file is missing. Trying to fetch key from secret manager")
+        client = get_secret_client()
+        response = client.get_secret_value(SecretId=AWS_GCS_KEY_SECRET_ARN)
+
+        os.makedirs(
+            os.path.dirname(GOOGLE_APPLICATION_CREDENTIALS),
+            exist_ok=True,
+        )
+
+        logger.info("Writing GCS key to file")
+        with open(GOOGLE_APPLICATION_CREDENTIALS, "w") as f:
+            f.write(response["SecretString"])
+    return True
+
+
+@retry(
+    retry_on_exception=set_google_application_credentials,
+    stop_max_attempt_number=2,
+)
 def get_gs_files(
     bucket: str, prefix: str, extensions: Sequence[str] = (".tif",)
 ) -> List[str]:
     """Get all matching files in GCS."""
 
-    # try:
-    #     storage_client = storage.Client()
-    # except DefaultCredentialsError:
-    #     raise MissingGCSKeyError()
-    #
-    # blobs = storage_client.list_blobs(bucket, prefix=prefix)
-    # files = [
-    #     f"/vsigs/{bucket}/{blob.name}"
-    #     for blob in blobs
-    #     if any(blob.name.endswith(ext) for ext in extensions)
-    # ]
-    # return files
+    storage_client = storage.Client()
 
-    return []
+    blobs = storage_client.list_blobs(bucket, prefix=prefix)
+    files = [
+        f"/vsigs/{bucket}/{blob.name}"
+        for blob in blobs
+        if any(blob.name.endswith(ext) for ext in extensions)
+    ]
+    return files
