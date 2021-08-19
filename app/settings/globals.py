@@ -159,3 +159,7 @@ API_KEY_NAME = config("API_KEY_NAME", cast=str, default="x-api-key")
 GEOSTORE_SIZE_LIMIT_OTF = config(
     "GEOSTORE_SIZE_LIMIT_OTF", cast=int, default=1000000000
 )
+
+GOOGLE_APPLICATION_CREDENTIALS = config(
+    "GOOGLE_APPLICATION_CREDENTIALS", cast=str, default="/root/.gcs/private_key.json"
+)
