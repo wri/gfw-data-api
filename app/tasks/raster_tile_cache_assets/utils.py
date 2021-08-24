@@ -266,6 +266,8 @@ def scale_batch_job(job: Job, zoom_level: int):
     job.memory = (MAX_MEM / MAX_CORES) * job.vcpus
     job.num_processes = max(1, int(job.vcpus / cpu_proc_ratio))
 
-    job.attempt_duration_seconds = int(DEFAULT_JOB_DURATION * (zoom_level / 3))
+    job.attempt_duration_seconds = max(
+        DEFAULT_JOB_DURATION, int(DEFAULT_JOB_DURATION * (zoom_level / 3))
+    )
 
     return job
