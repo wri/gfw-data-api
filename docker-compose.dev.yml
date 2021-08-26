@@ -10,7 +10,6 @@ services:
     restart: on-failure
     volumes:
       - $HOME/.aws:/root/.aws:ro
-      - $HOME/.gcs:/root/.gcs:ro
       - ./app:/app/app
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
