@@ -38,6 +38,17 @@ def set_google_application_credentials(exception: Exception) -> bool:
         logger.info("Writing GCS key to file")
         with open(GOOGLE_APPLICATION_CREDENTIALS, "w") as f:
             f.write(response["SecretString"])
+
+        with open(GOOGLE_APPLICATION_CREDENTIALS, "r") as f:
+            logger.debug(f"This is what we wrote: {f.read()}")
+
+    # make sure that global ENV VAR is set
+    # FIXME: Better to set the default in Docker compose file?
+    logger.info("Setting environment's GOOGLE_APPLICATION_CREDENTIALS to ")
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
+
+    logger.debug(f"os.environ: {os.environ}")
+
     return True
 
 
@@ -50,7 +61,9 @@ def get_gs_files(
 ) -> List[str]:
     """Get all matching files in GCS."""
 
-    storage_client = storage.Client()
+    storage_client = storage.Client.from_service_account_json(
+        GOOGLE_APPLICATION_CREDENTIALS
+    )
 
     blobs = storage_client.list_blobs(bucket, prefix=prefix)
     files = [
