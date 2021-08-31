@@ -20,7 +20,6 @@ from ...authentication.token import is_admin
 from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
-from ...models.enum.pixetl import Grid
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
@@ -322,11 +321,9 @@ async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
 
 async def _get_raster_fields(asset: ORMAsset) -> List[RasterFieldMetadata]:
     fields: List[RasterFieldMetadata] = []
-    grids = [Grid.ten_by_forty_thousand]
-    if asset.creation_options["grid"] == Grid.ten_by_one_hundred_thousand:
-        grids.append(Grid.ten_by_one_hundred_thousand)
+    grid = asset.creation_options["grid"]
 
-    raster_data_environment = await _get_data_environment(grids=grids)
+    raster_data_environment = await _get_data_environment(grid)
 
     logger.debug(f"Processing data environment f{raster_data_environment}")
     for layer in raster_data_environment.layers:
