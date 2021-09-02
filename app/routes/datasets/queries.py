@@ -686,14 +686,16 @@ def _get_source_layer(row, source_layer_name: str) -> SourceLayer:
     if source_layer_name == "umd_glad_landsat_alerts__date_conf":
         source_uri = "s3://gfw2-data/forest_change/umd_landsat_alerts/prod/analysis/{tile_id}.tif"
         tile_scheme = "nwse"
+        grid = Grid.ten_by_forty_thousand
     else:
         source_uri = row.asset_uri
         tile_scheme = "nw"
+        grid = row.creation_options["grid"]
 
     return SourceLayer(
         source_uri=source_uri,
         tile_scheme=tile_scheme,
-        grid=row.creation_options["grid"],
+        grid=grid,
         name=source_layer_name,
         raster_table=row.metadata.get("raster_table", None),
     )
@@ -708,10 +710,12 @@ def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
     decode_expression = "(A + 16435).astype('datetime64[D]').astype(str)"
     encode_expression = "(datetime64(A) - 16435).astype(uint16)"
     conf_encoding = RasterTable(
+        default_meaning="not_detected",
         rows=[
-            RasterTableRow(value=2, meaning=""),
+            RasterTableRow(value=2, meaning="nominal"),
             RasterTableRow(value=3, meaning="high"),
-        ]
+            RasterTableRow(value=4, meaning="highest"),
+        ],
     )
 
     return [
