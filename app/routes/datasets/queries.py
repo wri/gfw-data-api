@@ -567,7 +567,12 @@ async def _query_raster(
         )
 
     # use default data type to get default raster layer for dataset
-    default_layer = _get_default_layer(dataset, asset.creation_options["pixel_meaning"])
+    default_type = asset.creation_options["pixel_meaning"]
+    default_layer = (
+        f"{default_type}__{dataset}"
+        if default_type == "is"
+        else f"{dataset}__{default_type}"
+    )
     grid = asset.creation_options["grid"]
 
     sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
@@ -623,6 +628,7 @@ async def _query_raster_lambda(
     return response_body
 
 
+<<<<<<< HEAD
 def _get_default_layer(dataset, pixel_meaning):
     default_type = pixel_meaning
     if default_type == "is":
@@ -634,6 +640,8 @@ def _get_default_layer(dataset, pixel_meaning):
         return f"{dataset}__{default_type}"
 
 
+=======
+>>>>>>> 101d152 (Only allow assets in a single grid to be analyzed in an OTF query (#231))
 async def _get_data_environment(grid: Grid) -> DataEnvironment:
     # get all Raster tile set assets
     latest_tile_sets = await (
