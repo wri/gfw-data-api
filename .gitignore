@@ -11,3 +11,6 @@
 
 # Environment Files
 /.env
+
+# Terraform workspaces
+terraform/.terraform
