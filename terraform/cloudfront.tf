@@ -5,12 +5,12 @@ resource "aws_cloudfront_distribution" "data_api" {
   aliases             = var.environment == "dev" ? null : [replace(var.service_url, "https://", "")]
 
   origin {
-    domain_name = module.fargate_autoscaling.lb_dns_name
+    domain_name = trimsuffix(trimprefix(aws_api_gateway_stage.dev.invoke_url, "https://"), "/dev")
     custom_origin_config {
       http_port = 80
       https_port = 443
       origin_keepalive_timeout = 5
-      origin_protocol_policy = "http-only"
+      origin_protocol_policy = "https-only"
       origin_read_timeout = 30
       origin_ssl_protocols = [
         "TLSv1",
@@ -19,6 +19,7 @@ resource "aws_cloudfront_distribution" "data_api" {
       ]
     }
     origin_id = "default"
+    origin_path = "/dev"
   }
 
   default_cache_behavior {
