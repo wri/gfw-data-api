@@ -5,7 +5,7 @@ resource "aws_cloudfront_distribution" "data_api" {
   aliases             = var.environment == "dev" ? null : [replace(var.service_url, "https://", "")]
 
   origin {
-    domain_name = trimsuffix(trimprefix(aws_api_gateway_stage.dev.invoke_url, "https://"), "/dev")
+    domain_name = trimsuffix(trimprefix(aws_api_gateway_stage.api_gw_stage.invoke_url, "https://"), "/${local.api_gw_stage_name}")
     custom_origin_config {
       http_port = 80
       https_port = 443
@@ -19,7 +19,7 @@ resource "aws_cloudfront_distribution" "data_api" {
       ]
     }
     origin_id = "default"
-    origin_path = "/dev"
+    origin_path = "/${local.api_gw_stage_name}"
   }
 
   default_cache_behavior {
