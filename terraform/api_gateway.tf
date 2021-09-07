@@ -15,7 +15,7 @@ resource "aws_api_gateway_method" "proxy" {
   http_method = "ANY"
   authorization = "NONE"
   request_parameters = {"method.request.path.proxy" = true}
-  api_key_required = false
+  api_key_required = var.environment == "dev"
 }
 
 
