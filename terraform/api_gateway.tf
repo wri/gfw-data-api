@@ -38,21 +38,21 @@ resource "aws_api_gateway_api_key" "internal_api_key" {
 }
 
 resource "aws_api_gateway_usage_plan" "internal" {
-  name         = "internal_users"
+  name         = "internal_apps"
 
-  # api_stages {
-  #   api_id = aws_api_gateway_rest_api.api_gw_api.id
-  #   stage  = aws_api_gateway_stage.dev.stage_name
-  # }
+  api_stages {
+    api_id = aws_api_gateway_rest_api.api_gw_api.id
+    stage  = aws_api_gateway_stage.api_gw_stage.stage_name
+  }
 
   quota_settings {
-    limit  = 10000 # TODO: change to variable
+    limit  = var.api_gateway_usage_plans.internal_apps.quota_limit
     period = "DAY"
   }
 
   throttle_settings {
-    burst_limit = 100 # TODO: change to variable
-    rate_limit  = 500 # per second
+    burst_limit = var.api_gateway_usage_plans.internal_apps.burst_limit
+    rate_limit  = var.api_gateway_usage_plans.internal_apps.rate_limit
   }
 }
 

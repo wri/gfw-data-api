@@ -69,3 +69,20 @@ variable "data_lake_max_vcpus" {
   type    = number
   default = 576
 }
+
+variable "api_gateway_usage_plans" {
+  type        = map
+  description = "Throttling limits for API Gateway"
+  default     = {
+    internal_apps = {
+      quota_limit  = 10000 # per day
+      burst_limit = 100    # per second
+      rate_limit  = 3
+    }
+    external_apps = {
+      limit  = 10000
+      burst_limit = 100
+      rate_limit  = 500
+    }
+  }
+}
