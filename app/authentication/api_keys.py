@@ -95,7 +95,7 @@ def api_key_is_valid(
 
 def api_key_is_internal(
     domains: List[str],
-    user_id: None,
+    user_id: Optional[str] = None,
     origin: Optional[str] = None,
     referrer: Optional[str] = None,
 ) -> bool:

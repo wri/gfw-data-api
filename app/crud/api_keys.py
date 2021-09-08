@@ -66,19 +66,18 @@ async def add_api_key_to_gateway(api_key: ORMApiKey, internal=False) -> None:
         "restApiId": API_GATEWAY_ID,
         "stageName": API_GATEWAY_STAGE_NAME,
     }
-    gw_api_key = get_api_gateway_client.create_api_key(
-        name=api_key.organization,
-        value=api_key.api_key,
+    gw_api_key = get_api_gateway_client().create_api_key(
+        name=api_key.alias,
+        value=api_key.api_key.hex,
         enabled=True,
         stageKeys=[stage_keys],
     )
-
     usage_plan_id = (
         API_GATEWAY_INTERNAL_USAGE_PLAN
         if internal is True
         else API_GATEWAY_EXTERNAL_USAGE_PLAN
     )
-    get_api_gateway_client.create_usage_plan_key(
+    get_api_gateway_client().create_usage_plan_key(
         usagePlanId=usage_plan_id, keyId=gw_api_key["id"], keyType="API_KEY"
     )
 

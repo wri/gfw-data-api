@@ -79,15 +79,15 @@ async def create_apikey(
     if not api_key_is_valid(input_data["domains"], origin=origin, referrer=referrer):
         raise HTTPException(
             status_code=400,
-            detail=f"Domain name did not match the request origin or referrer.",
+            detail="Domain name did not match the request origin or referrer.",
         )
 
     row: ORMApiKey = await api_keys.create_api_key(user_id=user_id, **input_data)
 
     is_internal = api_key_is_internal(
-        api_key_data.domains, origin=origin, referrer=referrer
+        api_key_data.domains, user_id=None, origin=origin, referrer=referrer
     )
-    api_keys.add_api_key_to_gateway(row, internal=is_internal)
+    await api_keys.add_api_key_to_gateway(row, internal=is_internal)
 
     return ApiKeyResponse(data=row)
 
