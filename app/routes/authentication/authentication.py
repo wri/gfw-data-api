@@ -76,7 +76,7 @@ async def create_apikey(
 
     origin = request.headers.get("origin")
     referrer = request.headers.get("referer")
-    if not api_key_is_valid(input_data["domains"], origin=origin, referer=referrer):
+    if not api_key_is_valid(input_data["domains"], origin=origin, referrer=referrer):
         raise HTTPException(
             status_code=400,
             detail=f"Domain name did not match the request origin or referrer.",
@@ -87,7 +87,7 @@ async def create_apikey(
     is_internal = api_key_is_internal(
         api_key_data.domains, origin=origin, referrer=referrer
     )
-    api_gw_key = api_keys.add_api_key_to_gateway(row, internal=is_internal)
+    api_keys.add_api_key_to_gateway(row, internal=is_internal)
 
     return ApiKeyResponse(data=row)
 

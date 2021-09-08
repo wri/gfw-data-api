@@ -41,6 +41,10 @@ services:
       - API_URL=http://app_dev:80
       - RASTER_ANALYSIS_LAMBDA_NAME=raster-analysis-tiled_raster_analysis-default
       - RW_API_URL=https://staging-api.resourcewatch.org
+      - API_GATEWAY_ID=sd0vtzz257
+      - API_GATEWAY_INTERNAL_USAGE_PLAN=botqap
+      - API_GATEWAY_EXTERNAL_USAGE_PLAN=08ipvv
+      - API_GATEWAY_STAGE_NAME=deploy_feature_rate_limiting
     ports:
       - 8008:80
     entrypoint: wait_for_postgres.sh /start-reload.sh
