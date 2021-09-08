@@ -1,10 +1,10 @@
 from typing import List, Optional, Tuple
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.security import OAuth2PasswordRequestForm
 
-from ...authentication.api_keys import api_key_is_valid
+from ...authentication.api_keys import api_key_is_internal, api_key_is_valid
 from ...authentication.token import get_user, is_admin
 from ...crud import api_keys
 from ...errors import RecordNotFoundError, UnauthorizedError
@@ -50,7 +50,8 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @router.post("/apikey", tags=["Authentication"], status_code=201)
 async def create_apikey(
-    request: APIKeyRequestIn,
+    api_key_data: APIKeyRequestIn,
+    request: Request,
     user: Tuple[str, str] = Depends(get_user),
 ):
     """Request a new API key.
@@ -59,21 +60,34 @@ async def create_apikey(
     """
 
     user_id, user_role = user
-    if len(request.domains) == 0 and user_role != "ADMIN":
+    if len(api_key_data.domains) == 0 and user_role != "ADMIN":
         raise HTTPException(
             status_code=400,
             detail=f"Users with role {user_role} must list at least one domain.",
         )
 
-    if request.never_expires and user_role != "ADMIN":
+    if api_key_data.never_expires and user_role != "ADMIN":
         raise HTTPException(
             status_code=400,
             detail=f"Users with role {user_role} cannot set `never_expires` to True.",
         )
 
-    input_data = request.dict(by_alias=True)
+    input_data = api_key_data.dict(by_alias=True)
+
+    origin = request.headers.get("origin")
+    referrer = request.headers.get("referer")
+    if not api_key_is_valid(input_data["domains"], origin=origin, referer=referrer):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Domain name did not match the request origin or referrer.",
+        )
 
     row: ORMApiKey = await api_keys.create_api_key(user_id=user_id, **input_data)
+
+    is_internal = api_key_is_internal(
+        api_key_data.domains, origin=origin, referrer=referrer
+    )
+    api_gw_key = api_keys.add_api_key_to_gateway(row, internal=is_internal)
 
     return ApiKeyResponse(data=row)
 
@@ -95,7 +109,7 @@ async def get_apikey(
 
     if role != "ADMIN" and row.user_id != user_id:
         raise HTTPException(
-            status_code=403, detail="API Key is not associate with current user."
+            status_code=403, detail="API Key is not associated with current user."
         )
 
     data = ApiKey.from_orm(row)

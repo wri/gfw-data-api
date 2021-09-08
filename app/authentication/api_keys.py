@@ -10,6 +10,7 @@ from starlette.status import HTTP_403_FORBIDDEN
 
 from ..crud import api_keys
 from ..errors import RecordNotFoundError
+from ..models.enum import internal_domains
 from ..models.orm.api_keys import ApiKey as ORMApiKey
 from ..settings.globals import API_KEY_NAME
 
@@ -90,6 +91,36 @@ def api_key_is_valid(
         is_valid = False
 
     return is_valid
+
+
+def api_key_is_internal(
+    domains: List[str],
+    user_id: None,
+    origin: Optional[str] = None,
+    referrer: Optional[str] = None,
+) -> bool:
+
+    is_internal: bool = False
+    if not domains:
+        return True
+    elif origin and domains:
+        is_internal = any(
+            [
+                re.search(_to_regex(domain), internal_domain)
+                for domain in domains
+                for internal_domain in internal_domains
+            ]
+        )
+    elif referrer and domains:
+        is_internal = any(
+            [
+                re.search(_to_regex(domain), internal_domain)
+                for domain in domains
+                for internal_domain in internal_domains
+            ]
+        )
+
+    return is_internal
 
 
 def _api_key_origin_auto_error(
