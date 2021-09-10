@@ -5,12 +5,6 @@ from typing import List, Optional
 from app.errors import RecordNotFoundError
 from app.models.orm.api_keys import ApiKey as ORMApiKey
 
-from ..settings.globals import (
-    API_GATEWAY_EXTERNAL_USAGE_PLAN,
-    API_GATEWAY_ID,
-    API_GATEWAY_INTERNAL_USAGE_PLAN,
-    API_GATEWAY_STAGE_NAME,
-)
 from ..utils.aws import get_api_gateway_client
 
 
@@ -61,25 +55,29 @@ async def delete_api_key(api_key: uuid.UUID) -> ORMApiKey:
     return api_key_record
 
 
-async def add_api_key_to_gateway(api_key: ORMApiKey, internal=False) -> None:
+async def add_api_key_to_gateway(
+    name: str,
+    key_value: str,
+    rest_api_id: str,
+    stage_name: str,
+    usage_plan_id: str,
+) -> dict:
     stage_keys = {
-        "restApiId": API_GATEWAY_ID,
-        "stageName": API_GATEWAY_STAGE_NAME,
+        "restApiId": rest_api_id,
+        "stageName": stage_name,
     }
     gw_api_key = get_api_gateway_client().create_api_key(
-        name=api_key.alias,
-        value=api_key.api_key.hex,
+        name=name,
+        value=str(key_value),
         enabled=True,
         stageKeys=[stage_keys],
     )
-    usage_plan_id = (
-        API_GATEWAY_INTERNAL_USAGE_PLAN
-        if internal is True
-        else API_GATEWAY_EXTERNAL_USAGE_PLAN
-    )
+
     get_api_gateway_client().create_usage_plan_key(
         usagePlanId=usage_plan_id, keyId=gw_api_key["id"], keyType="API_KEY"
     )
+
+    return gw_api_key
 
 
 def _next_year(now=datetime.now()):

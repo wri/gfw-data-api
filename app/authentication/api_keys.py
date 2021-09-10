@@ -10,7 +10,7 @@ from starlette.status import HTTP_403_FORBIDDEN
 
 from ..crud import api_keys
 from ..errors import RecordNotFoundError
-from ..models.enum import internal_domains
+from ..models.enum.internal_domains import internal_domains
 from ..models.orm.api_keys import ApiKey as ORMApiKey
 from ..settings.globals import API_KEY_NAME
 
