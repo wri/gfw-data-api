@@ -20,13 +20,13 @@ from ...models.pydantic.authentication import (
     SignUpResponse,
 )
 from ...models.pydantic.responses import Response
+from ...utils.rw_api import login, signup
 from ...settings.globals import (
-    API_GATEWAY_EXTERNAL_USAGE_PLAN,
     API_GATEWAY_ID,
     API_GATEWAY_INTERNAL_USAGE_PLAN,
+    API_GATEWAY_EXTERNAL_USAGE_PLAN,
     API_GATEWAY_STAGE_NAME,
 )
-from ...utils.rw_api import login, signup
 
 router = APIRouter()
 
@@ -71,7 +71,7 @@ async def create_apikey(
             status_code=400,
             detail=f"Users with role {user_role} must list at least one domain.",
         )
-    print(request.headers)
+
     if api_key_data.never_expires and user_role != "ADMIN":
         raise HTTPException(
             status_code=400,
@@ -103,7 +103,7 @@ async def create_apikey(
         str(row.api_key),
         API_GATEWAY_ID,
         API_GATEWAY_STAGE_NAME,
-        usage_plan_id,
+        usage_plan_id
     )
 
     return ApiKeyResponse(data=row)
