@@ -6,6 +6,7 @@ from ..enum.pixetl import Grid
 from .metadata import RasterTable
 
 
+# FIXME: Use StrictBaseModel
 class BaseLayer(BaseModel):
     name: str
 

@@ -12,5 +12,13 @@
 # Environment Files
 /.env
 
-# Terraform workspaces
-terraform/.terraform
+# Test stuff
+tests/cobertura.xml
+tests_v2/cobertura.xml
+
+# TF stuff
+terraform/*
+
+# Virtualenvs
+.venv/*
+

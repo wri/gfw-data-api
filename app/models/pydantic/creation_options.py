@@ -100,6 +100,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     nbits: Optional[int]
     calc: Optional[str]
     band_count: int = 1
+    union_bands: bool = False
     no_data: Optional[Union[List[NoDataType], NoDataType]]
     rasterize_method: Optional[RasterizeMethod]
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
@@ -129,10 +130,11 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
 
     @validator("band_count")
     def validate_band_count(cls, v, values, **kwargs):
+        # Should we really require this or make pixetl more flexible?
         if v > 1:
             assert values.get(
                 "calc"
-            ), "Output raster with more than one band require calc"
+            ), "Output raster with more than one band requires a calc field"
         return v
 
 
@@ -148,6 +150,9 @@ class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
 
     @validator("source_uri")
     def validate_source_uri(cls, v, values, **kwargs):
+        # Should we really require this or make pixetl more flexible?
+        # And if we require it, shouldn't we also enforce in case of
+        # multi-band inputs?
         if values.get("source_type") == SourceType.raster:
             assert v, "Raster source types require source_uri"
             if len(v) > 1:

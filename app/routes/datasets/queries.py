@@ -573,20 +573,20 @@ async def _query_raster(
         if default_type == "is"
         else f"{dataset}__{default_type}"
     )
+    grid = asset.creation_options["grid"]
 
     sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
-    return await _query_raster_lambda(geostore.geojson, sql, format, delimiter)
+    return await _query_raster_lambda(geostore.geojson, sql, grid, format, delimiter)
 
 
 async def _query_raster_lambda(
     geometry: Geometry,
     sql: str,
+    grid: Grid = Grid.ten_by_forty_thousand,
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
 ) -> Dict[str, Any]:
-    data_environment = await _get_data_environment(
-        grids=[Grid.ten_by_forty_thousand, Grid.ten_by_one_hundred_thousand]
-    )
+    data_environment = await _get_data_environment(grid)
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
@@ -628,7 +628,7 @@ async def _query_raster_lambda(
     return response_body
 
 
-async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
+async def _get_data_environment(grid: Grid) -> DataEnvironment:
     # get all Raster tile set assets
     latest_tile_sets = await (
         AssetORM.join(VersionORM)
@@ -653,12 +653,16 @@ async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
     # create layers
     layers: List[Layer] = []
     for row in latest_tile_sets:
-        if grids and row.creation_options["grid"] not in grids:
+        if row.creation_options["grid"] != grid:
             # skip if not on the right grid
             continue
 
         # TODO skip intermediate raster for tile cache until field is in metadata
         if "tcd" in row.creation_options["pixel_meaning"]:
+            continue
+
+        # only include single band rasters
+        if row.creation_options.get("band_count", 1) > 1:
             continue
 
         if row.creation_options["pixel_meaning"] == "is":
@@ -670,7 +674,7 @@ async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
                 f"{row.dataset}__{row.creation_options['pixel_meaning']}"
             )
 
-        layers.append(_get_source_layer(row, source_layer_name))
+        layers.append(_get_source_layer(row, grid, source_layer_name))
 
         if row.creation_options["pixel_meaning"] == "date_conf":
             layers += _get_date_conf_derived_layers(row, source_layer_name)
@@ -681,19 +685,24 @@ async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
     return DataEnvironment(layers=layers)
 
 
-def _get_source_layer(row, source_layer_name: str) -> SourceLayer:
+def _get_source_layer(row, grid, source_layer_name: str) -> SourceLayer:
     # TODO we need to start uploading GLAD directly to the data API
-    if source_layer_name == "umd_glad_landsat_alerts__date_conf":
+    if (
+        source_layer_name == "umd_glad_landsat_alerts__date_conf"
+        and grid == Grid.ten_by_forty_thousand
+    ):
         source_uri = "s3://gfw2-data/forest_change/umd_landsat_alerts/prod/analysis/{tile_id}.tif"
         tile_scheme = "nwse"
+        grid = Grid.ten_by_forty_thousand
     else:
         source_uri = row.asset_uri
         tile_scheme = "nw"
+        grid = row.creation_options["grid"]
 
     return SourceLayer(
         source_uri=source_uri,
         tile_scheme=tile_scheme,
-        grid=row.creation_options["grid"],
+        grid=grid,
         name=source_layer_name,
         raster_table=row.metadata.get("raster_table", None),
     )
@@ -708,10 +717,12 @@ def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
     decode_expression = "(A + 16435).astype('datetime64[D]').astype(str)"
     encode_expression = "(datetime64(A) - 16435).astype(uint16)"
     conf_encoding = RasterTable(
+        default_meaning="not_detected",
         rows=[
-            RasterTableRow(value=2, meaning=""),
+            RasterTableRow(value=2, meaning="nominal"),
             RasterTableRow(value=3, meaning="high"),
-        ]
+            RasterTableRow(value=4, meaning="highest"),
+        ],
     )
 
     return [
