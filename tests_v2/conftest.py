@@ -119,7 +119,12 @@ async def async_client_no_admin(db, init_db) -> AsyncGenerator[AsyncClient, None
     )
     app.dependency_overrides[get_user] = get_user_mocked
 
-    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
+    async with AsyncClient(
+        app=app,
+        base_url="http://test",
+        trust_env=False,
+        headers={"Origin": "https://www.globalforestwatch.org"},
+    ) as client:
         yield client
 
     # Clean up
