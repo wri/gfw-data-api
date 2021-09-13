@@ -13,7 +13,12 @@ from app.models.pydantic.creation_options import RasterTileSetSourceCreationOpti
 from app.models.pydantic.jobs import GDAL2TilesJob, Job
 from app.models.pydantic.metadata import RasterTileSetMetadata
 from app.models.pydantic.statistics import RasterStats
-from app.settings.globals import MAX_CORES, MAX_MEM, TILE_CACHE_BUCKET
+from app.settings.globals import (
+    DEFAULT_JOB_DURATION,
+    MAX_CORES,
+    MAX_MEM,
+    TILE_CACHE_BUCKET,
+)
 from app.tasks import Callback, callback_constructor
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_pixetl_job
 from app.tasks.utils import sanitize_batch_job_name
@@ -120,6 +125,7 @@ async def create_tile_cache(
     implementation: str,
     callback: Callback,
     parents: List[Job],
+    bit_depth: int,
 ):
     """Create batch job to generate raster tile cache for given zoom level."""
 
@@ -141,6 +147,8 @@ async def create_tile_cache(
         TILE_CACHE_BUCKET,
         "--zoom_level",
         str(zoom_level),
+        "--bit_depth",
+        str(bit_depth),
     ]
     # TODO: GTC-1090, GTC 1091
     #  this should be the default. However there seems to be an issue
@@ -257,5 +265,9 @@ def scale_batch_job(job: Job, zoom_level: int):
     job.vcpus = min(job.vcpus, math.ceil(2 ** (zoom_level - 4)))
     job.memory = (MAX_MEM / MAX_CORES) * job.vcpus
     job.num_processes = max(1, int(job.vcpus / cpu_proc_ratio))
+
+    job.attempt_duration_seconds = max(
+        DEFAULT_JOB_DURATION, int(DEFAULT_JOB_DURATION * (zoom_level / 3))
+    )
 
     return job

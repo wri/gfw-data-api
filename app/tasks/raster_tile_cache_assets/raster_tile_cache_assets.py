@@ -1,4 +1,5 @@
-from typing import Any, Dict, List
+import string
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import numpy as np
@@ -37,6 +38,8 @@ async def raster_tile_cache_asset(
 ) -> ChangeLog:
     """Generate Raster Tile Cache Assets."""
 
+    # TODO: Refactor to be easier to test
+
     min_zoom = input_data["creation_options"]["min_zoom"]
     max_zoom = input_data["creation_options"]["max_zoom"]
     max_static_zoom = input_data["creation_options"]["max_static_zoom"]
@@ -50,8 +53,9 @@ async def raster_tile_cache_asset(
         input_data["creation_options"]["source_asset_id"]
     )
 
-    # Get the creation options from the original raster tile set asset and overwrite settings
-    # make sure source_type and source_driver are set in case it is an auxiliary asset
+    # Get the creation options from the original raster tile set asset and
+    # overwrite settings. Make sure source_type and source_driver are set in
+    # case it is an auxiliary asset
 
     new_source_uri = [
         get_asset_uri(
@@ -62,6 +66,21 @@ async def raster_tile_cache_asset(
         ).replace("{tile_id}.tif", "tiles.geojson")
     ]
 
+    # The first thing we do for each zoom level is re-project the source asset
+    # to web-mercator. We don't want the calc string (if any) used to
+    # create the source asset to be applied again to the already transformed
+    # data, so set it to None. But wait, PixETL currently requires a calc
+    # string when band_count > 1, so for such cases make a generic calc
+    # string that just pass through the source bands as-is. So for a source
+    # RTS with three bands, set the calc string to "np.ma.array([A, B, C])"
+    # TODO: When pixetl allows it just set the calc string to None
+    band_count = source_asset.creation_options["band_count"]
+    if band_count > 1:
+        bands_string = str(list(string.ascii_uppercase[:band_count])).replace("'", "")
+        calc: Optional[str] = f"np.ma.array({bands_string})"
+    else:
+        calc = None
+
     source_asset_co = RasterTileSetSourceCreationOptions(
         # TODO: With python 3.9, we can use the `|` operator here
         #  waiting for https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker/pull/67
@@ -71,16 +90,18 @@ async def raster_tile_cache_asset(
                 "source_type": RasterSourceType.raster,
                 "source_driver": RasterDrivers.geotiff,
                 "source_uri": new_source_uri,
-                "calc": None,
+                "calc": calc,
                 "resampling": resampling,
                 "compute_stats": False,
                 "compute_histogram": False,
                 "symbology": Symbology(**symbology),
+                "subset": None,
             },
         }
     )
 
     # If float data type, convert to int in derivative assets for performance
+    # FIXME: Make this work for multi-band inputs
     max_zoom_calc = None
     if source_asset_co.data_type == DataType.boolean:
         pass  # So the next line doesn't break
@@ -90,10 +111,13 @@ async def raster_tile_cache_asset(
         )
 
     assert source_asset_co.symbology is not None
-    symbology_function = symbology_constructor[source_asset_co.symbology.type]
+    symbology_function = symbology_constructor[source_asset_co.symbology.type].function
 
-    # We want to make sure that the final RGB asset is named after the implementation of the tile cache
-    # And that the source_asset name is not already used by another intermediate asset.
+    # We want to make sure that the final RGB asset is named after the
+    # implementation of the tile cache and that the source_asset name is not
+    # already used by another intermediate asset.
+    # TODO: Actually make sure the intermediate assets aren't going to
+    # overwrite any existing assets
     if symbology_function == no_symbology:
         source_asset_co.pixel_meaning = implementation
     else:
@@ -147,6 +171,8 @@ async def raster_tile_cache_asset(
         )
         job_list += symbology_jobs
 
+        bit_depth: int = symbology_constructor[source_asset_co.symbology.type].bit_depth
+
         if zoom_level <= max_static_zoom:
             tile_cache_job: Job = await create_tile_cache(
                 dataset,
@@ -156,6 +182,7 @@ async def raster_tile_cache_asset(
                 implementation,
                 callback_constructor(asset_id),
                 symbology_jobs + [source_reprojection_job],
+                bit_depth,
             )
             job_list.append(tile_cache_job)
 
@@ -168,19 +195,29 @@ async def raster_tile_cache_validator(
 ) -> None:
     """Validate Raster Tile Cache Creation Options.
 
-    Used in asset route. If validation fails, it will raise a
+    Used in asset route. If validation fails, it will raise an
     HTTPException visible to user.
     """
     source_asset: ORMAsset = await get_asset(
         input_data["creation_options"]["source_asset_id"]
     )
     if (source_asset.dataset != dataset) or (source_asset.version != version):
-        raise HTTPException(
-            status_code=400,
-            detail="Dataset and version of source asset must match dataset and version of current asset.",
+        message: str = (
+            "Dataset and version of source asset must match dataset and "
+            "version of current asset."
         )
+        raise HTTPException(status_code=400, detail=message)
 
-    if source_asset.creation_options.get("band_count", 1) > 1:
-        raise HTTPException(
-            status_code=400, detail="Cannot apply colormap on multi-band image."
-        )
+    symbology_type = input_data["creation_options"].get("symbology", {}).get("type")
+    if symbology_type:
+        symbology_info = symbology_constructor[symbology_type]
+        req_input_bands: Optional[int] = symbology_info.req_input_bands
+
+        if req_input_bands and (
+            req_input_bands != source_asset.creation_options.get("band_count", 1)
+        ):
+            message = (
+                f"Symbology type {symbology_type} requires a source "
+                f"asset with {req_input_bands} bands"
+            )
+            raise HTTPException(status_code=400, detail=message)

@@ -20,7 +20,8 @@ ARG_ARRAY=("--dataset" "${DATASET}"
            "--version" "${VERSION}"
            "--implementation" "${IMPLEMENTATION}"
            "--target-bucket" "${TARGET_BUCKET}"
-           "--zoom-level" "${ZOOM_LEVEL}")
+           "--zoom-level" "${ZOOM_LEVEL}"
+           "--bit-depth" "${BIT_DEPTH}")
 
 if [ -n "${SKIP}" ]; then
   ARG_ARRAY+=("--skip_empty_tiles")

@@ -50,6 +50,11 @@ do
   key="$1"
 
   case $key in
+      -b|--bit_depth)
+      BIT_DEPTH="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -c|--column_name)
       COLUMN_NAME="$2"
       shift # past argument

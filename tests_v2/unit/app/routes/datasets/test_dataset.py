@@ -18,7 +18,7 @@ async def test_get_dataset(
     _validate_dataset_response(resp.json(), dataset_name)
 
 
-# TODO: Use mark.paramterize to test variations
+# TODO: Use mark.parameterize to test variations
 @pytest.mark.asyncio
 async def test_create_dataset(async_client: AsyncClient) -> None:
     dataset_name = "my_first_dataset"
