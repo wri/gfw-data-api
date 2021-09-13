@@ -226,9 +226,12 @@ async def test_get_apikeys_no_keys(async_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_delete_apikey(
-    apikey: Tuple[UUID, Dict[str, Any]], async_client: AsyncClient
+    apikey: Tuple[UUID, Dict[str, Any]],
+    async_client: AsyncClient,
+    monkeypatch: MonkeyPatch,
 ):
     api_key, payload = apikey
+    monkeypatch.setattr(api_keys, "delete_api_key_from_gateway", void_coroutine)
     response = await async_client.delete(f"/auth/apikey/{api_key}")
     assert_jsend(response.json())
 

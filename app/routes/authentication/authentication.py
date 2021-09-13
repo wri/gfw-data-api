@@ -20,13 +20,13 @@ from ...models.pydantic.authentication import (
     SignUpResponse,
 )
 from ...models.pydantic.responses import Response
-from ...utils.rw_api import login, signup
 from ...settings.globals import (
+    API_GATEWAY_EXTERNAL_USAGE_PLAN,
     API_GATEWAY_ID,
     API_GATEWAY_INTERNAL_USAGE_PLAN,
-    API_GATEWAY_EXTERNAL_USAGE_PLAN,
     API_GATEWAY_STAGE_NAME,
 )
+from ...utils.rw_api import login, signup
 
 router = APIRouter()
 
@@ -103,7 +103,7 @@ async def create_apikey(
         str(row.api_key),
         API_GATEWAY_ID,
         API_GATEWAY_STAGE_NAME,
-        usage_plan_id
+        usage_plan_id,
     )
 
     return ApiKeyResponse(data=row)
@@ -190,7 +190,7 @@ async def delete_apikey(
         row: ORMApiKey = await api_keys.get_api_key(api_key)
     except RecordNotFoundError:
         raise HTTPException(
-            status_code=404, detail="The requested API key does not exists."
+            status_code=404, detail="The requested API key does not exist."
         )
 
     # TODO: we might want to allow admins to delete api keys of other users?
@@ -201,5 +201,11 @@ async def delete_apikey(
         )
 
     row = await api_keys.delete_api_key(api_key)
+    try:
+        await api_keys.delete_api_key_from_gateway(name=row.alias)
+    except RecordNotFoundError:
+        raise HTTPException(
+            status_code=404, detail="The request API key does not exist."
+        )
 
     return ApiKeyResponse(data=ApiKey.from_orm(row))

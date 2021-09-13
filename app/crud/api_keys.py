@@ -80,6 +80,14 @@ async def add_api_key_to_gateway(
     return gw_api_key
 
 
+async def delete_api_key_from_gateway(name: str):
+    response = get_api_gateway_client().get_api_keys(nameQuery=name)
+    if len(response["items"]) == 0:
+        raise RecordNotFoundError(f"API key with alias {name} not found in gateway")
+
+    get_api_gateway_client().delete_api_key(apiKey=response["items"][0]["id"])
+
+
 def _next_year(now=datetime.now()):
     """Return a date that's 1 year after the now.
 

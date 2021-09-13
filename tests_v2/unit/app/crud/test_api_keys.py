@@ -13,6 +13,7 @@ from app.crud.api_keys import (
     add_api_key_to_gateway,
     create_api_key,
     delete_api_key,
+    delete_api_key_from_gateway,
     get_api_key,
     get_api_keys_from_user,
 )
@@ -275,7 +276,7 @@ async def test_delete_api_key(user_id, alias, organization, email, domains):
 
 
 @pytest.mark.asyncio
-async def test_add_api_key_to_gateway(monkeypatch: pytest.MonkeyPatch):
+async def test_add_api_key_to_gateway():
     with mock_apigateway():
         test_key = "test_key"
         client = boto3.client("apigateway", region_name="us-east-1")
@@ -326,6 +327,20 @@ async def test_add_api_key_to_gateway(monkeypatch: pytest.MonkeyPatch):
 
         assert gw_key["value"] == test_key
         assert usage_plan_key["value"] == test_key
+
+
+@pytest.mark.asyncio
+async def test_delete_api_key_from_gateway():
+    with mock_apigateway():
+        client = boto3.client("apigateway", region_name="us-east-1")
+        gw_key = client.create_api_key(
+            name="key_name", value="test_value", enabled=True
+        )
+
+        await delete_api_key_from_gateway(gw_key["name"])
+        response = client.get_api_keys(nameQuery=gw_key["name"])
+
+        assert len(response["items"]) == 0
 
 
 @pytest.mark.parametrize(
