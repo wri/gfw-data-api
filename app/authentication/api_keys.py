@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import HTTPException, Request, Security
+from fastapi.openapi.models import APIKey
 from fastapi.security import APIKeyHeader, APIKeyQuery
 from starlette.status import HTTP_403_FORBIDDEN
 
@@ -36,14 +37,14 @@ class APIKeyOriginHeader(APIKeyHeader):
 
 
 async def get_api_key(
-    api_key_query: Tuple[Optional[str], Optional[str], Optional[str]] = Security(
-        APIKeyOriginQuery(name=API_KEY_NAME, auto_error=False)
-    ),
+    # api_key_query: Tuple[Optional[str], Optional[str], Optional[str]] = Security(
+    #     APIKeyOriginQuery(name=API_KEY_NAME, auto_error=False)
+    # ),
     api_key_header: Tuple[Optional[str], Optional[str], Optional[str]] = Security(
         APIKeyOriginHeader(name=API_KEY_NAME, auto_error=False)
     ),
-) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    for api_key, origin, referrer in [api_key_query, api_key_header]:
+) -> APIKey:
+    for api_key, origin, referrer in [api_key_header]:
         if api_key:
             try:
                 row: ORMApiKey = await api_keys.get_api_key(UUID(api_key))
@@ -51,7 +52,7 @@ async def get_api_key(
                 pass  # we will catch this at the end of this function
             else:
                 if api_key_is_valid(row.domains, row.expires_on, origin, referrer):
-                    return api_key, origin, referrer
+                    return api_key
 
     raise HTTPException(
         status_code=HTTP_403_FORBIDDEN, detail="No valid API Key found."
