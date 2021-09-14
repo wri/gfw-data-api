@@ -322,6 +322,7 @@ async def apikey_unrestricted(
 ) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
 
     monkeypatch.setattr(api_keys, "add_api_key_to_gateway", void_coroutine)
+    monkeypatch.setattr(api_keys, "delete_api_key_from_gateway", void_coroutine)
     # Get API Key
     payload = {
         "alias": "unrestricted",
