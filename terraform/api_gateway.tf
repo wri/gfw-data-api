@@ -3,6 +3,59 @@ resource "aws_api_gateway_rest_api" "api_gw_api" {
   description = "GFW Data API Gateway"
 }
 
+resource "aws_api_gateway_resource" "dataset_parent" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id = aws_api_gateway_rest_api.api_gw_api.root_resource_id
+  path_part = "dataset"
+}
+
+resource "aws_api_gateway_resource" "dataset" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id = aws_api_gateway_resource.dataset_parent.id
+  path_part = "{dataset}"
+}
+
+resource "aws_api_gateway_resource" "version" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id = aws_api_gateway_resource.dataset.id
+  path_part = "{version}"
+}
+
+resource "aws_api_gateway_resource" "query_parent" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id = aws_api_gateway_resource.version.id
+  path_part = "query"
+}
+resource "aws_api_gateway_resource" "query" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id = aws_api_gateway_resource.query_parent.id
+  path_part = "{proxy+}"
+}
+
+resource "aws_api_gateway_method" "query" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  resource_id = aws_api_gateway_resource.query.id
+  http_method = "ANY"
+  authorization = "NONE"
+  request_parameters = {"method.request.path.proxy" = true}
+  api_key_required = true
+}
+
+
+resource "aws_api_gateway_integration" "query" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  resource_id = aws_api_gateway_resource.query.id
+  http_method = aws_api_gateway_method.query.http_method
+
+  integration_http_method = "ANY"
+  type = "HTTP_PROXY"
+  uri = "http://${module.fargate_autoscaling.lb_dns_name}/{proxy}"
+
+  request_parameters = {
+    "integration.request.path.proxy" = "method.request.path.proxy"
+  }
+}
+
 resource "aws_api_gateway_resource" "proxy" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   parent_id = aws_api_gateway_rest_api.api_gw_api.root_resource_id
@@ -15,7 +68,7 @@ resource "aws_api_gateway_method" "proxy" {
   http_method = "ANY"
   authorization = "NONE"
   request_parameters = {"method.request.path.proxy" = true}
-  api_key_required = var.environment == "dev"
+  api_key_required = false
 }
 
 
