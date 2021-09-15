@@ -41,7 +41,7 @@ data "template_file" "container_definition" {
 
     container_name = var.container_name
     container_port = var.container_port
-
+  
     log_group = aws_cloudwatch_log_group.default.name
 
     reader_secret_arn = data.terraform_remote_state.core.outputs.secrets_postgresql-reader_arn
@@ -119,4 +119,8 @@ data "local_file" "iam_s3_read_only" {
 
 data "local_file" "iam_lambda_invoke" {
   filename = "${path.root}/templates/lambda_invoke_policy.json.tmpl"
+}
+
+data "local_file" "iam_api_gateway_policy" {
+  filename = "${path.root}/templates/api_gateway_policy.json.tmpl"
 }
