@@ -101,12 +101,12 @@ resource "aws_cloudfront_distribution" "data_api" {
         "TLSv1.2",
       ]
     }
-    origin_id = "default"
+    origin_id = "api_gateway"
     origin_path = "/${local.api_gw_stage_name}"
   }
 
   default_cache_behavior {
-    target_origin_id       = "default"
+    target_origin_id       = "api_gateway"
     default_ttl            = 0
     min_ttl                = 0
     max_ttl                = 31536000 # 1y
