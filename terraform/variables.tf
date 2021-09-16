@@ -80,7 +80,7 @@ variable "api_gateway_usage_plans" {
       rate_limit  = 3
     }
     external_apps = {
-      limit  = 10000
+      quota_limit  = 10000
       burst_limit = 100
       rate_limit  = 500
     }
