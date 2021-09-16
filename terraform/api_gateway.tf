@@ -109,6 +109,25 @@ resource "aws_api_gateway_usage_plan" "internal" {
   }
 }
 
+resource "aws_api_gateway_usage_plan" "external" {
+  name         = "external_apps"
+
+  api_stages {
+    api_id = aws_api_gateway_rest_api.api_gw_api.id
+    stage  = aws_api_gateway_stage.api_gw_stage.stage_name
+  }
+
+  quota_settings {
+    limit  = var.api_gateway_usage_plans.external_apps.quota_limit
+    period = "DAY"
+  }
+
+  throttle_settings {
+    burst_limit = var.api_gateway_usage_plans.external_apps.burst_limit
+    rate_limit  = var.api_gateway_usage_plans.external_apps.rate_limit
+  }
+}
+
 resource "aws_api_gateway_usage_plan_key" "internal" {
   key_id        = aws_api_gateway_api_key.internal_api_key.id
   key_type      = "API_KEY"
