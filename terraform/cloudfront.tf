@@ -65,28 +65,6 @@ resource "aws_cloudfront_distribution" "data_api" {
     }
   }
 
-  ordered_cache_behavior {
-    path_pattern = "/auth/apikey"
-    target_origin_id       = "load_balancer"
-    default_ttl            = 0
-    min_ttl                = 0
-    max_ttl                = 31536000 # 1y
-
-    allowed_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods  = ["GET", "HEAD"]
-    viewer_protocol_policy = "redirect-to-https"
-
-    forwarded_values {
-      headers                 = ["Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method", "x-api-key", "Referer", "Authorization"]
-      query_string            = true
-
-      cookies {
-        forward = "none"
-        whitelisted_names = []
-      }
-    }
-  }
-
   origin {
     domain_name = trimsuffix(trimprefix(aws_api_gateway_stage.api_gw_stage.invoke_url, "https://"), "/${local.api_gw_stage_name}")
     custom_origin_config {
