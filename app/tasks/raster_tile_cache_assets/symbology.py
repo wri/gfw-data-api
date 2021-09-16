@@ -82,6 +82,7 @@ async def colormap_symbology(
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
     """Create an RGBA raster with gradient or discrete symbology."""
+
     assert source_asset_co.symbology  # make mypy happy
     source_uri = (
         [tile_uri_to_tiles_geojson(uri) for uri in source_asset_co.source_uri]
@@ -96,7 +97,7 @@ async def colormap_symbology(
             "calc": None,
             "resampling": PIXETL_DEFAULT_RESAMPLING,
             "grid": f"zoom_{zoom_level}",
-            "pixel_meaning": pixel_meaning,
+            "pixel_meaning": f"colormap_{pixel_meaning}",
         },
     )
 
@@ -124,7 +125,7 @@ async def colormap_symbology(
     job_name = sanitize_batch_job_name(
         f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
     )
-    job = await create_gdaldem_job(
+    gdaldem_job = await create_gdaldem_job(
         dataset,
         version,
         creation_options,
@@ -133,9 +134,44 @@ async def colormap_symbology(
         parents=parents,
     )
 
-    job = scale_batch_job(job, zoom_level)
+    gdaldem_job = scale_batch_job(gdaldem_job, zoom_level)
 
-    return [job], new_asset_uri
+    intensity_jobs: Tuple[List[Job], str] = tuple()
+    merge_jobs: Tuple[List[Job], str] = tuple()
+    if source_asset_co.symbology.type in (
+        ColorMapType.discrete_intensity,
+        ColorMapType.gradient_intensity
+    ):
+        max_zoom_calc_string = "(A > 0) * 255"
+        intensity_co = source_asset_co.copy(
+            deep=True,
+            update={"data_type": DataType.uint8}
+        )
+
+        intensity_jobs, intensity_uri = await _create_intensity_asset(
+            dataset,
+            version,
+            pixel_meaning,
+            intensity_co,
+            zoom_level,
+            max_zoom,
+            jobs_dict,
+            max_zoom_calc_string,
+            ResamplingMethod.bilinear
+        )
+
+        merge_jobs, final_asset_uri = await _merge_colormap_and_intensity(
+            dataset,
+            version,
+            pixel_meaning,
+            new_asset_uri,
+            intensity_uri,
+            zoom_level,
+            [gdaldem_job, *intensity_jobs]
+        )
+    else:
+        final_asset_uri = new_asset_uri
+    return [gdaldem_job, *intensity_jobs, *merge_jobs], final_asset_uri
 
 
 async def date_conf_intensity_multi_8_symbology(
@@ -174,7 +210,7 @@ async def date_conf_intensity_multi_8_symbology(
         "np.ma.array(["
         f"((A.filled(0) >> 1) > 0) * {MAX_8_BIT_INTENSITY},"  # GLAD-L
         f"((B.filled(0) >> 1) > 0) * {MAX_8_BIT_INTENSITY},"  # GLAD-S2
-        f"((C.filled(0) >> 1) > 0) * {MAX_8_BIT_INTENSITY}"  # RADD
+        f"((C.filled(0) >> 1) > 0) * {MAX_8_BIT_INTENSITY}"   # RADD
         "])"
     )
     return await _date_intensity_symbology(
@@ -379,6 +415,137 @@ async def _date_intensity_symbology(
     jobs_dict[zoom_level]["merge_intensity_jobs"] = merge_jobs
 
     return [intensity_job, *merge_jobs], dst_uri
+
+
+async def _create_intensity_asset(
+    dataset: str,
+    version: str,
+    pixel_meaning: str,
+    source_asset_co: RasterTileSetSourceCreationOptions,
+    zoom_level: int,
+    max_zoom: int,
+    jobs_dict: Dict,
+    max_zoom_calc: str,
+    resampling: ResamplingMethod,
+) -> Tuple[List[Job], str]:
+    """Create intensity Raster Tile Set asset which based on source asset
+
+    Create Intensity value layer(s) using provided calc function, resample
+    intensity based on provided resampling method.
+    """
+
+    source_uri: Optional[List[str]] = get_zoom_source_uri(
+        dataset, version, source_asset_co, zoom_level, max_zoom
+    )
+    intensity_source_co: RasterTileSetSourceCreationOptions = source_asset_co.copy(
+        deep=True,
+        update={
+            "source_uri": source_uri,
+            "no_data": None,
+            "pixel_meaning": f"intensity_{pixel_meaning}",
+            "resampling": resampling,
+        },
+    )
+    source_job = jobs_dict[zoom_level]["source_reprojection_job"]
+
+    if zoom_level != max_zoom:
+        previous_level_intensity_reprojection_job = [
+            jobs_dict[zoom_level + 1]["intensity_reprojection_job"]
+        ]
+    else:
+        previous_level_intensity_reprojection_job = [source_job]
+
+    intensity_job, intensity_uri = await reproject_to_web_mercator(
+        dataset,
+        version,
+        intensity_source_co,
+        zoom_level,
+        max_zoom,
+        previous_level_intensity_reprojection_job,
+        max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
+        max_zoom_calc=max_zoom_calc,
+    )
+    jobs_dict[zoom_level]["intensity_reprojection_job"] = intensity_job
+
+    return [intensity_job], intensity_uri
+
+
+async def _merge_colormap_and_intensity(
+    dataset: str,
+    version: str,
+    pixel_meaning: str,
+    colormap_asset_uri: str,
+    intensity_asset_uri: str,
+    zoom_level: int,
+    parents: List[Job],
+) -> Tuple[List[Job], str]:
+    """Create RGBA-encoded raster tile set based on colormap and intensity
+    raster tile sets."""
+
+    # TODO: Make flexible enough to replace other merge functions
+
+    calc_str = f"np.ma.array([A, B, C, D])"
+
+    encoded_co = RasterTileSetSourceCreationOptions(
+        pixel_meaning=pixel_meaning,
+        data_type=DataType.uint8,
+        band_count=4,
+        no_data=[0, 0, 0, 0],
+        resampling=ResamplingMethod.nearest,
+        overwrite=False,
+        grid=Grid(f"zoom_{zoom_level}"),
+        compute_stats=False,
+        compute_histogram=False,
+        source_type=RasterSourceType.raster,
+        source_driver=RasterDrivers.geotiff,
+        source_uri=[colormap_asset_uri, intensity_asset_uri],
+        calc=calc_str,
+        photometric=PhotometricType.rgb,
+    )
+
+    asset_uri = get_asset_uri(
+        dataset,
+        version,
+        AssetType.raster_tile_set,
+        encoded_co.dict(by_alias=True),
+        "epsg:3857",
+    )
+    asset_prefix = asset_uri.rsplit("/", 1)[0]
+
+    logger.debug(
+        f"ATTEMPTING TO CREATE MERGED ASSET WITH THESE CREATION OPTIONS: {encoded_co}"
+    )
+
+    # Create an asset record
+    asset_options = AssetCreateIn(
+        asset_type=AssetType.raster_tile_set,
+        asset_uri=asset_uri,
+        is_managed=True,
+        creation_options=encoded_co,
+        metadata=RasterTileSetMetadata(),
+    ).dict(by_alias=True)
+
+    asset = await create_asset(dataset, version, **asset_options)
+    logger.debug(
+        f"ZOOM LEVEL {zoom_level} MERGED ASSET CREATED WITH ASSET_ID {asset.asset_id}"
+    )
+
+    callback = callback_constructor(asset.asset_id)
+    pixetl_job = await create_pixetl_job(
+        dataset,
+        version,
+        encoded_co,
+        job_name=f"merge_colormap_and_intensity_zoom_{zoom_level}",
+        callback=callback,
+        parents=parents,
+    )
+
+    pixetl_job = scale_batch_job(pixetl_job, zoom_level)
+
+    return (
+        [pixetl_job],
+        os.path.join(asset_prefix, "tiles.geojson"),
+    )
 
 
 async def _merge_intensity_and_date_conf_multi_8(
@@ -852,7 +1019,9 @@ _symbology_constructor: Dict[str, SymbologyInfo] = {
     ),
     ColorMapType.year_intensity: SymbologyInfo(8, 1, year_intensity_symbology),
     ColorMapType.gradient: SymbologyInfo(8, 1, colormap_symbology),
+    ColorMapType.gradient_intensity: SymbologyInfo(8, 1, colormap_symbology),
     ColorMapType.discrete: SymbologyInfo(8, 1, colormap_symbology),
+    ColorMapType.discrete_intensity: SymbologyInfo(8, 1, colormap_symbology),
 }
 
 symbology_constructor: DefaultDict[str, SymbologyInfo] = defaultdict(
