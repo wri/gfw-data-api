@@ -164,8 +164,8 @@ async def colormap_symbology(
             dataset,
             version,
             pixel_meaning,
-            new_asset_uri,
-            intensity_uri,
+            tile_uri_to_tiles_geojson(new_asset_uri),
+            tile_uri_to_tiles_geojson(intensity_uri),
             zoom_level,
             [gdaldem_job, *intensity_jobs]
         )
