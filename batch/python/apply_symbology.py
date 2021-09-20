@@ -37,7 +37,9 @@ LOGGER = getLogger("apply_symbology")
 
 class ColorMapType(str, Enum):
     discrete = "discrete"
+    discrete_intensity = "discrete_intensity"
     gradient = "gradient"
+    gradient_intensity = "gradient_intensity"
 
 
 class StrictBaseModel(BaseModel):
@@ -184,7 +186,7 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
         cmd = [
             "gdaldem",
             "color-relief",
-            "-alpha",
+            # "-alpha",
             "-co",
             f"COMPRESS={GEOTIFF_COMPRESSION}",
             "-co",
@@ -199,7 +201,7 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
             "INTERLEAVE=BAND",
         ]
 
-        if symbology_type == ColorMapType.discrete:
+        if symbology_type in (ColorMapType.discrete, ColorMapType.discrete_intensity):
             cmd += ["-exact_color_entry"]
 
         cmd += [local_src_file_path, colormap_path, local_dest_file_path]
@@ -281,5 +283,5 @@ if __name__ == "__main__":
     try:
         run(apply_symbology)
     except (BrokenProcessPool, SubprocessKilledError):
-        LOGGER.error("One of our subprocesses as killed! Exiting with 137")
+        LOGGER.error("One of our subprocesses was killed! Exiting with 137")
         sys.exit(137)
