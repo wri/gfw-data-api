@@ -145,7 +145,10 @@ async def colormap_symbology(
         max_zoom_calc_string = "(A > 0) * 255"
         intensity_co = source_asset_co.copy(
             deep=True,
-            update={"data_type": DataType.uint8}
+            update={
+                "calc": None,
+                "data_type": DataType.uint8
+            }
         )
 
         intensity_jobs, intensity_uri = await _create_intensity_asset(
