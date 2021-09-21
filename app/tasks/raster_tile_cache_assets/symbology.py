@@ -94,7 +94,7 @@ async def colormap_symbology(
         deep=True,
         update={
             "source_uri": source_uri,
-            "calc": None,
+            # "calc": None,
             "resampling": PIXETL_DEFAULT_RESAMPLING,
             "grid": f"zoom_{zoom_level}",
             "pixel_meaning": f"colormap_{pixel_meaning}",
