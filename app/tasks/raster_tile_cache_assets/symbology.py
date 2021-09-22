@@ -142,7 +142,7 @@ async def colormap_symbology(
         ColorMapType.discrete_intensity,
         ColorMapType.gradient_intensity
     ):
-        max_zoom_calc_string = "(A > 0) * 255"
+        max_zoom_calc_string = "(~A.mask) * 255"
         intensity_co = source_asset_co.copy(
             deep=True,
             update={
