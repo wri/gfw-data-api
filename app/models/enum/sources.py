@@ -5,6 +5,7 @@ class SourceType(str, Enum):
     raster = "raster"
     table = "table"
     vector = "vector"
+    revision = "revision"
 
 
 class RasterSourceType(str, Enum):
@@ -18,3 +19,8 @@ class TableSourceType(str, Enum):
 
 class VectorSourceType(str, Enum):
     vector = "vector"
+
+
+class RevisionOperation(str, Enum):
+    append = "append"
+    delete = "delete"

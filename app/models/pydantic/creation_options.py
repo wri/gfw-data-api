@@ -258,6 +258,22 @@ class TableSourceCreationOptions(TableAssetCreationOptions):
     )
 
 
+class RevisionCreationOptions(StrictBaseModel):
+    revision_on: str = Field(
+        ..., description="Previous version to add the revision on."
+    )
+
+
+class AppendCreationOptions(RevisionCreationOptions):
+    source_uri: List[str] = Field(
+        ..., description="List of input files. Must be a list of s3:// urls"
+    )
+
+
+class DeleteCreationOptions(RevisionCreationOptions):
+    delete_version: str = Field(..., description="Version to delete from the table.")
+
+
 class TileCacheBaseModel(StrictBaseModel):
     min_zoom: int = Field(
         0, description="Minimum zoom level of tile cache", ge=0, le=22
@@ -355,6 +371,8 @@ SourceCreationOptions = Union[
     RasterTileSetSourceCreationOptions,
     TableSourceCreationOptions,
     VectorSourceCreationOptions,
+    AppendCreationOptions,
+    DeleteCreationOptions,
 ]
 
 OtherCreationOptions = Union[

@@ -129,7 +129,7 @@ async def table_source_asset(
                 dataset=dataset,
                 job_name="add_point_geometry",
                 command=[
-                    "add_point_geometry.sh",
+                    "add_gfw_fields_tabular.sh",
                     "-d",
                     dataset,
                     "-v",
@@ -273,7 +273,7 @@ async def append_table_source_asset(
                 job_queue=AURORA_JOB_QUEUE_FAST,
                 job_name="update_point_geometry",
                 command=[
-                    "update_point_geometry.sh",
+                    "update_gfw_field_tabular.sh",
                     "-d",
                     dataset,
                     "-v",

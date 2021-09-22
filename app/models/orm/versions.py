@@ -15,6 +15,7 @@ class Version(Base):
     metadata = db.Column(db.JSONB, default=dict())
     change_log = db.Column(db.ARRAY(db.JSONB), default=list())
     # creation_options = db.Column(db.JSONB, default=dict())
+    history = db.Column(db.JSONB, default=dict())
 
     fk = db.ForeignKeyConstraint(
         ["dataset"],

@@ -154,6 +154,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      --source_version)
+      SOURCE_VERSION="$2"
+      shift # past argument
+      shift # past value
+      ;;
       --skip)
       SKIP="TRUE"
       shift # past argument

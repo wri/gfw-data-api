@@ -25,7 +25,8 @@ psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN ${GEOMETRY_NAME}_wm ge
          ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN gfw_geojson TEXT COLLATE pg_catalog.\"default\";
          ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN gfw_bbox NUMERIC[];
          ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN created_on timestamp without time zone DEFAULT now();
-         ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN updated_on timestamp without time zone DEFAULT now();"
+         ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN updated_on timestamp without time zone DEFAULT now();
+         ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN gfw_version TEXT;"
 
 # Update GFW columns
 echo "PSQL: UPDATE \"$DATASET\".\"$VERSION\". Set GFW attributes"
@@ -33,6 +34,7 @@ psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET ${GEOMETRY_NAME}_wm = ST_Transform
                                       gfw_area__ha = ST_Area($GEOMETRY_NAME::geography)/10000,
                                       gfw_geostore_id = md5(ST_asgeojson($GEOMETRY_NAME))::uuid,
                                       gfw_geojson = ST_asGeojson($GEOMETRY_NAME),
+                                      gfw_version = $VERSION,
                                       gfw_bbox = ARRAY[
                                           ST_XMin(ST_Envelope($GEOMETRY_NAME)::geometry),
                                           ST_YMin(ST_Envelope($GEOMETRY_NAME)::geometry),

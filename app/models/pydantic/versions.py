@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import Field
 
@@ -35,6 +35,10 @@ class VersionCreateIn(StrictBaseModel):
         ...,
         description="Creation option to specify how default asset for version should be created.",
     )
+    history: Dict[str, Any] = Field(
+        [],
+        description="Revision history of the version.",
+    )
 
 
 class VersionUpdateIn(StrictBaseModel):
@@ -54,6 +58,13 @@ class VersionUpdateIn(StrictBaseModel):
         description="Version metadata. Version will inherit metadata from dataset. "
         "You will only need to add fields which you want to add or overwrite.",
     )
+
+
+class VersionHistory(StrictBaseModel):
+    dataset: str
+    version: str
+    metadata: VersionMetadata
+    creation_options: SourceCreationOptions
 
 
 class VersionAppendIn(StrictBaseModel):

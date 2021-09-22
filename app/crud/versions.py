@@ -3,9 +3,11 @@ from typing import Any, Dict, List, Optional
 from asyncpg import UniqueViolationError
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
+from ..models.enum.sources import SourceType
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
+from ..models.pydantic.creation_options import RevisionCreationOptions
 from ..utils.generators import list_to_async_generator
 from . import datasets, update_data
 from .metadata import update_all_metadata, update_metadata
@@ -72,6 +74,9 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
     if data.get("is_latest"):
         await _reset_is_latest(dataset, version)
 
+    if data["creation_options"]["source_type"] == SourceType.revision:
+        data["history"] = _create_version_history(dataset, version, **data)
+
     try:
         new_version: ORMVersion = await ORMVersion.create(
             dataset=dataset, version=version, **data
@@ -137,3 +142,24 @@ async def _reset_is_latest(dataset: str, version: str) -> None:
     async for version_orm in version_gen:
         if version_orm.version != version:
             await update_version(dataset, version_orm.version, is_latest=False)
+
+
+async def _create_version_history(dataset: str, version: str, **data):
+    creation_options: RevisionCreationOptions = data["creation_options"]
+    prev_version: ORMVersion = await get_version(
+        dataset, creation_options["revision_on"]
+    )
+    history = prev_version.history
+
+    # append self to history
+    history.append(
+        {
+            "version": version,
+            "creation_options": data.get("creation_options"),
+            "metadata": data.get("metadata"),
+        }
+    )
+
+    # TODO verify integrity of history? E.g. adding to correct dataset, only single revision chain
+
+    return history

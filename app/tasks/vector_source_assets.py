@@ -145,7 +145,7 @@ async def vector_source_asset(
     gfw_attribute_job = PostgresqlClientJob(
         dataset=dataset,
         job_name="enrich_gfw_attributes",
-        command=["add_gfw_fields.sh", "-d", dataset, "-v", version],
+        command=["add_gfw_fields_vector.sh", "-d", dataset, "-v", version],
         parents=load_data_parents,
         environment=job_env,
         callback=callback,
