@@ -94,7 +94,7 @@ async def colormap_symbology(
         deep=True,
         update={
             "source_uri": source_uri,
-            # "calc": None,
+            "calc": None,
             "resampling": PIXETL_DEFAULT_RESAMPLING,
             "grid": f"zoom_{zoom_level}",
             "pixel_meaning": f"colormap_{pixel_meaning}",
@@ -142,7 +142,7 @@ async def colormap_symbology(
         ColorMapType.discrete_intensity,
         ColorMapType.gradient_intensity
     ):
-        max_zoom_calc_string = "(~A.mask) * 255"
+        max_zoom_calc_string = "np.ma.array((~A.mask) * 255)"
         intensity_co = source_asset_co.copy(
             deep=True,
             update={
