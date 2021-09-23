@@ -4,6 +4,7 @@ from uuid import UUID
 
 import numpy as np
 from fastapi import HTTPException
+from fastapi.logger import logger
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
@@ -106,6 +107,7 @@ async def raster_tile_cache_asset(
     if source_asset_co.data_type == DataType.boolean:
         pass  # So the next line doesn't break
     elif np.issubdtype(np.dtype(source_asset_co.data_type), np.floating):
+        logger.info("Source datatype is float subtype, converting to int")
         source_asset_co, max_zoom_calc = convert_float_to_int(
             source_asset.stats, source_asset_co
         )

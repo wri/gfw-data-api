@@ -216,17 +216,24 @@ def convert_float_to_int(
     stats: Optional[Dict[str, Any]],
     source_asset_co: RasterTileSetSourceCreationOptions,
 ) -> Tuple[RasterTileSetSourceCreationOptions, str]:
+
     stats = generate_stats(stats)
+
+    logger.info("In convert_float_to_int()")
 
     assert len(stats.bands) == 1
     stats_min = stats.bands[0].min
     stats_max = stats.bands[0].max
     value_range = math.fabs(stats_max - stats_min)
 
+    logger.info(f"stats_min: {stats_min} stats_max: {stats_max} value_range: {value_range}")
+
     # Shift by 1 (and add 1 later) so any values of zero don't get counted as no_data
     uint16_max = np.iinfo(np.uint16).max - 1
     # Expand or squeeze to fit into a uint16
     mult_factor = (uint16_max / value_range) if value_range else 1
+
+    logger.info(f"Multiplicative factor: {mult_factor}")
 
     if isinstance(source_asset_co.no_data, list):
         raise RuntimeError("Cannot apply colormap on multi band image")
@@ -242,6 +249,8 @@ def convert_float_to_int(
         f"(1 + (A - {stats_min}) * {mult_factor}).astype(np.uint16)"
     )
 
+    logger.info(f"Resulting calc string: {calc_str}")
+
     source_asset_co.data_type = DataType.uint16
     source_asset_co.no_data = 0
 
@@ -250,6 +259,8 @@ def convert_float_to_int(
             (1 + (float(k) - stats_min) * mult_factor): v
             for k, v in source_asset_co.symbology.colormap.items()
         }
+
+    logger.info(f"Resulting colormap: {source_asset_co.symbology.colormap}")
 
     return source_asset_co, calc_str
 
