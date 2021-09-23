@@ -83,6 +83,8 @@ async def colormap_symbology(
 ) -> Tuple[List[Job], str]:
     """Create an RGBA raster with gradient or discrete symbology."""
 
+    logger.debug("In colormap_symbology")
+
     assert source_asset_co.symbology  # make mypy happy
     source_uri = (
         [tile_uri_to_tiles_geojson(uri) for uri in source_asset_co.source_uri]
@@ -119,7 +121,7 @@ async def colormap_symbology(
     ).dict(by_alias=True)
     symbology_asset_record = await create_asset(dataset, version, **asset_options)
 
-    logger.debug(f"Created asset record for {new_asset_uri}")
+    logger.debug(f"Created asset record for {new_asset_uri} with creation options: {creation_options}")
 
     parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
     job_name = sanitize_batch_job_name(
