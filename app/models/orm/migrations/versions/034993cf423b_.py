@@ -7,28 +7,24 @@ Create Date: 2021-09-21 14:20:18.461600
 import sqlalchemy as sa
 from alembic import op
 
-from app.settings import globals
-
 # revision identifiers, used by Alembic.
 revision = "034993cf423b"
 down_revision = "4763f4b8141a"  # pragma: allowlist secret
 branch_labels = None
 depends_on = None
 
-db_engine = sa.create_engine(globals.ALEMBIC_CONFIG.url, echo=False)
-
 
 def get_datasets():
-    with db_engine.connect() as conn:
-        datasets = conn.execute(sa.text("select * from public.versions"))
-
+    connection = op.gets_bind()
+    datasets = connection.execute(sa.text("select * from public.versions"))
     return datasets
 
 
 def upgrade():
     versions = get_datasets()
+    connection = op.gets_bind()
     for version in versions:
-        if not db_engine.has_table(version.version, schema=version.dataset):
+        if not connection.engine.has_table(version.version, schema=version.dataset):
             continue
 
         op.add_column(
@@ -48,8 +44,9 @@ def upgrade():
 
 def downgrade():
     versions = get_datasets()
+    connection = op.gets_bind()
     for version in versions:
-        if not db_engine.has_table(version.version, schema=version.dataset):
+        if not connection.engine.has_table(version.version, schema=version.dataset):
             continue
 
         op.drop_column(version.version, "version", schema=version.dataset)
