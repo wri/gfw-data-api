@@ -15,14 +15,14 @@ depends_on = None
 
 
 def get_datasets():
-    connection = op.gets_bind()
+    connection = op.get_bind()
     datasets = connection.execute(sa.text("select * from public.versions"))
     return datasets
 
 
 def upgrade():
     versions = get_datasets()
-    connection = op.gets_bind()
+    connection = op.get_bind()
     for version in versions:
         if not connection.engine.has_table(version.version, schema=version.dataset):
             continue
@@ -44,7 +44,7 @@ def upgrade():
 
 def downgrade():
     versions = get_datasets()
-    connection = op.gets_bind()
+    connection = op.get_bind()
     for version in versions:
         if not connection.engine.has_table(version.version, schema=version.dataset):
             continue
