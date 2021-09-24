@@ -108,6 +108,8 @@ async def _create_default_asset(
 ) -> UUID:
     creation_option = input_data["creation_options"]
     source_type = creation_option["source_type"]
+
+    # TODO how should we deal with metadata for revisions?
     asset_type = default_asset_type(source_type, creation_option)
     metadata = asset_metadata_factory(asset_type, input_data.get("metadata", {}))
     asset_uri = get_asset_uri(dataset, version, asset_type, creation_option)

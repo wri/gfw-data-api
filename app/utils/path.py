@@ -77,6 +77,7 @@ def get_asset_uri(
         AssetType.tsv: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/text/{dataset}_{version}.tsv",
         AssetType.geo_database_table: f"{API_URL}/dataset/{dataset}/{version}/query",
         AssetType.database_table: f"{API_URL}/dataset/{dataset}/{version}/query",
+        AssetType.revision: f"{API_URL}/dataset/{dataset}/{version}/query",
         AssetType.raster_tile_set: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/{srid}/{grid}/{value}/geotiff/{{tile_id}}.tif",
     }
 

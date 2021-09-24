@@ -21,6 +21,10 @@ class VectorSourceType(str, Enum):
     vector = "vector"
 
 
+class RevisionSourceType(str, Enum):
+    revision = "revision"
+
+
 class RevisionOperation(str, Enum):
     append = "append"
     delete = "delete"

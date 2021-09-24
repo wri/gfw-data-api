@@ -2,7 +2,7 @@ from datetime import date
 from typing import Any, Dict, List, Optional, Type, Union
 from uuid import UUID
 
-from pydantic import Field, root_validator, validator
+from pydantic import Field, parse_obj_as, root_validator, validator
 from pydantic.types import PositiveInt, StrictInt
 
 from ...settings.globals import DEFAULT_JOB_DURATION, PIXETL_DEFAULT_RESAMPLING
@@ -28,6 +28,7 @@ from ..enum.pixetl import (
 )
 from ..enum.sources import (
     RasterSourceType,
+    RevisionSourceType,
     SourceType,
     TableSourceType,
     VectorSourceType,
@@ -262,6 +263,9 @@ class RevisionCreationOptions(StrictBaseModel):
     revision_on: str = Field(
         ..., description="Previous version to add the revision on."
     )
+    source_type: RevisionSourceType = Field(
+        ..., description="Source type of input file."
+    )
 
 
 class AppendCreationOptions(RevisionCreationOptions):
@@ -391,10 +395,13 @@ class CreationOptionsResponse(Response):
     data: CreationOptions
 
 
-SourceCreationOptionsLookup: Dict[str, Type[SourceCreationOptions]] = {
+SourceCreationOptionsLookup: Dict[
+    SourceType, Any
+] = {  # TODO having issues with more specific typing
     SourceType.vector: VectorSourceCreationOptions,
     SourceType.table: TableSourceCreationOptions,
     SourceType.raster: RasterTileSetSourceCreationOptions,
+    SourceType.revision: Union[AppendCreationOptions, DeleteCreationOptions],
 }
 
 AssetCreationOptionsLookup: Dict[str, Type[OtherCreationOptions]] = {
@@ -419,11 +426,11 @@ def creation_option_factory(
 
     try:
         if is_default_asset(asset_type) and source_type:
-            co: CreationOptions = SourceCreationOptionsLookup[source_type](
-                **creation_options
+            co: CreationOptions = parse_obj_as(
+                SourceCreationOptionsLookup[source_type], creation_options
             )
         else:
-            co = AssetCreationOptionsLookup[asset_type](**creation_options)
+            co = parse_obj_as(AssetCreationOptionsLookup[asset_type], creation_options)
     except KeyError:
         raise NotImplementedError(
             f"Asset creation options factory for type {asset_type} and source {source_type} not implemented"

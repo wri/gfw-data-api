@@ -25,3 +25,9 @@ RASTER_CREATION_OPTIONS = {
     "grid": "10/40000",
     "compute_stats": False,
 }
+
+REVISION_CREATION_OPTIONS = {
+    "revision_on": "v1",
+    "source_type": "revision",
+    "source_uri": [f"s3://{bucket}/{shp_name}"],
+}

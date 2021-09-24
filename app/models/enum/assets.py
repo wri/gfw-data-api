@@ -47,6 +47,8 @@ def default_asset_type(source_type: str, creation_option: Dict[str, Any]) -> str
         asset_type = AssetType.database_table
     elif source_type == SourceType.raster:
         asset_type = AssetType.raster_tile_set
+    elif source_type == SourceType.revision:
+        asset_type = AssetType.revision
     else:
         raise NotImplementedError("Not a supported input source")
     return asset_type

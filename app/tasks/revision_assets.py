@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Union
 from uuid import UUID
 
-from pydantic import ValidationError, parse_obj_as
+from pydantic import parse_obj_as
 
 from ..crud.versions import get_version
 from ..models.enum.change_log import ChangeLogStatus
@@ -34,15 +34,10 @@ async def revision_asset(
     asset_id: UUID,
     input_data: Dict[str, Any],
 ) -> ChangeLog:
-    try:
-        creation_options = parse_obj_as(
-            Union[AppendCreationOptions, DeleteCreationOptions], input_data
-        )
-    except ValidationError:
-        raise ValueError(
-            f"Invalid creation operations for revision operation: {input_data}"
-        )
-
+    creation_options = parse_obj_as(
+        Union[AppendCreationOptions, DeleteCreationOptions],
+        input_data["creation_options"],
+    )
     version_orm: ORMVersion = await get_version(dataset, version)
     version_history = parse_obj_as(List[VersionHistory], version_orm.history)
 
@@ -53,19 +48,22 @@ async def revision_asset(
     source_creation_options = source_version["creation_options"]
     source_type = source_creation_options["source_type"]
 
-    data = {**input_data, **source_creation_options}
-
     REVISION_ASSET_PIPELINES = {
         (RevisionOperation.append, SourceType.table): revision_append_table_asset,
         (RevisionOperation.append, SourceType.vector): revision_append_vector_asset,
-        (RevisionOperation.append, SourceType.table): revision_delete_table_asset,
-        (RevisionOperation.append, SourceType.vector): revision_delete_vector_asset,
+        (RevisionOperation.delete, SourceType.table): revision_delete_table_asset,
+        (RevisionOperation.delete, SourceType.vector): revision_delete_vector_asset,
     }
 
     try:
         op = _get_revision_operation(creation_options)
         log: ChangeLog = await REVISION_ASSET_PIPELINES[(op, source_type)](  # type: ignore
-            dataset, version, source_version["version"], asset_id, data
+            dataset,
+            version,
+            source_version["version"],
+            asset_id,
+            creation_options,
+            source_creation_options,
         )
         return log
     except KeyError as e:
@@ -90,9 +88,11 @@ async def revision_append_table_asset(
     version: str,
     source_version: str,
     asset_id: UUID,
-    input_data: Dict[str, Any],
+    creation_options: AppendCreationOptions,
+    source_creation_options: Dict[str, Any],
 ) -> ChangeLog:
-    creation_options = TableSourceCreationOptions(**input_data["creation_options"])
+    source_creation_options = TableSourceCreationOptions(**source_creation_options)
+
     if creation_options.source_uri:
         source_uris: List[str] = creation_options.source_uri
     else:
@@ -154,12 +154,12 @@ async def revision_append_table_asset(
         source_version,
     ]
 
-    if "latitude" in input_data and "longitude" in input_data:
+    if source_creation_options.latitude and source_creation_options.longitude:
         gfw_attribute_command += [
             "--lat",
-            input_data["latitude"],
+            source_creation_options.latitude,
             "--lng",
-            input_data["longitude"],
+            source_creation_options.longitude,
         ]
 
     gfw_attribute_job: Job = PostgresqlClientJob(
@@ -183,11 +183,12 @@ async def revision_append_vector_asset(
     version: str,
     source_version: str,
     asset_id: UUID,
-    input_data: Dict[str, Any],
+    creation_options: AppendCreationOptions,
+    source_creation_options: Dict[str, Any],
 ) -> ChangeLog:
-    source_uris: List[str] = input_data["creation_options"].get("source_uri", [])
+    source_uris: List[str] = creation_options.source_uri
 
-    creation_options = VectorSourceCreationOptions(**input_data["creation_options"])
+    creation_options = VectorSourceCreationOptions(**source_creation_options)
     callback: Callback = callback_constructor(asset_id)
 
     source_uri: str = source_uris[0]

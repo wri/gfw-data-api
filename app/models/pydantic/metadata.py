@@ -141,6 +141,11 @@ class VectorFileMetadata(VersionMetadata):
     pass
 
 
+class RevisionMetadata(VersionMetadata):
+    # TODO do we need anything special here?
+    pass
+
+
 AssetMetadata = Union[
     DatabaseTableMetadata,
     StaticVectorTileCacheMetadata,
@@ -168,6 +173,7 @@ def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMe
         AssetType.grid_1x1: VectorFileMetadata,
         AssetType.shapefile: VectorFileMetadata,
         AssetType.geopackage: VectorFileMetadata,
+        AssetType.revision: RevisionMetadata,
     }
     if asset_type in metadata_factory.keys():
         md: AssetMetadata = metadata_factory[asset_type](**metadata)

@@ -1,7 +1,5 @@
 from typing import Any, Dict, List, Optional
 
-from pydantic import validator
-
 from ...settings.globals import (
     AURORA_JOB_QUEUE,
     DATA_LAKE_JOB_QUEUE,
@@ -27,38 +25,38 @@ class Job(StrictBaseModel):
     job_definition: str
     command: List[str]
     environment: List[Dict[str, str]] = []
-    vcpus: int
-    memory: int
-    attempts: int
-    attempt_duration_seconds: int
+    vcpus: int = 8
+    memory: int = 3200
+    attempts: int = 1
+    attempt_duration_seconds: int = 7200
     num_processes: Optional[int] = None
     parents: Optional[List[str]] = None
     # somehow mypy doesn't like the type when declared here?
     callback: Any  # Callable[[UUID, ChangeLog], Coroutine[Any, Any, Awaitable[None]]]
 
-    @validator("environment", pre=True, always=True)
-    def update_environment(cls, v, *, values, **kwargs):
-        v = cls._update_environment(v, "CORES", values.get("vcpus"))
-        v = cls._update_environment(v, "MAX_MEM", values.get("memory"))
-        v = cls._update_environment(v, "NUM_PROCESSES", values.get("num_processes"))
-        return v
-
-    @validator("vcpus", pre=True, always=True, allow_reuse=True)
-    def update_max_cores(cls, v, *, values, **kwargs):
-        cls.environment = cls._update_environment(values["environment"], "CORES", v)
-        return v
-
-    @validator("num_processes", pre=True, always=True, allow_reuse=True)
-    def update_num_processes(cls, v, *, values, **kwargs):
-        cls.environment = cls._update_environment(
-            values["environment"], "NUM_PROCESSES", v
-        )
-        return v
-
-    @validator("memory", pre=True, always=True)
-    def update_max_mem(cls, v, *, values, **kwargs):
-        cls.environment = cls._update_environment(values["environment"], "MAX_MEM", v)
-        return v
+    # @validator("environment", pre=True, always=True)
+    # def update_environment(cls, v, *, values, **kwargs):
+    #     v = cls._update_environment(v, "CORES", values.get("vcpus"))
+    #     v = cls._update_environment(v, "MAX_MEM", values.get("memory"))
+    #     v = cls._update_environment(v, "NUM_PROCESSES", values.get("num_processes"))
+    #     return v
+    #
+    # @validator("vcpus", pre=True, always=True, allow_reuse=True)
+    # def update_max_cores(cls, v, *, values, **kwargs):
+    #     cls.environment = cls._update_environment(values["environment"], "CORES", v)
+    #     return v
+    #
+    # @validator("num_processes", pre=True, always=True, allow_reuse=True)
+    # def update_num_processes(cls, v, *, values, **kwargs):
+    #     cls.environment = cls._update_environment(
+    #         values["environment"], "NUM_PROCESSES", v
+    #     )
+    #     return v
+    #
+    # @validator("memory", pre=True, always=True)
+    # def update_max_mem(cls, v, *, values, **kwargs):
+    #     cls.environment = cls._update_environment(values["environment"], "MAX_MEM", v)
+    #     return v
 
     @staticmethod
     def _update_environment(env: List[Dict[str, str]], name: str, value: Optional[str]):
