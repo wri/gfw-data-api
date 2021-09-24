@@ -18,7 +18,6 @@ from fastapi.responses import ORJSONResponse
 
 from ...authentication.token import is_admin
 from ...crud import assets, versions
-from ...crud.versions import _create_version_history
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
 from ...models.enum.sources import SourceType
@@ -97,13 +96,7 @@ async def add_new_version(
         await _verify_source_file_access(creation_options["source_uri"])
 
     if creation_options.get("source_type") == SourceType.revision:
-        input_data["history"] = await _create_version_history(
-            dataset, version, **input_data
-        )
-        # source_co = history[0]["creation_options"]
-        #
-        # # merge options from first version and revision
-        # creation_options = {**source_co, **creation_options}
+        pass
 
     input_data.pop("creation_options")
 

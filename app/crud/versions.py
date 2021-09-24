@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional
 
 from asyncpg import UniqueViolationError
-from fastapi import HTTPException
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
@@ -9,7 +8,6 @@ from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
 from ..utils.generators import list_to_async_generator
 from . import datasets, update_data
-from .assets import get_default_asset
 from .metadata import update_all_metadata, update_metadata
 
 
@@ -139,35 +137,3 @@ async def _reset_is_latest(dataset: str, version: str) -> None:
     async for version_orm in version_gen:
         if version_orm.version != version:
             await update_version(dataset, version_orm.version, is_latest=False)
-
-
-async def _create_version_history(dataset: str, version: str, **data):
-    creation_options = data["creation_options"]
-
-    try:
-        prev_version: ORMVersion = await get_version(
-            dataset, creation_options["revision_on"]
-        )
-
-        prev_default_asset = await get_default_asset(
-            dataset, creation_options["revision_on"]
-        )
-    except RecordNotFoundError:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot create revision on non-existent version {creation_options['revision_on']}.",
-        )
-
-    history = prev_version.history
-
-    # append self to history
-    history.append(
-        {
-            "dataset": prev_version.dataset,
-            "version": prev_version.version,
-            "creation_options": prev_default_asset.creation_options,
-            "metadata": prev_version.metadata,
-        }
-    )
-
-    return history

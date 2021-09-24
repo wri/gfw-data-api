@@ -6,11 +6,9 @@ from uuid import UUID
 
 from pydantic import parse_obj_as
 
-from ..crud.versions import get_version
 from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.creation_options import VectorDrivers
 from ..models.enum.sources import RevisionOperation, SourceType
-from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import (
     AppendCreationOptions,
@@ -20,7 +18,7 @@ from ..models.pydantic.creation_options import (
     VectorSourceCreationOptions,
 )
 from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
-from ..models.pydantic.versions import VersionHistory
+from ..models.pydantic.metadata import VersionHistory
 from ..settings.globals import AURORA_JOB_QUEUE_FAST, CHUNK_SIZE
 from ..tasks import Callback, callback_constructor, writer_secrets
 from ..tasks.batch import BATCH_DEPENDENCY_LIMIT, execute
@@ -38,15 +36,16 @@ async def revision_asset(
         Union[AppendCreationOptions, DeleteCreationOptions],
         input_data["creation_options"],
     )
-    version_orm: ORMVersion = await get_version(dataset, version)
-    version_history = parse_obj_as(List[VersionHistory], version_orm.history)
+    metadata = input_data["metadata"]
 
-    if not version_history:
-        raise ValueError("Version history empty, can't create revision")
+    if "history" not in metadata:
+        raise ValueError("Revision history empty, can't create new revision")
 
-    source_version = version_orm.history[0]
-    source_creation_options = source_version["creation_options"]
-    source_type = source_creation_options["source_type"]
+    revision_history = parse_obj_as(List[VersionHistory], metadata["history"])
+
+    source_version = revision_history[0]
+    source_creation_options = source_version.creation_options
+    source_type = source_creation_options.source_type
 
     REVISION_ASSET_PIPELINES = {
         (RevisionOperation.append, SourceType.table): revision_append_table_asset,
@@ -60,7 +59,7 @@ async def revision_asset(
         log: ChangeLog = await REVISION_ASSET_PIPELINES[(op, source_type)](  # type: ignore
             dataset,
             version,
-            source_version["version"],
+            source_version.version,
             asset_id,
             creation_options,
             source_creation_options,
@@ -89,10 +88,8 @@ async def revision_append_table_asset(
     source_version: str,
     asset_id: UUID,
     creation_options: AppendCreationOptions,
-    source_creation_options: Dict[str, Any],
+    source_creation_options: TableSourceCreationOptions,
 ) -> ChangeLog:
-    source_creation_options = TableSourceCreationOptions(**source_creation_options)
-
     if creation_options.source_uri:
         source_uris: List[str] = creation_options.source_uri
     else:
@@ -184,19 +181,18 @@ async def revision_append_vector_asset(
     source_version: str,
     asset_id: UUID,
     creation_options: AppendCreationOptions,
-    source_creation_options: Dict[str, Any],
+    source_creation_options: VectorSourceCreationOptions,
 ) -> ChangeLog:
-    source_uris: List[str] = creation_options.source_uri
+    source_uris: List[str] = source_creation_options.source_uri
 
-    creation_options = VectorSourceCreationOptions(**source_creation_options)
     callback: Callback = callback_constructor(asset_id)
 
     source_uri: str = source_uris[0]
     local_file: str = os.path.basename(source_uri)
     zipped: bool = is_zipped(source_uri)
 
-    if creation_options.layers:
-        layers = creation_options.layers
+    if source_creation_options.layers:
+        layers = source_creation_options.layers
     else:
         layer = get_layer_name(source_uri)
         layers = [layer]
@@ -204,7 +200,7 @@ async def revision_append_vector_asset(
     job_env = writer_secrets + [{"name": "ASSET_ID", "value": str(asset_id)}]
 
     load_vector_data_jobs: List[GdalPythonImportJob] = list()
-    if creation_options.source_driver == VectorDrivers.csv:
+    if source_creation_options.source_driver == VectorDrivers.csv:
         chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
         uri_chunks = [
             source_uris[x : x + chunk_size]
@@ -232,7 +228,7 @@ async def revision_append_vector_asset(
                 command=command,
                 environment=job_env,
                 callback=callback,
-                attempt_duration_seconds=creation_options.timeout,
+                attempt_duration_seconds=source_creation_options.timeout,
             )
             load_vector_data_jobs.append(job)
 
@@ -273,7 +269,7 @@ async def revision_append_vector_asset(
                 parents=parents,
                 environment=job_env,
                 callback=callback,
-                attempt_duration_seconds=creation_options.timeout,
+                attempt_duration_seconds=source_creation_options.timeout,
             )
             queue.append(job)
             load_vector_data_jobs.append(job)
@@ -287,7 +283,7 @@ async def revision_append_vector_asset(
         parents=load_data_parents,
         environment=job_env,
         callback=callback,
-        attempt_duration_seconds=creation_options.timeout,
+        attempt_duration_seconds=source_creation_options.timeout,
     )
 
     log: ChangeLog = await execute([*load_vector_data_jobs, gfw_attribute_job])
