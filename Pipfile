@@ -5,7 +5,6 @@ verify_ssl = true
 
 [dev-packages]
 docker = "*"
-mock = "*"
 moto = {editable = true,git = "https://github.com/wri/moto.git",ref = "merge_upstream_commits_child"}
 pytest = "*"
 pytest-asyncio = "*"

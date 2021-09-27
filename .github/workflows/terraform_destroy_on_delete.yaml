@@ -14,4 +14,4 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_dev }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_dev }}
         AWS_REGION: ${{ secrets.aws_region_dev }}
-      run: ./scripts/delete_workspace -w ${{ github.event.ref }} -g "no_sha_awailable"
+      run: ./scripts/delete_workspace -w ${{ github.event.ref }} -g "no_sha_available"
