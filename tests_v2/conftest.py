@@ -155,7 +155,10 @@ async def generic_vector_source_version(
 
     dataset_name, _ = generic_dataset
     version_name: str = "v1"
-    version_metadata: Dict[str, Any] = {}
+    version_metadata: Dict[str, Any] = {
+        "title": "original",
+        "content_date": "2021-09-28",
+    }
 
     # patch all functions which reach out to external services
     batch_job_mock = BatchJobMock()
@@ -290,7 +293,10 @@ async def generic_vector_revision(
 
     dataset_name, _ = generic_dataset
     version_name: str = "v2"
-    version_metadata: Dict[str, Any] = {}
+    version_metadata: Dict[str, Any] = {
+        "title": "overwrite",
+        "last_update": "2021-10-28",
+    }
 
     # patch all functions which reach out to external services
     batch_job_mock = BatchJobMock()

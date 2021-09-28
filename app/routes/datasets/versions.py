@@ -20,7 +20,6 @@ from ...authentication.token import is_admin
 from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
-from ...models.enum.sources import SourceType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
@@ -94,9 +93,6 @@ async def add_new_version(
 
     if "source_uri" in creation_options:
         await _verify_source_file_access(creation_options["source_uri"])
-
-    if creation_options.get("source_type") == SourceType.revision:
-        pass
 
     input_data.pop("creation_options")
 
