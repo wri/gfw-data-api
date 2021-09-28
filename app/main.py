@@ -21,6 +21,7 @@ from .routes import health
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.authentication import authentication
+from .routes.datasets import aliases
 from .routes.datasets import asset as version_asset
 from .routes.datasets import (
     dataset,
@@ -161,6 +162,12 @@ for r in task_routers:
 analysis_routers = (analysis.router,)
 for r in analysis_routers:
     app.include_router(r, prefix="/analysis")
+
+###############
+# ALIAS API
+###############
+
+app.include_router(aliases.router, prefix="/alias")
 
 ###############
 # HEALTH API

@@ -17,10 +17,11 @@ from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
 from ...authentication.token import is_admin
-from ...crud import assets, versions
+from ...crud import aliases, assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
 from ...models.enum.pixetl import Grid
+from ...models.orm.aliases import Alias as ORMAlias
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
@@ -67,7 +68,11 @@ async def get_version(
     """Get basic metadata for a given version."""
 
     dataset, version = dv
-    row: ORMVersion = await versions.get_version(dataset, version)
+    try:
+        row: ORMVersion = await versions.get_version(dataset, version)
+    except RecordNotFoundError:
+        version_alias: ORMAlias = await aliases.get_alias(dataset, version)
+        row = await versions.get_version(dataset, version_alias.version)
 
     return await _version_response(dataset, version, row)
 
