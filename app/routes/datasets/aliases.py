@@ -48,7 +48,7 @@ async def get_alias(
     tags=["Aliases"],
     response_model=AliasResponse,
     include_in_schema=True,
-    status_code=202,
+    status_code=status.HTTP_200_OK,
 )
 async def add_new_alias(
     *,
@@ -87,6 +87,7 @@ async def add_new_alias(
     response_class=ORJSONResponse,
     tags=["Aliases"],
     response_model=AliasResponse,
+    status_code=status.HTTP_200_OK,
     include_in_schema=True,
 )
 async def delete_alias(
@@ -99,7 +100,7 @@ async def delete_alias(
 
     try:
         alias: ORMAlias = await crud.delete_alias(dataset, version_alias)
-    except (RecordAlreadyExistsError, RecordNotFoundError) as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     return AliasResponse(data=Alias.from_orm(alias))
