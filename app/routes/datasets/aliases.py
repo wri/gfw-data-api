@@ -5,11 +5,12 @@ This allows to get dataset version by alias from
 `version` parameter.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 from fastapi.responses import ORJSONResponse
 
 from ...authentication.token import is_admin
 from ...crud import aliases as crud
+from ...crud.versions import get_version
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.aliases import Alias as ORMAlias
 from ...models.pydantic.aliases import Alias, AliasCreateIn, AliasResponse
@@ -59,6 +60,17 @@ async def add_new_alias(
     """Add a new version alias for a dataset."""
 
     input_data = request.dict(exclude_none=True, by_alias=True)
+
+    # avoid conflict with existing version with name `version_alias`
+    try:
+        version = await get_version(dataset, version_alias)
+        if version is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The alias is already used for a dataset version.",
+            )
+    except RecordNotFoundError:
+        pass
 
     try:
         alias: ORMAlias = await crud.create_alias(
