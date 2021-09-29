@@ -14,7 +14,7 @@ from ...crud.versions import get_version
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.aliases import Alias as ORMAlias
 from ...models.pydantic.aliases import Alias, AliasCreateIn, AliasResponse
-from ...routes import dataset_dependency
+from ...routes import VERSION_REGEX, dataset_dependency
 
 router = APIRouter()
 
@@ -28,8 +28,8 @@ router = APIRouter()
 )
 async def get_alias(
     *,
-    dataset,  #: str = Depends(dataset_dependency),
-    version_alias,
+    dataset: str = Depends(dataset_dependency),
+    version_alias: str = Path(..., title="Version alias", regex=VERSION_REGEX),
     is_authorized: bool = Depends(is_admin),
 ):
     """Get version alias for a dataset."""
@@ -53,7 +53,7 @@ async def get_alias(
 async def add_new_alias(
     *,
     dataset: str = Depends(dataset_dependency),
-    version_alias: str,
+    version_alias: str = Path(..., title="Version alias", regex=VERSION_REGEX),
     request: AliasCreateIn,
     is_authorized: bool = Depends(is_admin),
 ):
@@ -92,7 +92,7 @@ async def add_new_alias(
 async def delete_alias(
     *,
     dataset: str = Depends(dataset_dependency),
-    version_alias: str,
+    version_alias: str = Path(..., title="Version alias", regex=VERSION_REGEX),
     is_authorized: bool = Depends(is_admin),
 ):
     """Delete a dataset's version alias."""
