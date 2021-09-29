@@ -3,6 +3,7 @@ from typing import Tuple
 from fastapi import Depends, HTTPException, Path
 from fastapi.security import OAuth2PasswordBearer
 
+from ..crud.aliases import get_alias
 from ..crud.versions import get_version
 from ..errors import RecordNotFoundError
 
@@ -44,6 +45,10 @@ async def dataset_version_dependency(
     try:
         await get_version(dataset, version)
     except RecordNotFoundError as e:
-        raise HTTPException(status_code=404, detail=(str(e)))
+        try:
+            version_alias = await get_alias(dataset, version)
+            await get_version(dataset, version_alias.version)
+        except RecordNotFoundError:
+            raise HTTPException(status_code=404, detail=str(e))
 
     return dataset, version
