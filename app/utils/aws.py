@@ -73,7 +73,9 @@ async def head_s3(bucket: str, key: str) -> bool:
 
 
 def get_aws_files(
-    bucket: str, prefix: str, extensions: Sequence[str] = (".tif",)
+    bucket: str,
+    prefix: str,
+    extensions: Sequence[str] = tuple()
 ) -> List[str]:
     """Get all matching files in S3."""
 
@@ -90,7 +92,7 @@ def get_aws_files(
 
         for obj in contents:
             key = str(obj["Key"])
-            if any(key.endswith(ext) for ext in extensions):
+            if not extensions or any(key.endswith(ext) for ext in extensions):
                 files.append(f"/vsis3/{bucket}/{key}")
 
     return files
