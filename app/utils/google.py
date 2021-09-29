@@ -57,7 +57,9 @@ def set_google_application_credentials(exception: Exception) -> bool:
     stop_max_attempt_number=2,
 )
 def get_gs_files(
-    bucket: str, prefix: str, extensions: Sequence[str] = (".tif",)
+    bucket: str,
+    prefix: str,
+    extensions: Sequence[str] = tuple()
 ) -> List[str]:
     """Get all matching files in GCS."""
 
@@ -69,6 +71,6 @@ def get_gs_files(
     files = [
         f"/vsigs/{bucket}/{blob.name}"
         for blob in blobs
-        if any(blob.name.endswith(ext) for ext in extensions)
+        if not extensions or any(blob.name.endswith(ext) for ext in extensions)
     ]
     return files
