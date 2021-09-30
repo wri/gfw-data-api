@@ -17,6 +17,9 @@ class FieldMetadata(StrictBaseModel):
     is_feature_info: bool = True
     is_filter: bool = True
 
+    class Config:
+        orm_mode = True
+
 
 class RasterFieldMetadata(StrictBaseModel):
     field_name_: str = Field(..., alias="field_name")
