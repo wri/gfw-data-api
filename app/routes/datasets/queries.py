@@ -567,26 +567,21 @@ async def _query_raster(
         )
 
     # use default data type to get default raster layer for dataset
-    default_type = asset.creation_options["pixel_meaning"]
-    default_layer = (
-        f"{default_type}__{dataset}"
-        if default_type == "is"
-        else f"{dataset}__{default_type}"
-    )
+    default_layer = _get_default_layer(dataset, asset.creation_options["pixel_meaning"])
+    grid = asset.creation_options["grid"]
 
     sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
-    return await _query_raster_lambda(geostore.geojson, sql, format, delimiter)
+    return await _query_raster_lambda(geostore.geojson, sql, grid, format, delimiter)
 
 
 async def _query_raster_lambda(
     geometry: Geometry,
     sql: str,
+    grid: Grid = Grid.ten_by_forty_thousand,
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
 ) -> Dict[str, Any]:
-    data_environment = await _get_data_environment(
-        grids=[Grid.ten_by_forty_thousand, Grid.ten_by_one_hundred_thousand]
-    )
+    data_environment = await _get_data_environment(grid)
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
@@ -628,7 +623,18 @@ async def _query_raster_lambda(
     return response_body
 
 
-async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
+def _get_default_layer(dataset, pixel_meaning):
+    default_type = pixel_meaning
+    if default_type == "is":
+        return f"{default_type}__{dataset}"
+    elif "date_conf" in default_type:
+        # use date layer for date_conf encoding
+        return f"{dataset}__date"
+    else:
+        return f"{dataset}__{default_type}"
+
+
+async def _get_data_environment(grid: Grid) -> DataEnvironment:
     # get all Raster tile set assets
     latest_tile_sets = await (
         AssetORM.join(VersionORM)
@@ -653,12 +659,16 @@ async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
     # create layers
     layers: List[Layer] = []
     for row in latest_tile_sets:
-        if grids and row.creation_options["grid"] not in grids:
+        if row.creation_options["grid"] != grid:
             # skip if not on the right grid
             continue
 
         # TODO skip intermediate raster for tile cache until field is in metadata
         if "tcd" in row.creation_options["pixel_meaning"]:
+            continue
+
+        # only include single band rasters
+        if row.creation_options.get("band_count", 1) > 1:
             continue
 
         if row.creation_options["pixel_meaning"] == "is":
@@ -670,7 +680,7 @@ async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
                 f"{row.dataset}__{row.creation_options['pixel_meaning']}"
             )
 
-        layers.append(_get_source_layer(row, source_layer_name))
+        layers.append(_get_source_layer(row, grid, source_layer_name))
 
         if row.creation_options["pixel_meaning"] == "date_conf":
             layers += _get_date_conf_derived_layers(row, source_layer_name)
@@ -681,9 +691,12 @@ async def _get_data_environment(grids: List[Grid] = []) -> DataEnvironment:
     return DataEnvironment(layers=layers)
 
 
-def _get_source_layer(row, source_layer_name: str) -> SourceLayer:
+def _get_source_layer(row, grid, source_layer_name: str) -> SourceLayer:
     # TODO we need to start uploading GLAD directly to the data API
-    if source_layer_name == "umd_glad_landsat_alerts__date_conf":
+    if (
+        source_layer_name == "umd_glad_landsat_alerts__date_conf"
+        and grid == Grid.ten_by_forty_thousand
+    ):
         source_uri = "s3://gfw2-data/forest_change/umd_landsat_alerts/prod/analysis/{tile_id}.tif"
         tile_scheme = "nwse"
         grid = Grid.ten_by_forty_thousand
