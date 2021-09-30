@@ -19,7 +19,6 @@ class FieldMetadata(StrictBaseModel):
 
     class Config:
         orm_mode = True
-        extra = Extra.forbid
 
 
 class RasterFieldMetadata(StrictBaseModel):
