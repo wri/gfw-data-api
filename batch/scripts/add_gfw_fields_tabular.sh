@@ -13,7 +13,7 @@ ME=$(basename "$0")
 # Add GFW specific layers
 echo echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". Add version column."
 psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN gfw_version TEXT;"
-psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET gfw_version = $VERSION;"
+psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET gfw_version = '$VERSION';"
 
 if [ -n "${LNG}" ] && [ -n "${LAT}" ]; then
   echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". Add Point columns"

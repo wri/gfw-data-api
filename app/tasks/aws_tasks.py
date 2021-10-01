@@ -41,7 +41,7 @@ def delete_s3_objects(
             if len(delete_us["Objects"]) >= 1000:
                 count += len(delete_us["Objects"])
                 logger.debug(
-                    f"Delete {len(delete_us['Objects'])} objects in bucker {bucket} with prefix {prefix}"
+                    f"Delete {len(delete_us['Objects'])} objects in bucket {bucket} with prefix {prefix}"
                 )
                 client.delete_objects(Bucket=bucket, Delete=delete_us)
                 delete_us = dict(Objects=[])

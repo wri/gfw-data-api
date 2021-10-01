@@ -34,7 +34,7 @@ psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET ${GEOMETRY_NAME}_wm = ST_Transform
                                       gfw_area__ha = ST_Area($GEOMETRY_NAME::geography)/10000,
                                       gfw_geostore_id = md5(ST_asgeojson($GEOMETRY_NAME))::uuid,
                                       gfw_geojson = ST_asGeojson($GEOMETRY_NAME),
-                                      gfw_version = $VERSION,
+                                      gfw_version = '$VERSION',
                                       gfw_bbox = ARRAY[
                                           ST_XMin(ST_Envelope($GEOMETRY_NAME)::geometry),
                                           ST_YMin(ST_Envelope($GEOMETRY_NAME)::geometry),
