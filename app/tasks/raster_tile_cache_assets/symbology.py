@@ -310,7 +310,12 @@ async def date_conf_intensity_symbology(
         dataset,
         version,
         AssetType.raster_tile_set,
-        source_asset_co.dict(),
+        source_asset_co.copy(
+            deep=True,
+            update={
+                "grid": f"zoom_{zoom_level}"
+            }
+        ).dict(by_alias=True),
         "epsg:3857",
     )
 
@@ -396,7 +401,12 @@ async def date_conf_intensity_multi_8_symbology(
         dataset,
         version,
         AssetType.raster_tile_set,
-        source_asset_co.dict(),
+        source_asset_co.copy(
+            deep=True,
+            update={
+                "grid": f"zoom_{zoom_level}"
+            }
+        ).dict(by_alias=True),
         "epsg:3857",
     )
 
@@ -457,7 +467,12 @@ async def year_intensity_symbology(
         dataset,
         version,
         AssetType.raster_tile_set,
-        source_asset_co.dict(),
+        source_asset_co.copy(
+            deep=True,
+            update={
+                "grid": f"zoom_{zoom_level}"
+            }
+        ).dict(by_alias=True),
         "epsg:3857",
     )
 
