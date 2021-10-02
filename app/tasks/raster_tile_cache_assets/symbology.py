@@ -172,72 +172,19 @@ async def colormap_symbology(
 ) -> Tuple[List[Job], str]:
     """Create an RGB(A) raster with gradient or discrete breakpoint symbology."""
 
-    wm_source_co = source_asset_co.copy(
-        deep=True,
-        update={"grid": f"zoom_{zoom_level}"}
-    )
-
-    wm_source_uri: str = tile_uri_to_tiles_geojson(
-        get_asset_uri(
-            dataset,
-            version,
-            AssetType.raster_tile_set,
-            wm_source_co.dict(by_alias=True),
-            "epsg:3857",
-        )
-    )
-
-    colormap_co = wm_source_co.copy(
-        deep=True,
-        update={
-            "source_uri": [wm_source_uri],
-            "calc": None,
-            "resampling": PIXETL_DEFAULT_RESAMPLING,
-            "pixel_meaning": f"colormap_{pixel_meaning}",
-        },
-    )
-
-    colormap_asset_uri = get_asset_uri(
+    colormap_jobs, colormapped_asset_uri = _create_colormapped_asset(
         dataset,
         version,
-        AssetType.raster_tile_set,
-        colormap_co.dict(by_alias=True),
-        "epsg:3857",
+        pixel_meaning,
+        source_asset_co,
+        zoom_level,
+        jobs_dict
     )
-
-    # Create an asset record
-    colormap_asset_model = AssetCreateIn(
-        asset_type=AssetType.raster_tile_set,
-        asset_uri=colormap_asset_uri,
-        is_managed=True,
-        creation_options=colormap_co,
-    ).dict(by_alias=True)
-    colormap_asset_record = await create_asset(dataset, version, **colormap_asset_model)
-
-    logger.debug(
-        f"Created asset record for {colormap_asset_uri} "
-        f"with creation options: {colormap_co}"
-    )
-
-    parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
-    job_name = sanitize_batch_job_name(
-        f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
-    )
-
-    # Apply the colormap
-    gdaldem_job = await create_gdaldem_job(
-        dataset,
-        version,
-        colormap_co,
-        job_name,
-        callback_constructor(colormap_asset_record.asset_id),
-        parents=parents,
-    )
-    gdaldem_job = scale_batch_job(gdaldem_job, zoom_level)
 
     # Optionally add intensity as alpha band
     intensity_jobs: Tuple[List[Job], str] = tuple()
     merge_jobs: Tuple[List[Job], str] = tuple()
+
     if source_asset_co.symbology.type in (
         ColorMapType.discrete_intensity,
         ColorMapType.gradient_intensity
@@ -268,14 +215,14 @@ async def colormap_symbology(
             dataset,
             version,
             pixel_meaning,
-            tile_uri_to_tiles_geojson(colormap_asset_uri),
+            tile_uri_to_tiles_geojson(colormapped_asset_uri),
             tile_uri_to_tiles_geojson(intensity_uri),
             zoom_level,
-            [gdaldem_job, *intensity_jobs]
+            [*colormap_jobs, *intensity_jobs]
         )
     else:
-        final_asset_uri = colormap_asset_uri
-    return [gdaldem_job, *intensity_jobs, *merge_jobs], final_asset_uri
+        final_asset_uri = colormapped_asset_uri
+    return [*colormap_jobs, *intensity_jobs, *merge_jobs], final_asset_uri
 
 
 async def date_conf_intensity_symbology(
@@ -502,6 +449,80 @@ async def year_intensity_symbology(
         3
     )
     return [*intensity_jobs, *merge_jobs], final_asset_uri
+
+
+async def _create_colormapped_asset(
+        dataset: str,
+        version: str,
+        pixel_meaning: str,
+        source_asset_co: RasterTileSetSourceCreationOptions,
+        zoom_level: int,
+        jobs_dict: Dict,
+) -> Tuple[List[Job], str]:
+    wm_source_co = source_asset_co.copy(
+        deep=True,
+        update={"grid": f"zoom_{zoom_level}"}
+    )
+
+    wm_source_uri: str = tile_uri_to_tiles_geojson(
+        get_asset_uri(
+            dataset,
+            version,
+            AssetType.raster_tile_set,
+            wm_source_co.dict(by_alias=True),
+            "epsg:3857",
+        )
+    )
+
+    colormap_co = wm_source_co.copy(
+        deep=True,
+        update={
+            "source_uri": [wm_source_uri],
+            "calc": None,
+            "resampling": PIXETL_DEFAULT_RESAMPLING,
+            "pixel_meaning": f"colormap_{pixel_meaning}",
+        },
+    )
+
+    colormap_asset_uri = get_asset_uri(
+        dataset,
+        version,
+        AssetType.raster_tile_set,
+        colormap_co.dict(by_alias=True),
+        "epsg:3857",
+    )
+
+    # Create an asset record
+    colormap_asset_model = AssetCreateIn(
+        asset_type=AssetType.raster_tile_set,
+        asset_uri=colormap_asset_uri,
+        is_managed=True,
+        creation_options=colormap_co,
+    ).dict(by_alias=True)
+    colormap_asset_record = await create_asset(dataset, version, **colormap_asset_model)
+
+    logger.debug(
+        f"Created asset record for {colormap_asset_uri} "
+        f"with creation options: {colormap_co}"
+    )
+
+    parents = [jobs_dict[zoom_level]["source_reprojection_job"]]
+    job_name = sanitize_batch_job_name(
+        f"{dataset}_{version}_{pixel_meaning}_{zoom_level}"
+    )
+
+    # Apply the colormap
+    gdaldem_job = await create_gdaldem_job(
+        dataset,
+        version,
+        colormap_co,
+        job_name,
+        callback_constructor(colormap_asset_record.asset_id),
+        parents=parents,
+    )
+    gdaldem_job = scale_batch_job(gdaldem_job, zoom_level)
+
+    return [gdaldem_job], colormap_asset_uri
 
 
 async def _create_intensity_asset(
