@@ -172,7 +172,7 @@ async def colormap_symbology(
 ) -> Tuple[List[Job], str]:
     """Create an RGB(A) raster with gradient or discrete breakpoint symbology."""
 
-    colormap_jobs, colormapped_asset_uri = _create_colormapped_asset(
+    colormap_jobs, colormapped_asset_uri = await _create_colormapped_asset(
         dataset,
         version,
         pixel_meaning,
