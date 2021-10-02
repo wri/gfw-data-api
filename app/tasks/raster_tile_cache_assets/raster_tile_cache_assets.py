@@ -28,7 +28,7 @@ from app.tasks.raster_tile_cache_assets.utils import (
     create_tile_cache,
     reproject_to_web_mercator,
 )
-from app.utils.path import get_asset_uri
+from app.utils.path import get_asset_uri, tile_uri_to_tiles_geojson
 
 
 async def raster_tile_cache_asset(
@@ -59,15 +59,17 @@ async def raster_tile_cache_asset(
     # case it is an auxiliary asset
 
     new_source_uri = [
-        get_asset_uri(
-            dataset,
-            version,
-            AssetType.raster_tile_set,
-            source_asset.creation_options,
-        ).replace("{tile_id}.tif", "tiles.geojson")
+        tile_uri_to_tiles_geojson(
+            get_asset_uri(
+                dataset,
+                version,
+                AssetType.raster_tile_set,
+                source_asset.creation_options
+            )
+        )
     ]
 
-    # The first thing we do for each zoom level is re-project the source asset
+    # The first thing we do for each zoom level is reproject the source asset
     # to web-mercator. We don't want the calc string (if any) used to
     # create the source asset to be applied again to the already transformed
     # data, so set it to None. But wait, PixETL currently requires a calc
@@ -159,9 +161,7 @@ async def raster_tile_cache_asset(
         symbology_jobs: List[Job]
         symbology_uri: str
 
-        symbology_co = source_asset_co.copy(
-            deep=True, update={"source_uri": [source_reprojection_uri]}
-        )
+        symbology_co = source_asset_co.copy(deep=True)
         symbology_jobs, symbology_uri = await symbology_function(
             dataset,
             version,

@@ -181,8 +181,8 @@ def get_zoom_source_uri(
     zoom_level: int,
     max_zoom: int,
 ) -> Optional[List[str]]:
-    """Use uri specified in creation option for highest zoom level, otherwise
-    use uri of same tileset but one zoom level up."""
+    """Return URI specified in creation options for highest zoom level,
+    otherwise return URI of same tileset but one zoom level up."""
 
     alternate_source_uri = [
         get_asset_uri(
