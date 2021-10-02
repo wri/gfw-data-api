@@ -144,7 +144,19 @@ async def no_symbology(
 ) -> Tuple[List[Job], str]:
     """Skip symbology step."""
     if source_asset_co.source_uri:
-        return list(), source_asset_co.source_uri[0]
+        wm_source_uri: str = tile_uri_to_tiles_geojson(
+            get_asset_uri(
+                dataset,
+                version,
+                AssetType.raster_tile_set,
+                source_asset_co.copy(
+                    deep=True,
+                    update={"grid": f"zoom_{zoom_level}"}
+                ).dict(by_alias=True),
+                "epsg:3857",
+            )
+        )
+        return list(), wm_source_uri
     else:
         raise RuntimeError("No source URI set.")
 
@@ -160,28 +172,32 @@ async def colormap_symbology(
 ) -> Tuple[List[Job], str]:
     """Create an RGB(A) raster with gradient or discrete breakpoint symbology."""
 
-    source_uri: str = tile_uri_to_tiles_geojson(
+    wm_source_co = source_asset_co.copy(
+        deep=True,
+        update={"grid": f"zoom_{zoom_level}"}
+    )
+
+    wm_source_uri: str = tile_uri_to_tiles_geojson(
         get_asset_uri(
             dataset,
             version,
             AssetType.raster_tile_set,
-            source_asset_co.dict(),
+            wm_source_co.dict(by_alias=True),
             "epsg:3857",
         )
     )
 
-    colormap_co = source_asset_co.copy(
+    colormap_co = wm_source_co.copy(
         deep=True,
         update={
-            "source_uri": [source_uri],
+            "source_uri": [wm_source_uri],
             "calc": None,
             "resampling": PIXETL_DEFAULT_RESAMPLING,
-            "grid": f"zoom_{zoom_level}",
             "pixel_meaning": f"colormap_{pixel_meaning}",
         },
     )
 
-    new_asset_uri = get_asset_uri(
+    colormap_asset_uri = get_asset_uri(
         dataset,
         version,
         AssetType.raster_tile_set,
@@ -190,17 +206,16 @@ async def colormap_symbology(
     )
 
     # Create an asset record
-    asset_options = AssetCreateIn(
+    colormap_asset_model = AssetCreateIn(
         asset_type=AssetType.raster_tile_set,
-        asset_uri=new_asset_uri,
+        asset_uri=colormap_asset_uri,
         is_managed=True,
         creation_options=colormap_co,
-        metadata=RasterTileSetMetadata(),
     ).dict(by_alias=True)
-    symbology_asset_record = await create_asset(dataset, version, **asset_options)
+    colormap_asset_record = await create_asset(dataset, version, **colormap_asset_model)
 
     logger.debug(
-        f"Created asset record for {new_asset_uri} "
+        f"Created asset record for {colormap_asset_uri} "
         f"with creation options: {colormap_co}"
     )
 
@@ -215,10 +230,9 @@ async def colormap_symbology(
         version,
         colormap_co,
         job_name,
-        callback_constructor(symbology_asset_record.asset_id),
+        callback_constructor(colormap_asset_record.asset_id),
         parents=parents,
     )
-
     gdaldem_job = scale_batch_job(gdaldem_job, zoom_level)
 
     # Optionally add intensity as alpha band
@@ -228,14 +242,15 @@ async def colormap_symbology(
         ColorMapType.discrete_intensity,
         ColorMapType.gradient_intensity
     ):
-        max_zoom_calc_string = "np.ma.array((~A.mask) * 255)"
+
         intensity_co = source_asset_co.copy(
             deep=True,
             update={
                 "calc": None,
-                "data_type": DataType.uint8
+                "data_type": DataType.uint8,
             }
         )
+        intensity_max_zoom_calc_string = "np.ma.array((~A.mask) * 255)"
 
         intensity_jobs, intensity_uri = await _create_intensity_asset(
             dataset,
@@ -245,7 +260,7 @@ async def colormap_symbology(
             zoom_level,
             max_zoom,
             jobs_dict,
-            max_zoom_calc_string,
+            intensity_max_zoom_calc_string,
             ResamplingMethod.bilinear
         )
 
@@ -253,13 +268,13 @@ async def colormap_symbology(
             dataset,
             version,
             pixel_meaning,
-            tile_uri_to_tiles_geojson(new_asset_uri),
+            tile_uri_to_tiles_geojson(colormap_asset_uri),
             tile_uri_to_tiles_geojson(intensity_uri),
             zoom_level,
             [gdaldem_job, *intensity_jobs]
         )
     else:
-        final_asset_uri = new_asset_uri
+        final_asset_uri = colormap_asset_uri
     return [gdaldem_job, *intensity_jobs, *merge_jobs], final_asset_uri
 
 
@@ -283,8 +298,6 @@ async def date_conf_intensity_symbology(
     into a three band RGB-encoded asset suitable for converting to PNGs with
     gdal2tiles in the final stage of raster_tile_cache_asset
     """
-
-    intensity_max_calc_string = f"(A > 0) * {MAX_8_BIT_INTENSITY}"
     intensity_co = source_asset_co.copy(
         deep=True,
         update={
@@ -293,6 +306,7 @@ async def date_conf_intensity_symbology(
             "data_type": DataType.uint8
         }
     )
+    intensity_max_calc_string = f"(A > 0) * {MAX_8_BIT_INTENSITY}"
 
     intensity_jobs, intensity_uri = await _create_intensity_asset(
         dataset,
@@ -306,7 +320,7 @@ async def date_conf_intensity_symbology(
         ResamplingMethod.bilinear
     )
 
-    date_conf_uri: str = get_asset_uri(
+    wm_date_conf_uri: str = get_asset_uri(
         dataset,
         version,
         AssetType.raster_tile_set,
@@ -325,7 +339,7 @@ async def date_conf_intensity_symbology(
         dataset,
         version,
         pixel_meaning,
-        tile_uri_to_tiles_geojson(date_conf_uri),
+        tile_uri_to_tiles_geojson(wm_date_conf_uri),
         tile_uri_to_tiles_geojson(intensity_uri),
         zoom_level,
         intensity_jobs,
@@ -397,7 +411,7 @@ async def date_conf_intensity_multi_8_symbology(
 
     merge_calc_string: str = generate_8_bit_integrated_calc_string()
 
-    date_conf_uri: str = get_asset_uri(
+    wm_date_conf_uri: str = get_asset_uri(
         dataset,
         version,
         AssetType.raster_tile_set,
@@ -414,7 +428,7 @@ async def date_conf_intensity_multi_8_symbology(
         dataset,
         version,
         pixel_meaning,
-        tile_uri_to_tiles_geojson(date_conf_uri),
+        tile_uri_to_tiles_geojson(wm_date_conf_uri),
         tile_uri_to_tiles_geojson(intensity_uri),
         zoom_level,
         [*intensity_jobs],
@@ -463,7 +477,7 @@ async def year_intensity_symbology(
         ").astype('uint8')"
     )
 
-    source_uri: str = get_asset_uri(
+    wm_source_uri: str = get_asset_uri(
         dataset,
         version,
         AssetType.raster_tile_set,
@@ -480,7 +494,7 @@ async def year_intensity_symbology(
         dataset,
         version,
         pixel_meaning,
-        tile_uri_to_tiles_geojson(source_uri),
+        tile_uri_to_tiles_geojson(wm_source_uri),
         tile_uri_to_tiles_geojson(intensity_uri),
         zoom_level,
         [*intensity_jobs],
@@ -547,16 +561,16 @@ async def _merge_assets(
     dataset: str,
     version: str,
     pixel_meaning: str,
-    rgb_asset_uri: str,
-    alpha_asset_uri: str,
+    asset1_uri: str,
+    asset2_uri: str,
     zoom_level: int,
     parents: List[Job],
     calc_str: str = "np.ma.array([A, B, C, D])",
     band_count: int = 4
 ) -> Tuple[List[Job], str]:
-    """Create RGBA-encoded raster tile set from RGB and auxiliary bands,
+    """Create RGBA-encoded raster tile set from two source assets,
     potentially using a custom merge function (the default works for
-    single-band auxiliary sources)
+    3+1 band sources, such as RGB + Intensity as Alpha)
     """
 
     encoded_co = RasterTileSetSourceCreationOptions(
@@ -570,7 +584,7 @@ async def _merge_assets(
         compute_histogram=False,
         source_type=RasterSourceType.raster,
         source_driver=RasterDrivers.geotiff,
-        source_uri=[rgb_asset_uri, alpha_asset_uri],
+        source_uri=[asset1_uri, asset2_uri],
         calc=calc_str,
         photometric=PhotometricType.rgb,
     )
@@ -582,7 +596,6 @@ async def _merge_assets(
         encoded_co.dict(by_alias=True),
         "epsg:3857",
     )
-    asset_prefix = asset_uri.rsplit("/", 1)[0]
 
     logger.debug(
         f"ATTEMPTING TO CREATE MERGED ASSET WITH THESE CREATION OPTIONS: {encoded_co}"
@@ -607,7 +620,7 @@ async def _merge_assets(
         dataset,
         version,
         encoded_co,
-        job_name=f"merge_rgb_and_alpha_zoom_{zoom_level}",
+        job_name=f"merge_assets_zoom_{zoom_level}",
         callback=callback,
         parents=parents,
     )
@@ -616,7 +629,7 @@ async def _merge_assets(
 
     return (
         [pixetl_job],
-        os.path.join(asset_prefix, "tiles.geojson"),
+        tile_uri_to_tiles_geojson(asset_uri),
     )
 
 
