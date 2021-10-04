@@ -117,9 +117,9 @@ async def revision_append_table_asset(
             "-d",
             dataset,
             "-v",
-            version,
+            source_version,
             "-D",
-            creation_options.delimiter.encode(
+            source_creation_options.delimiter.encode(
                 "unicode_escape"
             ).decode(),  # Need to escape special characters such as TAB for batch job payload,
         ]
@@ -135,7 +135,7 @@ async def revision_append_table_asset(
                 command=command,
                 environment=job_env,
                 callback=callback,
-                attempt_duration_seconds=creation_options.timeout,
+                attempt_duration_seconds=source_creation_options.timeout,
             )
         )
 
@@ -167,7 +167,7 @@ async def revision_append_table_asset(
         environment=job_env,
         parents=[job.job_name for job in load_data_jobs],
         callback=callback,
-        attempt_duration_seconds=creation_options.timeout,
+        attempt_duration_seconds=source_creation_options.timeout,
     )
 
     log: ChangeLog = await execute([*load_data_jobs, gfw_attribute_job])
@@ -213,8 +213,6 @@ async def revision_append_vector_asset(
                 "-d",
                 dataset,
                 "-v",
-                version,
-                "--source_version",
                 source_version,
             ]
 
@@ -254,7 +252,7 @@ async def revision_append_vector_asset(
                     "-d",
                     dataset,
                     "-v",
-                    version,
+                    source_version,
                     "-s",
                     source_uri,
                     "-l",
@@ -263,8 +261,6 @@ async def revision_append_vector_asset(
                     local_file,
                     "-X",
                     str(zipped),
-                    "--source_version",
-                    source_version,
                 ],
                 parents=parents,
                 environment=job_env,
