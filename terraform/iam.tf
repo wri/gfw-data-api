@@ -18,3 +18,8 @@ resource "aws_iam_policy" "lambda_invoke" {
   //  policy = data.template_file.iam_lambda_invoke.rendered
   policy = data.local_file.iam_lambda_invoke.content
 }
+
+resource "aws_iam_policy" "read_gcs_secret" {
+  name = "${local.project}-read_gcs_secret${local.name_suffix}"
+  policy = data.aws_iam_policy_document.read_gcs_secret_doc.json
+}

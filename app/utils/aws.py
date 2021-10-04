@@ -1,10 +1,15 @@
-from typing import Any, Dict
+from typing import Any, Dict, List, Sequence
 
 import boto3
 import httpx
 from httpx_auth import AWS4Auth
 
-from ..settings.globals import AWS_REGION, LAMBDA_ENTRYPOINT_URL, S3_ENTRYPOINT_URL
+from ..settings.globals import (
+    AWS_REGION,
+    AWS_SECRETSMANAGER_URL,
+    LAMBDA_ENTRYPOINT_URL,
+    S3_ENTRYPOINT_URL,
+)
 
 
 def client_constructor(service: str, entrypoint_url=None):
@@ -24,11 +29,12 @@ def client_constructor(service: str, entrypoint_url=None):
     return client
 
 
-get_s3_client = client_constructor("s3", S3_ENTRYPOINT_URL)
 get_batch_client = client_constructor("batch")
 get_cloudfront_client = client_constructor("cloudfront")
 get_ecs_client = client_constructor("ecs")
 get_lambda_client = client_constructor("lambda")
+get_s3_client = client_constructor("s3", S3_ENTRYPOINT_URL)
+get_secret_client = client_constructor("secretsmanager", AWS_SECRETSMANAGER_URL)
 
 
 async def invoke_lambda(
@@ -64,6 +70,32 @@ async def head_s3(bucket: str, key: str) -> bool:
         )
 
     return response.status_code == 200
+
+
+def get_aws_files(
+    bucket: str,
+    prefix: str,
+    extensions: Sequence[str] = tuple()
+) -> List[str]:
+    """Get all matching files in S3."""
+
+    files: List[str] = list()
+
+    s3_client = get_s3_client()
+    paginator = s3_client.get_paginator("list_objects_v2")
+
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        try:
+            contents = page["Contents"]
+        except KeyError:
+            break
+
+        for obj in contents:
+            key = str(obj["Key"])
+            if not extensions or any(key.endswith(ext) for ext in extensions):
+                files.append(f"/vsis3/{bucket}/{key}")
+
+    return files
 
 
 def _aws_auth(service: str) -> AWS4Auth:

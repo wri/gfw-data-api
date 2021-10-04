@@ -34,13 +34,19 @@ services:
       - DATA_LAKE_JOB_QUEUE=data_lake_jq
       - TILE_CACHE_JOB_QUEUE=tile_cache_jq
       - TILE_CACHE_URL=https://tiles.globalforestwatch.org
-      - TILE_CACHE_CLOUDFRONT_ID=tile_cache_cloudfrond_id
+      - TILE_CACHE_CLOUDFRONT_ID=tile_cache_cloudfront_id
       - TILE_CACHE_CLUSTER=tile_cache_cluster
       - TILE_CACHE_SERVICE=tile_cache_service
       - PIXETL_JOB_QUEUE=pixetl_jq
       - API_URL=http://app_dev:80
       - RASTER_ANALYSIS_LAMBDA_NAME=raster-analysis-tiled_raster_analysis-default
       - RW_API_URL=https://staging-api.resourcewatch.org
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.gcs/private_key.json
+      - PIXETL_CORES=4
+      - MAX_CORES=4
+      - NUM_PROCESSES=4
+      - PIXETL_MAX_MEM=3800
+      - MAX_MEM=3800
     ports:
       - 8008:80
     entrypoint: wait_for_postgres.sh /start-reload.sh

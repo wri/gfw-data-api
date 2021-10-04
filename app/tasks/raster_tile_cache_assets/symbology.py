@@ -302,6 +302,7 @@ async def date_conf_intensity_symbology(
         merge_calc_string,
         3,
     )
+
     return [*intensity_jobs, *merge_jobs], final_asset_uri
 
 
