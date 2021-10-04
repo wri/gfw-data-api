@@ -13,16 +13,24 @@ def get_datasets(connection):
 def upgrade(connection):
     versions = get_datasets(connection)
     for version in versions:
-        if not connection.engine.has_table(version.version, schema=version.dataset):
+        if not connection.engine.has_table(version.version, schema=version.dataset) or version.dataset == "nasa_viirs_fire_alerts":
             continue
-        print("FOUND TABLE", version.version, version.dataset)
+        print(f"Adding version column to {version.dataset}.{version.version}")
         connection.execute(
             sa.text(
                 f"""ALTER TABLE "{version.dataset}"."{version.version}"
-                ADD COLUMN "version" VARCHAR
+                ADD COLUMN IF NOT EXISTS "version" VARCHAR
             """
             )
         )
+
+        null_rows = connection.execute(
+            sa.text(f"""select count(*) from "{version.dataset}"."{version.version}" where version IS NULL""")
+        ).first()
+        print('NULL rows', null_rows)
+        if null_rows[0] == 0:
+            print(f"{version.dataset}.{version.version} updated already")
+            continue
         connection.execute(
             sa.text(
                 f"""UPDATE "{version.dataset}"."{version.version}" SET version = '{version.version}'
@@ -43,11 +51,11 @@ def downgrade(connection):
     for version in versions:
         if not connection.engine.has_table(version.version, schema=version.dataset):
             continue
-
+        print(f"Dropping version column from {version.dataset}.{version.version} table")
         connection.execute(
             sa.text(
                 f"""ALTER TABLE "{version.dataset}"."{version.version}"
-               DROP COLUMN version
+               DROP COLUMN IF EXISTS version
             """
             )
         )
