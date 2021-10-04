@@ -5,7 +5,7 @@ import pytest
 def crud_module_db(module_db):
     """auto use module db.
 
-    Module level fixtures have cannot be async, because the event loop
+    Module level fixtures cannot be async, because the event loop
     is closed between tests.
     """
     yield
