@@ -226,7 +226,9 @@ def convert_float_to_int(
     stats_max = stats.bands[0].max
     value_range = math.fabs(stats_max - stats_min)
 
-    logger.info(f"stats_min: {stats_min} stats_max: {stats_max} value_range: {value_range}")
+    logger.info(
+        f"stats_min: {stats_min} stats_max: {stats_max} value_range: {value_range}"
+    )
 
     # Shift by 1 (and add 1 later) so any values of zero don't get counted as no_data
     uint16_max = np.iinfo(np.uint16).max - 1
@@ -259,8 +261,7 @@ def convert_float_to_int(
             (1 + (float(k) - stats_min) * mult_factor): v
             for k, v in source_asset_co.symbology.colormap.items()
         }
-
-    logger.info(f"Resulting colormap: {source_asset_co.symbology.colormap}")
+        logger.info(f"Resulting colormap: {source_asset_co.symbology.colormap}")
 
     return source_asset_co, calc_str
 
