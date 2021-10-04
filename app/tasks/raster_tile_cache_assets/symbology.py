@@ -202,18 +202,18 @@ async def colormap_symbology(
         # But wait! Apply intensity scaling for each zoom level to mirror what
         # is done by the front end for TCL
         # Adapted from gfw-tile-cache/lambdas/raster_tiler/lambda_function.py#L65-L79
-        def scale_intensity(z_l: int) -> str:
-            """Simplified implementing of d3.scalePow() Assuming that both
-            domain and range always start with 0."""
-            exp = 0.3 + ((z_l - 3) / 20) if z_l < 11 else 1
-            domain = (0, 255)
-            scale_range = (0, 255)
-            m = scale_range[1] / domain[1] ** exp
-            b = scale_range[0]
-
-            return f"np.ma.array({m} * A ** {exp} + {b})"
-
-        intensity_co.calc = scale_intensity(zoom_level)
+        # def scale_intensity(z_l: int) -> str:
+        #     """Simplified implementing of d3.scalePow() Assuming that both
+        #     domain and range always start with 0."""
+        #     exp = 0.3 + ((z_l - 3) / 20) if z_l < 11 else 1
+        #     domain = (0, 255)
+        #     scale_range = (0, 255)
+        #     m = scale_range[1] / domain[1] ** exp
+        #     b = scale_range[0]
+        #
+        #     return f"np.ma.array({m} * A ** {exp} + {b})"
+        #
+        # intensity_co.calc = scale_intensity(zoom_level)
 
         intensity_jobs, intensity_uri = await _create_intensity_asset(
             dataset,
@@ -224,7 +224,7 @@ async def colormap_symbology(
             max_zoom,
             jobs_dict,
             intensity_max_zoom_calc_string,
-            ResamplingMethod.bilinear,
+            ResamplingMethod.average,
         )
 
         merge_jobs, final_asset_uri = await _merge_assets(
