@@ -166,22 +166,29 @@ async def colormap_symbology(
     max_zoom: int,
     jobs_dict: Dict,
 ) -> Tuple[List[Job], str]:
-    """Create an RGB(A) raster with gradient or discrete breakpoint
-    symbology."""
+    """Create an RGBA raster with gradient or discrete breakpoint symbology."""
+
+    assert source_asset_co.symbology is not None  # make mypy happy
+    add_intensity_as_alpha: bool = source_asset_co.symbology.type in (
+        ColorMapType.discrete_intensity,
+        ColorMapType.gradient_intensity,
+    )
 
     colormap_jobs, colormapped_asset_uri = await _create_colormapped_asset(
-        dataset, version, pixel_meaning, source_asset_co, zoom_level, jobs_dict
+        dataset,
+        version,
+        pixel_meaning,
+        source_asset_co,
+        zoom_level,
+        jobs_dict,
+        not add_intensity_as_alpha,
     )
 
     # Optionally add intensity as alpha band
     intensity_jobs: Sequence[Job] = tuple()
     merge_jobs: Sequence[Job] = tuple()
 
-    if source_asset_co.symbology and source_asset_co.symbology.type in (
-        ColorMapType.discrete_intensity,
-        ColorMapType.gradient_intensity,
-    ):
-
+    if add_intensity_as_alpha:
         intensity_co = source_asset_co.copy(
             deep=True,
             update={
@@ -449,6 +456,7 @@ async def _create_colormapped_asset(
     source_asset_co: RasterTileSetSourceCreationOptions,
     zoom_level: int,
     jobs_dict: Dict,
+    with_alpha: bool,
 ) -> Tuple[List[Job], str]:
     wm_source_co = source_asset_co.copy(
         deep=True, update={"grid": f"zoom_{zoom_level}"}
@@ -506,6 +514,7 @@ async def _create_colormapped_asset(
         dataset,
         version,
         colormap_co,
+        with_alpha,
         job_name,
         callback_constructor(colormap_asset_record.asset_id),
         parents=parents,

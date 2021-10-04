@@ -50,6 +50,11 @@ do
   key="$1"
 
   case $key in
+      -a|--alpha)
+      ALPHA="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -b|--bit_depth)
       BIT_DEPTH="$2"
       shift # past argument
