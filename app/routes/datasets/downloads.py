@@ -7,6 +7,7 @@ from aiohttp import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
 
+from ...authentication.token import is_admin
 from ...crud.assets import get_assets_by_filter
 from ...crud.versions import get_version
 from ...main import logger
@@ -192,6 +193,7 @@ async def download_geotiff(
     grid: Grid = Query(..., description="Grid size of tile to download."),
     tile_id: str = Query(..., description="Tile ID of tile to download."),
     pixel_meaning: str = Query(..., description="Pixel meaning of tile to download."),
+    is_authorized: bool = Depends(is_admin),
 ):
     """Download geotiff raster tile."""
 
@@ -219,6 +221,7 @@ async def download_geotiff(
 async def download_shapefile(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    is_authorized: bool = Depends(is_admin),
 ):
     """Download ESRI Shapefile.
 
@@ -246,6 +249,7 @@ async def download_shapefile(
 async def download_geopackage(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    is_authorized: bool = Depends(is_admin),
 ):
     """Download Geopackage.
 
