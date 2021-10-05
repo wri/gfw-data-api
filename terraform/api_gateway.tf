@@ -56,6 +56,110 @@ resource "aws_api_gateway_integration" "query" {
   }
 }
 
+resource "aws_api_gateway_resource" "download_parent" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id = aws_api_gateway_resource.version.id
+  path_part = "download"
+}
+
+resource "aws_api_gateway_resource" "download_shp" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id = aws_api_gateway_resource.download_parent.id
+  path_part = "shp"
+}
+
+resource "aws_api_gateway_method" "download_shp" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  resource_id = aws_api_gateway_resource.download_shp.id
+  http_method = "GET"
+  authorization = "NONE"
+  request_parameters = {
+    "method.request.path.dataset" = true,
+    "method.request.path.version" = true}
+  api_key_required = true
+}
+
+
+resource "aws_api_gateway_integration" "download_shp" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  resource_id = aws_api_gateway_resource.download_shp.id
+  http_method = aws_api_gateway_method.download_shp.http_method
+
+  integration_http_method = "ANY"
+  type = "HTTP_PROXY"
+  uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/download/shp"
+
+  request_parameters = {
+    "integration.request.path.dataset" = "method.request.path.dataset",
+    "integration.request.path.version" = "method.request.path.version"
+  }
+}
+
+resource "aws_api_gateway_resource" "download_gpkg" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id = aws_api_gateway_resource.download_parent.id
+  path_part = "gpkg"
+}
+
+resource "aws_api_gateway_method" "download_gpkg" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  resource_id = aws_api_gateway_resource.download_gpkg.id
+  http_method = "GET"
+  authorization = "NONE"
+  request_parameters = {
+    "method.request.path.dataset" = true,
+    "method.request.path.version" = true}
+  api_key_required = true
+}
+
+resource "aws_api_gateway_integration" "download_gpkg" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  resource_id = aws_api_gateway_resource.download_gpkg.id
+  http_method = aws_api_gateway_method.download_gpkg.http_method
+
+  integration_http_method = "ANY"
+  type = "HTTP_PROXY"
+  uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/download/gpkg"
+
+  request_parameters = {
+    "integration.request.path.dataset" = "method.request.path.dataset",
+    "integration.request.path.version" = "method.request.path.version"
+  }
+}
+
+resource "aws_api_gateway_resource" "download_geotiff" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id = aws_api_gateway_resource.download_parent.id
+  path_part = "geotiff"
+}
+
+resource "aws_api_gateway_method" "download_geotiff" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  resource_id = aws_api_gateway_resource.download_geotiff.id
+  http_method = "GET"
+  authorization = "NONE"
+  request_parameters = {
+    "method.request.path.dataset" = true,
+    "method.request.path.version" = true}
+  api_key_required = true
+}
+
+resource "aws_api_gateway_integration" "download_geotiff" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  resource_id = aws_api_gateway_resource.download_geotiff.id
+  http_method = aws_api_gateway_method.download_geotiff.http_method
+
+  integration_http_method = "ANY"
+  type = "HTTP_PROXY"
+  uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/download/geotiff"
+
+  request_parameters = {
+    "integration.request.path.dataset" = "method.request.path.dataset",
+    "integration.request.path.version" = "method.request.path.version"
+  }
+}
+
+
 resource "aws_api_gateway_resource" "proxy" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   parent_id = aws_api_gateway_rest_api.api_gw_api.root_resource_id
