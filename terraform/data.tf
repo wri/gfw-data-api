@@ -120,11 +120,3 @@ data "local_file" "iam_s3_read_only" {
 data "local_file" "iam_lambda_invoke" {
   filename = "${path.root}/templates/lambda_invoke_policy.json.tmpl"
 }
-
-data "aws_iam_policy_document" "read_gcs_secret_doc" {
-  statement {
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = [data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn]
-    effect = "Allow"
-  }
-}
