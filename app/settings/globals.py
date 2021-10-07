@@ -164,3 +164,15 @@ API_GATEWAY_ID = config("API_GATEWAY_ID", cast=str)
 API_GATEWAY_INTERNAL_USAGE_PLAN = config("API_GATEWAY_INTERNAL_USAGE_PLAN", cast=str)
 API_GATEWAY_EXTERNAL_USAGE_PLAN = config("API_GATEWAY_EXTERNAL_USAGE_PLAN", cast=str)
 API_GATEWAY_STAGE_NAME = config("API_GATEWAY_STAGE_NAME", cast=str)
+
+default_domains = ",".join(
+    [
+        "*.globalforestwatch.org",
+        "globalforestwatch.org",
+        "api.resourcewatch.org",
+        "my.gfw-mapbuilder.org",
+        "resourcewatch.org",
+    ]
+)
+
+INTERNAL_DOMAINS = config("INTERNAL_DOMAINS", cast=str, default=default_domains)

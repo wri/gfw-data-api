@@ -86,3 +86,9 @@ variable "api_gateway_usage_plans" {
     }
   }
 }
+
+variable "internal_domains" {
+  type        = string
+  description = "Comma separated list of client domains for which we set first tier rate limiting."
+  default     = "*.globalforestwatch.org,globalforestwatch.org,api.resourcewatch.org,my.gfw-mapbuilder.org,resourcewatch.org"
+}

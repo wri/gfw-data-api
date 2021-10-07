@@ -41,7 +41,7 @@ data "template_file" "container_definition" {
 
     container_name = var.container_name
     container_port = var.container_port
-  
+
     log_group = aws_cloudwatch_log_group.default.name
 
     reader_secret_arn = data.terraform_remote_state.core.outputs.secrets_postgresql-reader_arn
@@ -77,6 +77,7 @@ data "template_file" "container_definition" {
     api_gateway_internal_usage_plan = aws_api_gateway_usage_plan.internal.id
     api_gateway_external_usage_plan = aws_api_gateway_usage_plan.external.id
     api_gateway_stage_name          = aws_api_gateway_stage.api_gw_stage.stage_name
+    internal_domains                = var.internal_domains
   }
   depends_on = [
     module.batch_job_queues.aurora_job_definition,
