@@ -267,33 +267,36 @@ async def append_table_source_asset(
         )
 
     # Add geometry columns and update geometries
-    # TODO is it possible to do this only for new data?
-    geometry_jobs: List[Job] = list()
-    if creation_options.latitude and creation_options.longitude:
-        geometry_jobs.append(
-            PostgresqlClientJob(
-                dataset=dataset,
-                job_queue=AURORA_JOB_QUEUE_FAST,
-                job_name="update_point_geometry",
-                command=[
-                    "update_gfw_fields_tabular.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "--lat",
-                    creation_options.latitude,
-                    "--lng",
-                    creation_options.longitude,
-                ],
-                environment=job_env,
-                parents=[job.job_name for job in load_data_jobs],
-                callback=callback,
-                attempt_duration_seconds=creation_options.timeout,
-            ),
-        )
+    gfw_attribute_command = [
+        "update_gfw_fields_tabular.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+        "--source_version",
+        version,
+    ]
 
-    log: ChangeLog = await execute([*load_data_jobs, *geometry_jobs])
+    if creation_options.latitude and creation_options.longitude:
+        gfw_attribute_command += [
+            "--lat",
+            creation_options.latitude,
+            "--lng",
+            creation_options.longitude,
+        ]
+
+    gfw_attribute_job: Job = PostgresqlClientJob(
+        dataset=dataset,
+        job_queue=AURORA_JOB_QUEUE_FAST,
+        job_name="update_gfw_fields_tabular",
+        command=gfw_attribute_command,
+        environment=job_env,
+        parents=[job.job_name for job in load_data_jobs],
+        callback=callback,
+        attempt_duration_seconds=creation_options.timeout,
+    )
+
+    log: ChangeLog = await execute([*load_data_jobs, gfw_attribute_job])
 
     return log
 
