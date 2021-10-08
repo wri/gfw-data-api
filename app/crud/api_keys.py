@@ -68,7 +68,7 @@ async def add_api_key_to_gateway(
     }
     gw_api_key = get_api_gateway_client().create_api_key(
         name=name,
-        value=str(key_value),
+        value=key_value,
         enabled=True,
         stageKeys=[stage_keys],
     )

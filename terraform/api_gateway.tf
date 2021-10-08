@@ -1,6 +1,7 @@
 resource "aws_api_gateway_rest_api" "api_gw_api" {
   name = "GFWDataAPIGateway"
   description = "GFW Data API Gateway"
+  api_key_source = "AUTHORIZER"
 }
 
 resource "aws_api_gateway_resource" "dataset_parent" {
@@ -36,7 +37,8 @@ resource "aws_api_gateway_method" "query" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   resource_id = aws_api_gateway_resource.query.id
   http_method = "ANY"
-  authorization = "NONE"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.api_key.id
   request_parameters = {"method.request.path.proxy" = true}
   api_key_required = true
 }
@@ -72,7 +74,8 @@ resource "aws_api_gateway_method" "download" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   resource_id = aws_api_gateway_resource.download.id
   http_method = "ANY"
-  authorization = "NONE"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.api_key.id
   request_parameters = {"method.request.path.proxy" = true}
   api_key_required = true
 }
@@ -102,7 +105,8 @@ resource "aws_api_gateway_method" "download_shp" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   resource_id = aws_api_gateway_resource.download_shp.id
   http_method = "GET"
-  authorization = "NONE"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.api_key.id
   request_parameters = {
     "method.request.path.dataset" = true,
     "method.request.path.version" = true}
@@ -135,7 +139,8 @@ resource "aws_api_gateway_method" "download_gpkg" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   resource_id = aws_api_gateway_resource.download_gpkg.id
   http_method = "GET"
-  authorization = "NONE"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.api_key.id
   request_parameters = {
     "method.request.path.dataset" = true,
     "method.request.path.version" = true}
@@ -167,7 +172,8 @@ resource "aws_api_gateway_method" "download_geotiff" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   resource_id = aws_api_gateway_resource.download_geotiff.id
   http_method = "GET"
-  authorization = "NONE"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.api_key.id
   request_parameters = {
     "method.request.path.dataset" = true,
     "method.request.path.version" = true}
@@ -301,6 +307,57 @@ resource "aws_api_gateway_stage" "api_gw_stage" {
   stage_name    = local.api_gw_stage_name
 }
 
+# Lambda Authorizer
+resource "aws_api_gateway_authorizer" "api_key" {
+  name                   = "api_key"
+  rest_api_id            = aws_api_gateway_rest_api.api_gw_api.id
+  type                   = "REQUEST"
+  authorizer_uri         = aws_lambda_function.authorizer.invoke_arn
+  authorizer_credentials = aws_iam_role.invocation_role.arn
+
+  # making sure terraform doesn't require default authorization
+  # header (https://github.com/hashicorp/terraform-provider-aws/issues/5845)
+  identity_source        = ","
+}
+
+
+resource "aws_iam_role" "invocation_role" {
+  name = "api_gateway_auth_invocation"
+  path = "/"
+
+  assume_role_policy = data.template_file.api_gateway_role_policy.rendered
+}
+
+resource "aws_iam_role_policy" "invocation_policy" {
+  name = "default"
+  role = aws_iam_role.invocation_role.id
+
+  policy = data.local_file.iam_lambda_invoke.content
+}
+
+
+
+resource "aws_iam_role" "lambda" {
+  name = "api_gw_authorizer_lambda"
+
+  assume_role_policy = data.template_file.lambda_role_policy.rendered
+}
+
+resource "aws_lambda_function" "authorizer" {
+  filename      = "api_gateway/api_key_authorizer_lambda.zip"
+  function_name = "api_gateway_authorizer"
+  runtime       = "python3.8"
+  role          = aws_iam_role.lambda.arn
+  handler       = "lambda_function.handler"
+
+  source_code_hash = filebase64sha256("api_gateway/api_key_authorizer_lambda.zip")
+
+  depends_on =[
+    aws_iam_role.cloudwatch
+  ]
+}
+
+
 # Cloudwatch Logging
 resource "aws_api_gateway_account" "main" {
   cloudwatch_role_arn = aws_iam_role.cloudwatch.arn
@@ -309,47 +366,23 @@ resource "aws_api_gateway_account" "main" {
 resource "aws_iam_role" "cloudwatch" {
   name = "api_gateway_cloudwatch_global"
 
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "apigateway.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-EOF
+  assume_role_policy = data.template_file.api_gateway_role_policy.rendered
 }
 
-resource "aws_iam_role_policy" "cloudwatch" {
+
+
+resource "aws_iam_role_policy" "api_gw_cloudwatch" {
   name = "default"
   role = aws_iam_role.cloudwatch.id
 
-  policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "logs:CreateLogGroup",
-                "logs:CreateLogStream",
-                "logs:DescribeLogGroups",
-                "logs:DescribeLogStreams",
-                "logs:PutLogEvents",
-                "logs:GetLogEvents",
-                "logs:FilterLogEvents"
-            ],
-            "Resource": "*"
-        }
-    ]
+  policy = data.local_file.cloudwatch_log_policy.content
 }
-EOF
+
+resource "aws_iam_role_policy" "lambda_cloudwatch" {
+  name = "default"
+  role = aws_iam_role.lambda.id
+
+  policy = data.local_file.cloudwatch_log_policy.content
 }
 
 resource "aws_api_gateway_method_settings" "general_settings" {

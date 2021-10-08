@@ -130,3 +130,24 @@ data "local_file" "iam_lambda_invoke" {
 data "local_file" "iam_api_gateway_policy" {
   filename = "${path.root}/templates/api_gateway_policy.json.tmpl"
 }
+
+data "local_file" "cloudwatch_log_policy" {
+  filename = "${path.root}/templates/cloudwatch_log_policy.json.tmpl"
+
+}
+
+data "template_file" "lambda_role_policy" {
+  template = file("${path.root}/templates/role-trust-policy.json.tmpl")
+
+  vars = {
+    service = "lambda"
+  }
+}
+
+data "template_file" "api_gateway_role_policy" {
+  template = file("${path.root}/templates/role-trust-policy.json.tmpl")
+
+  vars = {
+    service = "apigateway"
+  }
+}

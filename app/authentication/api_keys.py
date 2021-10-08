@@ -36,14 +36,14 @@ class APIKeyOriginHeader(APIKeyHeader):
 
 
 async def get_api_key(
-    # api_key_query: Tuple[Optional[str], Optional[str], Optional[str]] = Security(
-    #     APIKeyOriginQuery(name=API_KEY_NAME, auto_error=False)
-    # ),
+    api_key_query: Tuple[Optional[str], Optional[str], Optional[str]] = Security(
+        APIKeyOriginQuery(name=API_KEY_NAME, auto_error=False)
+    ),
     api_key_header: Tuple[Optional[str], Optional[str], Optional[str]] = Security(
         APIKeyOriginHeader(name=API_KEY_NAME, auto_error=False)
     ),
 ) -> APIKey:
-    for api_key, origin, referrer in [api_key_header]:
+    for api_key, origin, referrer in [api_key_header, api_key_query]:
         if api_key:
             try:
                 row: ORMApiKey = await api_keys.get_api_key(UUID(api_key))
