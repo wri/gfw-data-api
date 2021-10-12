@@ -568,12 +568,7 @@ async def _query_raster(
         )
 
     # use default data type to get default raster layer for dataset
-    default_type = asset.creation_options["pixel_meaning"]
-    default_layer = (
-        f"{default_type}__{dataset}"
-        if default_type == "is"
-        else f"{dataset}__{default_type}"
-    )
+    default_layer = _get_default_layer(dataset, asset.creation_options["pixel_meaning"])
     grid = asset.creation_options["grid"]
 
     sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
@@ -627,6 +622,17 @@ async def _query_raster_lambda(
         raise HTTPException(500, response_body["message"])
 
     return response_body
+
+
+def _get_default_layer(dataset, pixel_meaning):
+    default_type = pixel_meaning
+    if default_type == "is":
+        return f"{default_type}__{dataset}"
+    elif "date_conf" in default_type:
+        # use date layer for date_conf encoding
+        return f"{dataset}__date"
+    else:
+        return f"{dataset}__{default_type}"
 
 
 async def _get_data_environment(grid: Grid) -> DataEnvironment:
