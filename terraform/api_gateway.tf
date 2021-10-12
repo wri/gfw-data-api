@@ -27,203 +27,57 @@ resource "aws_api_gateway_resource" "query_parent" {
   parent_id = aws_api_gateway_resource.version.id
   path_part = "query"
 }
-resource "aws_api_gateway_resource" "query" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  parent_id = aws_api_gateway_resource.query_parent.id
-  path_part = "{proxy+}"
-}
 
-resource "aws_api_gateway_method" "query" {
+module "query" {
+  source = "./modules/api_gateway"
+
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id = aws_api_gateway_resource.query.id
-  http_method = "ANY"
-  authorization = "CUSTOM"
   authorizer_id = aws_api_gateway_authorizer.api_key.id
-  request_parameters = {"method.request.path.proxy" = true}
-  api_key_required = true
+  parent_id = aws_api_gateway_resource.query_parent.id
+
+  require_api_key = true
+  http_method = "ANY"
+  path_part = "{proxy+}"
+  authorization = "CUSTOM"
+
+  load_balancer_name = module.fargate_autoscaling.lb_dns_name
 }
-
-
-resource "aws_api_gateway_integration" "query" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id = aws_api_gateway_resource.query.id
-  http_method = aws_api_gateway_method.query.http_method
-
-  integration_http_method = "ANY"
-  type = "HTTP_PROXY"
-  uri = "http://${module.fargate_autoscaling.lb_dns_name}/{proxy}"
-
-  request_parameters = {
-    "integration.request.path.proxy" = "method.request.path.proxy"
-  }
-}
-
 resource "aws_api_gateway_resource" "download_parent" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   parent_id = aws_api_gateway_resource.version.id
   path_part = "download"
 }
 
-resource "aws_api_gateway_resource" "download" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  parent_id = aws_api_gateway_resource.download_parent.id
-  path_part = "{proxy+}"
-}
+module "download_shapes" {
+  source = "./modules/api_gateway"
 
-resource "aws_api_gateway_method" "download" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id = aws_api_gateway_resource.download.id
-  http_method = "ANY"
-  authorization = "CUSTOM"
   authorizer_id = aws_api_gateway_authorizer.api_key.id
-  request_parameters = {"method.request.path.proxy" = true}
-  api_key_required = true
-}
-
-
-resource "aws_api_gateway_integration" "download" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id = aws_api_gateway_resource.download.id
-  http_method = aws_api_gateway_method.download.http_method
-
-  integration_http_method = "ANY"
-  type = "HTTP_PROXY"
-  uri = "http://${module.fargate_autoscaling.lb_dns_name}/{proxy}"
-
-  request_parameters = {
-    "integration.request.path.proxy" = "method.request.path.proxy"
-  }
-}
-
-resource "aws_api_gateway_resource" "download_shp" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   parent_id = aws_api_gateway_resource.download_parent.id
-  path_part = "shp"
-}
 
-resource "aws_api_gateway_method" "download_shp" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id = aws_api_gateway_resource.download_shp.id
+  for_each = toset(var.download_endpoints)
+
+  require_api_key = true
   http_method = "GET"
+  path_part = each.key
   authorization = "CUSTOM"
+
+  load_balancer_name = module.fargate_autoscaling.lb_dns_name
+}
+
+module "unprotected_paths" {
+  source = "./modules/api_gateway"
+
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   authorizer_id = aws_api_gateway_authorizer.api_key.id
-  request_parameters = {
-    "method.request.path.dataset" = true,
-    "method.request.path.version" = true}
-  api_key_required = true
-}
-
-
-resource "aws_api_gateway_integration" "download_shp" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id = aws_api_gateway_resource.download_shp.id
-  http_method = aws_api_gateway_method.download_shp.http_method
-
-  integration_http_method = "ANY"
-  type = "HTTP_PROXY"
-  uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/download/shp"
-
-  request_parameters = {
-    "integration.request.path.dataset" = "method.request.path.dataset",
-    "integration.request.path.version" = "method.request.path.version"
-  }
-}
-
-resource "aws_api_gateway_resource" "download_gpkg" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  parent_id = aws_api_gateway_resource.download_parent.id
-  path_part = "gpkg"
-}
-
-resource "aws_api_gateway_method" "download_gpkg" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id = aws_api_gateway_resource.download_gpkg.id
-  http_method = "GET"
-  authorization = "CUSTOM"
-  authorizer_id = aws_api_gateway_authorizer.api_key.id
-  request_parameters = {
-    "method.request.path.dataset" = true,
-    "method.request.path.version" = true}
-  api_key_required = true
-}
-
-resource "aws_api_gateway_integration" "download_gpkg" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id = aws_api_gateway_resource.download_gpkg.id
-  http_method = aws_api_gateway_method.download_gpkg.http_method
-
-  integration_http_method = "ANY"
-  type = "HTTP_PROXY"
-  uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/download/gpkg"
-
-  request_parameters = {
-    "integration.request.path.dataset" = "method.request.path.dataset",
-    "integration.request.path.version" = "method.request.path.version"
-  }
-}
-
-resource "aws_api_gateway_resource" "download_geotiff" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  parent_id = aws_api_gateway_resource.download_parent.id
-  path_part = "geotiff"
-}
-
-resource "aws_api_gateway_method" "download_geotiff" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id = aws_api_gateway_resource.download_geotiff.id
-  http_method = "GET"
-  authorization = "CUSTOM"
-  authorizer_id = aws_api_gateway_authorizer.api_key.id
-  request_parameters = {
-    "method.request.path.dataset" = true,
-    "method.request.path.version" = true}
-  api_key_required = true
-}
-
-resource "aws_api_gateway_integration" "download_geotiff" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id = aws_api_gateway_resource.download_geotiff.id
-  http_method = aws_api_gateway_method.download_geotiff.http_method
-
-  integration_http_method = "ANY"
-  type = "HTTP_PROXY"
-  uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/download/geotiff"
-
-  request_parameters = {
-    "integration.request.path.dataset" = "method.request.path.dataset",
-    "integration.request.path.version" = "method.request.path.version"
-  }
-}
-
-
-resource "aws_api_gateway_resource" "proxy" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   parent_id = aws_api_gateway_rest_api.api_gw_api.root_resource_id
-  path_part = "{proxy+}"
-}
 
-resource "aws_api_gateway_method" "proxy" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id = aws_api_gateway_resource.proxy.id
+  require_api_key = false
   http_method = "ANY"
+  path_part = "{proxy+}"
   authorization = "NONE"
-  request_parameters = {"method.request.path.proxy" = true}
-  api_key_required = false
-}
 
-
-resource "aws_api_gateway_integration" "proxy" {
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id = aws_api_gateway_resource.proxy.id
-  http_method = aws_api_gateway_method.proxy.http_method
-
-  integration_http_method = "ANY"
-  type = "HTTP_PROXY"
-  uri = "http://${module.fargate_autoscaling.lb_dns_name}/{proxy}"
-
-  request_parameters = {
-    "integration.request.path.proxy" = "method.request.path.proxy"
-  }
+  load_balancer_name = module.fargate_autoscaling.lb_dns_name
 }
 
 resource "aws_api_gateway_api_key" "internal_api_key" {
@@ -291,13 +145,13 @@ resource "aws_api_gateway_usage_plan_key" "internal" {
 
 resource "aws_api_gateway_deployment" "api_gw_dep" {
   depends_on = [
-    aws_api_gateway_integration.proxy,
+    module.unprotected_paths.integration_point,
   ]
   lifecycle {
     create_before_destroy = true
   }
   # force api stage reploy if file changes
-  stage_description = md5(file("api_gateway.tf"))
+  stage_description = "${md5(file("api_gateway.tf"))}-${md5(file("./modules/api_gateway/main.tf"))}"
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
 }
 

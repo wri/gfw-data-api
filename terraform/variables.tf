@@ -92,3 +92,12 @@ variable "internal_domains" {
   description = "Comma separated list of client domains for which we set first tier rate limiting."
   default     = "*.globalforestwatch.org,globalforestwatch.org,api.resourcewatch.org,my.gfw-mapbuilder.org,resourcewatch.org"
 }
+
+variable "download_endpoints" {
+  type = list(string)
+  description = "path parts to download endpoints"
+
+  # listing spatial endpoints as gateway needs them explicitly created
+  # in order to apply endpoint-level throttling to them
+  default = ["geotiff", "gpkg", "shp", "{proxy+}"]
+}
