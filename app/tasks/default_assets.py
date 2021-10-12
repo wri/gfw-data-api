@@ -9,6 +9,7 @@ from ..crud.assets import _create_revision_history
 from ..models.enum.assets import default_asset_type
 from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
+from ..models.orm.assets import Asset as ORMAsset
 from ..models.pydantic.assets import AssetTaskCreate
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import creation_option_factory
@@ -111,8 +112,17 @@ async def _create_default_asset(
     source_type = creation_option["source_type"]
     metadata = input_data.get("metadata", {})
 
+    revision_history = []
+    source_version = version
     if source_type == SourceType.revision:
-        metadata["history"] = await _create_revision_history(dataset, **input_data)
+        revision_history = await _create_revision_history(dataset, **input_data)
+
+        # set latest revision on source version
+        source_version = revision_history[0]["version"]
+        source_asset: ORMAsset = await assets.get_default_asset(dataset, source_version)
+        await assets.update_asset(source_asset.asset_id, latest_revision=version)
+
+    input_data["revision_history"] = revision_history
 
     asset_type = default_asset_type(source_type, creation_option)
     metadata = asset_metadata_factory(asset_type, metadata)
@@ -128,6 +138,8 @@ async def _create_default_asset(
         is_default=True,
         creation_options=creation_options,
         metadata=metadata,
+        revision_history=revision_history,
+        source_version=source_version,
     )
 
     async with ContextEngine("WRITE"):

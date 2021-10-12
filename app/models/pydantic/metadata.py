@@ -6,7 +6,6 @@ from ...routes import DATE_REGEX
 from ..enum.assets import AssetType
 from ..enum.pg_types import PGType
 from .base import StrictBaseModel
-from .creation_options import SourceCreationOptions
 from .responses import Response
 
 
@@ -142,17 +141,6 @@ class VectorFileMetadata(VersionMetadata):
     pass
 
 
-class VersionHistory(StrictBaseModel):
-    dataset: str
-    version: str
-    metadata: VersionMetadata
-    creation_options: SourceCreationOptions
-
-
-class RevisionMetadata(VersionMetadata):
-    history: List[VersionHistory]
-
-
 AssetMetadata = Union[
     DatabaseTableMetadata,
     StaticVectorTileCacheMetadata,
@@ -160,7 +148,6 @@ AssetMetadata = Union[
     RasterTileCacheMetadata,
     RasterTileSetMetadata,
     VectorFileMetadata,
-    RevisionMetadata,
 ]
 
 
@@ -181,7 +168,7 @@ def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMe
         AssetType.grid_1x1: VectorFileMetadata,
         AssetType.shapefile: VectorFileMetadata,
         AssetType.geopackage: VectorFileMetadata,
-        AssetType.revision: RevisionMetadata,
+        AssetType.revision: VersionMetadata,
     }
     if asset_type in metadata_factory.keys():
         md: AssetMetadata = metadata_factory[asset_type](**metadata)

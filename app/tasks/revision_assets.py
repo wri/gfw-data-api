@@ -9,6 +9,7 @@ from pydantic import parse_obj_as
 from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.creation_options import VectorDrivers
 from ..models.enum.sources import RevisionOperation, SourceType
+from ..models.pydantic.assets import RevisionHistory
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import (
     AppendCreationOptions,
@@ -18,7 +19,6 @@ from ..models.pydantic.creation_options import (
     VectorSourceCreationOptions,
 )
 from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
-from ..models.pydantic.metadata import VersionHistory
 from ..settings.globals import AURORA_JOB_QUEUE_FAST, CHUNK_SIZE
 from ..tasks import Callback, callback_constructor, writer_secrets
 from ..tasks.batch import BATCH_DEPENDENCY_LIMIT, execute
@@ -36,12 +36,10 @@ async def revision_asset(
         Union[AppendCreationOptions, DeleteCreationOptions],
         input_data["creation_options"],
     )
-    metadata = input_data["metadata"]
 
-    if "history" not in metadata:
-        raise ValueError("Revision history empty, can't create new revision")
-
-    revision_history = parse_obj_as(List[VersionHistory], metadata["history"])
+    revision_history = parse_obj_as(
+        List[RevisionHistory], input_data["revision_history"]
+    )
 
     source_version = revision_history[0]
     source_creation_options = source_version.creation_options
@@ -140,7 +138,6 @@ async def revision_append_table_asset(
         )
 
     # Add geometry columns and update geometries
-    # TODO update geometry only where version = this version
     gfw_attribute_command = [
         "update_gfw_fields_tabular.sh",
         "-d",
