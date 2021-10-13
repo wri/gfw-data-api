@@ -3,6 +3,7 @@ from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse, RedirectResponse
 
 from .application import ContextEngine
+from .crud.aliases import get_alias
 from .crud.versions import get_latest_version
 from .errors import BadRequestError, RecordNotFoundError, http_error_handler
 
@@ -25,10 +26,9 @@ async def set_db_mode(request: Request, call_next):
 async def redirect_latest(request: Request, call_next):
     """Redirect all GET requests using latest version to actual version number.
 
-    Redirect only POST requests to for query and download endpoints, as
+    Redirect only POST requests for query and download endpoints, as
     other POST endpoints will require to list version number explicitly.
     """
-
     if (request.method == "GET" and "latest" in request.url.path) or (
         request.method == "POST"
         and "latest" in request.url.path
@@ -73,6 +73,37 @@ async def redirect_latest(request: Request, call_next):
                 },
             )
     else:
+        response = await call_next(request)
+        return response
+
+
+async def redirect_alias_to_version(request: Request, call_next):
+    """Redirect version request by alias to the actual dataset version."""
+
+    path_items = request.url.path.split("/")
+    is_dataset_version_path = len(path_items) >= 4 and path_items[1] == "dataset"
+    is_allowed_post_request = request.method == "POST" and (
+        "query" in request.url.path or "download" in request.url.path
+    )
+    if not is_dataset_version_path:
+        response = await call_next(request)
+        return response
+    if request.method not in ["GET", "POST"] or (
+        request.method == "POST" and not is_allowed_post_request
+    ):
+        response = await call_next(request)
+        return response
+
+    dataset, version = path_items[2:4]
+    try:
+        alias = await get_alias(dataset, version)
+        path_items[3] = alias.version
+        url = "/".join(path_items)
+        if request.query_params:
+            url = f"{url}?{request.query_params}"
+        return RedirectResponse(url=url)
+
+    except RecordNotFoundError:
         response = await call_next(request)
         return response
 

@@ -17,11 +17,10 @@ from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
 from ...authentication.token import is_admin
-from ...crud import aliases, assets, versions
+from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
 from ...models.enum.pixetl import Grid
-from ...models.orm.aliases import Alias as ORMAlias
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
@@ -44,7 +43,7 @@ from ...models.pydantic.versions import (
     VersionResponse,
     VersionUpdateIn,
 )
-from ...routes import dataset_dependency, dataset_version_dependency, version_dependency
+from ...routes import create_dataset_version_dependency, dataset_version_dependency
 from ...settings.globals import TILE_CACHE_CLOUDFRONT_ID
 from ...tasks.aws_tasks import flush_cloudfront_cache
 from ...tasks.default_assets import append_default_asset, create_default_asset
@@ -68,11 +67,7 @@ async def get_version(
     """Get basic metadata for a given version."""
 
     dataset, version = dv
-    try:
-        row: ORMVersion = await versions.get_version(dataset, version)
-    except RecordNotFoundError:
-        version_alias: ORMAlias = await aliases.get_alias(dataset, version)
-        row = await versions.get_version(dataset, version_alias.version)
+    row: ORMVersion = await versions.get_version(dataset, version)
 
     return await _version_response(dataset, version, row)
 
@@ -86,8 +81,7 @@ async def get_version(
 )
 async def add_new_version(
     *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
+    dataset_version: Tuple[str, str] = Depends(create_dataset_version_dependency),
     request: VersionCreateIn,
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
@@ -95,6 +89,7 @@ async def add_new_version(
 ):
     """Create or update a version for a given dataset."""
 
+    dataset, version = dataset_version
     input_data = request.dict(exclude_none=True, by_alias=True)
     creation_options = input_data.pop("creation_options")
 

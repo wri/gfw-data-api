@@ -47,8 +47,29 @@ async def dataset_version_dependency(
     except RecordNotFoundError as e:
         try:
             version_alias = await get_alias(dataset, version)
-            await get_version(dataset, version_alias.version)
+            if version_alias is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Getting version by alias is not supported for this operation.",
+                )
         except RecordNotFoundError:
             raise HTTPException(status_code=404, detail=str(e))
+
+    return dataset, version
+
+
+async def create_dataset_version_dependency(
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+) -> Tuple[str, str]:
+    try:
+        version_alias = await get_alias(dataset, version)
+        if version_alias is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="Conflicts with existing version alias and can not overwrite it.",
+            )
+    except RecordNotFoundError:
+        pass
 
     return dataset, version
