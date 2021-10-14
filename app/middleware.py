@@ -78,7 +78,14 @@ async def redirect_latest(request: Request, call_next):
 
 
 async def redirect_alias_to_version(request: Request, call_next):
-    """Redirect version request by alias to the actual dataset version."""
+    """Redirect version request by alias to the actual dataset version.
+
+    For GET requests matching /dataset/{dataset}/{version} OR POST
+    requests matching /dataset/{dataset}/{version}/download or
+    /dataset/{dataset}/{version}/query, this will check if {version}
+    matches an existing alias and redirect to the dataset version
+    associated with the alias.
+    """
 
     path_items = request.url.path.split("/")
     is_dataset_version_path = len(path_items) >= 4 and path_items[1] == "dataset"
