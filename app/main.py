@@ -16,11 +16,17 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.errors import http_error_handler
 
 from .application import app
-from .middleware import no_cache_response_header, redirect_latest, set_db_mode
+from .middleware import (
+    no_cache_response_header,
+    redirect_alias_to_version,
+    redirect_latest,
+    set_db_mode,
+)
 from .routes import health
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.authentication import authentication
+from .routes.datasets import aliases
 from .routes.datasets import asset as version_asset
 from .routes.datasets import (
     dataset,
@@ -90,7 +96,12 @@ app.mount("/static", StaticFiles(directory="/app/app/static"), name="static")
 # MIDDLEWARE
 #################
 
-MIDDLEWARE = (set_db_mode, redirect_latest, no_cache_response_header)
+MIDDLEWARE = (
+    set_db_mode,
+    redirect_latest,
+    no_cache_response_header,
+    redirect_alias_to_version,
+)
 
 for m in MIDDLEWARE:
     app.add_middleware(BaseHTTPMiddleware, dispatch=m)
@@ -161,6 +172,12 @@ for r in task_routers:
 analysis_routers = (analysis.router,)
 for r in analysis_routers:
     app.include_router(r, prefix="/analysis")
+
+###############
+# ALIAS API
+###############
+
+app.include_router(aliases.router, prefix="/alias")
 
 ###############
 # HEALTH API
