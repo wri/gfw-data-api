@@ -169,15 +169,21 @@ async def colormap_symbology(
     """Create an RGBA raster with gradient or discrete breakpoint symbology."""
 
     assert source_asset_co.symbology is not None  # make mypy happy
-    add_intensity_as_alpha: bool = source_asset_co.symbology.type in (
+
+    add_intensity_as_alpha: bool = False
+    colormap_asset_pixel_meaning: str = pixel_meaning
+
+    if source_asset_co.symbology.type in (
         ColorMapType.discrete_intensity,
         ColorMapType.gradient_intensity,
-    )
+    ):
+        add_intensity_as_alpha = True
+        colormap_asset_pixel_meaning = f"colormap_{pixel_meaning}"
 
     colormap_jobs, colormapped_asset_uri = await _create_colormapped_asset(
         dataset,
         version,
-        pixel_meaning,
+        colormap_asset_pixel_meaning,
         source_asset_co,
         zoom_level,
         jobs_dict,
@@ -463,7 +469,7 @@ async def _create_colormapped_asset(
             "source_uri": [wm_source_uri],
             "calc": None,
             "resampling": PIXETL_DEFAULT_RESAMPLING,
-            "pixel_meaning": f"colormap_{pixel_meaning}",
+            "pixel_meaning": pixel_meaning,
         },
     )
 

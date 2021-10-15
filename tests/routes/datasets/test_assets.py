@@ -428,7 +428,22 @@ symbology_checks = [
             "type": ColorMapType.discrete,
             "colormap": {
                 20100: {"red": 255, "green": 0, "blue": 0},
-                30100: {"red": 255, "green": 0, "blue": 0},
+                30100: {"red": 0, "green": 0, "blue": 255},
+            },
+        },
+    },
+    {
+        "wm_tile_set_assets": [
+            f"date_conf_{ColorMapType.gradient_intensity}",
+            f"colormap_{ColorMapType.gradient_intensity}",
+            f"intensity_{ColorMapType.gradient_intensity}",
+            ColorMapType.gradient_intensity,
+        ],
+        "symbology": {
+            "type": ColorMapType.gradient_intensity,
+            "colormap": {
+                1: {"red": 255, "green": 0, "blue": 0},
+                40000: {"red": 0, "green": 0, "blue": 255},
             },
         },
     },
@@ -462,7 +477,6 @@ async def test_raster_tile_cache_asset(checks, async_client, batch_client, httpd
             "resampling": "nearest",
             "overwrite": True,
         },
-        "metadata": {},
     }
 
     asset = await create_default_asset(
@@ -482,14 +496,6 @@ async def test_raster_tile_cache_asset(checks, async_client, batch_client, httpd
 
     asset_resp = await async_client.get(f"/asset/{default_asset_id}")
     assert asset_resp.json()["data"]["status"] == "saved"
-
-    # test_files = [
-    #     f"{pixetl_output_files_prefix}/{pixel_meaning}/{test_file}"
-    #     for test_file in pixetl_test_files
-    # ]
-    # _check_s3_file_present(DATA_LAKE_BUCKET, test_files)
-
-    ########################
 
     # Flush requests list so we're starting fresh
     httpx.delete(f"http://localhost:{httpd.server_port}")
