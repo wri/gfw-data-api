@@ -76,13 +76,13 @@ variable "api_gateway_usage_plans" {
   default     = {
     internal_apps = {
       quota_limit  = 10000 # per day
-      burst_limit = 100    # per second
-      rate_limit  = 3
+      burst_limit = 100     # per second
+      rate_limit  = 200
     }
     external_apps = {
-      quota_limit  = 10000
-      burst_limit = 100
-      rate_limit  = 500
+      quota_limit  = 500
+      burst_limit = 10
+      rate_limit  = 20
     }
   }
 }
