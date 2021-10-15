@@ -5,6 +5,8 @@ from typing import List, Optional
 from app.errors import RecordNotFoundError
 from app.models.orm.api_keys import ApiKey as ORMApiKey
 
+from ..utils.aws import get_api_gateway_client
+
 
 async def create_api_key(
     user_id: str,
@@ -51,6 +53,39 @@ async def delete_api_key(api_key: uuid.UUID) -> ORMApiKey:
     await ORMApiKey.delete.where(ORMApiKey.api_key == api_key).gino.status()
 
     return api_key_record
+
+
+async def add_api_key_to_gateway(
+    name: str,
+    key_value: str,
+    rest_api_id: str,
+    stage_name: str,
+    usage_plan_id: str,
+) -> dict:
+    stage_keys = {
+        "restApiId": rest_api_id,
+        "stageName": stage_name,
+    }
+    gw_api_key = get_api_gateway_client().create_api_key(
+        name=name,
+        value=key_value,
+        enabled=True,
+        stageKeys=[stage_keys],
+    )
+
+    get_api_gateway_client().create_usage_plan_key(
+        usagePlanId=usage_plan_id, keyId=gw_api_key["id"], keyType="API_KEY"
+    )
+
+    return gw_api_key
+
+
+async def delete_api_key_from_gateway(name: str):
+    response = get_api_gateway_client().get_api_keys(nameQuery=name)
+    if len(response["items"]) == 0:
+        raise RecordNotFoundError(f"API key with alias {name} not found in gateway")
+
+    get_api_gateway_client().delete_api_key(apiKey=response["items"][0]["id"])
 
 
 def _next_year(now=datetime.now()):

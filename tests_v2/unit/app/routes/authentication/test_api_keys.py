@@ -3,9 +3,12 @@ from typing import Any, Dict, Tuple
 from uuid import UUID
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient
 
+from app.crud import api_keys
 from tests_v2.unit.app.routes.utils import assert_is_datetime, assert_jsend
+from tests_v2.utils import void_coroutine
 
 TEST_DATA = [
     (
@@ -44,7 +47,13 @@ TEST_DATA = [
 )
 @pytest.mark.asyncio
 async def test_create_apikey(
-    alias, organization, email, domains, never_expires, async_client: AsyncClient
+    alias,
+    organization,
+    email,
+    domains,
+    never_expires,
+    async_client: AsyncClient,
+    monkeypatch: MonkeyPatch,
 ):
     payload = {
         "alias": alias,
@@ -53,7 +62,7 @@ async def test_create_apikey(
         "domains": domains,
         "never_expires": never_expires,
     }
-
+    monkeypatch.setattr(api_keys, "add_api_key_to_gateway", void_coroutine)
     response = await async_client.post("/auth/apikey", json=payload)
 
     assert_jsend(response.json())
@@ -76,6 +85,7 @@ async def test_create_apikey_no_admin(
     domains,
     never_expires,
     async_client_no_admin: AsyncClient,
+    monkeypatch: MonkeyPatch,
 ):
     payload = {
         "alias": alias,
@@ -84,6 +94,7 @@ async def test_create_apikey_no_admin(
         "domains": domains,
         "never_expires": never_expires,
     }
+    monkeypatch.setattr(api_keys, "add_api_key_to_gateway", void_coroutine)
 
     response = await async_client_no_admin.post("/auth/apikey", json=payload)
 
@@ -112,6 +123,7 @@ async def test_create_apikey_unauthenticated(
     domains,
     never_expires,
     async_client_unauthenticated: AsyncClient,
+    monkeypatch: MonkeyPatch,
 ):
     payload = {
         "alias": alias,
@@ -120,6 +132,7 @@ async def test_create_apikey_unauthenticated(
         "domains": domains,
         "never_expires": never_expires,
     }
+    monkeypatch.setattr(api_keys, "add_api_key_to_gateway", void_coroutine)
 
     response = await async_client_unauthenticated.post("/auth/apikey", json=payload)
 
@@ -213,9 +226,12 @@ async def test_get_apikeys_no_keys(async_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_delete_apikey(
-    apikey: Tuple[UUID, Dict[str, Any]], async_client: AsyncClient
+    apikey: Tuple[UUID, Dict[str, Any]],
+    async_client: AsyncClient,
+    monkeypatch: MonkeyPatch,
 ):
     api_key, payload = apikey
+    monkeypatch.setattr(api_keys, "delete_api_key_from_gateway", void_coroutine)
     response = await async_client.delete(f"/auth/apikey/{api_key}")
     assert_jsend(response.json())
 

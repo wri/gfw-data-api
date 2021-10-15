@@ -57,6 +57,10 @@ services:
       - SERVICE_ACCOUNT_TOKEN=testing
       - RASTER_ANALYSIS_LAMBDA_NAME=test_raster_analysis
       - RW_API_URL=https://staging-api.resourcewatch.org
+      - API_GATEWAY_ID=test
+      - API_GATEWAY_INTERNAL_USAGE_PLAN=test
+      - API_GATEWAY_EXTERNAL_USAGE_PLAN=test
+      - API_GATEWAY_STAGE_NAME=test
 #      - AWS_GCS_KEY_SECRET_ARN=testing
 #      - AWS_SECRETSMANAGER_URL=http://motoserver-secretsmanager:5001
     entrypoint: wait_for_postgres.sh pytest --timeout 480 -vv --cov-report term  --cov=app
