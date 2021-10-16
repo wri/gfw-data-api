@@ -115,8 +115,9 @@ class TileCacheJob(Job):
 
     job_queue = TILE_CACHE_JOB_QUEUE
     job_definition = TILE_CACHE_JOB_DEFINITION
-    vcpus = 48
-    memory = 96000
+    vcpus = MAX_CORES / 2
+    num_processes = max(int(MAX_CORES / 3), 1)
+    memory = MAX_MEM / 2
     attempts = 4
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 
