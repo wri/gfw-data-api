@@ -84,7 +84,7 @@ resource "aws_cloudfront_distribution" "data_api" {
   }
 
   default_cache_behavior {
-    target_origin_id       = "api_gateway"
+    target_origin_id       = "load_balancer"
     default_ttl            = 0
     min_ttl                = 0
     max_ttl                = 31536000 # 1y
