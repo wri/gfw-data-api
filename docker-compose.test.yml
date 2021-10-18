@@ -41,7 +41,7 @@ services:
       - DATA_LAKE_JOB_QUEUE=data_lake_jq
       - DATA_LAKE_BUCKET=gfw-data-lake-test
       - TILE_CACHE_BUCKET=gfw-tile-cache-test
-      - TILE_CACHE_CLOUDFRONT_ID=tile_cache_cloudfrond_id
+      - TILE_CACHE_CLOUDFRONT_ID=tile_cache_cloudfront_id
       - TILE_CACHE_JOB_QUEUE=tile_cache_jq
       - TILE_CACHE_URL=https://tiles.globalforestwatch.org
       - TILE_CACHE_CLUSTER=tile_cache_cluster

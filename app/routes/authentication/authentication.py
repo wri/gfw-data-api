@@ -152,7 +152,7 @@ async def get_apikeys(
 @router.get("/apikey/{api_key}/validate", tags=["Authentication"])
 async def validate_apikey(
     api_key: UUID = Path(
-        ..., description="Api Key to delete. Must be owned by authenticated user."
+        ..., description="Api Key to validate. Must be owned by authenticated user."
     ),
     origin: Optional[str] = Query(None, description="Origin used with API Key"),
     referrer: Optional[str] = Query(
@@ -165,7 +165,7 @@ async def validate_apikey(
         row: ORMApiKey = await api_keys.get_api_key(api_key)
     except RecordNotFoundError:
         raise HTTPException(
-            status_code=404, detail="The requested API key does not exists."
+            status_code=404, detail="The requested API key does not exist."
         )
 
     data = ApiKeyValidation(

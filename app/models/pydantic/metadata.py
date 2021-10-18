@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pydantic import Extra, Field, StrictInt
+from pydantic import Field, StrictInt
 
 from ...routes import DATE_REGEX
 from ..enum.assets import AssetType
@@ -19,7 +19,6 @@ class FieldMetadata(StrictBaseModel):
 
     class Config:
         orm_mode = True
-        extra = Extra.forbid
 
 
 class RasterFieldMetadata(StrictBaseModel):
@@ -27,9 +26,6 @@ class RasterFieldMetadata(StrictBaseModel):
     field_alias: Optional[str]
     field_description: Optional[str]
     field_values: Optional[List[Any]]
-
-    class Config:
-        extra = Extra.forbid
 
 
 class DatasetMetadata(StrictBaseModel):

@@ -22,6 +22,8 @@ ARG_ARRAY+=("--symbology" "${JSON}")
 
 ARG_ARRAY+=("--no-data" "${NO_DATA}")
 
+ARG_ARRAY+=("--with-alpha" "${ALPHA}")
+
 ARG_ARRAY+=("--source-uri" "${SRC}")
 
 ARG_ARRAY+=("--target-prefix" "${TARGET}")
