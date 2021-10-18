@@ -29,6 +29,7 @@ get_batch_client = client_constructor("batch")
 get_cloudfront_client = client_constructor("cloudfront")
 get_ecs_client = client_constructor("ecs")
 get_lambda_client = client_constructor("lambda")
+get_api_gateway_client = client_constructor("apigateway")
 
 
 async def invoke_lambda(

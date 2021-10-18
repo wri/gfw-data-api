@@ -3,18 +3,23 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 import asyncpg
+import boto3
 import pytest
+from moto import mock_apigateway
 
 from app.application import ContextEngine
 from app.crud.api_keys import (
     _next_year,
+    add_api_key_to_gateway,
     create_api_key,
     delete_api_key,
+    delete_api_key_from_gateway,
     get_api_key,
     get_api_keys_from_user,
 )
 from app.errors import RecordNotFoundError
 from app.models.orm.api_keys import ApiKey as ORMApiKey
+from app.settings.globals import API_GATEWAY_STAGE_NAME
 from tests_v2.fixtures.authentication.api_keys import GOOD_DOMAINS
 
 GOOD_PAYLOAD = (
@@ -268,6 +273,74 @@ async def test_delete_api_key(user_id, alias, organization, email, domains):
         assert create_row.expires_on == delete_row.expires_on
         assert create_row.created_on == delete_row.created_on
         assert create_row.updated_on == delete_row.updated_on
+
+
+@pytest.mark.asyncio
+async def test_add_api_key_to_gateway():
+    with mock_apigateway():
+        test_key = "test_key"
+        client = boto3.client("apigateway", region_name="us-east-1")
+        rest_api = client.create_rest_api(name="test")
+        root_resource = client.get_resources(restApiId=rest_api["id"])["items"][0]
+        client.put_method(
+            restApiId=rest_api["id"],
+            resourceId=root_resource["id"],
+            httpMethod="GET",
+            authorizationType="none",
+            apiKeyRequired=True,
+        )
+        client.put_integration(
+            restApiId=rest_api["id"],
+            resourceId=root_resource["id"],
+            httpMethod="GET",
+            type="HTTP",
+            uri="http://httpbin.org/robots.txt",
+            integrationHttpMethod="POST",
+        )
+        deployment = client.create_deployment(
+            restApiId=rest_api["id"], description="test"
+        )
+
+        client.create_stage(
+            restApiId=rest_api["id"],
+            stageName=API_GATEWAY_STAGE_NAME,
+            deploymentId=deployment["id"],
+        )
+        api_stages = [
+            {"apiId": rest_api["id"], "stage": API_GATEWAY_STAGE_NAME},
+        ]
+        throttle = {"burstLimit": 123, "rateLimit": 123.0}
+        usage_plan = client.create_usage_plan(
+            name="internal", apiStages=api_stages, throttle=throttle
+        )
+
+        gw_key = await add_api_key_to_gateway(
+            "test_name",
+            test_key,
+            rest_api["id"],
+            API_GATEWAY_STAGE_NAME,
+            usage_plan["id"],
+        )
+        usage_plan_key = client.get_usage_plan_key(
+            usagePlanId=usage_plan["id"], keyId=gw_key["id"]
+        )
+
+        assert gw_key["value"] == test_key
+        assert usage_plan_key["value"] == test_key
+
+
+@pytest.mark.asyncio
+async def test_delete_api_key_from_gateway():
+    with mock_apigateway():
+        client = boto3.client("apigateway", region_name="us-east-1")
+        gw_key = client.create_api_key(
+            name="key_name", value="test_value", enabled=True
+        )
+
+        await delete_api_key_from_gateway(gw_key["name"])
+        response = client.get_api_keys(nameQuery=gw_key["name"])
+
+        assert len(response["items"]) == 0
 
 
 @pytest.mark.parametrize(

@@ -18,3 +18,8 @@ resource "aws_iam_policy" "lambda_invoke" {
   //  policy = data.template_file.iam_lambda_invoke.rendered
   policy = data.local_file.iam_lambda_invoke.content
 }
+
+resource "aws_iam_policy" "iam_api_gateway_policy" {
+  name = "${local.project}-api_gateway${local.name_suffix}"
+  policy = data.local_file.iam_api_gateway_policy.content
+}

@@ -47,6 +47,10 @@ services:
       - NUM_PROCESSES=4
       - PIXETL_MAX_MEM=3800
       - MAX_MEM=3800
+      - API_GATEWAY_ID=o0qr02sbjg
+      - API_GATEWAY_INTERNAL_USAGE_PLAN=7hfzrv
+      - API_GATEWAY_EXTERNAL_USAGE_PLAN=f56y9r
+      - API_GATEWAY_STAGE_NAME=deploy_feature_rate_limiting
     ports:
       - 8008:80
     entrypoint: wait_for_postgres.sh /start-reload.sh
