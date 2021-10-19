@@ -134,12 +134,6 @@ resource "aws_api_gateway_usage_plan" "external" {
 
 }
 
-resource "aws_api_gateway_usage_plan_key" "internal" {
-  key_id        = aws_api_gateway_api_key.internal_api_key.id
-  key_type      = "API_KEY"
-  usage_plan_id = aws_api_gateway_usage_plan.internal.id
-}
-
 resource "aws_api_gateway_deployment" "api_gw_dep" {
   depends_on = [
     module.unprotected_paths.integration_point,
