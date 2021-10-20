@@ -664,7 +664,7 @@ async def _get_data_environment(
     # create layers
     layers: List[Layer] = []
     for row in latest_tile_sets:
-        if row.creation_options["grid"] != grid:
+        if row.creation_options["grid"] != _get_grid(grid, default_layer):
             # skip if not on the right grid
             continue
 
@@ -719,6 +719,13 @@ def _get_source_layer(
         name=source_layer_name,
         raster_table=row.metadata.get("raster_table", None),
     )
+
+
+def _get_grid(grid: Grid, default_layer: Optional[str]) -> str:
+    if default_layer == "umd_glad_landsat_alerts":
+        return Grid.ten_by_forty_thousand
+    else:
+        return grid
 
 
 def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
