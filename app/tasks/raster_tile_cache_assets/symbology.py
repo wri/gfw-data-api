@@ -327,7 +327,7 @@ async def date_conf_intensity_multi_8_symbology(
     # "((A > 0) | (B > 0) | (C > 0)) * 55" because "A | B" includes only
     # those values unmasked in both A and B. In fact we don't want masked
     # values at all! So first replace masked values with 0
-    intensity_calc_string = (
+    intensity_max_calc_string = (
         "np.ma.array(["
         f"((A.filled(0) >> 1) > 0) * {MAX_8_BIT_INTENSITY},"  # GLAD-L
         f"((B.filled(0) >> 1) > 0) * {MAX_8_BIT_INTENSITY},"  # GLAD-S2
@@ -336,7 +336,12 @@ async def date_conf_intensity_multi_8_symbology(
     )
 
     intensity_co = source_asset_co.copy(
-        deep=True, update={"calc": None, "band_count": 3, "data_type": DataType.uint8}
+        deep=True,
+        update={
+            "calc": "np.ma.array([A, B, C])",
+            "band_count": 3,
+            "data_type": DataType.uint8,
+        },
     )
 
     intensity_jobs, intensity_uri = await _create_intensity_asset(
@@ -347,7 +352,7 @@ async def date_conf_intensity_multi_8_symbology(
         zoom_level,
         max_zoom,
         jobs_dict,
-        intensity_calc_string,
+        intensity_max_calc_string,
         ResamplingMethod.bilinear,
     )
 
