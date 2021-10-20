@@ -1188,15 +1188,27 @@ def nb_data_bands(dataset):
     return dataset.RasterCount
 
 
-def create_base_tile(tile_job_info, tile_detail):
+def nb_alpha_bands(dataset):
+    """Return the number of alpha bands of a gdal dataset."""
+    alphaband = dataset.GetRasterBand(1).GetMaskBand()
+    if (
+        (alphaband.GetMaskFlags() & gdal.GMF_ALPHA)
+        or dataset.RasterCount == 4
+        or dataset.RasterCount == 2
+    ):
+        return 1
+    return 0
 
+
+def create_base_tile(tile_job_info, tile_detail):
+    alphaBandsCount = tile_job_info.nb_alpha_bands
     dataBandsCount = tile_job_info.nb_data_bands
     output = tile_job_info.output_file_path
     tileext = tile_job_info.tile_extension
     tile_size = tile_job_info.tile_size
     options = tile_job_info.options
 
-    tilebands = dataBandsCount + 1
+    tilebands = dataBandsCount + alphaBandsCount
 
     cached_ds = getattr(threadLocal, "cached_ds", None)
     if cached_ds and cached_ds.GetDescription() == tile_job_info.src_file:
@@ -1282,9 +1294,11 @@ def create_base_tile(tile_job_info, tile_detail):
                 wxsize,
                 wysize,
                 data,
-                band_list=list(range(1, dataBandsCount + 1)),
+                band_list=list(range(1, tilebands + 1)),
             )
-            dsquery.WriteRaster(wx, wy, wxsize, wysize, alpha, band_list=[tilebands])
+            dsquery.WriteRaster(
+                wx, wy, wxsize, wysize, alpha, band_list=[tilebands + 1]
+            )
 
             scale_query_to_tile(
                 dsquery,
@@ -1323,7 +1337,7 @@ def create_overview_tiles(tile_job_info, output_folder, options):
     tile_driver = tile_job_info.tile_driver
     out_driver = gdal.GetDriverByName(tile_driver)
 
-    tilebands = tile_job_info.nb_data_bands + 1
+    tilebands = tile_job_info.nb_data_bands + tile_job_info.nb_alpha_bands
 
     # Usage of existing tiles: from 4 underlying tiles generate one as overview.
 
@@ -1799,6 +1813,7 @@ class TileJobInfo(object):
 
     src_file = ""
     nb_data_bands = 0
+    nb_alpha_bands = 0
     output_file_path = ""
     tile_extension = ""
     tile_size = 0
@@ -2055,6 +2070,7 @@ class GDAL2Tiles(object):
         # Get alpha band (either directly or from NODATA value)
         # self.alphaband = self.warped_input_dataset.GetRasterBand(1).GetMaskBand()
         self.dataBandsCount = nb_data_bands(self.warped_input_dataset)
+        self.alphaBandsCount = nb_alpha_bands(self.warped_input_dataset)
 
         # KML test
         self.isepsg4326 = False
@@ -2377,7 +2393,7 @@ class GDAL2Tiles(object):
         tminx, tminy, tmaxx, tmaxy = self.tminmax[self.tmaxz]
 
         ds = self.warped_input_dataset
-        tilebands = self.dataBandsCount + 1
+        tilebands = self.dataBandsCount + self.alphaBandsCount
         querysize = self.querysize
 
         if self.options.verbose:
@@ -2497,6 +2513,7 @@ class GDAL2Tiles(object):
 
         conf = TileJobInfo(
             src_file=self.tmp_vrt_filename,
+            nb_alpha_bands=self.alphaBandsCount,
             nb_data_bands=self.dataBandsCount,
             output_file_path=self.output_folder,
             tile_extension=self.tileext,

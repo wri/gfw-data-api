@@ -109,9 +109,6 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int
         LOGGER.info(f"Beginning download of {tile_name}")
         get_s3_client().download_file(tile[0], tile[1], tile_path)
 
-        LOGGER.info(f"Beginning download of {tile_name}")
-        get_s3_client().download_file(tile[0], tile[1], tile_path)
-
         if bit_depth == 8:
             gdal2tiles: str = "8bpp_gdal2tiles.py"
         else:
