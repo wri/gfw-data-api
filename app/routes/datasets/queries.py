@@ -722,7 +722,7 @@ def _get_source_layer(
 
 
 def _get_grid(grid: Grid, default_layer: Optional[str]) -> str:
-    if default_layer == "umd_glad_landsat_alerts":
+    if default_layer == "umd_glad_landsat_alerts__date":
         return Grid.ten_by_forty_thousand
     else:
         return grid
