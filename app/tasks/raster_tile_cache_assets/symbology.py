@@ -592,7 +592,7 @@ async def _merge_assets(
         pixel_meaning=pixel_meaning,
         data_type=DataType.uint8,  # FIXME: Revisit for 16-bit assets
         band_count=band_count,
-        no_data=[0 for i in range(band_count)],
+        no_data=None,
         resampling=ResamplingMethod.nearest,
         grid=Grid(f"zoom_{zoom_level}"),
         compute_stats=False,
