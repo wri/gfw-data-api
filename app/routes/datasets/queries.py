@@ -664,7 +664,9 @@ async def _get_data_environment(
     # create layers
     layers: List[Layer] = []
     for row in latest_tile_sets:
-        if row.creation_options["grid"] != _get_grid(grid, default_layer):
+        if _get_grid(row.creation_options["grid"], default_layer) != _get_grid(
+            grid, default_layer
+        ):
             # skip if not on the right grid
             continue
 
