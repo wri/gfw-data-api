@@ -37,4 +37,4 @@ echo "Build Tile Cache"
 tippecanoe -Z"${MIN_ZOOM}" -z"${MAX_ZOOM}" -e tilecache "${STRATEGY[@]}" -P -n "${DATASET}" "${DATASET}"
 
 echo "Upload tiles to S3"
-tileputty tilecache --bucket "${TILE_CACHE}" --dataset "${DATASET}" --version "${VERSION}" --implementation "${IMPLEMENTATION}"
+tileputty tilecache --bucket "${TILE_CACHE}" --dataset "${DATASET}" --version "${VERSION}" --implementation "${IMPLEMENTATION}" --cores "${NUM_PROCESSES}"

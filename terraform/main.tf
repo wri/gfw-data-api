@@ -27,6 +27,7 @@ locals {
   aurora_max_vcpus      = local.aurora_instance_class == "db.t3.medium" ? 2 : local.aurora_instance_class == "db.r6g.large" ? 2 : local.aurora_instance_class == "db.r6g.xlarge" ? 4 : local.aurora_instance_class == "db.r6g.2xlarge" ? 8 : local.aurora_instance_class == "db.r6g.4xlarge" ? 16 : local.aurora_instance_class == "db.r6g.8xlarge" ? 32 : local.aurora_instance_class == "db.r6g.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.large" ? 2 : local.aurora_instance_class == "db.r5.xlarge" ? 4 : local.aurora_instance_class == "db.r5.2xlarge" ? 8 : local.aurora_instance_class == "db.r5.4xlarge" ? 16 : local.aurora_instance_class == "db.r5.8xlarge" ? 32 : local.aurora_instance_class == "db.r5.12xlarge" ? 48 : local.aurora_instance_class == "db.r5.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.24xlarge" ? 96 : ""
   service_url           = var.environment == "dev" ? "http://${module.fargate_autoscaling.lb_dns_name}" : var.service_url
   container_tag         = substr(var.git_sha, 0, 7)
+  api_gw_stage_name     = "deploy${replace(local.name_suffix, "-", "_")}"
 }
 
 
@@ -100,6 +101,7 @@ module "fargate_autoscaling" {
     aws_iam_policy.run_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
     aws_iam_policy.lambda_invoke.arn,
+    aws_iam_policy.iam_api_gateway_policy.arn,
     data.terraform_remote_state.tile_cache.outputs.ecs_update_service_policy_arn,
     data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_full_access_policy_arn,
     data.terraform_remote_state.tile_cache.outputs.cloudfront_invalidation_policy_arn

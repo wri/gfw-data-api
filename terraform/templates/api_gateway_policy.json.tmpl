@@ -1,0 +1,19 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "",
+            "Effect": "Allow",
+            "Action": [
+                "apigateway:DELETE",
+                "apigateway:POST",
+                "apigateway:GET"
+            ],
+            "Resource": [
+                "arn:aws:apigateway:*::/apikeys/*",
+                "arn:aws:apigateway:*::/apikeys",
+                "arn:aws:apigateway:*::/usageplans/*/keys" 
+            ]
+        }
+    ]
+}

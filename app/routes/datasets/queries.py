@@ -13,6 +13,8 @@ from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
+
+# from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
@@ -20,8 +22,9 @@ from pglast.parser import ParseError
 from pglast.printer import RawStream
 from sqlalchemy.sql import and_
 
-# from ...authentication.api_keys import get_api_key
 from ...application import db
+
+# from ...authentication.api_keys import get_api_key
 from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters

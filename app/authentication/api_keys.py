@@ -5,13 +5,14 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import HTTPException, Request, Security
+from fastapi.openapi.models import APIKey
 from fastapi.security import APIKeyHeader, APIKeyQuery
 from starlette.status import HTTP_403_FORBIDDEN
 
 from ..crud import api_keys
 from ..errors import RecordNotFoundError
 from ..models.orm.api_keys import ApiKey as ORMApiKey
-from ..settings.globals import API_KEY_NAME
+from ..settings.globals import API_KEY_NAME, INTERNAL_DOMAINS
 
 
 class APIKeyOriginQuery(APIKeyQuery):
@@ -41,8 +42,8 @@ async def get_api_key(
     api_key_header: Tuple[Optional[str], Optional[str], Optional[str]] = Security(
         APIKeyOriginHeader(name=API_KEY_NAME, auto_error=False)
     ),
-) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    for api_key, origin, referrer in [api_key_query, api_key_header]:
+) -> APIKey:
+    for api_key, origin, referrer in [api_key_header, api_key_query]:
         if api_key:
             try:
                 row: ORMApiKey = await api_keys.get_api_key(UUID(api_key))
@@ -50,7 +51,7 @@ async def get_api_key(
                 pass  # we will catch this at the end of this function
             else:
                 if api_key_is_valid(row.domains, row.expires_on, origin, referrer):
-                    return api_key, origin, referrer
+                    return api_key
 
     raise HTTPException(
         status_code=HTTP_403_FORBIDDEN, detail="No valid API Key found."
@@ -90,6 +91,36 @@ def api_key_is_valid(
         is_valid = False
 
     return is_valid
+
+
+def api_key_is_internal(
+    domains: List[str],
+    user_id: Optional[str] = None,
+    origin: Optional[str] = None,
+    referrer: Optional[str] = None,
+) -> bool:
+
+    is_internal: bool = False
+    if not domains:
+        return True
+    elif origin and domains:
+        is_internal = any(
+            [
+                re.search(_to_regex(internal_domain.strip()), domain)
+                for domain in domains
+                for internal_domain in INTERNAL_DOMAINS.split(",")
+            ]
+        )
+    elif referrer and domains:
+        is_internal = any(
+            [
+                re.search(_to_regex(domain), internal_domain)
+                for domain in domains
+                for internal_domain in INTERNAL_DOMAINS.split(",")
+            ]
+        )
+
+    return is_internal
 
 
 def _api_key_origin_auto_error(

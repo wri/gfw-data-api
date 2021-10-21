@@ -37,7 +37,9 @@ LOGGER = getLogger("apply_symbology")
 
 class ColorMapType(str, Enum):
     discrete = "discrete"
+    discrete_intensity = "discrete_intensity"
     gradient = "gradient"
+    gradient_intensity = "gradient_intensity"
 
 
 class StrictBaseModel(BaseModel):
@@ -157,7 +159,7 @@ def _sort_colormap(
     return ordered_gdal_colormap
 
 
-def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
+def create_rgb_tile(args: Tuple[str, str, ColorMapType, str, bool]) -> str:
     """Add symbology to output raster.
 
     Gradient colormap: Use linear interpolation based on provided
@@ -166,7 +168,7 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
     configuration file. If no matching color entry is found, the
     “0,0,0,0” RGBA quadruplet will be used.
     """
-    source_tile_uri, target_prefix, symbology_type, colormap_path = args
+    source_tile_uri, target_prefix, symbology_type, colormap_path, add_alpha = args
     tile_id = os.path.splitext(os.path.basename(source_tile_uri))[0]
 
     with TemporaryDirectory() as work_dir:
@@ -184,7 +186,6 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
         cmd = [
             "gdaldem",
             "color-relief",
-            "-alpha",
             "-co",
             f"COMPRESS={GEOTIFF_COMPRESSION}",
             "-co",
@@ -198,8 +199,9 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str]) -> str:
             "-co",
             "INTERLEAVE=BAND",
         ]
-
-        if symbology_type == ColorMapType.discrete:
+        if add_alpha:
+            cmd += ["-alpha"]
+        if symbology_type in (ColorMapType.discrete, ColorMapType.discrete_intensity):
             cmd += ["-exact_color_entry"]
 
         cmd += [local_src_file_path, colormap_path, local_dest_file_path]
@@ -228,6 +230,7 @@ def apply_symbology(
     version: str = Option(..., help="Version string."),
     symbology: str = Option(..., help="Symbology JSON."),
     no_data: str = Option(..., help="JSON-encoded no data value."),
+    with_alpha: str = Option(..., help="Whether or not to add alpha channel"),
     source_uri: str = Option(..., help="URI of source tiles.geojson."),
     target_prefix: str = Option(..., help="Target prefix."),
 ):
@@ -240,6 +243,7 @@ def apply_symbology(
         return
 
     no_data_value: Optional[Union[StrictInt, float]] = json.loads(no_data)
+    add_alpha = with_alpha in ("TRUE", "True", "true", True)
 
     symbology_obj = Symbology(**json.loads(symbology))
     ordered_colormap: OrderedColorMap = _sort_colormap(no_data_value, symbology_obj)
@@ -257,7 +261,7 @@ def apply_symbology(
                 colormap_file.write("\n")
 
         process_args = (
-            (tile_uri, target_prefix, symbology_obj.type, colormap_path)
+            (tile_uri, target_prefix, symbology_obj.type, colormap_path, add_alpha)
             for tile_uri in tile_uris
         )
 
@@ -281,5 +285,5 @@ if __name__ == "__main__":
     try:
         run(apply_symbology)
     except (BrokenProcessPool, SubprocessKilledError):
-        LOGGER.error("One of our subprocesses as killed! Exiting with 137")
+        LOGGER.error("One of our subprocesses was killed! Exiting with 137")
         sys.exit(137)
