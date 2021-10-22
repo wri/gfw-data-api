@@ -23,6 +23,7 @@ from sqlalchemy.sql import and_
 # from ...authentication.api_keys import get_api_key
 from ...application import db
 from ...crud import assets
+from ...errors import RecordNotFoundError
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
@@ -332,6 +333,7 @@ def _get_query_type(default_asset: AssetORM, geostore: Optional[GeostoreCommon])
     if default_asset.asset_type in [
         AssetType.geo_database_table,
         AssetType.database_table,
+        AssetType.revision,
     ]:
         return QueryType.table
     elif default_asset.asset_type == AssetType.raster_tile_set:
@@ -367,24 +369,28 @@ async def _query_table(
     _no_forbidden_functions(parsed)
     _no_forbidden_value_functions(parsed)
 
+    default_asset: AssetORM = await assets.get_default_asset(dataset, version)
+
     # always overwrite the table name with the current dataset version name, to make sure no other table is queried
     parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
         "schemaname"
     ] = dataset
     parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
         "relname"
-    ] = version
+    ] = (
+        default_asset.source_version
+        if default_asset.asset_type == AssetType.revision
+        else version
+    )
 
     if geometry:
         parsed = await _add_geometry_filter(parsed, geometry)
 
     # filtering on revisions
     parsed = await _add_revision_filter(parsed, dataset, version)
-    print(parsed)
 
     # convert back to text
     sql = RawStream()(Node(parsed))
-    print("SQL", sql)
 
     try:
         rows = await db.all(sql)
@@ -558,9 +564,19 @@ async def _add_geometry_filter(parsed_sql, geometry: Geometry):
 
 
 async def _add_revision_filter(parsed_sql, dataset, version):
+    """Add revision filters to geostore table queries.
+
+    For queries of latest dataset versions, this involves excluding rows from revisions
+    that are deleted by subsequent revisions in the version's revision history.
+
+    For queries of intermediate revisions, this involves including all rows from
+    append revisions and excluding rows from deleted revisions in the revision's
+    history.
+    """
+
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
 
-    if default_asset.asset_type == "revision":
+    if default_asset.asset_type == AssetType.revision:
         source_version = default_asset.revision_history[0]["version"]
         source_default_asset: AssetORM = await assets.get_default_asset(
             dataset, source_version
@@ -570,16 +586,23 @@ async def _add_revision_filter(parsed_sql, dataset, version):
 
     else:
         latest_revision = default_asset.latest_revision
-        revision_asset: AssetORM = await assets.get_default_asset(
-            dataset, latest_revision
-        )
+        try:
+            revision_asset: AssetORM = await assets.get_default_asset(
+                dataset, latest_revision
+            )
+        except RecordNotFoundError:
+            revision_asset = None
 
     sql_where = parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"].get("whereClause", None)
 
-    if revision_asset.version == latest_revision:
-        revision_filters = await _filter_by_revision_operation(revision_asset, "delete")
+    if revision_asset is None:
+        revision_filters = []
+    elif revision_asset.version == latest_revision:
+        revision_filters = await _filter_by_revision_operation(revision_asset, "latest")
     else:
-        revision_filters = await _filter_by_revision_operation(revision_asset, "append")
+        revision_filters = await _filter_by_revision_operation(
+            revision_asset, "intermediate"
+        )
 
     if not revision_filters:
         return parsed_sql
@@ -596,33 +619,44 @@ async def _add_revision_filter(parsed_sql, dataset, version):
     return parsed_sql
 
 
-async def _filter_by_revision_operation(revision_asset, operation):
-    revision_filters = []
-
+async def _filter_by_revision_operation(revision_asset: AssetORM, filter_type: str):
+    delete_revisions = []
+    append_revisions = []
     for revision in revision_asset.revision_history:
-        delete_revision = revision["creation_options"].get("delete_version", None)
-
-        if operation == "delete" and delete_revision is None:
-            continue
-        if operation == "append" and delete_revision is not None:
-            continue
-
-        if operation == "delete":
-            sql = f"SELECT WHERE gfw_version != '{delete_revision}'"
-        elif operation == "append":
-            sql = f"""SELECT WHERE gfw_version = '{revision["version"]}'"""
-        else:
-            logger.warning(
-                f"Unsupported revision operation {operation}. Revision ignored."
-            )
-            break
-
-        parsed_filter = parse_sql(sql)
-        revision_filters.append(
-            parsed_filter[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"]
+        asset: AssetORM = await assets.get_default_asset(
+            revision["dataset"], revision["version"]
         )
+        delete_revision = asset.creation_options.get("delete_version", None)
 
-    return revision_filters
+        if delete_revision is not None:
+            delete_revisions.append(delete_revision)
+        else:
+            append_revisions.append(revision["version"])
+
+    if filter_type == "latest":
+        filters = [
+            parse_sql(f"SELECT WHERE gfw_version != '{delete_revision}'")[0]["RawStmt"][
+                "stmt"
+            ]["SelectStmt"]["whereClause"]
+            for delete_revision in delete_revisions
+        ]
+
+    elif filter_type == "intermediate":
+        append_revisions = [
+            f"(gfw_version = '{append_revision}')"
+            for append_revision in append_revisions
+            if append_revision not in delete_revisions
+        ]
+
+        filters = [
+            parse_sql(f"SELECT WHERE {' OR '.join(append_revisions)}")[0]["RawStmt"][
+                "stmt"
+            ]["SelectStmt"]["whereClause"]
+        ]
+    else:
+        logger.warning(f"Unknown filter type {filter_type}. Ignoring revision filter.")
+
+    return filters
 
 
 async def _query_raster(
