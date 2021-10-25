@@ -1,5 +1,5 @@
 resource "aws_api_gateway_rest_api" "api_gw_api" {
-  name = "GFWDataAPIGateway"
+  name = "GFWDataAPIGateway${local.name_suffix}"
   description = "GFW Data API Gateway"
   api_key_source = "AUTHORIZER"
 }
@@ -80,12 +80,9 @@ module "unprotected_paths" {
   load_balancer_name = module.fargate_autoscaling.lb_dns_name
 }
 
-resource "aws_api_gateway_api_key" "internal_api_key" {
-  name = "internal"
-}
 
 resource "aws_api_gateway_usage_plan" "internal" {
-  name         = "internal_apps"
+  name         = "internal_apps${local.name_suffix}"
 
   api_stages {
     api_id = aws_api_gateway_rest_api.api_gw_api.id
@@ -111,7 +108,7 @@ resource "aws_api_gateway_usage_plan" "internal" {
 }
 
 resource "aws_api_gateway_usage_plan" "external" {
-  name         = "external_apps"
+  name         = "external_apps${local.name_suffix}"
 
   api_stages {
     api_id = aws_api_gateway_rest_api.api_gw_api.id
@@ -135,12 +132,6 @@ resource "aws_api_gateway_usage_plan" "external" {
     ignore_changes = all
   }
 
-}
-
-resource "aws_api_gateway_usage_plan_key" "internal" {
-  key_id        = aws_api_gateway_api_key.internal_api_key.id
-  key_type      = "API_KEY"
-  usage_plan_id = aws_api_gateway_usage_plan.internal.id
 }
 
 resource "aws_api_gateway_deployment" "api_gw_dep" {
@@ -176,7 +167,7 @@ resource "aws_api_gateway_authorizer" "api_key" {
 
 
 resource "aws_iam_role" "invocation_role" {
-  name = "api_gateway_auth_invocation"
+  name = "api_gateway_auth_invocation${local.name_suffix}"
   path = "/"
 
   assume_role_policy = data.template_file.api_gateway_role_policy.rendered
@@ -192,14 +183,14 @@ resource "aws_iam_role_policy" "invocation_policy" {
 
 
 resource "aws_iam_role" "lambda" {
-  name = "api_gw_authorizer_lambda"
+  name = "api_gw_authorizer_lambda${local.name_suffix}"
 
   assume_role_policy = data.template_file.lambda_role_policy.rendered
 }
 
 resource "aws_lambda_function" "authorizer" {
   filename      = "api_gateway/api_key_authorizer_lambda.zip"
-  function_name = "api_gateway_authorizer"
+  function_name = "api_gateway_authorizer${local.name_suffix}"
   runtime       = "python3.8"
   role          = aws_iam_role.lambda.arn
   handler       = "lambda_function.handler"
@@ -218,7 +209,7 @@ resource "aws_api_gateway_account" "main" {
 }
 
 resource "aws_iam_role" "cloudwatch" {
-  name = "api_gateway_cloudwatch_global"
+  name = "api_gateway_cloudwatch_global${local.name_suffix}"
 
   assume_role_policy = data.template_file.api_gateway_role_policy.rendered
 }
