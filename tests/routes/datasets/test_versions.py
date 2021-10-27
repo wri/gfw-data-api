@@ -360,7 +360,7 @@ async def test_invalid_source_uri(async_client):
     assert response.json()["status"] == "failed"
     assert (
         response.json()["message"]
-        == "Cannot access all of the source files ['s3://doesnotexist']"
+        == "Cannot access all of the source files. Invalid sources: ['s3://doesnotexist']"
     )
 
     # Create a version with a valid source_uri so we have something to append to
@@ -382,7 +382,7 @@ async def test_invalid_source_uri(async_client):
     assert response.json()["status"] == "failed"
     assert (
         response.json()["message"]
-        == "Cannot access all of the source files ['s3://doesnotexist']"
+        == "Cannot access all of the source files. Invalid sources: ['s3://doesnotexist']"
     )
 
     # Test appending to a version that DOESN'T exist

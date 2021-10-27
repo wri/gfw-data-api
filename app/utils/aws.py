@@ -74,9 +74,7 @@ async def head_s3(bucket: str, key: str) -> bool:
 
 
 def get_aws_files(
-    bucket: str,
-    prefix: str,
-    extensions: Sequence[str] = tuple()
+    bucket: str, prefix: str, extensions: Sequence[str] = tuple()
 ) -> List[str]:
     """Get all matching files in S3."""
 
@@ -85,16 +83,19 @@ def get_aws_files(
     s3_client = get_s3_client()
     paginator = s3_client.get_paginator("list_objects_v2")
 
-    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-        try:
-            contents = page["Contents"]
-        except KeyError:
-            break
+    try:
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            try:
+                contents = page["Contents"]
+            except KeyError:
+                break
 
-        for obj in contents:
-            key = str(obj["Key"])
-            if not extensions or any(key.endswith(ext) for ext in extensions):
-                files.append(f"/vsis3/{bucket}/{key}")
+            for obj in contents:
+                key = str(obj["Key"])
+                if not extensions or any(key.endswith(ext) for ext in extensions):
+                    files.append(f"/vsis3/{bucket}/{key}")
+    except s3_client.exceptions.NoSuchBucket:
+        files = list()
 
     return files
 
