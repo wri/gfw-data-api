@@ -284,75 +284,81 @@ async def generic_raster_version(
 
 @pytest.fixture()
 @pytest.mark.asyncio()
-async def generic_vector_revision(
+async def generic_vector_revisions(
     async_client: AsyncClient,
     generic_dataset: Tuple[str, str],
     monkeypatch: MonkeyPatch,
 ) -> AsyncGenerator[Tuple[str, str, Dict[str, Any]], None]:
-    """Create generic vector source revision."""
+    """Create generic vector source revisions."""
 
-    dataset_name, _ = generic_dataset
-    version_name: str = "v2"
-    version_metadata: Dict[str, Any] = {
-        "title": "overwrite",
-        "last_update": "2021-10-28",
-    }
-
-    # patch all functions which reach out to external services
-    batch_job_mock = BatchJobMock()
-    monkeypatch.setattr(versions, "_verify_source_file_access", void_coroutine)
-    monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
-    monkeypatch.setattr(revision_assets, "is_zipped", bool_function_closure(False))
-    monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
-    monkeypatch.setattr(versions, "flush_cloudfront_cache", dict_function_closure({}))
-    monkeypatch.setattr(
-        delete_assets, "flush_cloudfront_cache", dict_function_closure({})
-    )
-
-    # Create version
-    response = await async_client.put(
-        f"/dataset/{dataset_name}/{version_name}",
-        json={
-            "metadata": version_metadata,
-            "creation_options": REVISION_CREATION_OPTIONS,
-        },
-    )
-
-    assert response.status_code == 202
-
-    # mock batch processes
-    await _create_vector_revision_assets(
-        dataset_name, version_name, REVISION_CREATION_OPTIONS["revision_on"]
-    )
-
-    # Set all pending tasks to success
-    for job_id in batch_job_mock.jobs:
-        payload = {
-            "change_log": [
-                ChangeLog(
-                    date_time=datetime.now(),
-                    status=ChangeLogStatus.success,
-                    message="Job set to success via fixture",
-                    detail="",
-                ).dict()
-            ]
-        }
-
-        # convert datetime obt to string
-        payload["change_log"][0]["date_time"] = str(
-            payload["change_log"][0]["date_time"]
+    revisions = []
+    for creation_option in REVISION_CREATION_OPTIONS:
+        # patch all functions which reach out to external services
+        batch_job_mock = BatchJobMock()
+        monkeypatch.setattr(versions, "_verify_source_file_access", void_coroutine)
+        monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
+        monkeypatch.setattr(revision_assets, "is_zipped", bool_function_closure(False))
+        monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
+        monkeypatch.setattr(versions, "flush_cloudfront_cache", dict_function_closure({}))
+        monkeypatch.setattr(
+            delete_assets, "flush_cloudfront_cache", dict_function_closure({})
         )
-        await async_client.patch(f"/task/{job_id}", json=payload)
+        dataset_name, _ = generic_dataset
+        version_name = f"v{int(creation_option['revision_on'][1]) + 1}"
+        version_metadata: Dict[str, Any] = {
+            "title": "delete" if creation_option.get("delete_version") else "append",
+            "last_update": "2021-10-28",
+        }
+        # Createversion
+        response = await async_client.put(
+            f"/dataset/{dataset_name}/{version_name}",
+            json={
+                "metadata": version_metadata,
+                "creation_options": creation_option,
+            },
+        )
 
-    # Assert that version is saved, just to make sure
-    response = await async_client.get(f"/dataset/{dataset_name}/{version_name}")
-    assert response.json()["data"]["status"] == "saved"
+        assert response.status_code == 202
+
+        # mock batch processes
+        if creation_option.get("delete_version") is None:
+            await _create_vector_revision_assets(
+                dataset_name, version_name, "v1"
+            )
+
+        # Set all pending tasks to success
+        for job_id in batch_job_mock.jobs:
+            payload = {
+                "change_log": [
+                    ChangeLog(
+                        date_time=datetime.now(),
+                        status=ChangeLogStatus.success,
+                        message="Job set to success via fixture",
+                        detail="",
+                    ).dict()
+                ]
+            }
+
+            # convert datetime obt to string
+            payload["change_log"][0]["date_time"] = str(
+                payload["change_log"][0]["date_time"]
+            )
+            await async_client.patch(f"/task/{job_id}", json=payload)
+
+        # Assert that version is saved, just to make sure
+        response = await async_client.get(f"/dataset/{dataset_name}/{version_name}")
+        assert response.json()["data"]["status"] == "saved"
+
+        revisions.append(version_name)
 
     # yield version
-    yield dataset_name, version_name, version_metadata
+    yield dataset_name, revisions
 
     # clean up
-    await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
+    for creation_option in REVISION_CREATION_OPTIONS:
+        dataset_name, _ = generic_dataset
+        version_name = f"v{int(creation_option['revision_on'][1]) + 1}"
+        await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
 
 
 @pytest.fixture()

@@ -26,8 +26,25 @@ RASTER_CREATION_OPTIONS = {
     "compute_stats": False,
 }
 
-REVISION_CREATION_OPTIONS = {
-    "revision_on": "v1",
-    "source_type": "revision",
-    "source_uri": [f"s3://{bucket}/{shp_name}"],
-}
+REVISION_CREATION_OPTIONS = [
+    {
+        "revision_on": "v1",
+        "source_type": "revision",
+        "source_uri": [f"s3://{bucket}/{shp_name}"],
+    },
+    {
+        "revision_on": "v2",
+        "source_type": "revision",
+        "source_uri": [f"s3://{bucket}/{shp_name}"],
+    },
+    {
+        "revision_on": "v3",
+        "source_type": "revision",
+        "source_uri": [f"s3://{bucket}/{shp_name}"],
+    },
+    {
+        "revision_on": "v4",
+        "source_type": "revision",
+        "delete_version": "v4"
+    }
+]
