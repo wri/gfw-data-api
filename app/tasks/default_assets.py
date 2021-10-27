@@ -115,7 +115,8 @@ async def _create_default_asset(
     revision_history = []
     source_version = version
     if source_type == SourceType.revision:
-        revision_history = await _create_revision_history(dataset, **input_data)
+        revision_history = await _create_revision_history(
+            dataset, version, **input_data)
 
         # set latest revision on source version
         source_version = revision_history[0]["version"]
