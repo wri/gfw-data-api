@@ -11,9 +11,10 @@ from .aws import get_secret_client
 
 
 def set_google_application_credentials(exception: Exception) -> bool:
-    # We will not reach out to AWS Secret Manager if no secret is set.
-    if not isinstance(exception, DefaultCredentialsError):
+    if not isinstance(exception, (DefaultCredentialsError, FileNotFoundError)):
+        logger.error(f"Some other exception happened!: {exception}")
         return False
+    # We will not reach out to AWS Secret Manager if no secret is set.
     elif not AWS_GCS_KEY_SECRET_ARN:
         logger.error(
             "No AWS_GCS_KEY_SECRET_ARN set. Cannot write Google Application Credential file."
@@ -26,7 +27,7 @@ def set_google_application_credentials(exception: Exception) -> bool:
         )
         return False
     else:
-        logger.info("GCS key file is missing. Trying to fetch key from secret manager")
+        logger.info("GCS key file is missing. Fetching key from secret manager")
         client = get_secret_client()
         response = client.get_secret_value(SecretId=AWS_GCS_KEY_SECRET_ARN)
 
@@ -39,15 +40,9 @@ def set_google_application_credentials(exception: Exception) -> bool:
         with open(GOOGLE_APPLICATION_CREDENTIALS, "w") as f:
             f.write(response["SecretString"])
 
-        with open(GOOGLE_APPLICATION_CREDENTIALS, "r") as f:
-            logger.debug(f"This is what we wrote: {f.read()}")
-
     # make sure that global ENV VAR is set
-    # FIXME: Better to set the default in Docker compose file?
-    logger.info("Setting environment's GOOGLE_APPLICATION_CREDENTIALS to ")
+    logger.info("Setting environment's GOOGLE_APPLICATION_CREDENTIALS")
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
-
-    logger.debug(f"os.environ: {os.environ}")
 
     return True
 
@@ -57,9 +52,7 @@ def set_google_application_credentials(exception: Exception) -> bool:
     stop_max_attempt_number=2,
 )
 def get_gs_files(
-    bucket: str,
-    prefix: str,
-    extensions: Sequence[str] = tuple()
+    bucket: str, prefix: str, extensions: Sequence[str] = tuple()
 ) -> List[str]:
     """Get all matching files in GCS."""
 
