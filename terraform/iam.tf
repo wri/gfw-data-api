@@ -22,6 +22,7 @@ resource "aws_iam_policy" "lambda_invoke" {
 resource "aws_iam_policy" "iam_api_gateway_policy" {
   name = "${local.project}-api_gateway${local.name_suffix}"
   policy = data.local_file.iam_api_gateway_policy.content
+}
 
 resource "aws_iam_policy" "read_gcs_secret" {
   name = "${local.project}-read_gcs_secret${local.name_suffix}"
