@@ -368,11 +368,8 @@ async def _verify_source_file_access(sources: List[str]) -> None:
     # head_calls = [head_s3(*split_s3_path(source)) for source in sources]
     # results = await asyncio.gather(*head_calls)
 
-    # TODO: This has much opportunity for optimization
-    # In particular rather than get the entire list of files in a prefix
-    # we could just make sure that at least 1 file exists there and call it
-    # a day.
-    # Also while the head_s3 call is awaitable the others are not.
+    # TODO: This has much opportunity for optimization, in particular
+    # while the head_s3 call is async the others are not.
     # Making all of them async would allow us to use asyncio.gather to make
     # them non-blocking. Perhaps use the aioboto3 package for
     # aws, gcloud-aio-storage for gcs. The reason I haven't is that I
@@ -384,14 +381,16 @@ async def _verify_source_file_access(sources: List[str]) -> None:
     for source in sources:
         o = urlparse(source, allow_fragments=False)
         if o.scheme.lower() == "gs":
-            if not len(get_gs_files(o.netloc, o.path.lstrip("/"))) > 0:
+            if not get_gs_files(o.netloc, o.path.lstrip("/"), 1, extensions=[".tif"]):
                 invalid_sources.append(source)
         elif o.scheme.lower() == "s3":
             if o.path.endswith("tiles.geojson"):
                 if not await head_s3(o.netloc, o.path.lstrip("/")):
                     invalid_sources.append(source)
             else:
-                if not len(get_aws_files(o.netloc, o.path.lstrip("/"))) > 0:
+                if not get_aws_files(
+                    o.netloc, o.path.lstrip("/"), 1, extensions=[".tif"]
+                ):
                     invalid_sources.append(source)
         else:
             invalid_sources.append(source)

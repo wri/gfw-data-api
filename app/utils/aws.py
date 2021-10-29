@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import boto3
 import httpx
@@ -74,7 +74,7 @@ async def head_s3(bucket: str, key: str) -> bool:
 
 
 def get_aws_files(
-    bucket: str, prefix: str, extensions: Sequence[str] = tuple()
+    bucket: str, prefix: str, limit: Optional[int], extensions: Sequence[str] = tuple()
 ) -> List[str]:
     """Get all matching files in S3."""
 
@@ -82,9 +82,12 @@ def get_aws_files(
 
     s3_client = get_s3_client()
     paginator = s3_client.get_paginator("list_objects_v2")
+    page_iterator = paginator.paginate(
+        Bucket=bucket, Prefix=prefix, PaginationConfig={"MaxItems": limit}
+    )
 
     try:
-        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for page in page_iterator:
             try:
                 contents = page["Contents"]
             except KeyError:

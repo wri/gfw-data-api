@@ -1,5 +1,5 @@
 import os
-from typing import List, Sequence
+from typing import List, Optional, Sequence
 
 from fastapi.logger import logger
 from google.auth.exceptions import DefaultCredentialsError
@@ -52,7 +52,7 @@ def set_google_application_credentials(exception: Exception) -> bool:
     stop_max_attempt_number=2,
 )
 def get_gs_files(
-    bucket: str, prefix: str, extensions: Sequence[str] = tuple()
+    bucket: str, prefix: str, limit: Optional[int], extensions: Sequence[str] = tuple()
 ) -> List[str]:
     """Get all matching files in GCS."""
 
@@ -60,7 +60,7 @@ def get_gs_files(
         GOOGLE_APPLICATION_CREDENTIALS
     )
 
-    blobs = storage_client.list_blobs(bucket, prefix=prefix)
+    blobs = storage_client.list_blobs(bucket, prefix=prefix, max_results=limit)
     files = [
         f"/vsigs/{bucket}/{blob.name}"
         for blob in blobs
