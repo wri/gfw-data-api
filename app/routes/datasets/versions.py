@@ -54,7 +54,7 @@ from .queries import _get_data_environment
 
 router = APIRouter()
 
-SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (".shp", ".tif", ".zip")
+SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (".geojson", ".shp", ".tif", ".tsv", ".zip")
 
 
 @router.get(
