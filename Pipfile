@@ -4,8 +4,12 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+black = "==21.9b0"  # Pin to avoid having to allow pre-releases
+detect-secrets = "*"
 docker = "*"
+flake8 = "*"
 moto = {editable = true,git = "https://github.com/wri/moto.git",ref = "merge_upstream_commits_child"}
+pre-commit = "*"
 pytest = "*"
 pytest-asyncio = "*"
 pytest-cov = "*"
@@ -25,7 +29,7 @@ email-validator = "*"
 fastapi = "<0.69"
 geoalchemy2 = "*"
 geojson = "*"
-gino = "<1.1"
+gino = "*"
 gino_starlette = "*"
 google-cloud-storage = "*"
 httpx = "*"
