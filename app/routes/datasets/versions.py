@@ -10,7 +10,7 @@ Available assets and endpoints to choose from depend on the source type.
 """
 
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
@@ -53,6 +53,8 @@ from ...utils.google import get_gs_files
 from .queries import _get_data_environment
 
 router = APIRouter()
+
+SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (".shp", ".tif", ".zip")
 
 
 @router.get(
@@ -381,7 +383,9 @@ async def _verify_source_file_access(sources: List[str]) -> None:
     for source in sources:
         o = urlparse(source, allow_fragments=False)
         if o.scheme.lower() == "gs":
-            if not get_gs_files(o.netloc, o.path.lstrip("/"), 1, extensions=[".tif"]):
+            if not get_gs_files(
+                o.netloc, o.path.lstrip("/"), 1, extensions=SUPPORTED_FILE_EXTENSIONS
+            ):
                 invalid_sources.append(source)
         elif o.scheme.lower() == "s3":
             if o.path.endswith("tiles.geojson"):
@@ -389,7 +393,10 @@ async def _verify_source_file_access(sources: List[str]) -> None:
                     invalid_sources.append(source)
             else:
                 if not get_aws_files(
-                    o.netloc, o.path.lstrip("/"), 1, extensions=[".tif"]
+                    o.netloc,
+                    o.path.lstrip("/"),
+                    1,
+                    extensions=SUPPORTED_FILE_EXTENSIONS,
                 ):
                     invalid_sources.append(source)
         else:
