@@ -11,21 +11,26 @@ from .aws import get_secret_client
 
 
 def set_google_application_credentials(exception: Exception) -> bool:
+    # Only continue + retry if we can't find the GCS credentials file
     if not isinstance(exception, (DefaultCredentialsError, FileNotFoundError)):
         logger.error(f"Some other exception happened!: {exception}")
         return False
-    # We will not reach out to AWS Secret Manager if no secret is set.
+    # We will not reach out to AWS Secret Manager if no secret is set...
     elif not AWS_GCS_KEY_SECRET_ARN:
         logger.error(
-            "No AWS_GCS_KEY_SECRET_ARN set. Cannot write Google Application Credential file."
+            "No AWS_GCS_KEY_SECRET_ARN set. "
+            "Cannot write Google Application Credential file."
         )
         return False
-    # ...Or if we don't know where to write the credential file.
+    # ...or if we don't know where to write the credential file.
     elif not GOOGLE_APPLICATION_CREDENTIALS:
         logger.error(
-            "No GOOGLE_APPLICATION_CREDENTIALS set. Cannot write Google Application Credential file"
+            "No GOOGLE_APPLICATION_CREDENTIALS set. "
+            "Cannot write Google Application Credential file"
         )
         return False
+    # But if all those conditions are met, write the GCS credentials file
+    # and return True to retry
     else:
         logger.info("GCS key file is missing. Fetching key from secret manager")
         client = get_secret_client()
