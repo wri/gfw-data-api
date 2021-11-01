@@ -74,7 +74,10 @@ async def head_s3(bucket: str, key: str) -> bool:
 
 
 def get_aws_files(
-    bucket: str, prefix: str, limit: Optional[int], extensions: Sequence[str] = tuple()
+    bucket: str,
+    prefix: str,
+    limit: Optional[int] = None,
+    extensions: Sequence[str] = tuple(),
 ) -> List[str]:
     """Get all matching files in S3."""
 

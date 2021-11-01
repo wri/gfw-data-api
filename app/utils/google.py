@@ -57,7 +57,10 @@ def set_google_application_credentials(exception: Exception) -> bool:
     stop_max_attempt_number=2,
 )
 def get_gs_files(
-    bucket: str, prefix: str, limit: Optional[int], extensions: Sequence[str] = tuple()
+    bucket: str,
+    prefix: str,
+    limit: Optional[int] = None,
+    extensions: Sequence[str] = tuple(),
 ) -> List[str]:
     """Get all matching files in GCS."""
 
