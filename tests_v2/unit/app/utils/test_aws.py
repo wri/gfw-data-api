@@ -11,6 +11,7 @@ async def test_get_aws_files():
     good_prefix = "good_prefix"
 
     s3_client = get_s3_client()
+
     s3_client.create_bucket(Bucket=good_bucket)
     s3_client.put_object(
         Bucket=good_bucket, Key=f"{good_prefix}/world.tif", Body="booga booga!"
@@ -18,7 +19,7 @@ async def test_get_aws_files():
 
     # Import this inside the test function so we're covered
     # by the mock_s3 decorator
-    from app.routes.datasets.versions import get_aws_files
+    from app.utils.aws import get_aws_files
 
     keys = get_aws_files(good_bucket, good_prefix)
     assert len(keys) == 1

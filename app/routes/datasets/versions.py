@@ -372,11 +372,13 @@ async def _version_response(
 
 def _verify_source_file_access(sources: List[str]) -> None:
 
-    # TODO: This has much opportunity for optimization, in particular
-    # making the called functions asynchronous and using asyncio.gather
-    # to check for valid sources in a non-blocking fashion.
+    # TODO: Making the called functions asynchronous and using asyncio.gather
+    # to check for valid sources in a non-blocking fashion would be good.
     # Perhaps use the aioboto3 package for aws, gcloud-aio-storage for gcs.
-
+    # Also, it would be nice if the acceptable file extensions were passed
+    # into this function so we could say, for example, that there must be
+    # TIFFs found for a new raster tile set, but a CSV is required for a new
+    # vector tile set version.
     invalid_sources: List[str] = list()
 
     for source in sources:
