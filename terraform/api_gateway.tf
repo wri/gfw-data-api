@@ -2,6 +2,10 @@ resource "aws_api_gateway_rest_api" "api_gw_api" {
   name = "GFWDataAPIGateway${local.name_suffix}"
   description = "GFW Data API Gateway"
   api_key_source = "AUTHORIZER"
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
 }
 
 resource "aws_api_gateway_resource" "dataset_parent" {
