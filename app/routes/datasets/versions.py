@@ -55,6 +55,7 @@ from .queries import _get_data_environment
 router = APIRouter()
 
 SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
+    ".csv",
     ".geojson",
     ".gpkg",
     ".ndjson",
