@@ -54,7 +54,15 @@ from .queries import _get_data_environment
 
 router = APIRouter()
 
-SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (".geojson", ".shp", ".tif", ".tsv", ".zip")
+SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
+    ".geojson",
+    ".gpkg",
+    ".ndjson",
+    ".shp",
+    ".tif",
+    ".tsv",
+    ".zip",
+)
 
 # I cannot seem to satisfy mypy WRT the type of this default dict. Last thing I tried:
 # DefaultDict[str, Callable[[str, str, int, int, ...], List[str]]]
