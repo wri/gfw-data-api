@@ -60,6 +60,7 @@ def get_gs_files(
     bucket: str,
     prefix: str,
     limit: Optional[int] = None,
+    exit_after_max: Optional[int] = None,
     extensions: Sequence[str] = tuple(),
 ) -> List[str]:
     """Get all matching files in GCS."""
@@ -68,10 +69,16 @@ def get_gs_files(
         GOOGLE_APPLICATION_CREDENTIALS
     )
 
+    matches: List[str] = list()
+    num_matches: int = 0
+
     blobs = storage_client.list_blobs(bucket, prefix=prefix, max_results=limit)
-    files = [
-        f"/vsigs/{bucket}/{blob.name}"
-        for blob in blobs
-        if not extensions or any(blob.name.endswith(ext) for ext in extensions)
-    ]
-    return files
+
+    for blob in blobs:
+        if not extensions or any(blob.name.endswith(ext) for ext in extensions):
+            matches.append(f"/vsigs/{bucket}/{blob.name}")
+            num_matches += 1
+            if exit_after_max and num_matches >= exit_after_max:
+                break
+
+    return matches

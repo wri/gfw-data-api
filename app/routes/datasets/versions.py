@@ -57,8 +57,8 @@ router = APIRouter()
 SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (".geojson", ".shp", ".tif", ".tsv", ".zip")
 
 # I cannot seem to satisfy mypy WRT the type of this default dict. Last thing I tried:
-# DefaultDict[str, Callable[[str, str, int, ...], List[str]]]
-source_uri_lister_constructor = defaultdict((lambda: lambda w, x, y, extensions=None: list()))  # type: ignore
+# DefaultDict[str, Callable[[str, str, int, int, ...], List[str]]]
+source_uri_lister_constructor = defaultdict((lambda: lambda w, x, exit_after_max=None, extensions=None: list()))  # type: ignore
 source_uri_lister_constructor.update(**{"gs": get_gs_files, "s3": get_aws_files})  # type: ignore
 
 
@@ -385,7 +385,10 @@ def _verify_source_file_access(sources: List[str]) -> None:
         o = urlparse(source, allow_fragments=False)
         list_func = source_uri_lister_constructor[o.scheme.lower()]
         if not list_func(
-            o.netloc, o.path.lstrip("/"), 1, extensions=SUPPORTED_FILE_EXTENSIONS
+            o.netloc,
+            o.path.lstrip("/"),
+            exit_after_max=1,
+            extensions=SUPPORTED_FILE_EXTENSIONS,
         ):
             invalid_sources.append(source)
 

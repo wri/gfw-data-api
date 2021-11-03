@@ -77,11 +77,13 @@ def get_aws_files(
     bucket: str,
     prefix: str,
     limit: Optional[int] = None,
+    exit_after_max: Optional[int] = None,
     extensions: Sequence[str] = tuple(),
 ) -> List[str]:
     """Get all matching files in S3."""
 
-    files: List[str] = list()
+    matches: List[str] = list()
+    num_matches: int = 0
 
     s3_client = get_s3_client()
     paginator = s3_client.get_paginator("list_objects_v2")
@@ -99,11 +101,17 @@ def get_aws_files(
             for obj in contents:
                 key = str(obj["Key"])
                 if not extensions or any(key.endswith(ext) for ext in extensions):
-                    files.append(f"/vsis3/{bucket}/{key}")
-    except s3_client.exceptions.NoSuchBucket:
-        files = list()
+                    matches.append(f"/vsis3/{bucket}/{key}")
+                    num_matches += 1
+                    if exit_after_max and num_matches >= exit_after_max:
+                        break
+            if exit_after_max and num_matches >= exit_after_max:
+                break
 
-    return files
+    except s3_client.exceptions.NoSuchBucket:
+        matches = list()
+
+    return matches
 
 
 def _aws_auth(service: str) -> AWS4Auth:

@@ -76,3 +76,17 @@ async def test_get_gs_files(monkeypatch: MonkeyPatch):
         f"/vsigs/{good_bucket}/{good_prefix}/another_world.csv" in keys
         or f"/vsigs/{good_bucket}/{good_prefix}/world.tif" in keys
     )
+
+    blob_store_client.add_blobs(good_bucket, [f"{good_prefix}/coverage_layer.tif"])
+    keys = get_gs_files(good_bucket, good_prefix)
+    assert len(keys) == 3
+    assert f"/vsigs/{good_bucket}/{good_prefix}/another_world.csv" in keys
+    assert f"/vsigs/{good_bucket}/{good_prefix}/coverage_layer.tif" in keys
+    assert f"/vsigs/{good_bucket}/{good_prefix}/world.tif" in keys
+
+    keys = get_gs_files(good_bucket, good_prefix, exit_after_max=1, extensions=[".tif"])
+    assert len(keys) == 1
+    assert (
+        f"/vsigs/{good_bucket}/{good_prefix}/coverage_layer.tif" in keys
+        or f"/vsigs/{good_bucket}/{good_prefix}/world.tif" in keys
+    )

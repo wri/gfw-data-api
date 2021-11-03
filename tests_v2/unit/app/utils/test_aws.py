@@ -53,3 +53,21 @@ async def test_get_aws_files():
         f"/vsis3/{good_bucket}/{good_prefix}/another_world.csv" in keys
         or f"/vsis3/{good_bucket}/{good_prefix}/world.tif" in keys
     )
+
+    s3_client.put_object(
+        Bucket=good_bucket, Key=f"{good_prefix}/coverage_layer.tif", Body="booga booga!"
+    )
+    keys = get_aws_files(good_bucket, good_prefix)
+    assert len(keys) == 3
+    assert f"/vsis3/{good_bucket}/{good_prefix}/another_world.csv" in keys
+    assert f"/vsis3/{good_bucket}/{good_prefix}/coverage_layer.tif" in keys
+    assert f"/vsis3/{good_bucket}/{good_prefix}/world.tif" in keys
+
+    keys = get_aws_files(
+        good_bucket, good_prefix, exit_after_max=1, extensions=[".tif"]
+    )
+    assert len(keys) == 1
+    assert (
+        f"/vsis3/{good_bucket}/{good_prefix}/coverage_layer.tif" in keys
+        or f"/vsis3/{good_bucket}/{good_prefix}/world.tif" in keys
+    )
