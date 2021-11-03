@@ -53,7 +53,7 @@ async def delete_raster_tileset_assets(
     value: str,
 ) -> None:
     delete_s3_objects(
-        DATA_LAKE_BUCKET, f"{dataset}/{version}/raster/{srid}/{grid}/{value}"
+        DATA_LAKE_BUCKET, f"{dataset}/{version}/raster/{srid}/{grid}/{value}/"
     )
 
 

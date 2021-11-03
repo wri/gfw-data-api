@@ -1,4 +1,7 @@
-def lambda_handler(event, context):
+def handler(event, context):
+    api_key = event["headers"].get("x-api-key", None) or event[
+        "queryStringParameters"
+    ].get("x-api-key", "")
     policy = {
         "principalId": "x-api-key",
         "policyDocument": {
@@ -11,8 +14,8 @@ def lambda_handler(event, context):
                 }
             ],
         },
-        "usageIdentifierKey": event["headers"].get("x-api-key", None)
-        or event["queryStringParameters"].get("x-api-key", ""),
+        "usageIdentifierKey": api_key.strip(),
     }
+    print(policy)
 
     return policy
