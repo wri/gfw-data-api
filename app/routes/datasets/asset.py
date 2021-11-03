@@ -11,7 +11,7 @@ based on the same version and do not know the processing history.
 
 from typing import List, Optional, Tuple
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Body
 from fastapi.responses import ORJSONResponse
 
 from ...authentication.token import is_admin
@@ -23,6 +23,7 @@ from ...models.pydantic.assets import (
     AssetResponse,
     AssetsResponse,
     AssetType,
+    odd_examples
 )
 from ...routes import dataset_version_dependency
 from ...tasks.assets import put_asset
@@ -77,7 +78,7 @@ async def get_version_assets(
 async def add_new_asset(
     *,
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
-    request: AssetCreateIn,
+    request: AssetCreateIn = Body(..., examples=odd_examples),
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
     response: ORJSONResponse,
