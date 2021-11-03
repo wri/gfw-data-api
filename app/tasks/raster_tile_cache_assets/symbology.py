@@ -72,13 +72,7 @@ def generate_8_bit_integrated_calc_string() -> str:
     _first_alert = """
     np.ma.array(
         np.ma.array(
-            np.minimum(
-                A.filled(65535),
-                np.minimum(
-                    B.filled(65535),
-                    C.filled(65535)
-                )
-            ),
+            np.minimum.reduce(A.filled(65535), B.filled(65535), C.filled(65535)),
             mask=(A.mask & B.mask & C.mask)
         ).filled(0),
         mask=(A.mask & B.mask & C.mask)
