@@ -2,6 +2,10 @@ resource "aws_api_gateway_rest_api" "api_gw_api" {
   name = "GFWDataAPIGateway${local.name_suffix}"
   description = "GFW Data API Gateway"
   api_key_source = "AUTHORIZER"
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
 }
 
 resource "aws_api_gateway_resource" "dataset_parent" {
@@ -35,12 +39,15 @@ module "query" {
   authorizer_id = aws_api_gateway_authorizer.api_key.id
   parent_id = aws_api_gateway_resource.query_parent.id
 
-  require_api_key = true
+  require_api_key = false
   http_method = "ANY"
   path_part = "{proxy+}"
-  authorization = "CUSTOM"
+  authorization = "NONE"
 
-  load_balancer_name = module.fargate_autoscaling.lb_dns_name
+  method_parameters = {"method.request.path.proxy" = true}
+  integration_parameters = {"integration.request.path.proxy" = "method.request.path.proxy"}
+ 
+  integration_uri =  "http://${module.fargate_autoscaling.lb_dns_name}/{proxy}"
 }
 resource "aws_api_gateway_resource" "download_parent" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
@@ -62,7 +69,18 @@ module "download_shapes" {
   path_part = each.key
   authorization = "CUSTOM"
 
-  load_balancer_name = module.fargate_autoscaling.lb_dns_name
+  integration_parameters = {
+    "integration.request.path.dataset" = "method.request.path.dataset",
+    "integration.request.path.version" = "method.request.path.version"
+  }
+
+  method_parameters = {
+    "method.request.path.dataset" = true,
+    "method.request.path.version" = true
+  }
+
+
+  integration_uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/download/${each.key}"
 }
 
 module "unprotected_paths" {
@@ -77,7 +95,10 @@ module "unprotected_paths" {
   path_part = "{proxy+}"
   authorization = "NONE"
 
-  load_balancer_name = module.fargate_autoscaling.lb_dns_name
+  method_parameters = {"method.request.path.proxy" = true}
+  integration_parameters = {"integration.request.path.proxy" = "method.request.path.proxy"}
+
+  integration_uri =  "http://${module.fargate_autoscaling.lb_dns_name}/{proxy}"
 }
 
 
@@ -241,4 +262,8 @@ resource "aws_api_gateway_method_settings" "general_settings" {
     data_trace_enabled     = true
     logging_level          = "INFO"
   }
+
+  depends_on =[
+    aws_iam_role.cloudwatch
+  ]
 }
