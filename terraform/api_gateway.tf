@@ -157,8 +157,11 @@ resource "aws_api_gateway_usage_plan" "external" {
 
 resource "aws_api_gateway_deployment" "api_gw_dep" {
   depends_on = [
+    module.query.integration_point,
     module.unprotected_paths.integration_point,
+    module.download_shapes.integration_point,
   ]
+
   lifecycle {
     create_before_destroy = true
   }
@@ -234,8 +237,6 @@ resource "aws_iam_role" "cloudwatch" {
 
   assume_role_policy = data.template_file.api_gateway_role_policy.rendered
 }
-
-
 
 resource "aws_iam_role_policy" "api_gw_cloudwatch" {
   name = "default"
