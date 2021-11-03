@@ -99,5 +99,5 @@ variable "download_endpoints" {
 
   # listing spatial endpoints as gateway needs them explicitly created
   # in order to apply endpoint-level throttling to them
-  default = ["geotiff", "gpkg", "shp", "{proxy+}"]
+  default = ["geotiff", "gpkg", "shp"]
 }
