@@ -10,9 +10,7 @@ resource "aws_api_gateway_method" "method" {
   http_method = var.http_method
   authorization = var.authorization
   authorizer_id = var.authorizer_id
-  request_parameters = {
-    "method.request.path.proxy" = true
-    }
+  request_parameters = var.method_parameters
   api_key_required = var.require_api_key
 }
 
@@ -25,9 +23,7 @@ resource "aws_api_gateway_integration" "integration" {
 
   integration_http_method = "ANY"
   type = "HTTP_PROXY"
-  uri = "http://${var.load_balancer_name}/{proxy}"
+  uri = var.integration_uri
 
-  request_parameters = {
-    "integration.request.path.proxy" = "method.request.path.proxy"
-  }
+  request_parameters = var.integration_parameters
 }
