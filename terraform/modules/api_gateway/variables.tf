@@ -51,6 +51,14 @@ variable "authorization" {
   }
 }
 
-variable "load_balancer_name" {
+variable "integration_uri" {
   type = string
+}
+
+variable "integration_parameters" {
+  type = map
+}
+
+variable "method_parameters" {
+  type = map
 }
