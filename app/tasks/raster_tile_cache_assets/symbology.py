@@ -307,7 +307,7 @@ async def date_conf_intensity_multi_8_symbology(
 
     # What we want is a value of 55 (max intensity for this scenario)
     # anywhere there is an alert in any system.
-    intensity_max_calc_string = f"np.ma.array(np.logical_or.reduce((a.data, b.data, c.data)) * {MAX_8_BIT_INTENSITY})"
+    intensity_max_calc_string = f"np.ma.array(np.logical_or.reduce((A.data, B.data, C.data)) * {MAX_8_BIT_INTENSITY})"
 
     intensity_co = source_asset_co.copy(
         deep=True,
