@@ -67,7 +67,7 @@ SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
 
 # I cannot seem to satisfy mypy WRT the type of this default dict. Last thing I tried:
 # DefaultDict[str, Callable[[str, str, int, int, ...], List[str]]]
-source_uri_lister_constructor = defaultdict((lambda: lambda w, x, exit_after_max=None, extensions=None: list()))  # type: ignore
+source_uri_lister_constructor = defaultdict((lambda: lambda w, x, limit=None, exit_after_max=None, extensions=None: list()))  # type: ignore
 source_uri_lister_constructor.update(**{"gs": get_gs_files, "s3": get_aws_files})  # type: ignore
 
 
@@ -399,6 +399,7 @@ def _verify_source_file_access(sources: List[str]) -> None:
         if not list_func(
             o.netloc,
             o.path.lstrip("/"),
+            limit=10,
             exit_after_max=1,
             extensions=SUPPORTED_FILE_EXTENSIONS,
         ):
