@@ -20,5 +20,4 @@ tests_v2/cobertura.xml
 terraform/*
 
 # Virtualenvs
-.venv/*
-
+.venv*

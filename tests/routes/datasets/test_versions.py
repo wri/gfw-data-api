@@ -353,6 +353,7 @@ async def test_invalid_source_uri(async_client):
     await create_dataset(dataset, async_client, payload)
 
     # Test creating a version with (some) bad source URIs
+    bad_uri = "s3://doesnotexist"
     response = await async_client.put(
         f"/dataset/{dataset}/{version}", json=version_payload
     )
@@ -360,7 +361,7 @@ async def test_invalid_source_uri(async_client):
     assert response.json()["status"] == "failed"
     assert (
         response.json()["message"]
-        == "Cannot access all of the source files ['s3://doesnotexist']"
+        == f"Cannot access all of the source files. Invalid sources: ['{bad_uri}']"
     )
 
     # Create a version with a valid source_uri so we have something to append to
@@ -382,7 +383,7 @@ async def test_invalid_source_uri(async_client):
     assert response.json()["status"] == "failed"
     assert (
         response.json()["message"]
-        == "Cannot access all of the source files ['s3://doesnotexist']"
+        == f"Cannot access all of the source files. Invalid sources: ['{bad_uri}']"
     )
 
     # Test appending to a version that DOESN'T exist
