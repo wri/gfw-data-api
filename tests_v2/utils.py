@@ -93,8 +93,20 @@ async def _create_vector_source_assets(dataset_name, version_name):
 
     async with ContextEngine("WRITE"):
         await db.all(
-            f"""CREATE TABLE "{dataset_name}"."{version_name}" (fid integer, geom geometry);"""
+            f"""CREATE TABLE "{dataset_name}"."{version_name}" (fid integer, version varchar, metadata jsonb, geom geometry);"""
         )
         await db.all(
-            f"""INSERT INTO "{dataset_name}"."{version_name}" (fid, geom) SELECT 1,  ST_GeomFromGeoJSON('{json.dumps(geojson["features"][0]["geometry"])}');"""
+            f"""INSERT INTO "{dataset_name}"."{version_name}" (fid, version, metadata, geom) SELECT 1, '{version_name}', '{json.dumps({ "title": "original", "content_date": "2021-09-28"})}', ST_GeomFromGeoJSON('{json.dumps(geojson["features"][0]["geometry"])}');"""
+        )
+
+
+async def _create_vector_revision_assets(dataset_name, version_name, source_version):
+    from app.application import db
+
+    with open(f"{os.path.dirname(__file__)}/fixtures/geojson/test.geojson") as src:
+        geojson = json.load(src)
+
+    async with ContextEngine("WRITE"):
+        await db.all(
+            f"""INSERT INTO "{dataset_name}"."{source_version}" (fid, version, metadata, geom) SELECT 1, '{version_name}', '{json.dumps({ "title": "overwrite", "content_date": "2021-10-28"})}', ST_GeomFromGeoJSON('{json.dumps(geojson["features"][0]["geometry"])}');"""
         )

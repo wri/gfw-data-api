@@ -168,6 +168,7 @@ def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMe
         AssetType.grid_1x1: VectorFileMetadata,
         AssetType.shapefile: VectorFileMetadata,
         AssetType.geopackage: VectorFileMetadata,
+        AssetType.revision: VersionMetadata,
     }
     if asset_type in metadata_factory.keys():
         md: AssetMetadata = metadata_factory[asset_type](**metadata)

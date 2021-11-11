@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 from asyncpg import UniqueViolationError
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
+from ..models.enum.sources import SourceType
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
@@ -71,6 +72,13 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
 
     if data.get("is_latest"):
         await _reset_is_latest(dataset, version)
+
+    creation_options = data.get("creation_options")
+
+    # if revision, merge with previous
+    if creation_options and creation_options["source_type"] == SourceType.revision:
+        prev_version = await get_version(dataset, creation_options["revision_on"])
+        data["metadata"] = {**data["metadata"], **prev_version.metadata}
 
     try:
         new_version: ORMVersion = await ORMVersion.create(

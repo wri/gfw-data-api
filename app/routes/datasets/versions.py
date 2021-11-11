@@ -87,12 +87,14 @@ async def add_new_version(
     response: Response,
 ):
     """Create or update a version for a given dataset."""
-
     dataset, version = dataset_version
     input_data = request.dict(exclude_none=True, by_alias=True)
-    creation_options = input_data.pop("creation_options")
+    creation_options = input_data.get("creation_options")
 
-    await _verify_source_file_access(creation_options["source_uri"])
+    if "source_uri" in creation_options:
+        await _verify_source_file_access(creation_options["source_uri"])
+
+    input_data.pop("creation_options")
 
     # Register version with DB
     try:

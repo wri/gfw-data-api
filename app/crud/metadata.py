@@ -35,3 +35,7 @@ def update_all_metadata(rows: List[Base], parent: Base) -> List[Base]:
         new_rows.append(row)
 
     return new_rows
+
+
+class ORMVersion(object):
+    pass

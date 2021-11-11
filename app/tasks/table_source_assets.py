@@ -121,35 +121,38 @@ async def table_source_asset(
             )
         )
 
-    # Add geometry columns and update geometries
-    geometry_jobs: List[Job] = list()
-    if creation_options.latitude and creation_options.longitude:
-        geometry_jobs.append(
-            PostgresqlClientJob(
-                dataset=dataset,
-                job_name="add_point_geometry",
-                command=[
-                    "add_point_geometry.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "--lat",
-                    creation_options.latitude,
-                    "--lng",
-                    creation_options.longitude,
-                ],
-                environment=job_env,
-                parents=[job.job_name for job in load_data_jobs],
-                callback=callback,
-                attempt_duration_seconds=creation_options.timeout,
-            ),
+    add_gfw_fields_command = [
+        "add_gfw_fields_tabular.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+    ]
+
+    if creation_options.longitude and creation_options.latitude:
+        add_gfw_fields_command += [
+            "--lat",
+            creation_options.latitude,
+            "--lng",
+            creation_options.longitude,
+        ]
+
+    add_gfw_fields_jobs = [
+        PostgresqlClientJob(
+            dataset=dataset,
+            job_name="add_gfw_fields",
+            command=add_gfw_fields_command,
+            environment=job_env,
+            parents=[job.job_name for job in load_data_jobs],
+            callback=callback,
+            attempt_duration_seconds=creation_options.timeout,
         )
+    ]
 
     # Add indicies
     index_jobs: List[Job] = list()
     parents = [job.job_name for job in load_data_jobs]
-    parents.extend([job.job_name for job in geometry_jobs])
+    parents.extend([job.job_name for job in add_gfw_fields_jobs])
 
     for index in creation_options.indices:
         index_jobs.append(
@@ -175,7 +178,7 @@ async def table_source_asset(
         )
 
     parents = [job.job_name for job in load_data_jobs]
-    parents.extend([job.job_name for job in geometry_jobs])
+    parents.extend([job.job_name for job in add_gfw_fields_jobs])
     parents.extend([job.job_name for job in index_jobs])
 
     if creation_options.cluster:
@@ -197,7 +200,7 @@ async def table_source_asset(
             create_table_job,
             *partition_jobs,
             *load_data_jobs,
-            *geometry_jobs,
+            *add_gfw_fields_jobs,
             *index_jobs,
             *cluster_jobs,
         ]
@@ -264,33 +267,36 @@ async def append_table_source_asset(
         )
 
     # Add geometry columns and update geometries
-    # TODO is it possible to do this only for new data?
-    geometry_jobs: List[Job] = list()
-    if creation_options.latitude and creation_options.longitude:
-        geometry_jobs.append(
-            PostgresqlClientJob(
-                dataset=dataset,
-                job_queue=AURORA_JOB_QUEUE_FAST,
-                job_name="update_point_geometry",
-                command=[
-                    "update_point_geometry.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "--lat",
-                    creation_options.latitude,
-                    "--lng",
-                    creation_options.longitude,
-                ],
-                environment=job_env,
-                parents=[job.job_name for job in load_data_jobs],
-                callback=callback,
-                attempt_duration_seconds=creation_options.timeout,
-            ),
-        )
+    gfw_attribute_command = [
+        "update_gfw_fields_tabular.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+        "--source_version",
+        version,
+    ]
 
-    log: ChangeLog = await execute([*load_data_jobs, *geometry_jobs])
+    if creation_options.latitude and creation_options.longitude:
+        gfw_attribute_command += [
+            "--lat",
+            creation_options.latitude,
+            "--lng",
+            creation_options.longitude,
+        ]
+
+    gfw_attribute_job: Job = PostgresqlClientJob(
+        dataset=dataset,
+        job_queue=AURORA_JOB_QUEUE_FAST,
+        job_name="update_gfw_fields_tabular",
+        command=gfw_attribute_command,
+        environment=job_env,
+        parents=[job.job_name for job in load_data_jobs],
+        callback=callback,
+        attempt_duration_seconds=creation_options.timeout,
+    )
+
+    log: ChangeLog = await execute([*load_data_jobs, gfw_attribute_job])
 
     return log
 

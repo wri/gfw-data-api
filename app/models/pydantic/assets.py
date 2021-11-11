@@ -5,8 +5,12 @@ from pydantic import Field
 
 from ..enum.assets import AssetStatus, AssetType
 from .base import BaseRecord, StrictBaseModel
-from .creation_options import CreationOptions, OtherCreationOptions
-from .metadata import AssetMetadata
+from .creation_options import (
+    CreationOptions,
+    OtherCreationOptions,
+    SourceCreationOptions,
+)
+from .metadata import AssetMetadata, VersionMetadata
 from .responses import Response
 
 
@@ -20,6 +24,13 @@ class Asset(BaseRecord):
     is_managed: bool
     is_downloadable: bool
     metadata: AssetMetadata
+
+
+class RevisionHistory(StrictBaseModel):
+    dataset: str
+    version: str
+    metadata: VersionMetadata
+    creation_options: SourceCreationOptions
 
 
 class AssetCreateIn(StrictBaseModel):
@@ -54,6 +65,8 @@ class AssetTaskCreate(StrictBaseModel):
     is_downloadable: Optional[bool] = None
     creation_options: CreationOptions  # should this also be OtherCreationOptions?
     metadata: Optional[AssetMetadata]
+    revision_history: List[RevisionHistory]
+    source_version: str
 
 
 class AssetResponse(Response):

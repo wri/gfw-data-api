@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from asyncpg import UniqueViolationError
+from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
@@ -162,3 +163,30 @@ def _validate_creation_options(**data) -> Dict[str, Any]:
         data["creation_options"] = co_model.dict(by_alias=True)
 
     return data
+
+
+async def _create_revision_history(dataset: str, **data):
+    creation_options = data["creation_options"]
+    prev_version = creation_options["revision_on"]
+
+    try:
+        prev_default_asset = await get_default_asset(dataset, prev_version)
+    except RecordNotFoundError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot create revision on non-existent version {creation_options['revision_on']}.",
+        )
+
+    history = prev_default_asset.metadata.get("history", [])
+
+    # append self to history
+    history.append(
+        {
+            "dataset": dataset,
+            "version": prev_version,
+            "creation_options": prev_default_asset.creation_options,
+            "metadata": prev_default_asset.metadata,
+        }
+    )
+
+    return history

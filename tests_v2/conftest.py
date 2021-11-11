@@ -13,14 +13,16 @@ from app.authentication.token import get_user, is_admin, is_service_account
 from app.models.enum.change_log import ChangeLogStatus
 from app.models.pydantic.change_log import ChangeLog
 from app.routes.datasets import versions
-from app.tasks import batch, delete_assets, vector_source_assets
+from app.tasks import batch, delete_assets, revision_assets, vector_source_assets
 from app.tasks.raster_tile_set_assets import raster_tile_set_assets
 from tests_v2.fixtures.creation_options.versions import (
     RASTER_CREATION_OPTIONS,
+    REVISION_CREATION_OPTIONS,
     VECTOR_SOURCE_CREATION_OPTIONS,
 )
 from tests_v2.utils import (
     BatchJobMock,
+    _create_vector_revision_assets,
     _create_vector_source_assets,
     bool_function_closure,
     dict_function_closure,
@@ -153,7 +155,10 @@ async def generic_vector_source_version(
 
     dataset_name, _ = generic_dataset
     version_name: str = "v1"
-    version_metadata: Dict[str, Any] = {}
+    version_metadata: Dict[str, Any] = {
+        "title": "original",
+        "content_date": "2021-09-28",
+    }
 
     # patch all functions which reach out to external services
     batch_job_mock = BatchJobMock()
@@ -246,6 +251,79 @@ async def generic_raster_version(
     # mock batch processes
     # TODO need to add anything here?
     # await _create_vector_source_assets(dataset_name, version_name)
+
+    # Set all pending tasks to success
+    for job_id in batch_job_mock.jobs:
+        payload = {
+            "change_log": [
+                ChangeLog(
+                    date_time=datetime.now(),
+                    status=ChangeLogStatus.success,
+                    message="Job set to success via fixture",
+                    detail="",
+                ).dict()
+            ]
+        }
+
+        # convert datetime obt to string
+        payload["change_log"][0]["date_time"] = str(
+            payload["change_log"][0]["date_time"]
+        )
+        await async_client.patch(f"/task/{job_id}", json=payload)
+
+    # Assert that version is saved, just to make sure
+    response = await async_client.get(f"/dataset/{dataset_name}/{version_name}")
+    assert response.json()["data"]["status"] == "saved"
+
+    # yield version
+    yield dataset_name, version_name, version_metadata
+
+    # clean up
+    await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
+
+
+@pytest.fixture()
+@pytest.mark.asyncio()
+async def generic_vector_revision(
+    async_client: AsyncClient,
+    generic_dataset: Tuple[str, str],
+    monkeypatch: MonkeyPatch,
+) -> AsyncGenerator[Tuple[str, str, Dict[str, Any]], None]:
+    """Create generic vector source revision."""
+
+    dataset_name, _ = generic_dataset
+    version_name: str = "v2"
+    version_metadata: Dict[str, Any] = {
+        "title": "overwrite",
+        "last_update": "2021-10-28",
+    }
+
+    # patch all functions which reach out to external services
+    batch_job_mock = BatchJobMock()
+    monkeypatch.setattr(versions, "_verify_source_file_access", void_coroutine)
+    monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
+    monkeypatch.setattr(revision_assets, "is_zipped", bool_function_closure(False))
+    monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
+    monkeypatch.setattr(versions, "flush_cloudfront_cache", dict_function_closure({}))
+    monkeypatch.setattr(
+        delete_assets, "flush_cloudfront_cache", dict_function_closure({})
+    )
+
+    # Create version
+    response = await async_client.put(
+        f"/dataset/{dataset_name}/{version_name}",
+        json={
+            "metadata": version_metadata,
+            "creation_options": REVISION_CREATION_OPTIONS,
+        },
+    )
+
+    assert response.status_code == 202
+
+    # mock batch processes
+    await _create_vector_revision_assets(
+        dataset_name, version_name, REVISION_CREATION_OPTIONS["revision_on"]
+    )
 
     # Set all pending tasks to success
     for job_id in batch_job_mock.jobs:
