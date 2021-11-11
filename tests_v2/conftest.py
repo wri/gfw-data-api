@@ -457,3 +457,24 @@ async def _create_geostore(geojson: Dict[str, Any], async_client: AsyncClient) -
     assert response.status_code == 201
 
     return response.json()["data"]["gfw_geostore_id"]
+
+
+@pytest.fixture()
+@pytest.mark.asyncio()
+async def version_alias(
+    async_client: AsyncClient,
+    generic_vector_source_version: Tuple[str, str, Dict[str, Any]],
+) -> AsyncGenerator[Tuple[str, str, str], None]:
+
+    dataset_name, version_name, _ = generic_vector_source_version
+    alias = "v20151213"
+    response = await async_client.put(
+        f"/alias/version/{dataset_name}/{alias}", json={"version": version_name}
+    )
+    assert response.status_code == 200
+
+    # Yield version alias
+    yield dataset_name, version_name, response.json()["data"]["alias"]
+
+    # Clean up
+    await async_client.delete(f"/alias/version/{dataset_name}/{alias}")

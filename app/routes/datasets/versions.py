@@ -42,7 +42,7 @@ from ...models.pydantic.versions import (
     VersionResponse,
     VersionUpdateIn,
 )
-from ...routes import dataset_dependency, dataset_version_dependency, version_dependency
+from ...routes import create_dataset_version_dependency, dataset_version_dependency
 from ...settings.globals import TILE_CACHE_CLOUDFRONT_ID
 from ...tasks.aws_tasks import flush_cloudfront_cache
 from ...tasks.default_assets import append_default_asset, create_default_asset
@@ -80,14 +80,14 @@ async def get_version(
 )
 async def add_new_version(
     *,
-    dataset: str = Depends(dataset_dependency),
-    version: str = Depends(version_dependency),
+    dataset_version: Tuple[str, str] = Depends(create_dataset_version_dependency),
     request: VersionCreateIn,
     background_tasks: BackgroundTasks,
     is_authorized: bool = Depends(is_admin),
     response: Response,
 ):
     """Create or update a version for a given dataset."""
+    dataset, version = dataset_version
     input_data = request.dict(exclude_none=True, by_alias=True)
     creation_options = input_data.get("creation_options")
 

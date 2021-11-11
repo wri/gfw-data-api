@@ -3,6 +3,7 @@ from typing import Tuple
 from fastapi import Depends, HTTPException, Path
 from fastapi.security import OAuth2PasswordBearer
 
+from ..crud.aliases import get_alias
 from ..crud.versions import get_version
 from ..errors import RecordNotFoundError
 
@@ -44,6 +45,31 @@ async def dataset_version_dependency(
     try:
         await get_version(dataset, version)
     except RecordNotFoundError as e:
-        raise HTTPException(status_code=404, detail=(str(e)))
+        try:
+            version_alias = await get_alias(dataset, version)
+            if version_alias is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Getting version by alias is not supported for this operation.",
+                )
+        except RecordNotFoundError:
+            raise HTTPException(status_code=404, detail=str(e))
+
+    return dataset, version
+
+
+async def create_dataset_version_dependency(
+    dataset: str = Depends(dataset_dependency),
+    version: str = Depends(version_dependency),
+) -> Tuple[str, str]:
+    try:
+        version_alias = await get_alias(dataset, version)
+        if version_alias is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="Conflicts with existing version alias and can not overwrite it.",
+            )
+    except RecordNotFoundError:
+        pass
 
     return dataset, version
