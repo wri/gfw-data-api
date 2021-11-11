@@ -44,10 +44,20 @@ module "query" {
   path_part = "{proxy+}"
   authorization = "NONE"
 
-  method_parameters = {"method.request.path.proxy" = true}
-  integration_parameters = {"integration.request.path.proxy" = "method.request.path.proxy"}
- 
-  integration_uri =  "http://${module.fargate_autoscaling.lb_dns_name}/{proxy}"
+  integration_parameters = {
+    "integration.request.path.version" = "method.request.path.version"
+    "integration.request.path.dataset" = "method.request.path.dataset",
+    "integration.request.path.proxy" = "method.request.path.proxy"
+  }
+
+  method_parameters = {
+    "method.request.path.dataset" = true,
+    "method.request.path.version" = true
+    "method.request.path.proxy" = true
+
+  }
+
+  integration_uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/query/{proxy}"
 }
 resource "aws_api_gateway_resource" "download_parent" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
@@ -78,7 +88,6 @@ module "download_shapes" {
     "method.request.path.dataset" = true,
     "method.request.path.version" = true
   }
-
 
   integration_uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/download/${each.key}"
 }
@@ -157,8 +166,11 @@ resource "aws_api_gateway_usage_plan" "external" {
 
 resource "aws_api_gateway_deployment" "api_gw_dep" {
   depends_on = [
+    module.query.integration_point,
     module.unprotected_paths.integration_point,
+    module.download_shapes.integration_point,
   ]
+
   lifecycle {
     create_before_destroy = true
   }
@@ -234,8 +246,6 @@ resource "aws_iam_role" "cloudwatch" {
 
   assume_role_policy = data.template_file.api_gateway_role_policy.rendered
 }
-
-
 
 resource "aws_iam_role_policy" "api_gw_cloudwatch" {
   name = "default"

@@ -133,7 +133,6 @@ data "local_file" "iam_api_gateway_policy" {
 
 data "local_file" "cloudwatch_log_policy" {
   filename = "${path.root}/templates/cloudwatch_log_policy.json.tmpl"
-
 }
 
 data "template_file" "lambda_role_policy" {
@@ -149,5 +148,13 @@ data "template_file" "api_gateway_role_policy" {
 
   vars = {
     service = "apigateway"
+  }
+}
+
+data "aws_iam_policy_document" "read_gcs_secret_doc" {
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn]
+    effect = "Allow"
   }
 }
