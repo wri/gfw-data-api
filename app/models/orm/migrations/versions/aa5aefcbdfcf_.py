@@ -10,7 +10,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "aa5aefcbdfcf"  # pragma: allowlist secret
-down_revision = "4763f4b8141a"  # pragma: allowlist secret
+down_revision = "a5787f2eefe5"  # pragma: allowlist secret
 branch_labels = None
 depends_on = None
 
