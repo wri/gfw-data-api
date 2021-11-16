@@ -6,9 +6,11 @@ from ..application import ContextEngine
 from ..crud import assets, versions
 from ..models.enum.assets import AssetStatus
 from ..models.enum.change_log import ChangeLogStatus
+from ..models.enum.versions import VersionStatus
 from ..models.enum.sources import SourceType
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
+from ..models.orm.assets import Asset as ORMAsset
 from .dynamic_vector_tile_cache_assets import dynamic_vector_tile_cache_asset
 from .raster_tile_cache_assets import raster_tile_cache_asset
 from .raster_tile_set_assets import raster_tile_set_asset
@@ -93,3 +95,13 @@ async def put_asset(
         await versions.update_version(
             dataset, version, change_log=[log.dict(by_alias=True)]
         )
+        if asset_type == AssetType.revision:
+            asset: ORMAsset = await assets.get_asset(asset_id)
+            if asset.creation_options.get("delete_version", None) is not None:
+                version_status = VersionStatus.saved if AssetStatus.saved else VersionStatus.failed
+                await versions.update_version(
+                    dataset,
+                    version,
+                    status=version_status,
+                    change_log=[log.dict(by_alias=True)]
+                )

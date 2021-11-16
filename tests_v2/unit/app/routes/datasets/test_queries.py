@@ -5,6 +5,13 @@ from httpx import AsyncClient
 from app.routes.datasets import queries
 from tests_v2.utils import invoke_lambda_mocked
 
+REVISION_QUERIES = [
+    # version, query count result
+    ("v1", 3),   # source version
+    ("v4", 4),   # intermediate append revision
+    ("v5", 3)    # latest delete revision
+]
+
 
 @pytest.mark.skip("Temporarily skip until we require API keys")
 @pytest.mark.asyncio
@@ -211,3 +218,28 @@ async def test_query_dataset_raster_geostore_huge(
     )
 
     assert response.status_code == 400
+
+@pytest.mark.parametrize("version, count_result", REVISION_QUERIES)
+@pytest.mark.asyncio
+async def test_query_dataset_revision(
+    version,
+    count_result,
+    generic_vector_source_version,
+    generic_vector_revisions,
+    apikey_unrestricted,
+    async_client: AsyncClient
+):
+    dataset_name, revisions = generic_vector_revisions
+    api_key, payload = apikey_unrestricted
+    headers = {"x-api-key": api_key}
+
+    params = {"sql": "select count(*) as count from data"}
+
+    response = await async_client.get(
+        f"/dataset/{dataset_name}/{version}/query",
+        params=params,
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["data"][0]["count"] == count_result

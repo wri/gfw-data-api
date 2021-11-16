@@ -5,6 +5,8 @@ from asyncpg import UniqueViolationError
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 
+from app.models.enum.assets import AssetType
+
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.versions import Version as ORMVersion
@@ -165,7 +167,7 @@ def _validate_creation_options(**data) -> Dict[str, Any]:
     return data
 
 
-async def _create_revision_history(dataset: str, **data):
+async def _create_revision_history(dataset: str, version: str, **data):
     creation_options = data["creation_options"]
     prev_version = creation_options["revision_on"]
 
@@ -177,15 +179,24 @@ async def _create_revision_history(dataset: str, **data):
             detail=f"Cannot create revision on non-existent version {creation_options['revision_on']}.",
         )
 
-    history = prev_default_asset.metadata.get("history", [])
+    history = prev_default_asset.revision_history
+    if not history and prev_default_asset.asset_type != AssetType.revision:
+        history = [
+            {
+                "dataset": dataset,
+                "version": prev_version,
+                "creation_options": prev_default_asset.creation_options,
+                "metadata": prev_default_asset.metadata,
+            }
+        ]
 
     # append self to history
     history.append(
         {
             "dataset": dataset,
-            "version": prev_version,
-            "creation_options": prev_default_asset.creation_options,
-            "metadata": prev_default_asset.metadata,
+            "version": version,
+            "creation_options": data["creation_options"],
+            "metadata": data["metadata"],
         }
     )
 

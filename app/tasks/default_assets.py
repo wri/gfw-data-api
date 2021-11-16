@@ -40,15 +40,15 @@ async def create_default_asset(
     dataset: str,
     version: str,
     input_data: Dict[str, Any],
-    file_obj: Optional[IO],
+    file_obj: Optional[IO] = None,
 ) -> UUID:
 
-    source_uri = input_data["creation_options"]["source_uri"]
+    source_uri = input_data["creation_options"].get("source_uri", None)
     status = None
     log: Optional[ChangeLog] = None
 
     # Copy attached file to data lake
-    if file_obj:
+    if file_obj and source_uri:
         log = await _inject_file(file_obj, source_uri[0])
         async with ContextEngine("WRITE"):
             await versions.update_version(
@@ -115,7 +115,8 @@ async def _create_default_asset(
     revision_history = []
     source_version = version
     if source_type == SourceType.revision:
-        revision_history = await _create_revision_history(dataset, **input_data)
+        revision_history = await _create_revision_history(
+            dataset, version, **input_data)
 
         # set latest revision on source version
         source_version = revision_history[0]["version"]

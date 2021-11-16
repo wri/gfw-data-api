@@ -23,6 +23,7 @@ from sqlalchemy.sql import and_
 # from ...authentication.api_keys import get_api_key
 from ...application import db
 from ...crud import assets
+from ...errors import RecordNotFoundError
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
@@ -332,6 +333,7 @@ def _get_query_type(default_asset: AssetORM, geostore: Optional[GeostoreCommon])
     if default_asset.asset_type in [
         AssetType.geo_database_table,
         AssetType.database_table,
+        AssetType.revision,
     ]:
         return QueryType.table
     elif default_asset.asset_type == AssetType.raster_tile_set:
@@ -367,16 +369,25 @@ async def _query_table(
     _no_forbidden_functions(parsed)
     _no_forbidden_value_functions(parsed)
 
+    default_asset: AssetORM = await assets.get_default_asset(dataset, version)
+
     # always overwrite the table name with the current dataset version name, to make sure no other table is queried
     parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
         "schemaname"
     ] = dataset
     parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
         "relname"
-    ] = version
+    ] = (
+        default_asset.source_version
+        if default_asset.asset_type == AssetType.revision
+        else version
+    )
 
     if geometry:
         parsed = await _add_geometry_filter(parsed, geometry)
+
+    # filtering on revisions
+    parsed = await _add_revision_filter(parsed, dataset, version)
 
     # convert back to text
     sql = RawStream()(Node(parsed))
@@ -550,6 +561,92 @@ async def _add_geometry_filter(parsed_sql, geometry: Geometry):
         parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = filter_where
 
     return parsed_sql
+
+
+async def _add_revision_filter(parsed_sql, dataset, version):
+    """Add revision filters to geostore table queries.
+
+    For queries of latest dataset version, this involves excluding rows from
+    revisions that are deleted by subsequent revisions in the revision history.
+
+    For queries of intermediate revision, this involves excluding deleted revisions
+    in its revision history and append revisions that come after it.
+    """
+
+    default_asset: AssetORM = await assets.get_default_asset(dataset, version)
+
+    if default_asset.asset_type == AssetType.revision:
+        source_version = default_asset.revision_history[0]["version"]
+        source_default_asset: AssetORM = await assets.get_default_asset(
+            dataset, source_version
+        )
+        revision_asset = default_asset
+        latest_revision = source_default_asset.latest_revision
+        latest_revision_asset = await assets.get_default_asset(dataset, latest_revision)
+        revision_history = latest_revision_asset.revision_history
+
+    else:
+        latest_revision = default_asset.latest_revision
+        try:
+            revision_asset: AssetORM = await assets.get_default_asset(
+                dataset, latest_revision
+            )
+            revision_history = revision_asset.revision_history
+        except RecordNotFoundError:
+            return parsed_sql
+
+    sql_where = parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"].get("whereClause", None)
+
+    revision_filter = await _filter_by_revision_operation(
+        revision_asset, revision_history
+    )
+
+    if sql_where:
+        parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = {
+            "BoolExpr": {"boolop": 0, "args": [sql_where, revision_filter]}
+        }
+    else:
+        parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = revision_filter
+
+    return parsed_sql
+
+
+async def _filter_by_revision_operation(revision_asset: AssetORM, revision_history):
+    exclude_revisions = []
+
+    revision_idx = next(
+        idx
+        for (idx, rev) in enumerate(revision_history)
+        if rev["version"] == revision_asset.version
+    )
+    for idx, revision in enumerate(revision_history):
+        asset: AssetORM = await assets.get_default_asset(
+            revision["dataset"], revision["version"]
+        )
+        delete_revision = asset.creation_options.get("delete_version", None)
+
+        if delete_revision is not None and idx <= revision_idx:
+            exclude_revisions.append(delete_revision)
+
+    # for intermediate revisions, exclude revisions that come after it.
+    exclude_revisions += [
+        rev["version"]
+        for rev in revision_history[revision_idx + 1 :]
+        if rev["version"] not in exclude_revisions
+    ]
+
+    if not exclude_revisions:
+        return None
+
+    rev_list_sql = (
+        f"('{exclude_revisions[0]}')"
+        if len(exclude_revisions) == 1
+        else f"{tuple(exclude_revisions)}"
+    )
+    parsed_filter = parse_sql(f"SELECT WHERE gfw_version NOT IN {rev_list_sql}")
+    filter_where = parsed_filter[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"]
+
+    return filter_where
 
 
 async def _query_raster(
