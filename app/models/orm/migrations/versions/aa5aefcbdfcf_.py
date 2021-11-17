@@ -22,7 +22,7 @@ def upgrade():
         sa.Column(
             "revision_history",
             postgresql.ARRAY(postgresql.JSONB(astext_type=sa.Text())),
-            nullable=False,
+            nullable=True,
         ),
     )
     op.add_column("assets", sa.Column("latest_revision", sa.String(), nullable=True))

@@ -137,6 +137,7 @@ module "batch_aurora_writer" {
   suffix                   = local.name_suffix
   tags                     = local.batch_tags
   use_ephemeral_storage    = false
+  ebs_volume_size          = 32
   compute_environment_name = "aurora_sql_writer"
 }
 
