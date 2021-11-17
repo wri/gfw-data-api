@@ -393,6 +393,7 @@ async def _query_table(
     sql = RawStream()(Node(parsed))
 
     try:
+        logger.info(f"Executing query: {sql}")
         rows = await db.all(sql)
         response: List[Dict[str, Any]] = [dict(row) for row in rows]
     except InsufficientPrivilegeError:
@@ -580,11 +581,9 @@ async def _add_revision_filter(parsed_sql, dataset, version):
         source_default_asset: AssetORM = await assets.get_default_asset(
             dataset, source_version
         )
-        revision_asset = default_asset
         latest_revision = source_default_asset.latest_revision
         latest_revision_asset = await assets.get_default_asset(dataset, latest_revision)
         revision_history = latest_revision_asset.revision_history
-
     else:
         latest_revision = default_asset.latest_revision
         try:
@@ -597,34 +596,26 @@ async def _add_revision_filter(parsed_sql, dataset, version):
 
     sql_where = parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"].get("whereClause", None)
 
-    revision_filter = await _filter_by_revision_operation(
-        revision_asset, revision_history
-    )
-
-    if sql_where:
+    revision_filter = await _filter_by_revision_operation(version, revision_history)
+    if sql_where and revision_filter:
         parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = {
             "BoolExpr": {"boolop": 0, "args": [sql_where, revision_filter]}
         }
-    else:
+    elif revision_filter:
         parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = revision_filter
 
     return parsed_sql
 
 
-async def _filter_by_revision_operation(revision_asset: AssetORM, revision_history):
+async def _filter_by_revision_operation(version: str, revision_history):
     exclude_revisions = []
 
     revision_idx = next(
-        idx
-        for (idx, rev) in enumerate(revision_history)
-        if rev["version"] == revision_asset.version
+        idx for (idx, rev) in enumerate(revision_history) if rev["version"] == version
     )
-    for idx, revision in enumerate(revision_history):
-        asset: AssetORM = await assets.get_default_asset(
-            revision["dataset"], revision["version"]
-        )
-        delete_revision = asset.creation_options.get("delete_version", None)
 
+    for idx, revision in enumerate(revision_history):
+        delete_revision = revision["creation_options"].get("delete_version", None)
         if delete_revision is not None and idx <= revision_idx:
             exclude_revisions.append(delete_revision)
 
