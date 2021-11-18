@@ -23,34 +23,24 @@ async def test_redirect_latest(async_client, generic_vector_source_version):
     assert response.json()["data"]["is_latest"] is True
 
     # Now we the latest redirect should work
-    response = await async_client.get(
-        f"/dataset/{dataset}/latest", allow_redirects=False
-    )
+    response = await async_client.get(f"/dataset/{dataset}/latest")
     assert response.status_code == 307
     assert response.headers["location"] == f"/dataset/{dataset}/{version}"
 
     params = {"test": "query"}
-    response = await async_client.get(
-        f"/dataset/{dataset}/latest", params=params, allow_redirects=False
-    )
+    response = await async_client.get(f"/dataset/{dataset}/latest", params=params)
     assert response.status_code == 307
     assert response.headers["location"] == f"/dataset/{dataset}/{version}?test=query"
 
-    response = await async_client.post(
-        f"/dataset/{dataset}/latest/query/json", allow_redirects=False
-    )
+    response = await async_client.post(f"/dataset/{dataset}/latest/query/json")
     assert response.status_code == 307
     assert response.headers["location"] == f"/dataset/{dataset}/{version}/query/json"
 
-    response = await async_client.post(
-        f"/dataset/{dataset}/latest/download/csv", allow_redirects=False
-    )
+    response = await async_client.post(f"/dataset/{dataset}/latest/download/csv")
     assert response.status_code == 307
     assert response.headers["location"] == f"/dataset/{dataset}/{version}/download/csv"
 
     # except for POST requests which do not point to query or download
-    response = await async_client.post(
-        f"/dataset/{dataset}/latest/assets", allow_redirects=False
-    )
+    response = await async_client.post(f"/dataset/{dataset}/latest/assets")
     print(response.text)
     assert response.status_code == 400
