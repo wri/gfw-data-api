@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-from asyncpg import UniqueViolationError
+from asyncpg.exceptions import DuplicateSchemaError
 
 from ..application import db
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
@@ -30,7 +30,7 @@ async def get_dataset(dataset: str) -> ORMDataset:
 async def create_dataset(dataset: str, **data) -> ORMDataset:
     try:
         new_dataset: ORMDataset = await ORMDataset.create(dataset=dataset, **data)
-    except UniqueViolationError:
+    except DuplicateSchemaError:
         raise RecordAlreadyExistsError(f"Dataset with name {dataset} already exists")
 
     return new_dataset
