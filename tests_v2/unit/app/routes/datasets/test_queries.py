@@ -36,7 +36,6 @@ async def test_query_dataset_with_api_key(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
         headers=headers,
-        follow_redirects=True,
     )
 
     print(response.json())
@@ -60,7 +59,6 @@ async def test_query_dataset_with_unrestricted_api_key(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
         headers=headers,
-        follow_redirects=True,
     )
 
     print(response.json())
@@ -89,7 +87,6 @@ async def test_query_dataset_raster_get(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
         headers=headers,
-        follow_redirects=True,
     )
 
     assert response.status_code == 200
@@ -120,9 +117,9 @@ async def test_query_dataset_raster_post(
         f"/dataset/{dataset_name}/{version_name}/query",
         json=payload,
         headers=headers,
-        follow_redirects=True,
     )
 
+    print(response.json())
     assert response.status_code == 200
     assert response.json()["status"] == "success"
 
@@ -148,7 +145,10 @@ async def test_redirect_post_query(
     }
 
     response = await async_client.post(
-        f"/dataset/{dataset_name}/{version_name}/query", headers=headers, json=payload
+        f"/dataset/{dataset_name}/{version_name}/query",
+        headers=headers,
+        json=payload,
+        allow_redirects=False,
     )
 
     # print(response.json())
@@ -177,9 +177,13 @@ async def test_redirect_get_query(
     params = {"sql": "select count(*) from data", "geostore_id": geostore}
 
     response = await async_client.get(
-        f"/dataset/{dataset_name}/{version_name}/query", headers=headers, params=params
+        f"/dataset/{dataset_name}/{version_name}/query",
+        headers=headers,
+        params=params,
+        allow_redirects=False,
     )
 
+    # print(response.json())
     assert response.status_code == 308
     assert (
         response.headers["location"]
@@ -204,7 +208,6 @@ async def test_query_dataset_raster_geostore_huge(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
         headers=headers,
-        follow_redirects=True,
     )
 
     assert response.status_code == 400

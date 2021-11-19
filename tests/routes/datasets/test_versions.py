@@ -3,7 +3,6 @@ from urllib.parse import urlparse
 
 import pytest
 from botocore.exceptions import ClientError
-from httpx import AsyncClient
 
 from app.models.pydantic.metadata import VersionMetadata
 from app.settings.globals import S3_ENTRYPOINT_URL
@@ -48,7 +47,7 @@ version_payload = {
 
 
 @pytest.mark.asyncio
-async def test_versions(async_client: AsyncClient):
+async def test_versions(async_client):
     """Test version path operations.
 
     We patch/disable background tasks here, as they run asynchronously.
@@ -86,7 +85,7 @@ async def test_versions(async_client: AsyncClient):
 
     # Check if the latest endpoint redirects us to v1.1.1
     response = await async_client.get(
-        f"/dataset/{dataset}/latest?test=test&test1=test1", follow_redirects=True
+        f"/dataset/{dataset}/latest?test=test&test1=test1"
     )
     assert response.json()["data"]["version"] == "v1.1.1"
 
@@ -172,7 +171,7 @@ async def test_versions(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_version_metadata(async_client: AsyncClient):
+async def test_version_metadata(async_client):
     """Test if Version inherits metadata from Dataset.
 
     Version should be able to overwrite any metadata attribute
@@ -271,9 +270,7 @@ async def test_version_metadata(async_client: AsyncClient):
 
 @pytest.mark.asyncio
 @patch("app.tasks.aws_tasks.get_cloudfront_client")
-async def test_version_delete_protection(
-    mocked_cloudfront_client, async_client: AsyncClient
-):
+async def test_version_delete_protection(mocked_cloudfront_client, async_client):
     dataset = "test"
     version1 = "v1.1.1"
     version2 = "v1.1.2"
@@ -301,7 +298,7 @@ async def test_version_delete_protection(
 
 
 @pytest.mark.asyncio
-async def test_latest_middleware(async_client: AsyncClient):
+async def test_latest_middleware(async_client):
     """Test if middleware redirects to correct version when using `latest`
     version identifier."""
 
@@ -332,7 +329,7 @@ async def test_latest_middleware(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_invalid_source_uri(async_client: AsyncClient):
+async def test_invalid_source_uri(async_client):
     """Test version path operations.
 
     We patch/ disable background tasks here, as they run asynchronously.
@@ -404,7 +401,7 @@ async def test_invalid_source_uri(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_put_latest(async_client: AsyncClient):
+async def test_put_latest(async_client):
 
     dataset = "test"
     response = await async_client.put(f"/dataset/{dataset}", json=payload)
@@ -421,7 +418,7 @@ async def test_put_latest(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_version_put_raster(async_client: AsyncClient):
+async def test_version_put_raster(async_client):
     """Test raster source version operations."""
 
     dataset = "test_version_put_raster"
@@ -477,6 +474,7 @@ async def test_version_put_raster(async_client: AsyncClient):
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/download/geotiff",
         params={"grid": "90/27008", "tile_id": "90N_000E", "pixel_meaning": "percent"},
+        allow_redirects=False,
     )
     assert response.status_code == 307
     url = urlparse(response.headers["Location"])
@@ -493,6 +491,7 @@ async def test_version_put_raster(async_client: AsyncClient):
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/download/geotiff",
         params={"grid": "10/40000", "tile_id": "90N_000E", "pixel_meaning": "percent"},
+        allow_redirects=False,
     )
     assert response.status_code == 404
 

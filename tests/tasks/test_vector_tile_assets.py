@@ -228,7 +228,7 @@ async def test_vector_tile_asset(
         fmt = "shp" if asset_type == AssetType.shapefile else "gpkg"
         ext = "shp.zip" if asset_type == AssetType.shapefile else "gpkg"
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/download/{fmt}"
+            f"/dataset/{dataset}/{version}/download/{fmt}", allow_redirects=False
         )
         assert response.status_code == 307
         url = urlparse(response.headers["Location"])
