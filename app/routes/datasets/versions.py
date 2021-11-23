@@ -8,9 +8,10 @@ uploaded file. Based on the source file(s), users can create additional
 assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
-import asyncio
+from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.logger import logger
@@ -47,11 +48,27 @@ from ...settings.globals import TILE_CACHE_CLOUDFRONT_ID
 from ...tasks.aws_tasks import flush_cloudfront_cache
 from ...tasks.default_assets import append_default_asset, create_default_asset
 from ...tasks.delete_assets import delete_all_assets
-from ...utils.aws import head_s3
-from ...utils.path import split_s3_path
+from ...utils.aws import get_aws_files
+from ...utils.google import get_gs_files
 from .queries import _get_data_environment, _get_default_layer
 
 router = APIRouter()
+
+SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
+    ".csv",
+    ".geojson",
+    ".gpkg",
+    ".ndjson",
+    ".shp",
+    ".tif",
+    ".tsv",
+    ".zip",
+)
+
+# I cannot seem to satisfy mypy WRT the type of this default dict. Last thing I tried:
+# DefaultDict[str, Callable[[str, str, int, int, ...], List[str]]]
+source_uri_lister_constructor = defaultdict((lambda: lambda w, x, limit=None, exit_after_max=None, extensions=None: list()))  # type: ignore
+source_uri_lister_constructor.update(**{"gs": get_gs_files, "s3": get_aws_files})  # type: ignore
 
 
 @router.get(
@@ -92,7 +109,7 @@ async def add_new_version(
     input_data = request.dict(exclude_none=True, by_alias=True)
     creation_options = input_data.pop("creation_options")
 
-    await _verify_source_file_access(creation_options["source_uri"])
+    _verify_source_file_access(creation_options["source_uri"])
 
     # Register version with DB
     try:
@@ -176,7 +193,7 @@ async def append_to_version(
     files.
     """
     dataset, version = dv
-    await _verify_source_file_access(request.dict()["source_uri"])
+    _verify_source_file_access(request.dict()["source_uri"])
 
     default_asset: ORMAsset = await assets.get_default_asset(dataset, version)
 
@@ -187,7 +204,7 @@ async def append_to_version(
         append_default_asset, dataset, version, input_data, default_asset.asset_id
     )
 
-    # We now want to append the new uris to the existing once and update the asset
+    # We now want to append the new uris to the existing ones and update the asset
     update_data = {"creation_options": deepcopy(default_asset.creation_options)}
     update_data["creation_options"]["source_uri"] += request.source_uri
     await assets.update_asset(default_asset.asset_id, **update_data)
@@ -365,11 +382,34 @@ async def _version_response(
     return VersionResponse(data=Version(**data))
 
 
-async def _verify_source_file_access(s3_sources: List[str]) -> None:
-    head_calls = [head_s3(*split_s3_path(s3_source)) for s3_source in s3_sources]
-    results = await asyncio.gather(*head_calls)
-    if not all(results):
+def _verify_source_file_access(sources: List[str]) -> None:
+
+    # TODO: Making the called functions asynchronous and using asyncio.gather
+    # to check for valid sources in a non-blocking fashion would be good.
+    # Perhaps use the aioboto3 package for aws, gcloud-aio-storage for gcs.
+    # Also, it would be nice if the acceptable file extensions were passed
+    # into this function so we could say, for example, that there must be
+    # TIFFs found for a new raster tile set, but a CSV is required for a new
+    # vector tile set version.
+    invalid_sources: List[str] = list()
+
+    for source in sources:
+        o = urlparse(source, allow_fragments=False)
+        list_func = source_uri_lister_constructor[o.scheme.lower()]
+        if not list_func(
+            o.netloc,
+            o.path.lstrip("/"),
+            limit=10,
+            exit_after_max=1,
+            extensions=SUPPORTED_FILE_EXTENSIONS,
+        ):
+            invalid_sources.append(source)
+
+    if invalid_sources:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot access all of the source files {s3_sources}",
+            detail=(
+                "Cannot access all of the source files. "
+                f"Invalid sources: {invalid_sources}"
+            ),
         )

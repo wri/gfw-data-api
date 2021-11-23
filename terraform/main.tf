@@ -30,7 +30,6 @@ locals {
   api_gw_stage_name     = "deploy${replace(local.name_suffix, "-", "_")}"
 }
 
-
 # Docker image for FastAPI app
 module "app_docker_image" {
   source     = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.2"
@@ -38,7 +37,6 @@ module "app_docker_image" {
   root_dir   = "${path.root}/../"
   tag        = local.container_tag
 }
-
 
 # Docker image for GDAL Python Batch jobs
 module "batch_gdal_python_image" {
@@ -102,6 +100,7 @@ module "fargate_autoscaling" {
     aws_iam_policy.s3_read_only.arn,
     aws_iam_policy.lambda_invoke.arn,
     aws_iam_policy.iam_api_gateway_policy.arn,
+    aws_iam_policy.read_gcs_secret.arn,
     data.terraform_remote_state.tile_cache.outputs.ecs_update_service_policy_arn,
     data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_full_access_policy_arn,
     data.terraform_remote_state.tile_cache.outputs.cloudfront_invalidation_policy_arn
