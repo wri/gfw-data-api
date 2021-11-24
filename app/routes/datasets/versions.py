@@ -394,11 +394,23 @@ def _verify_source_file_access(sources: List[str]) -> None:
     invalid_sources: List[str] = list()
 
     for source in sources:
-        o = urlparse(source, allow_fragments=False)
-        list_func = source_uri_lister_constructor[o.scheme.lower()]
+        url_parts = urlparse(source, allow_fragments=False)
+        list_func = source_uri_lister_constructor[url_parts.scheme.lower()]
+        bucket = url_parts.netloc
+        prefix = url_parts.path.lstrip("/")
+
+        # Allow pseudo-globbing: If the prefix doesn't end in "*" or
+        # "tiles.geojson" assume the user meant for the prefix to specify a
+        # "folder" and add a "/" to enforce that behavior.
+        new_prefix: str = prefix
+        if new_prefix.endswith("*"):
+            new_prefix = new_prefix[:-1]
+        elif not (new_prefix.endswith("tiles.geojson") or new_prefix.endswith("/")):
+            new_prefix += "/"
+
         if not list_func(
-            o.netloc,
-            o.path.lstrip("/"),
+            bucket,
+            new_prefix,
             limit=10,
             exit_after_max=1,
             extensions=SUPPORTED_FILE_EXTENSIONS,
