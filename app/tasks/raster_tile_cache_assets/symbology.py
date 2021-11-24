@@ -72,13 +72,7 @@ def generate_8_bit_integrated_calc_string() -> str:
     _first_alert = """
     np.ma.array(
         np.ma.array(
-            np.minimum(
-                A.filled(65535),
-                np.minimum(
-                    B.filled(65535),
-                    C.filled(65535)
-                )
-            ),
+            np.minimum.reduce([A.filled(65535), B.filled(65535), C.filled(65535)]),
             mask=(A.mask & B.mask & C.mask)
         ).filled(0),
         mask=(A.mask & B.mask & C.mask)
@@ -92,23 +86,13 @@ def generate_8_bit_integrated_calc_string() -> str:
     # Reverse that here for use in the Blue channel
     first_confidence = f"(({first_day} > 0) * " f"(({first_alert} & 1) == 0) * 1)"
 
-    # Use the maximum intensity of the three alert systems
-    _max_intensity = """
-        np.maximum(
-            D.filled(0),
-            np.maximum(
-                E.filled(0),
-                F.filled(0)
-            )
-        )
-    """
-    max_intensity = "".join(_max_intensity.split())
+    intensity = "D.data"
 
     red = f"({first_day} / 255).astype(np.uint8)"
     green = f"({first_day} % 255).astype(np.uint8)"
     blue = (
         f"(({first_day} > 0) * "
-        f"(({first_confidence} + 1) * 100 + {max_intensity}))"
+        f"(({first_confidence} + 1) * 100 + {intensity}))"
         ".astype(np.uint8)"
     )
 
@@ -310,36 +294,26 @@ async def date_conf_intensity_multi_8_symbology(
     derived intensity asset, and the confidences of each of the original
     alerts.
 
-    At native resolution (max_zoom) it creates a three band "intensity"
-    asset (one band per original band) which contains the value 55
-    everywhere there is data in the source (date_conf) band. For lower
-    zoom levels it resamples the previous zoom level intensity asset
-    using the bilinear resampling method, causing isolated pixels to
-    "fade". Finally the merge function takes the alert with the minimum
-    date of the three bands and encodes its date, confidence, and the
-    maximum of the three intensities into three 8-bit bands according to
+    At native resolution (max_zoom) it an "intensity" asset which
+    contains the value 55 everywhere there is data in any of the source
+    bands. For lower zoom levels it resamples the previous zoom level
+    intensity asset using the bilinear resampling method, causing
+    isolated pixels to "fade". Finally the merge function takes the
+    alert with the minimum date of the three bands and encodes its date,
+    confidence, and the intensities into three 8-bit bands according to
     the formula the front end expects, and also adds a fourth band which
     encodes the confidences of all three original alert systems.
     """
 
     # What we want is a value of 55 (max intensity for this scenario)
-    # anywhere there is an alert in any system. We can't just do
-    # "((A > 0) | (B > 0) | (C > 0)) * 55" because "A | B" includes only
-    # those values unmasked in both A and B. In fact we don't want masked
-    # values at all! So first replace masked values with 0
-    intensity_max_calc_string = (
-        "np.ma.array(["
-        f"((A.filled(0) >> 1) > 0) * {MAX_8_BIT_INTENSITY},"  # GLAD-L
-        f"((B.filled(0) >> 1) > 0) * {MAX_8_BIT_INTENSITY},"  # GLAD-S2
-        f"((C.filled(0) >> 1) > 0) * {MAX_8_BIT_INTENSITY}"  # RADD
-        "])"
-    )
+    # anywhere there is an alert in any system.
+    intensity_max_calc_string = f"np.ma.array(np.logical_or.reduce((A.data, B.data, C.data)) * {MAX_8_BIT_INTENSITY})"
 
     intensity_co = source_asset_co.copy(
         deep=True,
         update={
-            "calc": "np.ma.array([A, B, C])",
-            "band_count": 3,
+            "calc": None,
+            "band_count": 1,
             "data_type": DataType.uint8,
         },
     )
