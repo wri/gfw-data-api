@@ -192,6 +192,7 @@ resource "aws_api_gateway_authorizer" "api_key" {
   type                   = "REQUEST"
   authorizer_uri         = aws_lambda_function.authorizer.invoke_arn
   authorizer_credentials = aws_iam_role.invocation_role.arn
+  authorizer_result_ttl_in_seconds = 0
 
   # making sure terraform doesn't require default authorization
   # header (https://github.com/hashicorp/terraform-provider-aws/issues/5845)
