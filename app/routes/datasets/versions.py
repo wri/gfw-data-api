@@ -384,13 +384,16 @@ async def _version_response(
 
 def _verify_source_file_access(sources: List[str]) -> None:
 
-    # TODO: Making the called functions asynchronous and using asyncio.gather
+    # TODO:
+    # 1. Making the list functions asynchronous and using asyncio.gather
     # to check for valid sources in a non-blocking fashion would be good.
     # Perhaps use the aioboto3 package for aws, gcloud-aio-storage for gcs.
-    # Also, it would be nice if the acceptable file extensions were passed
+    # 2. It would be nice if the acceptable file extensions were passed
     # into this function so we could say, for example, that there must be
     # TIFFs found for a new raster tile set, but a CSV is required for a new
-    # vector tile set version.
+    # vector tile set version. Even better would be to specify whether
+    # paths to individual files or "folders" (prefixes) are allowed.
+
     invalid_sources: List[str] = list()
 
     for source in sources:
@@ -399,14 +402,17 @@ def _verify_source_file_access(sources: List[str]) -> None:
         bucket = url_parts.netloc
         prefix = url_parts.path.lstrip("/")
 
-        # Allow pseudo-globbing: If the prefix doesn't end in "*" or
-        # "tiles.geojson" assume the user meant for the prefix to specify a
-        # "folder" and add a "/" to enforce that behavior.
+        # Allow pseudo-globbing: Right now tolerate a "*" at the end of a
+        # src_uri entry to allow partial prefixes (for example
+        # /bucket/prefix_part_1/prefix_fragment* will match
+        # /bucket/prefix_part_1/prefix_fragment_1.tif and
+        # /bucket/prefix_part_1/prefix_fragment_2.tif, etc.)
+        # In the future if the prefix doesn't end in "*" or an acceptable
+        # file extension (dependent on TODO 2. above), add a "/" to the prefix
+        # to enforce it being a folder.
         new_prefix: str = prefix
         if new_prefix.endswith("*"):
             new_prefix = new_prefix[:-1]
-        elif not (new_prefix.endswith("tiles.geojson") or new_prefix.endswith("/")):
-            new_prefix += "/"
 
         if not list_func(
             bucket,
