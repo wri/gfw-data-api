@@ -402,17 +402,20 @@ def _verify_source_file_access(sources: List[str]) -> None:
         bucket = url_parts.netloc
         prefix = url_parts.path.lstrip("/")
 
-        # Allow pseudo-globbing: Right now tolerate a "*" at the end of a
+        # Allow pseudo-globbing: Tolerate a "*" at the end of a
         # src_uri entry to allow partial prefixes (for example
         # /bucket/prefix_part_1/prefix_fragment* will match
         # /bucket/prefix_part_1/prefix_fragment_1.tif and
         # /bucket/prefix_part_1/prefix_fragment_2.tif, etc.)
-        # In the future if the prefix doesn't end in "*" or an acceptable
-        # file extension (dependent on TODO 2. above), add a "/" to the prefix
-        # to enforce it being a folder.
+        # If the prefix doesn't end in "*" or an acceptable file extension
+        # add a "/" to the end of the prefix to enforce it being a "folder".
         new_prefix: str = prefix
         if new_prefix.endswith("*"):
             new_prefix = new_prefix[:-1]
+        elif not new_prefix.endswith("/") and not any(
+            [new_prefix.endswith(suffix) for suffix in SUPPORTED_FILE_EXTENSIONS]
+        ):
+            new_prefix += "/"
 
         if not list_func(
             bucket,
