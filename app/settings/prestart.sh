@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-alembic upgrade head
+alembic downgrade 4763f4b8141a
