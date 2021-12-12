@@ -64,7 +64,7 @@ async def raster_tile_cache_asset(
                 dataset,
                 version,
                 AssetType.raster_tile_set,
-                source_asset.creation_options
+                source_asset.creation_options,
             )
         )
     ]
@@ -134,13 +134,13 @@ async def raster_tile_cache_asset(
 
     for zoom_level in range(max_zoom, min_zoom - 1, -1):
         jobs_dict[zoom_level] = dict()
-        source_projection_parent_job = jobs_dict.get(zoom_level + 1, {}).get(
-            "source_reprojection_job"
-        )
 
-        source_projection_parent_jobs = (
-            [source_projection_parent_job] if source_projection_parent_job else []
-        )
+        if zoom_level == max_zoom:
+            source_reprojection_parent_jobs: List[Job] = []
+        else:
+            source_reprojection_parent_jobs = [
+                jobs_dict[zoom_level + 1]["source_reprojection_job"]
+            ]
 
         (
             source_reprojection_job,
@@ -151,7 +151,7 @@ async def raster_tile_cache_asset(
             source_asset_co,
             zoom_level,
             max_zoom,
-            source_projection_parent_jobs,
+            source_reprojection_parent_jobs,
             max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
             max_zoom_calc=max_zoom_calc,
         )
@@ -183,7 +183,7 @@ async def raster_tile_cache_asset(
                 zoom_level,
                 implementation,
                 callback_constructor(asset_id),
-                symbology_jobs + [source_reprojection_job],
+                [*symbology_jobs, source_reprojection_job],
                 bit_depth,
             )
             job_list.append(tile_cache_job)
