@@ -84,7 +84,7 @@ def generate_8_bit_integrated_calc_string() -> str:
 
     # At this point confidence is encoded as 0 for high, 1 for low.
     # Reverse that here for use in the Blue channel
-    first_confidence = f"(({first_day} > 0) * " f"(({first_alert} & 1) == 0) * 1)"
+    first_confidence = f"(({first_day} > 0) * (({first_alert} & 1) == 0) * 1)"
 
     intensity = "D.data"
 
@@ -109,7 +109,7 @@ def generate_8_bit_integrated_calc_string() -> str:
         "(((C.filled(0) & 1) == 0) * 2 + (C.filled(0) & 1))"
     )
 
-    alpha = f"({gladl_conf} << 6) | " f"({glads2_conf} << 4) | " f"({radd_conf} << 2)"
+    alpha = f"({gladl_conf} << 6) | ({glads2_conf} << 4) | ({radd_conf} << 2)"
 
     return f"np.ma.array([{red}, {green}, {blue}, {alpha}])"
 
@@ -201,6 +201,9 @@ async def colormap_symbology(
             ResamplingMethod.average,
         )
 
+        # We also need to depend on the original source reprojection job
+        source_job = jobs_dict[zoom_level]["source_reprojection_job"]
+
         merge_jobs, final_asset_uri = await _merge_assets(
             dataset,
             version,
@@ -208,7 +211,7 @@ async def colormap_symbology(
             tile_uri_to_tiles_geojson(colormapped_asset_uri),
             tile_uri_to_tiles_geojson(intensity_uri),
             zoom_level,
-            [*colormap_jobs, *intensity_jobs],
+            [*colormap_jobs, *intensity_jobs, source_job],
         )
     else:
         final_asset_uri = colormapped_asset_uri
@@ -265,6 +268,9 @@ async def date_conf_intensity_symbology(
 
     merge_calc_string: str = generate_date_conf_calc_string()
 
+    # We also need to depend on the original source reprojection job
+    source_job = jobs_dict[zoom_level]["source_reprojection_job"]
+
     merge_jobs, final_asset_uri = await _merge_assets(
         dataset,
         version,
@@ -272,7 +278,7 @@ async def date_conf_intensity_symbology(
         tile_uri_to_tiles_geojson(wm_date_conf_uri),
         tile_uri_to_tiles_geojson(intensity_uri),
         zoom_level,
-        intensity_jobs,
+        [*intensity_jobs, source_job],
         merge_calc_string,
         3,
     )
@@ -330,8 +336,6 @@ async def date_conf_intensity_multi_8_symbology(
         ResamplingMethod.bilinear,
     )
 
-    merge_calc_string: str = generate_8_bit_integrated_calc_string()
-
     wm_date_conf_uri: str = get_asset_uri(
         dataset,
         version,
@@ -342,6 +346,11 @@ async def date_conf_intensity_multi_8_symbology(
         "epsg:3857",
     )
 
+    merge_calc_string: str = generate_8_bit_integrated_calc_string()
+
+    # We also need to depend on the original source reprojection job
+    source_job = jobs_dict[zoom_level]["source_reprojection_job"]
+
     merge_jobs, final_asset_uri = await _merge_assets(
         dataset,
         version,
@@ -349,7 +358,7 @@ async def date_conf_intensity_multi_8_symbology(
         tile_uri_to_tiles_geojson(wm_date_conf_uri),
         tile_uri_to_tiles_geojson(intensity_uri),
         zoom_level,
-        [*intensity_jobs],
+        [*intensity_jobs, source_job],
         merge_calc_string,
     )
     return [*intensity_jobs, *merge_jobs], final_asset_uri
@@ -405,6 +414,9 @@ async def year_intensity_symbology(
         "epsg:3857",
     )
 
+    # We also need to depend on the original source reprojection job
+    source_job = jobs_dict[zoom_level]["source_reprojection_job"]
+
     merge_jobs, final_asset_uri = await _merge_assets(
         dataset,
         version,
@@ -412,7 +424,7 @@ async def year_intensity_symbology(
         tile_uri_to_tiles_geojson(wm_source_uri),
         tile_uri_to_tiles_geojson(intensity_uri),
         zoom_level,
-        [*intensity_jobs],
+        [*intensity_jobs, source_job],
         merge_calc_string,
         3,
     )
@@ -525,12 +537,12 @@ async def _create_intensity_asset(
     )
     source_job = jobs_dict[zoom_level]["source_reprojection_job"]
 
-    if zoom_level != max_zoom:
+    if zoom_level == max_zoom:
+        previous_level_intensity_reprojection_job = [source_job]
+    else:
         previous_level_intensity_reprojection_job = [
             jobs_dict[zoom_level + 1]["intensity_reprojection_job"]
         ]
-    else:
-        previous_level_intensity_reprojection_job = [source_job]
 
     intensity_job, intensity_uri = await reproject_to_web_mercator(
         dataset,
