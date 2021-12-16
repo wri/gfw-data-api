@@ -69,49 +69,29 @@ def generate_8_bit_integrated_calc_string() -> str:
     """
     # <LONG EXPLANATION WITH EXAMPLE CODE>
 
-    _first_alert = """
-    np.ma.array(
-        np.ma.array(
-            np.minimum.reduce([A.filled(65535), B.filled(65535), C.filled(65535)]),
-            mask=(A.mask & B.mask & C.mask)
-        ).filled(0),
-        mask=(A.mask & B.mask & C.mask)
-    )
-    """
-    first_alert = "".join(_first_alert.split())
+    first_alert = "np.maximum.reduce([A.data, B.data, C.data])"
 
-    first_day = f"({first_alert} >> 1)"
+    first_day = f"({first_alert} > 0) * (32767 - ({first_alert} >> 1))"
 
-    # At this point confidence is encoded as 0 for high, 1 for low.
-    # Reverse that here for use in the Blue channel
-    first_confidence = f"(({first_day} > 0) * (({first_alert} & 1) == 0) * 1)"
+    # At this point confidence is encoded as 1 for high, 0 for low.
+    first_confidence = f"({first_alert} & 1)"
 
     intensity = "D.data"
 
-    red = f"({first_day} / 255).astype(np.uint8)"
-    green = f"({first_day} % 255).astype(np.uint8)"
+    red = f"({first_day} / 255)"
+    green = f"({first_day} % 255)"
     blue = (
-        f"(({first_day} > 0) * "
+        f"(({first_alert} > 0) * "
         f"(({first_confidence} + 1) * 100 + {intensity}))"
-        ".astype(np.uint8)"
     )
 
-    gladl_conf = (
-        "((A.filled(0) >> 1) > 0) * "
-        "(((A.filled(0) & 1) == 0) * 2 + (A.filled(0) & 1))"
-    )
-    glads2_conf = (
-        "((B.filled(0) >> 1) > 0) * "
-        "(((B.filled(0) & 1) == 0) * 2 + (B.filled(0) & 1))"
-    )
-    radd_conf = (
-        "((C.filled(0) >> 1) > 0) * "
-        "(((C.filled(0) & 1) == 0) * 2 + (C.filled(0) & 1))"
-    )
+    gladl_conf = "(A.data > 0) * (A.data & 1)"
+    glads2_conf = "(B.data > 0) * (B.data & 1)"
+    radd_conf = "(C.data > 0) * (C.data & 1)"
 
     alpha = f"({gladl_conf} << 6) | ({glads2_conf} << 4) | ({radd_conf} << 2)"
 
-    return f"np.ma.array([{red}, {green}, {blue}, {alpha}])"
+    return f"np.ma.array([{red}, {green}, {blue}, {alpha}], mask=False)"
 
 
 async def no_symbology(
