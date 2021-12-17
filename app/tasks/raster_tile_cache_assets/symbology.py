@@ -69,27 +69,14 @@ def generate_8_bit_integrated_calc_string() -> str:
     """
     # <LONG EXPLANATION WITH EXAMPLE CODE>
 
-    first_alert = "np.maximum.reduce([A.data, B.data, C.data])"
+    day = "(A.data - ((A.data >= 30000) * 10000) - ((A.data >= 20000) * 20000))"
+    confidence = "(1 * (A.data >= 30000))"  # 0 for low confidence, 1 for high
 
-    first_day = f"({first_alert} > 0) * (32767 - ({first_alert} >> 1))"
+    red = f"({day} / 255)"
+    green = f"({day} % 255)"
+    blue = f"(A.data > 0) * (({confidence} + 1) * 100 + C.data)"
 
-    # At this point confidence is encoded as 1 for high, 0 for low.
-    first_confidence = f"({first_alert} & 1)"
-
-    intensity = "D.data"
-
-    red = f"({first_day} / 255)"
-    green = f"({first_day} % 255)"
-    blue = (
-        f"(({first_alert} > 0) * "
-        f"(({first_confidence} + 1) * 100 + {intensity}))"
-    )
-
-    gladl_conf = "(A.data > 0) * (A.data & 1)"
-    glads2_conf = "(B.data > 0) * (B.data & 1)"
-    radd_conf = "(C.data > 0) * (C.data & 1)"
-
-    alpha = f"({gladl_conf} << 6) | ({glads2_conf} << 4) | ({radd_conf} << 2)"
+    alpha = f"(B.data & 255)"
 
     return f"np.ma.array([{red}, {green}, {blue}, {alpha}], mask=False)"
 
@@ -293,14 +280,14 @@ async def date_conf_intensity_multi_8_symbology(
 
     # What we want is a value of 55 (max intensity for this scenario)
     # anywhere there is an alert in any system.
-    intensity_max_calc_string = f"np.ma.array(np.logical_or.reduce((A.data, B.data, C.data)) * {MAX_8_BIT_INTENSITY})"
+    intensity_max_calc_string = f"np.ma.array((A.data > 0) * {MAX_8_BIT_INTENSITY}, mask=False)"
 
     intensity_co = source_asset_co.copy(
         deep=True,
         update={
             "calc": None,
             "band_count": 1,
-            "data_type": DataType.uint8,
+            "data_type": DataType.uint16,
         },
     )
 
@@ -619,7 +606,7 @@ _symbology_constructor: Dict[str, SymbologyInfo] = {
         8, 1, date_conf_intensity_symbology
     ),
     ColorMapType.date_conf_intensity_multi_8: SymbologyInfo(
-        8, 3, date_conf_intensity_multi_8_symbology
+        8, 2, date_conf_intensity_multi_8_symbology
     ),
     ColorMapType.year_intensity: SymbologyInfo(8, 1, year_intensity_symbology),
     ColorMapType.gradient: SymbologyInfo(8, 1, colormap_symbology),
