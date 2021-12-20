@@ -53,12 +53,12 @@ class SymbologyInfo(NamedTuple):
 
 def generate_date_conf_calc_string() -> str:
     """Create the calc string for classic GLAD/RADD alerts."""
-    day = "(A - ((A >= 30000) * 10000) - ((A >= 20000) * 20000))"
-    confidence = "(1 * (A >= 30000))"  # 0 for low confidence, 1 for high
+    day = "(A >= 20000) * (A.data % 10000)"
+    confidence = "(A.data // 30000)"  # 0 for low confidence, 1 for high
 
     red = f"({day} / 255)"
     green = f"({day} % 255)"
-    blue = f"(({confidence} + 1) * 100 + B)"
+    blue = f"(A.data >= 20000) * (({confidence} + 1) * 100 + C.data)"
 
     return f"np.ma.array([{red}, {green}, {blue}])"
 
@@ -69,14 +69,14 @@ def generate_8_bit_integrated_calc_string() -> str:
     """
     # <LONG EXPLANATION WITH EXAMPLE CODE>
 
-    day = "(A.data - ((A.data >= 30000) * 10000) - ((A.data >= 20000) * 20000))"
-    confidence = "(1 * (A.data >= 30000))"  # 0 for low confidence, 1 for high
+    day = "(A >= 20000) * (A.data % 10000)"
+    confidence = "(A.data // 30000)"  # 0 for low confidence, 1 for high
 
     red = f"({day} / 255)"
     green = f"({day} % 255)"
-    blue = f"(A.data > 0) * (({confidence} + 1) * 100 + C.data)"
+    blue = f"(A.data >= 20000) * (({confidence} + 1) * 100 + C.data)"
 
-    alpha = f"(B.data & 255)"
+    alpha = f"(B >= 4) * (B.data & 255)"
 
     return f"np.ma.array([{red}, {green}, {blue}, {alpha}], mask=False)"
 
