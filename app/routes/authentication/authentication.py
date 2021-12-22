@@ -66,11 +66,6 @@ async def create_apikey(
     """
 
     user_id, user_role = user
-    if len(api_key_data.domains) == 0 and user_role != "ADMIN":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Users with role {user_role} must list at least one domain.",
-        )
 
     if api_key_data.never_expires and user_role != "ADMIN":
         raise HTTPException(
