@@ -20,7 +20,11 @@ from app.settings.globals import (
     TILE_CACHE_BUCKET,
 )
 from app.tasks import Callback, callback_constructor
-from app.tasks.raster_tile_set_assets.utils import JOB_ENV, create_pixetl_job
+from app.tasks.raster_tile_set_assets.utils import (
+    JOB_ENV,
+    create_pixetl_job,
+    create_resample_job,
+)
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri, tile_uri_to_tiles_geojson
 
@@ -34,6 +38,7 @@ async def reproject_to_web_mercator(
     parents: Optional[List[Job]] = None,
     max_zoom_resampling: Optional[str] = None,
     max_zoom_calc: Optional[str] = None,
+    use_resampler: bool = False,
 ) -> Tuple[Job, str]:
     """Create Tileset reprojected into Web Mercator projection."""
 
@@ -70,7 +75,12 @@ async def reproject_to_web_mercator(
     )
 
     return await create_wm_tile_set_job(
-        dataset, version, creation_options, job_name, parents
+        dataset,
+        version,
+        creation_options,
+        job_name,
+        parents,
+        use_resampler=use_resampler,
     )
 
 
@@ -80,6 +90,7 @@ async def create_wm_tile_set_job(
     creation_options: RasterTileSetSourceCreationOptions,
     job_name: str,
     parents: Optional[List[Job]] = None,
+    use_resampler: bool = False,
 ) -> Tuple[Job, str]:
 
     asset_uri = get_asset_uri(
@@ -102,14 +113,25 @@ async def create_wm_tile_set_job(
 
     logger.debug(f"Created asset for {asset_uri}")
 
-    job = await create_pixetl_job(
-        dataset,
-        version,
-        creation_options,
-        job_name,
-        callback_constructor(wm_asset_record.asset_id),
-        parents=parents,
-    )
+    if not use_resampler:
+        job = await create_pixetl_job(
+            dataset,
+            version,
+            creation_options,
+            job_name,
+            callback_constructor(wm_asset_record.asset_id),
+            parents=parents,
+        )
+    else:
+        job = await create_resample_job(
+            dataset,
+            version,
+            creation_options,
+            int(creation_options.grid.strip("zoom_")),
+            job_name,
+            callback_constructor(wm_asset_record.asset_id),
+            parents=parents,
+        )
 
     zoom_level = int(creation_options.grid.strip("zoom_"))
     job = scale_batch_job(job, zoom_level)
