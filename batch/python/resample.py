@@ -9,15 +9,13 @@ import sys
 import tempfile
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
-from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
 import rasterio
 from errors import SubprocessKilledError
-
-# from gfw_pixetl.pixetl_prep import create_geojsons
 from gfw_pixetl.grids import grid_factory
+from gfw_pixetl.pixetl_prep import create_geojsons
 from pyproj import CRS, Transformer
 from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
@@ -44,9 +42,8 @@ def replace_inf_nan(number: float, replacement: float) -> float:
         return number
 
 
-@lru_cache
 def world_bounds(crs: CRS) -> Bounds:
-    """Get world bounds for given CRT."""
+    """Get world bounds for given CRS."""
 
     from_crs = CRS(4326)
 
@@ -183,6 +180,8 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
         target_prefix,
     ) = args
 
+    print(f"Beginning processing tile {tile_id}")
+
     nb_tiles = max(1, int(2 ** target_zoom / 256)) ** 2
     height = int(2 ** target_zoom * 256 / math.sqrt(nb_tiles))
     width = height
@@ -215,6 +214,8 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
             if warp_process.returncode < 0:
                 raise SubprocessKilledError
 
+            print(f"Finished warping tile {tile_id}")
+
             translate_cmd: List[str] = [
                 "gdal_translate",
                 "-co",
@@ -230,12 +231,14 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
             if translate_process.returncode < 0:
                 raise SubprocessKilledError
 
+            print(f"Finished compressing tile {tile_id}")
+
         # Now that uncompressed warped file has disappeared, upload the compressed one
         target_key = os.path.join(
             target_prefix, os.path.basename(local_compressed_tile_path)
         )
-        print(f"Uploading {local_compressed_tile_path} to {target_key}")
 
+        print(f"Uploading {tile_id} to {target_key}")
         s3_client = get_s3_client()
         s3_client.upload_file(local_compressed_tile_path, target_bucket, target_key)
 
@@ -257,12 +260,6 @@ def resample(
     if not src_tiles_info:
         print("No input files! I guess we're good then.")
         return
-
-    source_extent = unary_union([shape(tile_info[1]) for tile_info in src_tiles_info])
-
-    print(
-        f"There are {len(src_tiles_info)} source tiles with total extent: {source_extent}"
-    )
 
     # I don't think there's any real benefit to using a temp directory here
     base_dir = os.path.curdir
@@ -299,29 +296,50 @@ def resample(
     overall_vrt: str = create_vrt(
         input_vrts, None, os.path.join(source_dir, "everything.vrt"), separate=True
     )
+    print("VRTs created")
 
     # Determine which tiles in the target SRS + zoom level intersect with the source
     # bands
     dest_proj_grid = grid_factory(f"zoom_{target_zoom}")
     all_dest_proj_tile_ids = dest_proj_grid.get_tile_ids()
 
-    with rasterio.open(overall_vrt) as vrt:
-        source_crs = vrt.profile["crs"]
+    # Re-project extent into w-m
+    # with rasterio.open(overall_vrt) as vrt:
+    #     source_crs = CRS.from_epsg(vrt.profile["crs"].to_epsg())
+
+    wm_extent = Polygon()
+    for tile_info in src_tiles_info:
+        # left, bottom, right, top = reproject_bounds(shape(tile_info[1]).bounds, source_crs, CRS.from_epsg(3857))
+        # FIXME: tile.geojson coords ALWAYS seem to be in EPSG:4326
+        left, bottom, right, top = reproject_bounds(
+            shape(tile_info[1]).bounds, CRS.from_epsg(4326), CRS.from_epsg(3857)
+        )
+        wm_extent = unary_union(
+            [
+                wm_extent,
+                Polygon(
+                    (
+                        (left, top),
+                        (right, top),
+                        (right, bottom),
+                        (left, bottom),
+                        (left, top),
+                    )
+                ),
+            ]
+        )
 
     target_tiles: List[Tuple[str, Bounds]] = list()
     for tile_id in all_dest_proj_tile_ids:
-        tile_bounds = dest_proj_grid.get_tile_bounds(tile_id)
+        left, bottom, right, top = dest_proj_grid.get_tile_bounds(tile_id)
 
-        left, bottom, right, top = reproject_bounds(
-            tile_bounds, CRS.from_epsg(3857), CRS.from_epsg(source_crs.to_epsg())
-        )
         tile_geom = Polygon(
             ((left, top), (right, top), (right, bottom), (left, bottom), (left, top))
         )
 
-        if tile_geom.intersects(source_extent) and not tile_geom.touches(source_extent):
+        if tile_geom.intersects(wm_extent) and not tile_geom.touches(wm_extent):
             print(f"Tile {tile_id} intersects!")
-            target_tiles.append((tile_id, tile_bounds))
+            target_tiles.append((tile_id, (left, bottom, right, top)))
 
     print(f"Found {len(target_tiles)} intersecting tiles: {target_tiles}")
 
@@ -344,16 +362,18 @@ def resample(
     # https://stackoverflow.com/a/61470465/1410317
     with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
         for tile_id in executor.map(process_tile, warp_process_args):
-            print(f"Finished warping and uploading tile {tile_id}")
+            print(f"Finished processing and uploading tile {tile_id}")
 
     # Now run pixetl_prep.create_geojsons to generate a tiles.geojson and
     # extent.geojson in the target prefix. But that code appends /geotiff
     # to the prefix so remove it first
-    # create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1].replace(
-    #     "/geotiff", ""
-    # )
-    # print(f"Uploading tiles.geojson to {create_geojsons_prefix}")
-    # create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
+    # FIXME
+    dataset, version, _ = target_prefix.split("/", maxsplit=2)
+    create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1].replace(
+        "/geotiff", ""
+    )
+    print(f"Uploading tiles.geojson to {create_geojsons_prefix}")
+    create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
 
 
 if __name__ == "__main__":

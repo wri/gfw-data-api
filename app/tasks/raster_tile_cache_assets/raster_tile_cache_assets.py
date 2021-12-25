@@ -154,7 +154,7 @@ async def raster_tile_cache_asset(
             source_reprojection_parent_jobs,
             max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
             max_zoom_calc=max_zoom_calc,
-            use_resampler=max_zoom_calc is not None,
+            use_resampler=max_zoom_calc is None,
         )
         jobs_dict[zoom_level]["source_reprojection_job"] = source_reprojection_job
         job_list.append(source_reprojection_job)
