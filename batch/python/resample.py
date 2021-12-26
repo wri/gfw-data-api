@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from typing import Any, Dict, List, Optional, Tuple
@@ -160,13 +161,90 @@ def download_tiles(args: Tuple[str, str]) -> str:
     source_tile_uri, dest_dir = args
 
     local_src_file_path = os.path.join(dest_dir, os.path.basename(source_tile_uri))
-    bucket, source_key = get_s3_path_parts(source_tile_uri)
 
-    s3_client = get_s3_client()
-    print(f"Downloading {source_tile_uri} to {local_src_file_path}")
-    s3_client.download_file(bucket, source_key, local_src_file_path)
+    # TODO: Skip download when possible. Use checksum?
+    if os.path.isfile(local_src_file_path):
+        print(f"Local file {local_src_file_path} already exists, skipping download")
+    else:
+        bucket, source_key = get_s3_path_parts(source_tile_uri)
+        s3_client = get_s3_client()
+        print(f"Downloading {source_tile_uri} to {local_src_file_path}")
+        s3_client.download_file(bucket, source_key, local_src_file_path)
 
     return local_src_file_path
+
+
+def exists_in_s3(target_bucket, target_key):
+    s3_client = get_s3_client()
+    response = s3_client.list_objects_v2(
+        Bucket=target_bucket,
+        Prefix=target_key,
+    )
+    for obj in response.get("Contents", []):
+        if obj["Key"] == target_key:
+            return obj["Size"] > 0
+
+
+def warp_raster(
+    bounds: Bounds, width, height, resampling_method, source_path, target_path
+):
+    warp_cmd: List[str] = [
+        "gdalwarp",
+        "-t_srs",
+        "epsg:3857",  # TODO: Parameterize
+        "-te",
+        f"{bounds[0]}",
+        f"{bounds[1]}",
+        f"{bounds[2]}",
+        f"{bounds[3]}",
+        "-ts",
+        f"{width}",
+        f"{height}",
+        "-r",
+        resampling_method,
+        "-wm",
+        "1024",
+        "-overwrite",
+        source_path,
+        target_path,
+    ]
+    tic = time.perf_counter()
+    warp_process = subprocess.run(warp_cmd, capture_output=True)
+    toc = time.perf_counter()
+
+    print(f"Warping {source_path} to {target_path} took {toc - tic:0.4f} seconds")
+
+    if warp_process.returncode < 0:
+        raise SubprocessKilledError
+
+    return toc - tic
+
+
+def compress_raster(source_path, target_path):
+    translate_cmd: List[str] = [
+        "gdal_translate",
+        "-co",
+        "COMPRESS=DEFLATE",
+        "-co",
+        "TILED=YES",
+        "-co",
+        "INTERLEAVE=BAND",
+        "--config",
+        "GDAL_CACHEMAX",
+        "512",
+        source_path,
+        target_path,
+    ]
+    tic = time.perf_counter()
+    translate_process = subprocess.run(translate_cmd, capture_output=True)
+    toc = time.perf_counter()
+
+    if translate_process.returncode < 0:
+        raise SubprocessKilledError
+
+    print(f"Compressing {source_path} to {target_path} took {toc - tic:0.4f} seconds")
+
+    return toc - tic
 
 
 def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
@@ -182,67 +260,50 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
 
     print(f"Beginning processing tile {tile_id}")
 
+    tile_file_name = f"{tile_id}.tif"
+    target_key = os.path.join(target_prefix, tile_file_name)
+
+    if exists_in_s3(target_bucket, target_key):
+        print(f"Tile {tile_id} already exists in S3, skipping")
+        return tile_id
+
     nb_tiles = max(1, int(2 ** target_zoom / 256)) ** 2
     height = int(2 ** target_zoom * 256 / math.sqrt(nb_tiles))
     width = height
 
     # Use two temp directories so we can drop the directory with the (gigantic)
     # uncompressed warped file ASAP
-    with tempfile.TemporaryDirectory() as compressed_dir:
-        local_compressed_tile_path = os.path.join(compressed_dir, f"{tile_id}.tif")
-        with tempfile.TemporaryDirectory() as warp_dir:
-            local_warped_tile_path = os.path.join(warp_dir, f"{tile_id}.tif")
+    warp_dir = os.path.join(os.path.curdir, "warp_dir")
+    os.makedirs(warp_dir, exist_ok=True)
+    compressed_dir = os.path.join(os.path.curdir, "compressed_dir")
+    os.makedirs(compressed_dir, exist_ok=True)
 
-            warp_cmd: List[str] = [
-                "gdalwarp",
-                "-t_srs",
-                "epsg:3857",  # TODO: Parameterize
-                "-te",
-                f"{tile_bounds[0]}",
-                f"{tile_bounds[1]}",
-                f"{tile_bounds[2]}",
-                f"{tile_bounds[3]}",
-                "-ts",
-                f"{width}",
-                f"{height}",
-                "-r",
-                resampling_method,
-                vrt_path,
-                local_warped_tile_path,
-            ]
-            warp_process = subprocess.run(warp_cmd, capture_output=True)
-            if warp_process.returncode < 0:
-                raise SubprocessKilledError
+    local_compressed_tile_path = os.path.join(compressed_dir, f"{tile_id}.tif")
+    local_warped_tile_path = os.path.join(warp_dir, f"{tile_id}.tif")
 
-            print(f"Finished warping tile {tile_id}")
-
-            translate_cmd: List[str] = [
-                "gdal_translate",
-                "-co",
-                "COMPRESS=DEFLATE",
-                "-co",
-                "TILED=YES",
-                "-co",
-                "INTERLEAVE=BAND",
-                local_warped_tile_path,
-                local_compressed_tile_path,
-            ]
-            translate_process = subprocess.run(translate_cmd, capture_output=True)
-            if translate_process.returncode < 0:
-                raise SubprocessKilledError
-
-            print(f"Finished compressing tile {tile_id}")
-
-        # Now that uncompressed warped file has disappeared, upload the compressed one
-        target_key = os.path.join(
-            target_prefix, os.path.basename(local_compressed_tile_path)
+    # If the compressed file exists, we know we at least started the gdal_translate
+    # step, but don't know if we finished. So remove that file and re-run translate
+    # from the warped file (which should exist). If it doesn't exist, run starting
+    # with the warp command (with the overwrite command regardless).
+    if not os.path.isfile(local_compressed_tile_path):
+        warp_raster(
+            tile_bounds,
+            width,
+            height,
+            resampling_method,
+            vrt_path,
+            local_warped_tile_path,
         )
+    else:
+        os.remove(local_compressed_tile_path)
 
-        print(f"Uploading {tile_id} to {target_key}")
-        s3_client = get_s3_client()
-        s3_client.upload_file(local_compressed_tile_path, target_bucket, target_key)
+    compress_raster(local_warped_tile_path, local_compressed_tile_path)
 
-        # FIXME: Still need to create and upload gdal-geotiff
+    print(f"Uploading {tile_id} to {target_key}")
+    s3_client = get_s3_client()
+    s3_client.upload_file(local_compressed_tile_path, target_bucket, target_key)
+
+    # FIXME: Still need to create and upload gdal-geotiff
 
     return tile_id
 
@@ -265,7 +326,7 @@ def resample(
     base_dir = os.path.curdir
 
     source_dir = os.path.join(base_dir, "source_tiles")
-    os.makedirs(source_dir)
+    os.makedirs(source_dir, exist_ok=True)
 
     # First download all the source tiles
     dl_process_args = ((tile_info[0], source_dir) for tile_info in src_tiles_info)

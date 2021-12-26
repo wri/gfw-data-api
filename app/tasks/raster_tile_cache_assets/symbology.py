@@ -58,7 +58,7 @@ def generate_date_conf_calc_string() -> str:
 
     red = f"({day} / 255)"
     green = f"({day} % 255)"
-    blue = f"(A.data >= 20000) * (({confidence} + 1) * 100 + C.data)"
+    blue = f"(A.data >= 20000) * (({confidence} + 1) * 100 + B.data)"
 
     return f"np.ma.array([{red}, {green}, {blue}])"
 
@@ -69,14 +69,27 @@ def generate_8_bit_integrated_calc_string() -> str:
     """
     # <LONG EXPLANATION WITH EXAMPLE CODE>
 
-    day = "(A >= 20000) * (A.data % 10000)"
-    confidence = "(A.data // 30000)"  # 0 for low confidence, 1 for high
+    # for dateconf v1.5:
+    # day = "(A >= 20000) * (A.data % 10000)"
+    # confidence = "(A.data // 30000)"  # 0 for low confidence, 1 for high
+    #
+    # red = f"({day} / 255)"
+    # green = f"({day} % 255)"
+    # blue = f"(A.data >= 20000) * (({confidence} + 1) * 100 + C.data)"
+    #
+    # alpha = f"(B >= 4) * (B.data & 255)"
+    #
+    # return f"np.ma.array([{red}, {green}, {blue}, {alpha}], mask=False)"
+
+    # For dateconf v3
+    day = "((A.data > 0) * ((32767 - (A.data >> 1))))"
+    confidence = "(A.data & 1)"  # 0 for low confidence, 1 for high
 
     red = f"({day} / 255)"
     green = f"({day} % 255)"
     blue = f"(A.data >= 20000) * (({confidence} + 1) * 100 + C.data)"
 
-    alpha = f"(B >= 4) * (B.data & 255)"
+    alpha = "(B >= 4) * (B.data & 255)"
 
     return f"np.ma.array([{red}, {green}, {blue}, {alpha}], mask=False)"
 
@@ -280,7 +293,9 @@ async def date_conf_intensity_multi_8_symbology(
 
     # What we want is a value of 55 (max intensity for this scenario)
     # anywhere there is an alert in any system.
-    intensity_max_calc_string = f"np.ma.array((A.data > 0) * {MAX_8_BIT_INTENSITY}, mask=False)"
+    intensity_max_calc_string = (
+        f"np.ma.array((A.data > 0) * {MAX_8_BIT_INTENSITY}, mask=False)"
+    )
 
     intensity_co = source_asset_co.copy(
         deep=True,
