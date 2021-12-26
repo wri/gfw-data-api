@@ -278,8 +278,8 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
     compressed_dir = os.path.join(os.path.curdir, "compressed_dir")
     os.makedirs(compressed_dir, exist_ok=True)
 
-    local_compressed_tile_path = os.path.join(compressed_dir, f"{tile_id}.tif")
-    local_warped_tile_path = os.path.join(warp_dir, f"{tile_id}.tif")
+    local_compressed_tile_path = os.path.join(compressed_dir, tile_file_name)
+    local_warped_tile_path = os.path.join(warp_dir, tile_file_name)
 
     # If the compressed file exists, we know we at least started the gdal_translate
     # step, but don't know if we finished. So remove that file and re-run translate
@@ -302,6 +302,9 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
     print(f"Uploading {tile_id} to {target_key}")
     s3_client = get_s3_client()
     s3_client.upload_file(local_compressed_tile_path, target_bucket, target_key)
+
+    os.remove(local_compressed_tile_path)
+    os.remove(local_warped_tile_path)
 
     # FIXME: Still need to create and upload gdal-geotiff
 
