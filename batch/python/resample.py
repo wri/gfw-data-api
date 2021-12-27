@@ -202,8 +202,8 @@ def warp_raster(
         f"{height}",
         "-r",
         resampling_method,
-        "-wm",
-        "1024",
+        # "-wm",
+        # "128",
         "-overwrite",
         source_path,
         target_path,
@@ -229,9 +229,9 @@ def compress_raster(source_path, target_path):
         "TILED=YES",
         "-co",
         "INTERLEAVE=BAND",
-        "--config",
-        "GDAL_CACHEMAX",
-        "512",
+        # "--config",
+        # "GDAL_CACHEMAX",
+        # "128",
         source_path,
         target_path,
     ]
@@ -374,7 +374,7 @@ def resample(
     wm_extent = Polygon()
     for tile_info in src_tiles_info:
         # left, bottom, right, top = reproject_bounds(shape(tile_info[1]).bounds, source_crs, CRS.from_epsg(3857))
-        # FIXME: tile.geojson coords ALWAYS seem to be in EPSG:4326
+        # FIXME?: tile.geojson coords ALWAYS seem to be in EPSG:4326
         left, bottom, right, top = reproject_bounds(
             shape(tile_info[1]).bounds, CRS.from_epsg(4326), CRS.from_epsg(3857)
         )
