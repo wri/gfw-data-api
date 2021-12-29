@@ -66,7 +66,7 @@ async def raster_tile_cache_asset(
                 AssetType.raster_tile_set,
                 source_asset.creation_options,
             )
-        )
+        ).replace("/geotiff", "/gdal-geotiff")
     ]
 
     # The first thing we do for each zoom level is reproject the source asset

@@ -191,7 +191,7 @@ def warp_raster(
     warp_cmd: List[str] = [
         "gdalwarp",
         "-t_srs",
-        "epsg:3857",  # TODO: Parameterize
+        "epsg:3857",  # TODO: Parameterize?
         "-te",
         f"{bounds[0]}",
         f"{bounds[1]}",
@@ -202,8 +202,8 @@ def warp_raster(
         f"{height}",
         "-r",
         resampling_method,
-        # "-wm",
-        # "128",
+        "-co",
+        "TILED=YES",
         "-overwrite",
         source_path,
         target_path,
@@ -216,6 +216,8 @@ def warp_raster(
 
     if warp_process.returncode < 0:
         raise SubprocessKilledError
+    elif warp_process.returncode > 0:
+        print(warp_process.stderr)
 
     return toc - tic
 
@@ -229,9 +231,8 @@ def compress_raster(source_path, target_path):
         "TILED=YES",
         "-co",
         "INTERLEAVE=BAND",
-        # "--config",
-        # "GDAL_CACHEMAX",
-        # "128",
+        "-co",
+        "SPARSE_OK=TRUE",
         source_path,
         target_path,
     ]
@@ -241,6 +242,8 @@ def compress_raster(source_path, target_path):
 
     if translate_process.returncode < 0:
         raise SubprocessKilledError
+    elif translate_process.returncode > 0:
+        print(translate_process.stderr)
 
     print(f"Compressing {source_path} to {target_path} took {toc - tic:0.4f} seconds")
 
@@ -337,7 +340,7 @@ def resample(
     # Cannot use normal pool here since we run sub-processes
     # https://stackoverflow.com/a/61470465/1410317
     tile_paths: List[str] = list()
-    with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
+    with ProcessPoolExecutor(max_workers=45) as executor:
         for tile_path in executor.map(download_tiles, dl_process_args):
             tile_paths.append(tile_path)
             print(f"Finished downloading source tile to {tile_path}")
@@ -424,7 +427,7 @@ def resample(
 
     # Cannot use normal pool here since we run sub-processes
     # https://stackoverflow.com/a/61470465/1410317
-    with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
+    with ProcessPoolExecutor(max_workers=30) as executor:
         for tile_id in executor.map(process_tile, warp_process_args):
             print(f"Finished processing and uploading tile {tile_id}")
 
