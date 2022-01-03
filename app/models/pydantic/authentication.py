@@ -34,11 +34,11 @@ class APIKeyRequestIn(StrictBaseModel):
     email: EmailStr = Query(..., description="Email address of POC")
     domains: List[str] = Query(
         [],
-        description="List of domains which can be used this API key. If no domain is listed, the key will be set by default to the lowest rate limiting tier."
-        "When making request using the API key, make sure you add the correct `origin` header matching a whitelisted domain."
+        description="List of domains which can be used this API key. If no domain is listed, the key will be set by default to the lowest rate limiting tier. "
+        "When making request using the API key, make sure you add the correct `origin` header matching a whitelisted domain. "
         "You can use wildcards for subdomains such as *.yourdomain.com. "
-        "Our validation methord for wildcard will allow only subdomains. So make sure you also add yourdomain.com if you use root without any subdomains."
-        "www.yourdomain.com and yourdomain.com are two different domains in terms of security. Include www. if required.",
+        "Our validation methord for wildcard will allow only subdomains. So make sure you also add yourdomain.com if you use root without any subdomains. "
+        "www.yourdomain.com and yourdomain.com are two different domains in terms of security. Include www. if required. ",
         regex=r"^(\*\.)?([\w-]+\.)+[\w-]+$|(localhost)",
     )
     never_expires: bool = Query(
