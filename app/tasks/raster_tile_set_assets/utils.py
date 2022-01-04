@@ -162,7 +162,6 @@ async def create_resample_job(
     callback: Callback,
     parents: Optional[List[Job]] = None,
 ):
-    # Possibly not after https://github.com/wri/gfw-data-api/pull/153 ?
     assert isinstance(co.source_uri, List) and len(co.source_uri) == 1
     source_asset_uri = co.source_uri[0]
 
@@ -175,14 +174,22 @@ async def create_resample_job(
             "epsg:3857",
         )
     )
-    target_prefix = posixpath.dirname(split_s3_path(target_asset_uri)[1])
+    # We want to wind up with "dataset/version/raster/projection/zoom_level/implementation"
+    target_prefix = posixpath.dirname(
+        posixpath.dirname(split_s3_path(target_asset_uri)[1])
+    )
 
+    # The GDAL utilities use "near" whereas rasterio/pixetl use "nearest"
     resampling_method = (
         "near" if co.resampling == ResamplingMethod.nearest else co.resampling
     )
 
     command = [
         "resample.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
         "-s",
         source_asset_uri,
         "-r",

@@ -24,14 +24,14 @@ from typer import Option, run
 
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
-NUM_PROCESSES = int(
-    os.environ.get(
-        "NUM_PROCESSES", os.environ.get("CORES", multiprocessing.cpu_count())
-    )
+NUM_DL_PROCS = max(
+    int(int(os.environ.get("CORES", multiprocessing.cpu_count())) / 3), 1
+)
+NUM_TRANSFORM_PROCS = max(
+    int(int(os.environ.get("CORES", multiprocessing.cpu_count())) / 3.5), 1
 )
 GEOTIFF_COMPRESSION = "DEFLATE"
 GDAL_GEOTIFF_COMPRESSION = "DEFLATE"
-
 
 Bounds = Tuple[float, float, float, float]
 
@@ -44,7 +44,10 @@ def replace_inf_nan(number: float, replacement: float) -> float:
 
 
 def world_bounds(crs: CRS) -> Bounds:
-    """Get world bounds for given CRS."""
+    """Get world bounds for given CRS.
+
+    Taken from pixetl
+    """
 
     from_crs = CRS(4326)
 
@@ -65,9 +68,10 @@ def world_bounds(crs: CRS) -> Bounds:
 
 
 def reproject_bounds(bounds: Bounds, src_crs: CRS, crs: CRS) -> Bounds:
-    """Reproject src bounds to dst CRT.
+    """Reproject source bounds from source CRS to destination CRS.
 
     Make sure that coordinates fall within real world coordinates system
+    Taken from pixetl
     """
 
     left, bottom, right, top = bounds
@@ -90,7 +94,10 @@ def create_vrt(
     vrt_path: str = "all.vrt",
     separate=False,
 ) -> str:
-    """Create VRT file from input URI(s) Adapted from pixetl."""
+    """Create VRT file from input URI(s)
+
+    Adapted from pixetl.
+    """
     input_file_list_string = "\n".join(uris)
 
     with tempfile.TemporaryDirectory() as temp_dir_name:
@@ -131,7 +138,7 @@ def get_s3_path_parts(s3url) -> Tuple[str, str]:
 def from_vsi(file_name: str) -> str:
     """Convert /vsi path to s3 or gs path.
 
-    Stolen from pixetl
+    Taken from pixetl
     """
 
     protocols = {"vsis3": "s3", "vsigs": "gs"}
@@ -145,6 +152,8 @@ def from_vsi(file_name: str) -> str:
 
 
 def get_source_tiles_info(tiles_geojson_uri) -> List[Tuple[str, Any]]:
+    """Returns a list of tuples, each of which is the URL of a file referenced
+    in the target tiles.geojson along with its GeoJSON feature."""
     s3_client = get_s3_client()
     bucket, key = get_s3_path_parts(tiles_geojson_uri)
 
@@ -158,11 +167,13 @@ def get_source_tiles_info(tiles_geojson_uri) -> List[Tuple[str, Any]]:
 
 
 def download_tiles(args: Tuple[str, str]) -> str:
+    """Download the file at the first item of the tuple to the destination
+    directory specified by the second item."""
     source_tile_uri, dest_dir = args
 
     local_src_file_path = os.path.join(dest_dir, os.path.basename(source_tile_uri))
 
-    # TODO: Skip download when possible. Use checksum?
+    # TODO: Use checksum to detect partial downloads?
     if os.path.isfile(local_src_file_path):
         print(f"Local file {local_src_file_path} already exists, skipping download")
     else:
@@ -175,6 +186,7 @@ def download_tiles(args: Tuple[str, str]) -> str:
 
 
 def exists_in_s3(target_bucket, target_key):
+    """Returns whether or not target_key exists in the target bucket."""
     s3_client = get_s3_client()
     response = s3_client.list_objects_v2(
         Bucket=target_bucket,
@@ -218,11 +230,37 @@ def warp_raster(
         raise SubprocessKilledError
     elif warp_process.returncode > 0:
         print(warp_process.stderr)
+        raise Exception(f"Warping {source_path} failed")
 
     return toc - tic
 
 
 def compress_raster(source_path, target_path):
+    translate_cmd: List[str] = [
+        "gdal_translate",
+        "-co",
+        "COMPRESS=DEFLATE",
+        "-co",
+        "TILED=YES",
+        source_path,
+        target_path,
+    ]
+    tic = time.perf_counter()
+    translate_process = subprocess.run(translate_cmd, capture_output=True)
+    toc = time.perf_counter()
+
+    if translate_process.returncode < 0:
+        raise SubprocessKilledError
+    elif translate_process.returncode > 0:
+        print(translate_process.stderr)
+        raise Exception(f"Compressing {source_path} failed")
+
+    print(f"Compressing {source_path} to {target_path} took {toc - tic:0.4f} seconds")
+
+    return toc - tic
+
+
+def optimize_raster(source_path, target_path):
     translate_cmd: List[str] = [
         "gdal_translate",
         "-co",
@@ -244,8 +282,9 @@ def compress_raster(source_path, target_path):
         raise SubprocessKilledError
     elif translate_process.returncode > 0:
         print(translate_process.stderr)
+        raise Exception(f"Optimizing {source_path} failed")
 
-    print(f"Compressing {source_path} to {target_path} took {toc - tic:0.4f} seconds")
+    print(f"Optimizing {source_path} to {target_path} took {toc - tic:0.4f} seconds")
 
     return toc - tic
 
@@ -264,9 +303,14 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
     print(f"Beginning processing tile {tile_id}")
 
     tile_file_name = f"{tile_id}.tif"
-    target_key = os.path.join(target_prefix, tile_file_name)
+    target_geotiff_key = os.path.join(target_prefix, "geotiff", tile_file_name)
+    target_gdal_geotiff_key = os.path.join(
+        target_prefix, "gdal-geotiff", tile_file_name
+    )
 
-    if exists_in_s3(target_bucket, target_key):
+    if exists_in_s3(target_bucket, target_geotiff_key) and exists_in_s3(
+        target_bucket, target_gdal_geotiff_key
+    ):
         print(f"Tile {tile_id} already exists in S3, skipping")
         return tile_id
 
@@ -274,21 +318,28 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
     height = int(2 ** target_zoom * 256 / math.sqrt(nb_tiles))
     width = height
 
-    # Use two temp directories so we can drop the directory with the (gigantic)
-    # uncompressed warped file ASAP
     warp_dir = os.path.join(os.path.curdir, "warp_dir")
     os.makedirs(warp_dir, exist_ok=True)
+    local_warped_tile_path = os.path.join(warp_dir, tile_file_name)
+
     compressed_dir = os.path.join(os.path.curdir, "compressed_dir")
     os.makedirs(compressed_dir, exist_ok=True)
-
     local_compressed_tile_path = os.path.join(compressed_dir, tile_file_name)
-    local_warped_tile_path = os.path.join(warp_dir, tile_file_name)
+
+    optimized_dir = os.path.join(os.path.curdir, "optimized_dir")
+    os.makedirs(compressed_dir, exist_ok=True)
+    local_optimized_tile_path = os.path.join(optimized_dir, tile_file_name)
 
     # If the compressed file exists, we know we at least started the gdal_translate
     # step, but don't know if we finished. So remove that file and re-run translate
-    # from the warped file (which should exist). If it doesn't exist, run starting
-    # with the warp command (with the overwrite command regardless).
-    if not os.path.isfile(local_compressed_tile_path):
+    # from the warped file (which should exist). If the compressed file doesn't exist
+    # at all, run starting with the warp command (with the overwrite option
+    # regardless).
+    if os.path.isfile(local_compressed_tile_path):
+        os.remove(local_compressed_tile_path)
+        if os.path.isfile(local_optimized_tile_path):
+            os.remove(local_optimized_tile_path)
+    else:
         warp_raster(
             tile_bounds,
             width,
@@ -297,24 +348,28 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
             vrt_path,
             local_warped_tile_path,
         )
-    else:
-        os.remove(local_compressed_tile_path)
 
     compress_raster(local_warped_tile_path, local_compressed_tile_path)
+    optimize_raster(local_compressed_tile_path, local_optimized_tile_path)
 
-    print(f"Uploading {tile_id} to {target_key}")
+    print(f"Uploading {tile_id} to S3...")
     s3_client = get_s3_client()
-    s3_client.upload_file(local_compressed_tile_path, target_bucket, target_key)
+    s3_client.upload_file(local_compressed_tile_path, target_bucket, target_geotiff_key)
+    s3_client.upload_file(
+        local_optimized_tile_path, target_bucket, target_gdal_geotiff_key
+    )
+    print(f"Finished uploading {tile_id} to S3")
 
+    os.remove(local_optimized_tile_path)
     os.remove(local_compressed_tile_path)
     os.remove(local_warped_tile_path)
-
-    # FIXME: Still need to create and upload gdal-geotiff
 
     return tile_id
 
 
 def resample(
+    dataset: str = Option(..., help="Dataset name."),
+    version: str = Option(..., help="Version string."),
     source_uri: str = Option(..., help="URI of asset's tiles.geojson."),
     resampling_method: str = Option(..., help="Resampling method to use."),
     target_zoom: int = Option(..., help="Target zoom level."),
@@ -328,7 +383,6 @@ def resample(
         print("No input files! I guess we're good then.")
         return
 
-    # I don't think there's any real benefit to using a temp directory here
     base_dir = os.path.curdir
 
     source_dir = os.path.join(base_dir, "source_tiles")
@@ -340,7 +394,7 @@ def resample(
     # Cannot use normal pool here since we run sub-processes
     # https://stackoverflow.com/a/61470465/1410317
     tile_paths: List[str] = list()
-    with ProcessPoolExecutor(max_workers=45) as executor:
+    with ProcessPoolExecutor(max_workers=NUM_DL_PROCS) as executor:
         for tile_path in executor.map(download_tiles, dl_process_args):
             tile_paths.append(tile_path)
             print(f"Finished downloading source tile to {tile_path}")
@@ -412,7 +466,7 @@ def resample(
 
     bucket, _ = get_s3_path_parts(source_uri)
 
-    warp_process_args = [
+    process_tile_args = [
         (
             tile_id,
             tile_bounds,
@@ -427,18 +481,14 @@ def resample(
 
     # Cannot use normal pool here since we run sub-processes
     # https://stackoverflow.com/a/61470465/1410317
-    with ProcessPoolExecutor(max_workers=30) as executor:
-        for tile_id in executor.map(process_tile, warp_process_args):
+    with ProcessPoolExecutor(max_workers=NUM_TRANSFORM_PROCS) as executor:
+        for tile_id in executor.map(process_tile, process_tile_args):
             print(f"Finished processing and uploading tile {tile_id}")
 
     # Now run pixetl_prep.create_geojsons to generate a tiles.geojson and
-    # extent.geojson in the target prefix. But that code appends /geotiff
-    # to the prefix so remove it first
-    # FIXME
-    dataset, version, _ = target_prefix.split("/", maxsplit=2)
-    create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1].replace(
-        "/geotiff", ""
-    )
+    # extent.geojson in the target prefix.
+    # FIXME: Just does /geotiff. Do the same for the /gdal-geotiff folder too
+    create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1]
     print(f"Uploading tiles.geojson to {create_geojsons_prefix}")
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
 

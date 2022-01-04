@@ -113,21 +113,21 @@ async def create_wm_tile_set_job(
 
     logger.debug(f"Created asset for {asset_uri}")
 
-    if not use_resampler:
-        job = await create_pixetl_job(
-            dataset,
-            version,
-            creation_options,
-            job_name,
-            callback_constructor(wm_asset_record.asset_id),
-            parents=parents,
-        )
-    else:
+    if use_resampler:
         job = await create_resample_job(
             dataset,
             version,
             creation_options,
             int(creation_options.grid.strip("zoom_")),
+            job_name,
+            callback_constructor(wm_asset_record.asset_id),
+            parents=parents,
+        )
+    else:
+        job = await create_pixetl_job(
+            dataset,
+            version,
+            creation_options,
             job_name,
             callback_constructor(wm_asset_record.asset_id),
             parents=parents,
