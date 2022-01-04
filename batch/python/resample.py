@@ -318,27 +318,27 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
     height = int(2 ** target_zoom * 256 / math.sqrt(nb_tiles))
     width = height
 
-    warp_dir = os.path.join(os.path.curdir, "warp_dir")
+    warp_dir = os.path.join(os.path.curdir, "warped")
     os.makedirs(warp_dir, exist_ok=True)
-    local_warped_tile_path = os.path.join(warp_dir, tile_file_name)
+    warped_tile_path = os.path.join(warp_dir, tile_file_name)
 
-    compressed_dir = os.path.join(os.path.curdir, "compressed_dir")
+    compressed_dir = os.path.join(os.path.curdir, "compressed")
     os.makedirs(compressed_dir, exist_ok=True)
-    local_compressed_tile_path = os.path.join(compressed_dir, tile_file_name)
+    compressed_tile_path = os.path.join(compressed_dir, tile_file_name)
 
-    optimized_dir = os.path.join(os.path.curdir, "optimized_dir")
-    os.makedirs(compressed_dir, exist_ok=True)
-    local_optimized_tile_path = os.path.join(optimized_dir, tile_file_name)
+    optimized_dir = os.path.join(os.path.curdir, "optimized")
+    os.makedirs(optimized_dir, exist_ok=True)
+    optimized_tile_path = os.path.join(optimized_dir, tile_file_name)
 
     # If the compressed file exists, we know we at least started the gdal_translate
     # step, but don't know if we finished. So remove that file and re-run translate
     # from the warped file (which should exist). If the compressed file doesn't exist
     # at all, run starting with the warp command (with the overwrite option
     # regardless).
-    if os.path.isfile(local_compressed_tile_path):
-        os.remove(local_compressed_tile_path)
-        if os.path.isfile(local_optimized_tile_path):
-            os.remove(local_optimized_tile_path)
+    if os.path.isfile(compressed_tile_path):
+        os.remove(compressed_tile_path)
+        if os.path.isfile(optimized_tile_path):
+            os.remove(optimized_tile_path)
     else:
         warp_raster(
             tile_bounds,
@@ -346,23 +346,21 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
             height,
             resampling_method,
             vrt_path,
-            local_warped_tile_path,
+            warped_tile_path,
         )
 
-    compress_raster(local_warped_tile_path, local_compressed_tile_path)
-    optimize_raster(local_compressed_tile_path, local_optimized_tile_path)
+    compress_raster(warped_tile_path, compressed_tile_path)
+    optimize_raster(compressed_tile_path, optimized_tile_path)
 
     print(f"Uploading {tile_id} to S3...")
     s3_client = get_s3_client()
-    s3_client.upload_file(local_compressed_tile_path, target_bucket, target_geotiff_key)
-    s3_client.upload_file(
-        local_optimized_tile_path, target_bucket, target_gdal_geotiff_key
-    )
+    s3_client.upload_file(compressed_tile_path, target_bucket, target_geotiff_key)
+    s3_client.upload_file(optimized_tile_path, target_bucket, target_gdal_geotiff_key)
     print(f"Finished uploading {tile_id} to S3")
 
-    os.remove(local_optimized_tile_path)
-    os.remove(local_compressed_tile_path)
-    os.remove(local_warped_tile_path)
+    os.remove(optimized_tile_path)
+    os.remove(compressed_tile_path)
+    os.remove(warped_tile_path)
 
     return tile_id
 
