@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import json
+import logging
 import math
 import multiprocessing
 import os
@@ -10,7 +11,9 @@ import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
-from typing import Any, Dict, List, Optional, Tuple
+from logging.handlers import QueueHandler
+from multiprocessing import Queue
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import boto3
 import rasterio
@@ -31,7 +34,6 @@ NUM_TRANSFORM_PROCS = max(
     int(int(os.environ.get("CORES", multiprocessing.cpu_count())) / 3.5), 1
 )
 GEOTIFF_COMPRESSION = "DEFLATE"
-GDAL_GEOTIFF_COMPRESSION = "DEFLATE"
 
 Bounds = Tuple[float, float, float, float]
 
@@ -44,7 +46,7 @@ def replace_inf_nan(number: float, replacement: float) -> float:
 
 
 def world_bounds(crs: CRS) -> Bounds:
-    """Get world bounds for given CRS.
+    """Get the world bounds for a given CRS.
 
     Taken from pixetl
     """
@@ -94,7 +96,7 @@ def create_vrt(
     vrt_path: str = "all.vrt",
     separate=False,
 ) -> str:
-    """Create VRT file from input URI(s)
+    """Create a VRT file from input URI(s)
 
     Adapted from pixetl.
     """
@@ -120,6 +122,9 @@ def create_vrt(
         vrt_process = subprocess.run(cmd, capture_output=True)
         if vrt_process.returncode < 0:
             raise SubprocessKilledError
+        if vrt_process.returncode > 0:
+            # TODO: Log output
+            raise Exception("Error creating VRT!")
 
     return vrt_path
 
@@ -166,20 +171,63 @@ def get_source_tiles_info(tiles_geojson_uri) -> List[Tuple[str, Any]]:
     return tiles_info
 
 
-def download_tiles(args: Tuple[str, str]) -> str:
+def listener_configurer():
+    root = logging.getLogger()
+    h = logging.StreamHandler(stream=sys.stdout)
+    # f = logging.Formatter('%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s')
+    # h.setFormatter(f)
+    root.addHandler(h)
+
+
+def log_listener(queue, configurer):
+    configurer()
+    while True:
+        try:
+            record = queue.get()
+            if (
+                record is None
+            ):  # We send this as a sentinel to tell the listener to quit.
+                break
+            logger = logging.getLogger(record.name)
+            logger.handle(record)  # No level or filter logic applied - just do it!
+        except Exception:
+            import traceback
+
+            print("Encountered a problem in the log listener!", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+            raise
+
+
+def log_client_configurer(queue):
+    h = QueueHandler(queue)
+    root = logging.getLogger()
+    root.addHandler(h)
+    root.setLevel(logging.INFO)
+
+
+def download_tile(args: Tuple[str, str, Queue, Callable]) -> str:
     """Download the file at the first item of the tuple to the destination
     directory specified by the second item."""
-    source_tile_uri, dest_dir = args
+    source_tile_uri, dest_dir, q, q_configurer = args
+
+    q_configurer(q)
+    logger = logging.getLogger("download_tiles")
+    logger.log(logging.INFO, "In download_tiles!")
 
     local_src_file_path = os.path.join(dest_dir, os.path.basename(source_tile_uri))
 
     # TODO: Use checksum to detect partial downloads?
     if os.path.isfile(local_src_file_path):
-        print(f"Local file {local_src_file_path} already exists, skipping download")
+        logger.log(
+            logging.INFO,
+            f"Local file {local_src_file_path} already exists, skipping download",
+        )
     else:
         bucket, source_key = get_s3_path_parts(source_tile_uri)
         s3_client = get_s3_client()
-        print(f"Downloading {source_tile_uri} to {local_src_file_path}")
+        logger.log(
+            logging.INFO, f"Downloading {source_tile_uri} to {local_src_file_path}"
+        )
         s3_client.download_file(bucket, source_key, local_src_file_path)
 
     return local_src_file_path
@@ -198,7 +246,7 @@ def exists_in_s3(target_bucket, target_key):
 
 
 def warp_raster(
-    bounds: Bounds, width, height, resampling_method, source_path, target_path
+    bounds: Bounds, width, height, resampling_method, source_path, target_path, logger
 ):
     warp_cmd: List[str] = [
         "gdalwarp",
@@ -224,22 +272,25 @@ def warp_raster(
     warp_process = subprocess.run(warp_cmd, capture_output=True)
     toc = time.perf_counter()
 
-    print(f"Warping {source_path} to {target_path} took {toc - tic:0.4f} seconds")
+    logger.log(
+        logging.INFO,
+        f"Warping {source_path} to {target_path} took {toc - tic:0.4f} seconds",
+    )
 
     if warp_process.returncode < 0:
         raise SubprocessKilledError
     elif warp_process.returncode > 0:
-        print(warp_process.stderr)
+        logger.error(warp_process.stderr)
         raise Exception(f"Warping {source_path} failed")
 
     return toc - tic
 
 
-def compress_raster(source_path, target_path):
+def compress_raster(source_path, target_path, logger):
     translate_cmd: List[str] = [
         "gdal_translate",
         "-co",
-        "COMPRESS=DEFLATE",
+        f"COMPRESS={GEOTIFF_COMPRESSION}",
         "-co",
         "TILED=YES",
         source_path,
@@ -252,44 +303,20 @@ def compress_raster(source_path, target_path):
     if translate_process.returncode < 0:
         raise SubprocessKilledError
     elif translate_process.returncode > 0:
-        print(translate_process.stderr)
+        logger.error(translate_process.stderr)
         raise Exception(f"Compressing {source_path} failed")
 
-    print(f"Compressing {source_path} to {target_path} took {toc - tic:0.4f} seconds")
+    logger.log(
+        logging.INFO,
+        f"Compressing {source_path} to {target_path} took {toc - tic:0.4f} seconds",
+    )
 
     return toc - tic
 
 
-def optimize_raster(source_path, target_path):
-    translate_cmd: List[str] = [
-        "gdal_translate",
-        "-co",
-        "COMPRESS=DEFLATE",
-        "-co",
-        "TILED=YES",
-        "-co",
-        "INTERLEAVE=BAND",
-        "-co",
-        "SPARSE_OK=TRUE",
-        source_path,
-        target_path,
-    ]
-    tic = time.perf_counter()
-    translate_process = subprocess.run(translate_cmd, capture_output=True)
-    toc = time.perf_counter()
-
-    if translate_process.returncode < 0:
-        raise SubprocessKilledError
-    elif translate_process.returncode > 0:
-        print(translate_process.stderr)
-        raise Exception(f"Optimizing {source_path} failed")
-
-    print(f"Optimizing {source_path} to {target_path} took {toc - tic:0.4f} seconds")
-
-    return toc - tic
-
-
-def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
+def process_tile(
+    args: Tuple[str, Bounds, str, int, str, str, str, Queue, Callable]
+) -> str:
     (
         tile_id,
         tile_bounds,
@@ -298,9 +325,13 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
         vrt_path,
         target_bucket,
         target_prefix,
+        q,
+        q_configurer,
     ) = args
 
-    print(f"Beginning processing tile {tile_id}")
+    q_configurer(q)
+    logger = logging.getLogger("process_tile")
+    logger.log(logging.INFO, f"Beginning processing tile {tile_id}")
 
     tile_file_name = f"{tile_id}.tif"
     target_geotiff_key = os.path.join(target_prefix, "geotiff", tile_file_name)
@@ -311,7 +342,7 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
     if exists_in_s3(target_bucket, target_geotiff_key) and exists_in_s3(
         target_bucket, target_gdal_geotiff_key
     ):
-        print(f"Tile {tile_id} already exists in S3, skipping")
+        logger.log(logging.INFO, f"Tile {tile_id} already exists in S3, skipping")
         return tile_id
 
     nb_tiles = max(1, int(2 ** target_zoom / 256)) ** 2
@@ -326,10 +357,6 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
     os.makedirs(compressed_dir, exist_ok=True)
     compressed_tile_path = os.path.join(compressed_dir, tile_file_name)
 
-    optimized_dir = os.path.join(os.path.curdir, "optimized")
-    os.makedirs(optimized_dir, exist_ok=True)
-    optimized_tile_path = os.path.join(optimized_dir, tile_file_name)
-
     # If the compressed file exists, we know we at least started the gdal_translate
     # step, but don't know if we finished. So remove that file and re-run translate
     # from the warped file (which should exist). If the compressed file doesn't exist
@@ -337,8 +364,6 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
     # regardless).
     if os.path.isfile(compressed_tile_path):
         os.remove(compressed_tile_path)
-        if os.path.isfile(optimized_tile_path):
-            os.remove(optimized_tile_path)
     else:
         warp_raster(
             tile_bounds,
@@ -347,18 +372,16 @@ def process_tile(args: Tuple[str, Bounds, str, int, str, str, str]) -> str:
             resampling_method,
             vrt_path,
             warped_tile_path,
+            logger,
         )
 
-    compress_raster(warped_tile_path, compressed_tile_path)
-    optimize_raster(compressed_tile_path, optimized_tile_path)
+    compress_raster(warped_tile_path, compressed_tile_path, logger)
 
-    print(f"Uploading {tile_id} to S3...")
+    logger.log(logging.INFO, f"Uploading {tile_id} to S3...")
     s3_client = get_s3_client()
     s3_client.upload_file(compressed_tile_path, target_bucket, target_geotiff_key)
-    s3_client.upload_file(optimized_tile_path, target_bucket, target_gdal_geotiff_key)
-    print(f"Finished uploading {tile_id} to S3")
+    logger.log(logging.INFO, f"Finished uploading {tile_id} to S3")
 
-    os.remove(optimized_tile_path)
     os.remove(compressed_tile_path)
     os.remove(warped_tile_path)
 
@@ -373,12 +396,22 @@ def resample(
     target_zoom: int = Option(..., help="Target zoom level."),
     target_prefix: str = Option(..., help="Destination S3 prefix."),
 ):
-    print(f"Reprojecting/resampling tiles in {source_uri}")
+
+    log_queue = multiprocessing.Manager().Queue()
+    listener = multiprocessing.Process(
+        target=log_listener, args=(log_queue, listener_configurer)
+    )
+    listener.start()
+
+    log_client_configurer(log_queue)
+    logger = logging.getLogger("main")
+
+    logger.log(logging.INFO, f"Reprojecting/resampling tiles in {source_uri}")
 
     src_tiles_info = get_source_tiles_info(source_uri)
 
     if not src_tiles_info:
-        print("No input files! I guess we're good then.")
+        logger.log(logging.INFO, "No input files! I guess we're good then.")
         return
 
     base_dir = os.path.curdir
@@ -393,9 +426,9 @@ def resample(
     # https://stackoverflow.com/a/61470465/1410317
     tile_paths: List[str] = list()
     with ProcessPoolExecutor(max_workers=NUM_DL_PROCS) as executor:
-        for tile_path in executor.map(download_tiles, dl_process_args):
+        for tile_path in executor.map(download_tile, dl_process_args):
             tile_paths.append(tile_path)
-            print(f"Finished downloading source tile to {tile_path}")
+            logger.log(logging.INFO, f"Finished downloading source tile to {tile_path}")
 
     # First create a VRT for each of the input bands, then one overall VRT from these
     # constituent VRTs
@@ -415,7 +448,7 @@ def resample(
     overall_vrt: str = create_vrt(
         input_vrts, None, os.path.join(source_dir, "everything.vrt"), separate=True
     )
-    print("VRTs created")
+    logger.log(logging.INFO, "VRTs created")
 
     # Determine which tiles in the target SRS + zoom level intersect with the source
     # bands
@@ -457,10 +490,10 @@ def resample(
         )
 
         if tile_geom.intersects(wm_extent) and not tile_geom.touches(wm_extent):
-            print(f"Tile {tile_id} intersects!")
+            logger.log(logging.INFO, f"Tile {tile_id} intersects!")
             target_tiles.append((tile_id, (left, bottom, right, top)))
 
-    print(f"Found {len(target_tiles)} intersecting tiles: {target_tiles}")
+    logger.log(logging.INFO, f"Found {len(target_tiles)} intersecting tiles")
 
     bucket, _ = get_s3_path_parts(source_uri)
 
@@ -481,13 +514,13 @@ def resample(
     # https://stackoverflow.com/a/61470465/1410317
     with ProcessPoolExecutor(max_workers=NUM_TRANSFORM_PROCS) as executor:
         for tile_id in executor.map(process_tile, process_tile_args):
-            print(f"Finished processing and uploading tile {tile_id}")
+            logger.log(logging.INFO, f"Finished processing tile {tile_id}")
 
     # Now run pixetl_prep.create_geojsons to generate a tiles.geojson and
     # extent.geojson in the target prefix.
     # FIXME: Just does /geotiff. Do the same for the /gdal-geotiff folder too
     create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1]
-    print(f"Uploading tiles.geojson to {create_geojsons_prefix}")
+    logger.log(logging.INFO, f"Uploading tiles.geojson to {create_geojsons_prefix}")
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
 
 
