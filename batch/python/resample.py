@@ -212,7 +212,6 @@ def download_tile(args: Tuple[str, str, Queue, Callable]) -> str:
 
     q_configurer(q)
     logger = logging.getLogger("download_tiles")
-    logger.log(logging.INFO, "In download_tiles!")
 
     local_src_file_path = os.path.join(dest_dir, os.path.basename(source_tile_uri))
 
@@ -280,7 +279,7 @@ def warp_raster(
     if warp_process.returncode < 0:
         raise SubprocessKilledError
     elif warp_process.returncode > 0:
-        logger.error(warp_process.stderr)
+        logger.log(logging.ERROR, warp_process.stderr)
         raise Exception(f"Warping {source_path} failed")
 
     return toc - tic
@@ -303,7 +302,7 @@ def compress_raster(source_path, target_path, logger):
     if translate_process.returncode < 0:
         raise SubprocessKilledError
     elif translate_process.returncode > 0:
-        logger.error(translate_process.stderr)
+        logger.log(logging.ERROR, translate_process.stderr)
         raise Exception(f"Compressing {source_path} failed")
 
     logger.log(
@@ -420,7 +419,10 @@ def resample(
     os.makedirs(source_dir, exist_ok=True)
 
     # First download all the source tiles
-    dl_process_args = ((tile_info[0], source_dir) for tile_info in src_tiles_info)
+    dl_process_args = (
+        (tile_info[0], source_dir, log_queue, log_client_configurer)
+        for tile_info in src_tiles_info
+    )
 
     # Cannot use normal pool here since we run sub-processes
     # https://stackoverflow.com/a/61470465/1410317
@@ -506,6 +508,8 @@ def resample(
             overall_vrt,
             bucket,
             target_prefix,
+            log_queue,
+            log_client_configurer,
         )
         for tile_id, tile_bounds in target_tiles
     ]
@@ -522,6 +526,9 @@ def resample(
     create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1]
     logger.log(logging.INFO, f"Uploading tiles.geojson to {create_geojsons_prefix}")
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
+
+    log_queue.put_nowait(None)
+    listener.join()
 
 
 if __name__ == "__main__":
