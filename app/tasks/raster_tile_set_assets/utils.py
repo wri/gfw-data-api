@@ -46,7 +46,7 @@ async def create_pixetl_job(
     callback: Callback,
     parents: Optional[List[Job]] = None,
 ) -> Job:
-    """Schedule a PixETL Batch Job."""
+    """Create a Batch job to process a raster tile set using pixetl."""
     co_copy = co.dict(exclude_none=True, by_alias=True)
     overwrite = co_copy.pop("overwrite", False)
     subset = co_copy.pop("subset", None)
@@ -106,6 +106,8 @@ async def create_gdaldem_job(
     callback: Callback,
     parents: Optional[List[Job]] = None,
 ):
+    """Create a Batch job that applies a colormap to a raster tile set using
+    gdaldem."""
     symbology = json.dumps(jsonable_encoder(co.symbology))
     no_data = json.dumps(co.no_data)
 
@@ -162,8 +164,19 @@ async def create_resample_job(
     callback: Callback,
     parents: Optional[List[Job]] = None,
 ):
+    """Create a Batch job to process rasters using the GDAL CLI utilities
+    rather than pixetl.
+
+    Suitable only for resampling from (EPSG:4326 or EPSG:3857) to
+    EPSG:3857 with no calc string.
+    """
     assert isinstance(co.source_uri, List) and len(co.source_uri) == 1
     source_asset_uri = co.source_uri[0]
+
+    if co.calc is not None:
+        raise ValueError(
+            "Attempting to run the resample script with a calc string specified!"
+        )
 
     target_asset_uri = tile_uri_to_tiles_geojson(
         get_asset_uri(

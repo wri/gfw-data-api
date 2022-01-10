@@ -141,7 +141,7 @@ def get_s3_path_parts(s3url) -> Tuple[str, str]:
 
 
 def from_vsi(file_name: str) -> str:
-    """Convert /vsi path to s3 or gs path.
+    """Convert /vsi path to s3:// or gs:// path.
 
     Taken from pixetl
     """
@@ -233,7 +233,7 @@ def download_tile(args: Tuple[str, str, Queue, Callable]) -> str:
 
 
 def exists_in_s3(target_bucket, target_key):
-    """Returns whether or not target_key exists in the target bucket."""
+    """Returns whether or not target_key exists in target_bucket."""
     s3_client = get_s3_client()
     response = s3_client.list_objects_v2(
         Bucket=target_bucket,
@@ -286,6 +286,7 @@ def warp_raster(
 
 
 def compress_raster(source_path, target_path, logger):
+    """Compress a tile."""
     translate_cmd: List[str] = [
         "gdal_translate",
         "-co",
@@ -316,6 +317,7 @@ def compress_raster(source_path, target_path, logger):
 def process_tile(
     args: Tuple[str, Bounds, str, int, str, str, str, Queue, Callable]
 ) -> str:
+    """Extract a tile from a source VRT, compress and upload it."""
     (
         tile_id,
         tile_bounds,
@@ -395,7 +397,8 @@ def resample(
     target_zoom: int = Option(..., help="Target zoom level."),
     target_prefix: str = Option(..., help="Destination S3 prefix."),
 ):
-
+    """Resample the source tile set to target zoom level with specified
+    resample method."""
     log_queue = multiprocessing.Manager().Queue()
     listener = multiprocessing.Process(
         target=log_listener, args=(log_queue, listener_configurer)

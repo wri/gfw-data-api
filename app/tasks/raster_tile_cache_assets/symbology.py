@@ -69,18 +69,6 @@ def generate_8_bit_integrated_calc_string() -> str:
     """
     # <LONG EXPLANATION WITH EXAMPLE CODE>
 
-    # for dateconf v1.5:
-    # day = "(A >= 20000) * (A.data % 10000)"
-    # confidence = "(A.data // 30000)"  # 0 for low confidence, 1 for high
-    #
-    # red = f"({day} / 255)"
-    # green = f"({day} % 255)"
-    # blue = f"(A.data >= 20000) * (({confidence} + 1) * 100 + C.data)"
-    #
-    # alpha = f"(B >= 4) * (B.data & 255)"
-    #
-    # return f"np.ma.array([{red}, {green}, {blue}, {alpha}], mask=False)"
-
     # For dateconf v3
     day = "((A.data > 0) * ((32767 - (A.data >> 1))))"
     confidence = "(A.data & 1)"  # 0 for low confidence, 1 for high
@@ -302,7 +290,7 @@ async def date_conf_intensity_multi_8_symbology(
         update={
             "calc": None,
             "band_count": 1,
-            "data_type": DataType.uint16,
+            "data_type": DataType.uint8,
         },
     )
 
@@ -517,14 +505,11 @@ async def _create_intensity_asset(
             "resampling": resampling,
         },
     )
-    source_job = jobs_dict[zoom_level]["source_reprojection_job"]
 
     if zoom_level == max_zoom:
-        previous_level_intensity_reprojection_job = [source_job]
+        parent_jobs: Optional[List[Job]] = None
     else:
-        previous_level_intensity_reprojection_job = [
-            jobs_dict[zoom_level + 1]["intensity_reprojection_job"]
-        ]
+        parent_jobs = [jobs_dict[zoom_level + 1]["intensity_reprojection_job"]]
 
     intensity_job, intensity_uri = await reproject_to_web_mercator(
         dataset,
@@ -532,7 +517,7 @@ async def _create_intensity_asset(
         intensity_source_co,
         zoom_level,
         max_zoom,
-        previous_level_intensity_reprojection_job,
+        parent_jobs,
         max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
         max_zoom_calc=max_zoom_calc,
     )
