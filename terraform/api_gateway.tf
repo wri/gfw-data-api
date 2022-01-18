@@ -42,7 +42,7 @@ module "query" {
   require_api_key = true
   http_method = "ANY"
   path_part = "{proxy+}"
-  authorization = "NONE"
+  authorization = "CUSTOM"
 
   integration_parameters = {
     "integration.request.path.version" = "method.request.path.version"
