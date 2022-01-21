@@ -668,12 +668,11 @@ async def _get_data_environment(
     layers: List[Layer] = []
     for row in latest_tile_sets:
         # TODO remove GLAD exception after migration
-        if default_layer == "umd_glad_landsat_alerts__date":
-            if (
-                row.dataset != "umd_glad_landsat_alerts"
-                and row.creation_options["grid"] != Grid.ten_by_forty_thousand
-            ):
-                continue
+        if (
+            row.dataset == "umd_glad_landsat_alerts"
+            and row.creation_options["grid"] != Grid.ten_by_forty_thousand
+        ):
+            continue
         elif row.creation_options["grid"] != grid:
             # skip if not on the right grid
             continue
