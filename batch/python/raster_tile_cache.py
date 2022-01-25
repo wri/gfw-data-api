@@ -10,31 +10,19 @@ from concurrent.futures.process import BrokenProcessPool
 from tempfile import TemporaryDirectory
 from typing import Dict, List, Optional, Tuple
 
-import boto3
 from errors import GDALError, SubprocessKilledError
 from logger import get_logger
 from tileputty.upload_tiles import upload_tiles
 from typer import Argument, Option, run
 
-AWS_REGION = os.environ.get("AWS_REGION")
-AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
+from batch.python.aws_utils import get_s3_client, get_s3_path_parts
+
 NUM_PROCESSES = int(
     os.environ.get(
         "NUM_PROCESSES", os.environ.get("CORES", multiprocessing.cpu_count())
     )
 )
 LOGGER = get_logger(__name__)
-
-
-def get_s3_client(aws_region=AWS_REGION, endpoint_url=AWS_ENDPOINT_URL):
-    return boto3.client("s3", region_name=aws_region, endpoint_url=endpoint_url)
-
-
-def get_s3_path_parts(s3url):
-    just_path = s3url.split("s3://")[1]
-    bucket = just_path.split("/")[0]
-    key = "/".join(just_path.split("/")[1:])
-    return bucket, key
 
 
 def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str, str]:

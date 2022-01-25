@@ -15,8 +15,8 @@ from logging.handlers import QueueHandler
 from multiprocessing import Queue
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-import boto3
 import rasterio
+from aws_utils import exists_in_s3, get_s3_client, get_s3_path_parts
 from errors import SubprocessKilledError
 from gfw_pixetl.grids import grid_factory
 from gfw_pixetl.pixetl_prep import create_geojsons
@@ -25,8 +25,8 @@ from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from typer import Option, run
 
-AWS_REGION = os.environ.get("AWS_REGION")
-AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
+from batch.python.gdal_utils import from_vsi_path
+
 NUM_DL_PROCS = max(
     int(int(os.environ.get("CORES", multiprocessing.cpu_count())) / 1.5), 1
 )
@@ -130,34 +130,6 @@ def create_vrt(
     return vrt_path
 
 
-def get_s3_client(aws_region=AWS_REGION, endpoint_url=AWS_ENDPOINT_URL):
-    return boto3.client("s3", region_name=aws_region, endpoint_url=endpoint_url)
-
-
-def get_s3_path_parts(s3url) -> Tuple[str, str]:
-    """Splits an S3 URL into bucket and key."""
-    just_path = s3url.split("s3://")[1]
-    bucket = just_path.split("/")[0]
-    key = "/".join(just_path.split("/")[1:])
-    return bucket, key
-
-
-def from_vsi(file_name: str) -> str:
-    """Convert /vsi path to s3:// or gs:// path.
-
-    Taken from pixetl
-    """
-
-    protocols = {"vsis3": "s3", "vsigs": "gs"}
-
-    parts = file_name.split("/")
-    try:
-        vsi = f"{protocols[parts[1]]}://{'/'.join(parts[2:])}"
-    except KeyError:
-        raise ValueError(f"Unknown protocol: {parts[1]}")
-    return vsi
-
-
 def get_source_tiles_info(tiles_geojson_uri) -> List[Tuple[str, Any]]:
     """Returns a list of tuples, each of which is the URL of a file referenced
     in the target tiles.geojson along with its GeoJSON feature."""
@@ -167,7 +139,7 @@ def get_source_tiles_info(tiles_geojson_uri) -> List[Tuple[str, Any]]:
     response = s3_client.get_object(Bucket=bucket, Key=key)
     tiles_geojson: Dict[str, Any] = json.loads(response["Body"].read().decode("utf-8"))
     tiles_info: List[Tuple[str, Any]] = [
-        (from_vsi(feature["properties"]["name"]), feature["geometry"])
+        (from_vsi_path(feature["properties"]["name"]), feature["geometry"])
         for feature in tiles_geojson["features"]
     ]
     return tiles_info
@@ -234,18 +206,6 @@ def download_tile(args: Tuple[str, str, Queue, Callable]) -> str:
         s3_client.download_file(bucket, source_key, local_src_file_path)
 
     return local_src_file_path
-
-
-def exists_in_s3(target_bucket, target_key):
-    """Returns whether or not target_key exists in target_bucket."""
-    s3_client = get_s3_client()
-    response = s3_client.list_objects_v2(
-        Bucket=target_bucket,
-        Prefix=target_key,
-    )
-    for obj in response.get("Contents", []):
-        if obj["Key"] == target_key:
-            return obj["Size"] > 0
 
 
 def warp_raster(
