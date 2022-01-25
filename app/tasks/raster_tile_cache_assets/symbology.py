@@ -51,7 +51,7 @@ class SymbologyInfo(NamedTuple):
     function: SymbologyFuncType
 
 
-def generate_date_conf_calc_string() -> str:
+def date_conf_merge_calc() -> str:
     """Create the calc string for classic GLAD/RADD alerts."""
     day = "(A >= 20000) * (A.data % 10000)"
     confidence = "(A.data // 30000)"  # 0 for low confidence, 1 for high
@@ -63,21 +63,30 @@ def generate_date_conf_calc_string() -> str:
     return f"np.ma.array([{red}, {green}, {blue}])"
 
 
-def generate_8_bit_integrated_calc_string() -> str:
+def integrated_alert_merge_calc() -> str:
     """Create the calc string needed to encode/merge the 8-bit integrated alerts
     :return:
     """
     # <LONG EXPLANATION WITH EXAMPLE CODE>
 
-    # For dateconf v3
-    day = "((A.data > 0) * ((32767 - (A.data >> 1))))"
-    confidence = "(A.data & 1)"  # 0 for low confidence, 1 for high
+    # For dateconf v1.5
+    day = "(A.data % 10000)"
+    confidence = "(A.data // 30000)"  # 0 for low confidence, 1 for high
 
     red = f"({day} / 255)"
     green = f"({day} % 255)"
-    blue = f"(A.data >= 20000) * (({confidence} + 1) * 100 + C.data)"
+    blue = f"(A.data >= 20000) * (({confidence} + 1) * 100 + B.data)"
 
-    alpha = "(B >= 4) * (B.data & 255)"
+    # The front end is also expecting the confidences of all the alerts in the
+    # original alert systems, packed into a uint16 as the Alpha channel.
+    # Fake the combined confidences because the front end doesn't need to know
+    # which alert systems are what confidence. It REALLY wants to know if the
+    # combined  alert is low, high, or highest confidence. In the future
+    # suggest a new way for the front end to obtain this info that's more
+    # elegant (such as by more efficiently packing into Blue channel)
+    alpha = (
+        "(1 * (A.data >= 20000) + 1 * (A.data >= 30000) + 1 * (A.data >= 40000)) << 2"
+    )
 
     return f"np.ma.array([{red}, {green}, {blue}, {alpha}], mask=False)"
 
@@ -234,7 +243,7 @@ async def date_conf_intensity_symbology(
         "epsg:3857",
     )
 
-    merge_calc_string: str = generate_date_conf_calc_string()
+    merge_calc_string: str = date_conf_merge_calc()
 
     # We also need to depend on the original source reprojection job
     source_job = jobs_dict[zoom_level]["source_reprojection_job"]
@@ -316,7 +325,7 @@ async def date_conf_intensity_multi_8_symbology(
         "epsg:3857",
     )
 
-    merge_calc_string: str = generate_8_bit_integrated_calc_string()
+    merge_calc_string: str = integrated_alert_merge_calc()
 
     # We also need to depend on the original source reprojection job
     source_job = jobs_dict[zoom_level]["source_reprojection_job"]
@@ -606,7 +615,7 @@ _symbology_constructor: Dict[str, SymbologyInfo] = {
         8, 1, date_conf_intensity_symbology
     ),
     ColorMapType.date_conf_intensity_multi_8: SymbologyInfo(
-        8, 2, date_conf_intensity_multi_8_symbology
+        8, 1, date_conf_intensity_multi_8_symbology
     ),
     ColorMapType.year_intensity: SymbologyInfo(8, 1, year_intensity_symbology),
     ColorMapType.gradient: SymbologyInfo(8, 1, colormap_symbology),
