@@ -39,10 +39,10 @@ module "query" {
   authorizer_id = aws_api_gateway_authorizer.api_key.id
   parent_id = aws_api_gateway_resource.query_parent.id
 
-  require_api_key = true
+  require_api_key = false
   http_method = "ANY"
   path_part = "{proxy+}"
-  authorization = "CUSTOM"
+  authorization = "NONE"
 
   integration_parameters = {
     "integration.request.path.version" = "method.request.path.version"
