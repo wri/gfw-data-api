@@ -101,9 +101,7 @@ def api_key_is_internal(
 ) -> bool:
 
     is_internal: bool = False
-    if not domains:
-        return True
-    elif origin and domains:
+    if origin and domains:
         is_internal = any(
             [
                 re.search(_to_regex(internal_domain.strip()), domain)

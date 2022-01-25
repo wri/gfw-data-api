@@ -102,8 +102,6 @@ async def test_create_apikey_no_admin(
 
     if never_expires:
         assert response.status_code == 400
-    elif not domains:
-        assert response.status_code == 400
     else:
         print(response.text)
         assert response.status_code == 201
