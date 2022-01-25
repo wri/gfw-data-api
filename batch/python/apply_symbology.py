@@ -16,11 +16,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import rasterio
 from aws_utils import get_s3_client, get_s3_path_parts
 from errors import GDALError, SubprocessKilledError
+from gdal_utils import from_vsi_path
 from gfw_pixetl.pixetl_prep import create_geojsons
 from pydantic import BaseModel, Extra, Field, StrictInt
 from typer import Option, run
-
-from batch.python.gdal_utils import from_vsi_path
 
 NUM_PROCESSES = int(
     os.environ.get(

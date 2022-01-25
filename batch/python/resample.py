@@ -18,14 +18,13 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import rasterio
 from aws_utils import exists_in_s3, get_s3_client, get_s3_path_parts
 from errors import SubprocessKilledError
+from gdal_utils import from_vsi_path
 from gfw_pixetl.grids import grid_factory
 from gfw_pixetl.pixetl_prep import create_geojsons
 from pyproj import CRS, Transformer
 from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from typer import Option, run
-
-from batch.python.gdal_utils import from_vsi_path
 
 NUM_DL_PROCS = max(
     int(int(os.environ.get("CORES", multiprocessing.cpu_count())) / 1.5), 1

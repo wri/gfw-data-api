@@ -10,12 +10,11 @@ from concurrent.futures.process import BrokenProcessPool
 from tempfile import TemporaryDirectory
 from typing import Dict, List, Optional, Tuple
 
+from aws_utils import get_s3_client, get_s3_path_parts
 from errors import GDALError, SubprocessKilledError
 from logger import get_logger
 from tileputty.upload_tiles import upload_tiles
 from typer import Argument, Option, run
-
-from batch.python.aws_utils import get_s3_client, get_s3_path_parts
 
 NUM_PROCESSES = int(
     os.environ.get(
