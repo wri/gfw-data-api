@@ -28,11 +28,12 @@ from typer import Option, run
 AWS_REGION = os.environ.get("AWS_REGION")
 AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
 NUM_DL_PROCS = max(
-    int(int(os.environ.get("CORES", multiprocessing.cpu_count())) / 3), 1
+    int(int(os.environ.get("CORES", multiprocessing.cpu_count())) / 1.5), 1
 )
 NUM_TRANSFORM_PROCS = max(
-    int(int(os.environ.get("CORES", multiprocessing.cpu_count())) / 3.5), 1
+    min(int(int(os.environ.get("CORES", multiprocessing.cpu_count())) / 1.5), 72), 1
 )
+
 GEOTIFF_COMPRESSION = "DEFLATE"
 
 Bounds = Tuple[float, float, float, float]
@@ -134,6 +135,7 @@ def get_s3_client(aws_region=AWS_REGION, endpoint_url=AWS_ENDPOINT_URL):
 
 
 def get_s3_path_parts(s3url) -> Tuple[str, str]:
+    """Splits an S3 URL into bucket and key."""
     just_path = s3url.split("s3://")[1]
     bucket = just_path.split("/")[0]
     key = "/".join(just_path.split("/")[1:])
@@ -172,14 +174,15 @@ def get_source_tiles_info(tiles_geojson_uri) -> List[Tuple[str, Any]]:
 
 
 def listener_configurer():
+    """Run this in the parent process to configure logger."""
     root = logging.getLogger()
     h = logging.StreamHandler(stream=sys.stdout)
-    # f = logging.Formatter('%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s')
-    # h.setFormatter(f)
     root.addHandler(h)
 
 
 def log_listener(queue, configurer):
+    """Run this in the parent process to listen for log messages from
+    children."""
     configurer()
     while True:
         try:
@@ -199,6 +202,7 @@ def log_listener(queue, configurer):
 
 
 def log_client_configurer(queue):
+    """Run this in child processes to configure sending logs to parent."""
     h = QueueHandler(queue)
     root = logging.getLogger()
     root.addHandler(h)
@@ -247,6 +251,7 @@ def exists_in_s3(target_bucket, target_key):
 def warp_raster(
     bounds: Bounds, width, height, resampling_method, source_path, target_path, logger
 ):
+    """Warps/extracts raster of provided dimensions from source file."""
     warp_cmd: List[str] = [
         "gdalwarp",
         "-t_srs",
@@ -264,6 +269,11 @@ def warp_raster(
         "-co",
         "TILED=YES",
         "-overwrite",
+        "-wm",
+        "8192",
+        "--config",
+        "GDAL_CACHEMAX",
+        "1024",
         source_path,
         target_path,
     ]
@@ -286,13 +296,16 @@ def warp_raster(
 
 
 def compress_raster(source_path, target_path, logger):
-    """Compress a tile."""
+    """Compress a raster tile."""
     translate_cmd: List[str] = [
         "gdal_translate",
         "-co",
         f"COMPRESS={GEOTIFF_COMPRESSION}",
         "-co",
         "TILED=YES",
+        "--config",
+        "GDAL_CACHEMAX",
+        "8192",
         source_path,
         target_path,
     ]
@@ -336,13 +349,8 @@ def process_tile(
 
     tile_file_name = f"{tile_id}.tif"
     target_geotiff_key = os.path.join(target_prefix, "geotiff", tile_file_name)
-    target_gdal_geotiff_key = os.path.join(
-        target_prefix, "gdal-geotiff", tile_file_name
-    )
 
-    if exists_in_s3(target_bucket, target_geotiff_key) and exists_in_s3(
-        target_bucket, target_gdal_geotiff_key
-    ):
+    if exists_in_s3(target_bucket, target_geotiff_key):
         logger.log(logging.INFO, f"Tile {tile_id} already exists in S3, skipping")
         return tile_id
 
@@ -397,8 +405,7 @@ def resample(
     target_zoom: int = Option(..., help="Target zoom level."),
     target_prefix: str = Option(..., help="Destination S3 prefix."),
 ):
-    """Resample the source tile set to target zoom level with specified
-    resample method."""
+    """Resample source raster tile set to target zoom level."""
     log_queue = multiprocessing.Manager().Queue()
     listener = multiprocessing.Process(
         target=log_listener, args=(log_queue, listener_configurer)
@@ -435,12 +442,9 @@ def resample(
             tile_paths.append(tile_path)
             logger.log(logging.INFO, f"Finished downloading source tile to {tile_path}")
 
-    # First create a VRT for each of the input bands, then one overall VRT from these
-    # constituent VRTs
-    input_vrts: List[str] = list()
-
     # Create VRTs for each of the bands of each of the input files
     # In this case we can assume each file has the same number of bands
+    input_vrts: List[str] = list()
     with rasterio.open(tile_paths[0]) as input_file:
         band_count = input_file.count
 
@@ -455,19 +459,13 @@ def resample(
     )
     logger.log(logging.INFO, "VRTs created")
 
-    # Determine which tiles in the target SRS + zoom level intersect with the source
-    # bands
+    # Determine which tiles in the target CRS + zoom level intersect with the
+    # extent of the source
     dest_proj_grid = grid_factory(f"zoom_{target_zoom}")
     all_dest_proj_tile_ids = dest_proj_grid.get_tile_ids()
 
-    # Re-project extent into w-m
-    # with rasterio.open(overall_vrt) as vrt:
-    #     source_crs = CRS.from_epsg(vrt.profile["crs"].to_epsg())
-
     wm_extent = Polygon()
     for tile_info in src_tiles_info:
-        # left, bottom, right, top = reproject_bounds(shape(tile_info[1]).bounds, source_crs, CRS.from_epsg(3857))
-        # FIXME?: tile.geojson coords ALWAYS seem to be in EPSG:4326
         left, bottom, right, top = reproject_bounds(
             shape(tile_info[1]).bounds, CRS.from_epsg(4326), CRS.from_epsg(3857)
         )
@@ -525,7 +523,6 @@ def resample(
 
     # Now run pixetl_prep.create_geojsons to generate a tiles.geojson and
     # extent.geojson in the target prefix.
-    # FIXME: Just does /geotiff. Do the same for the /gdal-geotiff folder too
     create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1]
     logger.log(logging.INFO, f"Uploading tiles.geojson to {create_geojsons_prefix}")
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
