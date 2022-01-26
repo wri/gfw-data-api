@@ -571,12 +571,14 @@ async def _query_raster(
 
     # use default data type to get default raster layer for dataset
     default_layer = _get_default_layer(dataset, asset.creation_options["pixel_meaning"])
-    grid = asset.creation_options["grid"]
+    grid = (
+        asset.creation_options["grid"]
+        if asset.dataset != "umd_glad_landsat_alerts"
+        else Grid.ten_by_forty_thousand
+    )
 
     sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
-    return await _query_raster_lambda(
-        geostore.geojson, sql, grid, format, delimiter, default_layer
-    )
+    return await _query_raster_lambda(geostore.geojson, sql, grid, format, delimiter)
 
 
 async def _query_raster_lambda(
@@ -585,9 +587,8 @@ async def _query_raster_lambda(
     grid: Grid = Grid.ten_by_forty_thousand,
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
-    default_layer: Optional[str] = None,
 ) -> Dict[str, Any]:
-    data_environment = await _get_data_environment(grid, default_layer)
+    data_environment = await _get_data_environment(grid)
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
@@ -640,9 +641,7 @@ def _get_default_layer(dataset, pixel_meaning):
         return f"{dataset}__{default_type}"
 
 
-async def _get_data_environment(
-    grid: Grid, default_layer: Optional[str] = None
-) -> DataEnvironment:
+async def _get_data_environment(grid: Grid) -> DataEnvironment:
     # get all Raster tile set assets
     latest_tile_sets = await (
         AssetORM.join(VersionORM)
@@ -668,13 +667,12 @@ async def _get_data_environment(
     layers: List[Layer] = []
     for row in latest_tile_sets:
         # TODO remove GLAD exception after migration
-        if default_layer == "umd_glad_landsat_alerts__date":
-            if (
-                row.dataset != "umd_glad_landsat_alerts"
-                and row.creation_options["grid"] != Grid.ten_by_forty_thousand
-            ):
-                continue
-        elif row.creation_options["grid"] != grid:
+        row_grid = (
+            row.creation_options["grid"]
+            if row.dataset != "umd_glad_landsat_alerts"
+            else Grid.ten_by_forty_thousand
+        )
+        if row_grid != grid:
             # skip if not on the right grid
             continue
 
@@ -695,7 +693,7 @@ async def _get_data_environment(
                 f"{row.dataset}__{row.creation_options['pixel_meaning']}"
             )
 
-        layers.append(_get_source_layer(row, grid, source_layer_name, default_layer))
+        layers.append(_get_source_layer(row, source_layer_name))
 
         if row.creation_options["pixel_meaning"] == "date_conf":
             layers += _get_date_conf_derived_layers(row, source_layer_name)
@@ -706,14 +704,9 @@ async def _get_data_environment(
     return DataEnvironment(layers=layers)
 
 
-def _get_source_layer(
-    row, grid, source_layer_name: str, default_layer: Optional[str] = None
-) -> SourceLayer:
+def _get_source_layer(row, source_layer_name: str) -> SourceLayer:
     # TODO we need to start uploading GLAD directly to the data API ASAP @_@
-    if source_layer_name == "umd_glad_landsat_alerts__date_conf" and (
-        default_layer == "umd_glad_landsat_alerts__date"
-        or grid == Grid.ten_by_forty_thousand
-    ):
+    if source_layer_name == "umd_glad_landsat_alerts__date_conf":
         source_uri = "s3://gfw2-data/forest_change/umd_landsat_alerts/prod/analysis/{tile_id}.tif"
         tile_scheme = "nwse"
         grid = Grid.ten_by_forty_thousand
