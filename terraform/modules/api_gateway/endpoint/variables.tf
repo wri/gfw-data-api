@@ -7,10 +7,6 @@ variable "authorizer_id" {
     type    = string
     default = ""
 }
-variable "parent_id" {
-  type        = string
-  description = "Id of parent resource"
-}
 
 variable "require_api_key" {
   type    = bool
@@ -25,7 +21,7 @@ variable "http_method" {
       "ANY",
       "DELETE",
       "GET",
-      "HEAD",
+      "HEAD",  
       "OPTIONS",
       "PATCH",
       "POST",
@@ -33,10 +29,6 @@ variable "http_method" {
     ], var.http_method)
     error_message = "Invalid HTTP method passed."
   }
-}
-
-variable "path_part" {
-  type = string
 }
 
 variable "authorization" {
@@ -61,4 +53,12 @@ variable "integration_parameters" {
 
 variable "method_parameters" {
   type = map
+}
+
+variable "api_resource" {
+  type = object({
+    id        = string
+    path_part = string
+  })
+  description = "Instance of aws_api_gateway_resource"
 }
