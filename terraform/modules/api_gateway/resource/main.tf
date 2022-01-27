@@ -17,8 +17,9 @@ resource "aws_api_gateway_integration" "get_endpoint_integration" {
   http_method = aws_api_gateway_method.get_endpoint_method.http_method
   type        = "MOCK"
 
-  request_templates = {
-    "text/plain" : <<EOT
+  passthrough_behavior    = "WHEN_NO_MATCH"
+  request_templates       = {
+    "application/json" : <<EOT
     {'statusCode': 200}
     #set($context.responseOverride.header.Access-Control-Allow-Origin = $input.params('origin'))
     EOT
