@@ -168,7 +168,7 @@ resource "aws_api_gateway_usage_plan" "internal" {
 
   api_stages {
     api_id = aws_api_gateway_rest_api.api_gw_api.id
-    stage  = aws_api_gateway_deployment.api_gw_dep.stage_name
+    stage  = aws_api_gateway_stage.api_gw_stage.stage_name
   }
 
   quota_settings {
@@ -194,7 +194,7 @@ resource "aws_api_gateway_usage_plan" "external" {
 
   api_stages {
     api_id = aws_api_gateway_rest_api.api_gw_api.id
-    stage  = aws_api_gateway_deployment.api_gw_dep.stage_name
+    stage  = aws_api_gateway_stage.api_gw_stage.stage_name
   }
 
   quota_settings {
@@ -218,7 +218,6 @@ resource "aws_api_gateway_usage_plan" "external" {
 
 resource "aws_api_gateway_deployment" "api_gw_dep" {
   rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
-  stage_name    = local.api_gw_stage_name
 
  triggers = {
     redeployment = sha1(jsonencode([
@@ -319,7 +318,7 @@ resource "aws_iam_role_policy" "lambda_cloudwatch" {
 
 resource "aws_api_gateway_method_settings" "general_settings" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  stage_name  = aws_api_gateway_deployment.api_gw_dep.stage_name
+  stage_name  = aws_api_gateway_stage.api_gw_stage.stage_name
   method_path = "*/*"
 
   settings {
