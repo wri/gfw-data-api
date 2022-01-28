@@ -76,7 +76,7 @@ data "template_file" "container_definition" {
     api_gateway_id                  = aws_api_gateway_rest_api.api_gw_api.id
     api_gateway_internal_usage_plan = aws_api_gateway_usage_plan.internal.id
     api_gateway_external_usage_plan = aws_api_gateway_usage_plan.external.id
-    api_gateway_stage_name          = aws_api_gateway_deployment.api_gw_dep.stage_name
+    api_gateway_stage_name          = aws_api_gateway_stage.api_gw_stage.stage_name
     internal_domains                = var.internal_domains
   }
   depends_on = [

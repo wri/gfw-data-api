@@ -236,6 +236,11 @@ resource "aws_api_gateway_deployment" "api_gw_dep" {
   }
 }
 
+resource "aws_api_gateway_stage" "api_gw_stage" {
+  deployment_id = aws_api_gateway_deployment.api_gw_dep.id
+  rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
+  stage_name    = local.api_gw_stage_name
+}
 
 # Lambda Authorizer
 resource "aws_api_gateway_authorizer" "api_key" {
