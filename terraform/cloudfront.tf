@@ -66,7 +66,7 @@ resource "aws_cloudfront_distribution" "data_api" {
   }
 
   origin {
-    domain_name = trimsuffix(trimprefix(aws_api_gateway_stage.api_gw_stage.invoke_url, "https://"), "/${local.api_gw_stage_name}")
+    domain_name = trimsuffix(trimprefix(aws_api_gateway_deployment.api_gw_dep.invoke_url, "https://"), "/${local.api_gw_stage_name}")
     custom_origin_config {
       http_port = 80
       https_port = 443

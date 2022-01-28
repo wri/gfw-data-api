@@ -144,7 +144,7 @@ module unprotected_resource {
 
 }
 
-module "unprotected_paths" {
+module "unprotected_endpoints" {
   source = "./modules/api_gateway/endpoint"
 
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
@@ -168,7 +168,7 @@ resource "aws_api_gateway_usage_plan" "internal" {
 
   api_stages {
     api_id = aws_api_gateway_rest_api.api_gw_api.id
-    stage  = aws_api_gateway_stage.api_gw_stage.stage_name
+    stage  = aws_api_gateway_deployment.api_gw_dep.stage_name
   }
 
   quota_settings {
@@ -194,7 +194,7 @@ resource "aws_api_gateway_usage_plan" "external" {
 
   api_stages {
     api_id = aws_api_gateway_rest_api.api_gw_api.id
-    stage  = aws_api_gateway_stage.api_gw_stage.stage_name
+    stage  = aws_api_gateway_deployment.api_gw_dep.stage_name
   }
 
   quota_settings {
@@ -217,25 +217,25 @@ resource "aws_api_gateway_usage_plan" "external" {
 }
 
 resource "aws_api_gateway_deployment" "api_gw_dep" {
-  depends_on = [
-    module.query_get.integration_point,
-    module.unprotected_paths.integration_point,
-    module.download_shapes_endpoint.integration_point,
-  ]
+  rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
+  stage_name    = local.api_gw_stage_name
 
+ triggers = {
+    redeployment = sha1(jsonencode([
+      module.query_get.integration_point,
+      module.query_post.integration_point,
+      #FIXME don't hardcode the spatial integration points 
+      module.download_shapes_endpoint["shp"].integration_point,
+      module.download_shapes_endpoint["gpkg"].integration_point,
+      module.download_shapes_endpoint["geotiff"].integration_point,
+      module.unprotected_endpoints.integration_point
+    ]))
+ }
   lifecycle {
     create_before_destroy = true
   }
-  # force api stage reploy if file changes
-  stage_description = "${md5(file("api_gateway.tf"))}-${md5(file("./modules/api_gateway/endpoint/main.tf"))}"
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
 }
 
-resource "aws_api_gateway_stage" "api_gw_stage" {
-  deployment_id = aws_api_gateway_deployment.api_gw_dep.id
-  rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
-  stage_name    = local.api_gw_stage_name
-}
 
 # Lambda Authorizer
 resource "aws_api_gateway_authorizer" "api_key" {
@@ -314,7 +314,7 @@ resource "aws_iam_role_policy" "lambda_cloudwatch" {
 
 resource "aws_api_gateway_method_settings" "general_settings" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  stage_name  = aws_api_gateway_stage.api_gw_stage.stage_name
+  stage_name  = aws_api_gateway_deployment.api_gw_dep.stage_name
   method_path = "*/*"
 
   settings {
