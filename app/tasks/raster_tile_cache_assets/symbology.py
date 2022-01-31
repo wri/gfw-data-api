@@ -100,7 +100,7 @@ def integrated_alerts_merge_calc() -> str:
     red, green, blue = date_conf_rgb_calc()
 
     # The front end is ALSO expecting the confidences of all the alerts in the
-    # original alert systems packed into a uint16 as the Alpha channel
+    # original alert systems packed into an 8-bit value as the Alpha channel
     # according to the following scheme:
     # Alpha = (gladl_conf << 6) | (glads2_conf << 4) | (radd_conf << 2)
     #
@@ -115,6 +115,7 @@ def integrated_alerts_merge_calc() -> str:
     # we create a fake combined confidence value. We accomplish that by
     # setting RADD's confidence to 1 for low conf, 2 for high conf, and
     # doing a bitwise OR with 4 (indicating a low confidence alert in GLAD-S2)
+    # for highest confidence.
     # In the future suggest a new way for the front end to obtain this info
     # that's more elegant (such as by more efficiently packing into the Blue
     # channel).
