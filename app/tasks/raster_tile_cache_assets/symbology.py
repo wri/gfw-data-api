@@ -37,7 +37,6 @@ from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri
 
 MAX_8_BIT_INTENSITY = 55
-MAX_16_BIT_INTENSITY = 31
 
 SymbologyFuncType = Callable[
     [str, str, str, RasterTileSetSourceCreationOptions, int, int, Dict[Any, Any]],
@@ -51,42 +50,75 @@ class SymbologyInfo(NamedTuple):
     function: SymbologyFuncType
 
 
+def date_conf_rgb_calc(
+    date_conf_band: str = "A", intensity_band: str = "B"
+) -> Tuple[str, str, str]:
+    """Create the calc strings to merge a dateconf and intensity band into Red,
+    Green, and Blue channels."""
+    # The date-conf format goes like this:
+    # Take 20000 for a low confidence alert, 30000 for a high confidence
+    # alert, (or 40000 for an alert seen by multiple systems in the case
+    # of integrated alerts,) and add the number of days since December 31 2014.
+    # 0 is the no-data value
+    #
+    # So, some example values in the date_conf encoding:
+    # 20001 is a low confidence alert on January 1st, 2015
+    # 30055 is a high confidence alert on February 24, 2015
+    # 21847 is a low confidence alert on January 21, 2020
+    # 18030 and 50389 are bogus values
+
+    day = f"(({date_conf_band}.data >= 20000) * ({date_conf_band}.data % 10000))"
+    confidence = (
+        f"({date_conf_band}.data // 30000)"  # 0 for low confidence, 1 for high/highest
+    )
+
+    # The format the front end is expecting, meanwhile, goes like this:
+    # Red = floor(day / 255)
+    # Green = day % 255
+    # Blue = ((confidence + 1) * 100) + intensity
+
+    red = f"({day} // 255)"
+    green = f"({day} % 255)"
+    blue = f"({date_conf_band}.data >= 20000) * (({confidence} + 1) * 100 + {intensity_band}.data)"
+
+    return f"{red}", f"{green}", f"{blue}"
+
+
 def date_conf_merge_calc() -> str:
     """Create the calc string for classic GLAD/RADD alerts."""
-    day = "(A >= 20000) * (A.data % 10000)"
-    confidence = "(A.data // 30000)"  # 0 for low confidence, 1 for high
-
-    red = f"({day} / 255)"
-    green = f"({day} % 255)"
-    blue = f"(A.data >= 20000) * (({confidence} + 1) * 100 + B.data)"
-
-    return f"np.ma.array([{red}, {green}, {blue}])"
+    red, green, blue = date_conf_rgb_calc()
+    return f"np.ma.array([{red}, {green}, {blue}], mask=False)"
 
 
-def integrated_alert_merge_calc() -> str:
+def integrated_alerts_merge_calc() -> str:
     """Create the calc string needed to encode/merge the 8-bit integrated alerts
     :return:
     """
-    # <LONG EXPLANATION WITH EXAMPLE CODE>
+    # The RGB channels are identical in encoding to the date-conf encoding
+    # used for GLADL, GLADS2, and RADD
 
-    # For dateconf v1.5
-    day = "(A.data % 10000)"
-    confidence = "(A.data // 30000)"  # 0 for low confidence, 1 for high
+    red, green, blue = date_conf_rgb_calc()
 
-    red = f"({day} / 255)"
-    green = f"({day} % 255)"
-    blue = f"(A.data >= 20000) * (({confidence} + 1) * 100 + B.data)"
-
-    # The front end is also expecting the confidences of all the alerts in the
-    # original alert systems, packed into a uint16 as the Alpha channel.
-    # Fake the combined confidences because the front end doesn't need to know
-    # which alert systems are what confidence. It REALLY wants to know if the
-    # combined  alert is low, high, or highest confidence. In the future
-    # suggest a new way for the front end to obtain this info that's more
-    # elegant (such as by more efficiently packing into Blue channel)
-    alpha = (
-        "(1 * (A.data >= 20000) + 1 * (A.data >= 30000) + 1 * (A.data >= 40000)) << 2"
-    )
+    # The front end is ALSO expecting the confidences of all the alerts in the
+    # original alert systems packed into a uint16 as the Alpha channel
+    # according to the following scheme:
+    # Alpha = (gladl_conf << 6) | (glads2_conf << 4) | (radd_conf << 2)
+    #
+    # Where gladl_conf, glads2_conf, and radd_conf are 2 for high confidence,
+    # 1 for low confidence, and 0 for not detected.
+    # Thus, the last 2 bits are currently unused.
+    #
+    # But it doesn't really NEED all that, all it REALLY needs to know is if
+    # the combined alert is low, high, or highest confidence. So we slimmed-
+    # down and saved just that fact by encoding it as a 40k+ alert value.
+    # However rather than change the encoding as presented to the front end
+    # we create a fake combined confidence value. We accomplish that by
+    # setting RADD's confidence to 1 for low conf, 2 for high conf, and
+    # doing a bitwise OR with 4 (indicating a low confidence alert in GLAD-S2)
+    # In the future suggest a new way for the front end to obtain this info
+    # that's more elegant (such as by more efficiently packing into the Blue
+    # channel).
+    alpha = "((1 * (A.data >= 20000) + 1 * (A.data >= 30000)) | (4 * (A.data >= 40000))) << 2"
 
     return f"np.ma.array([{red}, {green}, {blue}, {alpha}], mask=False)"
 
@@ -325,7 +357,7 @@ async def date_conf_intensity_multi_8_symbology(
         "epsg:3857",
     )
 
-    merge_calc_string: str = integrated_alert_merge_calc()
+    merge_calc_string: str = integrated_alerts_merge_calc()
 
     # We also need to depend on the original source reprojection job
     source_job = jobs_dict[zoom_level]["source_reprojection_job"]

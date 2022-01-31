@@ -15,6 +15,7 @@ from logging.handlers import QueueHandler
 from multiprocessing import Queue
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import psutil
 import rasterio
 from aws_utils import exists_in_s3, get_s3_client, get_s3_path_parts
 from errors import SubprocessKilledError
@@ -26,12 +27,18 @@ from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from typer import Option, run
 
-NUM_DL_PROCS = max(
-    int(int(os.environ.get("CORES", multiprocessing.cpu_count())) / 1.5), 1
+# Use at least 1 process
+# Try to get NUM_PROCESSES, if that fails get # CPUs divided by 1.5
+NUM_PROCESSES = max(
+    1,
+    int(os.environ.get("NUM_PROCESSES", multiprocessing.cpu_count() // 1.5)) // 2,
 )
-NUM_TRANSFORM_PROCS = max(
-    min(int(int(os.environ.get("CORES", multiprocessing.cpu_count())) / 1.5), 72), 1
-)
+
+MEM_PER_PROC = (psutil.virtual_memory()[1] // 1000000) // NUM_PROCESSES
+
+# Remember, GDAL interprets >10k as bytes instead of MB
+WARP_MEM = min(4096, int(MEM_PER_PROC * 0.7))
+CACHE_MEM = min(1024, int(MEM_PER_PROC * 0.2))
 
 GEOTIFF_COMPRESSION = "DEFLATE"
 
@@ -229,10 +236,10 @@ def warp_raster(
         "TILED=YES",
         "-overwrite",
         "-wm",
-        "8192",
+        f"{WARP_MEM}",
         "--config",
         "GDAL_CACHEMAX",
-        "1024",
+        f"{CACHE_MEM}",
         source_path,
         target_path,
     ]
@@ -264,7 +271,7 @@ def compress_raster(source_path, target_path, logger):
         "TILED=YES",
         "--config",
         "GDAL_CACHEMAX",
-        "8192",
+        f"{CACHE_MEM}",
         source_path,
         target_path,
     ]
@@ -375,6 +382,10 @@ def resample(
     logger = logging.getLogger("main")
 
     logger.log(logging.INFO, f"Reprojecting/resampling tiles in {source_uri}")
+    logger.log(
+        logging.INFO,
+        f"# procs:{NUM_PROCESSES} MEM_PER_PROC:{MEM_PER_PROC} WARP_MEM:{WARP_MEM} CACHE_MEM:{CACHE_MEM}",
+    )
 
     src_tiles_info = get_source_tiles_info(source_uri)
 
@@ -396,7 +407,7 @@ def resample(
     # Cannot use normal pool here since we run sub-processes
     # https://stackoverflow.com/a/61470465/1410317
     tile_paths: List[str] = list()
-    with ProcessPoolExecutor(max_workers=NUM_DL_PROCS) as executor:
+    with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
         for tile_path in executor.map(download_tile, dl_process_args):
             tile_paths.append(tile_path)
             logger.log(logging.INFO, f"Finished downloading source tile to {tile_path}")
@@ -476,7 +487,7 @@ def resample(
 
     # Cannot use normal pool here since we run sub-processes
     # https://stackoverflow.com/a/61470465/1410317
-    with ProcessPoolExecutor(max_workers=NUM_TRANSFORM_PROCS) as executor:
+    with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
         for tile_id in executor.map(process_tile, process_tile_args):
             logger.log(logging.INFO, f"Finished processing tile {tile_id}")
 
