@@ -38,7 +38,7 @@ MEM_PER_PROC = (psutil.virtual_memory()[1] // 1000000) // NUM_PROCESSES
 
 # Remember, GDAL interprets >10k as bytes instead of MB
 WARP_MEM = min(4096, int(MEM_PER_PROC * 0.7))
-CACHE_MEM = min(1024, int(MEM_PER_PROC * 0.1))
+CACHE_MEM = min(1024, int(MEM_PER_PROC * 0.08))
 
 GEOTIFF_COMPRESSION = "DEFLATE"
 
