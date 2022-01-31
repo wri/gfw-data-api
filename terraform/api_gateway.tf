@@ -32,17 +32,23 @@ resource "aws_api_gateway_resource" "query_parent" {
   path_part = "query"
 }
 
-module "query" {
-  source = "./modules/api_gateway"
+module "query_resource" {
+  source       = "./modules/api_gateway/resource"
+  rest_api_id  = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id    = aws_api_gateway_resource.query_parent.id
+  path_part    = "{proxy+}"
+}
+
+module "query_get" {
+  source = "./modules/api_gateway/endpoint"
 
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   authorizer_id = aws_api_gateway_authorizer.api_key.id
-  parent_id = aws_api_gateway_resource.query_parent.id
+  api_resource = module.query_resource.aws_api_gateway_resource
 
-  require_api_key = false
-  http_method = "ANY"
-  path_part = "{proxy+}"
-  authorization = "NONE"
+  require_api_key = true
+  http_method = "GET"
+  authorization = "CUSTOM"
 
   integration_parameters = {
     "integration.request.path.version" = "method.request.path.version"
@@ -59,24 +65,61 @@ module "query" {
 
   integration_uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/query/{proxy}"
 }
+
+module "query_post" {
+  source = "./modules/api_gateway/endpoint"
+
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  authorizer_id = aws_api_gateway_authorizer.api_key.id
+  api_resource = module.query_resource.aws_api_gateway_resource
+
+  require_api_key = true
+  http_method = "POST"
+  authorization = "CUSTOM"
+
+  integration_parameters = {
+    "integration.request.path.version" = "method.request.path.version"
+    "integration.request.path.dataset" = "method.request.path.dataset",
+    "integration.request.path.proxy" = "method.request.path.proxy"
+  }
+
+  method_parameters = {
+    "method.request.path.dataset" = true,
+    "method.request.path.version" = true
+    "method.request.path.proxy" = true
+
+  }
+
+  integration_uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/query/{proxy}"
+}
+
 resource "aws_api_gateway_resource" "download_parent" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   parent_id = aws_api_gateway_resource.version.id
   path_part = "download"
 }
 
-module "download_shapes" {
-  source = "./modules/api_gateway"
+module "download_shapes_resources" {
+  source = "./modules/api_gateway/resource"
+
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id = aws_api_gateway_resource.download_parent.id
+  
+  for_each = toset(var.download_endpoints)
+  path_part = each.key
+}
+
+module "download_shapes_endpoint" {
+  source = "./modules/api_gateway/endpoint"
 
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   authorizer_id = aws_api_gateway_authorizer.api_key.id
-  parent_id = aws_api_gateway_resource.download_parent.id
 
-  for_each = toset(var.download_endpoints)
+  for_each = module.download_shapes_resources
+  api_resource = each.value.aws_api_gateway_resource
 
   require_api_key = true
   http_method = "GET"
-  path_part = each.key
   authorization = "CUSTOM"
 
   integration_parameters = {
@@ -92,16 +135,25 @@ module "download_shapes" {
   integration_uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/download/${each.key}"
 }
 
-module "unprotected_paths" {
-  source = "./modules/api_gateway"
+module unprotected_resource {
+  source = "./modules/api_gateway/resource"
+
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id = aws_api_gateway_rest_api.api_gw_api.root_resource_id
+  path_part = "{proxy+}"
+
+}
+
+module "unprotected_endpoints" {
+  source = "./modules/api_gateway/endpoint"
 
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   authorizer_id = aws_api_gateway_authorizer.api_key.id
-  parent_id = aws_api_gateway_rest_api.api_gw_api.root_resource_id
+  api_resource = module.unprotected_resource.aws_api_gateway_resource
+
 
   require_api_key = false
   http_method = "ANY"
-  path_part = "{proxy+}"
   authorization = "NONE"
 
   method_parameters = {"method.request.path.proxy" = true}
@@ -165,18 +217,22 @@ resource "aws_api_gateway_usage_plan" "external" {
 }
 
 resource "aws_api_gateway_deployment" "api_gw_dep" {
-  depends_on = [
-    module.query.integration_point,
-    module.unprotected_paths.integration_point,
-    module.download_shapes.integration_point,
-  ]
+  rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
 
+ triggers = {
+    redeployment = sha1(jsonencode([
+      module.query_get.integration_point,
+      module.query_post.integration_point,
+      #FIXME don't hardcode the spatial integration points 
+      module.download_shapes_endpoint["shp"].integration_point,
+      module.download_shapes_endpoint["gpkg"].integration_point,
+      module.download_shapes_endpoint["geotiff"].integration_point,
+      module.unprotected_endpoints.integration_point
+    ]))
+ }
   lifecycle {
     create_before_destroy = true
   }
-  # force api stage reploy if file changes
-  stage_description = "${md5(file("api_gateway.tf"))}-${md5(file("./modules/api_gateway/main.tf"))}"
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
 }
 
 resource "aws_api_gateway_stage" "api_gw_stage" {
@@ -213,8 +269,6 @@ resource "aws_iam_role_policy" "invocation_policy" {
 
   policy = data.local_file.iam_lambda_invoke.content
 }
-
-
 
 resource "aws_iam_role" "lambda" {
   name = "api_gw_authorizer_lambda${local.name_suffix}"
