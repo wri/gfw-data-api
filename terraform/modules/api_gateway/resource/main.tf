@@ -54,3 +54,13 @@ resource "aws_api_gateway_integration_response" "get_endpoint_integration_respon
     "method.response.header.Access-Control-Allow-Credentials" : "'true'"
   }
 }
+
+resource "aws_api_gateway_gateway_response" "invalid_api_key" {
+  rest_api_id   = var.rest_api_id
+  status_code   = "403"
+  response_type = "INVALID_API_KEY"
+
+  response_templates = {
+    "application/json" = "{\"status\":\"failed\",\"message\":\"Request is missing valid API key. Please see documentation at https://data-api.globalforestwatch.org/#tag/Authentication on how to create one.\"}"
+  }
+}
