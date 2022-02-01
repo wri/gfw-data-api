@@ -13,15 +13,14 @@ from logging import getLogger
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import boto3
 import rasterio
+from aws_utils import get_s3_client, get_s3_path_parts
 from errors import GDALError, SubprocessKilledError
+from gdal_utils import from_vsi_path
 from gfw_pixetl.pixetl_prep import create_geojsons
 from pydantic import BaseModel, Extra, Field, StrictInt
 from typer import Option, run
 
-AWS_REGION = os.environ.get("AWS_REGION")
-AWS_ENDPOINT_URL = os.environ.get("ENDPOINT_URL")  # For boto
 NUM_PROCESSES = int(
     os.environ.get(
         "NUM_PROCESSES", os.environ.get("CORES", multiprocessing.cpu_count())
@@ -63,33 +62,6 @@ class Symbology(StrictBaseModel):
     colormap: Optional[Dict[Union[StrictInt, float], RGBA]]
 
 
-def get_s3_client(aws_region=AWS_REGION, endpoint_url=AWS_ENDPOINT_URL):
-    return boto3.client("s3", region_name=aws_region, endpoint_url=endpoint_url)
-
-
-def get_s3_path_parts(s3url) -> Tuple[str, str]:
-    just_path = s3url.split("s3://")[1]
-    bucket = just_path.split("/")[0]
-    key = "/".join(just_path.split("/")[1:])
-    return bucket, key
-
-
-def from_vsi(file_name: str) -> str:
-    """Convert /vsi path to s3 or gs path.
-
-    Stolen from pixetl
-    """
-
-    protocols = {"vsis3": "s3", "vsigs": "gs"}
-
-    parts = file_name.split("/")
-    try:
-        vsi = f"{protocols[parts[1]]}://{'/'.join(parts[2:])}"
-    except KeyError:
-        raise ValueError(f"Unknown protocol: {parts[1]}")
-    return vsi
-
-
 def get_source_tile_uris(tiles_geojson_uri):
     s3_client = get_s3_client()
     bucket, key = get_s3_path_parts(tiles_geojson_uri)
@@ -97,7 +69,8 @@ def get_source_tile_uris(tiles_geojson_uri):
     response = s3_client.get_object(Bucket=bucket, Key=key)
     tiles_geojson: Dict[str, Any] = json.loads(response["Body"].read().decode("utf-8"))
     tiles = [
-        from_vsi(feature["properties"]["name"]) for feature in tiles_geojson["features"]
+        from_vsi_path(feature["properties"]["name"])
+        for feature in tiles_geojson["features"]
     ]
     return tiles
 

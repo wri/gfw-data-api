@@ -37,7 +37,6 @@ from app.tasks.utils import sanitize_batch_job_name
 from app.utils.path import get_asset_uri
 
 MAX_8_BIT_INTENSITY = 55
-MAX_16_BIT_INTENSITY = 31
 
 SymbologyFuncType = Callable[
     [str, str, str, RasterTileSetSourceCreationOptions, int, int, Dict[Any, Any]],
@@ -51,67 +50,78 @@ class SymbologyInfo(NamedTuple):
     function: SymbologyFuncType
 
 
-def generate_date_conf_calc_string() -> str:
-    """Create the calc string for classic GLAD/RADD alerts."""
-    day = "(A - ((A >= 30000) * 10000) - ((A >= 20000) * 20000))"
-    confidence = "(1 * (A >= 30000))"  # 0 for low confidence, 1 for high
+def date_conf_rgb_calc(
+    date_conf_band: str = "A", intensity_band: str = "B"
+) -> Tuple[str, str, str]:
+    """Create the calc strings to merge a dateconf and intensity band into Red,
+    Green, and Blue channels."""
+    # The date-conf format goes like this:
+    # Take 20000 for a low confidence alert, 30000 for a high confidence
+    # alert, (or 40000 for an alert seen by multiple systems in the case
+    # of integrated alerts,) and add the number of days since December 31 2014.
+    # 0 is the no-data value
+    #
+    # So, some example values in the date_conf encoding:
+    # 20001 is a low confidence alert on January 1st, 2015
+    # 30055 is a high confidence alert on February 24, 2015
+    # 21847 is a low confidence alert on January 21, 2020
+    # 18030 and 50389 are bogus values
 
-    red = f"({day} / 255)"
+    day = f"(({date_conf_band}.data >= 20000) * ({date_conf_band}.data % 10000))"
+    confidence = (
+        f"({date_conf_band}.data // 30000)"  # 0 for low confidence, 1 for high/highest
+    )
+
+    # The format the front end is expecting, meanwhile, goes like this:
+    # Red = floor(day / 255)
+    # Green = day % 255
+    # Blue = ((confidence + 1) * 100) + intensity
+
+    red = f"({day} // 255)"
     green = f"({day} % 255)"
-    blue = f"(({confidence} + 1) * 100 + B)"
+    blue = f"({date_conf_band}.data >= 20000) * (({confidence} + 1) * 100 + {intensity_band}.data)"
 
-    return f"np.ma.array([{red}, {green}, {blue}])"
+    return f"{red}", f"{green}", f"{blue}"
 
 
-def generate_8_bit_integrated_calc_string() -> str:
+def date_conf_merge_calc() -> str:
+    """Create the calc string for classic GLAD/RADD alerts."""
+    red, green, blue = date_conf_rgb_calc()
+    return f"np.ma.array([{red}, {green}, {blue}], mask=False)"
+
+
+def integrated_alerts_merge_calc() -> str:
     """Create the calc string needed to encode/merge the 8-bit integrated alerts
     :return:
     """
-    # <LONG EXPLANATION WITH EXAMPLE CODE>
+    # The RGB channels are identical in encoding to the date-conf encoding
+    # used for GLADL, GLADS2, and RADD
 
-    _first_alert = """
-    np.ma.array(
-        np.ma.array(
-            np.minimum.reduce([A.filled(65535), B.filled(65535), C.filled(65535)]),
-            mask=(A.mask & B.mask & C.mask)
-        ).filled(0),
-        mask=(A.mask & B.mask & C.mask)
-    )
-    """
-    first_alert = "".join(_first_alert.split())
+    red, green, blue = date_conf_rgb_calc()
 
-    first_day = f"({first_alert} >> 1)"
+    # The front end is ALSO expecting the confidences of all the alerts in the
+    # original alert systems packed into an 8-bit value as the Alpha channel
+    # according to the following scheme:
+    # Alpha = (gladl_conf << 6) | (glads2_conf << 4) | (radd_conf << 2)
+    #
+    # Where gladl_conf, glads2_conf, and radd_conf are 2 for high confidence,
+    # 1 for low confidence, and 0 for not detected.
+    # Thus, the last 2 bits are currently unused.
+    #
+    # But it doesn't really NEED all that, all it REALLY needs to know is if
+    # the combined alert is low, high, or highest confidence. So we slimmed-
+    # down and saved just that fact by encoding it as a 40k+ alert value.
+    # However rather than change the encoding as presented to the front end
+    # we create a fake combined confidence value. We accomplish that by
+    # setting RADD's confidence to 1 for low conf, 2 for high conf, and
+    # doing a bitwise OR with 4 (indicating a low confidence alert in GLAD-S2)
+    # for highest confidence.
+    # In the future suggest a new way for the front end to obtain this info
+    # that's more elegant (such as by more efficiently packing into the Blue
+    # channel).
+    alpha = "((1 * (A.data >= 20000) + 1 * (A.data >= 30000)) | (4 * (A.data >= 40000))) << 2"
 
-    # At this point confidence is encoded as 0 for high, 1 for low.
-    # Reverse that here for use in the Blue channel
-    first_confidence = f"(({first_day} > 0) * (({first_alert} & 1) == 0) * 1)"
-
-    intensity = "D.data"
-
-    red = f"({first_day} / 255).astype(np.uint8)"
-    green = f"({first_day} % 255).astype(np.uint8)"
-    blue = (
-        f"(({first_day} > 0) * "
-        f"(({first_confidence} + 1) * 100 + {intensity}))"
-        ".astype(np.uint8)"
-    )
-
-    gladl_conf = (
-        "((A.filled(0) >> 1) > 0) * "
-        "(((A.filled(0) & 1) == 0) * 2 + (A.filled(0) & 1))"
-    )
-    glads2_conf = (
-        "((B.filled(0) >> 1) > 0) * "
-        "(((B.filled(0) & 1) == 0) * 2 + (B.filled(0) & 1))"
-    )
-    radd_conf = (
-        "((C.filled(0) >> 1) > 0) * "
-        "(((C.filled(0) & 1) == 0) * 2 + (C.filled(0) & 1))"
-    )
-
-    alpha = f"({gladl_conf} << 6) | ({glads2_conf} << 4) | ({radd_conf} << 2)"
-
-    return f"np.ma.array([{red}, {green}, {blue}, {alpha}])"
+    return f"np.ma.array([{red}, {green}, {blue}, {alpha}], mask=False)"
 
 
 async def no_symbology(
@@ -266,7 +276,7 @@ async def date_conf_intensity_symbology(
         "epsg:3857",
     )
 
-    merge_calc_string: str = generate_date_conf_calc_string()
+    merge_calc_string: str = date_conf_merge_calc()
 
     # We also need to depend on the original source reprojection job
     source_job = jobs_dict[zoom_level]["source_reprojection_job"]
@@ -313,7 +323,9 @@ async def date_conf_intensity_multi_8_symbology(
 
     # What we want is a value of 55 (max intensity for this scenario)
     # anywhere there is an alert in any system.
-    intensity_max_calc_string = f"np.ma.array(np.logical_or.reduce((A.data, B.data, C.data)) * {MAX_8_BIT_INTENSITY})"
+    intensity_max_calc_string = (
+        f"np.ma.array((A.data > 0) * {MAX_8_BIT_INTENSITY}, mask=False)"
+    )
 
     intensity_co = source_asset_co.copy(
         deep=True,
@@ -346,7 +358,7 @@ async def date_conf_intensity_multi_8_symbology(
         "epsg:3857",
     )
 
-    merge_calc_string: str = generate_8_bit_integrated_calc_string()
+    merge_calc_string: str = integrated_alerts_merge_calc()
 
     # We also need to depend on the original source reprojection job
     source_job = jobs_dict[zoom_level]["source_reprojection_job"]
@@ -535,14 +547,11 @@ async def _create_intensity_asset(
             "resampling": resampling,
         },
     )
-    source_job = jobs_dict[zoom_level]["source_reprojection_job"]
 
     if zoom_level == max_zoom:
-        previous_level_intensity_reprojection_job = [source_job]
+        parent_jobs: Optional[List[Job]] = None
     else:
-        previous_level_intensity_reprojection_job = [
-            jobs_dict[zoom_level + 1]["intensity_reprojection_job"]
-        ]
+        parent_jobs = [jobs_dict[zoom_level + 1]["intensity_reprojection_job"]]
 
     intensity_job, intensity_uri = await reproject_to_web_mercator(
         dataset,
@@ -550,7 +559,7 @@ async def _create_intensity_asset(
         intensity_source_co,
         zoom_level,
         max_zoom,
-        previous_level_intensity_reprojection_job,
+        parent_jobs,
         max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
         max_zoom_calc=max_zoom_calc,
     )
@@ -639,7 +648,7 @@ _symbology_constructor: Dict[str, SymbologyInfo] = {
         8, 1, date_conf_intensity_symbology
     ),
     ColorMapType.date_conf_intensity_multi_8: SymbologyInfo(
-        8, 3, date_conf_intensity_multi_8_symbology
+        8, 1, date_conf_intensity_multi_8_symbology
     ),
     ColorMapType.year_intensity: SymbologyInfo(8, 1, year_intensity_symbology),
     ColorMapType.gradient: SymbologyInfo(8, 1, colormap_symbology),
