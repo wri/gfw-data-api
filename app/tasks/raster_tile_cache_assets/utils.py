@@ -113,6 +113,9 @@ async def create_wm_tile_set_job(
 
     logger.debug(f"Created asset for {asset_uri}")
 
+    # TODO: Consider removing the use_resampler argument and changing this
+    # to "if creation_options.calc is None:"
+    # Make sure to test different scenarios when done!
     if use_resampler:
         job = await create_resample_job(
             dataset,
