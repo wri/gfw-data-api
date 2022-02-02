@@ -154,6 +154,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      -r|--resampling_method)
+      RESAMPLE="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -s|--source)
       SRC+=("$2")
       shift # past argument

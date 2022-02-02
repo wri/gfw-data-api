@@ -146,18 +146,6 @@ class GDALDEMJob(Job):
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 
 
-class BuildRGBJob(Job):
-    """Use for combining date_conf and intensity assets using buildrgb."""
-
-    job_queue = DATA_LAKE_JOB_QUEUE
-    job_definition = GDAL_PYTHON_JOB_DEFINITION
-    vcpus = MAX_CORES
-    memory = MAX_MEM
-    num_processes = max(int(MAX_CORES / 2), 1)
-    attempts = 4
-    attempt_duration_seconds = DEFAULT_JOB_DURATION
-
-
 class GDAL2TilesJob(Job):
     """Use for generating a raster tile cache from web-mercator tiles."""
 

@@ -47,9 +47,9 @@ services:
       - TILE_CACHE_CLUSTER=tile_cache_cluster
       - TILE_CACHE_SERVICE=tile_cache_service
       - PIXETL_JOB_QUEUE=pixetl_jq
-      - PIXETL_CORES=4
-      - MAX_CORES=4
-      - NUM_PROCESSES=4
+      - PIXETL_CORES=1
+      - MAX_CORES=1
+      - NUM_PROCESSES=1
       - PIXETL_MAX_MEM=3800
       - MAX_MEM=3800
       - API_URL=http://app_test:9000

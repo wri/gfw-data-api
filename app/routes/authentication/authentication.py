@@ -55,7 +55,7 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends()):
 
 
 @router.post("/apikey", tags=["Authentication"], status_code=201)
-async def create_apikey(
+async def create_api_key(
     api_key_data: APIKeyRequestIn,
     request: Request,
     user: Tuple[str, str] = Depends(get_user),
@@ -66,11 +66,6 @@ async def create_apikey(
     """
 
     user_id, user_role = user
-    if len(api_key_data.domains) == 0 and user_role != "ADMIN":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Users with role {user_role} must list at least one domain.",
-        )
 
     if api_key_data.never_expires and user_role != "ADMIN":
         raise HTTPException(
@@ -110,7 +105,7 @@ async def create_apikey(
 
 
 @router.get("/apikey/{api_key}", tags=["Authentication"])
-async def get_apikey(
+async def get_api_key(
     api_key: UUID = Path(..., description="API Key"),
     user: Tuple[str, str] = Depends(get_user),
 ):
@@ -135,7 +130,7 @@ async def get_apikey(
 
 
 @router.get("/apikeys", tags=["Authentication"])
-async def get_apikeys(
+async def get_api_keys(
     user: Tuple[str, str] = Depends(get_user),
 ):
     """Request a new API key.
@@ -150,7 +145,7 @@ async def get_apikeys(
 
 
 @router.get("/apikey/{api_key}/validate", tags=["Authentication"])
-async def validate_apikey(
+async def validate_api_key(
     api_key: UUID = Path(
         ..., description="Api Key to validate. Must be owned by authenticated user."
     ),
@@ -175,7 +170,7 @@ async def validate_apikey(
 
 
 @router.delete("/apikey/{api_key}", tags=["Authentication"])
-async def delete_apikey(
+async def delete_api_key(
     api_key: UUID = Path(
         ..., description="Api Key to delete. Must be owned by authenticated user."
     ),

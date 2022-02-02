@@ -450,7 +450,7 @@ symbology_checks = [
 ]
 
 
-@pytest.mark.hanging
+@pytest.mark.skip("Disabling for a few days while replacements are made")
 @pytest.mark.parametrize("checks", symbology_checks)
 @pytest.mark.asyncio
 async def test_raster_tile_cache_asset(checks, async_client, batch_client, httpd):
