@@ -571,13 +571,9 @@ async def _query_raster(
 
     # use default data type to get default raster layer for dataset
     default_layer = _get_default_layer(dataset, asset.creation_options["pixel_meaning"])
-    grid = (
-        asset.creation_options["grid"]
-        if asset.dataset != "umd_glad_landsat_alerts"
-        else Grid.ten_by_forty_thousand
-    )
-
+    grid = asset.creation_options["grid"]
     sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
+
     return await _query_raster_lambda(geostore.geojson, sql, grid, format, delimiter)
 
 
@@ -666,13 +662,7 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
     # create layers
     layers: List[Layer] = []
     for row in latest_tile_sets:
-        # TODO remove GLAD exception after migration
-        row_grid = (
-            row.creation_options["grid"]
-            if row.dataset != "umd_glad_landsat_alerts"
-            else Grid.ten_by_forty_thousand
-        )
-        if row_grid != grid:
+        if row.creation_options["grid"] != grid:
             # skip if not on the right grid
             continue
 
@@ -693,7 +683,7 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
                 f"{row.dataset}__{row.creation_options['pixel_meaning']}"
             )
 
-        layers.append(_get_source_layer(row, source_layer_name))
+        layers.append(_get_source_layer(row, source_layer_name, grid))
 
         if row.creation_options["pixel_meaning"] == "date_conf":
             layers += _get_date_conf_derived_layers(row, source_layer_name)
@@ -704,20 +694,10 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
     return DataEnvironment(layers=layers)
 
 
-def _get_source_layer(row, source_layer_name: str) -> SourceLayer:
-    # TODO we need to start uploading GLAD directly to the data API ASAP @_@
-    if source_layer_name == "umd_glad_landsat_alerts__date_conf":
-        source_uri = "s3://gfw2-data/forest_change/umd_landsat_alerts/prod/analysis/{tile_id}.tif"
-        tile_scheme = "nwse"
-        grid = Grid.ten_by_forty_thousand
-    else:
-        source_uri = row.asset_uri
-        tile_scheme = "nw"
-        grid = row.creation_options["grid"]
-
+def _get_source_layer(row, source_layer_name: str, grid: Grid) -> SourceLayer:
     return SourceLayer(
-        source_uri=source_uri,
-        tile_scheme=tile_scheme,
+        source_uri=row.asset_uri,
+        tile_scheme="nw",
         grid=grid,
         name=source_layer_name,
         raster_table=row.metadata.get("raster_table", None),
