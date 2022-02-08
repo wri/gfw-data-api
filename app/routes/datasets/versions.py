@@ -10,18 +10,24 @@ Available assets and endpoints to choose from depend on the source type.
 """
 from collections import defaultdict
 from copy import deepcopy
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
 
+from asyncpg import UniqueViolationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
 from ...authentication.token import is_admin
-from ...crud import assets, versions
+from ...crud import assets
+from ...crud import metadata as metadata_crud
+from ...crud import versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
 from ...models.orm.assets import Asset as ORMAsset
+from ...models.orm.dataset_metadata import DatasetMetadata as ORMDatasetMetadata
+from ...models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
@@ -34,6 +40,9 @@ from ...models.pydantic.metadata import (
     FieldMetadata,
     FieldMetadataResponse,
     RasterFieldMetadata,
+    VersionMetadata,
+    VersionMetadataIn,
+    VersionMetadataResponse,
 )
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.versions import (
@@ -334,6 +343,41 @@ async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
         fields = [FieldMetadata(**field) for field in asset.fields]
 
     return FieldMetadataResponse(data=fields)
+
+
+@router.get("/{dataset}/{version}/metadata")
+async def get_metadata(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
+    dataset, version = dv
+
+    try:
+        query: ORMDatasetMetadata = ORMDatasetMetadata.query.where(
+            ORMDatasetMetadata.dataset == dataset
+        )
+    except UniqueViolationError:
+        raise RecordAlreadyExistsError(f"Dataset with name {dataset} already exists")
+
+    return await query.gino.one()
+
+
+@router.post("/{dataset}/{version}/metadata")
+async def create_metadata(
+    *,
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
+    request: VersionMetadataIn,
+    # response_model: VersionMetadataResponse
+):
+    dataset, version = dv
+    input_data = request.dict(exclude_none=True, by_alias=True)
+    content_date_range = input_data.pop("content_date_range", None)
+    if content_date_range:
+        input_data["content_start_date"] = content_date_range["start_date"]
+        input_data["content_end_date"] = content_date_range["end_date"]
+
+    metadata: VersionMetadata = await metadata_crud.create_version_metadata(
+        dataset=dataset, version=version, **input_data
+    )
+
+    return metadata
 
 
 async def _get_raster_fields(asset: ORMAsset) -> List[RasterFieldMetadata]:
