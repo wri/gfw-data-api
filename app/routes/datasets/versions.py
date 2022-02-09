@@ -10,11 +10,9 @@ Available assets and endpoints to choose from depend on the source type.
 """
 from collections import defaultdict
 from copy import deepcopy
-from datetime import datetime
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
 
-from asyncpg import UniqueViolationError
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
@@ -26,8 +24,6 @@ from ...crud import versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
 from ...models.orm.assets import Asset as ORMAsset
-from ...models.orm.dataset_metadata import DatasetMetadata as ORMDatasetMetadata
-from ...models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
@@ -345,26 +341,31 @@ async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     return FieldMetadataResponse(data=fields)
 
 
-@router.get("/{dataset}/{version}/metadata")
+@router.get(
+    "/{dataset}/{version}/metadata",
+    response_class=ORJSONResponse,
+    response_model=VersionMetadataResponse,
+    tags=["Versions"],
+)
 async def get_metadata(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     dataset, version = dv
 
-    try:
-        query: ORMDatasetMetadata = ORMDatasetMetadata.query.where(
-            ORMDatasetMetadata.dataset == dataset
-        )
-    except UniqueViolationError:
-        raise RecordAlreadyExistsError(f"Dataset with name {dataset} already exists")
+    metadata = await metadata_crud.get_version_metadata(dataset, version)
 
-    return await query.gino.one()
+    return VersionMetadataResponse(data=metadata)
 
 
-@router.post("/{dataset}/{version}/metadata")
+@router.post(
+    "/{dataset}/{version}/metadata",
+    response_model=VersionMetadataResponse,
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+)
 async def create_metadata(
     *,
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
+    is_authorized: bool = Depends(is_admin),
     request: VersionMetadataIn,
-    # response_model: VersionMetadataResponse
 ):
     dataset, version = dv
     input_data = request.dict(exclude_none=True, by_alias=True)
