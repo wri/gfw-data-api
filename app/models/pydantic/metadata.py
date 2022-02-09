@@ -1,12 +1,10 @@
 from datetime import date, datetime
-from email.policy import strict
 from typing import Any, Dict, List, Optional, Type, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field, StrictInt, validator
 from pydantic.utils import GetterDict
 
-from ...routes import DATE_REGEX
 from ..enum.assets import AssetType
 from ..enum.pg_types import PGType
 from .base import BaseRecord, StrictBaseModel
@@ -107,7 +105,7 @@ class VersionMetadataGetter(GetterDict):
         if key == "content_date_range":
             return {
                 "start_date": self._obj.content_start_date,
-                "end_date": self._obj.content_end_endate,
+                "end_date": self._obj.content_end_date,
             }
         else:
             return super(VersionMetadataGetter, self).get(key, default)
@@ -259,4 +257,6 @@ def asset_metadata_factory(asset_type: str, metadata: Dict[str, Any]) -> AssetMe
 
 
 def _date_validator(date_str):
+    if isinstance(date_str, date):
+        return date_str
     return datetime.strptime(date_str, "%Y-%m-%d").date()
