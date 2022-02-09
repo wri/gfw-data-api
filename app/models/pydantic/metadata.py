@@ -85,6 +85,14 @@ class DatasetMetadata(CommonMetadata):
     # other: Optional[str]
 
 
+class DatasetMetadataOut(DatasetMetadata, BaseRecord):
+    metadata_id: UUID
+
+
+class DatasetMetadataIn(DatasetMetadata, StrictBaseModel):
+    pass
+
+
 class ContentDateRange(StrictBaseModel):
     start_date: date = Field(
         ...,
@@ -221,6 +229,10 @@ AssetMetadata = Union[
     RasterTileSetMetadata,
     VectorFileMetadata,
 ]
+
+
+class DatasetMetadataResponse(Response):
+    data: DatasetMetadataOut
 
 
 class VersionMetadataResponse(Response):

@@ -3,14 +3,14 @@ from typing import List, Optional
 from pydantic import Field
 
 from .base import BaseRecord, StrictBaseModel
-from .metadata import DatasetMetadata
+from .metadata import DatasetMetadata, DatasetMetadataOut
 from .responses import Response
 
 
 class Dataset(BaseRecord):
     dataset: str
     is_downloadable: bool
-    metadata: DatasetMetadata
+    metadata: DatasetMetadataOut
     versions: Optional[List[str]] = list()
 
 
