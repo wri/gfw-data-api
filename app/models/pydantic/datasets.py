@@ -3,7 +3,7 @@ from typing import List, Optional
 from pydantic import Field
 
 from .base import BaseRecord, StrictBaseModel
-from .metadata import DatasetMetadata, DatasetMetadataOut
+from .metadata import DatasetMetadata, DatasetMetadataOut, DatasetMetadataUpdate
 from .responses import Response
 
 
@@ -26,7 +26,7 @@ class DatasetCreateIn(StrictBaseModel):
 
 class DatasetUpdateIn(StrictBaseModel):
     is_downloadable: Optional[bool]
-    metadata: Optional[DatasetMetadata]
+    metadata: Optional[DatasetMetadataUpdate]
 
 
 class DatasetResponse(Response):

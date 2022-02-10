@@ -93,6 +93,14 @@ class DatasetMetadataIn(DatasetMetadata, StrictBaseModel):
     pass
 
 
+class DatasetMetadataUpdate(DatasetMetadataIn):
+    title: Optional[str]
+    source: Optional[str]
+    license: Optional[str]
+    data_language: Optional[str]
+    overview: Optional[str]
+
+
 class ContentDateRange(StrictBaseModel):
     start_date: date = Field(
         ...,

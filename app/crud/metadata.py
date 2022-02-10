@@ -7,19 +7,13 @@ from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.enum import entity
 from ..models.orm.base import Base
 from ..models.orm.dataset_metadata import DatasetMetadata as ORMDatasetMetadata
-from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
 from ..models.orm.versions import Version as ORMVersion
-from . import datasets, versions
+from . import versions
 
 
 async def create_dataset_metadata(dataset: str, **data) -> ORMDatasetMetadata:
     """Create dataset metadata record."""
-    d: ORMDataset = await datasets.get_dataset(dataset)
-    if d is None:
-        raise RecordNotFoundError(
-            f"Failed to create metadata. Dataset {dataset} does not exist."
-        )
 
     try:
         new_metadata: ORMDatasetMetadata = await ORMDatasetMetadata.create(
@@ -60,6 +54,21 @@ async def get_dataset_metadata(dataset: str) -> ORMDatasetMetadata:
         raise RecordNotFoundError(
             f"Could not find requested metadata dataset {dataset}"
         )
+
+    return metadata
+
+
+async def update_dataset_metadata(dataset: str, **data) -> ORMDatasetMetadata:
+    metadata: ORMDatasetMetadata = await ORMDatasetMetadata.query.where(
+        ORMDatasetMetadata.dataset == dataset
+    ).gino.first()
+
+    if metadata is None:
+        raise RecordNotFoundError(
+            f"Could not find requested metadata dataset {dataset}"
+        )
+
+    await metadata.update(**data).apply()
 
     return metadata
 
