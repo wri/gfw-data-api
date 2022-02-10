@@ -38,7 +38,8 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
         )
     d: ORMDataset = await datasets.get_dataset(dataset)
 
-    return update_metadata(row, d)
+    # return update_metadata(row, d)
+    return d
 
 
 async def get_latest_version(dataset) -> str:

@@ -172,6 +172,22 @@ class VersionMetadataOut(VersionMetadata, BaseRecord):
         getter_dict = VersionMetadataGetter
 
 
+class VersionMetadataUpdate(VersionMetadataIn):
+    creation_date: Optional[date] = Field(
+        None,
+        description="Date resource was created",
+    )
+    content_date_range: Optional[ContentDateRange] = Field(
+        None,
+        description="Date range covered by the content",
+    )
+
+    last_update: Optional[date] = Field(
+        None,
+        description="Date the data were last updated",
+    )
+
+
 class RasterTableRow(StrictBaseModel):
     value: int
     meaning: Any

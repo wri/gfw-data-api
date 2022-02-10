@@ -39,6 +39,7 @@ from ...models.pydantic.metadata import (
     VersionMetadata,
     VersionMetadataIn,
     VersionMetadataResponse,
+    VersionMetadataUpdate,
 )
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.versions import (
@@ -357,7 +358,7 @@ async def get_metadata(dv: Tuple[str, str] = Depends(dataset_version_dependency)
 
 @router.post(
     "/{dataset}/{version}/metadata",
-    response_model=VersionMetadataResponse,
+    # response_model=VersionMetadataResponse,
     response_class=ORJSONResponse,
     tags=["Versions"],
 )
@@ -376,6 +377,51 @@ async def create_metadata(
 
     metadata: VersionMetadata = await metadata_crud.create_version_metadata(
         dataset=dataset, version=version, **input_data
+    )
+
+    return metadata
+
+
+@router.delete(
+    "/{dataset}/{version}/metadata",
+    response_model=VersionMetadataResponse,
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+)
+async def delete_metadata(
+    *,
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
+    is_authorized: bool = Depends(is_admin),
+):
+    dataset, version = dv
+
+    try:
+        metadata: VersionMetadata = await metadata_crud.delete_version_metadata(
+            dataset, version
+        )
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return metadata
+
+
+@router.patch(
+    "/{dataset}/{version}/metadata",
+    response_model=VersionMetadataResponse,
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+)
+async def update_metadata(
+    *,
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
+    is_authorized: bool = Depends(is_admin),
+    request: VersionMetadataUpdate,
+):
+    dataset, version = dv
+    input_data = request.dict(exclude_none=True, by_alias=True)
+
+    metadata = await metadata_crud.update_version_metadata(
+        dataset, version, **input_data
     )
 
     return metadata

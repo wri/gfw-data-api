@@ -101,6 +101,32 @@ async def create_version_metadata(dataset: str, version: str, **data):
     return new_metadata
 
 
+async def delete_version_metadata(dataset: str, version: str) -> ORMVersionMetadata:
+    """Delete version metadata."""
+    metadata: ORMVersionMetadata = await get_version_metadata(dataset, version)
+    await ORMVersionMetadata.delete.where(
+        ORMVersionMetadata.dataset == dataset
+    ).gino.status()
+
+    return metadata
+
+
+async def update_version_metadata(
+    dataset: str, version: str, **data
+) -> ORMVersionMetadata:
+    """Update version metadata."""
+    v: ORMVersion = await versions.get_version(dataset, version)
+    if v is None:
+        raise RecordNotFoundError(
+            f"""Failed to create metadata. Either the dataset {dataset} or version {version}
+            do not exist."""
+        )
+
+    metadata = await ORMVersionMetadata.update(**data).apply()
+
+    return metadata
+
+
 def update_metadata(row: Base, parent: Base):
     """Dynamically update metadata with parent metadata.
 
