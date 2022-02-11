@@ -218,7 +218,7 @@ def warp_raster(
     bounds: Bounds, width, height, resampling_method, source_path, target_path, logger
 ):
     """Warps/extracts raster of provided dimensions from source file."""
-    warp_cmd: List[str] = [
+    cmd: List[str] = [
         "gdalwarp",
         "-t_srs",
         "epsg:3857",  # TODO: Parameterize?
@@ -243,27 +243,45 @@ def warp_raster(
         source_path,
         target_path,
     ]
+    logger.log(
+        logging.INFO,
+        f"Begin warping of {source_path} to {target_path} with the command {cmd}",
+    )
+
     tic = time.perf_counter()
-    warp_process = subprocess.run(warp_cmd, capture_output=True)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    pid = proc.pid
+    while proc.poll() is None:
+        mem = psutil.Process(pid).memory_info().rss / (1024 ** 2)
+        logger.log(logging.INFO, f"Warp process currently consuming {mem} MB of memory")
+        time.sleep(10)
     toc = time.perf_counter()
+
+    if proc.returncode == -9:
+        logger.log(
+            logging.ERROR,
+            "Warping subprocess killed with signal 9 (likely OOM)!",
+        )
+        raise SubprocessKilledError
+    if proc.returncode != 0:
+        logger.log(
+            logging.ERROR,
+            f"Warping FAILED with exit code {proc.returncode}",
+        )
+        logger.log(logging.ERROR, proc.stdout)
+        raise Exception(f"Warping {source_path} failed")
 
     logger.log(
         logging.INFO,
         f"Warping {source_path} to {target_path} took {toc - tic:0.4f} seconds",
     )
 
-    if warp_process.returncode < 0:
-        raise SubprocessKilledError
-    elif warp_process.returncode > 0:
-        logger.log(logging.ERROR, warp_process.stderr)
-        raise Exception(f"Warping {source_path} failed")
-
     return toc - tic
 
 
 def compress_raster(source_path, target_path, logger):
-    """Compress a raster tile."""
-    translate_cmd: List[str] = [
+    """Compress a raster tile with gdal_translate."""
+    cmd: List[str] = [
         "gdal_translate",
         "-co",
         f"COMPRESS={GEOTIFF_COMPRESSION}",
@@ -275,15 +293,36 @@ def compress_raster(source_path, target_path, logger):
         source_path,
         target_path,
     ]
+
+    logger.log(
+        logging.INFO,
+        f"Begin compression of {source_path} to {target_path} with the command {cmd}",
+    )
+
     tic = time.perf_counter()
-    translate_process = subprocess.run(translate_cmd, capture_output=True)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    pid = proc.pid
+    while proc.poll() is None:
+        mem = psutil.Process(pid).memory_info().rss / (1024 ** 2)
+        logger.log(
+            logging.INFO, f"Compression process currently consuming {mem} MB of memory"
+        )
+        time.sleep(10)
     toc = time.perf_counter()
 
-    if translate_process.returncode < 0:
+    if proc.returncode == -9:
+        logger.log(
+            logging.ERROR,
+            "Compression subprocess killed with signal 9 (likely OOM)!",
+        )
         raise SubprocessKilledError
-    elif translate_process.returncode > 0:
-        logger.log(logging.ERROR, translate_process.stderr)
-        raise Exception(f"Compressing {source_path} failed")
+    if proc.returncode != 0:
+        logger.log(
+            logging.ERROR,
+            f"Compressing FAILED with exit code {proc.returncode}",
+        )
+        logger.log(logging.ERROR, proc.stdout)
+        raise Exception(f"Warping {source_path} failed")
 
     logger.log(
         logging.INFO,
@@ -311,7 +350,7 @@ def process_tile(
 
     q_configurer(q)
     logger = logging.getLogger("process_tile")
-    logger.log(logging.INFO, f"Beginning processing tile {tile_id}")
+    logger.log(logging.INFO, f"Begin processing tile {tile_id}")
 
     tile_file_name = f"{tile_id}.tif"
     target_geotiff_key = os.path.join(target_prefix, "geotiff", tile_file_name)
