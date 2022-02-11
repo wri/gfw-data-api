@@ -124,14 +124,9 @@ async def update_version_metadata(
     dataset: str, version: str, **data
 ) -> ORMVersionMetadata:
     """Update version metadata."""
-    v: ORMVersion = await versions.get_version(dataset, version)
-    if v is None:
-        raise RecordNotFoundError(
-            f"""Failed to create metadata. Either the dataset {dataset} or version {version}
-            do not exist."""
-        )
+    metadata: ORMVersionMetadata = await get_version_metadata(dataset, version)
 
-    metadata = await ORMVersionMetadata.update(**data).apply()
+    await metadata.update(**data).apply()
 
     return metadata
 
