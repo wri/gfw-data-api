@@ -358,7 +358,7 @@ async def get_metadata(dv: Tuple[str, str] = Depends(dataset_version_dependency)
 
 @router.post(
     "/{dataset}/{version}/metadata",
-    # response_model=VersionMetadataResponse,
+    response_model=VersionMetadataResponse,
     response_class=ORJSONResponse,
     tags=["Versions"],
 )
@@ -379,7 +379,7 @@ async def create_metadata(
         dataset=dataset, version=version, **input_data
     )
 
-    return metadata
+    return VersionMetadataResponse(data=metadata)
 
 
 @router.delete(
@@ -402,7 +402,7 @@ async def delete_metadata(
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    return metadata
+    return VersionMetadataResponse(data=metadata)
 
 
 @router.patch(
@@ -424,7 +424,7 @@ async def update_metadata(
         dataset, version, **input_data
     )
 
-    return metadata
+    return VersionMetadataResponse(data=metadata)
 
 
 async def _get_raster_fields(asset: ORMAsset) -> List[RasterFieldMetadata]:

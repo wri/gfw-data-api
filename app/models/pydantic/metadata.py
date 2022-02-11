@@ -128,17 +128,17 @@ class VersionMetadataGetter(GetterDict):
 
 
 class VersionMetadata(CommonMetadata):
-    creation_date: Optional[date] = Field(
-        None,
+    creation_date: date = Field(
+        ...,
         description="Date resource was created",
     )
     content_date_range: Optional[ContentDateRange] = Field(
-        None,
+        ...,
         description="Date range covered by the content",
     )
 
-    last_update: Optional[date] = Field(
-        None,
+    last_update: date = Field(
+        ...,
         description="Date the data were last updated",
     )
 
