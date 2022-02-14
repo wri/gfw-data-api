@@ -76,7 +76,8 @@ async def update_dataset_metadata(dataset: str, **data) -> ORMDatasetMetadata:
 async def get_version_metadata(dataset: str, version: str) -> ORMVersionMetadata:
     """Get dataset version metadata."""
     metadata: ORMVersionMetadata = (
-        await ORMVersionMetadata.query.where(ORMVersionMetadata.dataset == dataset)
+        await ORMVersionMetadata.load(dataset_metadata=ORMDatasetMetadata)
+        .where(ORMVersionMetadata.dataset == dataset)
         .where(ORMVersionMetadata.version == version)
         .gino.first()
     )
@@ -98,9 +99,13 @@ async def create_version_metadata(dataset: str, version: str, **data):
             do not exist."""
         )
 
+    dataset_metadata: ORMDatasetMetadata = await get_dataset_metadata(dataset)
     try:
         new_metadata: ORMVersionMetadata = await ORMVersionMetadata.create(
-            dataset=dataset, version=version, **data
+            dataset=dataset,
+            version=version,
+            dataset_metadata_id=dataset_metadata.id,
+            **data,
         )
     except UniqueViolationError:
         raise RecordAlreadyExistsError(

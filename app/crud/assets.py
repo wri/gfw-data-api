@@ -32,12 +32,13 @@ async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
 async def get_all_assets() -> List[ORMAsset]:
     assets = await ORMAsset.query.gino.all()
 
-    return await _update_all_asset_metadata(assets)
+    return assets
 
 
 async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
     assets = await ORMAsset.query.where(ORMAsset.asset_type == asset_type).gino.all()
-    return await _update_all_asset_metadata(assets)
+
+    return assets
 
 
 async def get_assets_by_filter(
@@ -65,34 +66,30 @@ async def get_assets_by_filter(
     query = query.order_by(ORMAsset.created_on)
     assets = await query.gino.all()
 
-    return await _update_all_asset_metadata(assets)
+    return assets
 
 
 async def get_asset(asset_id: UUID) -> ORMAsset:
-    row: ORMAsset = await ORMAsset.get([asset_id])
-    if row is None:
+    asset: ORMAsset = await ORMAsset.get([asset_id])
+    if asset is None:
         raise RecordNotFoundError(f"Could not find requested asset {asset_id}")
 
-    version: ORMVersion = await versions.get_version(row.dataset, row.version)
-
-    return update_metadata(row, version)
+    return asset
 
 
 async def get_default_asset(dataset: str, version: str) -> ORMAsset:
-    row: ORMAsset = (
+    asset: ORMAsset = (
         await ORMAsset.query.where(ORMAsset.dataset == dataset)
         .where(ORMAsset.version == version)
         .where(ORMAsset.is_default == True)  # noqa: E712
         .gino.first()
     )
-    if row is None:
+    if asset is None:
         raise RecordNotFoundError(
             f"Could not find default asset for {dataset}.{version}"
         )
 
-    v: ORMVersion = await versions.get_version(row.dataset, row.version)
-
-    return update_metadata(row, v)
+    return asset
 
 
 async def create_asset(dataset, version, **data) -> ORMAsset:
@@ -115,28 +112,24 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
             f"Asset uri must be unique. An asset with uri {data['asset_uri']} already exists"
         )
 
-    return update_metadata(new_asset, v)
+    return new_asset
 
 
 async def update_asset(asset_id: UUID, **data) -> ORMAsset:
     data = _validate_creation_options(**data)
     jsonable_data = jsonable_encoder(data)
 
-    row: ORMAsset = await get_asset(asset_id)
-    row = await update_data(row, jsonable_data)
+    asset: ORMAsset = await get_asset(asset_id)
+    asset = await update_data(asset, jsonable_data)
 
-    version: ORMVersion = await versions.get_version(row.dataset, row.version)
-
-    return update_metadata(row, version)
+    return asset
 
 
 async def delete_asset(asset_id: UUID) -> ORMAsset:
-    row: ORMAsset = await get_asset(asset_id)
+    asset: ORMAsset = await get_asset(asset_id)
     await ORMAsset.delete.where(ORMAsset.asset_id == asset_id).gino.status()
 
-    version: ORMVersion = await versions.get_version(row.dataset, row.version)
-
-    return update_metadata(row, version)
+    return asset
 
 
 async def _update_all_asset_metadata(assets) -> List[ORMAsset]:

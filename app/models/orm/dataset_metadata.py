@@ -7,7 +7,7 @@ from .mixins import MetadataMixin
 class DatasetMetadata(Base, MetadataMixin):
     __tablename__ = "dataset_metadata"
 
-    metadata_id = db.Column(db.UUID, primary_key=True)
+    id = db.Column(db.UUID, primary_key=True)
     dataset = db.Column(db.String, nullable=False)
     source = db.Column(db.String, nullable=False)
     license = db.Column(db.String)

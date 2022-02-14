@@ -86,7 +86,7 @@ class DatasetMetadata(CommonMetadata):
 
 
 class DatasetMetadataOut(DatasetMetadata, BaseRecord):
-    metadata_id: UUID
+    id: UUID
 
 
 class DatasetMetadataIn(DatasetMetadata, StrictBaseModel):
@@ -174,10 +174,14 @@ class VersionMetadataIn(VersionMetadata, StrictBaseModel):
 
 
 class VersionMetadataOut(VersionMetadata, BaseRecord):
-    metadata_id: UUID
+    id: UUID
 
     class Config:
         getter_dict = VersionMetadataGetter
+
+
+class VersionMetadataOutWithParent(VersionMetadataOut):
+    dataset_metadata: DatasetMetadataOut
 
 
 class VersionMetadataUpdate(VersionMetadataIn):
@@ -261,6 +265,10 @@ class DatasetMetadataResponse(Response):
 
 class VersionMetadataResponse(Response):
     data: VersionMetadataOut
+
+
+class VersionMetadataWithParentResponse(Response):
+    data: VersionMetadataOutWithParent
 
 
 class FieldMetadataResponse(Response):

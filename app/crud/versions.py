@@ -8,7 +8,7 @@ from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
 from ..utils.generators import list_to_async_generator
 from . import datasets, update_data
-from .metadata import update_all_metadata, update_metadata
+from .metadata import update_all_metadata
 
 
 async def get_versions(dataset: str) -> List[ORMVersion]:
@@ -36,10 +36,10 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
         raise RecordNotFoundError(
             f"Version with name {dataset}.{version} does not exist"
         )
-    d: ORMDataset = await datasets.get_dataset(dataset)
+    # d: ORMDataset = await datasets.get_dataset(dataset)
 
     # return update_metadata(row, d)
-    return d
+    return row
 
 
 async def get_latest_version(dataset) -> str:
@@ -82,34 +82,37 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
             f"Version with name {dataset}.{version} already exists."
         )
 
-    return update_metadata(new_version, d)
+    # return update_metadata(new_version, d)
+    return new_version
 
 
 async def update_version(dataset: str, version: str, **data) -> ORMVersion:
     """Update fields of version."""
-    row: ORMVersion = await get_version(dataset, version)
-    row = await update_data(row, data)
+    version: ORMVersion = await get_version(dataset, version)
+    version = await update_data(version, data)
 
     await _update_is_downloadable(dataset, version, data)
 
     if data.get("is_latest"):
         await _reset_is_latest(dataset, version)
 
-    d: ORMDataset = await datasets.get_dataset(dataset)
+    # d: ORMDataset = await datasets.get_dataset(dataset)
 
-    return update_metadata(row, d)
+    # return update_metadata(row, d)
+    return version
 
 
 async def delete_version(dataset: str, version: str) -> ORMVersion:
     """Delete a version."""
-    row: ORMVersion = await get_version(dataset, version)
+    version: ORMVersion = await get_version(dataset, version)
     await ORMVersion.delete.where(ORMVersion.dataset == dataset).where(
         ORMVersion.version == version
     ).gino.status()
 
-    d: ORMDataset = await datasets.get_dataset(dataset)
+    # d: ORMDataset = await datasets.get_dataset(dataset)
 
-    return update_metadata(row, d)
+    # return update_metadata(row, d)
+    return version
 
 
 async def _update_is_downloadable(

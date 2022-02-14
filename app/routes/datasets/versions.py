@@ -13,7 +13,7 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
@@ -40,6 +40,7 @@ from ...models.pydantic.metadata import (
     VersionMetadataIn,
     VersionMetadataResponse,
     VersionMetadataUpdate,
+    VersionMetadataWithParentResponse,
 )
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.versions import (
@@ -345,13 +346,21 @@ async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
 @router.get(
     "/{dataset}/{version}/metadata",
     response_class=ORJSONResponse,
-    response_model=VersionMetadataResponse,
+    response_model=Union[VersionMetadataWithParentResponse, VersionMetadataResponse],
     tags=["Versions"],
 )
-async def get_metadata(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
+async def get_metadata(
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
+    include_dataset_metadata: bool = Query(
+        False, description="Whether to include dataset metadata."
+    ),
+):
     dataset, version = dv
 
     metadata = await metadata_crud.get_version_metadata(dataset, version)
+
+    if include_dataset_metadata:
+        return VersionMetadataWithParentResponse(data=metadata)
 
     return VersionMetadataResponse(data=metadata)
 
