@@ -1,12 +1,6 @@
-resource "aws_api_gateway_resource" "resource" {
-  rest_api_id = var.rest_api_id
-  parent_id = var.parent_id
-  path_part = var.path_part
-}
-
 resource "aws_api_gateway_method" "method" {
   rest_api_id = var.rest_api_id
-  resource_id = aws_api_gateway_resource.resource.id
+  resource_id = var.api_resource.id
   http_method = var.http_method
   authorization = var.authorization
   authorizer_id = var.authorizer_id
@@ -17,7 +11,7 @@ resource "aws_api_gateway_method" "method" {
 
 resource "aws_api_gateway_integration" "integration" {
   rest_api_id = var.rest_api_id
-  resource_id = aws_api_gateway_resource.resource.id
+  resource_id = var.api_resource.id
   http_method = aws_api_gateway_method.method.http_method
 
 

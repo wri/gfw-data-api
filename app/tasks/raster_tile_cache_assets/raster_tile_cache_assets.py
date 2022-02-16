@@ -1,4 +1,3 @@
-import string
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -64,26 +63,15 @@ async def raster_tile_cache_asset(
                 dataset,
                 version,
                 AssetType.raster_tile_set,
-                source_asset.creation_options
+                source_asset.creation_options,
             )
-        )
+        ).replace("/geotiff", "/gdal-geotiff")
     ]
 
     # The first thing we do for each zoom level is reproject the source asset
     # to web-mercator. We don't want the calc string (if any) used to
     # create the source asset to be applied again to the already transformed
-    # data, so set it to None. But wait, PixETL currently requires a calc
-    # string when band_count > 1, so for such cases make a generic calc
-    # string that just pass through the source bands as-is. So for a source
-    # RTS with three bands, set the calc string to "np.ma.array([A, B, C])"
-    # TODO: When pixetl allows it just set the calc string to None
-    band_count = source_asset.creation_options["band_count"]
-    if band_count > 1:
-        bands_string = str(list(string.ascii_uppercase[:band_count])).replace("'", "")
-        calc: Optional[str] = f"np.ma.array({bands_string})"
-    else:
-        calc = None
-
+    # data, so set it to None.
     source_asset_co = RasterTileSetSourceCreationOptions(
         # TODO: With python 3.9, we can use the `|` operator here
         #  waiting for https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker/pull/67
@@ -93,7 +81,7 @@ async def raster_tile_cache_asset(
                 "source_type": RasterSourceType.raster,
                 "source_driver": RasterDrivers.geotiff,
                 "source_uri": new_source_uri,
-                "calc": calc,
+                "calc": None,
                 "resampling": resampling,
                 "compute_stats": False,
                 "compute_histogram": False,
@@ -134,13 +122,13 @@ async def raster_tile_cache_asset(
 
     for zoom_level in range(max_zoom, min_zoom - 1, -1):
         jobs_dict[zoom_level] = dict()
-        source_projection_parent_job = jobs_dict.get(zoom_level + 1, {}).get(
-            "source_reprojection_job"
-        )
 
-        source_projection_parent_jobs = (
-            [source_projection_parent_job] if source_projection_parent_job else []
-        )
+        if zoom_level == max_zoom:
+            source_reprojection_parent_jobs: List[Job] = []
+        else:
+            source_reprojection_parent_jobs = [
+                jobs_dict[zoom_level + 1]["source_reprojection_job"]
+            ]
 
         (
             source_reprojection_job,
@@ -151,9 +139,10 @@ async def raster_tile_cache_asset(
             source_asset_co,
             zoom_level,
             max_zoom,
-            source_projection_parent_jobs,
+            source_reprojection_parent_jobs,
             max_zoom_resampling=PIXETL_DEFAULT_RESAMPLING,
             max_zoom_calc=max_zoom_calc,
+            use_resampler=max_zoom_calc is None,
         )
         jobs_dict[zoom_level]["source_reprojection_job"] = source_reprojection_job
         job_list.append(source_reprojection_job)
@@ -183,7 +172,7 @@ async def raster_tile_cache_asset(
                 zoom_level,
                 implementation,
                 callback_constructor(asset_id),
-                symbology_jobs + [source_reprojection_job],
+                [*symbology_jobs, source_reprojection_job],
                 bit_depth,
             )
             job_list.append(tile_cache_job)
