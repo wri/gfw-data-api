@@ -48,9 +48,13 @@ async def get_assets_by_filter(
     is_latest: Optional[bool] = None,
     is_default: Optional[bool] = None,
 ) -> List[ORMAsset]:
+
     if is_latest is not None:
+        VersionAliased = ORMVersion.alias()
         query = (
-            ORMAsset.join(ORMVersion).select().where(ORMVersion.is_latest == is_latest)
+            ORMAsset.join(VersionAliased)
+            .select()
+            .where(VersionAliased.is_latest == is_latest)
         )
     else:
         query = ORMAsset.query
@@ -66,7 +70,7 @@ async def get_assets_by_filter(
         query = query.where(ORMAsset.is_default == is_default)
 
     query = query.order_by(ORMAsset.created_on)
-    assets = await query.gino.all()
+    assets = await query.gino.load(ORMAsset).all()
 
     return await _update_all_asset_metadata(assets)
 
