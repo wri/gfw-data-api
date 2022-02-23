@@ -633,6 +633,11 @@ def _get_default_layer(dataset, pixel_meaning):
     elif "date_conf" in default_type:
         # use date layer for date_conf encoding
         return f"{dataset}__date"
+    elif default_type.endswith("ha-1"):
+        # remove ha-1 suffix for area density rasters
+        # OTF will multiply by pixel area to get base type
+        # and table names can't include '-1'
+        return f"{dataset}__{default_type[:-5]}"
     else:
         return f"{dataset}__{default_type}"
 
