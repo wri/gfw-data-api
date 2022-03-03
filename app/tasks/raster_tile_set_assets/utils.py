@@ -127,7 +127,7 @@ async def create_gdaldem_job(
     target_prefix = posixpath.dirname(split_s3_path(target_asset_uri)[1])
 
     command = [
-        "apply_symbology.sh",
+        "apply_colormap.sh",
         "-d",
         dataset,
         "-v",
@@ -143,7 +143,7 @@ async def create_gdaldem_job(
     ]
 
     if with_alpha:
-        command += ["-alpha", "True"]
+        command += ["--alpha", "True"]
 
     return GDALDEMJob(
         dataset=dataset,

@@ -82,7 +82,7 @@ def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str
     if env:
         gdal_env.update(**env)
 
-    LOGGER.debug(f"RUN subcommand {cmd}, using env {gdal_env}")
+    print(f"RUN subcommand {cmd}, using env {gdal_env}")
     p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, env=gdal_env)
 
     o_byte, e_byte = p.communicate()
@@ -96,9 +96,9 @@ def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str
         e = str(e_byte)
 
     if p.returncode != 0:
-        LOGGER.error(f"Exit code {p.returncode} for command {cmd}")
-        LOGGER.error(f"Standard output: {o}")
-        LOGGER.error(f"Standard error: {e}")
+        print(f"Exit code {p.returncode} for command {cmd}")
+        print(f"Standard output: {o}")
+        print(f"Standard error: {e}")
         if p.returncode < 0:
             raise SubprocessKilledError()
         else:
@@ -149,7 +149,7 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str, bool]) -> str:
         s3_client = get_s3_client()
         bucket, source_key = get_s3_path_parts(source_tile_uri)
 
-        LOGGER.info(f"Downloading {source_tile_uri} to {local_src_file_path}")
+        print(f"Downloading {source_tile_uri} to {local_src_file_path}")
         s3_client.download_file(bucket, source_key, local_src_file_path)
 
         local_dest_file_path = os.path.join(work_dir, f"{tile_id}_colored.tif")
@@ -174,26 +174,26 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str, bool]) -> str:
         ]
         if add_alpha:
             cmd += ["-alpha"]
+        # I suspect that this doesn't work - check the log of cmd
         if symbology_type in (ColorMapType.discrete, ColorMapType.discrete_intensity):
             cmd += ["-exact_color_entry"]
 
         cmd += [local_src_file_path, colormap_path, local_dest_file_path]
 
-        LOGGER.info(f"Running subcommand {cmd}")
+        print(f"Running subcommand {cmd}")
 
         try:
             run_gdal_subcommand(cmd)
         except GDALError:
-            LOGGER.error(f"Could not create Color Relief for tile_id {tile_id}")
+            print(f"Could not create Color Relief for tile_id {tile_id}")
             raise
 
-        # FIXME: Shouldn't this be local_dest_file_path?
-        with rasterio.open(local_src_file_path, "r+") as src:
+        with rasterio.open(local_dest_file_path, "r+") as src:
             src.nodata = 0
 
         # Now upload the file to S3
         target_key = os.path.join(target_prefix, os.path.basename(local_src_file_path))
-        LOGGER.info(f"Uploading {local_src_file_path} to {target_key}")
+        print(f"Uploading {local_src_file_path} to {target_key}")
         s3_client.upload_file(local_dest_file_path, bucket, target_key)
 
     return tile_id
@@ -208,12 +208,12 @@ def apply_symbology(
     source_uri: str = Option(..., help="URI of source tiles.geojson."),
     target_prefix: str = Option(..., help="Target prefix."),
 ):
-    LOGGER.info(f"Applying symbology to tiles listed in {source_uri}")
+    print(f"Applying symbology to tiles listed in {source_uri}")
 
     tile_uris = get_source_tile_uris(source_uri)
 
     if not tile_uris:
-        LOGGER.info("No input files! I guess we're good then.")
+        print("No input files! I guess we're good then.")
         return
 
     no_data_value: Optional[Union[StrictInt, float]] = json.loads(no_data)
@@ -243,7 +243,7 @@ def apply_symbology(
         # https://stackoverflow.com/a/61470465/1410317
         with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
             for tile_id in executor.map(create_rgb_tile, process_args):
-                LOGGER.info(f"Finished processing tile {tile_id}")
+                print(f"Finished processing tile {tile_id}")
 
     # Now run pixetl_prep.create_geojsons to generate a tiles.geojson and
     # extent.geojson in the target prefix. But that code appends /geotiff
@@ -251,7 +251,7 @@ def apply_symbology(
     create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1].replace(
         "/geotiff", ""
     )
-    LOGGER.info(f"Uploading tiles.geojson to {create_geojsons_prefix}")
+    print(f"Uploading tiles.geojson to {create_geojsons_prefix}")
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
 
 
@@ -259,5 +259,5 @@ if __name__ == "__main__":
     try:
         run(apply_symbology)
     except (BrokenProcessPool, SubprocessKilledError):
-        LOGGER.error("One of our subprocesses was killed! Exiting with 137")
+        print("One of our subprocesses was killed! Exiting with 137")
         sys.exit(137)

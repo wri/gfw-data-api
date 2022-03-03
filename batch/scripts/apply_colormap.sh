@@ -7,6 +7,7 @@ set -e
 # -v | --version
 # -j | --json
 # -n | --no_data
+# -a | --alpha
 # -s | --source
 # -T | --target
 
@@ -29,4 +30,4 @@ ARG_ARRAY+=("--source-uri" "${SRC}")
 ARG_ARRAY+=("--target-prefix" "${TARGET}")
 
 # Run apply_symbology.py with the array of arguments
-apply_symbology.py "${ARG_ARRAY[@]}"
+apply_colormap.py "${ARG_ARRAY[@]}"
