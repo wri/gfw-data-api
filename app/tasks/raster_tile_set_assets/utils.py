@@ -101,7 +101,6 @@ async def create_gdaldem_job(
     dataset: str,
     version: str,
     co: PixETLCreationOptions,
-    with_alpha: bool,
     job_name: str,
     callback: Callback,
     parents: Optional[List[Job]] = None,
@@ -141,9 +140,6 @@ async def create_gdaldem_job(
         "-T",
         target_prefix,
     ]
-
-    if with_alpha:
-        command += ["--alpha", "True"]
 
     return GDALDEMJob(
         dataset=dataset,

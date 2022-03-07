@@ -9,7 +9,6 @@ import sys
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from enum import Enum
-from logging import getLogger
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -29,9 +28,9 @@ NUM_PROCESSES = int(
 GEOTIFF_COMPRESSION = "DEFLATE"
 GDAL_GEOTIFF_COMPRESSION = "DEFLATE"
 
-OrderedColorMap = Dict[Union[int, float], Tuple[int, int, int, int]]
-
-LOGGER = getLogger("apply_symbology")
+OrderedColorMap = Dict[
+    Union[int, float], Union[Tuple[int, int, int], Tuple[int, int, int, int]]
+]
 
 
 class ColorMapType(str, Enum):
@@ -47,11 +46,20 @@ class StrictBaseModel(BaseModel):
         validate_assignment = True
 
 
+class RGB(StrictBaseModel):
+    red: int = Field(..., ge=0, le=255)
+    green: int = Field(..., ge=0, le=255)
+    blue: int = Field(..., ge=0, le=255)
+
+    def tuple(self) -> Tuple[int, int, int]:
+        return self.red, self.green, self.blue
+
+
 class RGBA(StrictBaseModel):
     red: int = Field(..., ge=0, le=255)
     green: int = Field(..., ge=0, le=255)
     blue: int = Field(..., ge=0, le=255)
-    alpha: int = Field(255, ge=0, le=255)
+    alpha: int = Field(..., ge=0, le=255)
 
     def tuple(self) -> Tuple[int, int, int, int]:
         return self.red, self.green, self.blue, self.alpha
@@ -59,7 +67,7 @@ class RGBA(StrictBaseModel):
 
 class Symbology(StrictBaseModel):
     type: ColorMapType
-    colormap: Optional[Dict[Union[StrictInt, float], RGBA]]
+    colormap: Optional[Dict[Union[StrictInt, float], Union[RGB, RGBA]]]
 
 
 def get_source_tile_uris(tiles_geojson_uri):
@@ -108,7 +116,9 @@ def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str
 
 
 def _sort_colormap(
-    no_data_value: Optional[Union[StrictInt, float]], symbology: Symbology
+    no_data_value: Optional[Union[StrictInt, float]],
+    symbology: Symbology,
+    with_alpha: bool,
 ) -> OrderedColorMap:
     """
     Create value - quadruplet colormap (GDAL format) including no data value.
@@ -116,14 +126,19 @@ def _sort_colormap(
     """
     assert symbology.colormap, "No colormap specified."
 
-    colormap: Dict[Union[StrictInt, float], RGBA] = copy.deepcopy(symbology.colormap)
+    colormap: Dict[Union[StrictInt, float], Union[RGB, RGBA]] = copy.deepcopy(
+        symbology.colormap
+    )
 
     ordered_gdal_colormap: OrderedColorMap = dict()
 
     # add no data value to colormap, if exists
     # (not sure why mypy throws an error here, hence type: ignore)
     if no_data_value is not None:
-        colormap[no_data_value] = RGBA(red=0, green=0, blue=0, alpha=0)  # type: ignore
+        if with_alpha:
+            colormap[no_data_value] = RGBA(red=0, green=0, blue=0, alpha=0)  # type: ignore
+        else:
+            colormap[no_data_value] = RGB(red=0, green=0, blue=0)  # type: ignore
 
     # make sure values are correctly sorted and convert to value-quadruplet string
     for pixel_value in sorted(colormap.keys()):
@@ -174,7 +189,6 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str, bool]) -> str:
         ]
         if add_alpha:
             cmd += ["-alpha"]
-        # I suspect that this doesn't work - check the log of cmd
         if symbology_type in (ColorMapType.discrete, ColorMapType.discrete_intensity):
             cmd += ["-exact_color_entry"]
 
@@ -204,7 +218,6 @@ def apply_symbology(
     version: str = Option(..., help="Version string."),
     symbology: str = Option(..., help="Symbology JSON."),
     no_data: str = Option(..., help="JSON-encoded no data value."),
-    with_alpha: str = Option(..., help="Whether or not to add alpha channel"),
     source_uri: str = Option(..., help="URI of source tiles.geojson."),
     target_prefix: str = Option(..., help="Target prefix."),
 ):
@@ -217,10 +230,18 @@ def apply_symbology(
         return
 
     no_data_value: Optional[Union[StrictInt, float]] = json.loads(no_data)
-    add_alpha = with_alpha in ("TRUE", "True", "true", True)
 
     symbology_obj = Symbology(**json.loads(symbology))
-    ordered_colormap: OrderedColorMap = _sort_colormap(no_data_value, symbology_obj)
+
+    # If the breakpoints include alpha values, enable the Alpha channel
+    assert symbology_obj.colormap is not None
+    add_alpha = all(
+        isinstance(value, RGBA) for value in symbology_obj.colormap.values()
+    )
+
+    ordered_colormap: OrderedColorMap = _sort_colormap(
+        no_data_value, symbology_obj, add_alpha
+    )
 
     # Write the colormap to a file in a temporary directory
     with TemporaryDirectory() as tmp_dir:
