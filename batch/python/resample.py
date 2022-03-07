@@ -11,21 +11,26 @@ import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
-from logging.handlers import QueueHandler
-from multiprocessing import Queue
+from multiprocessing.queues import Queue
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import psutil
 import rasterio
-from aws_utils import exists_in_s3, get_s3_client, get_s3_path_parts
-from errors import SubprocessKilledError
-from gdal_utils import from_vsi_path
 from gfw_pixetl.grids import grid_factory
 from gfw_pixetl.pixetl_prep import create_geojsons
 from pyproj import CRS, Transformer
 from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from typer import Option, run
+
+from batch.python.aws_utils import exists_in_s3, get_s3_client, get_s3_path_parts
+from batch.python.errors import SubprocessKilledError
+from batch.python.gdal_utils import from_vsi_path
+from batch.python.logging_utils import (
+    listener_configurer,
+    log_client_configurer,
+    log_listener,
+)
 
 # Use at least 1 process
 # Try to get NUM_PROCESSES, if that fails get # CPUs divided by 1.5
@@ -149,42 +154,6 @@ def get_source_tiles_info(tiles_geojson_uri) -> List[Tuple[str, Any]]:
         for feature in tiles_geojson["features"]
     ]
     return tiles_info
-
-
-def listener_configurer():
-    """Run this in the parent process to configure logger."""
-    root = logging.getLogger()
-    h = logging.StreamHandler(stream=sys.stdout)
-    root.addHandler(h)
-
-
-def log_listener(queue, configurer):
-    """Run this in the parent process to listen for log messages from
-    children."""
-    configurer()
-    while True:
-        try:
-            record = queue.get()
-            if (
-                record is None
-            ):  # We send this as a sentinel to tell the listener to quit.
-                break
-            logger = logging.getLogger(record.name)
-            logger.handle(record)  # No level or filter logic applied - just do it!
-        except Exception:
-            import traceback
-
-            print("Encountered a problem in the log listener!", file=sys.stderr)
-            traceback.print_exc(file=sys.stderr)
-            raise
-
-
-def log_client_configurer(queue):
-    """Run this in child processes to configure sending logs to parent."""
-    h = QueueHandler(queue)
-    root = logging.getLogger()
-    root.addHandler(h)
-    root.setLevel(logging.INFO)
 
 
 def download_tile(args: Tuple[str, str, Queue, Callable]) -> str:
