@@ -911,8 +911,8 @@ async def test_asset_float(async_client, batch_client, httpd):
             # uint16.max), they're based on the original breakpoints,
             # which could have been far above or below the
             # original data max and min
-            "-32766.0": {"red": 255, "green": 0, "blue": 0, "alpha": 255},
-            "98302.0": {"red": 0, "green": 0, "blue": 255, "alpha": 255},
+            "-32766.0": {"red": 255, "green": 0, "blue": 0},
+            "98302.0": {"red": 0, "green": 0, "blue": 255},
         },
     }
 
