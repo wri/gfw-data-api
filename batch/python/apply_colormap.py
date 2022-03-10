@@ -13,7 +13,6 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict, Optional, Tuple, Union
 
 import rasterio
-from gfw_pixetl.pixetl_prep import create_geojsons
 from pydantic import BaseModel, Extra, Field, StrictInt
 from typer import Option, run
 
@@ -278,6 +277,8 @@ def apply_symbology(
         "/geotiff", ""
     )
     logger.log(logging.INFO, "Uploading tiles.geojson to {create_geojsons_prefix}")
+    from gfw_pixetl.pixetl_prep import create_geojsons
+
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
 
     log_queue.put_nowait(None)
