@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.tasks.raster_tile_cache_assets.symbology import colormap_symbology
@@ -40,7 +39,6 @@ async def test_colormap_symbology_no_intensity(
     mock_merge_assets,
     mock_create_intensity_asset,
     mock_create_colormapped_asset,
-    monkeypatch: MonkeyPatch,
 ):
     _ = await colormap_symbology(
         "umd_regional_primary_forest_2001",
@@ -54,8 +52,6 @@ async def test_colormap_symbology_no_intensity(
     assert mock_merge_assets.called is False
     assert mock_create_intensity_asset.called is False
     assert mock_create_colormapped_asset.called is True
-    # assert all(arg for arg in mock_create_colormapped_asset.call_args_list)
-    # args = mock_create_colormapped_asset.call_args.args
 
 
 @pytest.mark.asyncio
@@ -75,7 +71,6 @@ async def test_colormap_symbology_with_intensity(
     mock_merge_assets,
     mock_create_intensity_asset,
     mock_create_colormapped_asset,
-    monkeypatch: MonkeyPatch,
 ):
     intensity_symbology = {
         "type": "discrete_intensity",
