@@ -2,7 +2,7 @@ import os
 import subprocess
 from typing import Dict, List, Optional, Tuple
 
-from batch.python.errors import GDALError, SubprocessKilledError
+from errors import GDALError, SubprocessKilledError
 
 
 def from_vsi_path(file_name: str) -> str:
