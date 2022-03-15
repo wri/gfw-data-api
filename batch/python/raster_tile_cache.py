@@ -9,13 +9,13 @@ from concurrent.futures.process import BrokenProcessPool
 from tempfile import TemporaryDirectory
 from typing import List, Tuple
 
+# Use relative imports because these modules get copied into container
+from aws_utils import get_s3_client, get_s3_path_parts
+from errors import SubprocessKilledError
+from gdal_utils import run_gdal_subcommand
+from logger import get_logger
 from tileputty.upload_tiles import upload_tiles
 from typer import Argument, Option, run
-
-from batch.python.aws_utils import get_s3_client, get_s3_path_parts
-from batch.python.errors import SubprocessKilledError
-from batch.python.gdal_utils import run_gdal_subcommand
-from batch.python.logger import get_logger
 
 NUM_PROCESSES = int(
     os.environ.get(

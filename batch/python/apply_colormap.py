@@ -13,17 +13,14 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict, Optional, Tuple, Union
 
 import rasterio
+
+# Use relative imports because these modules get copied into container
+from aws_utils import get_s3_client, get_s3_path_parts
+from errors import GDALError, SubprocessKilledError
+from gdal_utils import from_vsi_path, run_gdal_subcommand
+from logging_utils import listener_configurer, log_client_configurer, log_listener
 from pydantic import BaseModel, Extra, Field, StrictInt
 from typer import Option, run
-
-from batch.python.aws_utils import get_s3_client, get_s3_path_parts
-from batch.python.errors import GDALError, SubprocessKilledError
-from batch.python.gdal_utils import from_vsi_path, run_gdal_subcommand
-from batch.python.logging_utils import (
-    listener_configurer,
-    log_client_configurer,
-    log_listener,
-)
 
 NUM_PROCESSES = int(
     os.environ.get(

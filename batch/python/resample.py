@@ -16,21 +16,18 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import psutil
 import rasterio
+
+# Use relative imports because these modules get copied into container
+from aws_utils import exists_in_s3, get_s3_client, get_s3_path_parts
+from errors import SubprocessKilledError
+from gdal_utils import from_vsi_path
 from gfw_pixetl.grids import grid_factory
 from gfw_pixetl.pixetl_prep import create_geojsons
+from logging_utils import listener_configurer, log_client_configurer, log_listener
 from pyproj import CRS, Transformer
 from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from typer import Option, run
-
-from batch.python.aws_utils import exists_in_s3, get_s3_client, get_s3_path_parts
-from batch.python.errors import SubprocessKilledError
-from batch.python.gdal_utils import from_vsi_path
-from batch.python.logging_utils import (
-    listener_configurer,
-    log_client_configurer,
-    log_listener,
-)
 
 # Use at least 1 process
 # Try to get NUM_PROCESSES, if that fails get # CPUs divided by 1.5
