@@ -50,7 +50,7 @@ from ...tasks.default_assets import append_default_asset, create_default_asset
 from ...tasks.delete_assets import delete_all_assets
 from ...utils.aws import get_aws_files
 from ...utils.google import get_gs_files
-from .queries import _get_data_environment, _get_default_layer
+from .queries import _get_data_environment
 
 router = APIRouter()
 
@@ -339,11 +339,8 @@ async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
 async def _get_raster_fields(asset: ORMAsset) -> List[RasterFieldMetadata]:
     fields: List[RasterFieldMetadata] = []
     grid = asset.creation_options["grid"]
-    default_layer = _get_default_layer(
-        asset.dataset, asset.creation_options["pixel_meaning"]
-    )
 
-    raster_data_environment = await _get_data_environment(grid, default_layer)
+    raster_data_environment = await _get_data_environment(grid)
 
     logger.debug(f"Processing data environment f{raster_data_environment}")
     for layer in raster_data_environment.layers:
