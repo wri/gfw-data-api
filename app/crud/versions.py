@@ -6,9 +6,10 @@ from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.versions import Version as ORMVersion
+from ..models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
 from ..utils.generators import list_to_async_generator
 from . import datasets, update_data
-from .metadata import update_all_metadata
+from .metadata import update_all_metadata, create_version_metadata
 
 
 async def get_versions(dataset: str) -> List[ORMVersion]:
@@ -81,6 +82,13 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
         raise RecordAlreadyExistsError(
             f"Version with name {dataset}.{version} already exists."
         )
+
+    metadata_data = data.pop("metadata")
+    if metadata_data:
+        metadata: ORMVersionMetadata = await create_version_metadata(
+            dataset, new_version, **metadata_data
+        )
+        new_version.metadata = metadata
 
     # return update_metadata(new_version, d)
     return new_version
