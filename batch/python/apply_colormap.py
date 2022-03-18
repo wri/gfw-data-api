@@ -2,22 +2,23 @@
 
 import copy
 import json
+import logging
 import multiprocessing
 import os
-import subprocess as sp
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from enum import Enum
-from logging import getLogger
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import rasterio
+
+# Use relative imports because these modules get copied into container
 from aws_utils import get_s3_client, get_s3_path_parts
 from errors import GDALError, SubprocessKilledError
-from gdal_utils import from_vsi_path
-from gfw_pixetl.pixetl_prep import create_geojsons
+from gdal_utils import from_vsi_path, run_gdal_subcommand
+from logging_utils import listener_configurer, log_client_configurer, log_listener
 from pydantic import BaseModel, Extra, Field, StrictInt
 from typer import Option, run
 
@@ -29,9 +30,9 @@ NUM_PROCESSES = int(
 GEOTIFF_COMPRESSION = "DEFLATE"
 GDAL_GEOTIFF_COMPRESSION = "DEFLATE"
 
-OrderedColorMap = Dict[Union[int, float], Tuple[int, int, int, int]]
-
-LOGGER = getLogger("apply_symbology")
+OrderedColorMap = Dict[
+    Union[int, float], Union[Tuple[int, int, int], Tuple[int, int, int, int]]
+]
 
 
 class ColorMapType(str, Enum):
@@ -47,11 +48,20 @@ class StrictBaseModel(BaseModel):
         validate_assignment = True
 
 
+class RGB(StrictBaseModel):
+    red: int = Field(..., ge=0, le=255)
+    green: int = Field(..., ge=0, le=255)
+    blue: int = Field(..., ge=0, le=255)
+
+    def tuple(self) -> Tuple[int, int, int]:
+        return self.red, self.green, self.blue
+
+
 class RGBA(StrictBaseModel):
     red: int = Field(..., ge=0, le=255)
     green: int = Field(..., ge=0, le=255)
     blue: int = Field(..., ge=0, le=255)
-    alpha: int = Field(255, ge=0, le=255)
+    alpha: int = Field(..., ge=0, le=255)
 
     def tuple(self) -> Tuple[int, int, int, int]:
         return self.red, self.green, self.blue, self.alpha
@@ -59,7 +69,7 @@ class RGBA(StrictBaseModel):
 
 class Symbology(StrictBaseModel):
     type: ColorMapType
-    colormap: Optional[Dict[Union[StrictInt, float], RGBA]]
+    colormap: Optional[Dict[Union[StrictInt, float], Union[RGB, RGBA]]]
 
 
 def get_source_tile_uris(tiles_geojson_uri):
@@ -75,40 +85,10 @@ def get_source_tile_uris(tiles_geojson_uri):
     return tiles
 
 
-def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str, str]:
-    """Run GDAL as sub command and catch common errors."""
-
-    gdal_env = os.environ.copy()
-    if env:
-        gdal_env.update(**env)
-
-    LOGGER.debug(f"RUN subcommand {cmd}, using env {gdal_env}")
-    p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, env=gdal_env)
-
-    o_byte, e_byte = p.communicate()
-
-    # somehow return type when running `gdalbuildvrt` is str but otherwise bytes
-    try:
-        o = o_byte.decode("utf-8")
-        e = e_byte.decode("utf-8")
-    except AttributeError:
-        o = str(o_byte)
-        e = str(e_byte)
-
-    if p.returncode != 0:
-        LOGGER.error(f"Exit code {p.returncode} for command {cmd}")
-        LOGGER.error(f"Standard output: {o}")
-        LOGGER.error(f"Standard error: {e}")
-        if p.returncode < 0:
-            raise SubprocessKilledError()
-        else:
-            raise GDALError(e)
-
-    return o, e
-
-
 def _sort_colormap(
-    no_data_value: Optional[Union[StrictInt, float]], symbology: Symbology
+    no_data_value: Optional[Union[StrictInt, float]],
+    symbology: Symbology,
+    with_alpha: bool,
 ) -> OrderedColorMap:
     """
     Create value - quadruplet colormap (GDAL format) including no data value.
@@ -116,14 +96,19 @@ def _sort_colormap(
     """
     assert symbology.colormap, "No colormap specified."
 
-    colormap: Dict[Union[StrictInt, float], RGBA] = copy.deepcopy(symbology.colormap)
+    colormap: Dict[Union[StrictInt, float], Union[RGB, RGBA]] = copy.deepcopy(
+        symbology.colormap
+    )
 
     ordered_gdal_colormap: OrderedColorMap = dict()
 
     # add no data value to colormap, if exists
     # (not sure why mypy throws an error here, hence type: ignore)
     if no_data_value is not None:
-        colormap[no_data_value] = RGBA(red=0, green=0, blue=0, alpha=0)  # type: ignore
+        if with_alpha:
+            colormap[no_data_value] = RGBA(red=0, green=0, blue=0, alpha=0)  # type: ignore
+        else:
+            colormap[no_data_value] = RGB(red=0, green=0, blue=0)  # type: ignore
 
     # make sure values are correctly sorted and convert to value-quadruplet string
     for pixel_value in sorted(colormap.keys()):
@@ -132,7 +117,9 @@ def _sort_colormap(
     return ordered_gdal_colormap
 
 
-def create_rgb_tile(args: Tuple[str, str, ColorMapType, str, bool]) -> str:
+def create_rgb_tile(
+    args: Tuple[str, str, ColorMapType, str, bool, logging.Logger]
+) -> str:
     """Add symbology to output raster.
 
     Gradient colormap: Use linear interpolation based on provided
@@ -141,7 +128,14 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str, bool]) -> str:
     configuration file. If no matching color entry is found, the
     “0,0,0,0” RGBA quadruplet will be used.
     """
-    source_tile_uri, target_prefix, symbology_type, colormap_path, add_alpha = args
+    (
+        source_tile_uri,
+        target_prefix,
+        symbology_type,
+        colormap_path,
+        add_alpha,
+        logger,
+    ) = args
     tile_id = os.path.splitext(os.path.basename(source_tile_uri))[0]
 
     with TemporaryDirectory() as work_dir:
@@ -149,7 +143,9 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str, bool]) -> str:
         s3_client = get_s3_client()
         bucket, source_key = get_s3_path_parts(source_tile_uri)
 
-        LOGGER.info(f"Downloading {source_tile_uri} to {local_src_file_path}")
+        logger.log(
+            logging.INFO, f"Downloading {source_tile_uri} to {local_src_file_path}"
+        )
         s3_client.download_file(bucket, source_key, local_src_file_path)
 
         local_dest_file_path = os.path.join(work_dir, f"{tile_id}_colored.tif")
@@ -179,20 +175,22 @@ def create_rgb_tile(args: Tuple[str, str, ColorMapType, str, bool]) -> str:
 
         cmd += [local_src_file_path, colormap_path, local_dest_file_path]
 
-        LOGGER.info(f"Running subcommand {cmd}")
+        logger.log(logging.INFO, f"Running subcommand {cmd}")
 
         try:
             run_gdal_subcommand(cmd)
         except GDALError:
-            LOGGER.error(f"Could not create Color Relief for tile_id {tile_id}")
+            logger.log(
+                logging.ERROR, f"Could not create Color Relief for tile_id {tile_id}"
+            )
             raise
 
-        with rasterio.open(local_src_file_path, "r+") as src:
+        with rasterio.open(local_dest_file_path, "r+") as src:
             src.nodata = 0
 
         # Now upload the file to S3
         target_key = os.path.join(target_prefix, os.path.basename(local_src_file_path))
-        LOGGER.info(f"Uploading {local_src_file_path} to {target_key}")
+        logger.log(logging.INFO, f"Uploading {local_src_file_path} to {target_key}")
         s3_client.upload_file(local_dest_file_path, bucket, target_key)
 
     return tile_id
@@ -203,23 +201,41 @@ def apply_symbology(
     version: str = Option(..., help="Version string."),
     symbology: str = Option(..., help="Symbology JSON."),
     no_data: str = Option(..., help="JSON-encoded no data value."),
-    with_alpha: str = Option(..., help="Whether or not to add alpha channel"),
     source_uri: str = Option(..., help="URI of source tiles.geojson."),
     target_prefix: str = Option(..., help="Target prefix."),
 ):
-    LOGGER.info(f"Applying symbology to tiles listed in {source_uri}")
+    log_queue = multiprocessing.Manager().Queue()
+    listener = multiprocessing.Process(
+        target=log_listener, args=(log_queue, listener_configurer)
+    )
+    listener.start()
+
+    log_client_configurer(log_queue)
+    logger = logging.getLogger("main")
+
+    logger.log(logging.INFO, f"Applying symbology to tiles listed in {source_uri}")
 
     tile_uris = get_source_tile_uris(source_uri)
 
     if not tile_uris:
-        LOGGER.info("No input files! I guess we're good then.")
+        logger.log(logging.INFO, "No input files! I guess we're good then.")
         return
 
     no_data_value: Optional[Union[StrictInt, float]] = json.loads(no_data)
-    add_alpha = with_alpha in ("TRUE", "True", "true", True)
 
     symbology_obj = Symbology(**json.loads(symbology))
-    ordered_colormap: OrderedColorMap = _sort_colormap(no_data_value, symbology_obj)
+
+    # If the breakpoints include alpha values, enable the Alpha channel
+    assert symbology_obj.colormap is not None
+    add_alpha = all(
+        isinstance(value, RGBA) for value in symbology_obj.colormap.values()
+    )
+
+    ordered_colormap: OrderedColorMap = _sort_colormap(
+        no_data_value, symbology_obj, add_alpha
+    )
+
+    # TODO: Log the ordered colormap file contents?
 
     # Write the colormap to a file in a temporary directory
     with TemporaryDirectory() as tmp_dir:
@@ -234,7 +250,14 @@ def apply_symbology(
                 colormap_file.write("\n")
 
         process_args = (
-            (tile_uri, target_prefix, symbology_obj.type, colormap_path, add_alpha)
+            (
+                tile_uri,
+                target_prefix,
+                symbology_obj.type,
+                colormap_path,
+                add_alpha,
+                logger,
+            )
             for tile_uri in tile_uris
         )
 
@@ -242,7 +265,7 @@ def apply_symbology(
         # https://stackoverflow.com/a/61470465/1410317
         with ProcessPoolExecutor(max_workers=NUM_PROCESSES) as executor:
             for tile_id in executor.map(create_rgb_tile, process_args):
-                LOGGER.info(f"Finished processing tile {tile_id}")
+                logger.log(logging.INFO, f"Finished processing tile {tile_id}")
 
     # Now run pixetl_prep.create_geojsons to generate a tiles.geojson and
     # extent.geojson in the target prefix. But that code appends /geotiff
@@ -250,13 +273,18 @@ def apply_symbology(
     create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1].replace(
         "/geotiff", ""
     )
-    LOGGER.info(f"Uploading tiles.geojson to {create_geojsons_prefix}")
+    logger.log(logging.INFO, "Uploading tiles.geojson to {create_geojsons_prefix}")
+    from gfw_pixetl.pixetl_prep import create_geojsons
+
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
+
+    log_queue.put_nowait(None)
+    listener.join()
 
 
 if __name__ == "__main__":
     try:
         run(apply_symbology)
     except (BrokenProcessPool, SubprocessKilledError):
-        LOGGER.error("One of our subprocesses was killed! Exiting with 137")
+        print("One of our subprocesses was killed! Exiting with 137")
         sys.exit(137)

@@ -22,11 +22,9 @@ ARG_ARRAY+=("--symbology" "${JSON}")
 
 ARG_ARRAY+=("--no-data" "${NO_DATA}")
 
-ARG_ARRAY+=("--with-alpha" "${ALPHA}")
-
 ARG_ARRAY+=("--source-uri" "${SRC}")
 
 ARG_ARRAY+=("--target-prefix" "${TARGET}")
 
 # Run apply_symbology.py with the array of arguments
-apply_symbology.py "${ARG_ARRAY[@]}"
+apply_colormap.py "${ARG_ARRAY[@]}"

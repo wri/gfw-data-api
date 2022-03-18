@@ -135,7 +135,7 @@ class PixETLJob(Job):
 
 
 class GDALDEMJob(Job):
-    """Use for applying symbology to raster tiles with gdaldem."""
+    """Use for applying color maps to raster tiles with gdaldem."""
 
     job_queue = PIXETL_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION

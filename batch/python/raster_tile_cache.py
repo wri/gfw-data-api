@@ -3,15 +3,16 @@
 import math
 import multiprocessing
 import os
-import subprocess as sp
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from tempfile import TemporaryDirectory
-from typing import Dict, List, Optional, Tuple
+from typing import List, Tuple
 
+# Use relative imports because these modules get copied into container
 from aws_utils import get_s3_client, get_s3_path_parts
-from errors import GDALError, SubprocessKilledError
+from errors import SubprocessKilledError
+from gdal_utils import run_gdal_subcommand
 from logger import get_logger
 from tileputty.upload_tiles import upload_tiles
 from typer import Argument, Option, run
@@ -22,34 +23,6 @@ NUM_PROCESSES = int(
     )
 )
 LOGGER = get_logger(__name__)
-
-
-def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str, str]:
-    """Run GDAL as sub command and catch common errors."""
-
-    gdal_env = os.environ.copy()
-    if env:
-        gdal_env.update(**env)
-
-    LOGGER.debug(f"RUN subcommand {cmd}, using env {gdal_env}")
-    p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, env=gdal_env)
-
-    o_byte, e_byte = p.communicate()
-
-    # somehow return type when running `gdalbuildvrt` is str but otherwise bytes
-    try:
-        o = o_byte.decode("utf-8")
-        e = e_byte.decode("utf-8")
-    except AttributeError:
-        o = str(o_byte)
-        e = str(e_byte)
-
-    if p.returncode < 0:
-        raise SubprocessKilledError()
-    elif p.returncode != 0:
-        raise GDALError(e)
-
-    return o, e
 
 
 def get_input_tiles(prefix: str) -> List[Tuple[str, str]]:

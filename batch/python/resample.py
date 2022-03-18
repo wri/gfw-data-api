@@ -11,17 +11,19 @@ import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
-from logging.handlers import QueueHandler
-from multiprocessing import Queue
+from multiprocessing.queues import Queue
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import psutil
 import rasterio
+
+# Use relative imports because these modules get copied into container
 from aws_utils import exists_in_s3, get_s3_client, get_s3_path_parts
 from errors import SubprocessKilledError
 from gdal_utils import from_vsi_path
 from gfw_pixetl.grids import grid_factory
 from gfw_pixetl.pixetl_prep import create_geojsons
+from logging_utils import listener_configurer, log_client_configurer, log_listener
 from pyproj import CRS, Transformer
 from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
@@ -151,42 +153,6 @@ def get_source_tiles_info(tiles_geojson_uri) -> List[Tuple[str, Any]]:
     return tiles_info
 
 
-def listener_configurer():
-    """Run this in the parent process to configure logger."""
-    root = logging.getLogger()
-    h = logging.StreamHandler(stream=sys.stdout)
-    root.addHandler(h)
-
-
-def log_listener(queue, configurer):
-    """Run this in the parent process to listen for log messages from
-    children."""
-    configurer()
-    while True:
-        try:
-            record = queue.get()
-            if (
-                record is None
-            ):  # We send this as a sentinel to tell the listener to quit.
-                break
-            logger = logging.getLogger(record.name)
-            logger.handle(record)  # No level or filter logic applied - just do it!
-        except Exception:
-            import traceback
-
-            print("Encountered a problem in the log listener!", file=sys.stderr)
-            traceback.print_exc(file=sys.stderr)
-            raise
-
-
-def log_client_configurer(queue):
-    """Run this in child processes to configure sending logs to parent."""
-    h = QueueHandler(queue)
-    root = logging.getLogger()
-    root.addHandler(h)
-    root.setLevel(logging.INFO)
-
-
 def download_tile(args: Tuple[str, str, Queue, Callable]) -> str:
     """Download the file at the first item of the tuple to the destination
     directory specified by the second item."""
@@ -218,7 +184,7 @@ def warp_raster(
     bounds: Bounds, width, height, resampling_method, source_path, target_path, logger
 ):
     """Warps/extracts raster of provided dimensions from source file."""
-    warp_cmd: List[str] = [
+    cmd: List[str] = [
         "gdalwarp",
         "-t_srs",
         "epsg:3857",  # TODO: Parameterize?
@@ -237,59 +203,108 @@ def warp_raster(
         "-overwrite",
         "-wm",
         f"{WARP_MEM}",
-        "--config",
-        "GDAL_CACHEMAX",
-        f"{CACHE_MEM}",
         source_path,
         target_path,
     ]
+    env = dict(
+        os.environ,
+        GDAL_CACHEMAX=f"{CACHE_MEM}",
+        VRT_SHARED_SOURCE="0",
+    )
+
+    logger.log(
+        logging.INFO,
+        f"Begin warping of {source_path} to {target_path} with the command {cmd}",
+    )
+
     tic = time.perf_counter()
-    warp_process = subprocess.run(warp_cmd, capture_output=True)
+    proc = subprocess.Popen(
+        cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
+    pid = proc.pid
+    while proc.poll() is None:
+        mem = psutil.Process(pid).memory_info().rss / (1024 ** 2)
+        logger.log(
+            logging.INFO, f"Warp process {pid} currently consuming {mem} MB of memory"
+        )
+        time.sleep(10)
     toc = time.perf_counter()
+
+    if proc.returncode == -9:
+        logger.log(
+            logging.ERROR,
+            "Warping subprocess killed with signal 9 (likely OOM)!",
+        )
+        raise SubprocessKilledError
+    if proc.returncode != 0:
+        logger.log(
+            logging.ERROR,
+            f"Warping FAILED with exit code {proc.returncode}",
+        )
+        logger.log(logging.ERROR, proc.stdout)
+        raise Exception(f"Warping {source_path} failed")
 
     logger.log(
         logging.INFO,
         f"Warping {source_path} to {target_path} took {toc - tic:0.4f} seconds",
     )
-
-    if warp_process.returncode < 0:
-        raise SubprocessKilledError
-    elif warp_process.returncode > 0:
-        logger.log(logging.ERROR, warp_process.stderr)
-        raise Exception(f"Warping {source_path} failed")
-
     return toc - tic
 
 
 def compress_raster(source_path, target_path, logger):
-    """Compress a raster tile."""
-    translate_cmd: List[str] = [
+    """Compress a raster tile with gdal_translate."""
+    cmd: List[str] = [
         "gdal_translate",
         "-co",
         f"COMPRESS={GEOTIFF_COMPRESSION}",
         "-co",
         "TILED=YES",
-        "--config",
-        "GDAL_CACHEMAX",
-        f"{CACHE_MEM}",
         source_path,
         target_path,
     ]
+    env = dict(
+        os.environ,
+        GDAL_CACHEMAX=f"{CACHE_MEM}",
+        VRT_SHARED_SOURCE="0",
+    )
+
+    logger.log(
+        logging.INFO,
+        f"Begin compression of {source_path} to {target_path} with the command {cmd}",
+    )
+
     tic = time.perf_counter()
-    translate_process = subprocess.run(translate_cmd, capture_output=True)
+    proc = subprocess.Popen(
+        cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
+    pid = proc.pid
+    while proc.poll() is None:
+        mem = psutil.Process(pid).memory_info().rss / (1024 ** 2)
+        logger.log(
+            logging.INFO,
+            f"Compression process {pid} currently consuming {mem} MB of memory",
+        )
+        time.sleep(10)
     toc = time.perf_counter()
 
-    if translate_process.returncode < 0:
+    if proc.returncode == -9:
+        logger.log(
+            logging.ERROR,
+            f"Compression subprocess {pid} killed with signal 9 (likely OOM)!",
+        )
         raise SubprocessKilledError
-    elif translate_process.returncode > 0:
-        logger.log(logging.ERROR, translate_process.stderr)
-        raise Exception(f"Compressing {source_path} failed")
+    if proc.returncode != 0:
+        logger.log(
+            logging.ERROR,
+            f"Compressing subprocess {pid} FAILED with exit code {proc.returncode}",
+        )
+        logger.log(logging.ERROR, proc.stdout)
+        raise Exception(f"Warping {source_path} failed")
 
     logger.log(
         logging.INFO,
         f"Compressing {source_path} to {target_path} took {toc - tic:0.4f} seconds",
     )
-
     return toc - tic
 
 
@@ -311,7 +326,7 @@ def process_tile(
 
     q_configurer(q)
     logger = logging.getLogger("process_tile")
-    logger.log(logging.INFO, f"Beginning processing tile {tile_id}")
+    logger.log(logging.INFO, f"Begin processing tile {tile_id}")
 
     tile_file_name = f"{tile_id}.tif"
     target_geotiff_key = os.path.join(target_prefix, "geotiff", tile_file_name)
@@ -333,7 +348,7 @@ def process_tile(
     compressed_tile_path = os.path.join(compressed_dir, tile_file_name)
 
     # If the compressed file exists, we know we at least started the gdal_translate
-    # step, but don't know if we finished. So remove that file and re-run translate
+    # step, but don't know if it finished. So remove that file and re-run translate
     # from the warped file (which should exist). If the compressed file doesn't exist
     # at all, run starting with the warp command (with the overwrite option
     # regardless).
@@ -495,6 +510,7 @@ def resample(
     # extent.geojson in the target prefix.
     create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1]
     logger.log(logging.INFO, f"Uploading tiles.geojson to {create_geojsons_prefix}")
+
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
 
     log_queue.put_nowait(None)
