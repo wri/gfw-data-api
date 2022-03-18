@@ -16,12 +16,13 @@ from fastapi.responses import ORJSONResponse
 from starlette.responses import JSONResponse
 
 from ...authentication.token import is_admin
-from ...crud import assets, tasks
+from ...crud import assets, tasks, metadata as metadata_crud
 from ...errors import RecordNotFoundError
 from ...models.enum.assets import is_database_asset, is_single_file_asset
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.tasks import Task as ORMTask
 from ...models.pydantic.assets import AssetResponse, AssetType, AssetUpdateIn
+from ...models.pydantic.asset_metadata import AssetMetadata, AssetMetadataResponse
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
     CreationOptions,
@@ -249,3 +250,34 @@ async def get_fields(asset_id: UUID = Path(...)):
     fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
 
     return FieldMetadataResponse(data=fields)
+
+
+@router.get(
+    "/{asset_id}/metadata",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=FieldMetadataResponse,
+)
+async def get_metadata(asset_id: UUID = Path(...)):
+    asset: ORMAsset = await assets.get_asset(asset_id)
+    fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
+
+    return FieldMetadataResponse(data=fields)
+
+
+@router.post(
+    "/{asset_id}/metadata",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=FieldMetadataResponse,
+)
+async def create_metadata(
+    *,
+    asset_id: UUID = Path(...),
+    request: AssetMetadata
+):
+
+    input_data = request.dict(exclude_none=True, by_alias=True)
+    asset_metadata = await metadata_crud.create_asset_metadata(asset_id, **input_data)
+
+    return AssetMetadataResponse(data=asset_metadata)

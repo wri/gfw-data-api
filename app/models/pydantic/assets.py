@@ -6,7 +6,7 @@ from pydantic import Field
 from ..enum.assets import AssetStatus, AssetType
 from .base import BaseRecord, StrictBaseModel
 from .creation_options import CreationOptions, OtherCreationOptions
-from .metadata import AssetMetadata
+from .asset_metadata import AssetMetadata
 from .responses import Response
 
 

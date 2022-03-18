@@ -1,14 +1,24 @@
 from copy import deepcopy
 from typing import List, Union
+from uuid import UUID
 
 from asyncpg import UniqueViolationError
+
+from app.models.enum.assets import AssetType
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.enum import entity
 from ..models.orm.base import Base
 from ..models.orm.dataset_metadata import DatasetMetadata as ORMDatasetMetadata
 from ..models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
+from ..models.orm.asset_metadata import (
+    AssetMetadata as ORMAssetMetadata,
+    RasterBandMetadata as ORMRasterBandMetadata,
+    FieldMetadata as ORMFieldMetadata
+)
 from ..models.orm.versions import Version as ORMVersion
+from ..models.orm.assets import Asset as ORMAsset
+from .assets import get_asset
 from . import versions
 
 
@@ -134,6 +144,39 @@ async def update_version_metadata(
     await metadata.update(**data).apply()
 
     return metadata
+
+
+async def create_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
+    bands = data.pop("bands", None)
+    fields = data.pop("fields", None)
+
+    asset_metadata: ORMAssetMetadata = await ORMAssetMetadata.create(**data)
+
+    if bands:
+        for band in bands:
+            create_raster_band_metadata(asset_metadata.id, band)
+
+    if fields:
+        for field in fields:
+            create_field_metadata(asset_metadata.id, field)
+
+
+async def create_raster_band_metadata(asset_metadata_id: UUID, **data):
+    raster_band_metadata: ORMRasterBandMetadata = ORMRasterBandMetadata.create(
+        asset_metadata_id=asset_metadata_id,
+        **data
+    )
+
+    return raster_band_metadata
+
+
+async def create_field_metadata(asset_metadata_id: UUID, **data):
+    field_metadata: ORMFieldMetadata = ORMFieldMetadata.create(
+        asset_metadata_id=asset_metadata_id,
+        **data
+    )
+
+    return field_metadata
 
 
 def update_metadata(row: Base, parent: Base):
