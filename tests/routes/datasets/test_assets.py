@@ -1,10 +1,12 @@
 import json
+from typing import Any, Dict, Optional
 from unittest.mock import patch
 from uuid import UUID
 
 import httpx
 import pytest
 from botocore.exceptions import ClientError
+from httpx import AsyncClient
 
 from app.application import ContextEngine
 from app.crud import tasks
@@ -32,7 +34,7 @@ s3_client = get_s3_client()
 
 
 @pytest.mark.asyncio
-async def test_assets(async_client):
+async def test_assets(async_client: AsyncClient):
     """Basic tests of asset endpoint behavior."""
     # Add a dataset, version, and default asset
     dataset = "test_assets"
@@ -95,7 +97,7 @@ async def test_assets(async_client):
 
 
 @pytest.mark.asyncio
-async def test_assets_vector_source_max_parents(async_client):
+async def test_assets_vector_source_max_parents(async_client: AsyncClient):
     """Make sure that vector source assets with > 20 layers stay within AWS
     parents limit."""
     # Add a dataset, version, and default asset
@@ -158,7 +160,7 @@ async def test_assets_vector_source_max_parents(async_client):
 
 
 @pytest.mark.asyncio
-async def test_auxiliary_raster_asset(async_client, httpd, logs):
+async def test_auxiliary_raster_asset(async_client: AsyncClient, httpd, logs):
     """"""
     # Add a dataset, version, and default asset
     dataset = "test_auxiliary_raster_asset"
@@ -253,7 +255,7 @@ async def test_auxiliary_raster_asset(async_client, httpd, logs):
 
 
 @pytest.mark.asyncio
-async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
+async def test_auxiliary_vector_asset(async_client: AsyncClient, batch_client, httpd):
     """"""
     _, logs = batch_client
 
@@ -329,7 +331,7 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
 
 
 @pytest.mark.asyncio
-async def test_asset_bad_requests(async_client, batch_client, httpd):
+async def test_asset_bad_requests(async_client: AsyncClient, batch_client, httpd):
     """"""
     _, logs = batch_client
 
@@ -453,7 +455,9 @@ symbology_checks = [
 @pytest.mark.skip("Disabling for a few days while replacements are made")
 @pytest.mark.parametrize("checks", symbology_checks)
 @pytest.mark.asyncio
-async def test_raster_tile_cache_asset(checks, async_client, batch_client, httpd):
+async def test_raster_tile_cache_asset(
+    checks, async_client: AsyncClient, batch_client, httpd
+):
     """"""
     _, logs = batch_client
 
@@ -514,7 +518,7 @@ async def _test_raster_tile_cache(
     dataset: str,
     version: str,
     default_asset_id: UUID,
-    async_client,
+    async_client: AsyncClient,
     logs,
     wm_tile_set_assets,
     symbology,
@@ -639,7 +643,7 @@ async def _test_raster_tile_cache(
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
-async def test_asset_stats(async_client):
+async def test_asset_stats(async_client: AsyncClient):
     dataset = "test_asset_stats"
     version = "v1.0.0"
 
@@ -692,7 +696,7 @@ async def test_asset_stats(async_client):
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
-async def test_asset_stats_no_histo(async_client):
+async def test_asset_stats_no_histo(async_client: AsyncClient):
     dataset = "test_asset_stats_no_histo"
     version = "v1.0.0"
 
@@ -742,7 +746,7 @@ async def test_asset_stats_no_histo(async_client):
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
-async def test_asset_extent(async_client):
+async def test_asset_extent(async_client: AsyncClient):
     dataset = "test_asset_extent"
     version = "v1.0.0"
 
@@ -799,7 +803,7 @@ async def test_asset_extent(async_client):
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
-async def test_asset_extent_stats_empty(async_client):
+async def test_asset_extent_stats_empty(async_client: AsyncClient):
     dataset = "test_asset_extent_stats_empty"
     version = "v1.0.0"
 
@@ -861,7 +865,7 @@ async def test_asset_extent_stats_empty(async_client):
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
-async def test_asset_float(async_client, batch_client, httpd):
+async def test_asset_float(async_client: AsyncClient, batch_client, httpd):
     _, logs = batch_client
 
     dataset = "test_asset_float_no_data"
@@ -896,13 +900,14 @@ async def test_asset_float(async_client, batch_client, httpd):
     )
     default_asset_id = asset["asset_id"]
 
-    symbology = {
+    symbology: Optional[Dict[str, Any]] = {
         "type": ColorMapType.gradient,
         "colormap": {
             -1: {"red": 255, "green": 0, "blue": 0},
             1: {"red": 0, "green": 0, "blue": 255},
         },
     }
+    assert symbology is not None  # Make mypy happy below
 
     expected_scaled_symbology = {
         "type": "gradient",
@@ -962,7 +967,7 @@ async def test_asset_float(async_client, batch_client, httpd):
                 if arg == "-j":
                     layer_def = json.loads(cmd[i + 1])
             assert layer_def is not None
-            job = (
+            job: Any = (
                 layer_def["data_type"],
                 layer_def["no_data"],
                 layer_def.get("symbology"),
@@ -974,15 +979,15 @@ async def test_asset_float(async_client, batch_client, httpd):
         elif isinstance(job_obj, GDALDEMJob):
             cmd = job_obj.command
             no_data_value = None
-            symbology = None
+            cli_symbology = None
             for i, arg in enumerate(cmd):
                 if arg == "-j":
-                    symbology = json.loads(cmd[i + 1])
+                    cli_symbology = json.loads(cmd[i + 1])
                 if arg == "-n":
                     no_data_value = json.loads(cmd[i + 1])
-            assert symbology is not None
+            assert cli_symbology is not None
             job = (
-                symbology,
+                cli_symbology,
                 no_data_value,
                 job_obj.parents,
             )
@@ -1039,7 +1044,7 @@ async def test_asset_float(async_client, batch_client, httpd):
 
 
 @pytest.mark.asyncio
-async def test_raster_asset_payloads_vector_source(async_client):
+async def test_raster_asset_payloads_vector_source(async_client: AsyncClient):
     """Test creating various raster assets based on vector input."""
 
     # Add a dataset, version, and default asset
