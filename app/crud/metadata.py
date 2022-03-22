@@ -45,8 +45,12 @@ async def get_entity_metadata(
     metadata = None
     if entity_type == "dataset":
         metadata: ORMDatasetMetadata = await ORMDatasetMetadata.get([metadata_id])
-    else:  # FIXME: add asset metadata logic
+    elif entity_type == "version":
         metadata: ORMVersionMetadata = await ORMVersionMetadata.get([metadata_id])
+    elif entity_type == "asset":
+        metadata: ORMAssetMetadata = await ORMAssetMetadata.get([metadata_id])
+    else:
+        raise NotImplementedError(f"Entity type {entity_type} is not recognized.")
 
     if metadata is None:
         raise RecordNotFoundError(f"Could not find requested metadata {metadata_id}")
@@ -60,10 +64,10 @@ async def get_dataset_metadata(dataset: str) -> ORMDatasetMetadata:
         ORMDatasetMetadata.dataset == dataset
     ).gino.first()
 
-    if metadata is None:
-        raise RecordNotFoundError(
-            f"Could not find requested metadata dataset {dataset}"
-        )
+    # if metadata is None:
+    #     raise RecordNotFoundError(
+    #         f"Could not find requested metadata dataset {dataset}"
+    #     )
 
     return metadata
 
@@ -92,10 +96,10 @@ async def get_version_metadata(dataset: str, version: str) -> ORMVersionMetadata
         .gino.first()
     )
 
-    if metadata is None:
-        raise RecordNotFoundError(
-            f"Could not find requested metadata dataset version {dataset}:{version}"
-        )
+    # if metadata is None:
+    #     raise RecordNotFoundError(
+    #         f"Could not find requested metadata dataset version {dataset}:{version}"
+    #     )
 
     return metadata
 
@@ -150,21 +154,56 @@ async def create_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
     bands = data.pop("bands", None)
     fields = data.pop("fields", None)
 
-    asset_metadata: ORMAssetMetadata = await ORMAssetMetadata.create(**data)
+    asset: ORMAsset = await get_asset(asset_id)
 
+    asset_metadata: ORMAssetMetadata = await ORMAssetMetadata.create(
+        asset_id=asset.asset_id, **data
+    )
+
+    bands_metadata = []
     if bands:
         for band in bands:
-            create_raster_band_metadata(asset_metadata.id, band)
+            band_metadata = await create_raster_band_metadata(asset_metadata.id, **band)
+            bands_metadata.append(band_metadata)
 
+        asset_metadata.bands = bands_metadata
+
+    fields_metadata = []
     if fields:
         for field in fields:
-            create_field_metadata(asset_metadata.id, field)
+            field_metadata = await create_field_metadata(asset_metadata.id, field)
+            fields_metadata.append(field_metadata)
+
+        asset_metadata.fields = fields_metadata
+
+    return asset_metadata
+
+
+async def get_asset_metadata(asset_id: UUID):
+    asset_metadata: ORMAssetMetadata = await ORMAssetMetadata.query.where(
+        ORMAssetMetadata.asset_id == asset_id
+    ).gino.first()
+
+    bands: List[ORMRasterBandMetadata] = await ORMRasterBandMetadata.query.where(
+        ORMRasterBandMetadata.asset_metadata_id == asset_metadata.id
+    ).gino.all()
+    print("bands", len(bands))
+    if bands:
+        asset_metadata.bands = bands
+
+    fields: List[ORMFieldMetadata] = await ORMFieldMetadata.query.where(
+        ORMFieldMetadata.asset_metadata_id == asset_metadata.id
+    ).gino.all()
+    if fields:
+        asset_metadata.fields = fields
+
+    return asset_metadata
 
 
 async def create_raster_band_metadata(asset_metadata_id: UUID, **data):
-    raster_band_metadata: ORMRasterBandMetadata = ORMRasterBandMetadata.create(
-        asset_metadata_id=asset_metadata_id,
-        **data
+    print(data)
+    raster_band_metadata: ORMRasterBandMetadata = await ORMRasterBandMetadata.create(
+        asset_metadata_id=asset_metadata_id, **data
     )
 
     return raster_band_metadata

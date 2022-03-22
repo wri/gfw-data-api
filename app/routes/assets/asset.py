@@ -30,7 +30,7 @@ from ...models.pydantic.creation_options import (
     creation_option_factory,
 )
 from ...models.pydantic.extent import Extent, ExtentResponse
-from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
+from ...models.pydantic.asset_metadata import FieldMetadata, FieldMetadataResponse
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.tasks import TasksResponse
 from ...tasks.delete_assets import (
@@ -256,20 +256,19 @@ async def get_fields(asset_id: UUID = Path(...)):
     "/{asset_id}/metadata",
     response_class=ORJSONResponse,
     tags=["Assets"],
-    response_model=FieldMetadataResponse,
+    response_model=AssetMetadataResponse,
 )
 async def get_metadata(asset_id: UUID = Path(...)):
-    asset: ORMAsset = await assets.get_asset(asset_id)
-    fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
+    asset_metadata: ORMAsset = await metadata_crud.get_asset_metadata(asset_id)
 
-    return FieldMetadataResponse(data=fields)
+    return AssetMetadataResponse(data=asset_metadata)
 
 
 @router.post(
     "/{asset_id}/metadata",
     response_class=ORJSONResponse,
     tags=["Assets"],
-    response_model=FieldMetadataResponse,
+    response_model=AssetMetadataResponse,
 )
 async def create_metadata(
     *,

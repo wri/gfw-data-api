@@ -119,29 +119,37 @@ def upgrade():
             nullable=False,
             server_default=sa.text("uuid_generate_v4()"),
         ),
-        sa.Column("dataset_metadata_id", postgresql.UUID(), nullable=True),
-        sa.Column("version_metadata_id", postgresql.UUID(), nullable=True),
+        # sa.Column("dataset_metadata_id", postgresql.UUID(), nullable=True),
+        # sa.Column("version_metadata_id", postgresql.UUID(), nullable=True),
         sa.Column("asset_id", postgresql.UUID(), nullable=False),
         sa.Column("name", sa.String()),
         sa.Column("resolution", sa.Numeric()),
         sa.Column("min_zoom", sa.Integer()),
         sa.Column("max_zoom", sa.Integer()),
         sa.PrimaryKeyConstraint("id"),
+        sa.Column(
+            "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
+        ),
+        sa.Column(
+            "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
+        ),
         sa.ForeignKeyConstraint(
             ["asset_id"],
             ["assets.asset_id"],
             name="asset_id_fk",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
         ),
-        sa.ForeignKeyConstraint(
-            ["version_metadata_id"],
-            ["version_metadata.id"],
-            name="version_metadata_id_fk",
-        ),
-        sa.ForeignKeyConstraint(
-            ["dataset_metadata_id"],
-            ["dataset_metadata.id"],
-            name="dataset_metadata_id_fk",
-        ),
+        # sa.ForeignKeyConstraint(
+        #     ["version_metadata_id"],
+        #     ["version_metadata.id"],
+        #     name="version_metadata_id_fk",
+        # ),
+        # sa.ForeignKeyConstraint(
+        #     ["dataset_metadata_id"],
+        #     ["dataset_metadata.id"],
+        #     name="dataset_metadata_id_fk",
+        # ),
     )
 
     op.create_table(
@@ -157,11 +165,19 @@ def upgrade():
         sa.Column("description", sa.String()),
         sa.Column("alias", sa.String()),
         sa.Column("unit", sa.String()),
+        sa.Column(
+            "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
+        ),
+        sa.Column(
+            "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(
             ["asset_metadata_id"],
             ["asset_metadata.id"],
             name="asset_metadata_id_fk",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
         ),
 
     )
@@ -175,28 +191,36 @@ def upgrade():
             server_default=sa.text("uuid_generate_v4()"),
         ),
         sa.Column("asset_metadata_id", postgresql.UUID(), nullable=True),
-        sa.Column("name", sa.String()),
+        sa.Column("pixel_meaning", sa.String()),
         sa.Column("description", sa.String()),
+        sa.Column("alias", sa.String()),
         sa.Column("unit", sa.String()),
+        sa.Column("data_type", sa.String()),
         sa.Column("compression", sa.String()),
-        sa.Column("no_data", sa.String()),
+        sa.Column("no_data_value", sa.String()),
         sa.Column(
             "statistics",
             postgresql.JSONB(astext_type=sa.Text()),
             nullable=True,
-            server_default=sa.text("'{}'"),
         ),
         sa.Column(
             "values_table",
             postgresql.ARRAY(postgresql.JSONB(astext_type=sa.Text())),
-            nullable=True,
-            server_default=sa.text("array[]::jsonb[]"),
+            nullable=True
+        ),
+        sa.Column(
+            "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
+        ),
+        sa.Column(
+            "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(
             ["asset_metadata_id"],
             ["asset_metadata.id"],
             name="asset_metadata_id_fk",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
         ),
     )
 
