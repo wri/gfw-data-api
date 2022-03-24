@@ -5,6 +5,7 @@ Revises: 4763f4b8141a
 Create Date: 2022-01-20 20:25:58.995306
 
 """
+from xmlrpc.client import Boolean
 from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils
@@ -165,6 +166,9 @@ def upgrade():
         sa.Column("description", sa.String()),
         sa.Column("alias", sa.String()),
         sa.Column("unit", sa.String()),
+        sa.Column("is_feature_info", sa.Boolean(), default=True),
+        sa.Column("is_filter", sa.Boolean(), default=True),
+        sa.Column("data_type", sa.String()),
         sa.Column(
             "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
         ),

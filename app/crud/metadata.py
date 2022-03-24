@@ -154,10 +154,8 @@ async def create_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
     bands = data.pop("bands", None)
     fields = data.pop("fields", None)
 
-    asset: ORMAsset = await get_asset(asset_id)
-
     asset_metadata: ORMAssetMetadata = await ORMAssetMetadata.create(
-        asset_id=asset.asset_id, **data
+        asset_id=asset_id, **data
     )
 
     bands_metadata = []
@@ -171,7 +169,7 @@ async def create_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
     fields_metadata = []
     if fields:
         for field in fields:
-            field_metadata = await create_field_metadata(asset_metadata.id, field)
+            field_metadata = await create_field_metadata(asset_metadata.id, **field)
             fields_metadata.append(field_metadata)
 
         asset_metadata.fields = fields_metadata
@@ -201,7 +199,6 @@ async def get_asset_metadata(asset_id: UUID):
 
 
 async def create_raster_band_metadata(asset_metadata_id: UUID, **data):
-    print(data)
     raster_band_metadata: ORMRasterBandMetadata = await ORMRasterBandMetadata.create(
         asset_metadata_id=asset_metadata_id, **data
     )
@@ -210,7 +207,7 @@ async def create_raster_band_metadata(asset_metadata_id: UUID, **data):
 
 
 async def create_field_metadata(asset_metadata_id: UUID, **data):
-    field_metadata: ORMFieldMetadata = ORMFieldMetadata.create(
+    field_metadata: ORMFieldMetadata = await ORMFieldMetadata.create(
         asset_metadata_id=asset_metadata_id,
         **data
     )

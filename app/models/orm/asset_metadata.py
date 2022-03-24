@@ -38,6 +38,9 @@ class FieldMetadata(Base):
     description = db.Column(db.String)
     alias = db.Column(db.String)
     unit = db.Column(db.String)
+    data_type = db.Column(db.String)
+    is_feature_info = db.Column(db.Boolean, default=True)
+    is_filter = db.Column(db.Boolean, default=True)
 
 
 class RasterBandMetadata(Base):
