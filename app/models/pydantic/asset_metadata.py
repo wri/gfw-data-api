@@ -29,6 +29,14 @@ class FieldMetadataOut(FieldMetadata, BaseRecord):
     id: UUID
 
 
+class FieldMetadataUpdate():
+    alias: Optional[str]
+    description: Optional[str]
+    unit: Optional[str]
+    is_feature_info: Optional[bool]
+    is_filter: Optional[bool]
+
+
 class RasterTableRow(StrictBaseModel):
     """
     Mapping of pixel value to what it represents in physical world.
@@ -74,12 +82,13 @@ class RasterTileCacheMetadata(AssetBase):
         int
     ]  # FIXME: Making required causes exception as it's never set. Find out why
     # TODO: More?
+    fields: List[FieldMetadata]
 
 
 class StaticVectorTileCacheMetadata(AssetBase):
     min_zoom: Optional[int]
     max_zoom: Optional[int]
-    fields: Optional[List[FieldMetadata]] = Field(None, alias="fields")
+    fields: Optional[List[FieldMetadata]]
     # TODO: default symbology/ legend
 
 
@@ -89,11 +98,11 @@ class DynamicVectorTileCacheMetadata(StaticVectorTileCacheMetadata):
 
 
 class DatabaseTableMetadata(AssetBase):
-    fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
+    fields: Optional[List[FieldMetadata]]
 
 
 class VectorFileMetadata(AssetBase):
-    fields_: Optional[List[FieldMetadata]] = Field(None, alias="fields")
+    fields: Optional[List[FieldMetadata]]
 
 
 AssetMetadata = Union[
