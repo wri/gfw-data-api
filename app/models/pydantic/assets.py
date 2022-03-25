@@ -6,7 +6,7 @@ from pydantic import Field
 from ..enum.assets import AssetStatus, AssetType
 from .base import BaseRecord, StrictBaseModel
 from .creation_options import CreationOptions, OtherCreationOptions
-from .asset_metadata import AssetMetadata
+from .asset_metadata import AssetMetadata, AssetMetadataOut
 from .responses import Response
 
 
@@ -19,7 +19,7 @@ class Asset(BaseRecord):
     status: AssetStatus = AssetStatus.pending
     is_managed: bool
     is_downloadable: bool
-    metadata: AssetMetadata
+    metadata: AssetMetadataOut
 
 
 class AssetCreateIn(StrictBaseModel):

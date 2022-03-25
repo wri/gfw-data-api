@@ -4,12 +4,14 @@ from uuid import UUID
 from asyncpg import UniqueViolationError
 from fastapi.encoders import jsonable_encoder
 
+from app.crud.metadata import create_asset_metadata, get_asset_metadata
+
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.versions import Version as ORMVersion
+from ..models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
 from ..models.pydantic.creation_options import CreationOptions, creation_option_factory
 from . import update_data, versions
-from .metadata import update_all_metadata, update_metadata
 
 
 async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
@@ -70,9 +72,13 @@ async def get_assets_by_filter(
 
 
 async def get_asset(asset_id: UUID) -> ORMAsset:
-    asset: ORMAsset = await ORMAsset.get([asset_id])
+    asset = await ORMAsset.get([asset_id])
+
     if asset is None:
         raise RecordNotFoundError(f"Could not find requested asset {asset_id}")
+
+    metadata: ORMAssetMetadata = await get_asset_metadata(asset_id)
+    asset.metadata = metadata
 
     return asset
 
@@ -101,7 +107,7 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
 
     data = _validate_creation_options(**data)
     jsonable_data = jsonable_encoder(data)
-
+    metadata_data = jsonable_data.pop("metadata", None)
     try:
         new_asset: ORMAsset = await ORMAsset.create(
             dataset=dataset, version=version, **jsonable_data
@@ -111,6 +117,12 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
             f"Cannot create asset of type {data['asset_type']}. "
             f"Asset uri must be unique. An asset with uri {data['asset_uri']} already exists"
         )
+
+    if metadata_data:
+        metadata: ORMAssetMetadata = create_asset_metadata(
+            new_asset.asset_id, **metadata_data
+        )
+        new_asset.metadata = metadata
 
     return new_asset
 
