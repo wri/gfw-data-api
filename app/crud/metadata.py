@@ -17,8 +17,8 @@ from ..models.orm.asset_metadata import (
     FieldMetadata as ORMFieldMetadata
 )
 from ..models.orm.versions import Version as ORMVersion
-from ..models.orm.assets import Asset as ORMAsset
-from .assets import get_asset
+# from ..models.orm.assets import Asset as ORMAsset
+# from .assets import get_asset
 from . import versions
 
 
@@ -211,6 +211,31 @@ async def create_field_metadata(asset_metadata_id: UUID, **data):
         asset_metadata_id=asset_metadata_id,
         **data
     )
+
+    return field_metadata
+
+
+async def get_asset_fields(asset_id: UUID):
+    field_metadata: List[ORMFieldMetadata] = await (
+        ORMFieldMetadata.join(ORMAssetMetadata)
+        .select()
+        .with_only_columns(
+            [
+                ORMFieldMetadata.id,
+                ORMFieldMetadata.asset_metadata_id,
+                ORMFieldMetadata.alias,
+                ORMFieldMetadata.created_on,
+                ORMFieldMetadata.data_type,
+                ORMFieldMetadata.description,
+                ORMFieldMetadata.is_feature_info,
+                ORMFieldMetadata.is_filter,
+                ORMFieldMetadata.updated_on,
+                ORMFieldMetadata.name,
+                ORMFieldMetadata.unit
+            ]
+        )
+        .where(ORMAssetMetadata.asset_id == asset_id)
+    ).gino.all()
 
     return field_metadata
 

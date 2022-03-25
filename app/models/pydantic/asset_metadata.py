@@ -174,4 +174,4 @@ def asset_metadata_factory(asset_type: str, metadata: ORMAssetMetadata) -> Asset
 
 
 class FieldMetadataResponse(Response):
-    data: Union[List[FieldMetadata], List[FieldMetadata]]
+    data: List[FieldMetadataOut]

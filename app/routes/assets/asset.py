@@ -246,8 +246,9 @@ async def get_stats(asset_id: UUID = Path(...)):
     response_model=FieldMetadataResponse,
 )
 async def get_fields(asset_id: UUID = Path(...)):
-    asset: ORMAsset = await assets.get_asset(asset_id)
-    fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
+    fields: List[ORMFieldMetadata] = await metadata_crud.get_asset_fields(
+        asset_id
+    )
 
     return FieldMetadataResponse(data=fields)
 
