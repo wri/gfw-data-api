@@ -5,7 +5,7 @@ from pydantic import Field
 from ..enum.versions import VersionStatus
 from .base import BaseRecord, StrictBaseModel
 from .creation_options import SourceCreationOptions
-from .metadata import VersionMetadata
+from .metadata import VersionMetadataIn, VersionMetadataOut, VersionMetadataUpdate
 from .responses import Response
 
 
@@ -14,7 +14,7 @@ class Version(BaseRecord):
     version: str
     is_latest: bool = False
     is_mutable: bool = False
-    metadata: VersionMetadata
+    metadata: VersionMetadataOut
     status: VersionStatus = VersionStatus.pending
 
     assets: List[Tuple[str, str]] = list()
@@ -26,7 +26,7 @@ class VersionCreateIn(StrictBaseModel):
         description="Flag to specify if assets associated with version can be downloaded."
         "If not set, value will default to settings of underlying dataset",
     )
-    metadata: Optional[VersionMetadata] = Field(
+    metadata: Optional[VersionMetadataIn] = Field(
         None,
         description="Version metadata. Version will inherit metadata from dataset. "
         "You will only need to add fields which you want to add or overwrite.",
@@ -49,7 +49,7 @@ class VersionUpdateIn(StrictBaseModel):
         "This will cause redirects from {dataset}/latest to {dataset}/{current_version}."
         "When tagging a version to `latest` any other version currently tagged `latest` will be untagged.",
     )
-    metadata: Optional[VersionMetadata] = Field(
+    metadata: Optional[VersionMetadataUpdate] = Field(
         None,
         description="Version metadata. Version will inherit metadata from dataset. "
         "You will only need to add fields which you want to add or overwrite.",
