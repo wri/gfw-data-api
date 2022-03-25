@@ -15,14 +15,21 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 from starlette.responses import JSONResponse
 
+from app.models.pydantic.responses import Response
+
 from ...authentication.token import is_admin
 from ...crud import assets, tasks, metadata as metadata_crud
 from ...errors import RecordNotFoundError
 from ...models.enum.assets import is_database_asset, is_single_file_asset
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.tasks import Task as ORMTask
+from ...models.orm.asset_metadata import FieldMetadata as ORMFieldMetadata
 from ...models.pydantic.assets import AssetResponse, AssetType, AssetUpdateIn
-from ...models.pydantic.asset_metadata import AssetMetadata, AssetMetadataResponse
+from ...models.pydantic.asset_metadata import (
+    AssetMetadata,
+    AssetMetadataResponse,
+    asset_metadata_factory
+)
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
     CreationOptions,
@@ -260,9 +267,12 @@ async def get_fields(asset_id: UUID = Path(...)):
     response_model=AssetMetadataResponse,
 )
 async def get_metadata(asset_id: UUID = Path(...)):
+    asset = await assets.get_asset(asset_id)
     asset_metadata: ORMAsset = await metadata_crud.get_asset_metadata(asset_id)
 
-    return AssetMetadataResponse(data=asset_metadata)
+    validated_metadata = asset_metadata_factory(asset.asset_type, asset_metadata)
+
+    return Response(data=validated_metadata)
 
 
 @router.post(
@@ -276,8 +286,10 @@ async def create_metadata(
     asset_id: UUID = Path(...),
     request: AssetMetadata
 ):
-
     input_data = request.dict(exclude_none=True, by_alias=True)
+    asset = await assets.get_asset(asset_id)
     asset_metadata = await metadata_crud.create_asset_metadata(asset_id, **input_data)
 
-    return AssetMetadataResponse(data=asset_metadata)
+    validated_metadata = asset_metadata_factory(asset.asset_type, asset_metadata)
+
+    return Response(data=validated_metadata)
