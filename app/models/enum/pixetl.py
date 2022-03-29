@@ -29,6 +29,7 @@ class Grid(str, Enum):
     eight_by_thirty_two_thousand = "8/32000"
     ten_by_forty_thousand = "10/40000"
     ten_by_one_hundred_thousand = "10/100000"
+    ninety_by_nine_hundred_ninety_eight = "90/998"
     ninety_by_nine_thousand_nine_hundred_eighty_four = "90/9984"
     ninety_by_twenty_seven_thousand_eight = "90/27008"
     zoom_0 = "zoom_0"
