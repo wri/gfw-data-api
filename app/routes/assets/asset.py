@@ -28,6 +28,7 @@ from ...models.pydantic.assets import AssetResponse, AssetType, AssetUpdateIn
 from ...models.pydantic.asset_metadata import (
     AssetMetadata,
     AssetMetadataResponse,
+    AssetMetadataUpdate,
     asset_metadata_factory
 )
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
@@ -289,6 +290,27 @@ async def create_metadata(
     input_data = request.dict(exclude_none=True, by_alias=True)
     asset = await assets.get_asset(asset_id)
     asset_metadata = await metadata_crud.create_asset_metadata(asset_id, **input_data)
+
+    validated_metadata = asset_metadata_factory(asset.asset_type, asset_metadata)
+
+    return Response(data=validated_metadata)
+
+
+@router.patch(
+    "/{asset_id}/metadata",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=AssetMetadataResponse,
+)
+async def update_metadata(
+    *,
+    asset_id: UUID = Path(...),
+    request: AssetMetadataUpdate
+):
+
+    input_data = request.dict(exclude_none=True, by_alias=True)
+    asset = await assets.get_asset(asset_id)
+    asset_metadata = await metadata_crud.update_asset_metadata(asset_id, **input_data)
 
     validated_metadata = asset_metadata_factory(asset.asset_type, asset_metadata)
 

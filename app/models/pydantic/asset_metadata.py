@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional, Type, Union
 from uuid import UUID
 from h11 import Data
+from pkg_resources import ResolutionError
 
 from pydantic import BaseModel, Field, StrictInt, create_model
 
@@ -71,6 +72,10 @@ class RasterTileSetMetadata(AssetBase):
     resolution: int
 
 
+class RasterTileSetMetadataUpdate(AssetBase):
+    resolution: int
+
+
 class RasterTileSetMetadataOut(RasterTileSetMetadata, BaseRecord):
     id: UUID
     bands: List[RasterBandMetadataOut]
@@ -82,7 +87,6 @@ class RasterTileCacheMetadata(AssetBase):
         int
     ]  # FIXME: Making required causes exception as it's never set. Find out why
     # TODO: More?
-    fields: List[FieldMetadata]
 
 
 class StaticVectorTileCacheMetadata(AssetBase):
@@ -90,6 +94,11 @@ class StaticVectorTileCacheMetadata(AssetBase):
     max_zoom: Optional[int]
     fields: Optional[List[FieldMetadata]]
     # TODO: default symbology/ legend
+
+
+class StaticVectorTileCacheMetadataUpdate(AssetBase):
+    min_zoom: Optional[int]
+    max_zoom: Optional[int]
 
 
 class DynamicVectorTileCacheMetadata(StaticVectorTileCacheMetadata):
@@ -113,6 +122,12 @@ AssetMetadata = Union[
     RasterTileSetMetadata,
     RasterBandMetadata,
     VectorFileMetadata
+]
+
+AssetMetadataUpdate = Union[
+    DynamicVectorTileCacheMetadata,
+    RasterTileSetMetadataUpdate,
+    StaticVectorTileCacheMetadataUpdate
 ]
 
 

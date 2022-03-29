@@ -182,10 +182,13 @@ async def get_asset_metadata(asset_id: UUID):
         ORMAssetMetadata.asset_id == asset_id
     ).gino.first()
 
+    if asset_metadata is None:
+        raise RecordNotFoundError(f'No metadata found for asset {asset_id}.')
+
     bands: List[ORMRasterBandMetadata] = await ORMRasterBandMetadata.query.where(
         ORMRasterBandMetadata.asset_metadata_id == asset_metadata.id
     ).gino.all()
-    print("bands", len(bands))
+
     if bands:
         asset_metadata.bands = bands
 
@@ -196,6 +199,15 @@ async def get_asset_metadata(asset_id: UUID):
         asset_metadata.fields = fields
 
     return asset_metadata
+
+
+async def update_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
+    """Update asset metadata."""
+    metadata: ORMAssetMetadata = await get_asset_metadata(asset_id)
+
+    await metadata.update(**data).apply()
+
+    return metadata
 
 
 async def create_raster_band_metadata(asset_metadata_id: UUID, **data):
