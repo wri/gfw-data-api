@@ -312,8 +312,12 @@ async def update_metadata(
 ):
 
     input_data = request.dict(exclude_none=True, by_alias=True)
-    asset = await assets.get_asset(asset_id)
-    asset_metadata = await metadata_crud.update_asset_metadata(asset_id, **input_data)
+
+    try:
+        asset = await assets.get_asset(asset_id)
+        asset_metadata = await metadata_crud.update_asset_metadata(asset_id, **input_data)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     validated_metadata = asset_metadata_factory(asset.asset_type, asset_metadata)
 
