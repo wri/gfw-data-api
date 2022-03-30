@@ -141,6 +141,10 @@ async def create_gdaldem_job(
         target_prefix,
     ]
 
+    kwargs = dict()
+    if co.timeout_sec is not None:
+        kwargs["attempt_duration_seconds"] = co.timeout_sec
+
     return GDALDEMJob(
         dataset=dataset,
         job_name=job_name,
@@ -148,6 +152,7 @@ async def create_gdaldem_job(
         environment=JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents] if parents else None,
+        **kwargs,
     )
 
 
@@ -209,6 +214,10 @@ async def create_resample_job(
         target_prefix,
     ]
 
+    kwargs = dict()
+    if co.timeout_sec is not None:
+        kwargs["attempt_duration_seconds"] = co.timeout_sec
+
     return PixETLJob(
         dataset=dataset,
         job_name=job_name,
@@ -216,4 +225,5 @@ async def create_resample_job(
         environment=JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents] if parents else None,
+        **kwargs,
     )

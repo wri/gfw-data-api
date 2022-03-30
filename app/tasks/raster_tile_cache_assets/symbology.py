@@ -409,12 +409,7 @@ async def year_intensity_symbology(
         ResamplingMethod.average,
     )
 
-    merge_calc_string = (
-        "np.ma.array("
-        "[A, np.ma.zeros(A.shape, dtype='uint8'), B], "
-        "fill_value=0"
-        ").astype('uint8')"
-    )
+    merge_calc_string = "np.ma.array([B, np.ma.zeros(A.shape, dtype='uint8'), A], fill_value=0).astype('uint8')"
 
     wm_source_uri: str = get_asset_uri(
         dataset,
