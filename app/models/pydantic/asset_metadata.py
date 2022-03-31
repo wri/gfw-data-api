@@ -197,5 +197,12 @@ def asset_metadata_factory(asset_type: str, metadata: ORMAssetMetadata) -> Asset
     return md
 
 
-class FieldMetadataResponse(Response):
+class FieldsMetadataResponse(Response):
     data: List[FieldMetadataOut]
+
+
+class FieldMetadataResponse(Response):
+    data: FieldMetadataOut
+
+
+

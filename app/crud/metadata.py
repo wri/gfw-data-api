@@ -227,25 +227,28 @@ async def create_field_metadata(asset_metadata_id: UUID, **data):
     return field_metadata
 
 
-async def get_asset_fields(asset_id: UUID):
+async def update_field_metadata(
+    asset_id: UUID, field_name: str, **data
+) -> ORMFieldMetadata:
+    field_metadata = await (
+        ORMFieldMetadata.join(ORMAssetMetadata)
+        .select()
+        .where(ORMAssetMetadata.asset_id == asset_id)
+        .where(ORMFieldMetadata.name == field_name)
+    ).gino.load(ORMFieldMetadata).first()
+
+    if field_metadata is None:
+        raise RecordNotFoundError('')
+
+    await field_metadata.update(**data).apply()
+
+    return field_metadata
+
+
+async def get_asset_fields(asset_id: UUID) -> List[ORMFieldMetadata]:
     field_metadata: List[ORMFieldMetadata] = await (
         ORMFieldMetadata.join(ORMAssetMetadata)
         .select()
-        .with_only_columns(
-            [
-                ORMFieldMetadata.id,
-                ORMFieldMetadata.asset_metadata_id,
-                ORMFieldMetadata.alias,
-                ORMFieldMetadata.created_on,
-                ORMFieldMetadata.data_type,
-                ORMFieldMetadata.description,
-                ORMFieldMetadata.is_feature_info,
-                ORMFieldMetadata.is_filter,
-                ORMFieldMetadata.updated_on,
-                ORMFieldMetadata.name,
-                ORMFieldMetadata.unit
-            ]
-        )
         .where(ORMAssetMetadata.asset_id == asset_id)
     ).gino.all()
 

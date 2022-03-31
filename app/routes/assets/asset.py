@@ -29,6 +29,9 @@ from ...models.pydantic.asset_metadata import (
     AssetMetadata,
     AssetMetadataResponse,
     AssetMetadataUpdate,
+    FieldMetadataUpdate,
+    FieldMetadataResponse,
+    FieldsMetadataResponse,
     asset_metadata_factory
 )
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
@@ -251,14 +254,34 @@ async def get_stats(asset_id: UUID = Path(...)):
     "/{asset_id}/fields",
     response_class=ORJSONResponse,
     tags=["Assets"],
-    response_model=FieldMetadataResponse,
+    response_model=FieldsMetadataResponse,
 )
 async def get_fields(asset_id: UUID = Path(...)):
     fields: List[ORMFieldMetadata] = await metadata_crud.get_asset_fields(
         asset_id
     )
 
-    return FieldMetadataResponse(data=fields)
+    return FieldsMetadataResponse(data=fields)
+
+
+@router.patch(
+    "/{asset_id}/fields/{field_name}",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=FieldMetadataResponse,
+)
+async def update_field_metadata(
+    *,
+    asset_id: UUID = Path(...),
+    field_name: str,
+    request: FieldMetadataUpdate
+):
+    input_data = request.dict(exclude_none=True, by_alias=True)
+    field_metadata: ORMFieldMetadata = await metadata_crud.update_field_metadata(
+        asset_id, field_name, **input_data
+    )
+
+    return FieldMetadataResponse(data=field_metadata)
 
 
 @router.get(
