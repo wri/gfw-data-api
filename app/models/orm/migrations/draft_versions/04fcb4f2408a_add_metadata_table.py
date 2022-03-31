@@ -181,7 +181,7 @@ def upgrade():
             postgresql.ARRAY(postgresql.JSONB(astext_type=sa.Text())),
             nullable=True
         ),
-        sa.PrimaryKeyConstraint("pixel_meaning"),
+        sa.PrimaryKeyConstraint("asset_metadata_id", "pixel_meaning"),
         sa.ForeignKeyConstraint(
             ["asset_metadata_id"],
             ["asset_metadata.id"],

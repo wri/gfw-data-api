@@ -29,9 +29,10 @@ class FieldMetadata(db.Model):
             name="asset_metadata_id_fk",
             onupdate="CASCADE",
             ondelete="CASCADE"
-        )
+        ),
+        primary_key=True
     )
-    name = db.Column(db.String)
+    name = db.Column(db.String, primary_key=True)
     description = db.Column(db.String)
     alias = db.Column(db.String)
     unit = db.Column(db.String)
@@ -43,17 +44,17 @@ class FieldMetadata(db.Model):
 class RasterBandMetadata(db.Model):
     __tablename__ = "raster_band_metadata"
 
-    id = db.Column(db.UUID, primary_key=True)
     asset_metadata_id = db.Column(
         db.UUID,
         db.ForeignKey(
             "asset_metadata.id",
             name="asset_metadata_id_fk",
             onupdate="CASCADE",
-            ondelete="CASCADE"
+            ondelete="CASCADE",
+            primary_key=True
         )
     )
-    pixel_meaning = db.Column(db.String)
+    pixel_meaning = db.Column(db.String, primary_key=True)
     description = db.Column(db.String)
     alias = db.Column(db.String)
     data_type = db.Column(db.String)
