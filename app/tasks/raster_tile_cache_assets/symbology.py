@@ -392,7 +392,8 @@ async def year_intensity_symbology(
     based on given source. For lower zoom levels it will resample higher
     zoom level tiles using average resampling method. Once intensity
     raster tile set is created it will combine it with source (year)
-    raster into an RGB-encoded raster.
+    raster into an RGB-encoded raster. This symbology is used for the
+    Tree Cover Loss dataset.
     """
 
     intensity_calc_string = "(A > 0) * 255"
@@ -409,7 +410,12 @@ async def year_intensity_symbology(
         ResamplingMethod.average,
     )
 
-    merge_calc_string = "np.ma.array([B, np.ma.zeros(A.shape, dtype='uint8'), A, (A > 0) * 255], fill_value=0).astype('uint8')"
+    # The resulting raster channels are as follows:
+    # 1. Intensity
+    # 2. All zeros
+    # 3. Year
+    # 4. Alpha (which is set to 255 everywhere intensity is >0)
+    merge_calc_string = "np.ma.array([B, np.ma.zeros(A.shape, dtype='uint8'), A, (B > 0) * 255], fill_value=0).astype('uint8')"
 
     wm_source_uri: str = get_asset_uri(
         dataset,
