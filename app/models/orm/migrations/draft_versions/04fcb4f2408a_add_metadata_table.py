@@ -120,10 +120,7 @@ def upgrade():
             nullable=False,
             server_default=sa.text("uuid_generate_v4()"),
         ),
-        # sa.Column("dataset_metadata_id", postgresql.UUID(), nullable=True),
-        # sa.Column("version_metadata_id", postgresql.UUID(), nullable=True),
         sa.Column("asset_id", postgresql.UUID(), nullable=False),
-        sa.Column("name", sa.String()),
         sa.Column("resolution", sa.Numeric()),
         sa.Column("min_zoom", sa.Integer()),
         sa.Column("max_zoom", sa.Integer()),
@@ -141,26 +138,10 @@ def upgrade():
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
-        # sa.ForeignKeyConstraint(
-        #     ["version_metadata_id"],
-        #     ["version_metadata.id"],
-        #     name="version_metadata_id_fk",
-        # ),
-        # sa.ForeignKeyConstraint(
-        #     ["dataset_metadata_id"],
-        #     ["dataset_metadata.id"],
-        #     name="dataset_metadata_id_fk",
-        # ),
     )
 
     op.create_table(
         "field_metadata",
-        sa.Column(
-            "id",
-            postgresql.UUID(),
-            nullable=False,
-            server_default=sa.text("uuid_generate_v4()"),
-        ),
         sa.Column("asset_metadata_id", postgresql.UUID(), nullable=True),
         sa.Column("name", sa.String()),
         sa.Column("description", sa.String()),
@@ -169,13 +150,7 @@ def upgrade():
         sa.Column("is_feature_info", sa.Boolean(), default=True),
         sa.Column("is_filter", sa.Boolean(), default=True),
         sa.Column("data_type", sa.String()),
-        sa.Column(
-            "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        sa.Column(
-            "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("asset_metadata_id", "name"),
         sa.ForeignKeyConstraint(
             ["asset_metadata_id"],
             ["asset_metadata.id"],
@@ -188,12 +163,6 @@ def upgrade():
 
     op.create_table(
         "raster_band_metadata",
-        sa.Column(
-            "id",
-            postgresql.UUID(),
-            nullable=False,
-            server_default=sa.text("uuid_generate_v4()"),
-        ),
         sa.Column("asset_metadata_id", postgresql.UUID(), nullable=True),
         sa.Column("pixel_meaning", sa.String()),
         sa.Column("description", sa.String()),
@@ -212,13 +181,7 @@ def upgrade():
             postgresql.ARRAY(postgresql.JSONB(astext_type=sa.Text())),
             nullable=True
         ),
-        sa.Column(
-            "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        sa.Column(
-            "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("pixel_meaning"),
         sa.ForeignKeyConstraint(
             ["asset_metadata_id"],
             ["asset_metadata.id"],

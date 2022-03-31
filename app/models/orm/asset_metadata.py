@@ -14,17 +14,14 @@ class AssetMetadata(Base):
     # version_metadata_id = db.Column(
     #     db.UUID, db.ForeignKey("version_metadata.id", name="version_metadata_id_fk")
     # )
-
-    name = db.Column(db.String)
     resolution = db.Column(db.Numeric)
     min_zoom = db.Column(db.Integer)
     max_zoom = db.Column(db.Integer)
 
 
-class FieldMetadata(Base):
+class FieldMetadata(db.Model):
     __tablename__ = "field_metadata"
 
-    id = db.Column(db.UUID, primary_key=True)
     asset_metadata_id = db.Column(
         db.UUID,
         db.ForeignKey(
@@ -43,7 +40,7 @@ class FieldMetadata(Base):
     is_filter = db.Column(db.Boolean, default=True)
 
 
-class RasterBandMetadata(Base):
+class RasterBandMetadata(db.Model):
     __tablename__ = "raster_band_metadata"
 
     id = db.Column(db.UUID, primary_key=True)
