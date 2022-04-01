@@ -439,7 +439,7 @@ async def year_intensity_symbology(
         zoom_level,
         [*intensity_jobs, source_job],
         merge_calc_string,
-        3,
+        4,
     )
     return [*intensity_jobs, *merge_jobs], final_asset_uri
 
