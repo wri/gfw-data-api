@@ -255,7 +255,7 @@ class TileCacheBaseModel(StrictBaseModel):
         14, description="Maximum zoom level of tile cache", ge=0, le=22
     )
     timeout_sec: Optional[StrictInt] = Field(
-        None,
+        250000,
         description="Maximum run time for associated AWS Batch jobs, in seconds",
     )
 
