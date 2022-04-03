@@ -153,7 +153,7 @@ AWS_SECRETSMANAGER_URL = config("AWS_SECRETSMANAGER_URL", cast=str, default=None
 RW_API_URL = config("RW_API_URL", cast=str, default=None)
 
 HOUR: int = int(60 * 60)
-DEFAULT_JOB_DURATION: int = int(HOUR * 2)
+DEFAULT_JOB_DURATION: 400000 # temporarily increase default timeout to 400k seconds
 
 API_KEY_NAME = config("API_KEY_NAME", cast=str, default="x-api-key")
 GEOSTORE_SIZE_LIMIT_OTF = config(
