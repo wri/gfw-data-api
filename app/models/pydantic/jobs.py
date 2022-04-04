@@ -130,7 +130,7 @@ class PixETLJob(Job):
     vcpus = MAX_CORES
     memory = MAX_MEM
     num_processes = max(int(MAX_CORES * 2 / 3), 1)
-    attempts = 4
+    attempts = 40
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 
 
@@ -142,7 +142,7 @@ class GDALDEMJob(Job):
     vcpus = PIXETL_CORES
     memory = PIXETL_MAX_MEM
     num_processes = max(int(PIXETL_CORES / 2), 1)
-    attempts = 4
+    attempts = 40
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 
 
@@ -154,5 +154,5 @@ class GDAL2TilesJob(Job):
     vcpus = MAX_CORES
     memory = MAX_MEM
     num_processes = max(int(MAX_CORES / 2), 1)
-    attempts = 4
+    attempts = 40
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
