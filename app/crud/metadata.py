@@ -210,7 +210,18 @@ async def update_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
     return metadata
 
 
-async def create_raster_band_metadata(asset_metadata_id: UUID, **data):
+async def delete_asset_metadata(asset_id: UUID) -> ORMAssetMetadata:
+    asset_metadata: ORMAssetMetadata = await get_asset_metadata(asset_id)
+    await ORMAssetMetadata.delete.where(
+        ORMAssetMetadata.asset_id == asset_id
+        ).gino.status()
+
+    return asset_metadata
+
+
+async def create_raster_band_metadata(
+    asset_metadata_id: UUID, **data
+) -> ORMRasterBandMetadata:
     raster_band_metadata: ORMRasterBandMetadata = await ORMRasterBandMetadata.create(
         asset_metadata_id=asset_metadata_id, **data
     )
@@ -218,7 +229,9 @@ async def create_raster_band_metadata(asset_metadata_id: UUID, **data):
     return raster_band_metadata
 
 
-async def create_field_metadata(asset_metadata_id: UUID, **data):
+async def create_field_metadata(
+    asset_metadata_id: UUID, **data
+) -> ORMFieldMetadata:
     field_metadata: ORMFieldMetadata = await ORMFieldMetadata.create(
         asset_metadata_id=asset_metadata_id,
         **data

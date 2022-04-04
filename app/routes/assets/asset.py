@@ -41,7 +41,6 @@ from ...models.pydantic.creation_options import (
     creation_option_factory,
 )
 from ...models.pydantic.extent import Extent, ExtentResponse
-from ...models.pydantic.asset_metadata import FieldMetadata, FieldMetadataResponse
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.tasks import TasksResponse
 from ...tasks.delete_assets import (
@@ -339,6 +338,25 @@ async def update_metadata(
     try:
         asset = await assets.get_asset(asset_id)
         asset_metadata = await metadata_crud.update_asset_metadata(asset_id, **input_data)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    validated_metadata = asset_metadata_factory(asset.asset_type, asset_metadata)
+
+    return Response(data=validated_metadata)
+
+
+@router.delete(
+    "/{asset_id}/metadata",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=AssetMetadataResponse,
+)
+async def delete_metadata(asset_id: UUID = Path(...)):
+
+    try:
+        asset = await assets.get_asset(asset_id)
+        asset_metadata = await metadata_crud.delete_asset_metadata(asset_id)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
