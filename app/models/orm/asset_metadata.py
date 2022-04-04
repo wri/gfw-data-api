@@ -1,7 +1,7 @@
 from .base import Base, db
 
 
-class AssetMetadata(Base):
+class AssetMetadata(db.Model):
     __tablename__ = "asset_metadata"
 
     id = db.Column(db.UUID, primary_key=True)

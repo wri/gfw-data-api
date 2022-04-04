@@ -125,12 +125,6 @@ def upgrade():
         sa.Column("min_zoom", sa.Integer()),
         sa.Column("max_zoom", sa.Integer()),
         sa.PrimaryKeyConstraint("id"),
-        sa.Column(
-            "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
-        sa.Column(
-            "updated_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
-        ),
         sa.ForeignKeyConstraint(
             ["asset_id"],
             ["assets.asset_id"],

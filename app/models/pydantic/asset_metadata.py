@@ -1,13 +1,13 @@
 from typing import Any, Dict, List, Optional, Type, Union
 from uuid import UUID
+from cachetools import FIFOCache
 from h11 import Data
-from pkg_resources import ResolutionError
 
 from pydantic import BaseModel, Field, StrictInt, create_model
 
 from ..enum.assets import AssetType
 from ..enum.pg_types import PGType
-from .base import BaseRecord, StrictBaseModel
+from .base import BaseORMRecord, StrictBaseModel
 from .responses import Response
 from ...models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
 
@@ -76,7 +76,7 @@ class RasterTileSetMetadataUpdate(StrictBaseModel):
     resolution: int
 
 
-class RasterTileSetMetadataOut(RasterTileSetMetadata, BaseRecord):
+class RasterTileSetMetadataOut(RasterTileSetMetadata, BaseORMRecord):
     id: UUID
     bands: List[RasterBandMetadata]
 
@@ -87,7 +87,7 @@ class RasterTileCacheMetadata(StrictBaseModel):
         int
     ]  # FIXME: Making required causes exception as it's never set. Find out why
     # TODO: More?
-
+    fields: Optional[List[FieldMetadata]]
 
 class StaticVectorTileCacheMetadata(StrictBaseModel):
     min_zoom: Optional[int]
@@ -134,7 +134,7 @@ def asset_metadata_out(Metadata):
     if 'bands' in Metadata.__dict__['__fields__'].keys():
         return create_model(
             f"{Metadata.__name__}Out",
-            __base__=(Metadata, BaseRecord),
+            __base__=(Metadata, BaseORMRecord),
             id=(UUID, ...),
             bands=(List[RasterBandMetadataOut], ...)
         )
@@ -142,14 +142,14 @@ def asset_metadata_out(Metadata):
     if 'fields' in Metadata.__dict__['__fields__']:
         return create_model(
             f"{Metadata.__name__}Out",
-            __base__=(Metadata, BaseRecord),
+            __base__=(Metadata, BaseORMRecord),
             id=(UUID, ...),
             fields=(List[FieldMetadataOut], ...)
         )
 
     return create_model(
         f"{Metadata.__name__}Out",
-        __base__=(Metadata, BaseRecord),
+        __base__=(Metadata, BaseORMRecord),
         id=(UUID, ...),
     )
 
