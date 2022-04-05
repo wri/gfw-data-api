@@ -19,7 +19,7 @@ from app.models.pydantic.responses import Response
 
 from ...authentication.token import is_admin
 from ...crud import assets, tasks, metadata as metadata_crud
-from ...errors import RecordNotFoundError
+from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import is_database_asset, is_single_file_asset
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.tasks import Task as ORMTask
@@ -314,7 +314,11 @@ async def create_metadata(
 ):
     input_data = request.dict(exclude_none=True, by_alias=True)
     asset = await assets.get_asset(asset_id)
-    asset_metadata = await metadata_crud.create_asset_metadata(asset_id, **input_data)
+
+    try:
+        asset_metadata = await metadata_crud.create_asset_metadata(asset, **input_data)
+    except RecordAlreadyExistsError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     validated_metadata = asset_metadata_factory(asset.asset_type, asset_metadata)
 

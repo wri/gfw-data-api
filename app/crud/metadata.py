@@ -2,9 +2,10 @@ from copy import deepcopy
 from typing import List, Union
 from uuid import UUID
 
-from asyncpg import UniqueViolationError
+from asyncpg import DuplicateDatabaseError, UniqueViolationError
 
 from app.models.enum.assets import AssetType
+from app.models.orm.assets import Asset as ORMAsset
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.enum import entity
@@ -150,12 +151,16 @@ async def update_version_metadata(
     return metadata
 
 
-async def create_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
+async def create_asset_metadata(asset: ORMAsset, **data) -> ORMAssetMetadata:
     bands = data.pop("bands", None)
     fields = data.pop("fields", None)
 
+    if getattr(asset, "metadata", {}):
+        raise RecordAlreadyExistsError(
+            f"Failed to create metadata. Asset {asset.asset_id} has an existing metadata record.")
+
     asset_metadata: ORMAssetMetadata = await ORMAssetMetadata.create(
-        asset_id=asset_id, **data
+        asset_id=asset.asset_id, **data
     )
 
     bands_metadata = []
