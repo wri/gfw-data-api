@@ -54,7 +54,12 @@ async def update_dataset(dataset: str, **data) -> ORMDataset:
 
     metadata_data = data.get("metadata")
     if metadata_data:
-        metadata = await metadata_crud.update_dataset_metadata(dataset, **metadata_data)
+        try:
+            metadata = await metadata_crud.update_dataset_metadata(dataset, **metadata_data)
+        except RecordNotFoundError:
+            metadata = await metadata_crud.create_dataset_metadata(
+                dataset, **metadata_data
+            )
         new_row.metadata = metadata
 
     await _update_is_downloadable(dataset, data)
