@@ -6,7 +6,9 @@ class AssetMetadata(db.Model):
 
     id = db.Column(db.UUID, primary_key=True)
     asset_id = db.Column(
-        db.UUID, db.ForeignKey("assets.asset_id", name="asset_id_fk")
+        db.UUID,
+        db.ForeignKey("assets.asset_id", name="asset_id_fk"),
+        unique=True
     )
     # dataset_metadata_id = db.Column(
     #     db.UUID, db.ForeignKey("dataset_metadata.id", name="dataset_metadata_id_fk")

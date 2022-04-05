@@ -151,17 +151,17 @@ async def update_version_metadata(
     return metadata
 
 
-async def create_asset_metadata(asset: ORMAsset, **data) -> ORMAssetMetadata:
+async def create_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
     bands = data.pop("bands", None)
     fields = data.pop("fields", None)
 
-    if getattr(asset, "metadata", {}):
+    try:
+        asset_metadata: ORMAssetMetadata = await ORMAssetMetadata.create(
+            asset_id=asset_id, **data
+        )
+    except UniqueViolationError:
         raise RecordAlreadyExistsError(
-            f"Failed to create metadata. Asset {asset.asset_id} has an existing metadata record.")
-
-    asset_metadata: ORMAssetMetadata = await ORMAssetMetadata.create(
-        asset_id=asset.asset_id, **data
-    )
+            f"Failed to create metadata. Asset {asset_id} has an existing metadata record.")
 
     bands_metadata = []
     if bands:

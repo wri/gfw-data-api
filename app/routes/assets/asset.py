@@ -316,7 +316,7 @@ async def create_metadata(
     asset = await assets.get_asset(asset_id)
 
     try:
-        asset_metadata = await metadata_crud.create_asset_metadata(asset, **input_data)
+        asset_metadata = await metadata_crud.create_asset_metadata(asset_id, **input_data)
     except RecordAlreadyExistsError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -132,6 +132,7 @@ def upgrade():
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
+        sa.UniqueConstraint("asset_id", name="asset_id_uq")
     )
 
     op.create_table(
