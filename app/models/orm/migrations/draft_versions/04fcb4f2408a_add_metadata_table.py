@@ -110,6 +110,7 @@ def upgrade():
             name="dataset_metadata_id_fk",
         ),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("dataset", "version", name="dataset_version_uq")
     )
 
     op.create_table(

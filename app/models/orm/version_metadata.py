@@ -24,3 +24,6 @@ class VersionMetadata(Base, MetadataMixin):
         onupdate="CASCADE",
         ondelete="CASCADE",
     )
+    _unique_dataset_version = db.UniqueConstraint(
+        "dataset", "version", name="dataset_version_uq"
+    )

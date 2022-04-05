@@ -384,9 +384,12 @@ async def create_metadata(
         input_data["content_start_date"] = content_date_range["start_date"]
         input_data["content_end_date"] = content_date_range["end_date"]
 
-    metadata: VersionMetadata = await metadata_crud.create_version_metadata(
-        dataset=dataset, version=version, **input_data
-    )
+    try:
+        metadata: VersionMetadata = await metadata_crud.create_version_metadata(
+            dataset=dataset, version=version, **input_data
+        )
+    except RecordAlreadyExistsError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     return VersionMetadataResponse(data=metadata)
 
