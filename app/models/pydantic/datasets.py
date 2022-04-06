@@ -1,6 +1,6 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from pydantic import Field
+from pydantic import Field, BaseModel
 
 from .base import BaseRecord, StrictBaseModel
 from .metadata import DatasetMetadata, DatasetMetadataOut, DatasetMetadataUpdate
@@ -10,7 +10,7 @@ from .responses import Response
 class Dataset(BaseRecord):
     dataset: str
     is_downloadable: bool
-    metadata: DatasetMetadataOut
+    metadata: Union[DatasetMetadataOut, BaseModel]
     versions: Optional[List[str]] = list()
 
 

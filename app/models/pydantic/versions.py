@@ -1,6 +1,6 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from ..enum.versions import VersionStatus
 from .base import BaseRecord, StrictBaseModel
@@ -14,7 +14,7 @@ class Version(BaseRecord):
     version: str
     is_latest: bool = False
     is_mutable: bool = False
-    metadata: VersionMetadataOut
+    metadata: Union[VersionMetadataOut, BaseModel]
     status: VersionStatus = VersionStatus.pending
 
     assets: List[Tuple[str, str]] = list()

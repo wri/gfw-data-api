@@ -77,8 +77,11 @@ async def get_asset(asset_id: UUID) -> ORMAsset:
     if asset is None:
         raise RecordNotFoundError(f"Could not find requested asset {asset_id}")
 
-    metadata: ORMAssetMetadata = await get_asset_metadata(asset_id)
-    asset.metadata = metadata
+    try:
+        metadata: ORMAssetMetadata = await get_asset_metadata(asset_id)
+        asset.metadata = metadata
+    except RecordNotFoundError:
+        pass
 
     return asset
 

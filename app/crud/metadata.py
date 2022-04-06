@@ -63,10 +63,10 @@ async def get_dataset_metadata(dataset: str) -> ORMDatasetMetadata:
         ORMDatasetMetadata.dataset == dataset
     ).gino.first()
 
-    # if metadata is None:
-    #     raise RecordNotFoundError(
-    #         f"Could not find requested metadata dataset {dataset}"
-    #     )
+    if metadata is None:
+        raise RecordNotFoundError(
+            f"Could not find requested metadata dataset {dataset}"
+        )
 
     return metadata
 
@@ -95,10 +95,10 @@ async def get_version_metadata(dataset: str, version: str) -> ORMVersionMetadata
         .gino.first()
     )
 
-    # if metadata is None:
-    #     raise RecordNotFoundError(
-    #         f"Could not find requested metadata dataset version {dataset}:{version}"
-    #     )
+    if metadata is None:
+        raise RecordNotFoundError(
+            f"Could not find requested metadata for dataset version {dataset}:{version}"
+        )
 
     return metadata
 

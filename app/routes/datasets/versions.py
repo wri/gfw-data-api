@@ -357,7 +357,10 @@ async def get_metadata(
 ):
     dataset, version = dv
 
-    metadata = await metadata_crud.get_version_metadata(dataset, version)
+    try:
+        metadata = await metadata_crud.get_version_metadata(dataset, version)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     if include_dataset_metadata:
         return VersionMetadataWithParentResponse(data=metadata)

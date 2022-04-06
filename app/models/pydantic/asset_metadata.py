@@ -186,8 +186,10 @@ def asset_metadata_factory(asset_type: str, metadata: ORMAssetMetadata) -> Asset
     }
     if asset_type in metadata_factory.keys():
         MetadataOut = asset_metadata_out(metadata_factory[asset_type])
-        md: AssetMetadata = MetadataOut.from_orm(metadata)
-
+        if metadata:
+            md: AssetMetadata = MetadataOut.from_orm(metadata)
+        else:
+            md = BaseORMRecord()
     else:
         raise NotImplementedError(
             f"Asset metadata factory for type {asset_type} not implemented"
