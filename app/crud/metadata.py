@@ -48,8 +48,6 @@ async def get_entity_metadata(
         metadata: ORMDatasetMetadata = await ORMDatasetMetadata.get([metadata_id])
     elif entity_type == "version":
         metadata: ORMVersionMetadata = await ORMVersionMetadata.get([metadata_id])
-    elif entity_type == "asset":
-        metadata: ORMAssetMetadata = await ORMAssetMetadata.get([metadata_id])
     else:
         raise NotImplementedError(f"Entity type {entity_type} is not recognized.")
 
