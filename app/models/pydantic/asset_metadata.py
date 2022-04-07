@@ -10,6 +10,7 @@ from ..enum.pg_types import PGType
 from .base import BaseORMRecord, StrictBaseModel
 from .responses import Response
 from ...models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
+from ...models.orm.assets import Asset as ORMAsset
 
 
 class FieldMetadata(StrictBaseModel):
@@ -170,7 +171,7 @@ class AssetMetadataResponse(Response):
     data: AssetMetadataOut
 
 
-def asset_metadata_factory(asset_type: str, metadata: ORMAssetMetadata) -> AssetMetadata:
+def asset_metadata_factory(asset: ORMAsset) -> AssetMetadata:
     """Create Pydantic Asset Metadata class based on asset type."""
     metadata_factory: Dict[str, Type[AssetMetadata]] = {
         AssetType.static_vector_tile_cache: StaticVectorTileCacheMetadata,
@@ -184,15 +185,15 @@ def asset_metadata_factory(asset_type: str, metadata: ORMAssetMetadata) -> Asset
         AssetType.shapefile: VectorFileMetadata,
         AssetType.geopackage: VectorFileMetadata,
     }
-    if asset_type in metadata_factory.keys():
-        MetadataOut = asset_metadata_out(metadata_factory[asset_type])
-        if metadata:
-            md: AssetMetadata = MetadataOut.from_orm(metadata)
+    if asset.asset_type in metadata_factory.keys():
+        MetadataOut = asset_metadata_out(metadata_factory[asset.asset_type])
+        if getattr(asset, "metadata", None):
+            md: AssetMetadata = MetadataOut.from_orm(asset.metadata)
         else:
             md = BaseORMRecord()
     else:
         raise NotImplementedError(
-            f"Asset metadata factory for type {asset_type} not implemented"
+            f"Asset metadata factory for type {asset.asset_type} not implemented"
         )
 
     return md

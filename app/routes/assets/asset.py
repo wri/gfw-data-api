@@ -296,7 +296,7 @@ async def get_metadata(asset_id: UUID = Path(...)):
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    validated_metadata = asset_metadata_factory(asset.asset_type, asset_metadata)
+    validated_metadata = asset_metadata_factory(asset)
 
     return Response(data=validated_metadata)
 
@@ -316,11 +316,11 @@ async def create_metadata(
     asset = await assets.get_asset(asset_id)
 
     try:
-        asset_metadata = await metadata_crud.create_asset_metadata(asset_id, **input_data)
+        asset.metadata = await metadata_crud.create_asset_metadata(asset_id, **input_data)
     except RecordAlreadyExistsError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    validated_metadata = asset_metadata_factory(asset.asset_type, asset_metadata)
+    validated_metadata = asset_metadata_factory(asset)
 
     return Response(data=validated_metadata)
 
@@ -341,11 +341,11 @@ async def update_metadata(
 
     try:
         asset = await assets.get_asset(asset_id)
-        asset_metadata = await metadata_crud.update_asset_metadata(asset_id, **input_data)
+        asset.metadata = await metadata_crud.update_asset_metadata(asset_id, **input_data)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    validated_metadata = asset_metadata_factory(asset.asset_type, asset_metadata)
+    validated_metadata = asset_metadata_factory(asset)
 
     return Response(data=validated_metadata)
 
@@ -360,10 +360,10 @@ async def delete_metadata(asset_id: UUID = Path(...)):
 
     try:
         asset = await assets.get_asset(asset_id)
-        asset_metadata = await metadata_crud.delete_asset_metadata(asset_id)
+        asset.metadata = await metadata_crud.delete_asset_metadata(asset_id)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    validated_metadata = asset_metadata_factory(asset.asset_type, asset_metadata)
+    validated_metadata = asset_metadata_factory(asset)
 
     return Response(data=validated_metadata)

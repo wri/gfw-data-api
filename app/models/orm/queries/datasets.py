@@ -3,7 +3,8 @@ from ....application import db
 _dataset_sql = """
 SELECT
   datasets.*,
-  version_array AS versions
+  version_array AS versions,
+  metadata
 FROM
   datasets
   LEFT JOIN
@@ -16,6 +17,15 @@ FROM
       GROUP BY
         dataset
     )
-    t USING (dataset);"""
+    t USING (dataset)
+  LEFT JOIN
+    (
+      SELECT 
+        dataset,
+        ROW_TO_JSON(dataset_metadata.*) as metadata
+      FROM
+        dataset_metadata
+    )
+    m USING (dataset);"""
 
 all_datasets = db.text(_dataset_sql)

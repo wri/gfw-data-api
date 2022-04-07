@@ -68,6 +68,13 @@ async def get_assets_by_filter(
     query = query.order_by(ORMAsset.created_on)
     assets = await query.gino.all()
 
+    if include_metadata:
+        for asset in assets:
+            try:
+                asset.metadata = await get_asset_metadata(asset.asset_id)
+            except RecordNotFoundError:
+                continue
+
     return assets
 
 

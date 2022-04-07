@@ -23,7 +23,7 @@ async def assets_response(assets_orm: List[ORMAsset]) -> AssetsResponse:
 async def _serialized_asset(asset_orm: ORMAsset) -> Asset:
 
     data: Asset = Asset.from_orm(asset_orm)
-    data.metadata = asset_metadata_factory(asset_orm.asset_type, asset_orm.metadata)
+    data.metadata = asset_metadata_factory(asset_orm)
 
     logger.debug(f"Metadata: {data.metadata.dict(by_alias=True)}")
     return data

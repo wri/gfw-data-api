@@ -19,7 +19,7 @@ class Asset(BaseRecord):
     status: AssetStatus = AssetStatus.pending
     is_managed: bool
     is_downloadable: bool
-    metadata: Union[AssetMetadataOut, BaseModel]
+    metadata: Optional[Union[AssetMetadataOut, BaseModel]]
 
 
 class AssetCreateIn(StrictBaseModel):

@@ -10,7 +10,7 @@ from .responses import Response
 class Dataset(BaseRecord):
     dataset: str
     is_downloadable: bool
-    metadata: Union[DatasetMetadataOut, BaseModel]
+    metadata: Optional[DatasetMetadataOut]
     versions: Optional[List[str]] = list()
 
 
