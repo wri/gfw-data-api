@@ -165,7 +165,6 @@ module "batch_data_lake_writer" {
   suffix                   = local.name_suffix
   tags                     = local.batch_tags
   use_ephemeral_storage    = true
-  launch_type              = "EC2"
   compute_environment_name = "data_lake_writer"
 }
 
