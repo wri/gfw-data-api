@@ -4,7 +4,11 @@ from uuid import UUID
 from asyncpg import UniqueViolationError
 from fastapi.encoders import jsonable_encoder
 
-from app.crud.metadata import create_asset_metadata, get_asset_metadata
+from app.crud.metadata import (
+    create_asset_metadata,
+    get_asset_metadata,
+    update_asset_metadata
+)
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
@@ -28,7 +32,8 @@ async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
 
     v: ORMVersion = await versions.get_version(dataset, version)
 
-    return update_all_metadata(rows, v)
+    # return update_all_metadata(rows, v)
+    return rows
 
 
 async def get_all_assets() -> List[ORMAsset]:

@@ -36,14 +36,17 @@ async def get_version_names(dataset: str) -> List[Any]:
 
 
 async def get_version(dataset: str, version: str) -> ORMVersion:
-    row: ORMVersion = await ORMVersion.get([dataset, version])
+    row: ORMVersion = (
+        await ORMVersion.load(metadata=ORMVersionMetadata)
+        .where(ORMVersion.dataset == dataset)
+        .where(ORMVersion.version == version)
+        .gino.first()
+    )
     if row is None:
         raise RecordNotFoundError(
             f"Version with name {dataset}.{version} does not exist"
         )
-    # d: ORMDataset = await datasets.get_dataset(dataset)
 
-    # return update_metadata(row, d)
     return row
 
 
@@ -78,6 +81,7 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
     if data.get("is_latest"):
         await _reset_is_latest(dataset, version)
 
+    metadata_data = data.pop("metadata")
     try:
         new_version: ORMVersion = await ORMVersion.create(
             dataset=dataset, version=version, **data
@@ -87,7 +91,6 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
             f"Version with name {dataset}.{version} already exists."
         )
 
-    metadata_data = data.pop("metadata")
     if metadata_data:
         metadata: ORMVersionMetadata = await create_version_metadata(
             dataset, new_version, **metadata_data
