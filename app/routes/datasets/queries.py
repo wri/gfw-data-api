@@ -61,7 +61,7 @@ from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
 from ...models.orm.versions import Version as VersionORM
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
-from ...models.pydantic.metadata import RasterTable, RasterTableRow
+from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
 from ...models.pydantic.query import CsvQueryRequestIn, QueryRequestIn
 from ...models.pydantic.raster_analysis import (
     DataEnvironment,

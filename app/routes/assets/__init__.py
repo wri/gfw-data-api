@@ -4,7 +4,7 @@ from fastapi.logger import logger
 
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.pydantic.assets import Asset, AssetResponse, AssetsResponse
-from ...models.pydantic.metadata import asset_metadata_factory
+from ...models.pydantic.asset_metadata import asset_metadata_factory
 
 
 async def asset_response(asset_orm: ORMAsset) -> AssetResponse:

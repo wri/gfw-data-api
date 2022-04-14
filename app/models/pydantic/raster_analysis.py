@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 
 from ..enum.pixetl import Grid
 from .base import StrictBaseModel
-from .metadata import RasterTable
+from .asset_metadata import RasterTable
 
 
 class BaseLayer(StrictBaseModel):
