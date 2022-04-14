@@ -22,9 +22,11 @@ async def get_datasets() -> List[ORMDataset]:
 
 
 async def get_dataset(dataset: str) -> ORMDataset:
-    row: ORMDataset = await ORMDataset.get(dataset)
-    metadata = await metadata_crud.get_dataset_metadata(dataset)
-    row.metadata = metadata
+    row: ORMDataset = (
+        await ORMDataset.load(metadata=ORMDatasetMetadata)
+        .where(ORMDataset.dataset == dataset)
+        .gino.first()
+    )
 
     if row is None:
         raise RecordNotFoundError(f"Dataset with name {dataset} does not exist")
