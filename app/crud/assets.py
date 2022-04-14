@@ -144,6 +144,14 @@ async def update_asset(asset_id: UUID, **data) -> ORMAsset:
     asset: ORMAsset = await get_asset(asset_id)
     asset = await update_data(asset, jsonable_data)
 
+    metadata_data = data.get("metadata")
+    if metadata_data:
+        try:
+            metadata = await update_asset_metadata(asset, **metadata_data)
+        except RecordNotFoundError:
+            metadata = await create_asset_metadata(asset, **metadata_data)
+        asset.metadata = metadata
+
     return asset
 
 

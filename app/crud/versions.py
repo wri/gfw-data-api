@@ -9,7 +9,11 @@ from ..models.orm.versions import Version as ORMVersion
 from ..models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
 from ..utils.generators import list_to_async_generator
 from . import datasets, update_data
-from .metadata import update_all_metadata, create_version_metadata
+from .metadata import (
+    update_all_metadata,
+    create_version_metadata,
+    update_version_metadata
+)
 
 
 async def get_versions(dataset: str) -> List[ORMVersion]:
@@ -98,6 +102,14 @@ async def update_version(dataset: str, version: str, **data) -> ORMVersion:
     """Update fields of version."""
     version: ORMVersion = await get_version(dataset, version)
     version = await update_data(version, data)
+
+    metadata_data = data.get("metadata")
+    if metadata_data:
+        try:
+            metadata = await update_version_metadata(dataset, **metadata_data)
+        except RecordNotFoundError:
+            metadata = await create_version_metadata(dataset, **metadata_data)
+        version.metadata = metadata
 
     await _update_is_downloadable(dataset, version, data)
 
