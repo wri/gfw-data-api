@@ -63,6 +63,7 @@ def upgrade():
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("dataset", name="dataset_uq")
     )
 
     op.create_table(

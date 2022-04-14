@@ -8,7 +8,7 @@ class DatasetMetadata(Base, MetadataMixin):
     __tablename__ = "dataset_metadata"
 
     id = db.Column(db.UUID, primary_key=True)
-    dataset = db.Column(db.String, nullable=False)
+    dataset = db.Column(db.String, nullable=False, unique=True)
     source = db.Column(db.String, nullable=False)
     license = db.Column(db.String)
     data_language = db.Column(db.String, nullable=False)
