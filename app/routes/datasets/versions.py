@@ -327,7 +327,7 @@ async def get_stats(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     "/{dataset}/{version}/fields",
     response_class=ORJSONResponse,
     tags=["Versions"],
-    response_model=FieldMetadataResponse,
+    response_model=FieldsMetadataResponse,
 )
 async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     dataset, version = dv
@@ -340,7 +340,7 @@ async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     else:
         fields = [FieldMetadata(**field) for field in asset.fields]
 
-    return FieldMetadataResponse(data=fields)
+    return FieldsMetadataResponse(data=fields)
 
 
 @router.get(
