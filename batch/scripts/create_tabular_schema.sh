@@ -24,7 +24,7 @@ set -e
 sed -i "1s/^/SET SCHEMA '$DATASET';\n/" create_table.sql
 
 # update field types
-# This expects a JSON List like this '[{"field_name":"name1", "field_type":"type1"},{"field_name":"name2", "field_type":"type2"}]'
+# This expects a JSON List like this '[{"name":"name1", "data_type":"type1"},{"name":"name2", "data_type":"type2"}]'
 # It will export the different key value pairs as ENV variables so that we can reference them within the for loop
 # We will then update rows within our create_table.sql file using the new field type
 # https://starkandwayne.com/blog/bash-for-loop-over-json-array-using-jq/
@@ -33,8 +33,8 @@ if [[ -n "${FIELD_MAP}" ]]; then
       _jq() {
        echo "${row}" | base64 --decode | jq -r "${1}"
       }
-     FIELD_NAME=$(_jq '.field_name')
-     FIELD_TYPE=$(_jq '.field_type')
+     FIELD_NAME=$(_jq '.name')
+     FIELD_TYPE=$(_jq '.data_type')
 
      # field names might be in double quotes
      # make sure there is no comma after the last field

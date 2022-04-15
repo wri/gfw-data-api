@@ -94,11 +94,11 @@ def assert_fields(field_list, field_schema):
     for field in field_list:
         for schema in field_schema:
             if (
-                field["field_name_"] == schema["field_name"]
-                and field["field_type"] == schema["field_type"]
+                field["name"] == schema["name"]
+                and field["data_type"] == schema["data_type"]
             ):
                 count += 1
-        if field["field_name_"] in ["geom", "geom_wm", "gfw_geojson", "gfw_bbox"]:
+        if field["name"] in ["geom", "geom_wm", "gfw_geojson", "gfw_bbox"]:
             assert not field["is_filter"]
             assert not field["is_feature_info"]
         else:

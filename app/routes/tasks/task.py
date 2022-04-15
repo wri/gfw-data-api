@@ -249,7 +249,7 @@ async def _get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]
 
     for row in rows:
         metadata = FieldMetadata.from_orm(row)
-        if metadata.field_name_ in [
+        if metadata.name in [
             "geom",
             "geom_wm",
             "gfw_geojson",
@@ -259,7 +259,7 @@ async def _get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]
         ]:
             metadata.is_filter = False
             metadata.is_feature_info = False
-        metadata.field_alias = metadata.field_name_
+        metadata.field_alias = metadata.name
         field_metadata.append(metadata.dict(by_alias=True))
 
     return field_metadata

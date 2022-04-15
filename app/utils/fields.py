@@ -30,7 +30,7 @@ async def get_field_attributes(
         field_attributes = [
             field
             for field in field_attributes
-            if field["field_name"] in creation_options.field_attributes
+            if field["name"] in creation_options.field_attributes
         ]
 
     return field_attributes

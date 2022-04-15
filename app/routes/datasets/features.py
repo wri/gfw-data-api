@@ -233,7 +233,7 @@ async def _get_features_by_location_sql(
 
     all_columns = await _get_fields(dataset, version)
     feature_columns = [
-        db.column(field["field_name"])
+        db.column(field["name"])
         for field in all_columns
         if field["is_feature_info"]
     ]

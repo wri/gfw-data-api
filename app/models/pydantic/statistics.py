@@ -17,12 +17,12 @@ from .base import StrictBaseModel
 
 
 class FieldStats(StrictBaseModel):
-    field_name: str = Field(..., description="Field name")
-    field_type: PGType = Field(..., description="Field data type (PostgreSQL)")
+    name: str = Field(..., description="Field name")
+    data_type: PGType = Field(..., description="Field data type (PostgreSQL)")
 
 
 class NumericFieldStats(StrictBaseModel):
-    field_type: PGNumericType
+    data_type: PGNumericType
     min: float = Field(..., description="Minimum value in column.")
     max: float = Field(..., description="Maximum value in column.")
     sum: float = Field(..., description="Sum of column.")
@@ -31,7 +31,7 @@ class NumericFieldStats(StrictBaseModel):
 
 
 class TextFieldStats(StrictBaseModel):
-    field_type: PGTextType
+    data_type: PGTextType
     discrete_values: Optional[List[str]] = Field(
         None,
         description="A text field is considered to contain discrete values if it carries no more than 20 distinct values.",
@@ -39,13 +39,13 @@ class TextFieldStats(StrictBaseModel):
 
 
 class DateFieldStats(FieldStats):
-    field_type: PGDateType
+    data_type: PGDateType
     min: date = Field(..., description="Minimum value in column.")
     max: date = Field(..., description="Maximum value in column.")
 
 
 class GeometryFieldStats(FieldStats):
-    field_type: PGGeometryType
+    data_type: PGGeometryType
     geometry_types: List[str] = Field(
         ..., description="Geometry types contained in dataset"
     )
