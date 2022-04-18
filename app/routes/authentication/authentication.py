@@ -1,10 +1,10 @@
 from typing import List, Optional, Tuple
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.security import OAuth2PasswordRequestForm
 
-from ...authentication.api_keys import api_key_is_valid
+from ...authentication.api_keys import api_key_is_internal, api_key_is_valid
 from ...authentication.token import get_user, is_admin
 from ...crud import api_keys
 from ...errors import RecordNotFoundError, UnauthorizedError
@@ -20,6 +20,12 @@ from ...models.pydantic.authentication import (
     SignUpResponse,
 )
 from ...models.pydantic.responses import Response
+from ...settings.globals import (
+    API_GATEWAY_EXTERNAL_USAGE_PLAN,
+    API_GATEWAY_ID,
+    API_GATEWAY_INTERNAL_USAGE_PLAN,
+    API_GATEWAY_STAGE_NAME,
+)
 from ...utils.rw_api import login, signup
 
 router = APIRouter()
@@ -49,8 +55,9 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends()):
 
 
 @router.post("/apikey", tags=["Authentication"], status_code=201)
-async def create_apikey(
-    request: APIKeyRequestIn,
+async def create_api_key(
+    api_key_data: APIKeyRequestIn,
+    request: Request,
     user: Tuple[str, str] = Depends(get_user),
 ):
     """Request a new API key.
@@ -59,27 +66,46 @@ async def create_apikey(
     """
 
     user_id, user_role = user
-    if len(request.domains) == 0 and user_role != "ADMIN":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Users with role {user_role} must list at least one domain.",
-        )
 
-    if request.never_expires and user_role != "ADMIN":
+    if api_key_data.never_expires and user_role != "ADMIN":
         raise HTTPException(
             status_code=400,
             detail=f"Users with role {user_role} cannot set `never_expires` to True.",
         )
 
-    input_data = request.dict(by_alias=True)
+    input_data = api_key_data.dict(by_alias=True)
+
+    origin = request.headers.get("origin")
+    referrer = request.headers.get("referer")
+    if not api_key_is_valid(input_data["domains"], origin=origin, referrer=referrer):
+        raise HTTPException(
+            status_code=400,
+            detail="Domain name did not match the request origin or referrer.",
+        )
 
     row: ORMApiKey = await api_keys.create_api_key(user_id=user_id, **input_data)
+
+    is_internal = api_key_is_internal(
+        api_key_data.domains, user_id=None, origin=origin, referrer=referrer
+    )
+    usage_plan_id = (
+        API_GATEWAY_INTERNAL_USAGE_PLAN
+        if is_internal is True
+        else API_GATEWAY_EXTERNAL_USAGE_PLAN
+    )
+    await api_keys.add_api_key_to_gateway(
+        row.alias,
+        str(row.api_key),
+        API_GATEWAY_ID,
+        API_GATEWAY_STAGE_NAME,
+        usage_plan_id,
+    )
 
     return ApiKeyResponse(data=row)
 
 
 @router.get("/apikey/{api_key}", tags=["Authentication"])
-async def get_apikey(
+async def get_api_key(
     api_key: UUID = Path(..., description="API Key"),
     user: Tuple[str, str] = Depends(get_user),
 ):
@@ -95,7 +121,7 @@ async def get_apikey(
 
     if role != "ADMIN" and row.user_id != user_id:
         raise HTTPException(
-            status_code=403, detail="API Key is not associate with current user."
+            status_code=403, detail="API Key is not associated with current user."
         )
 
     data = ApiKey.from_orm(row)
@@ -104,7 +130,7 @@ async def get_apikey(
 
 
 @router.get("/apikeys", tags=["Authentication"])
-async def get_apikeys(
+async def get_api_keys(
     user: Tuple[str, str] = Depends(get_user),
 ):
     """Request a new API key.
@@ -119,9 +145,9 @@ async def get_apikeys(
 
 
 @router.get("/apikey/{api_key}/validate", tags=["Authentication"])
-async def validate_apikey(
+async def validate_api_key(
     api_key: UUID = Path(
-        ..., description="Api Key to delete. Must be owned by authenticated user."
+        ..., description="Api Key to validate. Must be owned by authenticated user."
     ),
     origin: Optional[str] = Query(None, description="Origin used with API Key"),
     referrer: Optional[str] = Query(
@@ -134,7 +160,7 @@ async def validate_apikey(
         row: ORMApiKey = await api_keys.get_api_key(api_key)
     except RecordNotFoundError:
         raise HTTPException(
-            status_code=404, detail="The requested API key does not exists."
+            status_code=404, detail="The requested API key does not exist."
         )
 
     data = ApiKeyValidation(
@@ -144,7 +170,7 @@ async def validate_apikey(
 
 
 @router.delete("/apikey/{api_key}", tags=["Authentication"])
-async def delete_apikey(
+async def delete_api_key(
     api_key: UUID = Path(
         ..., description="Api Key to delete. Must be owned by authenticated user."
     ),
@@ -159,7 +185,7 @@ async def delete_apikey(
         row: ORMApiKey = await api_keys.get_api_key(api_key)
     except RecordNotFoundError:
         raise HTTPException(
-            status_code=404, detail="The requested API key does not exists."
+            status_code=404, detail="The requested API key does not exist."
         )
 
     # TODO: we might want to allow admins to delete api keys of other users?
@@ -170,5 +196,11 @@ async def delete_apikey(
         )
 
     row = await api_keys.delete_api_key(api_key)
+    try:
+        await api_keys.delete_api_key_from_gateway(name=row.alias)
+    except RecordNotFoundError:
+        raise HTTPException(
+            status_code=404, detail="The request API key does not exist."
+        )
 
     return ApiKeyResponse(data=ApiKey.from_orm(row))

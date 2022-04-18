@@ -123,7 +123,10 @@ async def delete_dataset(
             "Delete all related versions prior to deleting a dataset",
         )
 
-    row: ORMDataset = await datasets.delete_dataset(dataset)
+    try:
+        row: ORMDataset = await datasets.delete_dataset(dataset)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     # Delete all dataset related entries
     await db.status(DropSchema(dataset))

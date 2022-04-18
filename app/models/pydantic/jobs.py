@@ -115,8 +115,9 @@ class TileCacheJob(Job):
 
     job_queue = TILE_CACHE_JOB_QUEUE
     job_definition = TILE_CACHE_JOB_DEFINITION
-    vcpus = 48
-    memory = 96000
+    vcpus = max(int(MAX_CORES / 2), 1)
+    num_processes = max(int(MAX_CORES / 3), 1)
+    memory = max(int(MAX_MEM / 2), 1)
     attempts = 4
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 
@@ -134,7 +135,7 @@ class PixETLJob(Job):
 
 
 class GDALDEMJob(Job):
-    """Use for applying symbology to raster tiles with gdaldem."""
+    """Use for applying color maps to raster tiles with gdaldem."""
 
     job_queue = PIXETL_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION
@@ -143,18 +144,6 @@ class GDALDEMJob(Job):
     num_processes = max(int(PIXETL_CORES / 2), 1)
     attempts = 4
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
-
-
-class BuildRGBJob(Job):
-    """Use for combining date_conf and intensity assets using buildrgb."""
-
-    job_queue = DATA_LAKE_JOB_QUEUE
-    job_definition = GDAL_PYTHON_JOB_DEFINITION
-    vcpus = MAX_CORES
-    memory = MAX_MEM
-    num_processes = max(int(MAX_CORES / 2), 1)
-    attempts = 4
-    attempt_duration_seconds = DEFAULT_JOB_DURATION
 
 
 class GDAL2TilesJob(Job):

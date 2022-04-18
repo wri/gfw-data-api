@@ -72,6 +72,12 @@ data "template_file" "container_definition" {
     rw_api_url                  = var.rw_api_url
     api_token_secret_arn        = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
     aws_gcs_key_secret_arn      = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
+
+    api_gateway_id                  = aws_api_gateway_rest_api.api_gw_api.id
+    api_gateway_internal_usage_plan = aws_api_gateway_usage_plan.internal.id
+    api_gateway_external_usage_plan = aws_api_gateway_usage_plan.external.id
+    api_gateway_stage_name          = aws_api_gateway_stage.api_gw_stage.stage_name
+    internal_domains                = var.internal_domains
   }
   depends_on = [
     module.batch_job_queues.aurora_job_definition,
@@ -119,4 +125,36 @@ data "local_file" "iam_s3_read_only" {
 
 data "local_file" "iam_lambda_invoke" {
   filename = "${path.root}/templates/lambda_invoke_policy.json.tmpl"
+}
+
+data "local_file" "iam_api_gateway_policy" {
+  filename = "${path.root}/templates/api_gateway_policy.json.tmpl"
+}
+
+data "local_file" "cloudwatch_log_policy" {
+  filename = "${path.root}/templates/cloudwatch_log_policy.json.tmpl"
+}
+
+data "template_file" "lambda_role_policy" {
+  template = file("${path.root}/templates/role-trust-policy.json.tmpl")
+
+  vars = {
+    service = "lambda"
+  }
+}
+
+data "template_file" "api_gateway_role_policy" {
+  template = file("${path.root}/templates/role-trust-policy.json.tmpl")
+
+  vars = {
+    service = "apigateway"
+  }
+}
+
+data "aws_iam_policy_document" "read_gcs_secret_doc" {
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn]
+    effect = "Allow"
+  }
 }

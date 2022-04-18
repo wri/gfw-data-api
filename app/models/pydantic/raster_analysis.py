@@ -1,13 +1,11 @@
 from typing import List, Optional, Union
 
-from pydantic import BaseModel
-
 from ..enum.pixetl import Grid
+from .base import StrictBaseModel
 from .metadata import RasterTable
 
 
-# FIXME: Use StrictBaseModel
-class BaseLayer(BaseModel):
+class BaseLayer(StrictBaseModel):
     name: str
 
 
@@ -31,5 +29,5 @@ class DerivedLayer(EncodedLayer):
 Layer = Union[SourceLayer, DerivedLayer]
 
 
-class DataEnvironment(BaseModel):
+class DataEnvironment(StrictBaseModel):
     layers: List[Layer]
