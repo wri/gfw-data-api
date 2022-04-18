@@ -8,6 +8,7 @@ from tests_v2.utils import invoke_lambda_mocked
 REVISION_QUERIES = [
     # version, query count result
     ("v1", 3),   # source version
+    ("v2", 2),
     ("v4", 4),   # intermediate append revision
     ("v5", 3)    # latest delete revision
 ]

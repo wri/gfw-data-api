@@ -584,6 +584,7 @@ async def _add_revision_filter(parsed_sql, dataset, version):
         latest_revision = source_default_asset.latest_revision
         latest_revision_asset = await assets.get_default_asset(dataset, latest_revision)
         revision_history = latest_revision_asset.revision_history
+        revision_filter = await _filter_by_revision_operation(version, revision_history)
     else:
         latest_revision = default_asset.latest_revision
         try:
@@ -591,12 +592,15 @@ async def _add_revision_filter(parsed_sql, dataset, version):
                 dataset, latest_revision
             )
             revision_history = revision_asset.revision_history
+            revision_filter = await _filter_by_revision_operation(
+                latest_revision, revision_history
+            )
         except RecordNotFoundError:
             return parsed_sql
 
     sql_where = parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"].get("whereClause", None)
 
-    revision_filter = await _filter_by_revision_operation(version, revision_history)
+
     if sql_where and revision_filter:
         parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = {
             "BoolExpr": {"boolop": 0, "args": [sql_where, revision_filter]}
@@ -607,11 +611,11 @@ async def _add_revision_filter(parsed_sql, dataset, version):
     return parsed_sql
 
 
-async def _filter_by_revision_operation(version: str, revision_history):
+async def _filter_by_revision_operation(revision: str, revision_history):
     exclude_revisions = []
 
     revision_idx = next(
-        idx for (idx, rev) in enumerate(revision_history) if rev["version"] == version
+        idx for (idx, rev) in enumerate(revision_history) if rev["version"] == revision
     )
 
     for idx, revision in enumerate(revision_history):
@@ -625,7 +629,7 @@ async def _filter_by_revision_operation(version: str, revision_history):
         for rev in revision_history[revision_idx + 1 :]
         if rev["version"] not in exclude_revisions
     ]
-
+    print('EXCLUDE', exclude_revisions)
     if not exclude_revisions:
         return None
 
