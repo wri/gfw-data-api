@@ -18,6 +18,9 @@ class Asset(Base):
     extent = db.Column(db.JSONB, nullable=True, default=None)
     stats = db.Column(db.JSONB, nullable=True, default=None)
     change_log = db.Column(db.ARRAY(db.JSONB), nullable=False, default=list())
+    revision_history = db.Column(db.ARRAY(db.JSONB), nullable=False, default=list())
+    latest_revision = db.Column(db.String, nullable=True)
+    source_version = db.Column(db.String, nullable=True)
 
     fk = db.ForeignKeyConstraint(
         ["dataset", "version"],

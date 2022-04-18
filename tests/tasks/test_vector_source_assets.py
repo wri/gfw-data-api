@@ -281,6 +281,14 @@ async def test_vector_source_asset(batch_client, async_client):
                     "is_feature_info": False,
                     "is_filter": False,
                 },
+                {
+                    "field_name": "gfw_version",
+                    "field_alias": "gfw_version",
+                    "field_description": None,
+                    "field_type": "text",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                },
             ]
         else:
             # JSON file does not have fid field
@@ -356,6 +364,14 @@ async def test_vector_source_asset(batch_client, async_client):
                     "field_type": "timestamp without time zone",
                     "is_feature_info": False,
                     "is_filter": False,
+                },
+                {
+                    "field_name": "gfw_version",
+                    "field_alias": "gfw_version",
+                    "field_description": None,
+                    "field_type": "text",
+                    "is_feature_info": True,
+                    "is_filter": True,
                 },
             ]
 

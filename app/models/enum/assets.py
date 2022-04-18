@@ -23,6 +23,7 @@ class AssetType(str, Enum):
     csv = "csv"
     tsv = "tsv"
     grid_1x1 = "1x1 grid"
+    revision = "revision"
     # esri_map_service = "ESRI Map Service"
     # esri_feature_service = "ESRI Feature Service"
     # esri_image_service = "ESRI Image Service"
@@ -46,6 +47,8 @@ def default_asset_type(source_type: str, creation_option: Dict[str, Any]) -> str
         asset_type = AssetType.database_table
     elif source_type == SourceType.raster:
         asset_type = AssetType.raster_tile_set
+    elif source_type == SourceType.revision:
+        asset_type = AssetType.revision
     else:
         raise NotImplementedError("Not a supported input source")
     return asset_type
@@ -79,4 +82,5 @@ def is_default_asset(asset_type: str) -> bool:
         AssetType.database_table,
         AssetType.raster_tile_set,
         AssetType.geo_database_table,
+        AssetType.revision,
     ]

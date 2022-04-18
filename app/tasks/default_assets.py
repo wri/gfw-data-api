@@ -5,9 +5,11 @@ from uuid import UUID
 
 from ..application import ContextEngine
 from ..crud import assets, versions
+from ..crud.assets import _create_revision_history
 from ..models.enum.assets import default_asset_type
 from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
+from ..models.orm.assets import Asset as ORMAsset
 from ..models.pydantic.assets import AssetTaskCreate
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import creation_option_factory
@@ -16,6 +18,7 @@ from ..utils.aws import get_s3_client
 from ..utils.path import get_asset_uri, split_s3_path
 from .assets import put_asset
 from .raster_tile_set_assets import raster_tile_set_asset
+from .revision_assets import revision_asset
 from .table_source_assets import append_table_source_asset, table_source_asset
 from .vector_source_assets import vector_source_asset
 
@@ -24,6 +27,7 @@ DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
         SourceType.vector: vector_source_asset,
         SourceType.table: table_source_asset,
         SourceType.raster: raster_tile_set_asset,
+        SourceType.revision: revision_asset,
     }.items()
 )
 
@@ -36,15 +40,15 @@ async def create_default_asset(
     dataset: str,
     version: str,
     input_data: Dict[str, Any],
-    file_obj: Optional[IO],
+    file_obj: Optional[IO] = None,
 ) -> UUID:
 
-    source_uri = input_data["creation_options"]["source_uri"]
+    source_uri = input_data["creation_options"].get("source_uri", None)
     status = None
     log: Optional[ChangeLog] = None
 
     # Copy attached file to data lake
-    if file_obj:
+    if file_obj and source_uri:
         log = await _inject_file(file_obj, source_uri[0])
         async with ContextEngine("WRITE"):
             await versions.update_version(
@@ -106,8 +110,23 @@ async def _create_default_asset(
 ) -> UUID:
     creation_option = input_data["creation_options"]
     source_type = creation_option["source_type"]
+    metadata = input_data.get("metadata", {})
+
+    revision_history = []
+    source_version = version
+    if source_type == SourceType.revision:
+        revision_history = await _create_revision_history(
+            dataset, version, **input_data)
+
+        # set latest revision on source version
+        source_version = revision_history[0]["version"]
+        source_asset: ORMAsset = await assets.get_default_asset(dataset, source_version)
+        await assets.update_asset(source_asset.asset_id, latest_revision=version)
+
+    input_data["revision_history"] = revision_history
+
     asset_type = default_asset_type(source_type, creation_option)
-    metadata = asset_metadata_factory(asset_type, input_data.get("metadata", {}))
+    metadata = asset_metadata_factory(asset_type, metadata)
     asset_uri = get_asset_uri(dataset, version, asset_type, creation_option)
     creation_options = creation_option_factory(asset_type, creation_option)
 
@@ -120,6 +139,8 @@ async def _create_default_asset(
         is_default=True,
         creation_options=creation_options,
         metadata=metadata,
+        revision_history=revision_history,
+        source_version=source_version,
     )
 
     async with ContextEngine("WRITE"):

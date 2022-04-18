@@ -147,9 +147,9 @@ async def check_dynamic_vector_tile_cache_status(dataset, version):
 
     # SHP files have one additional attribute (fid)
     if asset_row.version == "v1.1.0":
-        assert len(asset_row.fields) == 10
+        assert len(asset_row.fields) == 11
     else:
-        assert len(asset_row.fields) == 9
+        assert len(asset_row.fields) == 10
 
     rows = await assets.get_assets(dataset, version)
     # v = await versions.get_version(dataset, version)

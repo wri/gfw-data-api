@@ -27,10 +27,10 @@ class Job(StrictBaseModel):
     job_definition: str
     command: List[str]
     environment: List[Dict[str, str]] = []
-    vcpus: int
-    memory: int
-    attempts: int
-    attempt_duration_seconds: int
+    vcpus: int = 8
+    memory: int = 3200
+    attempts: int = 1
+    attempt_duration_seconds: int = 7200
     num_processes: Optional[int] = None
     parents: Optional[List[str]] = None
     # somehow mypy doesn't like the type when declared here?
