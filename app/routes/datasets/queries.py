@@ -13,7 +13,6 @@ from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
-
 from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
@@ -23,7 +22,6 @@ from pglast.printer import RawStream
 from sqlalchemy.sql import and_
 
 from ...application import db
-
 from ...authentication.api_keys import get_api_key
 from ...crud import assets
 from ...errors import RecordNotFoundError
@@ -603,7 +601,6 @@ async def _add_revision_filter(parsed_sql, dataset, version):
 
     sql_where = parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"].get("whereClause", None)
 
-
     if sql_where and revision_filter:
         parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = {
             "BoolExpr": {"boolop": 0, "args": [sql_where, revision_filter]}
@@ -621,8 +618,8 @@ async def _filter_by_revision_operation(revision: str, revision_history):
         idx for (idx, rev) in enumerate(revision_history) if rev["version"] == revision
     )
 
-    for idx, revision in enumerate(revision_history):
-        delete_revision = revision["creation_options"].get("delete_version", None)
+    for idx, rev in enumerate(revision_history):
+        delete_revision = rev["creation_options"].get("delete_version", None)
         if delete_revision is not None and idx <= revision_idx:
             exclude_revisions.append(delete_revision)
 
@@ -632,7 +629,6 @@ async def _filter_by_revision_operation(revision: str, revision_history):
         for rev in revision_history[revision_idx + 1 :]
         if rev["version"] not in exclude_revisions
     ]
-    print('EXCLUDE', exclude_revisions)
     if not exclude_revisions:
         return None
 
