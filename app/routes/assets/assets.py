@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/",
+    "",
     response_class=ORJSONResponse,
     tags=["Assets"],
     response_model=AssetsResponse,

@@ -13,6 +13,8 @@ from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
+
+from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
@@ -20,8 +22,9 @@ from pglast.parser import ParseError
 from pglast.printer import RawStream
 from sqlalchemy.sql import and_
 
-# from ...authentication.api_keys import get_api_key
 from ...application import db
+
+from ...authentication.api_keys import get_api_key
 from ...crud import assets
 from ...errors import RecordNotFoundError
 from ...models.enum.assets import AssetType
@@ -121,7 +124,7 @@ async def query_dataset_json(
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Origin service of geostore ID."
     ),
-    # api_key: APIKey = Depends(get_api_key),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in JSON format.
@@ -166,7 +169,7 @@ async def query_dataset_csv(
     delimiter: Delimiters = Query(
         Delimiters.comma, description="Delimiter to use for CSV file."
     ),
-    # api_key: APIKey = Depends(get_api_key),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in CSV format.
@@ -228,7 +231,7 @@ async def query_dataset_json_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
-    # api_key: APIKey = Depends(get_api_key),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -258,7 +261,7 @@ async def query_dataset_csv_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: CsvQueryRequestIn,
-    # api_key: APIKey = Depends(get_api_key),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -657,8 +660,8 @@ async def _query_raster(
     # use default data type to get default raster layer for dataset
     default_layer = _get_default_layer(dataset, asset.creation_options["pixel_meaning"])
     grid = asset.creation_options["grid"]
-
     sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
+
     return await _query_raster_lambda(geostore.geojson, sql, grid, format, delimiter)
 
 
@@ -718,6 +721,11 @@ def _get_default_layer(dataset, pixel_meaning):
     elif "date_conf" in default_type:
         # use date layer for date_conf encoding
         return f"{dataset}__date"
+    elif default_type.endswith("ha-1"):
+        # remove ha-1 suffix for area density rasters
+        # OTF will multiply by pixel area to get base type
+        # and table names can't include '-1'
+        return f"{dataset}__{default_type[:-5]}"
     else:
         return f"{dataset}__{default_type}"
 
@@ -768,7 +776,7 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
                 f"{row.dataset}__{row.creation_options['pixel_meaning']}"
             )
 
-        layers.append(_get_source_layer(row, grid, source_layer_name))
+        layers.append(_get_source_layer(row, source_layer_name, grid))
 
         if row.creation_options["pixel_meaning"] == "date_conf":
             layers += _get_date_conf_derived_layers(row, source_layer_name)
@@ -779,23 +787,10 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
     return DataEnvironment(layers=layers)
 
 
-def _get_source_layer(row, grid, source_layer_name: str) -> SourceLayer:
-    # TODO we need to start uploading GLAD directly to the data API
-    if (
-        source_layer_name == "umd_glad_landsat_alerts__date_conf"
-        and grid == Grid.ten_by_forty_thousand
-    ):
-        source_uri = "s3://gfw2-data/forest_change/umd_landsat_alerts/prod/analysis/{tile_id}.tif"
-        tile_scheme = "nwse"
-        grid = Grid.ten_by_forty_thousand
-    else:
-        source_uri = row.asset_uri
-        tile_scheme = "nw"
-        grid = row.creation_options["grid"]
-
+def _get_source_layer(row, source_layer_name: str, grid: Grid) -> SourceLayer:
     return SourceLayer(
-        source_uri=source_uri,
-        tile_scheme=tile_scheme,
+        source_uri=row.asset_uri,
+        tile_scheme="nw",
         grid=grid,
         name=source_layer_name,
         raster_table=row.metadata.get("raster_table", None),

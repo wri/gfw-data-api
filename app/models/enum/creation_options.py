@@ -76,7 +76,9 @@ class PGType(str, Enum):
 
 class ColorMapType(str, Enum):
     discrete = "discrete"
+    discrete_intensity = "discrete_intensity"
     gradient = "gradient"
+    gradient_intensity = "gradient_intensity"
     date_conf_intensity = "date_conf_intensity"
     date_conf_intensity_multi_8 = "date_conf_intensity_multi_8"
     date_conf_intensity_multi_16 = "date_conf_intensity_multi_16"

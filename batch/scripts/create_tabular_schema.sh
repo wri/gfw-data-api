@@ -20,12 +20,12 @@ aws s3 cp "${SRC}" - | head -100 | csvsql -i postgresql --no-constraints --table
 
 set -e
 
-# csvsql sets the quotes for schema and table wrong. It is saver to set the schema separately
+# csvsql sets the quotes for schema and table wrong. It is safer to set the schema separately
 sed -i "1s/^/SET SCHEMA '$DATASET';\n/" create_table.sql
 
 # update field types
-# This expect a JSON List like this '[{"field_name":"name1", "field_type":"type1"},{"field_name":"name2", "field_type":"type2"}]'
-# It will export the different key value pairs as ENV variables so tat we can reference them within the for loop
+# This expects a JSON List like this '[{"field_name":"name1", "field_type":"type1"},{"field_name":"name2", "field_type":"type2"}]'
+# It will export the different key value pairs as ENV variables so that we can reference them within the for loop
 # We will then update rows within our create_table.sql file using the new field type
 # https://starkandwayne.com/blog/bash-for-loop-over-json-array-using-jq/
 if [[ -n "${FIELD_MAP}" ]]; then
@@ -44,7 +44,7 @@ if [[ -n "${FIELD_MAP}" ]]; then
   done
 fi
 
-# Make sure that table is create with partition if set
+# Make sure that the table is created with partition if set
 if [[ -n "${PARTITION_TYPE}" ]]; then
   echo "ADD PARTITION"
   sed -i "s/);$/) PARTITION BY $PARTITION_TYPE ($COLUMN_NAME);/g" create_table.sql
@@ -53,4 +53,3 @@ fi
 cat create_table.sql
 
 psql -f create_table.sql
-

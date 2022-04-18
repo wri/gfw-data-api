@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from app.authentication.token import get_user, is_admin, is_service_account
+from app.crud import api_keys
 from app.models.enum.change_log import ChangeLogStatus
 from app.models.pydantic.change_log import ChangeLog
 from app.routes.datasets import versions
@@ -80,7 +81,12 @@ async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     )
     app.dependency_overrides[get_user] = get_admin_mocked
 
-    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
+    async with AsyncClient(
+        app=app,
+        base_url="http://test",
+        trust_env=False,
+        headers={"Origin": "https://www.globalforestwatch.org"},
+    ) as client:
         yield client
 
     # Clean up
@@ -115,7 +121,12 @@ async def async_client_no_admin(db, init_db) -> AsyncGenerator[AsyncClient, None
     )
     app.dependency_overrides[get_user] = get_user_mocked
 
-    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
+    async with AsyncClient(
+        app=app,
+        base_url="http://test",
+        trust_env=False,
+        headers={"Origin": "https://www.globalforestwatch.org"},
+    ) as client:
         yield client
 
     # Clean up
@@ -364,9 +375,11 @@ async def generic_vector_revisions(
 @pytest.fixture()
 @pytest.mark.asyncio()
 async def apikey(
-    async_client: AsyncClient,
+    async_client: AsyncClient, monkeypatch: MonkeyPatch
 ) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
 
+    monkeypatch.setattr(api_keys, "add_api_key_to_gateway", void_coroutine)
+    monkeypatch.setattr(api_keys, "delete_api_key_from_gateway", void_coroutine)
     # Get API Key
     payload = {
         "alias": "test",
@@ -389,9 +402,11 @@ async def apikey(
 @pytest.fixture()
 @pytest.mark.asyncio()
 async def apikey_unrestricted(
-    async_client: AsyncClient,
+    async_client: AsyncClient, monkeypatch: MonkeyPatch
 ) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
 
+    monkeypatch.setattr(api_keys, "add_api_key_to_gateway", void_coroutine)
+    monkeypatch.setattr(api_keys, "delete_api_key_from_gateway", void_coroutine)
     # Get API Key
     payload = {
         "alias": "unrestricted",

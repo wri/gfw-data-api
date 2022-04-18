@@ -69,3 +69,35 @@ variable "data_lake_max_vcpus" {
   type    = number
   default = 576
 }
+
+variable "api_gateway_usage_plans" {
+  type        = map
+  description = "Throttling limits for API Gateway"
+  default     = {
+    internal_apps = {
+      quota_limit  = 10000 # per day
+      burst_limit = 100     # per second
+      rate_limit  = 200
+    }
+    external_apps = {
+      quota_limit  = 500
+      burst_limit = 10
+      rate_limit  = 20
+    }
+  }
+}
+
+variable "internal_domains" {
+  type        = string
+  description = "Comma separated list of client domains for which we set first tier rate limiting."
+  default     = "*.globalforestwatch.org,globalforestwatch.org,api.resourcewatch.org,my.gfw-mapbuilder.org,resourcewatch.org"
+}
+
+variable "download_endpoints" {
+  type = list(string)
+  description = "path parts to download endpoints"
+
+  # listing spatial endpoints as gateway needs them explicitly created
+  # in order to apply endpoint-level throttling to them
+  default = ["geotiff", "gpkg", "shp"]
+}
