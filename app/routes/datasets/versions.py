@@ -17,8 +17,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
-from app.models.enum.versions import VersionStatus
-
 from ...authentication.token import is_admin
 from ...crud import assets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
@@ -111,7 +109,7 @@ async def add_new_version(
     creation_options = input_data.get("creation_options")
 
     if "source_uri" in creation_options:
-        await _verify_source_file_access(creation_options["source_uri"])
+        _verify_source_file_access(creation_options["source_uri"])
 
     input_data.pop("creation_options")
 
@@ -129,7 +127,9 @@ async def add_new_version(
         await create_default_asset(dataset, version, input_data, file_obj=None)
     else:
         # Everything else happens in the background task asynchronously
-        background_tasks.add_task(create_default_asset, dataset, version, input_data, None)
+        background_tasks.add_task(
+            create_default_asset, dataset, version, input_data, None
+        )
 
     response.headers["Location"] = f"/{dataset}/{version}"
     return await _version_response(dataset, version, new_version)
