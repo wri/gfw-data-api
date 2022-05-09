@@ -165,8 +165,6 @@ module "batch_data_lake_writer" {
   suffix                   = local.name_suffix
   tags                     = local.batch_tags
   use_ephemeral_storage    = true
-  # SPOT is actually the default, this is just a placeholder until GTC-1791 is done
-  launch_type              = "SPOT"
   compute_environment_name = "data_lake_writer"
 }
 
