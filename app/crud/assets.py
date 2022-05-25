@@ -56,7 +56,16 @@ async def get_assets_by_filter(
     is_latest: Optional[bool] = None,
     is_default: Optional[bool] = None,
 ) -> List[ORMAsset]:
-    query = ORMAsset.query
+
+    if is_latest is not None:
+        VersionAliased = ORMVersion.alias()
+        query = (
+            ORMAsset.join(VersionAliased)
+            .select()
+            .where(VersionAliased.is_latest == is_latest)
+        )
+    else:
+        query = ORMAsset.query
     if dataset is not None:
         query = query.where(ORMAsset.dataset == dataset)
     if version is not None:
@@ -65,13 +74,11 @@ async def get_assets_by_filter(
         query = query.where(ORMAsset.asset_type.in_(asset_types))
     if asset_uri is not None:
         query = query.where(ORMAsset.asset_uri == asset_uri)
-    if is_latest is not None:
-        query = query.where(ORMAsset.is_latest == is_latest)
     if is_default is not None:
         query = query.where(ORMAsset.is_default == is_default)
 
     query = query.order_by(ORMAsset.created_on)
-    assets = await query.gino.all()
+    assets = await query.gino.load(ORMAsset).all()
 
     if include_metadata:
         for asset in assets:
