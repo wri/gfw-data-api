@@ -1,12 +1,12 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from ..enum.assets import AssetStatus, AssetType
+from .asset_metadata import AssetMetadata, AssetMetadataOut
 from .base import BaseRecord, StrictBaseModel
 from .creation_options import CreationOptions, OtherCreationOptions
-from .metadata import AssetMetadata
 from .responses import Response
 
 
@@ -19,7 +19,7 @@ class Asset(BaseRecord):
     status: AssetStatus = AssetStatus.pending
     is_managed: bool
     is_downloadable: bool
-    metadata: AssetMetadata
+    metadata: Optional[Union[AssetMetadataOut, BaseModel]]
 
 
 class AssetCreateIn(StrictBaseModel):
