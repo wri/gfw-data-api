@@ -17,10 +17,10 @@ from app.settings.globals import (
     MAX_MEM,
     S3_ENTRYPOINT_URL,
 )
-from app.tasks import Callback, writer_secrets
+from app.tasks import Callback, reader_secrets
 from app.utils.path import get_asset_uri, split_s3_path, tile_uri_to_tiles_geojson
 
-JOB_ENV = writer_secrets + [
+JOB_ENV = reader_secrets + [
     {"name": "AWS_REGION", "value": AWS_REGION},
     {"name": "ENV", "value": ENV},
 ]
