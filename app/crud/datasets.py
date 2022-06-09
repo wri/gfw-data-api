@@ -19,6 +19,10 @@ async def get_datasets() -> List[ORMDataset]:
     return rows
 
 
+def get_datasets_query() -> ORMDataset:
+    return ORMDataset.query
+
+
 async def get_dataset(dataset: str) -> ORMDataset:
     row: ORMDataset = await ORMDataset.get(dataset)
     if row is None:
