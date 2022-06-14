@@ -4,7 +4,7 @@ from pydantic import Field
 
 from .base import BaseRecord, StrictBaseModel
 from .metadata import DatasetMetadata
-from .responses import Response
+from .responses import Response, PaginatedResponse
 
 
 class Dataset(BaseRecord):
@@ -33,5 +33,5 @@ class DatasetResponse(Response):
     data: Dataset
 
 
-class DatasetsResponse(Response):
+class DatasetsResponse(PaginatedResponse):
     data: List[Dataset]

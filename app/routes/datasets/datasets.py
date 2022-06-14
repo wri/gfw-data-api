@@ -1,10 +1,8 @@
 """Datasets are just a bucket, for datasets which share the same core
 metadata."""
-from typing import Any
 from fastapi import APIRouter, Depends
 from fastapi.responses import ORJSONResponse
-from fastapi.logger import logger
-from fastapi_pagination import Page, Params
+from fastapi_pagination import Params
 from fastapi_pagination.ext.gino import paginate
 
 from ...crud import datasets
@@ -19,22 +17,13 @@ router = APIRouter()
     tags=["Datasets"],
     response_model=DatasetsResponse,
 )
-async def get_datasets() -> DatasetsResponse:
+async def get_datasets(params: Params = Depends()) -> DatasetsResponse:
     """Get list of all datasets."""
+    if params.size < 50:
+        query = datasets.get_datasets_query()
+        data = await paginate(query, params)
+        adapted = [dataset.__values__ for dataset in data.items]
+        return DatasetsResponse(data=adapted, links="TBD", meta={'size': data.size, 'total': data.total})
+
     data = await datasets.get_datasets()
-
     return DatasetsResponse(data=data)
-
-
-@router.get(
-    "/paginate",
-    response_class=ORJSONResponse,
-    tags=["Datasets"],
-    response_model=Page[Any],
-)
-async def get_paginated_datasets(params: Params = Depends()) -> Any:
-    logger.error("Will paginate!")
-    logger.error(f"params: {params}")
-    query = datasets.get_datasets_query()
-    data = await paginate(query, params)
-    return data
