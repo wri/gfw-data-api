@@ -33,5 +33,5 @@ class DatasetResponse(Response):
     data: Dataset
 
 
-class DatasetsResponse(PaginatedResponse):
+class DatasetsResponse(Response):
     data: List[Dataset]
