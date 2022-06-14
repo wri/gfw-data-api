@@ -1,4 +1,4 @@
-from typing import Any, Type, FrozenSet
+from typing import Any, Type, FrozenSet, Dict
 
 from pydantic import BaseModel
 from pydantic.utils import lenient_issubclass
@@ -57,6 +57,7 @@ def partial(*fields):
         # Exclude unset
         # Otherwise non-nullable fields would have `{'field': None}` which is unacceptable
         dict_orig = model.dict
+
         def dict_excludes_unset(*args, exclude_unset: bool = None, **kwargs):
             exclude_unset = True
             return dict_orig(*args, **kwargs, exclude_unset=exclude_unset)
@@ -70,5 +71,5 @@ def partial(*fields):
 
 @partial('links', 'meta')
 class PaginatedResponse(Response):
-    links: str
-    meta: Any
+    links: Dict
+    meta: Dict

@@ -23,7 +23,11 @@ async def get_datasets(params: Params = Depends()) -> DatasetsResponse:
         query = datasets.get_datasets_query()
         data = await paginate(query, params)
         adapted = [dataset.__values__ for dataset in data.items]
-        return DatasetsResponse(data=adapted, links="TBD", meta={'size': data.size, 'total': data.total})
+        return DatasetsResponse(data=adapted,
+                                    links={'self': "", 'first': "", 'last': "", 'prev': "", 'next': ""},
+                                    meta={'size': data.size, 'total-pages': "", 'total-items': data.total},
+                                    status='success')
 
     data = await datasets.get_datasets()
-    return DatasetsResponse(data=data)
+    return DatasetsResponse(data=data, status='success')
+
