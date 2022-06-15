@@ -2,6 +2,7 @@ from typing import List
 from uuid import UUID
 
 import pytest
+from httpx import AsyncClient
 
 from app.application import ContextEngine, db
 from app.models.orm.geostore import Geostore
@@ -11,7 +12,7 @@ from tests.utils import create_default_asset
 
 
 @pytest.mark.asyncio
-async def test_user_area_geostore(async_client):
+async def test_user_area_geostore(async_client: AsyncClient):
     # This is the gfw_geostore_id returned when POSTing the payload with Postman
     expected_goestore_id = "b44a9213-4fc2-14e6-02e3-96faf0d89499"
 
@@ -51,7 +52,7 @@ async def test_user_area_geostore(async_client):
 
 
 @pytest.mark.asyncio
-async def test_dataset_version_geostore(async_client, batch_client):
+async def test_dataset_version_geostore(async_client: AsyncClient, batch_client):
     _, logs = batch_client
 
     ############################
@@ -130,7 +131,7 @@ async def test_dataset_version_geostore(async_client, batch_client):
 
     # The second geometry should be accessible via the geostore table
     async with ContextEngine("READ"):
-        rows: List[Geostore] = await Geostore.query.gino.all()
+        rows = await Geostore.query.gino.all()
     assert len(rows) == 2
 
     # ... but it should not be visible in the dataset.version child table
@@ -145,7 +146,7 @@ async def test_dataset_version_geostore(async_client, batch_client):
 
 
 @pytest.mark.asyncio
-async def test_user_area_geostore_bad_requests(async_client, batch_client):
+async def test_user_area_geostore_bad_requests(async_client: AsyncClient, batch_client):
     # Try POSTing a geostore with no features, multiple features
     bad_payload_1 = {"type": "FeatureCollection", "features": []}
     bad_payload_2 = {
