@@ -278,7 +278,7 @@ async def test_delete_api_key(user_id, alias, organization, email, domains):
 @pytest.mark.asyncio
 async def test_add_api_key_to_gateway():
     with mock_apigateway():
-        test_key = "test_key_greater_than_20_chars"
+        test_key = "test_value_greater_than_20_chars"
         client = boto3.client("apigateway", region_name="us-east-1")
         rest_api = client.create_rest_api(name="test")
         root_resource = client.get_resources(restApiId=rest_api["id"])["items"][0]
@@ -334,7 +334,7 @@ async def test_delete_api_key_from_gateway():
     with mock_apigateway():
         client = boto3.client("apigateway", region_name="us-east-1")
         gw_key = client.create_api_key(
-            name="key_name", value="test_value", enabled=True
+            name="key_name", value="test_value_greater_than_20_chars", enabled=True
         )
 
         await delete_api_key_from_gateway(gw_key["name"])
