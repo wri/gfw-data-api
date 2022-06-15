@@ -36,9 +36,10 @@ async def test_query_dataset_with_api_key(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
         headers=headers,
+        follow_redirects=True,
     )
 
-    print(response.json())
+    # print(response.json())
     assert response.status_code == 200
     assert response.json()["data"][0]["count"] == 1
 
@@ -59,9 +60,10 @@ async def test_query_dataset_with_unrestricted_api_key(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
         headers=headers,
+        follow_redirects=True,
     )
 
-    print(response.json())
+    # print(response.json())
     assert response.status_code == 200
     assert response.json()["data"][0]["count"] == 1
 
@@ -87,6 +89,7 @@ async def test_query_dataset_raster_get(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
         headers=headers,
+        follow_redirects=True,
     )
 
     assert response.status_code == 200
@@ -117,9 +120,10 @@ async def test_query_dataset_raster_post(
         f"/dataset/{dataset_name}/{version_name}/query",
         json=payload,
         headers=headers,
+        follow_redirects=True,
     )
 
-    print(response.json())
+    # print(response.json())
     assert response.status_code == 200
     assert response.json()["status"] == "success"
 
@@ -148,7 +152,7 @@ async def test_redirect_post_query(
         f"/dataset/{dataset_name}/{version_name}/query",
         headers=headers,
         json=payload,
-        allow_redirects=False,
+        follow_redirects=False,
     )
 
     # print(response.json())
@@ -180,7 +184,7 @@ async def test_redirect_get_query(
         f"/dataset/{dataset_name}/{version_name}/query",
         headers=headers,
         params=params,
-        allow_redirects=False,
+        follow_redirects=False,
     )
 
     # print(response.json())
@@ -208,6 +212,7 @@ async def test_query_dataset_raster_geostore_huge(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
         headers=headers,
+        follow_redirects=True,
     )
 
     assert response.status_code == 400

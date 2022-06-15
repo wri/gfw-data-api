@@ -1,9 +1,10 @@
 import pytest
+from httpx import AsyncClient
 
 
 @pytest.mark.skip("Moto not up to the task... Need localstack to test")
 @pytest.mark.asyncio
-async def test_raster_analysis__success(async_client, lambda_client):
+async def test_raster_analysis__success(async_client: AsyncClient, lambda_client):
     """Basic test to check if lambda is successfully called and returns
     response correctly."""
     lambda_client(FUNC_STR)
@@ -19,7 +20,7 @@ async def test_raster_analysis__success(async_client, lambda_client):
 
 @pytest.mark.skip("Moto not up to the task... Need localstack to test")
 @pytest.mark.asyncio
-async def test_raster_analysis__bad_params(async_client, lambda_client):
+async def test_raster_analysis__bad_params(async_client: AsyncClient, lambda_client):
     """Basic test to check if empty data api response as expected."""
     lambda_client(FUNC_STR)
 
@@ -41,7 +42,7 @@ async def test_raster_analysis__bad_params(async_client, lambda_client):
 
 @pytest.mark.skip("Moto not up to the task... Need localstack to test")
 @pytest.mark.asyncio
-async def test_raster_analysis__lambda_error(async_client, lambda_client):
+async def test_raster_analysis__lambda_error(async_client: AsyncClient, lambda_client):
     """Basic test to check if empty data api response as expected."""
     lambda_client(FAIL_FUNC_STR)
 
