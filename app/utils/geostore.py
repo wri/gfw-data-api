@@ -8,6 +8,7 @@ from app.crud.geostore import get_geostore_from_anywhere
 from app.errors import BadResponseError, InvalidResponseError, RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.geostore import Geostore, GeostoreCommon
+from app.settings.globals import FEATURE_CHECK_ALL_GEOSTORES
 from app.utils import rw_api
 
 
@@ -23,7 +24,7 @@ async def _get_gfw_geostore(geostore_id: UUID) -> GeostoreCommon:
             area__ha=geostore.gfw_area__ha,
             bbox=geostore.gfw_bbox,
         )
-    except (KeyError, RecordNotFoundError) as ex:
+    except KeyError as ex:
         logger.exception(ex)
         raise BadResponseError("Cannot fetch geostore geometry")
 
@@ -34,7 +35,18 @@ async def _get_gfw_geostore(geostore_id: UUID) -> GeostoreCommon:
     return geostore_common
 
 
-async def get_geostore(geostore_id: UUID, geostore_origin: str) -> GeostoreCommon:
+async def get_geostore(
+    geostore_id: UUID, geostore_origin: GeostoreOrigin
+) -> GeostoreCommon:
+    if FEATURE_CHECK_ALL_GEOSTORES:
+        return await get_geostore_from_any_source(geostore_id, geostore_origin)
+    else:
+        return await get_geostore_legacy(geostore_id, geostore_origin)
+
+
+async def get_geostore_legacy(
+    geostore_id: UUID, geostore_origin: GeostoreOrigin
+) -> GeostoreCommon:
     geostore_constructor = {
         GeostoreOrigin.gfw: _get_gfw_geostore,
         GeostoreOrigin.rw: rw_api.get_geostore,
@@ -51,3 +63,31 @@ async def get_geostore(geostore_id: UUID, geostore_origin: str) -> GeostoreCommo
         raise HTTPException(status_code=500, detail=str(e))
     except BadResponseError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+async def get_geostore_from_any_source(
+    geostore_id: UUID, geostore_origin: GeostoreOrigin
+) -> GeostoreCommon:
+    geostore_constructor = {
+        GeostoreOrigin.gfw: _get_gfw_geostore,
+        GeostoreOrigin.rw: rw_api.get_geostore,
+    }
+
+    geo_func = geostore_constructor.pop(geostore_origin)
+
+    try:
+        return await geo_func(geostore_id)
+    except RecordNotFoundError:
+        pass
+    except Exception as e:
+        logger.exception(e)
+
+    # Will we really ever have >2 geostore sources?
+    for geo_func in geostore_constructor.values():
+        try:
+            return await geo_func(geostore_id)
+        except RecordNotFoundError:
+            pass
+        except Exception as e:
+            logger.exception(e)
+    raise HTTPException(status_code=404, detail=f"Geostore {geostore_id} not found")

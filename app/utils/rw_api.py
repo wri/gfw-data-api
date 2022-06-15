@@ -6,7 +6,12 @@ from fastapi.logger import logger
 from httpx import AsyncClient, ReadTimeout
 from httpx import Response as HTTPXResponse
 
-from ..errors import BadResponseError, InvalidResponseError, UnauthorizedError
+from ..errors import (
+    BadResponseError,
+    InvalidResponseError,
+    RecordNotFoundError,
+    UnauthorizedError,
+)
 from ..models.pydantic.authentication import SignUp
 from ..models.pydantic.geostore import Geometry, GeostoreCommon
 from ..settings.globals import RW_API_URL
@@ -22,7 +27,9 @@ async def get_geostore(geostore_id: UUID) -> GeostoreCommon:
     async with AsyncClient() as client:
         response: HTTPXResponse = await client.get(url)
 
-    if response.status_code != 200:
+    if response.status_code == 404:
+        raise RecordNotFoundError(f"Geostore {geostore_id} not found")
+    elif response.status_code != 200:
         raise InvalidResponseError("Call to Geostore failed")
     try:
         data = response.json()["data"]["attributes"]
