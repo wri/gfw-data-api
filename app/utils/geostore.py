@@ -35,10 +35,14 @@ async def _get_gfw_geostore(geostore_id: UUID) -> GeostoreCommon:
     return geostore_common
 
 
+def check_all_geostores():
+    return FEATURE_CHECK_ALL_GEOSTORES == "TRUE"
+
+
 async def get_geostore(
     geostore_id: UUID, geostore_origin: GeostoreOrigin
 ) -> GeostoreCommon:
-    if FEATURE_CHECK_ALL_GEOSTORES == "TRUE":
+    if check_all_geostores():
         return await get_geostore_from_any_source(geostore_id, geostore_origin)
     else:
         return await get_geostore_legacy(geostore_id, geostore_origin)
@@ -83,6 +87,7 @@ async def get_geostore_from_any_source(
         logger.exception(e)
 
     # Will we really ever have >2 geostore sources?
+    # Preserve the possibility for now.
     for geo_func in geostore_constructor.values():
         try:
             return await geo_func(geostore_id)
