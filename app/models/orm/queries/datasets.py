@@ -16,6 +16,8 @@ FROM
       GROUP BY
         dataset
     )
-    t USING (dataset);"""
+    t USING (dataset) 
+    LIMIT(:limit) 
+    OFFSET(:offset);"""
 
 all_datasets = db.text(_dataset_sql)

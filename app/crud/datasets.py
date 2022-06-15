@@ -12,10 +12,10 @@ from ..utils.generators import list_to_async_generator
 from . import update_data
 
 
-async def get_datasets() -> List[ORMDataset]:
+async def get_datasets(size: int = None, page: int = 0) -> List[ORMDataset]:
     """Get list of all datasets."""
 
-    rows = await db.all(all_datasets)
+    rows = await db.all(all_datasets.bindparams(limit=size, offset=page))
     return rows
 
 
