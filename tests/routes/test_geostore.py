@@ -31,7 +31,9 @@ async def test_user_area_geostore(async_client: AsyncClient):
         }
     }
     # POST the new geostore
-    post_resp = await async_client.post("/geostore", json=payload)
+    post_resp = await async_client.post(
+        "/geostore", json=payload, follow_redirects=True
+    )
     assert post_resp.status_code == 201
     assert post_resp.json()["data"]["gfw_geostore_id"] == expected_goestore_id
     # Validate response structure
@@ -46,7 +48,9 @@ async def test_user_area_geostore(async_client: AsyncClient):
 
     # POSTing the same payload (more specifically geometry) again should yield
     # the same response (we're squashing duplicate key errors)
-    post_resp2 = await async_client.post("/geostore", json=payload)
+    post_resp2 = await async_client.post(
+        "/geostore", json=payload, follow_redirects=True
+    )
     assert post_resp2.status_code == 201
     assert post_resp2.json() == post_resp.json()
 
@@ -125,7 +129,9 @@ async def test_dataset_version_geostore(async_client: AsyncClient, batch_client)
     second_sample_geojson_hash = "b44a9213-4fc2-14e6-02e3-96faf0d89499"
 
     # Create the new geostore record
-    post_resp = await async_client.post("/geostore", json=payload)
+    post_resp = await async_client.post(
+        "/geostore", json=payload, follow_redirects=True
+    )
     assert post_resp.status_code == 201
     assert post_resp.json()["data"]["gfw_geostore_id"] == second_sample_geojson_hash
 
@@ -172,10 +178,14 @@ async def test_user_area_geostore_bad_requests(async_client: AsyncClient, batch_
     }
     # expected_message = "Please submit one and only one feature per request"
 
-    post_resp = await async_client.post("/geostore", json=bad_payload_1)
+    post_resp = await async_client.post(
+        "/geostore", json=bad_payload_1, follow_redirects=True
+    )
     assert post_resp.status_code == 422
     # assert post_resp.json()["message"] == expected_message
 
-    post_resp = await async_client.post("/geostore", json=bad_payload_2)
+    post_resp = await async_client.post(
+        "/geostore", json=bad_payload_2, follow_redirects=True
+    )
     assert post_resp.status_code == 422
     # assert post_resp.json()["message"] == expected_message

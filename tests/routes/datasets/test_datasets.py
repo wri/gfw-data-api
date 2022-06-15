@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from httpx import AsyncClient
 
 from app.application import ContextEngine, db
 from tests.utils import create_default_asset
@@ -31,7 +32,7 @@ payload = {
 
 
 @pytest.mark.asyncio
-async def test_datasets(async_client):
+async def test_datasets(async_client: AsyncClient):
     """Basic test to check if empty data api response as expected."""
 
     dataset = "test"
@@ -83,7 +84,7 @@ async def test_datasets(async_client):
 
 
 @pytest.mark.asyncio
-async def test_dataset_delete_protection(async_client):
+async def test_dataset_delete_protection(async_client: AsyncClient):
     dataset = "test"
     version = "v20200626"
 
@@ -107,7 +108,7 @@ async def test_dataset_delete_protection(async_client):
 
 
 @pytest.mark.asyncio
-async def test_put_latest(async_client):
+async def test_put_latest(async_client: AsyncClient):
     response = await async_client.put("/dataset/latest")
     assert response.status_code == 400
     assert response.json()["message"] == "Name `latest` is reserved for versions only."

@@ -5,6 +5,7 @@ from uuid import UUID
 import httpx
 import pytest
 from botocore.exceptions import ClientError
+from httpx import AsyncClient
 
 from app.application import ContextEngine
 from app.crud import tasks
@@ -32,7 +33,7 @@ s3_client = get_s3_client()
 
 
 @pytest.mark.asyncio
-async def test_assets(async_client):
+async def test_assets(async_client: AsyncClient):
     """Basic tests of asset endpoint behavior."""
     # Add a dataset, version, and default asset
     dataset = "test_assets"
@@ -95,7 +96,7 @@ async def test_assets(async_client):
 
 
 @pytest.mark.asyncio
-async def test_assets_vector_source_max_parents(async_client):
+async def test_assets_vector_source_max_parents(async_client: AsyncClient):
     """Make sure that vector source assets with > 20 layers stay within AWS
     parents limit."""
     # Add a dataset, version, and default asset
@@ -158,7 +159,7 @@ async def test_assets_vector_source_max_parents(async_client):
 
 
 @pytest.mark.asyncio
-async def test_auxiliary_raster_asset(async_client, httpd, logs):
+async def test_auxiliary_raster_asset(async_client: AsyncClient, httpd, logs):
     """"""
     # Add a dataset, version, and default asset
     dataset = "test_auxiliary_raster_asset"
@@ -253,7 +254,7 @@ async def test_auxiliary_raster_asset(async_client, httpd, logs):
 
 
 @pytest.mark.asyncio
-async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
+async def test_auxiliary_vector_asset(async_client: AsyncClient, batch_client, httpd):
     """"""
     _, logs = batch_client
 
@@ -329,7 +330,7 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
 
 
 @pytest.mark.asyncio
-async def test_asset_bad_requests(async_client, batch_client, httpd):
+async def test_asset_bad_requests(async_client: AsyncClient, batch_client, httpd):
     """"""
     _, logs = batch_client
 
