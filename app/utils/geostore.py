@@ -38,7 +38,7 @@ async def _get_gfw_geostore(geostore_id: UUID) -> GeostoreCommon:
 async def get_geostore(
     geostore_id: UUID, geostore_origin: GeostoreOrigin
 ) -> GeostoreCommon:
-    if FEATURE_CHECK_ALL_GEOSTORES:
+    if FEATURE_CHECK_ALL_GEOSTORES == "TRUE":
         return await get_geostore_from_any_source(geostore_id, geostore_origin)
     else:
         return await get_geostore_legacy(geostore_id, geostore_origin)

@@ -181,5 +181,5 @@ GOOGLE_APPLICATION_CREDENTIALS = config(
 )
 
 FEATURE_CHECK_ALL_GEOSTORES = config(
-    "FEATURE_CHECK_ALL_GEOSTORES", cast=bool, default=False
+    "FEATURE_CHECK_ALL_GEOSTORES", cast=str, default="FALSE"
 )

@@ -7,7 +7,7 @@ from httpx import Response
 from app.errors import InvalidResponseError, RecordNotFoundError
 from app.models.pydantic.geostore import GeostoreCommon
 from app.settings.globals import RW_API_URL
-from app.utils.rw_api import get_geostore
+from app.utils import rw_api
 
 rw_api_geostore_json = {
     "data": {
@@ -48,7 +48,7 @@ rw_api_geostore_json = {
 
 
 @pytest.mark.asyncio
-async def test_get_geostore_legacy_success():
+async def test_get_geostore_success():
     # Just to make sure we're not actually hitting the RW API,
     # ask for a non-existent geostore
     geostore_id_str = "d8907d30eb5ec7e33a68aa31aaf918a5"
@@ -58,7 +58,7 @@ async def test_get_geostore_legacy_success():
         rw_geostore_route = respx.get(f"{RW_API_URL}/v2/geostore/{geostore_id_str}")
         rw_geostore_route.return_value = Response(200, json=rw_api_geostore_json)
 
-        geo: GeostoreCommon = await get_geostore(geostore_id_uuid)
+        geo: GeostoreCommon = await rw_api.get_geostore(geostore_id_uuid)
 
         # Compare against the id actually in the response fixture, above,
         # which has the payload of a valid geostore
@@ -66,7 +66,7 @@ async def test_get_geostore_legacy_success():
 
 
 @pytest.mark.asyncio
-async def test_get_geostore_legacy_404():
+async def test_get_geostore_404():
     # Just to make sure we're not actually hitting the RW API,
     # ask for a valid geostore
     geostore_id_str = "d8907d30eb5ec7e33a68aa31aaf918a4"
@@ -79,11 +79,11 @@ async def test_get_geostore_legacy_404():
         )
 
         with pytest.raises(RecordNotFoundError):
-            _ = await get_geostore(geostore_id_uuid)
+            _ = await rw_api.get_geostore(geostore_id_uuid)
 
 
 @pytest.mark.asyncio
-async def test_get_geostore_legacy_other():
+async def test_get_geostore_other():
     geostore_id_str = "d8907d30eb5ec7e33a68aa31aaf918a6"
     geostore_id_uuid = UUID(geostore_id_str)
 
@@ -94,4 +94,4 @@ async def test_get_geostore_legacy_other():
         )
 
         with pytest.raises(InvalidResponseError):
-            _ = await get_geostore(geostore_id_uuid)
+            _ = await rw_api.get_geostore(geostore_id_uuid)
