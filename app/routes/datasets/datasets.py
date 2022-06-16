@@ -4,8 +4,8 @@ metadata."""
 from fastapi import APIRouter
 from fastapi.responses import ORJSONResponse
 
-from ...paginate.paginate import paginate_datasets
 from ...models.pydantic.datasets import DatasetsResponse
+from ...paginate.paginate import paginate_datasets
 
 router = APIRouter()
 
@@ -18,6 +18,6 @@ router = APIRouter()
 )
 async def get_datasets() -> DatasetsResponse:
     """Get list of all datasets."""
-    data = await paginate_datasets()
+    data, _ = await paginate_datasets()
 
     return DatasetsResponse(data=data)
