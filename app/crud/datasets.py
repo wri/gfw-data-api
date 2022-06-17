@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 
 from asyncpg import UniqueViolationError
+from sqlalchemy import func
 
 from ..application import db
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
@@ -10,6 +11,15 @@ from ..models.orm.queries.datasets import all_datasets
 from ..models.orm.versions import Version as ORMVersion
 from ..utils.generators import list_to_async_generator
 from . import update_data
+
+
+async def count_datasets() -> int:
+    """Get count of all datasets."""
+
+    total_datasets = (
+        await func.count().select().select_from(ORMDataset.query.alias()).gino.scalar()
+    )
+    return total_datasets
 
 
 async def get_datasets(size: int = None, page: int = 0) -> List[ORMDataset]:
