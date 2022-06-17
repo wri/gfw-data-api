@@ -6,7 +6,7 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from fastapi import HTTPException
 
-from app.errors import RecordNotFoundError
+from app.errors import InvalidResponseError, RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.geostore import Geometry, GeostoreCommon
 from app.utils import geostore
@@ -117,3 +117,23 @@ async def test_get_geostore_from_any_origin_rw_success(monkeypatch: MonkeyPatch)
         geostore_id_uuid, geostore_origin=GeostoreOrigin.rw
     )
     assert geo.geostore_id == geostore_id_uuid
+
+
+@pytest.mark.asyncio
+async def test_get_geostore_from_any_origin_mixed_errors(monkeypatch: MonkeyPatch):
+    geostore_id_str = "d8907d30eb5ec7e33a68aa31aaf918a7"
+    geostore_id_uuid = UUID(geostore_id_str)
+
+    mock__get_gfw_geostore = Mock(geostore._get_gfw_geostore)
+    mock__get_gfw_geostore.side_effect = RecordNotFoundError()
+    monkeypatch.setattr(geostore, "_get_gfw_geostore", mock__get_gfw_geostore)
+
+    mock_rw_get_geostore = Mock(geostore.rw_api.get_geostore)
+    mock_rw_get_geostore.side_effect = InvalidResponseError()
+    monkeypatch.setattr(geostore.rw_api, "get_geostore", mock_rw_get_geostore)
+
+    with pytest.raises(HTTPException) as h_e:
+        _ = await geostore.get_geostore_from_any_origin(
+            geostore_id_uuid, geostore_origin=GeostoreOrigin.rw
+        )
+    assert h_e.value.status_code == 500
