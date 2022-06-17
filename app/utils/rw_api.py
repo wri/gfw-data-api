@@ -30,6 +30,11 @@ async def get_geostore(geostore_id: UUID) -> GeostoreCommon:
     if response.status_code == 404:
         raise RecordNotFoundError(f"Geostore {geostore_id} not found")
     elif response.status_code != 200:
+        logger.error(
+            f"Response from RW API for geostore {geostore_id} was something "
+            f"other than a 200 or 404. Status code: {response.status_code} "
+            f"Response body: {response.text}"
+        )
         raise InvalidResponseError("Call to Geostore failed")
     try:
         data = response.json()["data"]["attributes"]
@@ -42,6 +47,10 @@ async def get_geostore(geostore_id: UUID) -> GeostoreCommon:
             bbox=data["bbox"],
         )
     except KeyError:
+        logger.error(
+            f"Response from RW API for geostore {geostore_id} contained "
+            f"incomplete data. Response body: {response.text}"
+        )
         raise BadResponseError("Cannot fetch geostore geometry")
 
     return geostore
