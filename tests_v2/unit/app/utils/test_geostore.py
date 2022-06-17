@@ -1,68 +1,119 @@
-from unittest.mock import MagicMock
+from typing import Dict
+from unittest.mock import Mock
 from uuid import UUID
 
 import pytest
-import respx
 from _pytest.monkeypatch import MonkeyPatch
-from httpx import Response
+from fastapi import HTTPException
 
+from app.errors import RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
-from app.settings import globals
+from app.models.pydantic.geostore import Geometry, GeostoreCommon
 from app.utils import geostore
 
+rw_api_geostore_json: Dict = {
+    "data": {
+        "type": "geoStore",
+        "id": "d8907d30eb5ec7e33a68aa31aaf918a4",
+        "attributes": {
+            "geojson": {
+                "crs": {},
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "geometry": {
+                            "coordinates": [
+                                [
+                                    [13.286161423, 2.22263581],
+                                    [13.895623684, 2.613460107],
+                                    [14.475367069, 2.43969337],
+                                    [15.288956165, 1.338479182],
+                                    [13.44381094, 0.682623753],
+                                    [13.286161423, 2.22263581],
+                                ]
+                            ],
+                            "type": "Polygon",
+                        },
+                        "type": "Feature",
+                    }
+                ],
+            },
+            "hash": "d8907d30eb5ec7e33a68aa31aaf918a4",  # pragma: allowlist secret
+            "provider": {},
+            "areaHa": 2950164.393265342,
+            "bbox": [13.286161423, 0.682623753, 15.288956165, 2.613460107],
+            "lock": False,
+            "info": {"use": {}},
+        },
+    }
+}
+
+data: Dict = rw_api_geostore_json["data"]["attributes"]
+geojson: Dict = data["geojson"]["features"][0]["geometry"]
+geometry: Geometry = Geometry.parse_obj(geojson)
+geostore_common: GeostoreCommon = GeostoreCommon(
+    geostore_id=data["hash"],
+    geojson=geometry,
+    area__ha=data["areaHa"],
+    bbox=data["bbox"],
+)
+
 
 @pytest.mark.asyncio
-async def test_get_geostore_default_is_legacy(monkeypatch: MonkeyPatch):
+async def test_get_geostore_from_any_origin_all_404s(monkeypatch: MonkeyPatch):
     geostore_id_str = "d8907d30eb5ec7e33a68aa31aaf918a7"
     geostore_id_uuid = UUID(geostore_id_str)
 
-    # First test that the default is to use the legacy behavior
-    mock_get_geostore_legacy = MagicMock(geostore.get_geostore_legacy)
-    monkeypatch.setattr(geostore, "get_geostore_legacy", mock_get_geostore_legacy)
+    mock__get_gfw_geostore = Mock(geostore._get_gfw_geostore)
+    mock__get_gfw_geostore.side_effect = RecordNotFoundError()
+    monkeypatch.setattr(geostore, "_get_gfw_geostore", mock__get_gfw_geostore)
 
-    assert mock_get_geostore_legacy.called is False
+    mock_rw_get_geostore = Mock(geostore.rw_api.get_geostore)
+    mock_rw_get_geostore.side_effect = RecordNotFoundError()
+    monkeypatch.setattr(geostore.rw_api, "get_geostore", mock_rw_get_geostore)
 
-    with respx.mock:
-        _ = respx.get(f"{globals.RW_API_URL}/v2/geostore/{geostore_id_str}")
-        _ = await geostore.get_geostore(
+    with pytest.raises(HTTPException) as h_e:
+        _ = await geostore.get_geostore_from_any_origin(
             geostore_id_uuid, geostore_origin=GeostoreOrigin.rw
         )
-
-    assert mock_get_geostore_legacy.called is True
+    assert h_e.value.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_get_geostore_flag_triggers_new_behavior():
-    geostore_id_str = "d8907d30eb5ec7e33a68aa31aaf918a7"
+async def test_get_geostore_from_any_origin_gfw_success(monkeypatch: MonkeyPatch):
+    geostore_id_str = "d8907d30eb5ec7e33a68aa31aaf918a4"
     geostore_id_uuid = UUID(geostore_id_str)
 
-    # Now test that setting the env var triggers calling the new function
-    with MonkeyPatch.context() as monkeypatch:
-        mock_get_geostore_from_any_source = MagicMock(
-            geostore.get_geostore_from_any_source
-        )
-        monkeypatch.setattr(
-            geostore, "get_geostore_from_any_source", mock_get_geostore_from_any_source
-        )
+    mock__get_gfw_geostore = Mock(geostore._get_gfw_geostore)
+    mock__get_gfw_geostore.return_value = geostore_common
+    monkeypatch.setattr(geostore, "_get_gfw_geostore", mock__get_gfw_geostore)
 
-        mock_check_all_geostores = MagicMock(geostore.check_all_geostores)
-        mock_check_all_geostores.return_value = True
-        monkeypatch.setattr(geostore, "check_all_geostores", mock_check_all_geostores)
+    mock_rw_get_geostore = Mock(geostore.rw_api.get_geostore)
+    mock_rw_get_geostore.side_effect = RecordNotFoundError()
+    monkeypatch.setattr(geostore.rw_api, "get_geostore", mock_rw_get_geostore)
 
-        assert mock_get_geostore_from_any_source.called is False
+    geo: GeostoreCommon = await geostore.get_geostore_from_any_origin(
+        geostore_id_uuid, geostore_origin=GeostoreOrigin.rw
+    )
+    assert geo.geostore_id == geostore_id_uuid
 
-        with respx.mock:
-            rw_geostore_route = respx.get(
-                f"{globals.RW_API_URL}/v2/geostore/{geostore_id_str}"
-            )
-            rw_geostore_route.return_value = Response(
-                404, json={"errors": [{"status": 404, "detail": "GeoStore not found"}]}
-            )
 
-            try:
-                _ = await geostore.get_geostore(
-                    geostore_id_uuid, geostore_origin=GeostoreOrigin.rw
-                )
-            except Exception:
-                pass
-        assert mock_get_geostore_from_any_source.called is True
+@pytest.mark.asyncio
+async def test_get_geostore_from_any_origin_rw_success(monkeypatch: MonkeyPatch):
+    geostore_id_str = "d8907d30eb5ec7e33a68aa31aaf918a4"
+    geostore_id_uuid = UUID(geostore_id_str)
+
+    mock__get_gfw_geostore = Mock(
+        geostore._get_gfw_geostore, side_effect=RecordNotFoundError
+    )
+    monkeypatch.setattr(geostore, "_get_gfw_geostore", mock__get_gfw_geostore)
+
+    mock_rw_get_geostore = Mock(
+        geostore.rw_api.get_geostore, return_value=geostore_common
+    )
+    monkeypatch.setattr(geostore.rw_api, "get_geostore", mock_rw_get_geostore)
+
+    geo: GeostoreCommon = await geostore.get_geostore_from_any_origin(
+        geostore_id_uuid, geostore_origin=GeostoreOrigin.rw
+    )
+    assert geo.geostore_id == geostore_id_uuid
