@@ -73,6 +73,8 @@ async def get_geostore_legacy(
         raise HTTPException(status_code=500, detail=str(e))
     except BadResponseError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 async def get_geostore_from_any_origin(
