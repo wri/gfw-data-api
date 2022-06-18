@@ -67,7 +67,7 @@ async def test_get_geostore_from_any_origin_rw_success(monkeypatch: MonkeyPatch)
     monkeypatch.setattr(geostore.rw_api, "get_geostore", mock_rw_get_geostore)
 
     geo: GeostoreCommon = await geostore.get_geostore_from_any_origin(
-        geostore_id_uuid, geostore_origin=GeostoreOrigin.rw
+        geostore_id_uuid, geostore_origin=GeostoreOrigin.gfw
     )
     assert geo.geostore_id == geostore_id_uuid
 
@@ -90,3 +90,35 @@ async def test_get_geostore_from_any_origin_mixed_errors(monkeypatch: MonkeyPatc
             geostore_id_uuid, geostore_origin=GeostoreOrigin.rw
         )
     assert h_e.value.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_get_geostore_legacy_success(monkeypatch: MonkeyPatch):
+    geostore_id_str = "d8907d30eb5ec7e33a68aa31aaf918a7"
+    geostore_id_uuid = UUID(geostore_id_str)
+
+    mock_rw_get_geostore = Mock(
+        geostore.rw_api.get_geostore, return_value=geostore_common
+    )
+    monkeypatch.setattr(geostore.rw_api, "get_geostore", mock_rw_get_geostore)
+
+    geo: GeostoreCommon = await geostore.get_geostore_legacy(
+        geostore_id_uuid, geostore_origin=GeostoreOrigin.rw
+    )
+    assert geo.geostore_id == UUID("d8907d30eb5ec7e33a68aa31aaf918a4")
+
+
+@pytest.mark.asyncio
+async def test_get_geostore_legacy_not_found(monkeypatch: MonkeyPatch):
+    geostore_id_str = "d8907d30eb5ec7e33a68aa31aaf918a7"
+    geostore_id_uuid = UUID(geostore_id_str)
+
+    mock_rw_get_geostore = Mock(geostore.rw_api.get_geostore)
+    mock_rw_get_geostore.side_effect = RecordNotFoundError()
+    monkeypatch.setattr(geostore.rw_api, "get_geostore", mock_rw_get_geostore)
+
+    with pytest.raises(HTTPException) as h_e:
+        _ = await geostore.get_geostore_legacy(
+            geostore_id_uuid, geostore_origin=GeostoreOrigin.rw
+        )
+    assert h_e.value.status_code == 404
