@@ -8,7 +8,7 @@ from app.errors import InvalidResponseError, RecordNotFoundError
 from app.models.pydantic.geostore import GeostoreCommon
 from app.settings.globals import RW_API_URL
 from app.utils import rw_api
-from tests_v2.fixtures.sample_rw_geostore_response import geostore_common
+from tests_v2.fixtures.sample_rw_geostore_response import response_body
 
 
 @pytest.mark.asyncio
@@ -20,7 +20,7 @@ async def test_get_geostore_success():
 
     with respx.mock:
         rw_geostore_route = respx.get(f"{RW_API_URL}/v2/geostore/{geostore_id_str}")
-        rw_geostore_route.return_value = Response(200, json=geostore_common)
+        rw_geostore_route.return_value = Response(200, json=response_body)
 
         geo: GeostoreCommon = await rw_api.get_geostore(geostore_id_uuid)
 
