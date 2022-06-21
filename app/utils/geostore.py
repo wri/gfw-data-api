@@ -121,7 +121,7 @@ async def get_geostore_from_any_origin(
     if non_404s:
         msg = (
             f"One or more errors were encountered looking for geostore "
-            f"{geostore_id}. Please email daniel.mannarino@wri.org for help."
+            f"{geostore_id}. Please email gfw@wri.org for help."
         )
         raise HTTPException(status_code=500, detail=msg)
     else:

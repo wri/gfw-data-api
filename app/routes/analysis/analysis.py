@@ -33,7 +33,7 @@ async def zonal_statistics_get(
     *,
     geostore_id: UUID = Path(..., title="Geostore ID"),
     geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, title="Origin service of geostore ID"
+        GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
     sum_layers: List[RasterLayer] = Query(..., alias="sum", title="Sum Layers"),
     group_by: List[RasterLayer] = Query([], title="Group By Layers"),
