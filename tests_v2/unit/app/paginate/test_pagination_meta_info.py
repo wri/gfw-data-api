@@ -11,7 +11,7 @@ async def test_sending_page_number_returns_a_dataset_collection_with_a_meta_sect
     dummy_get_datasets = Mock(get_datasets)
     dummy_count_datasets = Mock(count_datasets)
 
-    _, meta = await paginate_datasets(
+    _, _, meta = await paginate_datasets(
         crud_impl=dummy_get_datasets, datasets_count_impl=dummy_count_datasets, page=1
     )
 
@@ -23,7 +23,7 @@ async def test_sending_size_number_returns_a_dataset_collection_with_a_meta_sect
     dummy_get_datasets = Mock(get_datasets)
     dummy_count_datasets = Mock(count_datasets)
 
-    _, meta = await paginate_datasets(
+    _, _, meta = await paginate_datasets(
         crud_impl=dummy_get_datasets, datasets_count_impl=dummy_count_datasets, size=10
     )
 
@@ -35,7 +35,7 @@ async def test_pagination_meta_size_is_populated():
     dummy_get_datasets = Mock(get_datasets)
     dummy_count_datasets = Mock(count_datasets)
 
-    _, meta = await paginate_datasets(
+    _, _, meta = await paginate_datasets(
         crud_impl=dummy_get_datasets,
         datasets_count_impl=dummy_count_datasets,
         page=1,
@@ -63,7 +63,7 @@ async def test_pagination_meta_total_items_is_populated():
     stub_count_datasets = Mock(count_datasets)
     stub_count_datasets.return_value = 100
 
-    _, meta = await paginate_datasets(
+    _, _, meta = await paginate_datasets(
         crud_impl=dummy_get_datasets, datasets_count_impl=stub_count_datasets, size=10
     )
 
@@ -76,7 +76,7 @@ async def test_pagination_meta_total_pages_is_populated():
     stub_count_datasets = Mock(count_datasets)
     stub_count_datasets.return_value = 100
 
-    _, meta = await paginate_datasets(
+    _, _, meta = await paginate_datasets(
         crud_impl=dummy_get_datasets, datasets_count_impl=stub_count_datasets, size=5
     )
 
@@ -89,7 +89,7 @@ async def test_pagination_meta_total_pages_adds_a_page_for_remainder_datasets():
     stub_count_datasets = Mock(count_datasets)
     stub_count_datasets.return_value = 100
 
-    _, meta = await paginate_datasets(
+    _, _, meta = await paginate_datasets(
         crud_impl=dummy_get_datasets, datasets_count_impl=stub_count_datasets, size=11
     )
 
