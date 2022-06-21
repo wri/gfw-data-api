@@ -19,7 +19,7 @@ router = APIRouter()
 )
 async def get_datasets() -> Union[PaginatedDatasetsResponse, DatasetsResponse]:
     """Get list of all datasets."""
-    data, meta = await paginate_datasets()
+    data, _, meta = await paginate_datasets()
 
     if meta is None:
         return DatasetsResponse(data=data)
