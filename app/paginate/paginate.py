@@ -20,9 +20,9 @@ async def paginate_datasets(
     crud_impl=get_datasets,
     datasets_count_impl=count_datasets,
     size: Optional[int] = None,
-    page: int = 0,
+    page: Optional[int] = 0,
 ) -> Tuple[List[ORMDataset], Optional[PaginationMeta]]:
-    data = await crud_impl(size, page)
+    data = await crud_impl(size, _calculate_offset(page, size))
 
     if size is None and page == 0:
         return data, None
@@ -31,3 +31,7 @@ async def paginate_datasets(
     meta = PaginationMeta(size=size or 1, total_items=total_datasets)
 
     return data, meta
+
+
+def _calculate_offset(page, size):
+    return (size or 1) * max(0, page - 1)
