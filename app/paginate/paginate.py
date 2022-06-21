@@ -5,6 +5,10 @@ from app.crud.datasets import count_datasets, get_datasets
 from app.models.orm.datasets import Dataset as ORMDataset
 
 
+class PaginationLinks:
+    pass
+
+
 class PaginationMeta:
     size: int
     total_items: int
@@ -21,16 +25,17 @@ async def paginate_datasets(
     datasets_count_impl=count_datasets,
     size: Optional[int] = None,
     page: Optional[int] = 0,
-) -> Tuple[List[ORMDataset], Optional[PaginationMeta]]:
+) -> Tuple[List[ORMDataset], Optional[PaginationLinks], Optional[PaginationMeta]]:
     data = await crud_impl(size, _calculate_offset(page, size))
 
     if size is None and page == 0:
-        return data, None
+        return data, None, None
 
     total_datasets = await datasets_count_impl()
+    links = PaginationLinks()
     meta = PaginationMeta(size=size or 1, total_items=total_datasets)
 
-    return data, meta
+    return data, links, meta
 
 
 def _calculate_offset(page, size):
