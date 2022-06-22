@@ -8,6 +8,14 @@ class Response(StrictBaseModel):
     status: str = "success"
 
 
+class PaginationLinks(StrictBaseModel):
+    self: str
+    first: str
+    last: str
+    prev: str
+    next: str
+
+
 class PaginationMeta(StrictBaseModel):
     size: int
     total_items: int
