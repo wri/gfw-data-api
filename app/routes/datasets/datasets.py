@@ -2,7 +2,7 @@
 metadata."""
 from typing import Union
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import ORJSONResponse
 
 from ...models.pydantic.datasets import DatasetsResponse, PaginatedDatasetsResponse
@@ -17,10 +17,15 @@ router = APIRouter()
     tags=["Datasets"],
     response_model=Union[PaginatedDatasetsResponse, DatasetsResponse],
 )
-async def get_datasets() -> Union[PaginatedDatasetsResponse, DatasetsResponse]:
+async def get_datasets(
+    request: Request,
+) -> Union[PaginatedDatasetsResponse, DatasetsResponse]:
     """Get list of all datasets."""
-    data, _, meta = await paginate_datasets()
+    data, links, meta = await paginate_datasets()
 
-    if meta is None:
-        return DatasetsResponse(data=data)
-    return PaginatedDatasetsResponse(data=data, meta=meta.__dict__)
+    if meta is not None and links is not None:
+        return PaginatedDatasetsResponse(
+            data=data, links=links._asdict(), meta=meta._asdict()
+        )
+
+    return DatasetsResponse(data=data)
