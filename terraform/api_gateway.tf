@@ -46,7 +46,7 @@ module "query_get" {
   authorizer_id = aws_api_gateway_authorizer.api_key.id
   api_resource = module.query_resource.aws_api_gateway_resource
 
-  require_api_key = true
+  require_api_key = false
   http_method = "GET"
   authorization = "CUSTOM"
 
@@ -73,7 +73,7 @@ module "query_post" {
   authorizer_id = aws_api_gateway_authorizer.api_key.id
   api_resource = module.query_resource.aws_api_gateway_resource
 
-  require_api_key = true
+  require_api_key = false
   http_method = "POST"
   authorization = "CUSTOM"
 
@@ -104,7 +104,7 @@ module "download_shapes_resources" {
 
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   parent_id = aws_api_gateway_resource.download_parent.id
-  
+
   for_each = toset(var.download_endpoints)
   path_part = each.key
 }
@@ -223,7 +223,7 @@ resource "aws_api_gateway_deployment" "api_gw_dep" {
     redeployment = sha1(jsonencode([
       module.query_get.integration_point,
       module.query_post.integration_point,
-      #FIXME don't hardcode the spatial integration points 
+      #FIXME don't hardcode the spatial integration points
       module.download_shapes_endpoint["shp"].integration_point,
       module.download_shapes_endpoint["gpkg"].integration_point,
       module.download_shapes_endpoint["geotiff"].integration_point,
