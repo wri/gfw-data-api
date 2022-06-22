@@ -6,7 +6,23 @@ from app.models.orm.datasets import Dataset as ORMDataset
 
 
 class PaginationLinks:
-    pass
+    def __init__(self, request_url, size, page, total_pages):
+        self.self_ref = f"{request_url}?page[number]={page}&page[size]={size}"
+        self.first_ref = f"{request_url}?page[number]=1&page[size]={size}"
+        self.last_ref = (
+            f"{request_url}?page[number]={total_pages or 1}&page[size]={size}"
+        )
+        self.prev_ref = f"{request_url}?page[number]={(page - 1)}&page[size]={size}"
+        self.next_ref = f"{request_url}?page[number]={(page + 1)}&page[size]={size}"
+
+    def to_dict(self):
+        return {
+            "self": self.self_ref,
+            "first": self.first_ref,
+            "last": self.last_ref,
+            "prev": self.prev_ref,
+            "next": self.next_ref,
+        }
 
 
 class PaginationMeta:
@@ -23,6 +39,7 @@ class PaginationMeta:
 async def paginate_datasets(
     crud_impl=get_datasets,
     datasets_count_impl=count_datasets,
+    request_url="",
     size: Optional[int] = None,
     page: Optional[int] = 0,
 ) -> Tuple[List[ORMDataset], Optional[PaginationLinks], Optional[PaginationMeta]]:
@@ -32,8 +49,11 @@ async def paginate_datasets(
         return data, None, None
 
     total_datasets = await datasets_count_impl()
-    links = PaginationLinks()
+
     meta = PaginationMeta(size=size or 1, total_items=total_datasets)
+    links = PaginationLinks(
+        request_url=request_url, size=size, page=page, total_pages=meta.total_pages
+    )
 
     return data, links, meta
 
