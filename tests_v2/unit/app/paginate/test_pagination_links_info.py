@@ -31,9 +31,7 @@ async def test_links_has_a_self_entry():
         size=10,
     )
 
-    assert (
-        links.self_ref == "http://localhost:8008/datasets?page[number]=2&page[size]=10"
-    )
+    assert links.self == "http://localhost:8008/datasets?page[number]=2&page[size]=10"
 
 
 @pytest.mark.asyncio
@@ -49,9 +47,7 @@ async def test_links_has_a_first_entry():
         size=10,
     )
 
-    assert (
-        links.first_ref == "http://localhost:8008/datasets?page[number]=1&page[size]=10"
-    )
+    assert links.first == "http://localhost:8008/datasets?page[number]=1&page[size]=10"
 
 
 @pytest.mark.asyncio
@@ -68,9 +64,7 @@ async def test_links_has_a_last_entry():
         size=10,
     )
 
-    assert (
-        links.last_ref == "http://localhost:8008/datasets?page[number]=10&page[size]=10"
-    )
+    assert links.last == "http://localhost:8008/datasets?page[number]=10&page[size]=10"
 
 
 @pytest.mark.asyncio
@@ -86,9 +80,7 @@ async def test_links_has_a_prev_entry_when_not_on_the_first_page():
         size=10,
     )
 
-    assert (
-        links.prev_ref == "http://localhost:8008/datasets?page[number]=2&page[size]=10"
-    )
+    assert links.prev == "http://localhost:8008/datasets?page[number]=2&page[size]=10"
 
 
 @pytest.mark.asyncio
@@ -105,6 +97,4 @@ async def test_links_has_a_next_entry_when_not_on_the_last_page():
         size=10,
     )
 
-    assert (
-        links.next_ref == "http://localhost:8008/datasets?page[number]=4&page[size]=10"
-    )
+    assert links.next == "http://localhost:8008/datasets?page[number]=4&page[size]=10"

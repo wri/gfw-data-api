@@ -1,28 +1,28 @@
 from math import ceil
-from typing import List, Optional, Tuple
+from typing import List, NamedTuple, Optional, Tuple
 
 from app.crud.datasets import count_datasets, get_datasets
 from app.models.orm.datasets import Dataset as ORMDataset
 
 
-class PaginationLinks:
-    def __init__(self, request_url, size, page, total_pages):
-        self.self_ref = f"{request_url}?page[number]={page}&page[size]={size}"
-        self.first_ref = f"{request_url}?page[number]=1&page[size]={size}"
-        self.last_ref = (
-            f"{request_url}?page[number]={total_pages or 1}&page[size]={size}"
-        )
-        self.prev_ref = f"{request_url}?page[number]={(page - 1)}&page[size]={size}"
-        self.next_ref = f"{request_url}?page[number]={(page + 1)}&page[size]={size}"
+class PaginationLinks(NamedTuple):
+    self: str
+    first: str
+    last: str
+    prev: str
+    next: str
 
-    def to_dict(self):
-        return {
-            "self": self.self_ref,
-            "first": self.first_ref,
-            "last": self.last_ref,
-            "prev": self.prev_ref,
-            "next": self.next_ref,
-        }
+
+def _create_pagination_links(
+    request_url: str, size: int, page: int, total_pages: int
+) -> PaginationLinks:
+    return PaginationLinks(
+        f"{request_url}?page[number]={page}&page[size]={size}",
+        f"{request_url}?page[number]=1&page[size]={size}",
+        f"{request_url}?page[number]={total_pages or 1}&page[size]={size}",
+        f"{request_url}?page[number]={(page - 1)}&page[size]={size}",
+        f"{request_url}?page[number]={(page + 1)}&page[size]={size}",
+    )
 
 
 class PaginationMeta:
@@ -51,8 +51,11 @@ async def paginate_datasets(
     total_datasets = await datasets_count_impl()
 
     meta = PaginationMeta(size=size or 1, total_items=total_datasets)
-    links = PaginationLinks(
-        request_url=request_url, size=size, page=page, total_pages=meta.total_pages
+    links = _create_pagination_links(
+        request_url=request_url,
+        size=size or 1,
+        page=page or 1,
+        total_pages=meta.total_pages,
     )
 
     return data, links, meta
