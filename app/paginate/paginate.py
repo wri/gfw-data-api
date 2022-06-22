@@ -13,6 +13,12 @@ class PaginationLinks(NamedTuple):
     next: str
 
 
+class PaginationMeta(NamedTuple):
+    size: int
+    total_items: int
+    total_pages: int
+
+
 def _create_pagination_links(
     request_url: str, size: int, page: int, total_pages: int
 ) -> PaginationLinks:
@@ -25,15 +31,8 @@ def _create_pagination_links(
     )
 
 
-class PaginationMeta:
-    size: int
-    total_items: int
-    total_pages: int
-
-    def __init__(self, size: int, total_items: int):
-        self.size = size
-        self.total_items = total_items
-        self.total_pages = ceil(total_items / size)
+def _create_pagination_meta(size: int, total_items: int):
+    return PaginationMeta(size, total_items, ceil(total_items / size))
 
 
 async def paginate_datasets(
@@ -50,7 +49,7 @@ async def paginate_datasets(
 
     total_datasets = await datasets_count_impl()
 
-    meta = PaginationMeta(size=size or 1, total_items=total_datasets)
+    meta = _create_pagination_meta(size=size or 1, total_items=total_datasets)
     links = _create_pagination_links(
         request_url=request_url,
         size=size or 1,
