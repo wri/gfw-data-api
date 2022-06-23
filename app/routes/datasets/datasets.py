@@ -23,9 +23,9 @@ async def get_datasets(
     """Get list of all datasets."""
     data, links, meta = await paginate_datasets()
 
-    if meta is not None and links is not None:
-        return PaginatedDatasetsResponse(
-            data=data, links=links._asdict(), meta=meta._asdict()
-        )
+    if meta is None or links is None:
+        return DatasetsResponse(data=data)
 
-    return DatasetsResponse(data=data)
+    return PaginatedDatasetsResponse(
+        data=data, links=links._asdict(), meta=meta._asdict()
+    )
