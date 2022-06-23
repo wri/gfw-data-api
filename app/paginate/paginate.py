@@ -22,12 +22,19 @@ class PaginationMeta(NamedTuple):
 def _create_pagination_links(
     request_url: str, size: int, page: int, total_pages: int
 ) -> PaginationLinks:
+    if page > total_pages and page > 1:
+        raise ValueError  # TODO add error message
+
     return PaginationLinks(
         f"{request_url}?page[number]={page}&page[size]={size}",
         f"{request_url}?page[number]=1&page[size]={size}",
         f"{request_url}?page[number]={total_pages or 1}&page[size]={size}",
-        f"{request_url}?page[number]={(page - 1)}&page[size]={size}",
-        f"{request_url}?page[number]={(page + 1)}&page[size]={size}",
+        f"{request_url}?page[number]={(page - 1)}&page[size]={size}"
+        if (page > 1)
+        else "",
+        f"{request_url}?page[number]={(page + 1)}&page[size]={size}"
+        if (total_pages > page)
+        else "",
     )
 
 
@@ -50,6 +57,7 @@ async def paginate_datasets(
     total_datasets = await datasets_count_impl()
 
     meta = _create_pagination_meta(size=size or 1, total_items=total_datasets)
+
     links = _create_pagination_links(
         request_url=request_url,
         size=size or 1,
