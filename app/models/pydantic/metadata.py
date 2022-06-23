@@ -136,15 +136,6 @@ class VersionMetadata(CommonMetadata):
             ]
         }
 
-    # added_date: Optional[str] = Field(
-    #     None,
-    #     description="Date the data were added to GFW",
-    #     regex=DATE_REGEX,
-    # )
-    # download: Optional[str]
-    # analysis: Optional[str]
-    # data_updates: Optional[str]
-
 
 class VersionMetadataIn(VersionMetadata, StrictBaseModel):
     pass
