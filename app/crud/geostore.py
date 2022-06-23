@@ -22,7 +22,7 @@ GEOSTORE_COLUMNS: List[Column] = [
 ]
 
 
-async def get_geostore_from_anywhere(geostore_id: UUID) -> Geostore:
+async def get_gfw_geostore_from_any_dataset(geostore_id: UUID) -> Geostore:
     src_table: Table = db.table("geostore")
 
     where_clause: TextClause = db.text("gfw_geostore_id=:geostore_id")
@@ -41,7 +41,9 @@ async def get_geostore_from_anywhere(geostore_id: UUID) -> Geostore:
     return Geostore.from_orm(row)
 
 
-async def get_geostore_by_version(dataset, version, geostore_id) -> Geostore:
+async def get_geostore_by_version(
+    dataset: str, version: str, geostore_id: UUID
+) -> Geostore:
     src_table: Table = db.table(version)
     src_table.schema = dataset
 
@@ -110,6 +112,6 @@ async def create_user_area(geometry: Geometry) -> Geostore:
         geostore: Geostore = Geostore.from_orm(user_area)
 
     except UniqueViolationError:
-        geostore = await get_geostore_from_anywhere(geo_id)
+        geostore = await get_gfw_geostore_from_any_dataset(geo_id)
 
     return geostore

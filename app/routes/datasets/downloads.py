@@ -5,7 +5,6 @@ from uuid import UUID, uuid4
 
 from aiohttp import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Query
-
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 
@@ -39,7 +38,7 @@ async def download_json(
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
     geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, description="Origin service of geostore ID."
+        GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
     filename: str = Query("export.json", description="Name of export file."),
 ):
@@ -120,7 +119,7 @@ async def download_csv(
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
     geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, description="Origin service of geostore ID."
+        GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
     filename: str = Query("export.csv", description="Name of export file."),
     delimiter: Delimiters = Query(

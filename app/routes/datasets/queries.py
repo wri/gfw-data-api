@@ -13,7 +13,6 @@ from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
-
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
@@ -121,7 +120,7 @@ async def query_dataset_json(
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
     geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, description="Origin service of geostore ID."
+        GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
     # api_key: APIKey = Depends(get_api_key),
 ):
@@ -163,7 +162,7 @@ async def query_dataset_csv(
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
     geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, description="Origin service of geostore ID."
+        GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
     delimiter: Delimiters = Query(
         Delimiters.comma, description="Delimiter to use for CSV file."
