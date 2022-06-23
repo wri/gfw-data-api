@@ -14,8 +14,8 @@ async def test_offset_is_0_for_page_1_when_size_is_given():
     dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     await paginate_datasets(
-        crud_impl=spy_get_datasets,
-        datasets_count_impl=dummy_count_datasets,
+        paged_items_fn=spy_get_datasets,
+        item_count_fn=dummy_count_datasets,
         size=10,
         page=1,
     )
@@ -29,7 +29,7 @@ async def test_offset_is_0_when_no_page_is_given():
     dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     await paginate_datasets(
-        crud_impl=spy_get_datasets, datasets_count_impl=dummy_count_datasets, size=10
+        paged_items_fn=spy_get_datasets, item_count_fn=dummy_count_datasets, size=10
     )
 
     spy_get_datasets.assert_called_with(size=10, offset=0)
@@ -41,8 +41,8 @@ async def test_offset_is_10_for_page_2_when_page_size_is_10():
     stub_count_datasets = Mock(spec=count_datasets, return_value=15)
 
     await paginate_datasets(
-        crud_impl=spy_get_datasets,
-        datasets_count_impl=stub_count_datasets,
+        paged_items_fn=spy_get_datasets,
+        item_count_fn=stub_count_datasets,
         size=10,
         page=2,
     )
