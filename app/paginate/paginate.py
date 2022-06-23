@@ -22,7 +22,7 @@ class PaginationMeta(NamedTuple):
 def _create_pagination_links(
     request_url: str, size: int, page: int, total_pages: int
 ) -> PaginationLinks:
-    if page > total_pages and page > 1:
+    if (page < 1) or (page > total_pages and page > 1):
         raise ValueError  # TODO add error message
 
     return PaginationLinks(
@@ -39,34 +39,40 @@ def _create_pagination_links(
 
 
 def _create_pagination_meta(size: int, total_items: int):
+    assert size > 0
     return PaginationMeta(size, total_items, ceil(total_items / size))
 
 
+def _calculate_offset(page: int, size: int):
+    assert page > 0
+    return size * (page - 1)
+
+
 async def paginate_datasets(
-    crud_impl=get_datasets,
-    datasets_count_impl=count_datasets,
+    paged_items_fn=get_datasets,
+    item_count_fn=count_datasets,
     request_url="",
     size: Optional[int] = None,
-    page: Optional[int] = 0,
+    page: Optional[int] = None,
 ) -> Tuple[List[ORMDataset], Optional[PaginationLinks], Optional[PaginationMeta]]:
-    data = await crud_impl(size, _calculate_offset(page, size))
 
-    if size is None and page == 0:
+    page_size: int = size if size is not None else 1
+    page_number: int = page if page is not None else 1
+
+    data = await paged_items_fn(size, _calculate_offset(page_number, page_size))
+
+    if size is None and page is None:
         return data, None, None
 
-    total_datasets = await datasets_count_impl()
+    total_datasets = await item_count_fn()
 
-    meta = _create_pagination_meta(size=size or 1, total_items=total_datasets)
+    meta = _create_pagination_meta(size=page_size, total_items=total_datasets)
 
     links = _create_pagination_links(
         request_url=request_url,
-        size=size or 1,
-        page=page or 1,
+        size=page_size,
+        page=page_number,
         total_pages=meta.total_pages,
     )
 
     return data, links, meta
-
-
-def _calculate_offset(page, size):
-    return (size or 1) * max(0, page - 1)

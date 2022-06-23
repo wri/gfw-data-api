@@ -14,7 +14,7 @@ async def test_links_are_returned():
     dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     _, links, _ = await paginate_datasets(
-        crud_impl=dummy_get_datasets, datasets_count_impl=dummy_count_datasets, page=1
+        paged_items_fn=dummy_get_datasets, item_count_fn=dummy_count_datasets, page=1
     )
 
     assert isinstance(links, PaginationLinks)
@@ -26,8 +26,8 @@ async def test_links_has_a_self_entry():
     stub_count_datasets = Mock(spec=count_datasets, return_value=15)
 
     _, links, _ = await paginate_datasets(
-        crud_impl=dummy_get_datasets,
-        datasets_count_impl=stub_count_datasets,
+        paged_items_fn=dummy_get_datasets,
+        item_count_fn=stub_count_datasets,
         request_url="http://localhost:8008/datasets",
         page=2,
         size=10,
@@ -42,8 +42,8 @@ async def test_links_has_a_first_entry():
     stub_count_datasets = Mock(spec=count_datasets, return_value=15)
 
     _, links, _ = await paginate_datasets(
-        crud_impl=dummy_get_datasets,
-        datasets_count_impl=stub_count_datasets,
+        paged_items_fn=dummy_get_datasets,
+        item_count_fn=stub_count_datasets,
         request_url="http://localhost:8008/datasets",
         page=2,
         size=10,
@@ -59,8 +59,8 @@ async def test_links_has_a_last_entry():
     stub_count_datasets.return_value = 95
 
     _, links, _ = await paginate_datasets(
-        crud_impl=dummy_get_datasets,
-        datasets_count_impl=stub_count_datasets,
+        paged_items_fn=dummy_get_datasets,
+        item_count_fn=stub_count_datasets,
         request_url="http://localhost:8008/datasets",
         page=1,
         size=10,
@@ -75,8 +75,8 @@ async def test_links_has_a_prev_entry_when_not_on_the_first_page():
     stub_count_datasets = Mock(spec=count_datasets, return_value=25)
 
     _, links, _ = await paginate_datasets(
-        crud_impl=dummy_get_datasets,
-        datasets_count_impl=stub_count_datasets,
+        paged_items_fn=dummy_get_datasets,
+        item_count_fn=stub_count_datasets,
         request_url="http://localhost:8008/datasets",
         page=3,
         size=10,
@@ -92,8 +92,8 @@ async def test_links_has_an_empty_prev_entry_when_on_the_first_page():
     stub_count_datasets.return_value = 95
 
     _, links, _ = await paginate_datasets(
-        crud_impl=dummy_get_datasets,
-        datasets_count_impl=stub_count_datasets,
+        paged_items_fn=dummy_get_datasets,
+        item_count_fn=stub_count_datasets,
         request_url="http://localhost:8008/datasets",
         page=1,
         size=10,
@@ -110,8 +110,8 @@ async def test_raises_a_value_error_when_page_and_size_are_greater_than_total_pa
 
     with pytest.raises(ValueError):
         _, links, _ = await paginate_datasets(
-            crud_impl=dummy_get_datasets,
-            datasets_count_impl=stub_count_datasets,
+            paged_items_fn=dummy_get_datasets,
+            item_count_fn=stub_count_datasets,
             request_url="http://localhost:8008/datasets",
             page=2,
             size=10,
@@ -125,8 +125,8 @@ async def test_links_has_a_next_entry_when_not_on_the_last_page():
     stub_count_datasets.return_value = 95
 
     _, links, _ = await paginate_datasets(
-        crud_impl=dummy_get_datasets,
-        datasets_count_impl=stub_count_datasets,
+        paged_items_fn=dummy_get_datasets,
+        item_count_fn=stub_count_datasets,
         request_url="http://localhost:8008/datasets",
         page=3,
         size=10,
@@ -142,8 +142,8 @@ async def test_links_has_an_empty_next_entry_when_on_the_last_page():
     stub_count_datasets.return_value = 95
 
     _, links, _ = await paginate_datasets(
-        crud_impl=dummy_get_datasets,
-        datasets_count_impl=stub_count_datasets,
+        paged_items_fn=dummy_get_datasets,
+        item_count_fn=stub_count_datasets,
         request_url="http://localhost:8008/datasets",
         page=10,
         size=10,
