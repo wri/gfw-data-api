@@ -22,17 +22,13 @@ class PaginationMeta(NamedTuple):
 def _create_pagination_links(
     request_url: str, size: int, page: int, total_pages: int
 ) -> PaginationLinks:
-    if (page < 1) or (page > total_pages and page > 1):
-        raise ValueError  # TODO add error message
-
+    size_param = f"page[size]={size}"
     return PaginationLinks(
-        f"{request_url}?page[number]={page}&page[size]={size}",
-        f"{request_url}?page[number]=1&page[size]={size}",
-        f"{request_url}?page[number]={total_pages or 1}&page[size]={size}",
-        f"{request_url}?page[number]={(page - 1)}&page[size]={size}"
-        if (page > 1)
-        else "",
-        f"{request_url}?page[number]={(page + 1)}&page[size]={size}"
+        f"{request_url}?page[number]={page}&{size_param}",
+        f"{request_url}?page[number]=1&{size_param}",
+        f"{request_url}?page[number]={total_pages}&{size_param}",
+        f"{request_url}?page[number]={(page - 1)}&{size_param}" if (page > 1) else "",
+        f"{request_url}?page[number]={(page + 1)}&{size_param}"
         if (total_pages > page)
         else "",
     )
@@ -40,7 +36,8 @@ def _create_pagination_links(
 
 def _create_pagination_meta(size: int, total_items: int):
     assert size > 0
-    return PaginationMeta(size, total_items, ceil(total_items / size))
+    total_pages: int = ceil(total_items / size) if total_items > 0 else 1
+    return PaginationMeta(size, total_items, total_pages)
 
 
 def _calculate_offset(page: int, size: int):
@@ -56,6 +53,9 @@ async def paginate_datasets(
     page: Optional[int] = None,
 ) -> Tuple[List[ORMDataset], Optional[PaginationLinks], Optional[PaginationMeta]]:
 
+    if size is not None and size < 1 or page is not None and page < 1:
+        raise ValueError  # TODO add error message
+
     page_size: int = size if size is not None else 1
     page_number: int = page if page is not None else 1
 
@@ -67,6 +67,9 @@ async def paginate_datasets(
     total_datasets = await item_count_fn()
 
     meta = _create_pagination_meta(size=page_size, total_items=total_datasets)
+
+    if page_number > meta.total_pages:
+        raise ValueError  # TODO add error message
 
     links = _create_pagination_links(
         request_url=request_url,
