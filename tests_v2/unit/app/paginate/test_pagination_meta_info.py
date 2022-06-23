@@ -5,11 +5,13 @@ import pytest
 from app.crud.datasets import count_datasets, get_datasets
 from app.paginate.paginate import PaginationMeta, paginate_datasets
 
+DONT_CARE: int = 1
+
 
 @pytest.mark.asyncio
 async def test_sending_page_number_returns_a_dataset_collection_with_a_meta_section():
     dummy_get_datasets = Mock(get_datasets)
-    dummy_count_datasets = Mock(count_datasets)
+    dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     _, _, meta = await paginate_datasets(
         crud_impl=dummy_get_datasets, datasets_count_impl=dummy_count_datasets, page=1
@@ -21,7 +23,7 @@ async def test_sending_page_number_returns_a_dataset_collection_with_a_meta_sect
 @pytest.mark.asyncio
 async def test_sending_size_number_returns_a_dataset_collection_with_a_meta_section():
     dummy_get_datasets = Mock(get_datasets)
-    dummy_count_datasets = Mock(count_datasets)
+    dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     _, _, meta = await paginate_datasets(
         crud_impl=dummy_get_datasets, datasets_count_impl=dummy_count_datasets, size=10
@@ -33,7 +35,7 @@ async def test_sending_size_number_returns_a_dataset_collection_with_a_meta_sect
 @pytest.mark.asyncio
 async def test_pagination_meta_size_is_populated():
     dummy_get_datasets = Mock(get_datasets)
-    dummy_count_datasets = Mock(count_datasets)
+    dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     _, _, meta = await paginate_datasets(
         crud_impl=dummy_get_datasets,
@@ -48,7 +50,7 @@ async def test_pagination_meta_size_is_populated():
 @pytest.mark.asyncio
 async def test_pagination_gets_total_row_count():
     dummy_get_datasets = Mock(get_datasets)
-    spy_count_datasets = Mock(count_datasets)
+    spy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     await paginate_datasets(
         crud_impl=dummy_get_datasets, datasets_count_impl=spy_count_datasets, size=10
