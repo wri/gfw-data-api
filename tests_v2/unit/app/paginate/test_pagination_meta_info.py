@@ -14,7 +14,7 @@ async def test_sending_page_number_returns_a_dataset_collection_with_a_meta_sect
     dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     _, _, meta = await paginate_datasets(
-        crud_impl=dummy_get_datasets, datasets_count_impl=dummy_count_datasets, page=1
+        paged_items_fn=dummy_get_datasets, item_count_fn=dummy_count_datasets, page=1
     )
 
     assert isinstance(meta, PaginationMeta)
@@ -26,7 +26,7 @@ async def test_sending_size_number_returns_a_dataset_collection_with_a_meta_sect
     dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     _, _, meta = await paginate_datasets(
-        crud_impl=dummy_get_datasets, datasets_count_impl=dummy_count_datasets, size=10
+        paged_items_fn=dummy_get_datasets, item_count_fn=dummy_count_datasets, size=10
     )
 
     assert isinstance(meta, PaginationMeta)
@@ -38,8 +38,8 @@ async def test_pagination_meta_size_is_populated():
     dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     _, _, meta = await paginate_datasets(
-        crud_impl=dummy_get_datasets,
-        datasets_count_impl=dummy_count_datasets,
+        paged_items_fn=dummy_get_datasets,
+        item_count_fn=dummy_count_datasets,
         page=1,
         size=10,
     )
@@ -53,7 +53,7 @@ async def test_pagination_gets_total_row_count():
     spy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     await paginate_datasets(
-        crud_impl=dummy_get_datasets, datasets_count_impl=spy_count_datasets, size=10
+        paged_items_fn=dummy_get_datasets, item_count_fn=spy_count_datasets, size=10
     )
 
     spy_count_datasets.assert_called()
@@ -66,7 +66,7 @@ async def test_pagination_meta_total_items_is_populated():
     stub_count_datasets.return_value = 100
 
     _, _, meta = await paginate_datasets(
-        crud_impl=dummy_get_datasets, datasets_count_impl=stub_count_datasets, size=10
+        paged_items_fn=dummy_get_datasets, item_count_fn=stub_count_datasets, size=10
     )
 
     assert meta.total_items == 100
@@ -79,7 +79,7 @@ async def test_pagination_meta_total_pages_is_populated():
     stub_count_datasets.return_value = 100
 
     _, _, meta = await paginate_datasets(
-        crud_impl=dummy_get_datasets, datasets_count_impl=stub_count_datasets, size=5
+        paged_items_fn=dummy_get_datasets, item_count_fn=stub_count_datasets, size=5
     )
 
     assert meta.total_pages == 20  # number_of_datasets / page_size
@@ -92,7 +92,7 @@ async def test_pagination_meta_total_pages_adds_a_page_for_remainder_datasets():
     stub_count_datasets.return_value = 100
 
     _, _, meta = await paginate_datasets(
-        crud_impl=dummy_get_datasets, datasets_count_impl=stub_count_datasets, size=11
+        paged_items_fn=dummy_get_datasets, item_count_fn=stub_count_datasets, size=11
     )
 
     assert meta.total_pages == 10  # number_of_datasets / page_size
