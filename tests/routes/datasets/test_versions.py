@@ -41,6 +41,7 @@ version_payload = {
         "source_type": "vector",
         "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
         "source_driver": "ESRI Shapefile",
+        "timeout": 42,
     },
     "metadata": payload["metadata"],
 }
@@ -107,7 +108,7 @@ async def test_versions(async_client):
         ],
         "create_dynamic_vector_tile_cache": True,
         "add_to_geostore": True,
-        "timeout": 7200,
+        "timeout": 42,
         "cluster": None,
         "table_schema": None,
     }

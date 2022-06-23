@@ -153,7 +153,9 @@ AWS_SECRETSMANAGER_URL = config("AWS_SECRETSMANAGER_URL", cast=str, default=None
 RW_API_URL = config("RW_API_URL", cast=str, default=None)
 
 HOUR: int = int(60 * 60)
-DEFAULT_JOB_DURATION: int = int(HOUR * 2)
+# Temporarily set high timeout for TCLF. See https://gfw.atlassian.net/browse/GTC-1843
+# DEFAULT_JOB_DURATION: int = int(HOUR * 2)
+DEFAULT_JOB_DURATION: int = 400000
 
 API_KEY_NAME = config("API_KEY_NAME", cast=str, default="x-api-key")
 GEOSTORE_SIZE_LIMIT_OTF = config(
