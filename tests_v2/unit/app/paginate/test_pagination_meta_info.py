@@ -86,13 +86,13 @@ async def test_pagination_meta_total_pages_is_populated():
 
 
 @pytest.mark.asyncio
-async def test_pagination_meta_total_pages_adds_a_page_for_remainder_datasets():
+async def test_pagination_meta_total_pages_is_1_when_there_are_0_datasets():
     dummy_get_datasets = Mock(get_datasets)
     stub_count_datasets = Mock(count_datasets)
-    stub_count_datasets.return_value = 100
+    stub_count_datasets.return_value = 0
 
     _, _, meta = await paginate_datasets(
         paged_items_fn=dummy_get_datasets, item_count_fn=stub_count_datasets, size=11
     )
 
-    assert meta.total_pages == 10  # number_of_datasets / page_size
+    assert meta.total_pages == 1
