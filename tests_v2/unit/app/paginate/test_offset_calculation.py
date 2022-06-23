@@ -5,11 +5,13 @@ import pytest
 from app.crud.datasets import count_datasets, get_datasets
 from app.paginate.paginate import paginate_datasets
 
+DONT_CARE: int = 1
+
 
 @pytest.mark.asyncio
 async def test_offset_is_0_for_page_1_when_size_is_given():
     spy_get_datasets = Mock(get_datasets)
-    dummy_count_datasets = Mock(count_datasets)
+    dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     await paginate_datasets(
         crud_impl=spy_get_datasets,
@@ -24,7 +26,7 @@ async def test_offset_is_0_for_page_1_when_size_is_given():
 @pytest.mark.asyncio
 async def test_offset_is_0_when_no_page_is_given():
     spy_get_datasets = Mock(get_datasets)
-    dummy_count_datasets = Mock(count_datasets)
+    dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
 
     await paginate_datasets(
         crud_impl=spy_get_datasets, datasets_count_impl=dummy_count_datasets, size=10
@@ -36,11 +38,11 @@ async def test_offset_is_0_when_no_page_is_given():
 @pytest.mark.asyncio
 async def test_offset_is_10_for_page_2_when_page_size_is_10():
     spy_get_datasets = Mock(get_datasets)
-    dummy_count_datasets = Mock(count_datasets)
+    stub_count_datasets = Mock(spec=count_datasets, return_value=15)
 
     await paginate_datasets(
         crud_impl=spy_get_datasets,
-        datasets_count_impl=dummy_count_datasets,
+        datasets_count_impl=stub_count_datasets,
         size=10,
         page=2,
     )
