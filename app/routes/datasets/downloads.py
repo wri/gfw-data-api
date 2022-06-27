@@ -5,10 +5,10 @@ from uuid import UUID, uuid4
 
 from aiohttp import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.openapi.models import APIKey
+# from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 
-from ...authentication.api_keys import get_api_key
+# from ...authentication.api_keys import get_api_key
 from ...crud.assets import get_assets_by_filter
 from ...crud.versions import get_version
 from ...main import logger
@@ -38,7 +38,7 @@ async def download_json(
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
     geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, description="Origin service of geostore ID."
+        GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
     filename: str = Query("export.json", description="Name of export file."),
 ):
@@ -119,7 +119,7 @@ async def download_csv(
     sql: str = Query(..., description="SQL query."),
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
     geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, description="Origin service of geostore ID."
+        GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
     filename: str = Query("export.csv", description="Name of export file."),
     delimiter: Delimiters = Query(
@@ -194,7 +194,7 @@ async def download_geotiff(
     grid: Grid = Query(..., description="Grid size of tile to download."),
     tile_id: str = Query(..., description="Tile ID of tile to download."),
     pixel_meaning: str = Query(..., description="Pixel meaning of tile to download."),
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Download geotiff raster tile."""
 
@@ -222,7 +222,7 @@ async def download_geotiff(
 async def download_shapefile(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Download ESRI Shapefile.
 
@@ -250,7 +250,7 @@ async def download_shapefile(
 async def download_geopackage(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Download Geopackage.
 

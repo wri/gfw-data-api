@@ -2,13 +2,13 @@
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Path, Query
 from fastapi.exceptions import HTTPException
 from fastapi.logger import logger
-from fastapi.openapi.models import APIKey
+# from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
-from ...authentication.api_keys import get_api_key
+# from ...authentication.api_keys import get_api_key
 from ...models.enum.analysis import RasterLayer
 from ...models.enum.geostore import GeostoreOrigin
 from ...models.pydantic.analysis import ZonalAnalysisRequestIn
@@ -33,7 +33,7 @@ async def zonal_statistics_get(
     *,
     geostore_id: UUID = Path(..., title="Geostore ID"),
     geostore_origin: GeostoreOrigin = Query(
-        GeostoreOrigin.gfw, title="Origin service of geostore ID"
+        GeostoreOrigin.gfw, title="Service to search first for geostore."
     ),
     sum_layers: List[RasterLayer] = Query(..., alias="sum", title="Sum Layers"),
     group_by: List[RasterLayer] = Query([], title="Group By Layers"),
@@ -80,7 +80,8 @@ async def zonal_statistics_get(
     deprecated=True,
 )
 async def zonal_statistics_post(
-    request: ZonalAnalysisRequestIn, api_key: APIKey = Depends(get_api_key)
+    request: ZonalAnalysisRequestIn,
+    # api_key: APIKey = Depends(get_api_key)
 ):
     return await _zonal_statistics(
         request.geometry,

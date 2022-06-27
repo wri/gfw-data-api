@@ -45,7 +45,7 @@ async def get_any_geostore(*, geostore_id: UUID = Path(..., title="geostore_id")
     """Retrieve GeoJSON representation for a given geostore ID of any
     dataset."""
     try:
-        result: Geostore = await geostore.get_geostore_from_anywhere(geostore_id)
+        result: Geostore = await geostore.get_gfw_geostore_from_any_dataset(geostore_id)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
