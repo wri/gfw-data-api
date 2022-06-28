@@ -24,6 +24,12 @@ do
       SLOW=--with-slow-tests
       shift # past argument
       ;;
+      --moto-port=*)
+      # prevent port binding issues by explicitly setting the motoserver s3 port
+      # https://developer.apple.com/forums/thread/682332
+      export MOTO_PORT="${key#*=}"
+      shift # past argument=value
+      ;;
       *)    # unknown option
       POSITIONAL+=("$1") # save it in an array for later
       shift # past argument
