@@ -1,21 +1,17 @@
-"""add metadata table
+"""add metadata table.
 
 Revision ID: 04fcb4f2408a
 Revises: 4763f4b8141a
 Create Date: 2022-01-20 20:25:58.995306
-
 """
-from xmlrpc.client import Boolean
-from alembic import op
-import sqlalchemy as sa
-import sqlalchemy_utils
 
+import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
-
 # revision identifiers, used by Alembic.
-revision = '04fcb4f2408a'
-down_revision = '4763f4b8141a'
+revision = "04fcb4f2408a"  # pragma: allowlist secret
+down_revision = "4763f4b8141a"  # pragma: allowlist secret
 branch_labels = None
 depends_on = None
 
@@ -35,20 +31,17 @@ def upgrade():
         sa.Column("license", sa.String(), nullable=False),
         sa.Column("data_language", sa.String(), nullable=False),
         sa.Column("overview", sa.String(), nullable=False),
-
         sa.Column("function", sa.String()),
         sa.Column("cautions", sa.String()),
         sa.Column("key_restrictions", sa.String()),
         sa.Column("keywords", sa.ARRAY(sa.String)),
         sa.Column("why_added", sa.String()),
         sa.Column("learn_more", sa.String()),
-
-        sa.Column("resolution", sa.String()),
+        sa.Column("resolution", sa.Numeric()),
         sa.Column("geographic_coverage", sa.String()),
         sa.Column("update_frequency", sa.String()),
         sa.Column("citation", sa.String()),
         sa.Column("scale", sa.String()),
-
         sa.Column(
             "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
         ),
@@ -63,7 +56,7 @@ def upgrade():
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("dataset", name="dataset_uq")
+        sa.UniqueConstraint("dataset", name="dataset_uq"),
     )
 
     op.create_table(
@@ -81,17 +74,13 @@ def upgrade():
         sa.Column("creation_date", sa.Date(), nullable=False),
         sa.Column("content_start_date", sa.Date(), nullable=False),
         sa.Column("content_end_date", sa.Date(), nullable=False),
-
         sa.Column("last_update", sa.Date()),
         sa.Column("description", sa.String()),
-
-
-        sa.Column("resolution", sa.String()),
+        sa.Column("resolution", sa.Numeric()),
         sa.Column("geographic_coverage", sa.String()),
         sa.Column("update_frequency", sa.String()),
         sa.Column("citation", sa.String()),
         sa.Column("scale", sa.String()),
-
         sa.Column(
             "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
         ),
@@ -111,7 +100,7 @@ def upgrade():
             name="dataset_metadata_id_fk",
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("dataset", "version", name="dataset_version_uq")
+        sa.UniqueConstraint("dataset", "version", name="dataset_version_uq"),
     )
 
     op.create_table(
@@ -134,7 +123,7 @@ def upgrade():
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
-        sa.UniqueConstraint("asset_id", name="asset_id_uq")
+        sa.UniqueConstraint("asset_id", name="asset_id_uq"),
     )
 
     op.create_table(
@@ -155,7 +144,6 @@ def upgrade():
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
-
     )
 
     op.create_table(
@@ -176,7 +164,7 @@ def upgrade():
         sa.Column(
             "values_table",
             postgresql.ARRAY(postgresql.JSONB(astext_type=sa.Text())),
-            nullable=True
+            nullable=True,
         ),
         sa.PrimaryKeyConstraint("asset_metadata_id", "pixel_meaning"),
         sa.ForeignKeyConstraint(
@@ -187,6 +175,9 @@ def upgrade():
             ondelete="CASCADE",
         ),
     )
+    op.drop_column("datasets", "metadata")
+    op.drop_column("versions", "metadata")
+    op.drop_column("assets", "metadata")
 
 
 def downgrade():
@@ -195,3 +186,18 @@ def downgrade():
     op.drop_table("asset_metadata")
     op.drop_table("version_metadata")
     op.drop_table("dataset_metadata")
+    op.add_column(
+        "datasets",
+        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()),
+        ),
+    )
+    op.add_column(
+        "versions",
+        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()),
+        ),
+    )
+    op.add_column(
+        "assets",
+        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()),
+        ),
+    )
