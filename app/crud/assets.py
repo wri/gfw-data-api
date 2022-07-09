@@ -3,17 +3,19 @@ from uuid import UUID
 
 from asyncpg import UniqueViolationError
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy.sql import and_
 
 from app.crud.metadata import (
     create_asset_metadata,
     get_asset_metadata,
-    update_asset_metadata
+    update_asset_metadata,
 )
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
+from ..models.enum.assets import AssetType
+from ..models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.versions import Version as ORMVersion
-from ..models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
 from ..models.pydantic.creation_options import CreationOptions, creation_option_factory
 from . import update_data, versions
 
@@ -42,6 +44,35 @@ async def get_all_assets() -> List[ORMAsset]:
     return assets
 
 
+async def get_raster_tile_sets():
+    latest_tile_sets = await (
+        ORMAsset.join(ORMVersion)
+        .select()
+        .with_only_columns(
+            [
+                ORMAsset.dataset,
+                ORMAsset.version,
+                ORMAsset.creation_options,
+                ORMAsset.asset_uri,
+            ]
+        )
+        .where(
+            and_(
+                ORMAsset.asset_type == AssetType.raster_tile_set,
+                ORMVersion.is_latest == True,  # noqa: E712
+            )
+        )
+    ).gino.all()
+
+    for asset in latest_tile_sets:
+        try:
+            asset.metadata = await get_asset_metadata(asset.asset_id)
+        except RecordNotFoundError:
+            continue
+
+    return latest_tile_sets
+
+
 async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
     assets = await ORMAsset.query.where(ORMAsset.asset_type == asset_type).gino.all()
 
@@ -55,6 +86,7 @@ async def get_assets_by_filter(
     asset_uri: Optional[str] = None,
     is_latest: Optional[bool] = None,
     is_default: Optional[bool] = None,
+    include_metadata: Optional[bool] = True,
 ) -> List[ORMAsset]:
 
     if is_latest is not None:
@@ -134,6 +166,7 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
         new_asset: ORMAsset = await ORMAsset.create(
             dataset=dataset, version=version, **jsonable_data
         )
+        new_asset.metadata = {}
     except UniqueViolationError:
         raise RecordAlreadyExistsError(
             f"Cannot create asset of type {data['asset_type']}. "
@@ -141,7 +174,7 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
         )
 
     if metadata_data:
-        metadata: ORMAssetMetadata = create_asset_metadata(
+        metadata: ORMAssetMetadata = await create_asset_metadata(
             new_asset.asset_id, **metadata_data
         )
         new_asset.metadata = metadata
@@ -150,18 +183,18 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
 
 
 async def update_asset(asset_id: UUID, **data) -> ORMAsset:
+    metadata_data = data.pop("metadata", None)
     data = _validate_creation_options(**data)
     jsonable_data = jsonable_encoder(data)
 
     asset: ORMAsset = await get_asset(asset_id)
     asset = await update_data(asset, jsonable_data)
 
-    metadata_data = data.get("metadata")
     if metadata_data:
         try:
-            metadata = await update_asset_metadata(asset, **metadata_data)
+            metadata = await update_asset_metadata(asset_id, **metadata_data)
         except RecordNotFoundError:
-            metadata = await create_asset_metadata(asset, **metadata_data)
+            metadata = await create_asset_metadata(asset_id, **metadata_data)
         asset.metadata = metadata
 
     return asset
@@ -172,16 +205,6 @@ async def delete_asset(asset_id: UUID) -> ORMAsset:
     await ORMAsset.delete.where(ORMAsset.asset_id == asset_id).gino.status()
 
     return asset
-
-
-async def _update_all_asset_metadata(assets) -> List[ORMAsset]:
-    new_rows: List[ORMAsset] = list()
-    for row in assets:
-        version: ORMVersion = await versions.get_version(row.dataset, row.version)
-        new_row = update_metadata(row, version)
-        new_rows.append(new_row)
-
-    return new_rows
 
 
 def _validate_creation_options(**data) -> Dict[str, Any]:

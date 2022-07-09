@@ -9,18 +9,16 @@ from app.models.orm.assets import Asset as ORMAsset
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.enum import entity
+from ..models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
+from ..models.orm.asset_metadata import FieldMetadata as ORMFieldMetadata
+from ..models.orm.asset_metadata import RasterBandMetadata as ORMRasterBandMetadata
 from ..models.orm.base import Base
 from ..models.orm.dataset_metadata import DatasetMetadata as ORMDatasetMetadata
 from ..models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
-from ..models.orm.asset_metadata import (
-    AssetMetadata as ORMAssetMetadata,
-    RasterBandMetadata as ORMRasterBandMetadata,
-    FieldMetadata as ORMFieldMetadata
-)
 from ..models.orm.versions import Version as ORMVersion
+
 # from ..models.orm.assets import Asset as ORMAsset
 # from .assets import get_asset
-from . import versions
 
 
 async def create_dataset_metadata(dataset: str, **data) -> ORMDatasetMetadata:
@@ -43,11 +41,11 @@ async def get_entity_metadata(
 ) -> Union[ORMDatasetMetadata, ORMVersionMetadata]:
     """Get entity metadata by id."""
 
-    metadata = None
+    metadata: ORMDatasetMetadata
     if entity_type == "dataset":
-        metadata: ORMDatasetMetadata = await ORMDatasetMetadata.get([metadata_id])
+        metadata = await ORMDatasetMetadata.get([metadata_id])
     elif entity_type == "version":
-        metadata: ORMVersionMetadata = await ORMVersionMetadata.get([metadata_id])
+        metadata = await ORMVersionMetadata.get([metadata_id])
     else:
         raise NotImplementedError(f"Entity type {entity_type} is not recognized.")
 
@@ -105,14 +103,13 @@ async def get_version_metadata(dataset: str, version: str) -> ORMVersionMetadata
 
 async def create_version_metadata(dataset: str, version: str, **data):
     """Create version metadata record."""
-    v: ORMVersion = await versions.get_version(dataset, version)
-    if v is None:
-        raise RecordNotFoundError(
-            f"""Failed to create metadata. Either the dataset {dataset} or version {version}
-            do not exist."""
-        )
-
     dataset_metadata: ORMDatasetMetadata = await get_dataset_metadata(dataset)
+
+    content_date_range = data.pop("content_date_range", None)
+    if content_date_range:
+        data["content_start_date"] = content_date_range["start_date"]
+        data["content_end_date"] = content_date_range["end_date"]
+
     try:
         new_metadata: ORMVersionMetadata = await ORMVersionMetadata.create(
             dataset=dataset,
@@ -159,7 +156,8 @@ async def create_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
         )
     except UniqueViolationError:
         raise RecordAlreadyExistsError(
-            f"Failed to create metadata. Asset {asset_id} has an existing metadata record.")
+            f"Failed to create metadata. Asset {asset_id} has an existing metadata record."
+        )
 
     bands_metadata = []
     if bands:
@@ -186,7 +184,7 @@ async def get_asset_metadata(asset_id: UUID):
     ).gino.first()
 
     if asset_metadata is None:
-        raise RecordNotFoundError(f'No metadata found for asset {asset_id}.')
+        raise RecordNotFoundError(f"No metadata found for asset {asset_id}.")
 
     bands: List[ORMRasterBandMetadata] = await ORMRasterBandMetadata.query.where(
         ORMRasterBandMetadata.asset_metadata_id == asset_metadata.id
@@ -217,7 +215,7 @@ async def delete_asset_metadata(asset_id: UUID) -> ORMAssetMetadata:
     asset_metadata: ORMAssetMetadata = await get_asset_metadata(asset_id)
     await ORMAssetMetadata.delete.where(
         ORMAssetMetadata.asset_id == asset_id
-        ).gino.status()
+    ).gino.status()
 
     return asset_metadata
 
@@ -232,12 +230,9 @@ async def create_raster_band_metadata(
     return raster_band_metadata
 
 
-async def create_field_metadata(
-    asset_metadata_id: UUID, **data
-) -> ORMFieldMetadata:
+async def create_field_metadata(asset_metadata_id: UUID, **data) -> ORMFieldMetadata:
     field_metadata: ORMFieldMetadata = await ORMFieldMetadata.create(
-        asset_metadata_id=asset_metadata_id,
-        **data
+        asset_metadata_id=asset_metadata_id, **data
     )
 
     return field_metadata
@@ -246,15 +241,19 @@ async def create_field_metadata(
 async def update_field_metadata(
     asset_id: UUID, field_name: str, **data
 ) -> ORMFieldMetadata:
-    field_metadata = await (
-        ORMFieldMetadata.join(ORMAssetMetadata)
-        .select()
-        .where(ORMAssetMetadata.asset_id == asset_id)
-        .where(ORMFieldMetadata.name == field_name)
-    ).gino.load(ORMFieldMetadata).first()
+    field_metadata = (
+        await (
+            ORMFieldMetadata.join(ORMAssetMetadata)
+            .select()
+            .where(ORMAssetMetadata.asset_id == asset_id)
+            .where(ORMFieldMetadata.name == field_name)
+        )
+        .gino.load(ORMFieldMetadata)
+        .first()
+    )
 
     if field_metadata is None:
-        raise RecordNotFoundError('')
+        raise RecordNotFoundError("")
 
     await field_metadata.update(**data).apply()
 

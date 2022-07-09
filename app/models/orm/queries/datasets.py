@@ -4,7 +4,7 @@ _dataset_sql = """
 SELECT
   datasets.*,
   version_array AS versions,
-  metadata
+  coalesce(metadata, '{}') as metadata
 FROM
   datasets
   LEFT JOIN
@@ -20,9 +20,7 @@ FROM
     t USING (dataset)
   LEFT JOIN
     (
-      SELECT 
-        dataset,
-        ROW_TO_JSON(dataset_metadata.*) as metadata
+      SELECT dataset, ROW_TO_JSON(dataset_metadata.*) as metadata
       FROM
         dataset_metadata
     )

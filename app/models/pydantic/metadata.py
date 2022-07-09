@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field, validator
@@ -10,7 +10,7 @@ from .responses import Response
 
 
 class CommonMetadata(BaseModel):
-    resolution: Optional[str]
+    resolution: Optional[Union[int, float]]
     geographic_coverage: Optional[str]
     update_frequency: Optional[str]
     scale: Optional[str]
@@ -19,7 +19,7 @@ class CommonMetadata(BaseModel):
         schema_extra = {
             "examples": [
                 {
-                    "resolution": "10m x 10m",
+                    "resolution": 10,
                     "geographic_coverage": "Amazon Basin",
                     "update_frequency": "Updated daily, image revisit time every 5 days",
                     "scale": "regional",
@@ -117,7 +117,7 @@ class VersionMetadata(CommonMetadata):
     )
 
     last_update: date = Field(
-        ...,
+        None,
         description="Date the data were last updated",
     )
 

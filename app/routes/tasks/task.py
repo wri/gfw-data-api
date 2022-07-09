@@ -20,10 +20,13 @@ from ...models.enum.versions import VersionStatus
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.queries.fields import fields
 from ...models.orm.tasks import Task as ORMTask
+from ...models.pydantic.asset_metadata import (
+    DynamicVectorTileCacheMetadata,
+    FieldMetadataOut,
+)
 from ...models.pydantic.assets import AssetCreateIn, AssetType
 from ...models.pydantic.change_log import ChangeLog
 from ...models.pydantic.creation_options import DynamicVectorTileCacheCreationOptions
-from ...models.pydantic.metadata import DynamicVectorTileCacheMetadata, FieldMetadata
 from ...models.pydantic.tasks import TaskCreateIn, TaskResponse, TaskUpdateIn
 from ...settings.globals import TILE_CACHE_URL
 from ...tasks.assets import put_asset
@@ -248,7 +251,7 @@ async def _get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]
     field_metadata = list()
 
     for row in rows:
-        metadata = FieldMetadata.from_orm(row)
+        metadata = FieldMetadataOut.from_orm(row)
         if metadata.name in [
             "geom",
             "geom_wm",
@@ -259,7 +262,7 @@ async def _get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]
         ]:
             metadata.is_filter = False
             metadata.is_feature_info = False
-        metadata.field_alias = metadata.name
+        metadata.alias = metadata.name
         field_metadata.append(metadata.dict(by_alias=True))
 
     return field_metadata
@@ -274,9 +277,7 @@ async def _update_asset_field_metadata(dataset, version, asset_id) -> ORMAsset:
         return await assets.update_asset(asset_id, fields=fields_metadata)
 
 
-async def _register_dynamic_vector_tile_cache(
-    dataset: str, version: str, metadata: Dict[str, Any]
-) -> None:
+async def _register_dynamic_vector_tile_cache(dataset: str, version: str) -> None:
     """Register dynamic vector tile cache asset with version if required."""
     default_asset: ORMAsset = await assets.get_default_asset(
         dataset,
@@ -344,12 +345,10 @@ async def table_post_completion_task(asset_id: UUID):
     specify to register a dynamic vector tile cache asset."""
     asset_row: ORMAsset = await assets.get_asset(asset_id)
 
-    asset_row = await _update_asset_field_metadata(
-        asset_row.dataset,
-        asset_row.version,
-        asset_id,
-    )
+    # asset_row = await _update_asset_field_metadata(
+    #     asset_row.dataset,
+    #     asset_row.version,
+    #     asset_id,
+    # )
 
-    await _register_dynamic_vector_tile_cache(
-        asset_row.dataset, asset_row.version, asset_row.metadata
-    )
+    await _register_dynamic_vector_tile_cache(asset_row.dataset, asset_row.version)

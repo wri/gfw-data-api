@@ -5,14 +5,14 @@ from asyncpg import UniqueViolationError
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
-from ..models.orm.versions import Version as ORMVersion
 from ..models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
+from ..models.orm.versions import Version as ORMVersion
 from ..utils.generators import list_to_async_generator
 from . import datasets, update_data
 from .metadata import (
-    update_all_metadata,
     create_version_metadata,
-    update_version_metadata
+    update_all_metadata,
+    update_version_metadata,
 )
 
 
@@ -20,9 +20,8 @@ async def get_versions(dataset: str) -> List[ORMVersion]:
     versions: List[ORMVersion] = await ORMVersion.query.where(
         ORMVersion.dataset == dataset
     ).gino.all()
-    d: ORMDataset = await datasets.get_dataset(dataset)
 
-    return update_all_metadata(versions, d)
+    return versions
 
 
 async def get_version_names(dataset: str) -> List[Any]:
@@ -42,10 +41,14 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
         .where(ORMVersion.version == version)
         .gino.first()
     )
+
     if row is None:
         raise RecordNotFoundError(
             f"Version with name {dataset}.{version} does not exist"
         )
+
+    if getattr(row, "metadata", None) is None:
+        row.metadata = {}
 
     return row
 
@@ -81,11 +84,12 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
     if data.get("is_latest"):
         await _reset_is_latest(dataset, version)
 
-    metadata_data = data.pop("metadata")
+    metadata_data = data.pop("metadata", None)
     try:
         new_version: ORMVersion = await ORMVersion.create(
             dataset=dataset, version=version, **data
         )
+        new_version.metadata = {}
     except UniqueViolationError:
         raise RecordAlreadyExistsError(
             f"Version with name {dataset}.{version} already exists."
@@ -93,49 +97,42 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
 
     if metadata_data:
         metadata: ORMVersionMetadata = await create_version_metadata(
-            dataset, new_version, **metadata_data
+            dataset, version, **metadata_data
         )
         new_version.metadata = metadata
 
-    # return update_metadata(new_version, d)
     return new_version
 
 
 async def update_version(dataset: str, version: str, **data) -> ORMVersion:
     """Update fields of version."""
-    version: ORMVersion = await get_version(dataset, version)
-    version = await update_data(version, data)
+    row: ORMVersion = await get_version(dataset, version)
+    metadata_data = data.pop("metadata", None)
+    row = await update_data(row, data)
 
-    metadata_data = data.get("metadata")
     if metadata_data:
         try:
-            metadata = await update_version_metadata(dataset, **metadata_data)
+            metadata = await update_version_metadata(dataset, version, **metadata_data)
         except RecordNotFoundError:
-            metadata = await create_version_metadata(dataset, **metadata_data)
-        version.metadata = metadata
+            metadata = await create_version_metadata(dataset, version, **metadata_data)
+        row.metadata = metadata
 
     await _update_is_downloadable(dataset, version, data)
 
     if data.get("is_latest"):
         await _reset_is_latest(dataset, version)
 
-    # d: ORMDataset = await datasets.get_dataset(dataset)
-
-    # return update_metadata(row, d)
-    return version
+    return row
 
 
 async def delete_version(dataset: str, version: str) -> ORMVersion:
     """Delete a version."""
-    version: ORMVersion = await get_version(dataset, version)
+    v: ORMVersion = await get_version(dataset, version)
     await ORMVersion.delete.where(ORMVersion.dataset == dataset).where(
         ORMVersion.version == version
     ).gino.status()
 
-    # d: ORMDataset = await datasets.get_dataset(dataset)
-
-    # return update_metadata(row, d)
-    return version
+    return v
 
 
 async def _update_is_downloadable(

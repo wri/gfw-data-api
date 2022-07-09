@@ -25,6 +25,11 @@ from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
+from ...models.pydantic.asset_metadata import (
+    FieldMetadata,
+    FieldsMetadataResponse,
+    RasterBandMetadata,
+)
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
     CreationOptions,
@@ -33,9 +38,6 @@ from ...models.pydantic.creation_options import (
 )
 from ...models.pydantic.extent import Extent, ExtentResponse
 from ...models.pydantic.metadata import (
-    FieldMetadata,
-    FieldMetadataResponse,
-    RasterFieldMetadata,
     VersionMetadata,
     VersionMetadataIn,
     VersionMetadataResponse,
@@ -128,6 +130,7 @@ async def add_new_version(
 
     input_data["creation_options"] = creation_options
 
+    metadata = input_data.pop('metadata')  # we don't version metadata in assets anymore
     # Everything else happens in the background task asynchronously
     background_tasks.add_task(create_default_asset, dataset, version, input_data, None)
 
@@ -170,12 +173,12 @@ async def update_version(
             ],
         )
 
-        if tile_cache_assets:
-            background_tasks.add_task(
-                flush_cloudfront_cache,
-                TILE_CACHE_CLOUDFRONT_ID,
-                ["/_latest", f"/{dataset}/{version}/latest/*"],
-            )
+        # if tile_cache_assets:
+        #     background_tasks.add_task(
+        #         flush_cloudfront_cache,
+        #         TILE_CACHE_CLOUDFRONT_ID,
+        #         ["/_latest", f"/{dataset}/{version}/latest/*"],
+        #     )
 
     return await _version_response(dataset, version, row)
 
@@ -334,7 +337,7 @@ async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     asset = await assets.get_default_asset(dataset, version)
 
     logger.debug(f"Processing default asset type {asset.asset_type}")
-    fields: Union[List[FieldMetadata], List[RasterFieldMetadata]] = []
+    fields: Union[List[FieldMetadata], List[RasterBandMetadata]] = []
     if asset.asset_type == AssetType.raster_tile_set:
         fields = await _get_raster_fields(asset)
     else:
@@ -382,11 +385,6 @@ async def create_metadata(
 ):
     dataset, version = dv
     input_data = request.dict(exclude_none=True, by_alias=True)
-    content_date_range = input_data.pop("content_date_range", None)
-    if content_date_range:
-        input_data["content_start_date"] = content_date_range["start_date"]
-        input_data["content_end_date"] = content_date_range["end_date"]
-
     try:
         metadata: VersionMetadata = await metadata_crud.create_version_metadata(
             dataset=dataset, version=version, **input_data
@@ -442,8 +440,8 @@ async def update_metadata(
     return VersionMetadataResponse(data=metadata)
 
 
-async def _get_raster_fields(asset: ORMAsset) -> List[RasterFieldMetadata]:
-    fields: List[RasterFieldMetadata] = []
+async def _get_raster_fields(asset: ORMAsset) -> List[RasterBandMetadata]:
+    fields: List[RasterBandMetadata] = []
     grid = asset.creation_options["grid"]
 
     raster_data_environment = await _get_data_environment(grid)
@@ -461,7 +459,7 @@ async def _get_raster_fields(asset: ORMAsset) -> List[RasterFieldMetadata]:
             if layer.raster_table.default_meaning:
                 field_kwargs["field_values"].append(layer.raster_table.default_meaning)
 
-        fields.append(RasterFieldMetadata(**field_kwargs))
+        fields.append(RasterBandMetadata(**field_kwargs))
 
     return fields
 

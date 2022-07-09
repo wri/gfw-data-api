@@ -20,10 +20,10 @@ from app.models.enum.assets import AssetType
 from app.models.enum.creation_options import ColorMapType, RasterDrivers
 from app.models.enum.pixetl import DataType, Grid, PhotometricType, ResamplingMethod
 from app.models.enum.sources import RasterSourceType
+from app.models.pydantic.asset_metadata import RasterTileSetMetadata
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import Job
-from app.models.pydantic.metadata import RasterTileSetMetadata
 from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.raster_tile_cache_assets.utils import (

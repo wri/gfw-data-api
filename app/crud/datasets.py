@@ -31,16 +31,19 @@ async def get_dataset(dataset: str) -> ORMDataset:
     if row is None:
         raise RecordNotFoundError(f"Dataset with name {dataset} does not exist")
 
+    if getattr(row, "metadata", None) is None:
+        row.metadata = {}
+
     return row
 
 
 async def create_dataset(dataset: str, **data) -> ORMDataset:
+    metadata_data = data.pop("metadata", None)
     try:
         new_dataset: ORMDataset = await ORMDataset.create(dataset=dataset, **data)
     except UniqueViolationError:
         raise RecordAlreadyExistsError(f"Dataset with name {dataset} already exists")
 
-    metadata_data = data.pop("metadata")
     if metadata_data:
         metadata: ORMDatasetMetadata = await metadata_crud.create_dataset_metadata(
             dataset, **metadata_data
@@ -52,9 +55,9 @@ async def create_dataset(dataset: str, **data) -> ORMDataset:
 
 async def update_dataset(dataset: str, **data) -> ORMDataset:
     row: ORMDataset = await get_dataset(dataset)
+    metadata_data = data.pop("metadata", None)
     new_row = await update_data(row, data)
 
-    metadata_data = data.get("metadata")
     if metadata_data:
         try:
             metadata = await metadata_crud.update_dataset_metadata(dataset, **metadata_data)
