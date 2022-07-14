@@ -117,7 +117,8 @@ async def get_assets_by_filter(
             try:
                 asset.metadata = await get_asset_metadata(asset.asset_id)
             except RecordNotFoundError:
-                continue
+                asset.metadata = None
+                
 
     return assets
 
@@ -132,7 +133,7 @@ async def get_asset(asset_id: UUID) -> ORMAsset:
         metadata: ORMAssetMetadata = await get_asset_metadata(asset_id)
         asset.metadata = metadata
     except RecordNotFoundError:
-        pass
+        asset.metadata = None
 
     return asset
 
@@ -165,14 +166,16 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
     if data.get("is_downloadable") is None:
         data["is_downloadable"] = v.is_downloadable
 
+    metadata_data = data.pop("metadata", None)
+    if metadata_data:
+        metadata_data = jsonable_encoder(metadata_data, exclude_unset=True)
     data = _validate_creation_options(**data)
     jsonable_data = jsonable_encoder(data)
-    metadata_data = jsonable_data.pop("metadata", None)
     try:
         new_asset: ORMAsset = await ORMAsset.create(
             dataset=dataset, version=version, **jsonable_data
         )
-        new_asset.metadata = {}
+        new_asset.metadata = None
     except UniqueViolationError:
         raise RecordAlreadyExistsError(
             f"Cannot create asset of type {data['asset_type']}. "
