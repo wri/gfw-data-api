@@ -1,16 +1,14 @@
 from typing import Any, Dict, List, Optional, Type, Union
 from uuid import UUID
-from cachetools import FIFOCache
-from h11 import Data
 
-from pydantic import BaseModel, Field, StrictInt, create_model
+from fastapi.encoders import jsonable_encoder
+from pydantic import StrictInt, create_model
 
+from ...models.orm.assets import Asset as ORMAsset
 from ..enum.assets import AssetType
 from ..enum.pg_types import PGType
 from .base import BaseORMRecord, StrictBaseModel
 from .responses import Response
-from ...models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
-from ...models.orm.assets import Asset as ORMAsset
 
 
 class FieldMetadata(StrictBaseModel):
@@ -24,8 +22,6 @@ class FieldMetadata(StrictBaseModel):
 
 
 class FieldMetadataOut(FieldMetadata):
-    asset_metadata_id: UUID
-
     class Config:
         orm_mode = True
 
@@ -39,10 +35,11 @@ class FieldMetadataUpdate(StrictBaseModel):
 
 
 class RasterTableRow(StrictBaseModel):
-    """
-    Mapping of pixel value to what it represents in physical world.
+    """Mapping of pixel value to what it represents in physical world.
+
     E.g., in ESA land cover data, 10 represents agriculture use.
     """
+
     value: int
     meaning: Any
 
@@ -90,6 +87,7 @@ class RasterTileCacheMetadata(StrictBaseModel):
     # TODO: More?
     fields: Optional[List[FieldMetadata]]
 
+
 class StaticVectorTileCacheMetadata(StrictBaseModel):
     min_zoom: Optional[int]
     max_zoom: Optional[int]
@@ -121,31 +119,31 @@ AssetMetadata = Union[
     DynamicVectorTileCacheMetadata,
     RasterTileCacheMetadata,
     RasterTileSetMetadata,
-    VectorFileMetadata
+    VectorFileMetadata,
 ]
 
 AssetMetadataUpdate = Union[
     DynamicVectorTileCacheMetadata,
     RasterTileSetMetadataUpdate,
-    StaticVectorTileCacheMetadataUpdate
+    StaticVectorTileCacheMetadataUpdate,
 ]
 
 
 def asset_metadata_out(Metadata):
-    if 'bands' in Metadata.__dict__['__fields__'].keys():
+    if "bands" in Metadata.__dict__["__fields__"].keys():
         return create_model(
             f"{Metadata.__name__}Out",
             __base__=(Metadata, BaseORMRecord),
             id=(UUID, ...),
-            bands=(List[RasterBandMetadataOut], ...)
+            bands=(Optional[List[RasterBandMetadataOut]], None),
         )
 
-    if 'fields' in Metadata.__dict__['__fields__']:
+    if "fields" in Metadata.__dict__["__fields__"]:
         return create_model(
             f"{Metadata.__name__}Out",
             __base__=(Metadata, BaseORMRecord),
             id=(UUID, ...),
-            fields=(List[FieldMetadataOut], ...)
+            fields=(Optional[List[FieldMetadataOut]], None),
         )
 
     return create_model(
@@ -160,11 +158,10 @@ AssetMetadataOutList = [
 ]
 
 
-
 # Instantiating Union doesn't support list or spread arguments so instantiating one
 # with couple of the inputs and then setting its __args__ attr with all the parameters
 AssetMetadataOut = Union[AssetMetadataOutList[0], AssetMetadataOutList[4]]
-AssetMetadataOut.__setattr__('__args__', tuple(AssetMetadataOutList))
+AssetMetadataOut.__setattr__("__args__", tuple(AssetMetadataOutList))
 
 
 class AssetMetadataResponse(Response):
@@ -185,10 +182,15 @@ def asset_metadata_factory(asset: ORMAsset) -> AssetMetadata:
         AssetType.shapefile: VectorFileMetadata,
         AssetType.geopackage: VectorFileMetadata,
     }
+
     if asset.asset_type in metadata_factory.keys():
         MetadataOut = asset_metadata_out(metadata_factory[asset.asset_type])
-        if getattr(asset, "metadata", None):
-            md: AssetMetadata = MetadataOut.from_orm(asset.metadata)
+        metadata = getattr(asset, "metadata", None)
+        if metadata:
+            metadata_dict = jsonable_encoder(
+                metadata.__dict__["__values__"], exclude=["asset_id"], exclude_none=True
+            )
+            md: AssetMetadata = MetadataOut(**metadata_dict)
         else:
             md = BaseORMRecord()
     else:
@@ -205,6 +207,3 @@ class FieldsMetadataResponse(Response):
 
 class FieldMetadataResponse(Response):
     data: FieldMetadataOut
-
-
-
