@@ -12,7 +12,9 @@ from fastapi.responses import ORJSONResponse
 
 from ...application import ContextEngine, db
 from ...authentication.token import is_service_account
-from ...crud import assets, tasks, versions
+from ...crud import assets
+from ...crud import metadata as metadata_crud
+from ...crud import tasks, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus
 from ...models.enum.change_log import ChangeLogStatus
@@ -152,7 +154,7 @@ async def _set_failed(task_id: UUID, asset_id: UUID):
     # This is still useful, even if asset creation failed, since it will help to debug possible errors.
     # Query returns empty list in case table does not exist.
     if asset_row.asset_type in [AssetType.database_table, AssetType.geo_database_table]:
-        await _update_asset_field_metadata(
+        await _add_asset_field_metadata(
             asset_row.dataset,
             asset_row.version,
             asset_id,
@@ -248,11 +250,11 @@ async def _get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]
     """Get field list for asset and convert into Metadata object."""
     async with ContextEngine("READ"):
         rows = await db.all(fields, dataset=dataset, version=version)
-    field_metadata = list()
+    fields_metadata = list()
 
     for row in rows:
-        metadata = FieldMetadataOut.from_orm(row)
-        if metadata.name in [
+        field_metadata = FieldMetadataOut.from_orm(row)
+        if field_metadata.name in [
             "geom",
             "geom_wm",
             "gfw_geojson",
@@ -260,21 +262,28 @@ async def _get_field_metadata(dataset: str, version: str) -> List[Dict[str, Any]
             "created_on",
             "updated_on",
         ]:
-            metadata.is_filter = False
-            metadata.is_feature_info = False
-        metadata.alias = metadata.name
-        field_metadata.append(metadata.dict(by_alias=True))
+            field_metadata.is_filter = False
+            field_metadata.is_feature_info = False
+        field_metadata.alias = field_metadata.name
+        fields_metadata.append(field_metadata.dict(by_alias=True))
 
-    return field_metadata
+    return fields_metadata
 
 
-async def _update_asset_field_metadata(dataset, version, asset_id) -> ORMAsset:
-    """Update asset field metadata."""
-
+async def _add_asset_field_metadata(dataset, version, asset_id) -> ORMAsset:
+    """Upsert asset field metadata."""
     fields_metadata: List[Dict[str, Any]] = await _get_field_metadata(dataset, version)
 
     async with ContextEngine("WRITE"):
-        return await assets.update_asset(asset_id, fields=fields_metadata)
+        try:
+            asset_metadata = await metadata_crud.get_asset_metadata(asset_id)
+            await metadata_crud.update_asset_metadata(asset_id, fields=fields_metadata)
+        except RecordNotFoundError:
+            asset_metadata = await metadata_crud.create_asset_metadata(
+                asset_id, fields=fields_metadata
+            )
+
+        return asset_metadata
 
 
 async def _register_dynamic_vector_tile_cache(dataset: str, version: str) -> None:
@@ -288,7 +297,10 @@ async def _register_dynamic_vector_tile_cache(dataset: str, version: str) -> Non
     ] = default_asset.creation_options.get("create_dynamic_vector_tile_cache", None)
 
     creation_options = DynamicVectorTileCacheCreationOptions()
-    creation_options.field_attributes = default_asset.fields
+    fields_metadata = [
+        FieldMetadataOut.from_orm(field) for field in default_asset.metadata.fields
+    ]
+    creation_options.field_attributes = fields_metadata
 
     if create_dynamic_vector_tile_cache:
         data = AssetCreateIn(
@@ -297,7 +309,9 @@ async def _register_dynamic_vector_tile_cache(dataset: str, version: str) -> Non
             is_managed=True,
             creation_options=creation_options,
             metadata=DynamicVectorTileCacheMetadata(
-                min_zoom=creation_options.min_zoom, max_zoom=creation_options.max_zoom
+                min_zoom=creation_options.min_zoom,
+                max_zoom=creation_options.max_zoom,
+                fields=fields_metadata,
             ),
         )
 
@@ -306,7 +320,6 @@ async def _register_dynamic_vector_tile_cache(dataset: str, version: str) -> Non
                 asset_orm = await assets.create_asset(
                     dataset,
                     version,
-                    fields=default_asset.fields,
                     **data.dict(by_alias=True),
                 )
 
@@ -345,10 +358,10 @@ async def table_post_completion_task(asset_id: UUID):
     specify to register a dynamic vector tile cache asset."""
     asset_row: ORMAsset = await assets.get_asset(asset_id)
 
-    # asset_row = await _update_asset_field_metadata(
-    #     asset_row.dataset,
-    #     asset_row.version,
-    #     asset_id,
-    # )
+    _ = await _add_asset_field_metadata(
+        asset_row.dataset,
+        asset_row.version,
+        asset_id,
+    )
 
     await _register_dynamic_vector_tile_cache(asset_row.dataset, asset_row.version)

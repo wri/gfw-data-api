@@ -8,7 +8,6 @@ from fastapi.logger import logger
 from app.crud.assets import create_asset
 from app.models.enum.assets import AssetType
 from app.models.enum.pixetl import DataType
-from app.models.pydantic.asset_metadata import RasterTileSetMetadata
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import GDAL2TilesJob, Job
@@ -107,7 +106,6 @@ async def create_wm_tile_set_job(
         asset_uri=asset_uri,
         is_managed=True,
         creation_options=creation_options,
-        metadata=RasterTileSetMetadata(),
     ).dict(by_alias=True)
     wm_asset_record = await create_asset(dataset, version, **asset_options)
 

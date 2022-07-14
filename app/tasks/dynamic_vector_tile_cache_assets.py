@@ -22,7 +22,7 @@ async def dynamic_vector_tile_cache_asset(
     for dynamic vector tile cache."""
 
     async with ContextEngine("READ"):
-        orm_assets: List[ORMAsset] = await assets.get_assets(dataset, version)
+        orm_assets: List[ORMAsset] = await assets.get_assets_by_filter(dataset, version)
 
     # Let's first assume that the database table is not correctly configured or present
     # And then try to prove that it is.
@@ -35,7 +35,7 @@ async def dynamic_vector_tile_cache_asset(
 
     # My first walrus, yahoo!
     if orm_asset := _get_database_table_asset(orm_assets):
-        if _has_geom_wm(orm_asset.fields) and _has_spatial_index(
+        if _has_geom_wm(orm_asset.metadata.fields) and _has_spatial_index(
             orm_asset.creation_options
         ):
             change_log = ChangeLog(
@@ -60,7 +60,7 @@ def _get_database_table_asset(assets: List[ORMAsset]) -> Optional[ORMAsset]:
 def _has_geom_wm(fields: List[Dict[str, Any]]) -> bool:
     """Check if geom_wm column is present."""
     for field in fields:
-        if field["name"] == "geom_wm":
+        if field.name == "geom_wm":
             return True
     return False
 

@@ -27,6 +27,7 @@ from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.asset_metadata import (
     FieldMetadata,
+    FieldMetadataOut,
     FieldsMetadataResponse,
     RasterBandMetadata,
 )
@@ -130,7 +131,9 @@ async def add_new_version(
 
     input_data["creation_options"] = creation_options
 
-    metadata = input_data.pop('metadata')  # we don't version metadata in assets anymore
+    _ = input_data.pop(
+        "metadata", None
+    )  # we don't include version metadata in assets anymore
     # Everything else happens in the background task asynchronously
     background_tasks.add_task(create_default_asset, dataset, version, input_data, None)
 
@@ -173,12 +176,12 @@ async def update_version(
             ],
         )
 
-        # if tile_cache_assets:
-        #     background_tasks.add_task(
-        #         flush_cloudfront_cache,
-        #         TILE_CACHE_CLOUDFRONT_ID,
-        #         ["/_latest", f"/{dataset}/{version}/latest/*"],
-        #     )
+        if tile_cache_assets:
+            background_tasks.add_task(
+                flush_cloudfront_cache,
+                TILE_CACHE_CLOUDFRONT_ID,
+                ["/_latest", f"/{dataset}/{version}/latest/*"],
+            )
 
     return await _version_response(dataset, version, row)
 
@@ -341,7 +344,7 @@ async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     if asset.asset_type == AssetType.raster_tile_set:
         fields = await _get_raster_fields(asset)
     else:
-        fields = [FieldMetadata(**field) for field in asset.fields]
+        fields = [FieldMetadataOut.from_orm(field) for field in asset.metadata.fields]
 
     return FieldsMetadataResponse(data=fields)
 
