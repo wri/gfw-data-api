@@ -149,6 +149,12 @@ async def get_default_asset(dataset: str, version: str) -> ORMAsset:
             f"Could not find default asset for {dataset}.{version}"
         )
 
+    try:
+        metadata: ORMAssetMetadata = await get_asset_metadata(asset.asset_id)
+        asset.metadata = metadata
+    except RecordNotFoundError:
+        asset.metadata = None
+
     return asset
 
 
