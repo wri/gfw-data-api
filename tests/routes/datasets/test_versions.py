@@ -4,36 +4,20 @@ from urllib.parse import urlparse
 import pytest
 from botocore.exceptions import ClientError
 
-from app.models.pydantic.metadata import VersionMetadata
 from app.settings.globals import S3_ENTRYPOINT_URL
 from app.utils.aws import get_s3_client
 from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
 from tests.conftest import FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
-from tests.utils import create_dataset, create_default_asset
+from tests.utils import (
+    create_dataset,
+    create_default_asset,
+    dataset_metadata,
+    version_metadata
+)
 
-payload = {
-    "metadata": {
-        "title": "string",
-        "subtitle": "string",
-        "function": "string",
-        "resolution": "string",
-        "geographic_coverage": "string",
-        "source": "string",
-        "update_frequency": "string",
-        "cautions": "string",
-        "license": "string",
-        "overview": "string",
-        "citation": "string",
-        "tags": ["string"],
-        "data_language": "string",
-        "key_restrictions": "string",
-        "scale": "string",
-        "added_date": "2020-06-25",
-        "why_added": "string",
-        "other": "string",
-        "learn_more": "string",
-    }
+dataset_payload = {
+    "metadata": dataset_metadata
 }
 
 version_payload = {
@@ -42,7 +26,7 @@ version_payload = {
         "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
         "source_driver": "ESRI Shapefile",
     },
-    "metadata": payload["metadata"],
+    "metadata": version_metadata,
 }
 
 
@@ -59,6 +43,7 @@ async def test_versions(async_client):
     await create_default_asset(
         dataset,
         version,
+        dataset_payload=dataset_payload,
         version_payload=version_payload,
         async_client=async_client,
         execute_batch_jobs=False,
@@ -70,7 +55,9 @@ async def test_versions(async_client):
     assert version_data["data"]["is_latest"] is False
     assert version_data["data"]["dataset"] == dataset
     assert version_data["data"]["version"] == version
-    assert version_data["data"]["metadata"] == VersionMetadata(**payload["metadata"])
+    assert version_data["data"]["metadata"]["resolution"] == version_metadata["resolution"]
+    assert version_data["data"]["metadata"]["creation_date"] == version_metadata["creation_date"]
+
     assert version_data["data"]["version"] == "v1.1.1"
 
     ###############
@@ -171,6 +158,7 @@ async def test_versions(async_client):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip("Deprecated. We don't inherit metadata by default any longer.")
 async def test_version_metadata(async_client):
     """Test if Version inherits metadata from Dataset.
 
@@ -179,42 +167,19 @@ async def test_version_metadata(async_client):
     dataset = "test"
     version = "v1.1.1"
 
-    dataset_metadata = {"title": "Title", "subtitle": "Subtitle"}
-
     response = await async_client.put(
         f"/dataset/{dataset}", json={"metadata": dataset_metadata}
     )
 
-    result_metadata = {
-        "title": "Title",
-        "subtitle": "Subtitle",
-        "function": None,
-        "resolution": None,
-        "geographic_coverage": None,
-        "source": None,
-        "update_frequency": None,
-        "cautions": None,
-        "license": None,
-        "overview": None,
-        "citation": None,
-        "tags": None,
-        "data_language": None,
-        "key_restrictions": None,
-        "scale": None,
-        "added_date": None,
-        "why_added": None,
-        "other": None,
-        "learn_more": None,
-    }
-
     assert response.status_code == 201
 
-    assert response.json()["data"]["metadata"] == result_metadata
+    assert response.json()["data"]["metadata"]["resolution"] == version_metadata["resolution"]
+    assert response.json()["data"]["metadata"]["creation_date"] == version_metadata["creation_date"]
 
-    version_metadata = {"subtitle": "New Subtitle", "version_number": version}
+    new_metadata = {"title": "New title"}
 
-    version_payload = {
-        "metadata": version_metadata,
+    new_payload = {
+        "metadata": new_metadata,
         "creation_options": {
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
@@ -224,47 +189,21 @@ async def test_version_metadata(async_client):
 
     with patch("app.tasks.default_assets.create_default_asset", return_value=True):
         response = await async_client.put(
-            f"/dataset/{dataset}/{version}", json=version_payload
+            f"/dataset/{dataset}/{version}", json=new_payload
         )
 
-    result_metadata = {
-        "title": "Title",
-        "subtitle": "New Subtitle",
-        "function": None,
-        "resolution": None,
-        "geographic_coverage": None,
-        "source": None,
-        "update_frequency": None,
-        "cautions": None,
-        "license": None,
-        "overview": None,
-        "citation": None,
-        "tags": None,
-        "data_language": None,
-        "key_restrictions": None,
-        "scale": None,
-        "added_date": None,
-        "why_added": None,
-        "other": None,
-        "learn_more": None,
-        "version_number": version,
-        "content_date": None,
-        "content_date_range": None,
-        "last_update": None,
-        "download": None,
-        "analysis": None,
-        "data_updates": None,
-    }
+
 
     assert response.status_code == 202
-    assert response.json()["data"]["metadata"] == result_metadata
+    assert response.json()["data"]["metadata"]["resolution"] == version_metadata["title"]
+    assert response.json()["data"]["metadata"]["title"] == new_metadata["title"]
 
     response = await async_client.get(f"/dataset/{dataset}/{version}")
-    assert response.json()["data"]["metadata"] == result_metadata
+    assert response.json()["data"]["metadata"]["title"] == version_metadata["title"]
 
     with patch("fastapi.BackgroundTasks.add_task", return_value=None) as mocked_task:
         response = await async_client.delete(f"/dataset/{dataset}/{version}")
-        assert response.json()["data"]["metadata"] == result_metadata
+        assert response.json()["data"]["metadata"] == version_metadata
         assert mocked_task.called
 
 
@@ -341,21 +280,21 @@ async def test_invalid_source_uri(async_client):
     source_uri = [
         "s3://doesnotexist",
     ]
-    version_payload = {
+    new_payload = {
         "creation_options": {
             "source_type": "vector",
             "source_uri": source_uri,
             "source_driver": "ESRI Shapefile",
         },
-        "metadata": payload["metadata"],
+        "metadata": version_metadata,
     }
 
-    await create_dataset(dataset, async_client, payload)
+    await create_dataset(dataset, async_client, dataset_payload)
 
     # Test creating a version with (some) bad source URIs
     bad_uri = "s3://doesnotexist"
     response = await async_client.put(
-        f"/dataset/{dataset}/{version}", json=version_payload
+        f"/dataset/{dataset}/{version}", json=new_payload
     )
     assert response.status_code == 400
     assert response.json()["status"] == "failed"
@@ -404,7 +343,7 @@ async def test_invalid_source_uri(async_client):
 async def test_put_latest(async_client):
 
     dataset = "test"
-    response = await async_client.put(f"/dataset/{dataset}", json=payload)
+    response = await async_client.put(f"/dataset/{dataset}", json=dataset_payload)
     assert response.status_code == 201
 
     response = await async_client.put(
@@ -453,7 +392,7 @@ async def test_version_put_raster(async_client):
             "overwrite": True,
             "subset": "90N_000E",
         },
-        "metadata": payload["metadata"],
+        "metadata": version_metadata,
     }
 
     await create_default_asset(

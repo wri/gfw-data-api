@@ -18,11 +18,13 @@ from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
 from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import (
+    asset_metadata,
     check_s3_file_present,
     check_tasks_status,
     create_dataset,
     create_default_asset,
     create_version,
+    dataset_metadata,
     delete_s3_files,
     generate_uuid,
     poll_jobs,
@@ -135,7 +137,7 @@ async def test_assets_vector_source_max_parents(async_client):
         },
     }
 
-    await create_dataset(dataset, async_client, {"metadata": {}})
+    await create_dataset(dataset, async_client, {"metadata": dataset_metadata})
 
     with patch(
         "app.tasks.batch.submit_batch_job", side_effect=generate_uuid
@@ -543,7 +545,7 @@ async def _test_raster_tile_cache(
             "symbology": symbology,
             "implementation": symbology["type"],
         },
-        "metadata": {},
+        "metadata": asset_metadata,
     }
 
     old_assets_resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")

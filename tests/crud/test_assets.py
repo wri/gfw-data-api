@@ -9,17 +9,15 @@ from app.application import ContextEngine
 from app.crud.assets import (
     create_asset,
     delete_asset,
-    get_all_assets,
     get_asset,
-    get_assets,
-    get_assets_by_type,
+    get_assets_by_filter,
     update_asset,
 )
 from app.crud.datasets import create_dataset
 from app.crud.versions import create_version
 from app.errors import RecordAlreadyExistsError, RecordNotFoundError
 from app.models.pydantic.change_log import ChangeLog
-from app.models.pydantic.asset_metadata import DatabaseTableMetadata, AssetMetadataOut
+from app.models.pydantic.asset_metadata import DatabaseTableMetadata
 from app.models.pydantic.metadata import VersionMetadata, DatasetMetadata
 
 from ..utils import dataset_metadata, version_metadata, asset_metadata
@@ -43,15 +41,9 @@ async def test_assets():
     # There should be no assert for current version
     # This will throw an error b/c when initialized correctly,
     # there will be always a default asset
-    result = ""
-    try:
-        await get_assets(dataset_name, version_name)
-    except RecordNotFoundError as e:
-        result = str(e)
+    assets = await get_assets_by_filter(dataset=dataset_name, version=version_name)
 
-    assert (
-        result == f"No assets for version with name {dataset_name}.{version_name} found"
-    )
+    assert len(assets) == 0
 
     # Writing to DB using context engine with "READ" shouldn't work
     async with ContextEngine("READ"):
@@ -84,7 +76,7 @@ async def test_assets():
     assert new_row.status == "pending"
     assert new_row.is_managed is True
     assert new_row.creation_options == {}
-    assert new_row.metadata == {}
+    assert new_row.metadata == None
     assert new_row.change_log == []
 
     # This shouldn't work a second time
@@ -106,7 +98,7 @@ async def test_assets():
         )
 
     # There should be an entry now
-    rows = await get_assets(dataset_name, version_name)
+    rows = await get_assets_by_filter(dataset=dataset_name, version=version_name)
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
@@ -115,21 +107,21 @@ async def test_assets():
     asset_id = rows[0].asset_id
 
     # There should be an entry now
-    rows = await get_all_assets()
+    rows = await get_assets_by_filter()
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
     assert rows[0].version == version_name
 
     # There should be an entry now
-    rows = await get_assets_by_type("Database table")
+    rows = await get_assets_by_filter(asset_types=["Database table"])
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
     assert rows[0].version == version_name
 
     # There should be no such entry
-    rows = await get_assets_by_type("Vector tile cache")
+    rows = await get_assets_by_filter(asset_types=["Vector tile cache"])
     assert isinstance(rows, list)
     assert len(rows) == 0
 
@@ -172,7 +164,7 @@ async def test_assets():
     assert row.version == version_name
 
     # After deleting the dataset, there should be an empty DB
-    rows = await get_all_assets()
+    rows = await get_assets_by_filter()
     assert isinstance(rows, list)
     assert len(rows) == 0
 
@@ -213,17 +205,17 @@ async def test_assets_metadata():
     assert asset.metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
 
     async with ContextEngine("READ"):
-        assets = await get_assets(dataset, version)
+        assets = await get_assets_by_filter(dataset=dataset, version=version)
     assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
     assert assets[0].metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
 
     async with ContextEngine("READ"):
-        assets = await get_assets_by_type("Database table")
+        assets = await get_assets_by_filter(asset_types=["Database table"])
     assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
     assert assets[0].metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
 
     async with ContextEngine("READ"):
-        assets = await get_all_assets()
+        assets = await get_assets_by_filter()
     assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
     assert assets[0].metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
 

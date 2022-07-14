@@ -6,7 +6,7 @@ from pendulum.parsing.exceptions import ParserError
 
 from app.application import ContextEngine, db
 from tests import BUCKET, TSV_NAME
-from tests.utils import create_default_asset
+from tests.utils import create_default_asset, version_metadata
 
 
 @pytest.mark.asyncio
@@ -71,7 +71,7 @@ async def test_features(async_client, batch_client):
                 {"name": "adm2", "data_type": "integer"},
             ],
         },
-        "metadata": {},
+        "metadata": version_metadata,
     }
 
     # Create default asset in mocked Batch

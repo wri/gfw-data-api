@@ -49,8 +49,9 @@ asset_metadata = {
         }
     ]
 }
+
 generic_version_payload = {
-    "metadata": {},
+    "metadata": version_metadata,
     "creation_options": {
         "source_driver": "ESRI Shapefile",
         "source_type": "vector",
@@ -63,7 +64,6 @@ async def create_dataset(
     dataset_name, async_client, payload: Dict[str, Any] = generic_dataset_payload
 ) -> Dict[str, Any]:
     resp = await async_client.put(f"/dataset/{dataset_name}", json=payload)
-    # print(f"CREATE_DATASET_RESPONSE: {resp.json()}")
     assert resp.json()["status"] == "success"
     return resp.json()["data"]
 
@@ -73,7 +73,6 @@ async def create_version(
 ) -> Dict[str, Any]:
 
     resp = await async_client.put(f"/dataset/{dataset}/{version}", json=payload)
-    # print(f"CREATE_VERSION RESPONSE: {resp.json()}")
     assert resp.json()["status"] == "success"
 
     return resp.json()["data"]
@@ -103,7 +102,6 @@ async def create_default_asset(
 
     # Verify that a record for the default asset was created
     resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
-    # print(f"ASSET RESP: {resp.json()}")
     assert len(resp.json()["data"]) == 1
     assert resp.json()["status"] == "success"
 

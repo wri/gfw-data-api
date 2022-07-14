@@ -11,7 +11,7 @@ from app.models.orm.geostore import Geostore
 from app.models.pydantic.geostore import Geometry, GeostoreCommon
 
 from .. import BUCKET, GEOJSON_NAME, GEOJSON_PATH, GEOJSON_PATH2, PORT, SHP_NAME
-from ..utils import create_default_asset
+from ..utils import create_default_asset, version_metadata
 from . import (
     check_asset_status,
     check_dynamic_vector_tile_cache_status,
@@ -40,7 +40,7 @@ async def test_vector_source_asset(batch_client, async_client):
                 "source_driver": "GeoJSON",
                 "create_dynamic_vector_tile_cache": True,
             },
-            "metadata": {},
+            "metadata": version_metadata,
         }
 
         # we only need to create the dataset once
@@ -205,81 +205,91 @@ async def test_vector_source_asset(batch_client, async_client):
                     "name": "gfw_fid",
                     "alias": "gfw_fid",
                     "description": None,
-                    "type": "integer",
+                    "data_type": "integer",
                     "is_feature_info": True,
                     "is_filter": True,
+                    "unit": None
                 },
                 {
                     "name": "fid",
                     "alias": "fid",
                     "description": None,
-                    "type": "numeric",
+                    "data_type": "numeric",
                     "is_feature_info": True,
                     "is_filter": True,
+                    "unit": None
                 },
                 {
                     "name": "geom",
                     "alias": "geom",
                     "description": None,
-                    "type": "geometry",
+                    "data_type": "geometry",
                     "is_feature_info": False,
                     "is_filter": False,
+                    "unit": None
                 },
                 {
                     "name": "geom_wm",
                     "alias": "geom_wm",
                     "description": None,
-                    "type": "geometry",
+                    "data_type": "geometry",
                     "is_feature_info": False,
                     "is_filter": False,
+                    "unit": None
                 },
                 {
                     "name": "gfw_area__ha",
                     "alias": "gfw_area__ha",
                     "description": None,
-                    "type": "numeric",
+                    "data_type": "numeric",
                     "is_feature_info": True,
                     "is_filter": True,
+                    "unit": None
                 },
                 {
                     "name": "gfw_geostore_id",
                     "alias": "gfw_geostore_id",
                     "description": None,
-                    "type": "uuid",
+                    "data_type": "uuid",
                     "is_feature_info": True,
                     "is_filter": True,
+                    "unit": None
                 },
                 {
                     "name": "gfw_geojson",
                     "alias": "gfw_geojson",
                     "description": None,
-                    "type": "text",
+                    "data_type": "text",
                     "is_feature_info": False,
                     "is_filter": False,
+                    "unit": None
                 },
                 {
                     "name": "gfw_bbox",
                     "alias": "gfw_bbox",
                     "description": None,
-                    "type": "ARRAY",
+                    "data_type": "ARRAY",
                     "is_feature_info": False,
                     "is_filter": False,
+                    "unit": None
                 },
                 {
                     "name": "created_on",
                     "alias": "created_on",
                     "description": None,
-                    "type": "timestamp without time zone",
+                    "data_type": "timestamp without time zone",
                     "is_feature_info": False,
                     "is_filter": False,
+                    "unit": None
                 },
                 {
                     "name": "updated_on",
                     "alias": "updated_on",
                     "description": None,
-                    "type": "timestamp without time zone",
+                    "data_type": "timestamp without time zone",
                     "is_feature_info": False,
                     "is_filter": False,
+                    "unit": None
                 },
             ]
         else:
@@ -292,6 +302,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "data_type": "integer",
                     "is_feature_info": True,
                     "is_filter": True,
+                    "unit": None
                 },
                 {
                     "name": "geom",
@@ -300,6 +311,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "data_type": "geometry",
                     "is_feature_info": False,
                     "is_filter": False,
+                    "unit": None
                 },
                 {
                     "name": "geom_wm",
@@ -308,6 +320,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "data_type": "geometry",
                     "is_feature_info": False,
                     "is_filter": False,
+                    "unit": None
                 },
                 {
                     "name": "gfw_area__ha",
@@ -316,6 +329,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "data_type": "numeric",
                     "is_feature_info": True,
                     "is_filter": True,
+                    "unit": None
                 },
                 {
                     "name": "gfw_geostore_id",
@@ -324,6 +338,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "data_type": "uuid",
                     "is_feature_info": True,
                     "is_filter": True,
+                    "unit": None
                 },
                 {
                     "name": "gfw_geojson",
@@ -332,6 +347,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "data_type": "text",
                     "is_feature_info": False,
                     "is_filter": False,
+                    "unit": None
                 },
                 {
                     "name": "gfw_bbox",
@@ -340,6 +356,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "data_type": "ARRAY",
                     "is_feature_info": False,
                     "is_filter": False,
+                    "unit": None
                 },
                 {
                     "name": "created_on",
@@ -348,6 +365,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "data_type": "timestamp without time zone",
                     "is_feature_info": False,
                     "is_filter": False,
+                    "unit": None
                 },
                 {
                     "name": "updated_on",
@@ -356,6 +374,7 @@ async def test_vector_source_asset(batch_client, async_client):
                     "data_type": "timestamp without time zone",
                     "is_feature_info": False,
                     "is_filter": False,
+                    "unit": None
                 },
             ]
 

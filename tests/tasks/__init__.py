@@ -142,21 +142,21 @@ async def check_task_status(asset_id, nb_jobs, last_job_name):
 
 
 async def check_dynamic_vector_tile_cache_status(dataset, version):
-    rows = await assets.get_assets(dataset, version)
+    rows = await assets.get_assets_by_filter(dataset, version)
     asset_row = rows[0]
 
     # SHP files have one additional attribute (fid)
     if asset_row.version == "v1.1.0":
-        assert len(asset_row.fields) == 10
+        assert len(asset_row.metadata.fields) == 10
     else:
-        assert len(asset_row.fields) == 9
-
-    rows = await assets.get_assets(dataset, version)
-    # v = await versions.get_version(dataset, version)
-    # print(v.change_log)
+        assert len(asset_row.metadata.fields) == 9
 
     assert len(rows) == 2
-    assert rows[0].asset_type == AssetType.geo_database_table
-    assert rows[1].asset_type == AssetType.dynamic_vector_tile_cache
-    assert rows[1].status == AssetStatus.saved
-    assert rows[0].fields == rows[1].fields
+    geo_database, dynamic_vector_tile = rows
+    assert geo_database.asset_type == AssetType.geo_database_table
+    assert dynamic_vector_tile.asset_type == AssetType.dynamic_vector_tile_cache
+    assert dynamic_vector_tile.status == AssetStatus.saved
+    assert geo_database.metadata.fields[0].name == dynamic_vector_tile.metadata.fields[0].name
+    assert geo_database.metadata.fields[0].data_type == dynamic_vector_tile.metadata.fields[0].data_type
+    assert geo_database.metadata.fields[1].name == dynamic_vector_tile.metadata.fields[1].name
+    assert geo_database.metadata.fields[1].data_type == dynamic_vector_tile.metadata.fields[1].data_type

@@ -9,7 +9,7 @@ from app.application import ContextEngine, db
 from app.utils.aws import get_s3_client
 
 from .. import APPEND_TSV_NAME, BUCKET, PORT, TSV_NAME, TSV_PATH
-from ..utils import create_default_asset, poll_jobs
+from ..utils import create_default_asset, poll_jobs, version_metadata
 from . import check_asset_status, check_task_status, check_version_status
 
 
@@ -79,7 +79,7 @@ async def test_table_source_asset(batch_client, async_client):
                 {"name": "adm2", "data_type": "integer"},
             ],
         },
-        "metadata": {},
+        "metadata": version_metadata,
     }
 
     #####################
@@ -268,7 +268,7 @@ async def test_table_source_asset_parallel(batch_client, async_client):
                 {"name": "adm2", "data_type": "integer"},
             ],
         },
-        "metadata": {},
+        "metadata": version_metadata,
     }
 
     #####################
