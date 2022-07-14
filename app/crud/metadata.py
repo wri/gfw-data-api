@@ -2,10 +2,7 @@ from copy import deepcopy
 from typing import List, Union
 from uuid import UUID
 
-from asyncpg import DuplicateDatabaseError, UniqueViolationError
-
-from app.models.enum.assets import AssetType
-from app.models.orm.assets import Asset as ORMAsset
+from asyncpg import UniqueViolationError
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.enum import entity
@@ -15,10 +12,6 @@ from ..models.orm.asset_metadata import RasterBandMetadata as ORMRasterBandMetad
 from ..models.orm.base import Base
 from ..models.orm.dataset_metadata import DatasetMetadata as ORMDatasetMetadata
 from ..models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
-from ..models.orm.versions import Version as ORMVersion
-
-# from ..models.orm.assets import Asset as ORMAsset
-# from .assets import get_asset
 
 
 async def create_dataset_metadata(dataset: str, **data) -> ORMDatasetMetadata:
@@ -193,22 +186,34 @@ async def get_asset_metadata(asset_id: UUID):
     if bands:
         asset_metadata.bands = bands
 
-    fields: List[ORMFieldMetadata] = await ORMFieldMetadata.query.where(
-        ORMFieldMetadata.asset_metadata_id == asset_metadata.id
-    ).gino.all()
-    if fields:
-        asset_metadata.fields = fields
+    asset_metadata.fields = await get_asset_fields(asset_id)
 
     return asset_metadata
 
 
 async def update_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
     """Update asset metadata."""
-    metadata: ORMAssetMetadata = await get_asset_metadata(asset_id)
+    fields = data.pop("fields", None)
 
-    await metadata.update(**data).apply()
+    asset_metadata: ORMAssetMetadata = await get_asset_metadata(asset_id)
 
-    return metadata
+    if data:
+        await asset_metadata.update(**data).apply()
+
+    fields_metadata = []
+    if fields:
+        for field in fields:
+            try:
+                field_metadata = await update_field_metadata(
+                    asset_metadata.id, field["name"], **field
+                )
+            except RecordNotFoundError:
+                field_metadata = await create_field_metadata(asset_metadata.id, **field)
+            fields_metadata.append(field_metadata)
+
+        asset_metadata.fields = fields_metadata
+
+    return asset_metadata
 
 
 async def delete_asset_metadata(asset_id: UUID) -> ORMAssetMetadata:
@@ -239,13 +244,13 @@ async def create_field_metadata(asset_metadata_id: UUID, **data) -> ORMFieldMeta
 
 
 async def update_field_metadata(
-    asset_id: UUID, field_name: str, **data
+    metadata_id: UUID, field_name: str, **data
 ) -> ORMFieldMetadata:
     field_metadata = (
         await (
             ORMFieldMetadata.join(ORMAssetMetadata)
             .select()
-            .where(ORMAssetMetadata.asset_id == asset_id)
+            .where(ORMAssetMetadata.id == metadata_id)
             .where(ORMFieldMetadata.name == field_name)
         )
         .gino.load(ORMFieldMetadata)
@@ -253,7 +258,7 @@ async def update_field_metadata(
     )
 
     if field_metadata is None:
-        raise RecordNotFoundError("")
+        raise RecordNotFoundError("No field metadata record found.")
 
     await field_metadata.update(**data).apply()
 
