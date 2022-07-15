@@ -187,9 +187,19 @@ def asset_metadata_factory(asset: ORMAsset) -> AssetMetadata:
         MetadataOut = asset_metadata_out(metadata_factory[asset.asset_type])
         metadata = getattr(asset, "metadata", None)
         if metadata:
+            fields = getattr(metadata, "fields", None)
             metadata_dict = jsonable_encoder(
                 metadata.__dict__["__values__"], exclude=["asset_id"], exclude_none=True
             )
+            if fields:
+                fields_list = [
+                    jsonable_encoder(
+                        field.__dict__["__values__"],
+                        exclude=["asset_metadata_id"],
+                        exclude_none=True
+                    )  for field in fields
+                ]
+                metadata_dict["fields"] = fields_list
             md: AssetMetadata = MetadataOut(**metadata_dict)
         else:
             md = BaseORMRecord()
