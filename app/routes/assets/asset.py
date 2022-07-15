@@ -18,22 +18,24 @@ from starlette.responses import JSONResponse
 from app.models.pydantic.responses import Response
 
 from ...authentication.token import is_admin
-from ...crud import assets, tasks, metadata as metadata_crud
+from ...crud import assets
+from ...crud import metadata as metadata_crud
+from ...crud import tasks
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import is_database_asset, is_single_file_asset
+from ...models.orm.asset_metadata import FieldMetadata as ORMFieldMetadata
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.tasks import Task as ORMTask
-from ...models.orm.asset_metadata import FieldMetadata as ORMFieldMetadata
-from ...models.pydantic.assets import AssetResponse, AssetType, AssetUpdateIn
 from ...models.pydantic.asset_metadata import (
     AssetMetadata,
     AssetMetadataResponse,
     AssetMetadataUpdate,
-    FieldMetadataUpdate,
     FieldMetadataResponse,
+    FieldMetadataUpdate,
     FieldsMetadataResponse,
-    asset_metadata_factory
+    asset_metadata_factory,
 )
+from ...models.pydantic.assets import AssetResponse, AssetType, AssetUpdateIn
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
     CreationOptions,
@@ -256,8 +258,9 @@ async def get_stats(asset_id: UUID = Path(...)):
     response_model=FieldsMetadataResponse,
 )
 async def get_fields(asset_id: UUID = Path(...)):
+    asset_metadata = await metadata_crud.get_asset_metadata(asset_id)
     fields: List[ORMFieldMetadata] = await metadata_crud.get_asset_fields(
-        asset_id
+        asset_metadata.id
     )
 
     return FieldsMetadataResponse(data=fields)
@@ -270,14 +273,12 @@ async def get_fields(asset_id: UUID = Path(...)):
     response_model=FieldMetadataResponse,
 )
 async def update_field_metadata(
-    *,
-    asset_id: UUID = Path(...),
-    field_name: str,
-    request: FieldMetadataUpdate
+    *, asset_id: UUID = Path(...), field_name: str, request: FieldMetadataUpdate
 ):
     input_data = request.dict(exclude_none=True, by_alias=True)
+    metadata = await metadata_crud.get_asset_metadata(asset_id)
     field_metadata: ORMFieldMetadata = await metadata_crud.update_field_metadata(
-        asset_id, field_name, **input_data
+        metadata.id, field_name, **input_data
     )
 
     return FieldMetadataResponse(data=field_metadata)
@@ -292,7 +293,6 @@ async def update_field_metadata(
 async def get_metadata(asset_id: UUID = Path(...)):
     try:
         asset = await assets.get_asset(asset_id)
-        asset_metadata: ORMAsset = await metadata_crud.get_asset_metadata(asset_id)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -307,16 +307,14 @@ async def get_metadata(asset_id: UUID = Path(...)):
     tags=["Assets"],
     response_model=AssetMetadataResponse,
 )
-async def create_metadata(
-    *,
-    asset_id: UUID = Path(...),
-    request: AssetMetadata
-):
+async def create_metadata(*, asset_id: UUID = Path(...), request: AssetMetadata):
     input_data = request.dict(exclude_none=True, by_alias=True)
     asset = await assets.get_asset(asset_id)
 
     try:
-        asset.metadata = await metadata_crud.create_asset_metadata(asset_id, **input_data)
+        asset.metadata = await metadata_crud.create_asset_metadata(
+            asset_id, **input_data
+        )
     except RecordAlreadyExistsError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -331,17 +329,15 @@ async def create_metadata(
     tags=["Assets"],
     response_model=AssetMetadataResponse,
 )
-async def update_metadata(
-    *,
-    asset_id: UUID = Path(...),
-    request: AssetMetadataUpdate
-):
+async def update_metadata(*, asset_id: UUID = Path(...), request: AssetMetadataUpdate):
 
     input_data = request.dict(exclude_none=True, by_alias=True)
 
     try:
         asset = await assets.get_asset(asset_id)
-        asset.metadata = await metadata_crud.update_asset_metadata(asset_id, **input_data)
+        asset.metadata = await metadata_crud.update_asset_metadata(
+            asset_id, **input_data
+        )
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
