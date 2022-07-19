@@ -1,11 +1,10 @@
 from copy import deepcopy
-from typing import List, Union
+from typing import List
 from uuid import UUID
 
 from asyncpg import UniqueViolationError
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
-from ..models.enum import entity
 from ..models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
 from ..models.orm.asset_metadata import FieldMetadata as ORMFieldMetadata
 from ..models.orm.asset_metadata import RasterBandMetadata as ORMRasterBandMetadata
@@ -27,25 +26,6 @@ async def create_dataset_metadata(dataset: str, **data) -> ORMDatasetMetadata:
         )
 
     return new_metadata
-
-
-async def get_entity_metadata(
-    metadata_id: str, entity_type: entity.EntityType
-) -> Union[ORMDatasetMetadata, ORMVersionMetadata]:
-    """Get entity metadata by id."""
-
-    metadata: ORMDatasetMetadata
-    if entity_type == "dataset":
-        metadata = await ORMDatasetMetadata.get([metadata_id])
-    elif entity_type == "version":
-        metadata = await ORMVersionMetadata.get([metadata_id])
-    else:
-        raise NotImplementedError(f"Entity type {entity_type} is not recognized.")
-
-    if metadata is None:
-        raise RecordNotFoundError(f"Could not find requested metadata {metadata_id}")
-
-    return metadata
 
 
 async def get_dataset_metadata(dataset: str) -> ORMDatasetMetadata:
