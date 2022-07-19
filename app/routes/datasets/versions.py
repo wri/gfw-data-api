@@ -13,16 +13,24 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
 from ...authentication.token import is_admin
-from ...crud import assets, versions
+from ...crud import assets
+from ...crud import metadata as metadata_crud
+from ...crud import versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
+from ...models.pydantic.asset_metadata import (
+    FieldMetadata,
+    FieldMetadataOut,
+    FieldsMetadataResponse,
+    RasterBandMetadata,
+)
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
     CreationOptions,
@@ -31,9 +39,11 @@ from ...models.pydantic.creation_options import (
 )
 from ...models.pydantic.extent import Extent, ExtentResponse
 from ...models.pydantic.metadata import (
-    FieldMetadata,
-    FieldMetadataResponse,
-    RasterFieldMetadata,
+    VersionMetadata,
+    VersionMetadataIn,
+    VersionMetadataResponse,
+    VersionMetadataUpdate,
+    VersionMetadataWithParentResponse,
 )
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.versions import (
@@ -121,6 +131,9 @@ async def add_new_version(
 
     input_data["creation_options"] = creation_options
 
+    _ = input_data.pop(
+        "metadata", None
+    )  # we don't include version metadata in assets anymore
     # Everything else happens in the background task asynchronously
     background_tasks.add_task(create_default_asset, dataset, version, input_data, None)
 
@@ -320,24 +333,118 @@ async def get_stats(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     "/{dataset}/{version}/fields",
     response_class=ORJSONResponse,
     tags=["Versions"],
-    response_model=FieldMetadataResponse,
+    response_model=FieldsMetadataResponse,
 )
 async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     dataset, version = dv
     asset = await assets.get_default_asset(dataset, version)
 
     logger.debug(f"Processing default asset type {asset.asset_type}")
-    fields: Union[List[FieldMetadata], List[RasterFieldMetadata]] = []
+    fields: Union[List[FieldMetadata], List[RasterBandMetadata]] = []
     if asset.asset_type == AssetType.raster_tile_set:
         fields = await _get_raster_fields(asset)
     else:
-        fields = [FieldMetadata(**field) for field in asset.fields]
+        fields = [FieldMetadataOut.from_orm(field) for field in asset.metadata.fields]
 
-    return FieldMetadataResponse(data=fields)
+    return FieldsMetadataResponse(data=fields)
 
 
-async def _get_raster_fields(asset: ORMAsset) -> List[RasterFieldMetadata]:
-    fields: List[RasterFieldMetadata] = []
+@router.get(
+    "/{dataset}/{version}/metadata",
+    response_class=ORJSONResponse,
+    response_model=Union[VersionMetadataWithParentResponse, VersionMetadataResponse],
+    tags=["Versions"],
+)
+async def get_metadata(
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
+    include_dataset_metadata: bool = Query(
+        False, description="Whether to include dataset metadata."
+    ),
+):
+    dataset, version = dv
+
+    try:
+        metadata = await metadata_crud.get_version_metadata(dataset, version)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    if include_dataset_metadata:
+        return VersionMetadataWithParentResponse(data=metadata)
+
+    return VersionMetadataResponse(data=metadata)
+
+
+@router.post(
+    "/{dataset}/{version}/metadata",
+    response_model=VersionMetadataResponse,
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+)
+async def create_metadata(
+    *,
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
+    is_authorized: bool = Depends(is_admin),
+    request: VersionMetadataIn,
+):
+    dataset, version = dv
+    input_data = request.dict(exclude_none=True, by_alias=True)
+    try:
+        metadata: VersionMetadata = await metadata_crud.create_version_metadata(
+            dataset=dataset, version=version, **input_data
+        )
+    except RecordAlreadyExistsError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return VersionMetadataResponse(data=metadata)
+
+
+@router.delete(
+    "/{dataset}/{version}/metadata",
+    response_model=VersionMetadataResponse,
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+)
+async def delete_metadata(
+    *,
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
+    is_authorized: bool = Depends(is_admin),
+):
+    dataset, version = dv
+
+    try:
+        metadata: VersionMetadata = await metadata_crud.delete_version_metadata(
+            dataset, version
+        )
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return VersionMetadataResponse(data=metadata)
+
+
+@router.patch(
+    "/{dataset}/{version}/metadata",
+    response_model=VersionMetadataResponse,
+    response_class=ORJSONResponse,
+    tags=["Versions"],
+)
+async def update_metadata(
+    *,
+    dv: Tuple[str, str] = Depends(dataset_version_dependency),
+    is_authorized: bool = Depends(is_admin),
+    request: VersionMetadataUpdate,
+):
+    dataset, version = dv
+    input_data = request.dict(exclude_none=True, by_alias=True)
+
+    metadata = await metadata_crud.update_version_metadata(
+        dataset, version, **input_data
+    )
+
+    return VersionMetadataResponse(data=metadata)
+
+
+async def _get_raster_fields(asset: ORMAsset) -> List[RasterBandMetadata]:
+    fields: List[RasterBandMetadata] = []
     grid = asset.creation_options["grid"]
 
     raster_data_environment = await _get_data_environment(grid)
@@ -355,7 +462,7 @@ async def _get_raster_fields(asset: ORMAsset) -> List[RasterFieldMetadata]:
             if layer.raster_table.default_meaning:
                 field_kwargs["field_values"].append(layer.raster_table.default_meaning)
 
-        fields.append(RasterFieldMetadata(**field_kwargs))
+        fields.append(RasterBandMetadata(**field_kwargs))
 
     return fields
 
