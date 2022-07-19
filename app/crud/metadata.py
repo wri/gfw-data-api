@@ -269,11 +269,11 @@ async def update_field_metadata(
     return field_metadata
 
 
-async def get_asset_fields(asset_id: UUID) -> List[ORMFieldMetadata]:
+async def get_asset_fields(asset_metadata_id: UUID) -> List[ORMFieldMetadata]:
     field_metadata: List[ORMFieldMetadata] = await (
-        ORMFieldMetadata.join(ORMAssetMetadata)
-        .select()
-        .where(ORMAssetMetadata.asset_id == asset_id)
+        ORMFieldMetadata.query.where(
+            ORMFieldMetadata.asset_metadata_id == asset_metadata_id
+        )
     ).gino.all()
 
     return field_metadata
