@@ -32,9 +32,6 @@ async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
             f"No assets for version with name {dataset}.{version} found"
         )
 
-    v: ORMVersion = await versions.get_version(dataset, version)
-
-    # return update_all_metadata(rows, v)
     return rows
 
 
@@ -118,7 +115,6 @@ async def get_assets_by_filter(
                 asset.metadata = await get_asset_metadata(asset.asset_id)
             except RecordNotFoundError:
                 asset.metadata = None
-                
 
     return assets
 
