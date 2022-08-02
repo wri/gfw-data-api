@@ -65,7 +65,7 @@ async def raster_tile_cache_asset(
                 AssetType.raster_tile_set,
                 source_asset.creation_options,
             )
-        ).replace("/geotiff", "/gdal-geotiff")
+        )
     ]
 
     # The first thing we do for each zoom level is reproject the source asset
@@ -150,7 +150,9 @@ async def raster_tile_cache_asset(
         symbology_jobs: List[Job]
         symbology_uri: str
 
-        symbology_co = source_asset_co.copy(deep=True)
+        symbology_co = source_asset_co.copy(
+            deep=True, update={"source_uri": [source_reprojection_uri]}
+        )
         symbology_jobs, symbology_uri = await symbology_function(
             dataset,
             version,
