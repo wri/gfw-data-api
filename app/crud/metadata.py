@@ -170,7 +170,7 @@ async def get_asset_metadata(asset_id: UUID):
     if bands:
         asset_metadata.bands = bands
 
-    asset_metadata.fields = await get_asset_fields(asset_id)
+    asset_metadata.fields = await get_asset_fields(asset_metadata.id)
 
     return asset_metadata
 
