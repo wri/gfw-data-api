@@ -22,6 +22,8 @@ async def get_datasets() -> List[ORMDataset]:
 
 
 async def get_dataset(dataset: str) -> ORMDataset:
+    # the loader syntax attaches `dataset_metadata` records to the dataset 
+    # in the `metadata` attribute https://python-gino.org/docs/en/1.1b2/how-to/loaders.html#
     row: ORMDataset = (
         await ORMDataset.load(metadata=ORMDatasetMetadata)
         .where(ORMDataset.dataset == dataset)
