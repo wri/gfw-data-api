@@ -230,19 +230,7 @@ async def create_field_metadata(asset_metadata_id: UUID, **data) -> ORMFieldMeta
 async def update_field_metadata(
     metadata_id: UUID, field_name: str, **data
 ) -> ORMFieldMetadata:
-    field_metadata = (
-        await (
-            ORMFieldMetadata.join(ORMAssetMetadata)
-            .select()
-            .where(ORMAssetMetadata.id == metadata_id)
-            .where(ORMFieldMetadata.name == field_name)
-        )
-        .gino.load(ORMFieldMetadata)
-        .first()
-    )
-
-    if field_metadata is None:
-        raise RecordNotFoundError("No field metadata record found.")
+    field_metadata: ORMFieldMetadata = await get_asset_field(metadata_id, field_name)
 
     await field_metadata.update(**data).apply()
 
@@ -250,11 +238,22 @@ async def update_field_metadata(
 
 
 async def get_asset_fields(asset_metadata_id: UUID) -> List[ORMFieldMetadata]:
-    field_metadata: List[ORMFieldMetadata] = await (
+    fields_metadata: List[ORMFieldMetadata] = await (
         ORMFieldMetadata.query.where(
             ORMFieldMetadata.asset_metadata_id == asset_metadata_id
         )
     ).gino.all()
+
+    return fields_metadata
+
+
+async def get_asset_field(asset_metadata_id: UUID, field_name: str) -> ORMFieldMetadata:
+    field_metadata: ORMFieldMetadata = await ORMFieldMetadata.get(
+        [asset_metadata_id, field_name]
+    )
+
+    if field_metadata is None:
+        raise RecordNotFoundError("No field metadata record found.")
 
     return field_metadata
 

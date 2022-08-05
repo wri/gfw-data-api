@@ -266,6 +266,25 @@ async def get_fields(asset_id: UUID = Path(...)):
     return FieldsMetadataResponse(data=fields)
 
 
+@router.get(
+    "/{asset_id}/fields/{field_name}",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=FieldMetadataResponse,
+)
+async def get_field_metadata(*, asset_id: UUID = Path(...), field_name: str):
+    metadata = await metadata_crud.get_asset_metadata(asset_id)
+
+    try:
+        field_metadata: ORMFieldMetadata = await metadata_crud.get_asset_field(
+            metadata.id, field_name
+        )
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return FieldMetadataResponse(data=field_metadata)
+
+
 @router.patch(
     "/{asset_id}/fields/{field_name}",
     response_class=ORJSONResponse,
