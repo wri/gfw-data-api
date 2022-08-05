@@ -63,7 +63,7 @@ async def test_invalid_field_returns_422_code(
     (tile_cache_asset,) = assets
 
     resp = await async_client.patch(
-        f"asset/{tile_cache_asset.asset_id}/metadata", json={"fake_field": 2}
+        f"asset/{assets[0].asset_id}/metadata", json={"fake_field": 2}
     )
     assert resp.status_code == 422
 
@@ -73,6 +73,23 @@ async def test_invalid_field_returns_422_code(
         json={"min_zoom": 2, "resolution": 3},
     )
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_get_field_metadata(
+    generic_vector_source_version, async_client: AsyncClient
+):
+    dataset, version, _ = generic_vector_source_version
+    assets = await assets_crud.get_assets_by_filter(
+        dataset, version, asset_types=["Dynamic vector tile cache"]
+    )
+    assert (len(assets)) == 1
+
+    tile_cache_asset = assets[0]
+    resp = await async_client.get(f"asset/{tile_cache_asset.asset_id}/fields/geom")
+
+    assert resp.json()["data"]["name"] == "geom"
+    assert resp.json()["data"]["data_type"] == "geometry"
 
 
 @pytest.mark.asyncio
@@ -86,7 +103,7 @@ async def test_update_field_metadata(
     )
     assert (len(assets)) == 1
 
-    (tile_cache_asset,) = assets
+    tile_cache_asset = assets[0]
     assert tile_cache_asset.metadata.fields[1].description is None
     assert tile_cache_asset.metadata.fields[1].name == "geom"
 
