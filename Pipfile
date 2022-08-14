@@ -4,7 +4,7 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-black = "==22.3.0"  # Pin to avoid having to allow pre-releases
+black = "==22.6.0"  # Pin to avoid having to allow pre-releases
 detect-secrets = "*"
 docker = "*"
 flake8 = "*"
@@ -28,7 +28,7 @@ asyncpg = "<0.26"
 boto3 = "*"
 botocore = "*"
 email-validator = "*"
-fastapi = "*"
+fastapi = "<0.68"
 geoalchemy2 = "*"
 geojson = "*"
 gino = "*"
@@ -39,6 +39,7 @@ httpx = "*"
 httpx-auth = "*"
 numpy = "*"
 orjson = "*"
+packaging = "*"
 pendulum = "*"
 pglast = "<2"
 psycopg2 = "*"
