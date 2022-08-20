@@ -94,11 +94,6 @@ def upgrade():
             onupdate="CASCADE",
             ondelete="CASCADE",
         ),
-        sa.ForeignKeyConstraint(
-            ["dataset_metadata_id"],
-            ["dataset_metadata.id"],
-            name="dataset_metadata_id_fk",
-        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("dataset", "version", name="dataset_version_uq"),
     )
