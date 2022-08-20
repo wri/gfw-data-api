@@ -1,25 +1,26 @@
 from datetime import date, datetime
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field, validator
 from pydantic.utils import GetterDict
 
-from .base import BaseRecord, StrictBaseModel
+from .base import BaseRecord
 from .responses import Response
 
 
 class CommonMetadata(BaseModel):
-    resolution: Optional[str]
+    resolution: Optional[Union[int, float]]
     geographic_coverage: Optional[str]
     update_frequency: Optional[str]
     scale: Optional[str]
+    citation: Optional[str]
 
     class Config:
         schema_extra = {
             "examples": [
                 {
-                    "resolution": "10m x 10m",
+                    "resolution": "10",
                     "geographic_coverage": "Amazon Basin",
                     "update_frequency": "Updated daily, image revisit time every 5 days",
                     "scale": "regional",
@@ -29,17 +30,16 @@ class CommonMetadata(BaseModel):
 
 
 class DatasetMetadata(CommonMetadata):
-    title: str
-    source: str
-    license: str
-    data_language: str
-    overview: str
+    title: Optional[str]
+    source: Optional[str]
+    license: Optional[str]
+    data_language: Optional[str]
+    overview: Optional[str]
 
     function: Optional[str]
-    citation: Optional[str]
     cautions: Optional[str]
     key_restrictions: Optional[str]
-    keywords: Optional[List[str]]
+    keywords: Optional[List[str]] = Field(None, alias="tags")
     why_added: Optional[str]
     learn_more: Optional[str]
 
@@ -66,25 +66,21 @@ class DatasetMetadataOut(DatasetMetadata, BaseRecord):
     id: UUID
 
 
-class DatasetMetadataIn(DatasetMetadata, StrictBaseModel):
+class DatasetMetadataIn(DatasetMetadata, BaseModel):
     pass
 
 
 class DatasetMetadataUpdate(DatasetMetadataIn):
-    title: Optional[str]
-    source: Optional[str]
-    license: Optional[str]
-    data_language: Optional[str]
-    overview: Optional[str]
+    pass
 
 
-class ContentDateRange(StrictBaseModel):
-    start_date: date = Field(
-        ...,
+class ContentDateRange(BaseModel):
+    start_date: Optional[date] = Field(
+        None,
         description="Beginning date covered by data",
     )
-    end_date: date = Field(
-        ...,
+    end_date: Optional[date] = Field(
+        None,
         description="End date covered by data",
     )
 
@@ -105,17 +101,17 @@ class VersionMetadataGetter(GetterDict):
 
 
 class VersionMetadata(CommonMetadata):
-    creation_date: date = Field(
-        ...,
+    creation_date: Optional[date] = Field(
+        None,
         description="Date resource was created",
     )
     content_date_range: Optional[ContentDateRange] = Field(
-        ...,
+        None,
         description="Date range covered by the content",
     )
 
-    last_update: date = Field(
-        ...,
+    last_update: Optional[date] = Field(
+        None,
         description="Date the data were last updated",
     )
 
@@ -137,7 +133,7 @@ class VersionMetadata(CommonMetadata):
         }
 
 
-class VersionMetadataIn(VersionMetadata, StrictBaseModel):
+class VersionMetadataIn(VersionMetadata, BaseModel):
     pass
 
 
@@ -183,4 +179,8 @@ class VersionMetadataWithParentResponse(Response):
 def _date_validator(date_str):
     if isinstance(date_str, date):
         return date_str
-    return datetime.strptime(date_str, "%Y-%m-%d").date()
+
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return None

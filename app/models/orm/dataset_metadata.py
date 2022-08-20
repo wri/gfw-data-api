@@ -9,10 +9,10 @@ class DatasetMetadata(Base, MetadataMixin):
 
     id = db.Column(db.UUID, primary_key=True)
     dataset = db.Column(db.String, nullable=False, unique=True)
-    source = db.Column(db.String, nullable=False)
+    source = db.Column(db.String, nullable=True)
     license = db.Column(db.String)
-    data_language = db.Column(db.String, nullable=False)
-    overview = db.Column(db.String, nullable=False)
+    data_language = db.Column(db.String, nullable=True)
+    overview = db.Column(db.String, nullable=True)
 
     function = db.Column(db.String)
     cautions = db.Column(db.String)

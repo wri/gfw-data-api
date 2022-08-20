@@ -1,16 +1,16 @@
 from typing import Any, Dict, List, Optional, Type, Union
 from uuid import UUID
 
-from pydantic import StrictInt, create_model
+from pydantic import BaseModel, Field, StrictInt, create_model
 
 from ...models.orm.assets import Asset as ORMAsset
 from ..enum.assets import AssetType
 from ..enum.pg_types import PGType
-from .base import BaseORMRecord, StrictBaseModel
+from .base import BaseORMRecord
 from .responses import Response
 
 
-class FieldMetadata(StrictBaseModel):
+class FieldMetadata(BaseModel):
     name: str
     alias: Optional[str]
     description: Optional[str]
@@ -27,7 +27,7 @@ class FieldMetadataOut(FieldMetadata):
         orm_mode = True
 
 
-class FieldMetadataUpdate(StrictBaseModel):
+class FieldMetadataUpdate(BaseModel):
     alias: Optional[str]
     description: Optional[str]
     unit: Optional[str]
@@ -35,7 +35,7 @@ class FieldMetadataUpdate(StrictBaseModel):
     is_filter: Optional[bool]
 
 
-class RasterTableRow(StrictBaseModel):
+class RasterTableRow(BaseModel):
     """Mapping of pixel value to what it represents in physical world.
 
     E.g., in ESA land cover data, 10 represents agriculture use.
@@ -45,17 +45,17 @@ class RasterTableRow(StrictBaseModel):
     meaning: Any
 
 
-class RasterTable(StrictBaseModel):
+class RasterTable(BaseModel):
     rows: List[RasterTableRow]
     default_meaning: Optional[Any] = None
 
 
-class RasterBandMetadata(StrictBaseModel):
+class RasterBandMetadata(BaseModel):
     # Raster Files/ Raster Tilesets
     pixel_meaning: str
     unit: Optional[str]
     statistics: Optional[Dict[str, Any]]
-    values_table: Optional[RasterTable]
+    values_table: Optional[RasterTable] = Field(None, alias="raster_table")
     data_type: Optional[str]
     compression: Optional[str]
     no_data_value: Optional[str]
@@ -66,12 +66,12 @@ class RasterBandMetadataOut(RasterBandMetadata):
         orm_mode = True
 
 
-class RasterTileSetMetadata(StrictBaseModel):
+class RasterTileSetMetadata(BaseModel):
     bands: List[RasterBandMetadata]
-    resolution: int
+    resolution: Optional[int]
 
 
-class RasterTileSetMetadataUpdate(StrictBaseModel):
+class RasterTileSetMetadataUpdate(BaseModel):
     resolution: int
 
 
@@ -80,7 +80,7 @@ class RasterTileSetMetadataOut(RasterTileSetMetadata, BaseORMRecord):
     bands: List[RasterBandMetadata]
 
 
-class RasterTileCacheMetadata(StrictBaseModel):
+class RasterTileCacheMetadata(BaseModel):
     min_zoom: Optional[int]  # FIXME: Should this really be optional?
     max_zoom: Optional[
         int
@@ -89,14 +89,14 @@ class RasterTileCacheMetadata(StrictBaseModel):
     fields: Optional[List[FieldMetadata]]
 
 
-class StaticVectorTileCacheMetadata(StrictBaseModel):
+class StaticVectorTileCacheMetadata(BaseModel):
     min_zoom: Optional[int]
     max_zoom: Optional[int]
     fields: Optional[List[FieldMetadata]]
     # TODO: default symbology/ legend
 
 
-class StaticVectorTileCacheMetadataUpdate(StrictBaseModel):
+class StaticVectorTileCacheMetadataUpdate(BaseModel):
     min_zoom: Optional[int]
     max_zoom: Optional[int]
 
@@ -106,12 +106,12 @@ class DynamicVectorTileCacheMetadata(StaticVectorTileCacheMetadata):
     max_zoom: StrictInt = 22
 
 
-class DatabaseTableMetadata(StrictBaseModel):
-    fields: Optional[List[FieldMetadata]]
+class DatabaseTableMetadata(BaseModel):
+    fields: List[FieldMetadata]
 
 
-class VectorFileMetadata(StrictBaseModel):
-    fields: Optional[List[FieldMetadata]]
+class VectorFileMetadata(BaseModel):
+    fields: List[FieldMetadata]
 
 
 AssetMetadata = Union[
