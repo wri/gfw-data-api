@@ -6,3 +6,4 @@ desired_count             = 1
 auto_scaling_min_capacity = 1
 auto_scaling_max_capacity = 15
 lambda_analysis_workspace = "default"
+key_pair                  = "dmannarino_gfw"
