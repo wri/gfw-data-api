@@ -53,9 +53,6 @@ async def paginate_datasets(
     page: Optional[int] = None,
 ) -> Tuple[List[ORMDataset], Optional[PaginationLinks], Optional[PaginationMeta]]:
 
-    if size is not None and size < 1 or page is not None and page < 1:
-        raise ValueError  # TODO add error message
-
     page_size: int = size if size is not None else 1
     page_number: int = page if page is not None else 1
 
@@ -69,7 +66,9 @@ async def paginate_datasets(
     meta = _create_pagination_meta(size=page_size, total_items=total_datasets)
 
     if page_number > meta.total_pages:
-        raise ValueError  # TODO add error message
+        raise ValueError(
+            f"Given the page size of {page_size}, page number {page_number} is larger than the total page count: {meta.total_pages}"
+        )
 
     links = _create_pagination_links(
         request_url=request_url,

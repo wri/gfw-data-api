@@ -49,3 +49,11 @@ async def test_get_paginated_dataset_with_pagenumber_less_than_1_returns_4xx(
 ) -> None:
     resp = await async_client.get("/datasets", params=[("page[number]", "0")])
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_dataset_with_pagenumber_more_than_max_pages_returns_4xx(
+    async_client: AsyncClient, generic_dataset: Tuple[str, str]
+) -> None:
+    resp = await async_client.get("/datasets", params=[("page[number]", "100")])
+    assert resp.status_code == 422
