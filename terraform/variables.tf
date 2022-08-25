@@ -50,17 +50,20 @@ variable "auto_scaling_min_capacity" {
 }
 variable "key_pair" {
   type    = string
-  default = "tmaschler_gfw"
 }
+
 variable "service_url" {
   type = string
 }
+
 variable "rw_api_url" {
   type = string
 }
+
 variable "git_sha" {
   type = string
 }
+
 variable "lambda_analysis_workspace" {
   type = string
 }
