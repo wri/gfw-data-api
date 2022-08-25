@@ -19,8 +19,8 @@ router = APIRouter()
 )
 async def get_datasets(
     request: Request,
-    page_number: Optional[int] = Query(default=None, alias="page[number]"),
-    page_size: Optional[int] = Query(default=None, alias="page[size]"),
+    page_number: Optional[int] = Query(default=None, alias="page[number]", ge=1),
+    page_size: Optional[int] = Query(default=None, alias="page[size]", ge=1),
 ) -> Union[PaginatedDatasetsResponse, DatasetsResponse]:
     """Get list of all datasets."""
     data, links, meta = await paginate_datasets(
