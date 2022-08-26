@@ -48,6 +48,21 @@ async def test_pagination_meta_size_is_populated():
 
 
 @pytest.mark.asyncio
+async def test_pagination_meta_size_defaults_to_10_when_size_is_none():
+    dummy_get_datasets = Mock(get_datasets)
+    dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
+
+    _, _, meta = await paginate_datasets(
+        paged_items_fn=dummy_get_datasets,
+        item_count_fn=dummy_count_datasets,
+        page=1,
+        size=None,
+    )
+
+    assert meta.size == 10
+
+
+@pytest.mark.asyncio
 async def test_pagination_gets_total_row_count():
     dummy_get_datasets = Mock(get_datasets)
     spy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
