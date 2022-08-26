@@ -19,8 +19,15 @@ router = APIRouter()
 )
 async def get_datasets(
     request: Request,
-    page_number: Optional[int] = Query(default=None, alias="page[number]", ge=1),
-    page_size: Optional[int] = Query(default=None, alias="page[size]", ge=1),
+    page_number: Optional[int] = Query(
+        default=None, alias="page[number]", ge=1, description="The page number."
+    ),
+    page_size: Optional[int] = Query(
+        default=None,
+        alias="page[size]",
+        ge=1,
+        description="The number of datasets per page. Default is `10`.",
+    ),
 ) -> Union[PaginatedDatasetsResponse, DatasetsResponse]:
     """Get list of all datasets."""
     try:
