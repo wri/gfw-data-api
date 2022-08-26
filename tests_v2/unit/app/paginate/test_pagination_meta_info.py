@@ -1,32 +1,35 @@
-from unittest.mock import Mock
+from unittest.mock import AsyncMock
 
 import pytest
 
-from app.crud.datasets import count_datasets, get_datasets
-from app.paginate.paginate import PaginationMeta, paginate_datasets
+from app.paginate.paginate import PaginationMeta, paginate_collection
 
 DONT_CARE: int = 1
 
 
 @pytest.mark.asyncio
-async def test_sending_page_number_returns_a_dataset_collection_with_a_meta_section():
-    dummy_get_datasets = Mock(get_datasets)
-    dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
+async def test_sending_page_number_returns_a_collection_with_a_meta_section():
+    dummy_get_collection = AsyncMock()
+    dummy_count_collection = AsyncMock(return_value=DONT_CARE)
 
-    _, _, meta = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets, item_count_fn=dummy_count_datasets, page=1
+    _, _, meta = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=dummy_count_collection,
+        page=1,
     )
 
     assert isinstance(meta, PaginationMeta)
 
 
 @pytest.mark.asyncio
-async def test_sending_size_number_returns_a_dataset_collection_with_a_meta_section():
-    dummy_get_datasets = Mock(get_datasets)
-    dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
+async def test_sending_size_number_returns_a_collection_with_a_meta_section():
+    dummy_get_collection = AsyncMock()
+    dummy_count_collection = AsyncMock(return_value=DONT_CARE)
 
-    _, _, meta = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets, item_count_fn=dummy_count_datasets, size=10
+    _, _, meta = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=dummy_count_collection,
+        size=10,
     )
 
     assert isinstance(meta, PaginationMeta)
@@ -34,12 +37,12 @@ async def test_sending_size_number_returns_a_dataset_collection_with_a_meta_sect
 
 @pytest.mark.asyncio
 async def test_pagination_meta_size_is_populated():
-    dummy_get_datasets = Mock(get_datasets)
-    dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
+    dummy_get_collection = AsyncMock()
+    dummy_count_collection = AsyncMock(return_value=DONT_CARE)
 
-    _, _, meta = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets,
-        item_count_fn=dummy_count_datasets,
+    _, _, meta = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=dummy_count_collection,
         page=1,
         size=10,
     )
@@ -49,12 +52,12 @@ async def test_pagination_meta_size_is_populated():
 
 @pytest.mark.asyncio
 async def test_pagination_meta_size_defaults_to_10_when_size_is_none():
-    dummy_get_datasets = Mock(get_datasets)
-    dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
+    dummy_get_collection = AsyncMock()
+    dummy_count_collection = AsyncMock(return_value=DONT_CARE)
 
-    _, _, meta = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets,
-        item_count_fn=dummy_count_datasets,
+    _, _, meta = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=dummy_count_collection,
         page=1,
         size=None,
     )
@@ -64,24 +67,26 @@ async def test_pagination_meta_size_defaults_to_10_when_size_is_none():
 
 @pytest.mark.asyncio
 async def test_pagination_gets_total_row_count():
-    dummy_get_datasets = Mock(get_datasets)
-    spy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
+    dummy_get_collection = AsyncMock()
+    spy_count_collection = AsyncMock(return_value=DONT_CARE)
 
-    await paginate_datasets(
-        paged_items_fn=dummy_get_datasets, item_count_fn=spy_count_datasets, size=10
+    await paginate_collection(
+        paged_items_fn=dummy_get_collection, item_count_fn=spy_count_collection, size=10
     )
 
-    spy_count_datasets.assert_called()
+    spy_count_collection.assert_called()
 
 
 @pytest.mark.asyncio
 async def test_pagination_meta_total_items_is_populated():
-    dummy_get_datasets = Mock(get_datasets)
-    stub_count_datasets = Mock(count_datasets)
-    stub_count_datasets.return_value = 100
+    dummy_get_collection = AsyncMock()
+    stub_count_collection = AsyncMock()
+    stub_count_collection.return_value = 100
 
-    _, _, meta = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets, item_count_fn=stub_count_datasets, size=10
+    _, _, meta = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=stub_count_collection,
+        size=10,
     )
 
     assert meta.total_items == 100
@@ -89,25 +94,27 @@ async def test_pagination_meta_total_items_is_populated():
 
 @pytest.mark.asyncio
 async def test_pagination_meta_total_pages_is_populated():
-    dummy_get_datasets = Mock(get_datasets)
-    stub_count_datasets = Mock(count_datasets)
-    stub_count_datasets.return_value = 100
+    dummy_get_collection = AsyncMock()
+    stub_count_collection = AsyncMock()
+    stub_count_collection.return_value = 100
 
-    _, _, meta = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets, item_count_fn=stub_count_datasets, size=5
+    _, _, meta = await paginate_collection(
+        paged_items_fn=dummy_get_collection, item_count_fn=stub_count_collection, size=5
     )
 
     assert meta.total_pages == 20  # number_of_datasets / page_size
 
 
 @pytest.mark.asyncio
-async def test_pagination_meta_total_pages_is_1_when_there_are_0_datasets():
-    dummy_get_datasets = Mock(get_datasets)
-    stub_count_datasets = Mock(count_datasets)
-    stub_count_datasets.return_value = 0
+async def test_pagination_meta_total_pages_is_1_when_there_are_0_items_in_a_collection():
+    dummy_get_collection = AsyncMock()
+    stub_count_collection = AsyncMock()
+    stub_count_collection.return_value = 0
 
-    _, _, meta = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets, item_count_fn=stub_count_datasets, size=11
+    _, _, meta = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=stub_count_collection,
+        size=11,
     )
 
     assert meta.total_pages == 1

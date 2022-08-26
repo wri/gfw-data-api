@@ -1,20 +1,21 @@
-from unittest.mock import Mock
+from unittest.mock import AsyncMock
 
 import pytest
 
-from app.crud.datasets import count_datasets, get_datasets
-from app.paginate.paginate import PaginationLinks, paginate_datasets
+from app.paginate.paginate import PaginationLinks, paginate_collection
 
 DONT_CARE: int = 1
 
 
 @pytest.mark.asyncio
 async def test_links_are_returned():
-    dummy_get_datasets = Mock(get_datasets)
-    dummy_count_datasets = Mock(spec=count_datasets, return_value=DONT_CARE)
+    dummy_get_collection = AsyncMock()
+    dummy_count_collection = AsyncMock(return_value=DONT_CARE)
 
-    _, links, _ = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets, item_count_fn=dummy_count_datasets, page=1
+    _, links, _ = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=dummy_count_collection,
+        page=1,
     )
 
     assert isinstance(links, PaginationLinks)
@@ -22,12 +23,12 @@ async def test_links_are_returned():
 
 @pytest.mark.asyncio
 async def test_links_has_a_self_entry():
-    dummy_get_datasets = Mock(get_datasets)
-    stub_count_datasets = Mock(spec=count_datasets, return_value=15)
+    dummy_get_collection = AsyncMock()
+    stub_count_collection = AsyncMock(return_value=15)
 
-    _, links, _ = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets,
-        item_count_fn=stub_count_datasets,
+    _, links, _ = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=stub_count_collection,
         request_url="http://localhost:8008/datasets",
         page=2,
         size=10,
@@ -38,12 +39,12 @@ async def test_links_has_a_self_entry():
 
 @pytest.mark.asyncio
 async def test_links_has_a_first_entry():
-    dummy_get_datasets = Mock(get_datasets)
-    stub_count_datasets = Mock(spec=count_datasets, return_value=15)
+    dummy_get_collection = AsyncMock()
+    stub_count_collection = AsyncMock(return_value=15)
 
-    _, links, _ = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets,
-        item_count_fn=stub_count_datasets,
+    _, links, _ = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=stub_count_collection,
         request_url="http://localhost:8008/datasets",
         page=2,
         size=10,
@@ -54,13 +55,13 @@ async def test_links_has_a_first_entry():
 
 @pytest.mark.asyncio
 async def test_links_has_a_last_entry():
-    dummy_get_datasets = Mock(get_datasets)
-    stub_count_datasets = Mock(count_datasets)
-    stub_count_datasets.return_value = 95
+    dummy_get_collection = AsyncMock()
+    stub_count_collection = AsyncMock()
+    stub_count_collection.return_value = 95
 
-    _, links, _ = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets,
-        item_count_fn=stub_count_datasets,
+    _, links, _ = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=stub_count_collection,
         request_url="http://localhost:8008/datasets",
         page=1,
         size=10,
@@ -71,12 +72,12 @@ async def test_links_has_a_last_entry():
 
 @pytest.mark.asyncio
 async def test_links_has_a_prev_entry_when_not_on_the_first_page():
-    dummy_get_datasets = Mock(get_datasets)
-    stub_count_datasets = Mock(spec=count_datasets, return_value=25)
+    dummy_get_collection = AsyncMock()
+    stub_count_collection = AsyncMock(return_value=25)
 
-    _, links, _ = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets,
-        item_count_fn=stub_count_datasets,
+    _, links, _ = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=stub_count_collection,
         request_url="http://localhost:8008/datasets",
         page=3,
         size=10,
@@ -87,13 +88,13 @@ async def test_links_has_a_prev_entry_when_not_on_the_first_page():
 
 @pytest.mark.asyncio
 async def test_links_has_an_empty_prev_entry_when_on_the_first_page():
-    dummy_get_datasets = Mock(get_datasets)
-    stub_count_datasets = Mock(count_datasets)
-    stub_count_datasets.return_value = 95
+    dummy_get_collection = AsyncMock()
+    stub_count_collection = AsyncMock()
+    stub_count_collection.return_value = 95
 
-    _, links, _ = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets,
-        item_count_fn=stub_count_datasets,
+    _, links, _ = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=stub_count_collection,
         request_url="http://localhost:8008/datasets",
         page=1,
         size=10,
@@ -104,14 +105,14 @@ async def test_links_has_an_empty_prev_entry_when_on_the_first_page():
 
 @pytest.mark.asyncio
 async def test_raises_a_value_error_when_page_and_size_are_greater_than_total_pages():
-    dummy_get_datasets = Mock(get_datasets)
-    stub_count_datasets = Mock(count_datasets)
-    stub_count_datasets.return_value = 5
+    dummy_get_collection = AsyncMock()
+    stub_count_collection = AsyncMock()
+    stub_count_collection.return_value = 5
 
     with pytest.raises(ValueError):
-        _, links, _ = await paginate_datasets(
-            paged_items_fn=dummy_get_datasets,
-            item_count_fn=stub_count_datasets,
+        _, links, _ = await paginate_collection(
+            paged_items_fn=dummy_get_collection,
+            item_count_fn=stub_count_collection,
             request_url="http://localhost:8008/datasets",
             page=2,
             size=10,
@@ -120,13 +121,12 @@ async def test_raises_a_value_error_when_page_and_size_are_greater_than_total_pa
 
 @pytest.mark.asyncio
 async def test_links_has_a_next_entry_when_not_on_the_last_page():
-    dummy_get_datasets = Mock(get_datasets)
-    stub_count_datasets = Mock(count_datasets)
-    stub_count_datasets.return_value = 95
+    dummy_get_collection = AsyncMock()
+    stub_count_collection = AsyncMock(return_value=95)
 
-    _, links, _ = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets,
-        item_count_fn=stub_count_datasets,
+    _, links, _ = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=stub_count_collection,
         request_url="http://localhost:8008/datasets",
         page=3,
         size=10,
@@ -137,13 +137,12 @@ async def test_links_has_a_next_entry_when_not_on_the_last_page():
 
 @pytest.mark.asyncio
 async def test_links_has_an_empty_next_entry_when_on_the_last_page():
-    dummy_get_datasets = Mock(get_datasets)
-    stub_count_datasets = Mock(count_datasets)
-    stub_count_datasets.return_value = 95
+    dummy_get_collection = AsyncMock()
+    stub_count_collection = AsyncMock(return_value=95)
 
-    _, links, _ = await paginate_datasets(
-        paged_items_fn=dummy_get_datasets,
-        item_count_fn=stub_count_datasets,
+    _, links, _ = await paginate_collection(
+        paged_items_fn=dummy_get_collection,
+        item_count_fn=stub_count_collection,
         request_url="http://localhost:8008/datasets",
         page=10,
         size=10,
