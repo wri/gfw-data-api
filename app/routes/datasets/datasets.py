@@ -5,8 +5,10 @@ from typing import Optional, Union
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import ORJSONResponse
 
+from ...crud.datasets import count_datasets as count_datasets_fn
+from ...crud.datasets import get_datasets as datasets_fn
 from ...models.pydantic.datasets import DatasetsResponse, PaginatedDatasetsResponse
-from ...paginate.paginate import paginate_datasets
+from ...paginate.paginate import paginate_collection
 
 router = APIRouter()
 
@@ -31,8 +33,12 @@ async def get_datasets(
 ) -> Union[PaginatedDatasetsResponse, DatasetsResponse]:
     """Get list of all datasets."""
     try:
-        data, links, meta = await paginate_datasets(
-            request_url=f"{request.url}".split("?")[0], page=page_number, size=page_size
+        data, links, meta = await paginate_collection(
+            paged_items_fn=datasets_fn,
+            item_count_fn=count_datasets_fn,
+            request_url=f"{request.url}".split("?")[0],
+            page=page_number,
+            size=page_size,
         )
 
         if meta is None or links is None:

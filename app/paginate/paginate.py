@@ -1,8 +1,7 @@
 from math import ceil
 from typing import List, NamedTuple, Optional, Tuple
 
-from app.crud.datasets import count_datasets, get_datasets
-from app.models.orm.datasets import Dataset as ORMDataset
+from app.models.orm.base import Base as ORMBase
 
 
 class PaginationLinks(NamedTuple):
@@ -45,13 +44,13 @@ def _calculate_offset(page: int, size: int):
     return size * (page - 1)
 
 
-async def paginate_datasets(
-    paged_items_fn=get_datasets,
-    item_count_fn=count_datasets,
+async def paginate_collection(
+    paged_items_fn,
+    item_count_fn,
     request_url="",
     size: Optional[int] = None,
     page: Optional[int] = None,
-) -> Tuple[List[ORMDataset], Optional[PaginationLinks], Optional[PaginationMeta]]:
+) -> Tuple[List[ORMBase], Optional[PaginationLinks], Optional[PaginationMeta]]:
 
     page_size: int = size if size is not None else 10
     page_number: int = page if page is not None else 1
