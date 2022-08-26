@@ -53,7 +53,7 @@ async def paginate_datasets(
     page: Optional[int] = None,
 ) -> Tuple[List[ORMDataset], Optional[PaginationLinks], Optional[PaginationMeta]]:
 
-    page_size: int = size if size is not None else 1
+    page_size: int = size if size is not None else 10
     page_number: int = page if page is not None else 1
 
     data = await paged_items_fn(size, _calculate_offset(page_number, page_size))
