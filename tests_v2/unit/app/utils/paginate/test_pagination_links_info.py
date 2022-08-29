@@ -56,8 +56,7 @@ async def test_links_has_a_first_entry():
 @pytest.mark.asyncio
 async def test_links_has_a_last_entry():
     dummy_get_collection = AsyncMock()
-    stub_count_collection = AsyncMock()
-    stub_count_collection.return_value = 95
+    stub_count_collection = AsyncMock(return_value=95)
 
     _, links, _ = await paginate_collection(
         paged_items_fn=dummy_get_collection,
@@ -89,8 +88,7 @@ async def test_links_has_a_prev_entry_when_not_on_the_first_page():
 @pytest.mark.asyncio
 async def test_links_has_an_empty_prev_entry_when_on_the_first_page():
     dummy_get_collection = AsyncMock()
-    stub_count_collection = AsyncMock()
-    stub_count_collection.return_value = 95
+    stub_count_collection = AsyncMock(return_value=95)
 
     _, links, _ = await paginate_collection(
         paged_items_fn=dummy_get_collection,
@@ -110,7 +108,7 @@ async def test_raises_a_value_error_when_page_and_size_are_greater_than_total_pa
     stub_count_collection.return_value = 5
 
     with pytest.raises(ValueError):
-        _, links, _ = await paginate_collection(
+        await paginate_collection(
             paged_items_fn=dummy_get_collection,
             item_count_fn=stub_count_collection,
             request_url="http://localhost:8008/datasets",

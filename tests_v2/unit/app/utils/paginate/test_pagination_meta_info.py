@@ -80,8 +80,7 @@ async def test_pagination_gets_total_row_count():
 @pytest.mark.asyncio
 async def test_pagination_meta_total_items_is_populated():
     dummy_get_collection = AsyncMock()
-    stub_count_collection = AsyncMock()
-    stub_count_collection.return_value = 100
+    stub_count_collection = AsyncMock(return_value=100)
 
     _, _, meta = await paginate_collection(
         paged_items_fn=dummy_get_collection,
@@ -95,8 +94,7 @@ async def test_pagination_meta_total_items_is_populated():
 @pytest.mark.asyncio
 async def test_pagination_meta_total_pages_is_populated():
     dummy_get_collection = AsyncMock()
-    stub_count_collection = AsyncMock()
-    stub_count_collection.return_value = 100
+    stub_count_collection = AsyncMock(return_value=100)
 
     _, _, meta = await paginate_collection(
         paged_items_fn=dummy_get_collection, item_count_fn=stub_count_collection, size=5
@@ -108,8 +106,7 @@ async def test_pagination_meta_total_pages_is_populated():
 @pytest.mark.asyncio
 async def test_pagination_meta_total_pages_is_1_when_there_are_0_items_in_a_collection():
     dummy_get_collection = AsyncMock()
-    stub_count_collection = AsyncMock()
-    stub_count_collection.return_value = 0
+    stub_count_collection = AsyncMock(return_value=0)
 
     _, _, meta = await paginate_collection(
         paged_items_fn=dummy_get_collection,
