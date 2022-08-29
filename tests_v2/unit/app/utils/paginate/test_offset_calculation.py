@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.paginate.paginate import paginate_collection
+from app.utils.paginate import paginate_collection
 
 DONT_CARE: int = 1
 

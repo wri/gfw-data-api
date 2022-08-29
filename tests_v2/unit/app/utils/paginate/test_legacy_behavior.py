@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from app.models.orm.base import Base as ORMBase
-from app.paginate.paginate import paginate_collection
+from app.utils.paginate import paginate_collection
 
 
 @pytest.mark.asyncio

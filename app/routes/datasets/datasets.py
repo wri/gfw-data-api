@@ -5,10 +5,11 @@ from typing import Optional, Union
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import ORJSONResponse
 
+from app.utils.paginate import paginate_collection
+
 from ...crud.datasets import count_datasets as count_datasets_fn
 from ...crud.datasets import get_datasets as datasets_fn
 from ...models.pydantic.datasets import DatasetsResponse, PaginatedDatasetsResponse
-from ...paginate.paginate import paginate_collection
 
 router = APIRouter()
 
