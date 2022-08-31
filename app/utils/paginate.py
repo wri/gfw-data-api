@@ -2,7 +2,7 @@ from math import ceil
 from typing import List, Optional, Tuple
 
 from app.models.orm.base import Base as ORMBase
-from app.models.pydantic.paginate import PaginationLinks, PaginationMeta
+from app.models.pydantic.pagination import PaginationLinks, PaginationMeta
 
 
 def _create_pagination_links(
