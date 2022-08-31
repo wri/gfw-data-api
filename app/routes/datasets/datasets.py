@@ -44,8 +44,6 @@ async def get_datasets(
         if meta is None or links is None:
             return DatasetsResponse(data=data)
 
-        return PaginatedDatasetsResponse(
-            data=data, links=links._asdict(), meta=meta._asdict()
-        )
+        return PaginatedDatasetsResponse(data=data, links=links, meta=meta)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
