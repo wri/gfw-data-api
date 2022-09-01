@@ -5,20 +5,37 @@ from app.models.orm.base import Base as ORMBase
 from app.models.pydantic.pagination import PaginationLinks, PaginationMeta
 
 
+def _build_link(request_url, page, size) -> str:
+    return f"{request_url}?page[number]={page}&page[size]={size}"
+
+
+def _has_previous(page) -> bool:
+    return page > 1
+
+
+def _has_next(page, total_pages) -> bool:
+    return total_pages > page
+
+
 def _create_pagination_links(
     request_url: str, size: int, page: int, total_pages: int
 ) -> PaginationLinks:
-    size_param = f"page[size]={size}"
+    if _has_previous(page):
+        prev_page = _build_link(request_url, page - 1, size)
+    else:
+        prev_page = ""
+
+    if _has_next(page, total_pages):
+        next_page = _build_link(request_url, page + 1, size)
+    else:
+        next_page = ""
+
     return PaginationLinks(
-        self=f"{request_url}?page[number]={page}&{size_param}",
-        first=f"{request_url}?page[number]=1&{size_param}",
-        last=f"{request_url}?page[number]={total_pages}&{size_param}",
-        prev=f"{request_url}?page[number]={(page - 1)}&{size_param}"
-        if (page > 1)
-        else "",
-        next=f"{request_url}?page[number]={(page + 1)}&{size_param}"
-        if (total_pages > page)
-        else "",
+        self=_build_link(request_url, page, size),
+        first=_build_link(request_url, 1, size),
+        last=_build_link(request_url, total_pages, size),
+        prev=prev_page,
+        next=next_page,
     )
 
 
@@ -55,7 +72,7 @@ async def paginate_collection(
 
     if page_number > meta.total_pages:
         raise ValueError(
-            f"Given the page size of {page_size}, page number {page_number} is larger than the total page count: {meta.total_pages}"
+            f"Page number {page_number} is larger than the total page count: {meta.total_pages}"
         )
 
     links = _create_pagination_links(
