@@ -7,7 +7,7 @@ from ..enum.assets import AssetStatus, AssetType
 from .base import BaseRecord, StrictBaseModel
 from .creation_options import CreationOptions, OtherCreationOptions
 from .metadata import AssetMetadata
-from .responses import Response
+from .responses import PaginationLinks, PaginationMeta, Response
 
 
 class Asset(BaseRecord):
@@ -62,3 +62,8 @@ class AssetResponse(Response):
 
 class AssetsResponse(Response):
     data: List[Asset]
+
+
+class PaginatedAssetsResponse(AssetsResponse):
+    links: PaginationLinks
+    meta: PaginationMeta
