@@ -5,15 +5,15 @@ from app.models.orm.base import Base as ORMBase
 from app.models.pydantic.pagination import PaginationLinks, PaginationMeta
 
 
-def _build_link(request_url, page, size) -> str:
+def _build_link(request_url: str, page: int, size: int) -> str:
     return f"{request_url}?page[number]={page}&page[size]={size}"
 
 
-def _has_previous(page) -> bool:
+def _has_previous(page: int) -> bool:
     return page > 1
 
 
-def _has_next(page, total_pages) -> bool:
+def _has_next(page: int, total_pages: int) -> bool:
     return total_pages > page
 
 
@@ -39,10 +39,8 @@ def _create_pagination_links(
     )
 
 
-def _create_pagination_meta(size: int, total_items: int) -> PaginationMeta:
-    assert size > 0
-    total_pages: int = ceil(total_items / size) if total_items > 0 else 1
-    return PaginationMeta(size=size, total_items=total_items, total_pages=total_pages)
+def _total_pages(total_items: int, size: int) -> int:
+    return ceil(total_items / size) if total_items > 0 else 1
 
 
 def _calculate_offset(page: int, size: int) -> int:
@@ -53,33 +51,31 @@ def _calculate_offset(page: int, size: int) -> int:
 async def paginate_collection(
     paged_items_fn,
     item_count_fn,
-    request_url="",
+    request_url: str = "",
     size: Optional[int] = None,
     page: Optional[int] = None,
-) -> Tuple[List[ORMBase], Optional[PaginationLinks], Optional[PaginationMeta]]:
+) -> Tuple[List[ORMBase], PaginationLinks, PaginationMeta]:
 
     page_size: int = size if size is not None else 10
     page_number: int = page if page is not None else 1
 
-    data = await paged_items_fn(size, _calculate_offset(page_number, page_size))
+    total_items = await item_count_fn()
+    total_pages = _total_pages(total_items, page_size)
 
-    if size is None and page is None:
-        return data, None, None
-
-    total_datasets = await item_count_fn()
-
-    meta = _create_pagination_meta(size=page_size, total_items=total_datasets)
-
-    if page_number > meta.total_pages:
+    if page_number > total_pages:
         raise ValueError(
-            f"Page number {page_number} is larger than the total page count: {meta.total_pages}"
+            f"Page number {page_number} is larger than the total page count: {total_pages}"
         )
 
+    data = await paged_items_fn(page_size, _calculate_offset(page_number, page_size))
     links = _create_pagination_links(
         request_url=request_url,
         size=page_size,
         page=page_number,
-        total_pages=meta.total_pages,
+        total_pages=total_pages,
+    )
+    meta = PaginationMeta(
+        size=page_size, total_items=total_items, total_pages=total_pages
     )
 
     return data, links, meta
