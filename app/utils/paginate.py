@@ -22,13 +22,13 @@ def _create_pagination_links(
     )
 
 
-def _create_pagination_meta(size: int, total_items: int):
+def _create_pagination_meta(size: int, total_items: int) -> PaginationMeta:
     assert size > 0
     total_pages: int = ceil(total_items / size) if total_items > 0 else 1
     return PaginationMeta(size=size, total_items=total_items, total_pages=total_pages)
 
 
-def _calculate_offset(page: int, size: int):
+def _calculate_offset(page: int, size: int) -> int:
     assert page > 0
     return size * (page - 1)
 
