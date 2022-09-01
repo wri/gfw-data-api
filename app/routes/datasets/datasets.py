@@ -37,18 +37,19 @@ async def get_datasets(
     provided. Otherwise, it will attempt to return the entire list of
     datasets in the response.
     """
-    try:
-        data, links, meta = await paginate_collection(
-            paged_items_fn=datasets_fn,
-            item_count_fn=count_datasets_fn,
-            request_url=f"{request.url}".split("?")[0],
-            page=page_number,
-            size=page_size,
-        )
+    if page_number or page_size:
+        try:
+            data, links, meta = await paginate_collection(
+                paged_items_fn=datasets_fn,
+                item_count_fn=count_datasets_fn,
+                request_url=f"{request.url}".split("?")[0],
+                page=page_number,
+                size=page_size,
+            )
 
-        if meta is None or links is None:
-            return DatasetsResponse(data=data)
+            return PaginatedDatasetsResponse(data=data, links=links, meta=meta)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-        return PaginatedDatasetsResponse(data=data, links=links, meta=meta)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    all_datasets = await datasets_fn()
+    return DatasetsResponse(data=all_datasets)
