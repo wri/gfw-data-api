@@ -39,14 +39,16 @@ class PaginationLinks(StrictBaseModel):
 class PaginationMeta(StrictBaseModel):
     size: int = Field(
         ...,
-        title="Reflects the value used in the page[size] query parameter (or the default size of 10 if not provided)",
+        title="The page size. Reflects the value used in the page[size] query parameter (or the default size of 10 if not provided)",
         example="25",
     )
     total_items: int = Field(
         ...,
-        title="Contains the total number of pages, assuming the page size specified in the page[size] query parameter",
+        title="Contains the total number of items",
         example="100",
     )
     total_pages: int = Field(
-        ..., title="Contains the total number of items", example="4"
+        ...,
+        title="Contains the total number of pages, assuming the page size specified in the page[size] query parameter",
+        example="4",
     )
