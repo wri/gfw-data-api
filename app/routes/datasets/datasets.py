@@ -31,7 +31,12 @@ async def get_datasets(
         description="The number of datasets per page. Default is `10`.",
     ),
 ) -> Union[PaginatedDatasetsResponse, DatasetsResponse]:
-    """Get list of all datasets."""
+    """Get list of all datasets.
+
+    Will attempt to paginate if `page[size]` or `page[number]` is
+    provided. Otherwise, it will attempt to return the entire list of
+    datasets in the response.
+    """
     try:
         data, links, meta = await paginate_collection(
             paged_items_fn=datasets_fn,
