@@ -2,7 +2,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.utils.paginate import PaginationMeta, paginate_collection
+from app.models.pydantic.responses import PaginationMeta
+from app.utils.paginate import paginate_collection
 
 DONT_CARE: int = 1
 

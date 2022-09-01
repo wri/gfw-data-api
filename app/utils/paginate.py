@@ -2,7 +2,7 @@ from math import ceil
 from typing import List, Optional, Tuple
 
 from app.models.orm.base import Base as ORMBase
-from app.models.pydantic.pagination import PaginationLinks, PaginationMeta
+from app.models.pydantic.responses import PaginationLinks, PaginationMeta
 
 
 def _build_link(request_url: str, page: int, size: int) -> str:
