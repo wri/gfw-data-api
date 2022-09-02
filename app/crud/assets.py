@@ -3,6 +3,7 @@ from uuid import UUID
 
 from asyncpg import UniqueViolationError
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy import func
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
@@ -10,6 +11,25 @@ from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.creation_options import CreationOptions, creation_option_factory
 from . import update_data, versions
 from .metadata import update_all_metadata, update_metadata
+
+
+async def count_filtered_assets_fn(
+    dataset: Optional[str] = None,
+    version: Optional[str] = None,
+    asset_types: Optional[List[str]] = None,
+    asset_uri: Optional[str] = None,
+    is_latest: Optional[bool] = None,
+    is_default: Optional[bool] = None,
+) -> func:
+    """Get count of all datasets."""
+    query = await _build_filtered_query(
+        asset_types, asset_uri, dataset, is_default, is_latest, version
+    )
+
+    async def count_assets() -> int:
+        return await func.count().select().select_from(query.alias()).gino.scalar()
+
+    return count_assets
 
 
 async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
@@ -38,6 +58,26 @@ async def get_all_assets() -> List[ORMAsset]:
 async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
     assets = await ORMAsset.query.where(ORMAsset.asset_type == asset_type).gino.all()
     return await _update_all_asset_metadata(assets)
+
+
+async def get_filtered_assets_fn(
+    dataset: Optional[str] = None,
+    version: Optional[str] = None,
+    asset_types: Optional[List[str]] = None,
+    asset_uri: Optional[str] = None,
+    is_latest: Optional[bool] = None,
+    is_default: Optional[bool] = None,
+) -> func:
+
+    query = await _build_filtered_query(
+        asset_types, asset_uri, dataset, is_default, is_latest, version
+    )
+
+    async def paginated_assets(size: int = None, offset: int = 0) -> List[ORMAsset]:
+        assets = await query.limit(size).offset(offset).gino.load(ORMAsset).all()
+        return await _update_all_asset_metadata(assets)
+
+    return paginated_assets
 
 
 async def get_assets_by_filter(
