@@ -14,17 +14,17 @@ class PaginationLinks(StrictBaseModel):
     self: str = Field(
         ...,
         title="Contains the URL for the current page",
-        example="https://data-api.globalforestwatch.org/datasets?page[number]=1&page[size]=25",
+        example="https://data-api.globalforestwatch.org/:model?page[number]=1&page[size]=25",
     )
     first: str = Field(
         ...,
         title="Contains the URL for the first page",
-        example="https://data-api.globalforestwatch.org/datasets?page[number]=1&page[size]=25",
+        example="https://data-api.globalforestwatch.org/:model?page[number]=1&page[size]=25",
     )
     last: str = Field(
         ...,
         title="Contains the URL for the last page",
-        example="https://data-api.globalforestwatch.org/datasets?page[number]=4&page[size]=25",
+        example="https://data-api.globalforestwatch.org/:model?page[number]=4&page[size]=25",
     )
     prev: Optional[str] = Field(
         None, title="Contains the URL for the previous page", example=""
@@ -32,7 +32,7 @@ class PaginationLinks(StrictBaseModel):
     next: Optional[str] = Field(
         None,
         title="Contains the URL for the next page",
-        example="https://data-api.globalforestwatch.org/datasets?page[number]=2&page[size]=25",
+        example="https://data-api.globalforestwatch.org/:model?page[number]=2&page[size]=25",
     )
 
 
