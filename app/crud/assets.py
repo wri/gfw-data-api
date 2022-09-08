@@ -21,7 +21,13 @@ async def count_filtered_assets_fn(
     is_latest: Optional[bool] = None,
     is_default: Optional[bool] = None,
 ) -> func:
-    """Get count of all datasets."""
+    """Returns a function that counts all filtered assets.
+
+    This higher-order function is designed to be used with the
+    pagination utility. It relies on the closure to set all the
+    necessary filtering so that pagination doesn't need to know any more
+    than the essentials for getting a record count.
+    """
     query = await _build_filtered_query(
         asset_types, asset_uri, dataset, is_default, is_latest, version
     )
@@ -68,7 +74,13 @@ async def get_filtered_assets_fn(
     is_latest: Optional[bool] = None,
     is_default: Optional[bool] = None,
 ) -> func:
+    """Returns a function that retrieves all filtered assets.
 
+    This higher-order function is designed to be used with the
+    pagination utility. It relies on the closure to set all the
+    necessary filtering so that pagination doesn't need to know any more
+    than the essentials for getting asset records.
+    """
     query = await _build_filtered_query(
         asset_types, asset_uri, dataset, is_default, is_latest, version
     )
