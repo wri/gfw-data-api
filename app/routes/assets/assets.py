@@ -38,7 +38,12 @@ async def get_assets(
         description="The number of datasets per page. Default is `10`.",
     ),
 ) -> Union[PaginatedAssetsResponse, AssetsResponse]:
-    """Get all assets for a given dataset version."""
+    """Get all assets for a given dataset version.
+
+    Will attempt to paginate if `page[size]` or `page[number]` is
+    provided. Otherwise, it will attempt to return the entire list of
+    assets in the response.
+    """
 
     if (dataset and not version) or (version and not dataset):
         raise HTTPException(status_code=400, detail="Must provide dataset and version")
