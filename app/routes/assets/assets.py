@@ -4,12 +4,11 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import ORJSONResponse
 
 from ...crud import assets
-from ...crud.assets import count_filtered_assets_fn, get_filtered_assets_fn
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.pydantic.assets import AssetsResponse, AssetType, PaginatedAssetsResponse
 from ...routes import DATASET_REGEX, VERSION_REGEX
 from ...utils.paginate import paginate_collection
-from ..assets import assets_response
+from ..assets import assets_response, paginated_assets_response
 
 router = APIRouter()
 
@@ -52,10 +51,10 @@ async def get_assets(
     if page_number or page_size:
         try:
             data, links, meta = await paginate_collection(
-                paged_items_fn=await get_filtered_assets_fn(
+                paged_items_fn=await assets.get_filtered_assets_fn(
                     dataset, version, a_t, asset_uri, is_latest, is_default
                 ),
-                item_count_fn=await count_filtered_assets_fn(
+                item_count_fn=await assets.count_filtered_assets_fn(
                     dataset, version, a_t, asset_uri, is_latest, is_default
                 ),
                 request_url=f"{request.url}".split("?")[0],
@@ -63,7 +62,9 @@ async def get_assets(
                 size=page_size,
             )
 
-            return PaginatedAssetsResponse(data=data, links=links, meta=meta)
+            return await paginated_assets_response(
+                assets_orm=data, links=links, meta=meta
+            )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
