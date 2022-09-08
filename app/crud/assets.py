@@ -13,31 +13,6 @@ from . import update_data, versions
 from .metadata import update_all_metadata, update_metadata
 
 
-async def count_filtered_assets_fn(
-    dataset: Optional[str] = None,
-    version: Optional[str] = None,
-    asset_types: Optional[List[str]] = None,
-    asset_uri: Optional[str] = None,
-    is_latest: Optional[bool] = None,
-    is_default: Optional[bool] = None,
-) -> func:
-    """Returns a function that counts all filtered assets.
-
-    This higher-order function is designed to be used with the
-    pagination utility. It relies on the closure to set all the
-    necessary filtering so that pagination doesn't need to know any more
-    than the essentials for getting a record count.
-    """
-    query = await _build_filtered_query(
-        asset_types, asset_uri, dataset, is_default, is_latest, version
-    )
-
-    async def count_assets() -> int:
-        return await func.count().select().select_from(query.alias()).gino.scalar()
-
-    return count_assets
-
-
 async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
     rows: List[ORMAsset] = (
         await ORMAsset.query.where(ORMAsset.dataset == dataset)
@@ -66,49 +41,6 @@ async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
     return await _update_all_asset_metadata(assets)
 
 
-async def get_filtered_assets_fn(
-    dataset: Optional[str] = None,
-    version: Optional[str] = None,
-    asset_types: Optional[List[str]] = None,
-    asset_uri: Optional[str] = None,
-    is_latest: Optional[bool] = None,
-    is_default: Optional[bool] = None,
-) -> func:
-    """Returns a function that retrieves all filtered assets.
-
-    This higher-order function is designed to be used with the
-    pagination utility. It relies on the closure to set all the
-    necessary filtering so that pagination doesn't need to know any more
-    than the essentials for getting asset records.
-    """
-    query = await _build_filtered_query(
-        asset_types, asset_uri, dataset, is_default, is_latest, version
-    )
-
-    async def paginated_assets(size: int = None, offset: int = 0) -> List[ORMAsset]:
-        assets = await query.limit(size).offset(offset).gino.load(ORMAsset).all()
-        return await _update_all_asset_metadata(assets)
-
-    return paginated_assets
-
-
-async def get_assets_by_filter(
-    dataset: Optional[str] = None,
-    version: Optional[str] = None,
-    asset_types: Optional[List[str]] = None,
-    asset_uri: Optional[str] = None,
-    is_latest: Optional[bool] = None,
-    is_default: Optional[bool] = None,
-) -> List[ORMAsset]:
-
-    query = await _build_filtered_query(
-        asset_types, asset_uri, dataset, is_default, is_latest, version
-    )
-    assets = await query.gino.load(ORMAsset).all()
-
-    return await _update_all_asset_metadata(assets)
-
-
 async def _build_filtered_query(
     asset_types, asset_uri, dataset, is_default, is_latest, version
 ):
@@ -134,6 +66,74 @@ async def _build_filtered_query(
 
     query = query.order_by(ORMAsset.created_on)
     return query
+
+
+async def get_assets_by_filter(
+    dataset: Optional[str] = None,
+    version: Optional[str] = None,
+    asset_types: Optional[List[str]] = None,
+    asset_uri: Optional[str] = None,
+    is_latest: Optional[bool] = None,
+    is_default: Optional[bool] = None,
+) -> List[ORMAsset]:
+
+    query = await _build_filtered_query(
+        asset_types, asset_uri, dataset, is_default, is_latest, version
+    )
+    assets = await query.gino.load(ORMAsset).all()
+
+    return await _update_all_asset_metadata(assets)
+
+
+async def count_filtered_assets_fn(
+    dataset: Optional[str] = None,
+    version: Optional[str] = None,
+    asset_types: Optional[List[str]] = None,
+    asset_uri: Optional[str] = None,
+    is_latest: Optional[bool] = None,
+    is_default: Optional[bool] = None,
+) -> func:
+    """Returns a function that counts all filtered assets.
+
+    This higher-order function is designed to be used with the
+    pagination utility. It relies on the closure to set all the
+    necessary filtering so that pagination doesn't need to know any more
+    than the essentials for getting a record count.
+    """
+    query = await _build_filtered_query(
+        asset_types, asset_uri, dataset, is_default, is_latest, version
+    )
+
+    async def count_assets() -> int:
+        return await func.count().select().select_from(query.alias()).gino.scalar()
+
+    return count_assets
+
+
+async def get_filtered_assets_fn(
+    dataset: Optional[str] = None,
+    version: Optional[str] = None,
+    asset_types: Optional[List[str]] = None,
+    asset_uri: Optional[str] = None,
+    is_latest: Optional[bool] = None,
+    is_default: Optional[bool] = None,
+) -> func:
+    """Returns a function that retrieves all filtered assets.
+
+    This higher-order function is designed to be used with the
+    pagination utility. It relies on the closure to set all the
+    necessary filtering so that pagination doesn't need to know any more
+    than the essentials for getting asset records.
+    """
+    query = await _build_filtered_query(
+        asset_types, asset_uri, dataset, is_default, is_latest, version
+    )
+
+    async def paginated_assets(size: int = None, offset: int = 0) -> List[ORMAsset]:
+        assets = await query.limit(size).offset(offset).gino.load(ORMAsset).all()
+        return await _update_all_asset_metadata(assets)
+
+    return paginated_assets
 
 
 async def get_asset(asset_id: UUID) -> ORMAsset:
