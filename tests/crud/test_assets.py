@@ -12,7 +12,6 @@ from app.crud.assets import (
     get_asset,
     get_assets,
     get_assets_by_filter,
-    get_assets_by_type,
     update_asset,
 )
 from app.crud.datasets import create_dataset
@@ -119,14 +118,14 @@ async def test_assets():
     assert rows[0].version == version_name
 
     # There should be an entry now
-    rows = await get_assets_by_type("Database table")
+    rows = await get_assets_by_filter(asset_types=["Database table"])
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
     assert rows[0].version == version_name
 
     # There should be no such entry
-    rows = await get_assets_by_type("Vector tile cache")
+    rows = await get_assets_by_filter(asset_types=["Vector tile cache"])
     assert isinstance(rows, list)
     assert len(rows) == 0
 
@@ -221,7 +220,7 @@ async def test_assets_metadata():
     assert assets[0].metadata == result_metadata
 
     async with ContextEngine("READ"):
-        assets = await get_assets_by_type("Database table")
+        assets = await get_assets_by_filter(asset_types=["Database table"])
     assert assets[0].metadata == result_metadata
 
     async with ContextEngine("READ"):
