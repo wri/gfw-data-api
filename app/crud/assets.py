@@ -30,12 +30,6 @@ async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
     return update_all_metadata(rows, v)
 
 
-async def get_all_assets() -> List[ORMAsset]:
-    assets = await ORMAsset.query.gino.all()
-
-    return await _update_all_asset_metadata(assets)
-
-
 async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
     assets = await ORMAsset.query.where(ORMAsset.asset_type == asset_type).gino.all()
     return await _update_all_asset_metadata(assets)
