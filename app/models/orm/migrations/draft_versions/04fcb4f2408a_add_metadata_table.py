@@ -5,15 +5,95 @@ Revises: 4763f4b8141a
 Create Date: 2022-01-20 20:25:58.995306
 """
 
+import re
+from itertools import chain
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from app.models.pydantic.metadata import DatasetMetadata, VersionMetadata
+from app.models.orm.dataset_metadata import DatasetMetadata as ORMDatasetMetadata
+from app.models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
 
 # revision identifiers, used by Alembic.
 revision = "04fcb4f2408a"  # pragma: allowlist secret
 down_revision = "4763f4b8141a"  # pragma: allowlist secret
 branch_labels = None
 depends_on = None
+
+
+def parse_resolution(resolution_str):
+    if resolution_str is None:
+        return None
+    resolution_str = re.sub("\s+", "", resolution_str)
+    units = ["degrees", "km", "meter", "hectare", "m"]
+    if all(unit not in resolution_str for unit in units):
+        return None
+
+    parsed_res = resolution_str.lower().replace("\u00d7", "x").split("x")[0]
+    try:
+        numeric_res = float(re.sub(r"[^0-9.]", "", parsed_res))
+    except ValueError:
+        return None
+    if "km" in resolution_str:
+        return numeric_res * 1000
+
+    if "degree" in resolution_str:
+        return numeric_res * 111000
+
+    if "hectare" in resolution_str:
+        return (numeric_res * 1e4) ** 0.5
+
+    return numeric_res
+
+
+def get_metadata():
+    connection = op.get_bind()
+    datasets = connection.execute(
+        sa.text("select dataset, metadata from public.datasets")
+    ).fetchall()
+    versions = connection.execute(
+        sa.text("select dataset, version, metadata from public.versions")
+    ).fetchall()
+    dataset_metadata = [
+        dict(
+            dataset=dataset[0],
+            **DatasetMetadata(
+                **dict(
+                    chain(
+                        dataset[1].items(),
+                        {
+                            "resolution": parse_resolution(dataset[1].get("resolution"))
+                        }.items(),
+                    )
+                )
+            ).dict()
+        )
+        for dataset in datasets
+        if dataset[1] is not None
+        and not all(value is None for value in dataset[1].values())
+    ]
+    version_metadata = [
+        dict(
+            dataset=version[0],
+            version=version[1],
+            **VersionMetadata(
+                **dict(
+                    chain(
+                        version[2].items(),
+                        {
+                            "resolution": parse_resolution(version[2].get("resolution"))
+                        }.items(),
+                    )
+                )
+            ).dict()
+        )
+        for version in versions
+        if version[2] is not None
+        and not all(value is None for value in version[2].values())
+    ]
+
+    return dataset_metadata, version_metadata
 
 
 def upgrade():
@@ -170,6 +250,13 @@ def upgrade():
             ondelete="CASCADE",
         ),
     )
+
+    dataset_metadata, version_metadata = get_metadata()
+    connection = op.get_bind()
+    if len(dataset_metadata):
+        connection.execute(ORMDatasetMetadata.insert(), dataset_metadata)
+    if len(version_metadata):
+        connection.execute(ORMVersionMetadata.insert(), version_metadata)
     op.drop_column("datasets", "metadata")
     op.drop_column("versions", "metadata")
     op.drop_column("assets", "metadata")
@@ -183,16 +270,22 @@ def downgrade():
     op.drop_table("dataset_metadata")
     op.add_column(
         "datasets",
-        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()),
+        sa.Column(
+            "metadata",
+            postgresql.JSONB(astext_type=sa.Text()),
         ),
     )
     op.add_column(
         "versions",
-        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()),
+        sa.Column(
+            "metadata",
+            postgresql.JSONB(astext_type=sa.Text()),
         ),
     )
     op.add_column(
         "assets",
-        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()),
+        sa.Column(
+            "metadata",
+            postgresql.JSONB(astext_type=sa.Text()),
         ),
     )
