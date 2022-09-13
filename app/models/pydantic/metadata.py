@@ -29,11 +29,11 @@ class CommonMetadata(BaseModel):
 
 
 class DatasetMetadata(CommonMetadata):
-    title: str
-    source: str
-    license: str
-    data_language: str
-    overview: str
+    title: Optional[str]
+    source: Optional[str]
+    license: Optional[str]
+    data_language: Optional[str]
+    overview: Optional[str]
 
     function: Optional[str]
     citation: Optional[str]
@@ -68,25 +68,21 @@ class DatasetMetadataOut(DatasetMetadata, BaseRecord):
     id: UUID
 
 
-class DatasetMetadataIn(DatasetMetadata, StrictBaseModel):
+class DatasetMetadataIn(DatasetMetadata, BaseModel):
     pass
 
 
 class DatasetMetadataUpdate(DatasetMetadataIn):
-    title: Optional[str]
-    source: Optional[str]
-    license: Optional[str]
-    data_language: Optional[str]
-    overview: Optional[str]
+    pass
 
 
-class ContentDateRange(StrictBaseModel):
-    start_date: date = Field(
-        ...,
+class ContentDateRange(BaseModel):
+    start_date: Optional[date] = Field(
+        None,
         description="Beginning date covered by data",
     )
-    end_date: date = Field(
-        ...,
+    end_date: Optional[date] = Field(
+        None,
         description="End date covered by data",
     )
 
@@ -107,16 +103,16 @@ class VersionMetadataGetter(GetterDict):
 
 
 class VersionMetadata(CommonMetadata):
-    creation_date: date = Field(
-        ...,
+    creation_date: Optional[date] = Field(
+        None,
         description="Date resource was created",
     )
     content_date_range: Optional[ContentDateRange] = Field(
-        ...,
+        None,
         description="Date range covered by the content",
     )
 
-    last_update: date = Field(
+    last_update: Optional[date] = Field(
         None,
         description="Date the data were last updated",
     )
@@ -138,17 +134,8 @@ class VersionMetadata(CommonMetadata):
             ]
         }
 
-    # added_date: Optional[str] = Field(
-    #     None,
-    #     description="Date the data were added to GFW",
-    #     regex=DATE_REGEX,
-    # )
-    # download: Optional[str]
-    # analysis: Optional[str]
-    # data_updates: Optional[str]
 
-
-class VersionMetadataIn(VersionMetadata, StrictBaseModel):
+class VersionMetadataIn(VersionMetadata, BaseModel):
     pass
 
 
@@ -194,4 +181,8 @@ class VersionMetadataWithParentResponse(Response):
 def _date_validator(date_str):
     if isinstance(date_str, date):
         return date_str
-    return datetime.strptime(date_str, "%Y-%m-%d").date()
+
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return None
