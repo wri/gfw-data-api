@@ -164,7 +164,7 @@ AssetMetadataOutList = [
 
 # Instantiating Union doesn't support list or spread arguments so instantiating one
 # with couple of the inputs and then setting its __args__ attr with all the parameters
-AssetMetadataOut = Union[AssetMetadataOutList[0], AssetMetadataOutList[4]]
+AssetMetadataOut = Union[AssetMetadataOutList[0], AssetMetadataOutList[1]]
 AssetMetadataOut.__setattr__("__args__", tuple(AssetMetadataOutList))
 
 
@@ -192,6 +192,7 @@ def asset_metadata_factory(asset: ORMAsset) -> AssetMetadata:
         metadata = getattr(asset, "metadata", None)
         if metadata:
             fields = getattr(metadata, "fields", None)
+            bands = getattr(metadata, "bands", None)
             metadata_dict = jsonable_encoder(
                 metadata.__dict__["__values__"], exclude=["asset_id"], exclude_none=True
             )
@@ -200,10 +201,21 @@ def asset_metadata_factory(asset: ORMAsset) -> AssetMetadata:
                     jsonable_encoder(
                         field.__dict__["__values__"],
                         exclude=["asset_metadata_id"],
-                        exclude_none=True
-                    )  for field in fields
+                        exclude_none=True,
+                    )
+                    for field in fields
                 ]
                 metadata_dict["fields"] = fields_list
+            if bands:
+                bands_list = [
+                    jsonable_encoder(
+                        band.__dict__["__values__"],
+                        exclude=["asset_metadata_id"],
+                        exclude_none=True,
+                    )
+                    for band in bands
+                ]
+                metadata_dict["bands"] = bands_list
             md: AssetMetadata = MetadataOut(**metadata_dict)
         else:
             md = BaseORMRecord()
