@@ -60,8 +60,7 @@ async def update_dataset_metadata(dataset: str, **data) -> ORMDatasetMetadata:
 async def get_version_metadata(dataset: str, version: str) -> ORMVersionMetadata:
     """Get dataset version metadata."""
     metadata: ORMVersionMetadata = (
-        await ORMVersionMetadata.load(dataset_metadata=ORMDatasetMetadata)
-        .where(ORMVersionMetadata.dataset == dataset)
+        await ORMVersionMetadata.query.where(ORMVersionMetadata.dataset == dataset)
         .where(ORMVersionMetadata.version == version)
         .gino.first()
     )
@@ -76,7 +75,6 @@ async def get_version_metadata(dataset: str, version: str) -> ORMVersionMetadata
 
 async def create_version_metadata(dataset: str, version: str, **data):
     """Create version metadata record."""
-    dataset_metadata: ORMDatasetMetadata = await get_dataset_metadata(dataset)
 
     content_date_range = data.pop("content_date_range", None)
     if content_date_range:
@@ -87,7 +85,6 @@ async def create_version_metadata(dataset: str, version: str, **data):
         new_metadata: ORMVersionMetadata = await ORMVersionMetadata.create(
             dataset=dataset,
             version=version,
-            dataset_metadata_id=dataset_metadata.id,
             **data,
         )
     except UniqueViolationError:
