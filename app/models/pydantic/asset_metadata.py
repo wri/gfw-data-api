@@ -57,6 +57,7 @@ class RasterBandMetadata(StrictBaseModel):
     # Raster Files/ Raster Tilesets
     pixel_meaning: str
     unit: Optional[str]
+    description: Optional[str]
     statistics: Optional[Dict[str, Any]]
     values_table: Optional[RasterTable]
     data_type: Optional[str]
