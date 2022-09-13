@@ -1,6 +1,7 @@
 from typing import List, Optional, Union
 
 from ..enum.pixetl import Grid
+from .asset_metadata import RasterTable
 from .base import StrictBaseModel
 from .asset_metadata import RasterTable
 

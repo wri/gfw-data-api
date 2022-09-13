@@ -394,4 +394,3 @@ async def _create_geostore(geojson: Dict[str, Any], async_client: AsyncClient) -
     assert response.status_code == 201
 
     return response.json()["data"]["gfw_geostore_id"]
- 

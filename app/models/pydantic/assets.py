@@ -4,9 +4,9 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from ..enum.assets import AssetStatus, AssetType
+from .asset_metadata import AssetMetadata, AssetMetadataOut
 from .base import BaseRecord, StrictBaseModel
 from .creation_options import CreationOptions, OtherCreationOptions
-from .asset_metadata import AssetMetadata, AssetMetadataOut
 from .responses import Response
 
 
@@ -53,6 +53,7 @@ class AssetTaskCreate(StrictBaseModel):
     is_default: bool = False
     is_downloadable: Optional[bool] = None
     creation_options: CreationOptions  # should this also be OtherCreationOptions?
+
 
 class AssetResponse(Response):
     data: Asset

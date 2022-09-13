@@ -26,28 +26,17 @@ dataset_metadata = {
     "overview": "Some detailed data description",
 }
 
-generic_dataset_payload = {
-    "metadata": dataset_metadata
-}
+generic_dataset_payload = {"metadata": dataset_metadata}
 
 version_metadata = {
     "creation_date": "2020-01-02",
-    "content_date_range": {
-            "start_date": "2000-01-01",
-            "end_date": "2021-01-01"
-    },
+    "content_date_range": {"start_date": "2000-01-01", "end_date": "2021-01-01"},
     "last_update": "2020-01-03",
-    "resolution": 10
+    "resolution": 10,
 }
 
 asset_metadata = {
-    "fields": [
-        {
-            "name": "field1",
-            "data_type": "numeric",
-            "unit": "meters"
-        }
-    ]
+    "fields": [{"name": "field1", "data_type": "numeric", "unit": "meters"}]
 }
 
 generic_version_payload = {

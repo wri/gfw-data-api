@@ -176,16 +176,15 @@ async def test_assets_metadata():
     dataset = "test"
     version = "v1.1.1"
 
-
     # Add a dataset
     async with ContextEngine("WRITE"):
         await create_dataset(
-            dataset, metadata=DatasetMetadata(**dataset_metadata).dict(by_alias=True)
+            dataset, metadata=DatasetMetadata(**dataset_metadata).dict(by_alias=False)
         )
         await create_version(
             dataset,
             version,
-            metadata=VersionMetadata(**version_metadata).dict(by_alias=True)
+            metadata=VersionMetadata(**version_metadata).dict(by_alias=True),
         )
         new_asset = await create_asset(
             dataset,
@@ -197,29 +196,41 @@ async def test_assets_metadata():
 
     asset_id = new_asset.asset_id
     assert new_asset.metadata.fields[0].name == asset_metadata["fields"][0]["name"]
-    assert new_asset.metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
+    assert (
+        new_asset.metadata.fields[0].data_type
+        == asset_metadata["fields"][0]["data_type"]
+    )
 
     async with ContextEngine("READ"):
         asset = await get_asset(asset_id)
     assert asset.metadata.fields[0].name == asset_metadata["fields"][0]["name"]
-    assert asset.metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
+    assert (
+        asset.metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
+    )
 
     async with ContextEngine("READ"):
         assets = await get_assets_by_filter(dataset=dataset, version=version)
     assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
-    assert assets[0].metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
+    assert (
+        assets[0].metadata.fields[0].data_type
+        == asset_metadata["fields"][0]["data_type"]
+    )
 
     async with ContextEngine("READ"):
         assets = await get_assets_by_filter(asset_types=["Database table"])
     assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
-    assert assets[0].metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
+    assert (
+        assets[0].metadata.fields[0].data_type
+        == asset_metadata["fields"][0]["data_type"]
+    )
 
     async with ContextEngine("READ"):
         assets = await get_assets_by_filter()
     assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
-    assert assets[0].metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
-
-
+    assert (
+        assets[0].metadata.fields[0].data_type
+        == asset_metadata["fields"][0]["data_type"]
+    )
 
     # async with ContextEngine("WRITE"):
     #     asset = await update_asset(asset_id, metadata={"source": "Source"})
@@ -228,4 +239,6 @@ async def test_assets_metadata():
     async with ContextEngine("WRITE"):
         asset = await delete_asset(asset_id)
     assert asset.metadata.fields[0].name == asset_metadata["fields"][0]["name"]
-    assert asset.metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
+    assert (
+        asset.metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
+    )

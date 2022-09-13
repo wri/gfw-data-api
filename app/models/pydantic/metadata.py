@@ -14,6 +14,7 @@ class CommonMetadata(BaseModel):
     geographic_coverage: Optional[str]
     update_frequency: Optional[str]
     scale: Optional[str]
+    citation: Optional[str]
 
     class Config:
         schema_extra = {
@@ -36,7 +37,6 @@ class DatasetMetadata(CommonMetadata):
     overview: Optional[str]
 
     function: Optional[str]
-    citation: Optional[str]
     cautions: Optional[str]
     key_restrictions: Optional[str]
     tags: Optional[List[str]]
@@ -60,8 +60,6 @@ class DatasetMetadata(CommonMetadata):
                 }
             ]
         }
-
-    # other: Optional[str]
 
 
 class DatasetMetadataOut(DatasetMetadata, BaseRecord):
