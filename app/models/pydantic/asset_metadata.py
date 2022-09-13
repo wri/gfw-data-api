@@ -11,6 +11,10 @@ from .base import BaseORMRecord, StrictBaseModel
 from .responses import Response
 
 
+class AssetBase(StrictBaseModel):
+    tags: Optional[str]
+
+
 class FieldMetadata(StrictBaseModel):
     name: str
     alias: Optional[str]
@@ -65,12 +69,12 @@ class RasterBandMetadataOut(RasterBandMetadata):
         orm_mode = True
 
 
-class RasterTileSetMetadata(StrictBaseModel):
+class RasterTileSetMetadata(AssetBase):
     bands: List[RasterBandMetadata]
-    resolution: int
+    resolution: Optional[int]
 
 
-class RasterTileSetMetadataUpdate(StrictBaseModel):
+class RasterTileSetMetadataUpdate(AssetBase):
     resolution: int
 
 
@@ -79,7 +83,7 @@ class RasterTileSetMetadataOut(RasterTileSetMetadata, BaseORMRecord):
     bands: List[RasterBandMetadata]
 
 
-class RasterTileCacheMetadata(StrictBaseModel):
+class RasterTileCacheMetadata(AssetBase):
     min_zoom: Optional[int]  # FIXME: Should this really be optional?
     max_zoom: Optional[
         int
@@ -88,14 +92,14 @@ class RasterTileCacheMetadata(StrictBaseModel):
     fields: Optional[List[FieldMetadata]]
 
 
-class StaticVectorTileCacheMetadata(StrictBaseModel):
+class StaticVectorTileCacheMetadata(AssetBase):
     min_zoom: Optional[int]
     max_zoom: Optional[int]
     fields: Optional[List[FieldMetadata]]
     # TODO: default symbology/ legend
 
 
-class StaticVectorTileCacheMetadataUpdate(StrictBaseModel):
+class StaticVectorTileCacheMetadataUpdate(AssetBase):
     min_zoom: Optional[int]
     max_zoom: Optional[int]
 
@@ -105,11 +109,11 @@ class DynamicVectorTileCacheMetadata(StaticVectorTileCacheMetadata):
     max_zoom: StrictInt = 22
 
 
-class DatabaseTableMetadata(StrictBaseModel):
+class DatabaseTableMetadata(AssetBase):
     fields: Optional[List[FieldMetadata]]
 
 
-class VectorFileMetadata(StrictBaseModel):
+class VectorFileMetadata(AssetBase):
     fields: Optional[List[FieldMetadata]]
 
 

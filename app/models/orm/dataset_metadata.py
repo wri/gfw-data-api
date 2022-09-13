@@ -17,7 +17,7 @@ class DatasetMetadata(Base, MetadataMixin):
     function = db.Column(db.String)
     cautions = db.Column(db.String)
     key_restrictions = db.Column(db.String)
-    keywords = db.Column(sa.ARRAY(db.String))
+    tags = db.Column(sa.ARRAY(db.String))
     why_added = db.Column(db.String)
     learn_more = db.Column(db.String)
 

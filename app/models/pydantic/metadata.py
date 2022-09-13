@@ -39,7 +39,7 @@ class DatasetMetadata(CommonMetadata):
     citation: Optional[str]
     cautions: Optional[str]
     key_restrictions: Optional[str]
-    keywords: Optional[List[str]]
+    tags: Optional[List[str]]
     why_added: Optional[str]
     learn_more: Optional[str]
 
@@ -55,7 +55,7 @@ class DatasetMetadata(CommonMetadata):
                     "function": "Identifies areas of primary forest loss  in near real time using Sentinel-2 imagery",
                     "citation": "Pickens, A.H., Hansen, M.C., Adusei, B., and Potapov P. 2020. Sentinel-2 Forest Loss Alert. Global Land Analysis and Discovery (GLAD), University of Maryland.",
                     "cautions": "Results are masked to only within the primary forest mask of [Turubanova et al (2018)](https://iopscience.iop.org/article/10.1088/1748-9326/aacd1c) in the Amazon river basin, with 2001-2018 forest loss from [Hansen et al. (2013)](https://science.sciencemag.org/content/342/6160/850) removed. Alerts that have been detected in two out of four consecutive images are classified as high confidence. Pixels with high confidence alerts cannot be alerted again. The accuracy of this product has not been assessed",
-                    "keywords": ["Forest Change"],
+                    "tags": ["Forest Change"],
                     "learn_more": "https://glad.earthengine.app/view/s2-forest-alerts",
                 }
             ]

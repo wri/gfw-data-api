@@ -1,4 +1,4 @@
-from .base import Base, db
+from .base import db
 
 
 class AssetMetadata(db.Model):
@@ -6,9 +6,7 @@ class AssetMetadata(db.Model):
 
     id = db.Column(db.UUID, primary_key=True)
     asset_id = db.Column(
-        db.UUID,
-        db.ForeignKey("assets.asset_id", name="asset_id_fk"),
-        unique=True
+        db.UUID, db.ForeignKey("assets.asset_id", name="asset_id_fk"), unique=True
     )
     # dataset_metadata_id = db.Column(
     #     db.UUID, db.ForeignKey("dataset_metadata.id", name="dataset_metadata_id_fk")
@@ -19,6 +17,7 @@ class AssetMetadata(db.Model):
     resolution = db.Column(db.Numeric)
     min_zoom = db.Column(db.Integer)
     max_zoom = db.Column(db.Integer)
+    tags = db.Column(db.String)
 
 
 class FieldMetadata(db.Model):
@@ -30,9 +29,9 @@ class FieldMetadata(db.Model):
             "asset_metadata.id",
             name="asset_metadata_id_fk",
             onupdate="CASCADE",
-            ondelete="CASCADE"
+            ondelete="CASCADE",
         ),
-        primary_key=True
+        primary_key=True,
     )
     name = db.Column(db.String, primary_key=True)
     description = db.Column(db.String)
@@ -53,8 +52,8 @@ class RasterBandMetadata(db.Model):
             name="asset_metadata_id_fk",
             onupdate="CASCADE",
             ondelete="CASCADE",
-            primary_key=True
-        )
+            primary_key=True,
+        ),
     )
     pixel_meaning = db.Column(db.String, primary_key=True)
     description = db.Column(db.String)

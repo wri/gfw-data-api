@@ -34,7 +34,7 @@ def upgrade():
         sa.Column("function", sa.String()),
         sa.Column("cautions", sa.String()),
         sa.Column("key_restrictions", sa.String()),
-        sa.Column("keywords", sa.ARRAY(sa.String)),
+        sa.Column("tags", sa.ARRAY(sa.String)),
         sa.Column("why_added", sa.String()),
         sa.Column("learn_more", sa.String()),
         sa.Column("resolution", sa.Numeric()),
@@ -110,6 +110,7 @@ def upgrade():
         sa.Column("resolution", sa.Numeric()),
         sa.Column("min_zoom", sa.Integer()),
         sa.Column("max_zoom", sa.Integer()),
+        sa.Column("tags", sa.ARRAY(sa.String)),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(
             ["asset_id"],
