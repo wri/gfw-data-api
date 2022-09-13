@@ -32,7 +32,7 @@ def upgrade():
         sa.Column("data_language", sa.String(), nullable=False),
         sa.Column("overview", sa.String(), nullable=False),
         sa.Column("function", sa.String()),
-        sa.Column("cautions", sa.String()),
+        sa.Column("cautions", sa.ARRAY(sa.String())),
         sa.Column("key_restrictions", sa.String()),
         sa.Column("tags", sa.ARRAY(sa.String)),
         sa.Column("why_added", sa.String()),
