@@ -112,8 +112,12 @@ async def update_version_metadata(
     metadata: ORMVersionMetadata = await get_version_metadata(dataset, version)
     content_date_range = data.pop("content_date_range", None)
     if content_date_range:
-        data["content_start_date"] = content_date_range["start_date"]
-        data["content_end_date"] = content_date_range["end_date"]
+        data["content_start_date"] = content_date_range.get(
+            "start_date", metadata.content_start_date
+        )
+        data["content_end_date"] = content_date_range.get(
+            "end_date", metadata.content_end_date
+        )
 
     await metadata.update(**data).apply()
 
