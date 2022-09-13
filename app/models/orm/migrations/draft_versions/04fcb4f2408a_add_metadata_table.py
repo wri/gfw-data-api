@@ -158,7 +158,7 @@ def upgrade():
         ),
         sa.Column(
             "values_table",
-            postgresql.ARRAY(postgresql.JSONB(astext_type=sa.Text())),
+            postgresql.JSONB(astext_type=sa.Text()),
             nullable=True,
         ),
         sa.PrimaryKeyConstraint("asset_metadata_id", "pixel_meaning"),
