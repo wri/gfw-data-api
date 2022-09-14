@@ -20,3 +20,4 @@ class StrictBaseModel(BaseModel):
     class Config:
         extra = Extra.forbid
         validate_assignment = True
+

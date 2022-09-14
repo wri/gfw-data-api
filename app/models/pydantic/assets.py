@@ -53,7 +53,6 @@ class AssetTaskCreate(StrictBaseModel):
     is_default: bool = False
     is_downloadable: Optional[bool] = None
     creation_options: CreationOptions  # should this also be OtherCreationOptions?
-    metadata: Optional[AssetMetadata]
 
 
 class AssetResponse(Response):

@@ -11,6 +11,7 @@ class AssetMetadata(db.Model):
     resolution = db.Column(db.Numeric)
     min_zoom = db.Column(db.Integer)
     max_zoom = db.Column(db.Integer)
+    tags = db.Column(db.String)
 
 
 class FieldMetadata(db.Model):
@@ -56,4 +57,4 @@ class RasterBandMetadata(db.Model):
     compression = db.Column(db.String)
     no_data_value = db.Column(db.String)
     statistics = db.Column(db.JSONB)
-    values_table = db.Column(db.ARRAY(db.JSONB))
+    values_table = db.Column(db.JSONB)

@@ -112,9 +112,9 @@ def upgrade():
         sa.Column("data_language", sa.String(), nullable=True),
         sa.Column("overview", sa.String(), nullable=True),
         sa.Column("function", sa.String()),
-        sa.Column("cautions", sa.String()),
+        sa.Column("cautions", sa.ARRAY(sa.String())),
         sa.Column("key_restrictions", sa.String()),
-        sa.Column("keywords", sa.ARRAY(sa.String)),
+        sa.Column("tags", sa.ARRAY(sa.String)),
         sa.Column("why_added", sa.String()),
         sa.Column("learn_more", sa.String()),
         sa.Column("resolution", sa.Numeric()),
@@ -150,7 +150,6 @@ def upgrade():
         sa.Column("title", sa.String()),
         sa.Column("dataset", sa.String(), nullable=False),
         sa.Column("version", sa.String(), nullable=False),
-        sa.Column("dataset_metadata_id", postgresql.UUID(), nullable=True),
         sa.Column("creation_date", sa.Date(), nullable=True),
         sa.Column("content_start_date", sa.Date(), nullable=True),
         sa.Column("content_end_date", sa.Date(), nullable=True),
@@ -190,6 +189,7 @@ def upgrade():
         sa.Column("resolution", sa.Numeric()),
         sa.Column("min_zoom", sa.Integer()),
         sa.Column("max_zoom", sa.Integer()),
+        sa.Column("tags", sa.ARRAY(sa.String)),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(
             ["asset_id"],
@@ -238,7 +238,7 @@ def upgrade():
         ),
         sa.Column(
             "values_table",
-            postgresql.ARRAY(postgresql.JSONB(astext_type=sa.Text())),
+            postgresql.JSONB(astext_type=sa.Text()),
             nullable=True,
         ),
         sa.PrimaryKeyConstraint("asset_metadata_id", "pixel_meaning"),
@@ -253,8 +253,14 @@ def upgrade():
 
     dataset_metadata, version_metadata = get_metadata()
     connection = op.get_bind()
-    connection.execute(ORMDatasetMetadata.insert(), dataset_metadata)
-    connection.execute(ORMVersionMetadata.insert(), version_metadata)
+    if len(dataset_metadata):
+        connection.execute(ORMDatasetMetadata.insert(), dataset_metadata)
+    if len(version_metadata):
+        connection.execute(ORMVersionMetadata.insert(), version_metadata)
+    op.drop_column("datasets", "metadata")
+    op.drop_column("versions", "metadata")
+    op.drop_column("assets", "metadata")
+
 
 def downgrade():
     op.drop_table("raster_band_metadata")
@@ -262,3 +268,24 @@ def downgrade():
     op.drop_table("asset_metadata")
     op.drop_table("version_metadata")
     op.drop_table("dataset_metadata")
+    op.add_column(
+        "datasets",
+        sa.Column(
+            "metadata",
+            postgresql.JSONB(astext_type=sa.Text()),
+        ),
+    )
+    op.add_column(
+        "versions",
+        sa.Column(
+            "metadata",
+            postgresql.JSONB(astext_type=sa.Text()),
+        ),
+    )
+    op.add_column(
+        "assets",
+        sa.Column(
+            "metadata",
+            postgresql.JSONB(astext_type=sa.Text()),
+        ),
+    )

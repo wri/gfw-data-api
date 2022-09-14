@@ -1,16 +1,21 @@
 from typing import Any, Dict, List, Optional, Type, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Field, StrictInt, create_model
+from fastapi.encoders import jsonable_encoder
+from pydantic import StrictInt, create_model
 
 from ...models.orm.assets import Asset as ORMAsset
 from ..enum.assets import AssetType
 from ..enum.pg_types import PGType
-from .base import BaseORMRecord
+from .base import BaseORMRecord, StrictBaseModel
 from .responses import Response
 
 
-class FieldMetadata(BaseModel):
+class AssetBase(StrictBaseModel):
+    tags: Optional[str]
+
+
+class FieldMetadata(StrictBaseModel):
     name: str
     alias: Optional[str]
     description: Optional[str]
@@ -21,13 +26,11 @@ class FieldMetadata(BaseModel):
 
 
 class FieldMetadataOut(FieldMetadata):
-    asset_metadata_id: UUID
-
     class Config:
         orm_mode = True
 
 
-class FieldMetadataUpdate(BaseModel):
+class FieldMetadataUpdate(StrictBaseModel):
     alias: Optional[str]
     description: Optional[str]
     unit: Optional[str]
@@ -35,7 +38,7 @@ class FieldMetadataUpdate(BaseModel):
     is_filter: Optional[bool]
 
 
-class RasterTableRow(BaseModel):
+class RasterTableRow(StrictBaseModel):
     """Mapping of pixel value to what it represents in physical world.
 
     E.g., in ESA land cover data, 10 represents agriculture use.
@@ -45,17 +48,18 @@ class RasterTableRow(BaseModel):
     meaning: Any
 
 
-class RasterTable(BaseModel):
+class RasterTable(StrictBaseModel):
     rows: List[RasterTableRow]
     default_meaning: Optional[Any] = None
 
 
-class RasterBandMetadata(BaseModel):
+class RasterBandMetadata(StrictBaseModel):
     # Raster Files/ Raster Tilesets
     pixel_meaning: str
     unit: Optional[str]
+    description: Optional[str]
     statistics: Optional[Dict[str, Any]]
-    values_table: Optional[RasterTable] = Field(None, alias="raster_table")
+    values_table: Optional[RasterTable]
     data_type: Optional[str]
     compression: Optional[str]
     no_data_value: Optional[str]
@@ -66,12 +70,12 @@ class RasterBandMetadataOut(RasterBandMetadata):
         orm_mode = True
 
 
-class RasterTileSetMetadata(BaseModel):
+class RasterTileSetMetadata(AssetBase):
     bands: List[RasterBandMetadata]
     resolution: Optional[int]
 
 
-class RasterTileSetMetadataUpdate(BaseModel):
+class RasterTileSetMetadataUpdate(AssetBase):
     resolution: int
 
 
@@ -80,7 +84,7 @@ class RasterTileSetMetadataOut(RasterTileSetMetadata, BaseORMRecord):
     bands: List[RasterBandMetadata]
 
 
-class RasterTileCacheMetadata(BaseModel):
+class RasterTileCacheMetadata(AssetBase):
     min_zoom: Optional[int]  # FIXME: Should this really be optional?
     max_zoom: Optional[
         int
@@ -89,14 +93,14 @@ class RasterTileCacheMetadata(BaseModel):
     fields: Optional[List[FieldMetadata]]
 
 
-class StaticVectorTileCacheMetadata(BaseModel):
+class StaticVectorTileCacheMetadata(AssetBase):
     min_zoom: Optional[int]
     max_zoom: Optional[int]
     fields: Optional[List[FieldMetadata]]
     # TODO: default symbology/ legend
 
 
-class StaticVectorTileCacheMetadataUpdate(BaseModel):
+class StaticVectorTileCacheMetadataUpdate(AssetBase):
     min_zoom: Optional[int]
     max_zoom: Optional[int]
 
@@ -106,12 +110,12 @@ class DynamicVectorTileCacheMetadata(StaticVectorTileCacheMetadata):
     max_zoom: StrictInt = 22
 
 
-class DatabaseTableMetadata(BaseModel):
-    fields: List[FieldMetadata]
+class DatabaseTableMetadata(AssetBase):
+    fields: Optional[List[FieldMetadata]]
 
 
-class VectorFileMetadata(BaseModel):
-    fields: List[FieldMetadata]
+class VectorFileMetadata(AssetBase):
+    fields: Optional[List[FieldMetadata]]
 
 
 AssetMetadata = Union[
@@ -136,7 +140,7 @@ def asset_metadata_out(Metadata):
             f"{Metadata.__name__}Out",
             __base__=(Metadata, BaseORMRecord),
             id=(UUID, ...),
-            bands=(List[RasterBandMetadataOut], ...),
+            bands=(Optional[List[RasterBandMetadataOut]], None),
         )
 
     if "fields" in Metadata.__dict__["__fields__"]:
@@ -144,7 +148,7 @@ def asset_metadata_out(Metadata):
             f"{Metadata.__name__}Out",
             __base__=(Metadata, BaseORMRecord),
             id=(UUID, ...),
-            fields=(List[FieldMetadataOut], ...),
+            fields=(Optional[List[FieldMetadataOut]], None),
         )
 
     return create_model(
@@ -161,7 +165,7 @@ AssetMetadataOutList = [
 
 # Instantiating Union doesn't support list or spread arguments so instantiating one
 # with couple of the inputs and then setting its __args__ attr with all the parameters
-AssetMetadataOut = Union[AssetMetadataOutList[0], AssetMetadataOutList[4]]
+AssetMetadataOut = Union[AssetMetadataOutList[0], AssetMetadataOutList[1]]
 AssetMetadataOut.__setattr__("__args__", tuple(AssetMetadataOutList))
 
 
@@ -183,10 +187,37 @@ def asset_metadata_factory(asset: ORMAsset) -> AssetMetadata:
         AssetType.shapefile: VectorFileMetadata,
         AssetType.geopackage: VectorFileMetadata,
     }
+
     if asset.asset_type in metadata_factory.keys():
         MetadataOut = asset_metadata_out(metadata_factory[asset.asset_type])
-        if getattr(asset, "metadata", None):
-            md: AssetMetadata = MetadataOut.from_orm(asset.metadata)
+        metadata = getattr(asset, "metadata", None)
+        if metadata:
+            fields = getattr(metadata, "fields", None)
+            bands = getattr(metadata, "bands", None)
+            metadata_dict = jsonable_encoder(
+                metadata.__dict__["__values__"], exclude=["asset_id"], exclude_none=True
+            )
+            if fields:
+                fields_list = [
+                    jsonable_encoder(
+                        field.__dict__["__values__"],
+                        exclude=["asset_metadata_id"],
+                        exclude_none=True,
+                    )
+                    for field in fields
+                ]
+                metadata_dict["fields"] = fields_list
+            if bands:
+                bands_list = [
+                    jsonable_encoder(
+                        band.__dict__["__values__"],
+                        exclude=["asset_metadata_id"],
+                        exclude_none=True,
+                    )
+                    for band in bands
+                ]
+                metadata_dict["bands"] = bands_list
+            md: AssetMetadata = MetadataOut(**metadata_dict)
         else:
             md = BaseORMRecord()
     else:

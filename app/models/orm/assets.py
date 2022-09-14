@@ -13,7 +13,6 @@ class Asset(Base):
     is_default = db.Column(db.Boolean, nullable=False, default=False)
     is_downloadable = db.Column(db.Boolean, nullable=False, default=True)
     creation_options = db.Column(db.JSONB, nullable=False, default=dict())
-    metadata = db.Column(db.JSONB, nullable=False, default=dict())
     fields = db.Column(db.JSONB, nullable=False, default=list())
     extent = db.Column(db.JSONB, nullable=True, default=None)
     stats = db.Column(db.JSONB, nullable=True, default=None)
