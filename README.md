@@ -11,6 +11,8 @@ High-performance Async REST API, in Python. FastAPI + GINO + Uvicorn (powered by
 ### Developing
 * Generate a DB Migration: `./scripts/migrate` (note `app/settings/prestart.sh` will run migrations automatically when running `/scripts/develop`)
 * Run tests: `./scripts/test`
+  * `--no_build` - don't rebuild the containers
+  * `--moto-port=<port_number>` - explicitly sets the motoserver port (default `5000`)
 * Run specific tests: `./scripts/test tasks/test_vector_source_assets.py::test_vector_source_asset`
 * Debug memory usage of Batch jobs with memory_profiler:
     1. Install memory_profiler in the job's Dockerfile
