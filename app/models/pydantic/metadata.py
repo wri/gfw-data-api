@@ -2,14 +2,14 @@ from datetime import date, datetime
 from typing import Any, List, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Field, validator
+from pydantic import Field, validator
 from pydantic.utils import GetterDict
 
 from .base import BaseRecord, StrictBaseModel
 from .responses import Response
 
 
-class CommonMetadata(BaseModel):
+class CommonMetadata(StrictBaseModel):
     resolution: Optional[Union[int, float]]
     geographic_coverage: Optional[str]
     update_frequency: Optional[str]
@@ -66,7 +66,7 @@ class DatasetMetadataOut(DatasetMetadata, BaseRecord):
     id: UUID
 
 
-class DatasetMetadataIn(DatasetMetadata, BaseModel):
+class DatasetMetadataIn(DatasetMetadata, StrictBaseModel):
     pass
 
 
@@ -74,7 +74,7 @@ class DatasetMetadataUpdate(DatasetMetadataIn):
     pass
 
 
-class ContentDateRange(BaseModel):
+class ContentDateRange(StrictBaseModel):
     start_date: Optional[date] = Field(
         None,
         description="Beginning date covered by data",
@@ -133,7 +133,7 @@ class VersionMetadata(CommonMetadata):
         }
 
 
-class VersionMetadataIn(VersionMetadata, BaseModel):
+class VersionMetadataIn(VersionMetadata, StrictBaseModel):
     pass
 
 
