@@ -548,7 +548,7 @@ async def _create_intensity_asset(
     )
 
     if zoom_level == max_zoom:
-        parent_jobs: Optional[List[Job]] = None
+        parent_jobs: List[Job] = [jobs_dict[zoom_level]["source_reprojection_job"]]
     else:
         parent_jobs = [jobs_dict[zoom_level + 1]["intensity_reprojection_job"]]
 
