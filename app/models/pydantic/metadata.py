@@ -124,7 +124,7 @@ class VersionMetadata(CommonMetadata):
             "examples": [
                 {
                     "content_date_range": {
-                        "start_date": "2000-01-01",  # TODO fix date
+                        "start_date": "2000-01-01",
                         "end_date": "2021-04-06",
                     },
                     "creation_date": "2021-04-07",
