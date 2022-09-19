@@ -38,6 +38,7 @@ httpcore = "*"
 httpx = "*"
 httpx-auth = "*"
 numpy = "*"
+openapi-spec-validator = "<0.5"  # See https://github.com/spulec/moto/issues/5457
 orjson = "*"
 packaging = "*"
 pendulum = "*"
