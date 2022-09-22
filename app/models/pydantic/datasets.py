@@ -4,7 +4,7 @@ from pydantic import Field, BaseModel
 
 from .base import BaseRecord, StrictBaseModel
 from .metadata import DatasetMetadata, DatasetMetadataOut, DatasetMetadataUpdate
-from .responses import Response
+from .responses import PaginationLinks, PaginationMeta, Response
 
 
 class Dataset(BaseRecord):
@@ -35,3 +35,8 @@ class DatasetResponse(Response):
 
 class DatasetsResponse(Response):
     data: List[Dataset]
+
+
+class PaginatedDatasetsResponse(DatasetsResponse):
+    links: PaginationLinks
+    meta: PaginationMeta

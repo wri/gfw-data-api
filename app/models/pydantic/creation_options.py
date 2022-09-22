@@ -115,7 +115,10 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     auxiliary_assets: Optional[List[UUID]] = None
     photometric: Optional[PhotometricType] = None
     num_processes: Optional[StrictInt] = None
-    timeout_sec: Optional[StrictInt] = None
+    timeout_sec: Optional[StrictInt] = Field(
+        None,
+        description="Maximum run time for associated AWS Batch jobs, in seconds",
+    )
 
     @validator("no_data")
     def validate_no_data(cls, v, values, **kwargs):
@@ -250,6 +253,10 @@ class TileCacheBaseModel(StrictBaseModel):
     )
     max_zoom: int = Field(
         14, description="Maximum zoom level of tile cache", ge=0, le=22
+    )
+    timeout_sec: Optional[StrictInt] = Field(
+        None,
+        description="Maximum run time for associated AWS Batch jobs, in seconds",
     )
 
     @classmethod

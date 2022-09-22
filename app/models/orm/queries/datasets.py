@@ -24,6 +24,9 @@ FROM
       FROM
         dataset_metadata
     )
-    m USING (dataset);"""
+    m USING (dataset)
+    ORDER BY dataset
+    LIMIT(:limit)
+    OFFSET(:offset);"""
 
 all_datasets = db.text(_dataset_sql)

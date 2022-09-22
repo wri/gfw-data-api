@@ -17,10 +17,10 @@ from app.settings.globals import (
     MAX_MEM,
     S3_ENTRYPOINT_URL,
 )
-from app.tasks import Callback, writer_secrets
+from app.tasks import Callback, reader_secrets
 from app.utils.path import get_asset_uri, split_s3_path, tile_uri_to_tiles_geojson
 
-JOB_ENV = writer_secrets + [
+JOB_ENV = reader_secrets + [
     {"name": "AWS_REGION", "value": AWS_REGION},
     {"name": "ENV", "value": ENV},
 ]
@@ -141,6 +141,10 @@ async def create_gdaldem_job(
         target_prefix,
     ]
 
+    kwargs = dict()
+    if co.timeout_sec is not None:
+        kwargs["attempt_duration_seconds"] = co.timeout_sec
+
     return GDALDEMJob(
         dataset=dataset,
         job_name=job_name,
@@ -148,6 +152,7 @@ async def create_gdaldem_job(
         environment=JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents] if parents else None,
+        **kwargs,
     )
 
 
@@ -209,6 +214,10 @@ async def create_resample_job(
         target_prefix,
     ]
 
+    kwargs = dict()
+    if co.timeout_sec is not None:
+        kwargs["attempt_duration_seconds"] = co.timeout_sec
+
     return PixETLJob(
         dataset=dataset,
         job_name=job_name,
@@ -216,4 +225,5 @@ async def create_resample_job(
         environment=JOB_ENV,
         callback=callback,
         parents=[parent.job_name for parent in parents] if parents else None,
+        **kwargs,
     )

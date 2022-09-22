@@ -391,7 +391,8 @@ async def year_intensity_symbology(
     based on given source. For lower zoom levels it will resample higher
     zoom level tiles using average resampling method. Once intensity
     raster tile set is created it will combine it with source (year)
-    raster into an RGB-encoded raster.
+    raster into an RGB-encoded raster. This symbology is used for the
+    Tree Cover Loss dataset.
     """
 
     intensity_calc_string = "(A > 0) * 255"
@@ -408,12 +409,12 @@ async def year_intensity_symbology(
         ResamplingMethod.average,
     )
 
-    merge_calc_string = (
-        "np.ma.array("
-        "[A, np.ma.zeros(A.shape, dtype='uint8'), B], "
-        "fill_value=0"
-        ").astype('uint8')"
-    )
+    # The resulting raster channels are as follows:
+    # 1. Intensity
+    # 2. All zeros
+    # 3. Year
+    # 4. Alpha (which is set to 255 everywhere intensity is >0)
+    merge_calc_string = "np.ma.array([B, np.ma.zeros(A.shape, dtype='uint8'), A, (B > 0) * 255], fill_value=0).astype('uint8')"
 
     wm_source_uri: str = get_asset_uri(
         dataset,
@@ -437,7 +438,7 @@ async def year_intensity_symbology(
         zoom_level,
         [*intensity_jobs, source_job],
         merge_calc_string,
-        3,
+        4,
     )
     return [*intensity_jobs, *merge_jobs], final_asset_uri
 
@@ -546,7 +547,7 @@ async def _create_intensity_asset(
     )
 
     if zoom_level == max_zoom:
-        parent_jobs: Optional[List[Job]] = None
+        parent_jobs: List[Job] = [jobs_dict[zoom_level]["source_reprojection_job"]]
     else:
         parent_jobs = [jobs_dict[zoom_level + 1]["intensity_reprojection_job"]]
 
