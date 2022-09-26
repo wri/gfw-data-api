@@ -9,10 +9,9 @@ from app.application import ContextEngine
 from app.crud.assets import (
     create_asset,
     delete_asset,
-    get_all_assets,
     get_asset,
     get_assets,
-    get_assets_by_type,
+    get_assets_by_filter,
     update_asset,
 )
 from app.crud.datasets import create_dataset
@@ -112,21 +111,21 @@ async def test_assets():
     asset_id = rows[0].asset_id
 
     # There should be an entry now
-    rows = await get_all_assets()
+    rows = await get_assets_by_filter()
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
     assert rows[0].version == version_name
 
     # There should be an entry now
-    rows = await get_assets_by_type("Database table")
+    rows = await get_assets_by_filter(asset_types=["Database table"])
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
     assert rows[0].version == version_name
 
     # There should be no such entry
-    rows = await get_assets_by_type("Vector tile cache")
+    rows = await get_assets_by_filter(asset_types=["Vector tile cache"])
     assert isinstance(rows, list)
     assert len(rows) == 0
 
@@ -171,7 +170,7 @@ async def test_assets():
     assert row.version == version_name
 
     # After deleting the dataset, there should be an empty DB
-    rows = await get_all_assets()
+    rows = await get_assets_by_filter()
     assert isinstance(rows, list)
     assert len(rows) == 0
 
@@ -221,11 +220,11 @@ async def test_assets_metadata():
     assert assets[0].metadata == result_metadata
 
     async with ContextEngine("READ"):
-        assets = await get_assets_by_type("Database table")
+        assets = await get_assets_by_filter(asset_types=["Database table"])
     assert assets[0].metadata == result_metadata
 
     async with ContextEngine("READ"):
-        assets = await get_all_assets()
+        assets = await get_assets_by_filter()
     assert assets[0].metadata == result_metadata
 
     result_metadata = {
