@@ -60,7 +60,7 @@ async def get_version_assets(
         default=None,
         alias="page[size]",
         ge=1,
-        description="The number of datasets per page. Default is `10`.",
+        description="The number of assets per page. Default is `10`.",
     ),
 ) -> Union[PaginatedAssetsResponse, AssetsResponse]:
     """Get all assets for a given dataset version.
