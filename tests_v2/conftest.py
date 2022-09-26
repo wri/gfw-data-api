@@ -8,6 +8,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from alembic.config import main
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+from pytz import VERSION
 
 from app.authentication.token import get_user, is_admin, is_service_account
 from app.crud import api_keys
@@ -20,6 +21,8 @@ from tests_v2.fixtures.creation_options.versions import (
     RASTER_CREATION_OPTIONS,
     VECTOR_SOURCE_CREATION_OPTIONS,
 )
+from tests_v2.fixtures.metadata.dataset import DATASET_METADATA
+from tests_v2.fixtures.metadata.version import VERSION_METADATA
 from tests_v2.utils import (
     BatchJobMock,
     _create_vector_source_assets,
@@ -140,14 +143,13 @@ async def generic_dataset(
 
     # Create dataset
     dataset_name: str = "my_first_dataset"
-    dataset_metadata: Dict[str, Any] = {}
 
     await async_client.put(
-        f"/dataset/{dataset_name}", json={"metadata": dataset_metadata}
+        f"/dataset/{dataset_name}", json={"metadata": DATASET_METADATA}
     )
 
     # Yield dataset name and associated metadata
-    yield dataset_name, dataset_metadata
+    yield dataset_name, DATASET_METADATA
 
     # Clean up
     await async_client.delete(f"/dataset/{dataset_name}")
@@ -164,7 +166,6 @@ async def generic_vector_source_version(
 
     dataset_name, _ = generic_dataset
     version_name: str = "v1"
-    version_metadata: Dict[str, Any] = {}
 
     # patch all functions which reach out to external services
     batch_job_mock = BatchJobMock()
@@ -181,7 +182,7 @@ async def generic_vector_source_version(
     response = await async_client.put(
         f"/dataset/{dataset_name}/{version_name}",
         json={
-            "metadata": version_metadata,
+            "metadata": VERSION_METADATA,
             "creation_options": VECTOR_SOURCE_CREATION_OPTIONS,
         },
     )
@@ -215,7 +216,7 @@ async def generic_vector_source_version(
     assert response.json()["data"]["status"] == "saved"
 
     # yield version
-    yield dataset_name, version_name, version_metadata
+    yield dataset_name, version_name, VERSION_METADATA
 
     # clean up
     await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
@@ -232,7 +233,6 @@ async def generic_raster_version(
 
     dataset_name, _ = generic_dataset
     version_name: str = "v1"
-    version_metadata: Dict[str, Any] = {}
 
     # patch all functions which reach out to external services
     batch_job_mock = BatchJobMock()
@@ -249,7 +249,7 @@ async def generic_raster_version(
     await async_client.put(
         f"/dataset/{dataset_name}/{version_name}",
         json={
-            "metadata": version_metadata,
+            "metadata": VERSION_METADATA,
             "creation_options": RASTER_CREATION_OPTIONS,
         },
     )
@@ -282,7 +282,7 @@ async def generic_raster_version(
     assert response.json()["data"]["status"] == "saved"
 
     # yield version
-    yield dataset_name, version_name, version_metadata
+    yield dataset_name, version_name, VERSION_METADATA
 
     # clean up
     await async_client.delete(f"/dataset/{dataset_name}/{version_name}")

@@ -19,6 +19,7 @@ from app.errors import RecordAlreadyExistsError, RecordNotFoundError
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.metadata import VersionMetadata
 
+from ..utils import version_metadata, dataset_metadata
 
 @pytest.mark.asyncio
 async def test_versions():
@@ -29,7 +30,7 @@ async def test_versions():
 
     # Add a dataset
     async with ContextEngine("WRITE"):
-        new_row = await create_dataset(dataset_name)
+        new_row = await create_dataset(dataset_name, metadata=dataset_metadata)
     assert new_row.dataset == dataset_name
 
     # There should be no versions for new datasets
@@ -103,8 +104,8 @@ async def test_versions():
 
     assert result == f"Version with name test2.{version_name} does not exist"
 
-    # It should be possible to update a dataset using a context engine
-    metadata = VersionMetadata(title="Test Title", tags=["tag1", "tag2"])
+    # It should be possible to update a version using a context engine
+    metadata = VersionMetadata(**version_metadata)
     logs = ChangeLog(date_time=datetime.now(), status="pending", message="all good")
     async with ContextEngine("WRITE"):
         row = await update_version(
@@ -113,8 +114,8 @@ async def test_versions():
             metadata=metadata.dict(by_alias=True),
             change_log=[logs.dict(by_alias=True)],
         )
-    assert row.metadata["title"] == "Test Title"
-    assert row.metadata["tags"] == ["tag1", "tag2"]
+    assert row.metadata.resolution == version_metadata["resolution"]
+    assert row.metadata.creation_date.strftime("%Y-%m-%d") == version_metadata["creation_date"]
     assert row.change_log[0]["date_time"] == json.loads(logs.json())["date_time"]
     assert row.change_log[0]["status"] == logs.dict(by_alias=True)["status"]
     assert row.change_log[0]["message"] == logs.dict(by_alias=True)["message"]

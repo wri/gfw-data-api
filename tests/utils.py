@@ -18,32 +18,29 @@ from app.utils.aws import get_batch_client, get_s3_client
 from tests import BUCKET, PORT, SHP_NAME
 from tests.tasks import MockECSClient
 
-generic_dataset_payload = {
-    "metadata": {
-        "title": "string",
-        "subtitle": "string",
-        "function": "string",
-        "resolution": "string",
-        "geographic_coverage": "string",
-        "source": "string",
-        "update_frequency": "string",
-        "cautions": "string",
-        "license": "string",
-        "overview": "string",
-        "citation": "string",
-        "tags": ["string"],
-        "data_language": "string",
-        "key_restrictions": "string",
-        "scale": "string",
-        "added_date": "2020-06-25",
-        "why_added": "string",
-        "other": "string",
-        "learn_more": "string",
-    }
+dataset_metadata = {
+    "title": "test metadata",
+    "source": "Source Organization test",
+    "license": "[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)",
+    "data_language": "en",
+    "overview": "Some detailed data description",
+}
+
+generic_dataset_payload = {"metadata": dataset_metadata}
+
+version_metadata = {
+    "creation_date": "2020-01-02",
+    "content_date_range": {"start_date": "2000-01-01", "end_date": "2021-01-01"},
+    "last_update": "2020-01-03",
+    "resolution": 10,
+}
+
+asset_metadata = {
+    "fields": [{"name": "field1", "data_type": "numeric", "unit": "meters"}]
 }
 
 generic_version_payload = {
-    "metadata": {},
+    "metadata": version_metadata,
     "creation_options": {
         "source_driver": "ESRI Shapefile",
         "source_type": "vector",
@@ -56,7 +53,6 @@ async def create_dataset(
     dataset_name, async_client, payload: Dict[str, Any] = generic_dataset_payload
 ) -> Dict[str, Any]:
     resp = await async_client.put(f"/dataset/{dataset_name}", json=payload)
-    # print(f"CREATE_DATASET_RESPONSE: {resp.json()}")
     assert resp.json()["status"] == "success"
     return resp.json()["data"]
 
@@ -66,7 +62,6 @@ async def create_version(
 ) -> Dict[str, Any]:
 
     resp = await async_client.put(f"/dataset/{dataset}/{version}", json=payload)
-    # print(f"CREATE_VERSION RESPONSE: {resp.json()}")
     assert resp.json()["status"] == "success"
 
     return resp.json()["data"]
@@ -96,7 +91,6 @@ async def create_default_asset(
 
     # Verify that a record for the default asset was created
     resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
-    # print(f"ASSET RESP: {resp.json()}")
     assert len(resp.json()["data"]) == 1
     assert resp.json()["status"] == "success"
 
