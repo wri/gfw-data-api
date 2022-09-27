@@ -4,7 +4,7 @@ FROM tiangolo/uvicorn-gunicorn-fastapi:python3.8-slim
 ARG ENV
 
 RUN apt-get update -y \
-    && apt-get install --no-install-recommends -y curl gcc libc-dev musl-dev postgresql-client libpq-dev
+    && apt-get install --no-install-recommends -y gcc libc-dev musl-dev postgresql-client libpq-dev
 
 RUN pip install --upgrade pip && pip install pipenv
 

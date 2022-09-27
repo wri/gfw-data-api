@@ -39,7 +39,6 @@ async def test_query_dataset_with_api_key(
         follow_redirects=True,
     )
 
-    # print(response.json())
     assert response.status_code == 200
     assert response.json()["data"][0]["count"] == 1
 
@@ -63,7 +62,6 @@ async def test_query_dataset_with_unrestricted_api_key(
         follow_redirects=True,
     )
 
-    # print(response.json())
     assert response.status_code == 200
     assert response.json()["data"][0]["count"] == 1
 
@@ -123,7 +121,6 @@ async def test_query_dataset_raster_post(
         follow_redirects=True,
     )
 
-    # print(response.json())
     assert response.status_code == 200
     assert response.json()["status"] == "success"
 
@@ -155,7 +152,6 @@ async def test_redirect_post_query(
         follow_redirects=False,
     )
 
-    # print(response.json())
     assert response.status_code == 308
     assert (
         response.headers["location"]
@@ -187,7 +183,6 @@ async def test_redirect_get_query(
         follow_redirects=False,
     )
 
-    # print(response.json())
     assert response.status_code == 308
     assert (
         response.headers["location"]
