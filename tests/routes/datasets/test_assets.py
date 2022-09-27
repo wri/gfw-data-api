@@ -1072,7 +1072,6 @@ async def test_raster_asset_payloads_vector_source(async_client):
         assert patch_resp.json()["status"] == "success"
 
     create_asset_resp = await async_client.get(f"/asset/{asset_id}")
-    print(create_asset_resp.json())
     assert create_asset_resp.json()["data"]["status"] == "saved"
 
     ######################
@@ -1103,5 +1102,4 @@ async def test_raster_asset_payloads_vector_source(async_client):
             f"/dataset/{dataset}/{version}/assets", json=asset_payload
         )
         resp_json = create_asset_resp.json()
-        print(resp_json)
         assert resp_json["status"] == "success"
