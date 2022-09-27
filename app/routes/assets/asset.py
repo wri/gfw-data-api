@@ -197,7 +197,7 @@ async def get_tasks(
         default=None,
         alias="page[size]",
         ge=1,
-        description="The number of datasets per page. Default is `10`.",
+        description="The number of tasks per page. Default is `10`.",
     ),
 ) -> Union[PaginatedTasksResponse, TasksResponse]:
     """Get all Tasks for selected asset.
