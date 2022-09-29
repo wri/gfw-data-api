@@ -5,6 +5,7 @@ from uuid import UUID
 
 from ..crud import assets, metadata
 from ..models.orm.assets import Asset as ORMAsset
+from ..models.orm.dataset_metadata import DatasetMetadata as ORMDatasetMetadata
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import (
@@ -179,7 +180,7 @@ async def _get_vector_tile_server(
     creation_options: StaticVectorTileCacheCreationOptions,
 ) -> Dict[str, Any]:
 
-    version_metadata = await metadata.get_version_metadata(dataset, version)
+    dataset_metadata: ORMDatasetMetadata = await metadata.get_dataset_metadata(dataset)
 
     resolution = 78271.51696401172
     scale = 295829355.45453244
@@ -196,8 +197,8 @@ async def _get_vector_tile_server(
 
     response = {
         "currentVersion": 10.7,
-        "name": version,
-        "copyrightText": version_metadata.citation,
+        "name": dataset_metadata.title,
+        "copyrightText": dataset_metadata.citation,
         "capabilities": "TilesOnly",
         "type": "indexedVector",
         "defaultStyles": "resources/styles",
