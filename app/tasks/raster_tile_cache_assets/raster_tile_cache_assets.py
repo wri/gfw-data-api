@@ -54,8 +54,11 @@ async def raster_tile_cache_asset(
     )
 
     # Get the creation options from the original raster tile set asset and
-    # overwrite settings. Make sure source_type and source_driver are set in
-    # case it is an auxiliary asset
+    # overwrite settings to make them accurate for the new asset(s) we're
+    # creating. In particular the source asset had some source URI from
+    # which it was imported, but we're not starting over and going from
+    # THAT source URI, we're starting from the source URI of the resulting
+    # source asset, which will be in the data lake. Generate that here.
 
     new_source_uri = [
         tile_uri_to_tiles_geojson(
@@ -65,14 +68,16 @@ async def raster_tile_cache_asset(
                 AssetType.raster_tile_set,
                 source_asset.creation_options,
             )
-        ).replace("/geotiff", "/gdal-geotiff")
+        )
     ]
 
     # The first thing we do for each zoom level is reproject the source asset
     # to web-mercator. We don't want the calc string (if any) used to
     # create the source asset to be applied again to the already transformed
     # data, so set it to None.
-    source_asset_co = RasterTileSetSourceCreationOptions(
+    # Make sure source_type and source_driver are set in case it is an
+    # auxiliary asset.
+    wm_asset_co = RasterTileSetSourceCreationOptions(
         # TODO: With python 3.9, we can use the `|` operator here
         #  waiting for https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker/pull/67
         **{
@@ -94,16 +99,16 @@ async def raster_tile_cache_asset(
     # If float data type, convert to int in derivative assets for performance
     # FIXME: Make this work for multi-band inputs
     max_zoom_calc = None
-    if source_asset_co.data_type == DataType.boolean:
+    if wm_asset_co.data_type == DataType.boolean:
         pass  # So the next line doesn't break
-    elif np.issubdtype(np.dtype(source_asset_co.data_type), np.floating):
+    elif np.issubdtype(np.dtype(wm_asset_co.data_type), np.floating):
         logger.info("Source datatype is float subtype, converting to int")
         source_asset_co, max_zoom_calc = convert_float_to_int(
-            source_asset.stats, source_asset_co
+            source_asset.stats, wm_asset_co
         )
 
-    assert source_asset_co.symbology is not None
-    symbology_function = symbology_constructor[source_asset_co.symbology.type].function
+    assert wm_asset_co.symbology is not None
+    symbology_function = symbology_constructor[wm_asset_co.symbology.type].function
 
     # We want to make sure that the final RGB asset is named after the
     # implementation of the tile cache and that the source_asset name is not
@@ -111,11 +116,9 @@ async def raster_tile_cache_asset(
     # TODO: Actually make sure the intermediate assets aren't going to
     # overwrite any existing assets
     if symbology_function == no_symbology:
-        source_asset_co.pixel_meaning = implementation
+        wm_asset_co.pixel_meaning = implementation
     else:
-        source_asset_co.pixel_meaning = (
-            f"{source_asset_co.pixel_meaning}_{implementation}"
-        )
+        wm_asset_co.pixel_meaning = f"{wm_asset_co.pixel_meaning}_{implementation}"
 
     job_list: List[Job] = []
     jobs_dict: Dict[int, Dict[str, Job]] = dict()
@@ -123,6 +126,10 @@ async def raster_tile_cache_asset(
     for zoom_level in range(max_zoom, min_zoom - 1, -1):
         jobs_dict[zoom_level] = dict()
 
+        # If we're at the max zoom level, this is the first job that needs to
+        # be run, so it has no dependencies. On subsequent zoom levels (i.e.
+        # as we zoom out) we resample from the previous level, and thus must
+        # depend on the previous zoom level's job.
         if zoom_level == max_zoom:
             source_reprojection_parent_jobs: List[Job] = []
         else:
@@ -136,7 +143,7 @@ async def raster_tile_cache_asset(
         ) = await reproject_to_web_mercator(
             dataset,
             version,
-            source_asset_co,
+            wm_asset_co,
             zoom_level,
             max_zoom,
             source_reprojection_parent_jobs,
@@ -150,7 +157,13 @@ async def raster_tile_cache_asset(
         symbology_jobs: List[Job]
         symbology_uri: str
 
-        symbology_co = source_asset_co.copy(deep=True)
+        # Now that we've generated the job for the WM asset, we create
+        # symbology-specific assets (if any). Replace the source URI of the
+        # creation options once again to point to the just-created WM asset
+        # on which they will be based.
+        symbology_co = wm_asset_co.copy(
+            deep=True, update={"source_uri": [source_reprojection_uri]}
+        )
         symbology_jobs, symbology_uri = await symbology_function(
             dataset,
             version,
@@ -162,8 +175,10 @@ async def raster_tile_cache_asset(
         )
         job_list += symbology_jobs
 
-        bit_depth: int = symbology_constructor[source_asset_co.symbology.type].bit_depth
+        bit_depth: int = symbology_constructor[symbology_co.symbology.type].bit_depth
 
+        # The symbology-specific function (above) returns the URI of the
+        # final asset. Create the actual tile cache based on that.
         if zoom_level <= max_static_zoom:
             tile_cache_job: Job = await create_tile_cache(
                 dataset,

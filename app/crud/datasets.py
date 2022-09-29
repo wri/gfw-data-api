@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 
 from asyncpg import UniqueViolationError
+from sqlalchemy import func
 
 from ..application import db
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
@@ -14,10 +15,19 @@ from . import metadata as metadata_crud
 from . import update_data
 
 
-async def get_datasets() -> List[ORMDataset]:
+async def count_datasets() -> int:
+    """Get count of all datasets."""
+
+    total_datasets = (
+        await func.count().select().select_from(ORMDataset.query.alias()).gino.scalar()
+    )
+    return total_datasets
+
+
+async def get_datasets(size: int = None, offset: int = 0) -> List[ORMDataset]:
     """Get list of all datasets."""
 
-    rows = await db.all(all_datasets)
+    rows = await db.all(all_datasets.bindparams(limit=size, offset=offset))
     return rows
 
 
