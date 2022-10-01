@@ -232,9 +232,9 @@ async def test_assets_metadata():
         == asset_metadata["fields"][0]["data_type"]
     )
 
-    # async with ContextEngine("WRITE"):
-    #     asset = await update_asset(asset_id, metadata={"source": "Source"})
-    # assert asset.metadata == result_metadata
+    async with ContextEngine("WRITE"):
+        asset = await update_asset(asset_id, metadata={"resolution": 10})
+    assert asset.metadata.resolution == 10
 
     async with ContextEngine("WRITE"):
         asset = await delete_asset(asset_id)
