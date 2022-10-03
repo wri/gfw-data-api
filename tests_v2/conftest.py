@@ -390,7 +390,7 @@ async def _create_geostore(geojson: Dict[str, Any], async_client: AsyncClient) -
         "geometry": geojson["features"][0]["geometry"],
     }
 
-    response = await async_client.post("/geostore", json=payload)
+    response = await async_client.post("/geostore", json=payload, follow_redirects=True)
     assert response.status_code == 201
 
     return response.json()["data"]["gfw_geostore_id"]

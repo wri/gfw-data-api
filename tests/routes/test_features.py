@@ -93,14 +93,12 @@ async def test_features(async_client, batch_client):
     ########################
 
     async with ContextEngine("READ"):
-        row = await db.scalar(f"""SELECT COUNT(*) FROM "{dataset}"."{version}" """)
-    print(row)
+        _ = await db.scalar(f"""SELECT COUNT(*) FROM "{dataset}"."{version}" """)
 
     # Exact match, z > 9 (though see FIXME in app/routes/features/features.py)
     resp = await async_client.get(
         f"/dataset/{dataset}/{version}/features?lat=4.42813&lng=17.97655&z=10"
     )
-    print(resp.json())
     assert resp.status_code == 200
     assert len(resp.json()["data"]) == 1
     assert resp.json()["data"][0]["iso"] == "CAF"
@@ -177,7 +175,6 @@ async def test_features(async_client, batch_client):
     resp = await async_client.get(
         f"/dataset/{dataset}/{version}/features?lat=-360&lng=-360&z=-1"
     )
-    print(resp.json())
     assert resp.status_code == 422
     assert resp.json()["status"] == "failed"
     assert set(

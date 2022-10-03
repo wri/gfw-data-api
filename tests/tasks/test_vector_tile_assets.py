@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 import httpx
 import pytest
+from httpx import AsyncClient
 
 from app.models.enum.assets import AssetType
 from app.settings.globals import DATA_LAKE_BUCKET, S3_ENTRYPOINT_URL, TILE_CACHE_BUCKET
@@ -23,7 +24,7 @@ from . import MockCloudfrontClient, MockECSClient
 @patch("app.tasks.aws_tasks.get_ecs_client")  # TODO use moto client
 @patch("app.tasks.aws_tasks.get_cloudfront_client")
 async def test_vector_tile_asset(
-    mocked_cloudfront_client, ecs_client, batch_client, async_client
+    mocked_cloudfront_client, ecs_client, batch_client, async_client: AsyncClient
 ):
     _, logs = batch_client
     ecs_client.return_value = MockECSClient()
@@ -105,7 +106,6 @@ async def test_vector_tile_asset(
     resp = s3_client.list_objects_v2(
         Bucket=TILE_CACHE_BUCKET, Prefix=f"{dataset}/{version}/default/"
     )
-    print(resp)
     assert resp["KeyCount"] == 10
 
     response = await async_client.get(
@@ -119,7 +119,6 @@ async def test_vector_tile_asset(
     resp = s3_client.list_objects_v2(
         Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
     )
-    print(resp)
     assert resp["KeyCount"] == 1
 
     response = await async_client.delete(f"/asset/{asset_id}")
@@ -129,7 +128,6 @@ async def test_vector_tile_asset(
     resp = s3_client.list_objects_v2(
         Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
     )
-    print(resp)
     assert resp["KeyCount"] == 0
 
     ###########
@@ -147,8 +145,6 @@ async def test_vector_tile_asset(
     response = await async_client.post(
         f"/dataset/{dataset}/{version}/assets", json=input_data
     )
-
-    print(response.json())
     assert response.status_code == 202
     asset_id = response.json()["data"]["asset_id"]
 
@@ -158,7 +154,6 @@ async def test_vector_tile_asset(
     assert response.status_code == 200
     tasks = json.loads(response.json()["data"][-1]["detail"])
     task_ids = [task["job_id"] for task in tasks]
-    print(task_ids)
 
     # make sure, all jobs completed
     status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
@@ -174,18 +169,15 @@ async def test_vector_tile_asset(
     resp = s3_client.list_objects_v2(
         Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
     )
-    print(resp)
     assert resp["KeyCount"] == 1
 
     response = await async_client.delete(f"/asset/{asset_id}")
-    print(response.json())
     assert response.status_code == 200
 
     # Check if file was deleted
     resp = s3_client.list_objects_v2(
         Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
     )
-    print(resp)
     assert resp["KeyCount"] == 0
 
     ###########
@@ -208,8 +200,6 @@ async def test_vector_tile_asset(
         response = await async_client.post(
             f"/dataset/{dataset}/{version}/assets", json=input_data
         )
-
-        print(response.json())
         assert response.status_code == 202
         asset_id = response.json()["data"]["asset_id"]
 
@@ -231,7 +221,7 @@ async def test_vector_tile_asset(
         fmt = "shp" if asset_type == AssetType.shapefile else "gpkg"
         ext = "shp.zip" if asset_type == AssetType.shapefile else "gpkg"
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/download/{fmt}", allow_redirects=False
+            f"/dataset/{dataset}/{version}/download/{fmt}", follow_redirects=False
         )
         assert response.status_code == 307
         url = urlparse(response.headers["Location"])
@@ -246,14 +236,12 @@ async def test_vector_tile_asset(
         assert "Expires" in url.query
 
         response = await async_client.delete(f"/asset/{asset_id}")
-        print(response.json())
         assert response.status_code == 200
 
         # Check if file was deleted
         resp = s3_client.list_objects_v2(
             Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
         )
-        print(resp)
         assert resp["KeyCount"] == 0
 
     mocked_cloudfront_client.return_value = MockCloudfrontClient()

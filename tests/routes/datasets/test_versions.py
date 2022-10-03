@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 
 import pytest
 from botocore.exceptions import ClientError
+from httpx import AsyncClient
 
 from app.settings.globals import S3_ENTRYPOINT_URL
 from app.utils.aws import get_s3_client
@@ -13,12 +14,10 @@ from tests.utils import (
     create_dataset,
     create_default_asset,
     dataset_metadata,
-    version_metadata
+    version_metadata,
 )
 
-dataset_payload = {
-    "metadata": dataset_metadata
-}
+dataset_payload = {"metadata": dataset_metadata}
 
 version_payload = {
     "creation_options": {
@@ -32,7 +31,7 @@ version_payload = {
 
 
 @pytest.mark.asyncio
-async def test_versions(async_client):
+async def test_versions(async_client: AsyncClient):
     """Test version path operations.
 
     We patch/disable background tasks here, as they run asynchronously.
@@ -56,8 +55,13 @@ async def test_versions(async_client):
     assert version_data["data"]["is_latest"] is False
     assert version_data["data"]["dataset"] == dataset
     assert version_data["data"]["version"] == version
-    assert version_data["data"]["metadata"]["resolution"] == version_metadata["resolution"]
-    assert version_data["data"]["metadata"]["creation_date"] == version_metadata["creation_date"]
+    assert (
+        version_data["data"]["metadata"]["resolution"] == version_metadata["resolution"]
+    )
+    assert (
+        version_data["data"]["metadata"]["creation_date"]
+        == version_metadata["creation_date"]
+    )
 
     assert version_data["data"]["version"] == "v1.1.1"
 
@@ -68,12 +72,11 @@ async def test_versions(async_client):
     response = await async_client.patch(
         f"/dataset/{dataset}/{version}", json={"is_latest": True}
     )
-    print(response.json())
     assert response.status_code == 200
 
     # Check if the latest endpoint redirects us to v1.1.1
     response = await async_client.get(
-        f"/dataset/{dataset}/latest?test=test&test1=test1"
+        f"/dataset/{dataset}/latest?test=test&test1=test1", follow_redirects=True
     )
     assert response.json()["data"]["version"] == "v1.1.1"
 
@@ -113,44 +116,44 @@ async def test_versions(async_client):
     # Query
 
     response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=SELECT%20%2A%20from%20version%3B%20DELETE%20FROM%20version%3B"
+        f"/dataset/{dataset}/{version}/query?sql=SELECT%20%2A%20from%20version%3B%20DELETE%20FROM%20version%3B",
+        follow_redirects=True,
     )
-    print(response.json())
     assert response.status_code == 400
     assert response.json()["message"] == "Must use exactly one SQL statement."
 
     response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=DELETE FROM version;"
+        f"/dataset/{dataset}/{version}/query?sql=DELETE FROM version;",
+        follow_redirects=True,
     )
-    print(response.json())
     assert response.status_code == 400
     assert response.json()["message"] == "Must use SELECT statements only."
 
     response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=WITH t as (select 1) SELECT * FROM version;"
+        f"/dataset/{dataset}/{version}/query?sql=WITH t as (select 1) SELECT * FROM version;",
+        follow_redirects=True,
     )
-    print(response.json())
     assert response.status_code == 400
     assert response.json()["message"] == "Must not have WITH clause."
 
     response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM version, version2;"
+        f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM version, version2;",
+        follow_redirects=True,
     )
-    print(response.json())
     assert response.status_code == 400
     assert response.json()["message"] == "Must list exactly one table in FROM clause."
 
     response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM (select * from a) as b;"
+        f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM (select * from a) as b;",
+        follow_redirects=True,
     )
-    print(response.json())
     assert response.status_code == 400
     assert response.json()["message"] == "Must not use sub queries."
 
     response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=SELECT PostGIS_Full_Version() FROM data;"
+        f"/dataset/{dataset}/{version}/query?sql=SELECT PostGIS_Full_Version() FROM data;",
+        follow_redirects=True,
     )
-    print(response.json())
     assert response.status_code == 400
     assert (
         response.json()["message"]
@@ -160,7 +163,7 @@ async def test_versions(async_client):
 
 @pytest.mark.asyncio
 @pytest.mark.skip("Deprecated. We don't inherit metadata by default any longer.")
-async def test_version_metadata(async_client):
+async def test_version_metadata(async_client: AsyncClient):
     """Test if Version inherits metadata from Dataset.
 
     Version should be able to overwrite any metadata attribute
@@ -169,13 +172,21 @@ async def test_version_metadata(async_client):
     version = "v1.1.1"
 
     response = await async_client.put(
-        f"/dataset/{dataset}", json={"metadata": dataset_metadata}
+        f"/dataset/{dataset}",
+        json={"metadata": dataset_metadata},
+        follow_redirects=True,
     )
 
     assert response.status_code == 201
 
-    assert response.json()["data"]["metadata"]["resolution"] == version_metadata["resolution"]
-    assert response.json()["data"]["metadata"]["creation_date"] == version_metadata["creation_date"]
+    assert (
+        response.json()["data"]["metadata"]["resolution"]
+        == version_metadata["resolution"]
+    )
+    assert (
+        response.json()["data"]["metadata"]["creation_date"]
+        == version_metadata["creation_date"]
+    )
 
     new_metadata = {"title": "New title"}
 
@@ -193,10 +204,10 @@ async def test_version_metadata(async_client):
             f"/dataset/{dataset}/{version}", json=new_payload
         )
 
-
-
     assert response.status_code == 202
-    assert response.json()["data"]["metadata"]["resolution"] == version_metadata["title"]
+    assert (
+        response.json()["data"]["metadata"]["resolution"] == version_metadata["title"]
+    )
     assert response.json()["data"]["metadata"]["title"] == new_metadata["title"]
 
     response = await async_client.get(f"/dataset/{dataset}/{version}")
@@ -210,7 +221,9 @@ async def test_version_metadata(async_client):
 
 @pytest.mark.asyncio
 @patch("app.tasks.aws_tasks.get_cloudfront_client")
-async def test_version_delete_protection(mocked_cloudfront_client, async_client):
+async def test_version_delete_protection(
+    mocked_cloudfront_client, async_client: AsyncClient
+):
     dataset = "test"
     version1 = "v1.1.1"
     version2 = "v1.1.2"
@@ -238,7 +251,7 @@ async def test_version_delete_protection(mocked_cloudfront_client, async_client)
 
 
 @pytest.mark.asyncio
-async def test_latest_middleware(async_client):
+async def test_latest_middleware(async_client: AsyncClient):
     """Test if middleware redirects to correct version when using `latest`
     version identifier."""
 
@@ -248,28 +261,26 @@ async def test_latest_middleware(async_client):
     await create_default_asset(dataset, version, async_client=async_client)
 
     response = await async_client.get(f"/dataset/{dataset}/{version}")
-    print(response.json())
     assert response.status_code == 200
 
     response = await async_client.get(f"/dataset/{dataset}/latest")
-    print(response.json())
     assert response.status_code == 404
 
     response = await async_client.patch(
         f"/dataset/{dataset}/{version}", json={"is_latest": True}
     )
-    print(response.json())
     assert response.status_code == 200
     assert response.json()["data"]["is_latest"] is True
 
-    response = await async_client.get(f"/dataset/{dataset}/latest")
-    print(response.json())
+    response = await async_client.get(
+        f"/dataset/{dataset}/latest", follow_redirects=True
+    )
     assert response.status_code == 200
     assert response.json()["data"]["version"] == version
 
 
 @pytest.mark.asyncio
-async def test_invalid_source_uri(async_client):
+async def test_invalid_source_uri(async_client: AsyncClient):
     """Test version path operations.
 
     We patch/ disable background tasks here, as they run asynchronously.
@@ -294,9 +305,7 @@ async def test_invalid_source_uri(async_client):
 
     # Test creating a version with (some) bad source URIs
     bad_uri = "s3://doesnotexist"
-    response = await async_client.put(
-        f"/dataset/{dataset}/{version}", json=new_payload
-    )
+    response = await async_client.put(f"/dataset/{dataset}/{version}", json=new_payload)
     assert response.status_code == 400
     assert response.json()["status"] == "failed"
     assert (
@@ -341,7 +350,7 @@ async def test_invalid_source_uri(async_client):
 
 
 @pytest.mark.asyncio
-async def test_put_latest(async_client):
+async def test_put_latest(async_client: AsyncClient):
 
     dataset = "test"
     response = await async_client.put(f"/dataset/{dataset}", json=dataset_payload)
@@ -358,7 +367,7 @@ async def test_put_latest(async_client):
 
 
 @pytest.mark.asyncio
-async def test_version_put_raster(async_client):
+async def test_version_put_raster(async_client: AsyncClient):
     """Test raster source version operations."""
 
     dataset = "test_version_put_raster"
@@ -414,7 +423,7 @@ async def test_version_put_raster(async_client):
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/download/geotiff",
         params={"grid": "90/27008", "tile_id": "90N_000E", "pixel_meaning": "percent"},
-        allow_redirects=False,
+        follow_redirects=False,
     )
     assert response.status_code == 307
     url = urlparse(response.headers["Location"])
@@ -431,14 +440,14 @@ async def test_version_put_raster(async_client):
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/download/geotiff",
         params={"grid": "10/40000", "tile_id": "90N_000E", "pixel_meaning": "percent"},
-        allow_redirects=False,
+        follow_redirects=False,
     )
     assert response.status_code == 404
 
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
-async def test_version_put_raster_bug_fixes(async_client):
+async def test_version_put_raster_bug_fixes(async_client: AsyncClient):
     """Test bug fixes for raster source version operations."""
 
     dataset = "test_version_put_raster_minimal_args"

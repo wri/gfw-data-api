@@ -10,6 +10,7 @@ from app.crud.metadata import (
     get_asset_metadata,
     update_asset_metadata,
 )
+from sqlalchemy import func
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.enum.assets import AssetType
@@ -33,12 +34,6 @@ async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
         )
 
     return rows
-
-
-async def get_all_assets() -> List[ORMAsset]:
-    assets = await ORMAsset.query.gino.all()
-
-    return assets
 
 
 async def get_raster_tile_sets():
@@ -76,16 +71,9 @@ async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
     return assets
 
 
-async def get_assets_by_filter(
-    dataset: Optional[str] = None,
-    version: Optional[str] = None,
-    asset_types: Optional[List[str]] = None,
-    asset_uri: Optional[str] = None,
-    is_latest: Optional[bool] = None,
-    is_default: Optional[bool] = None,
-    include_metadata: Optional[bool] = True,
-) -> List[ORMAsset]:
-
+async def _build_filtered_query(
+    asset_types, asset_uri, dataset, is_default, is_latest, version
+):
     if is_latest is not None:
         VersionAliased = ORMVersion.alias()
         query = (
@@ -107,6 +95,22 @@ async def get_assets_by_filter(
         query = query.where(ORMAsset.is_default == is_default)
 
     query = query.order_by(ORMAsset.created_on)
+    return query
+
+
+async def get_assets_by_filter(
+    dataset: Optional[str] = None,
+    version: Optional[str] = None,
+    asset_types: Optional[List[str]] = None,
+    asset_uri: Optional[str] = None,
+    is_latest: Optional[bool] = None,
+    is_default: Optional[bool] = None,
+    include_metadata: Optional[bool] = True,
+) -> List[ORMAsset]:
+
+    query = await _build_filtered_query(
+        asset_types, asset_uri, dataset, is_default, is_latest, version
+    )
     assets = await query.gino.load(ORMAsset).all()
 
     if include_metadata:
@@ -117,6 +121,65 @@ async def get_assets_by_filter(
                 asset.metadata = None
 
     return assets
+
+
+async def count_filtered_assets_fn(
+    dataset: Optional[str] = None,
+    version: Optional[str] = None,
+    asset_types: Optional[List[str]] = None,
+    asset_uri: Optional[str] = None,
+    is_latest: Optional[bool] = None,
+    is_default: Optional[bool] = None,
+) -> func:
+    """Returns a function that counts all filtered assets.
+
+    This higher-order function is designed to be used with the
+    pagination utility. It relies on the closure to set all the
+    necessary filtering so that pagination doesn't need to know any more
+    than the essentials for getting a record count.
+    """
+    query = await _build_filtered_query(
+        asset_types, asset_uri, dataset, is_default, is_latest, version
+    )
+
+    async def count_assets() -> int:
+        return await func.count().select().select_from(query.alias()).gino.scalar()
+
+    return count_assets
+
+
+async def get_filtered_assets_fn(
+    dataset: Optional[str] = None,
+    version: Optional[str] = None,
+    asset_types: Optional[List[str]] = None,
+    asset_uri: Optional[str] = None,
+    is_latest: Optional[bool] = None,
+    is_default: Optional[bool] = None,
+    include_metadata: Optional[bool] = True,
+) -> func:
+    """Returns a function that retrieves all filtered assets.
+
+    This higher-order function is designed to be used with the
+    pagination utility. It relies on the closure to set all the
+    necessary filtering so that pagination doesn't need to know any more
+    than the essentials for getting asset records.
+    """
+    query = await _build_filtered_query(
+        asset_types, asset_uri, dataset, is_default, is_latest, version
+    )
+
+    async def paginated_assets(size: int = None, offset: int = 0) -> List[ORMAsset]:
+        assets = await query.limit(size).offset(offset).gino.load(ORMAsset).all()
+        if include_metadata:
+            for asset in assets:
+                try:
+                    asset.metadata = await get_asset_metadata(asset.asset_id)
+                except RecordNotFoundError:
+                    asset.metadata = None
+
+        return assets
+
+    return paginated_assets
 
 
 async def get_asset(asset_id: UUID) -> ORMAsset:

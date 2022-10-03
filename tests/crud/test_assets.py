@@ -10,6 +10,7 @@ from app.crud.assets import (
     create_asset,
     delete_asset,
     get_asset,
+    get_assets,
     get_assets_by_filter,
     update_asset,
 )

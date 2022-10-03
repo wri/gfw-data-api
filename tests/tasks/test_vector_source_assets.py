@@ -82,7 +82,8 @@ async def test_vector_source_asset(batch_client, async_client):
         # Queries
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/query?sql=select count(*) from mytable;"
+            f"/dataset/{dataset}/{version}/query?sql=select count(*) from mytable;",
+            follow_redirects=True,
         )
         assert response.status_code == 200
         assert len(response.json()["data"]) == 1
@@ -102,9 +103,9 @@ async def test_vector_source_asset(batch_client, async_client):
                 return_value=geostore,
             ):
                 response = await async_client.get(
-                    f"/dataset/{dataset}/{version}/query?sql=SELECT count(*) FROM mytable&geostore_id=17076d5ea9f214a5bdb68cc40433addb&geostore_origin=rw"
+                    f"/dataset/{dataset}/{version}/query?sql=SELECT count(*) FROM mytable&geostore_id=17076d5ea9f214a5bdb68cc40433addb&geostore_origin=rw",
+                    follow_redirects=True,
                 )
-        # print(response.json())
         assert response.status_code == 200
         assert len(response.json()["data"]) == 1
         assert response.json()["data"][0]["count"] == 1
@@ -123,67 +124,78 @@ async def test_vector_source_asset(batch_client, async_client):
                 return_value=geostore,
             ):
                 response = await async_client.get(
-                    f"/dataset/{dataset}/{version}/query?sql=SELECT count(*) FROM mytable&geostore_id=17076d5ea9f214a5bdb68cc40433addb&geostore_origin=rw"
+                    f"/dataset/{dataset}/{version}/query?sql=SELECT count(*) FROM mytable&geostore_id=17076d5ea9f214a5bdb68cc40433addb&geostore_origin=rw",
+                    follow_redirects=True,
                 )
-        # print(response.json())
         assert response.status_code == 200
         assert len(response.json()["data"]) == 1
         assert response.json()["data"][0]["count"] == 0
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/query?sql=select current_catalog from mytable;"
+            f"/dataset/{dataset}/{version}/query?sql=select current_catalog from mytable;",
+            follow_redirects=True,
         )
         assert response.status_code == 400
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/query?sql=select version() from mytable;"
+            f"/dataset/{dataset}/{version}/query?sql=select version() from mytable;",
+            follow_redirects=True,
         )
         assert response.status_code == 400
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/query?sql=select has_any_column_privilege() from mytable;"
+            f"/dataset/{dataset}/{version}/query?sql=select has_any_column_privilege() from mytable;",
+            follow_redirects=True,
         )
         assert response.status_code == 400
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/query?sql=select format_type() from mytable;"
+            f"/dataset/{dataset}/{version}/query?sql=select format_type() from mytable;",
+            follow_redirects=True,
         )
         assert response.status_code == 400
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/query?sql=select col_description() from mytable;"
+            f"/dataset/{dataset}/{version}/query?sql=select col_description() from mytable;",
+            follow_redirects=True,
         )
         assert response.status_code == 400
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/query?sql=select txid_current() from mytable;"
+            f"/dataset/{dataset}/{version}/query?sql=select txid_current() from mytable;",
+            follow_redirects=True,
         )
         assert response.status_code == 400
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/query?sql=select current_setting() from mytable;"
+            f"/dataset/{dataset}/{version}/query?sql=select current_setting() from mytable;",
+            follow_redirects=True,
         )
         assert response.status_code == 400
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/query?sql=select pg_cancel_backend() from mytable;"
+            f"/dataset/{dataset}/{version}/query?sql=select pg_cancel_backend() from mytable;",
+            follow_redirects=True,
         )
         assert response.status_code == 400
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/query?sql=select brin_summarize_new_values() from mytable;"
+            f"/dataset/{dataset}/{version}/query?sql=select brin_summarize_new_values() from mytable;",
+            follow_redirects=True,
         )
         assert response.status_code == 400
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/query?sql=select doesnotexist() from mytable;"
+            f"/dataset/{dataset}/{version}/query?sql=select doesnotexist() from mytable;",
+            follow_redirects=True,
         )
         assert response.status_code == 400
 
         # Downloads
 
         response = await async_client.get(
-            f"/dataset/{dataset}/{version}/download/csv?sql=select count(*) from mytable;"
+            f"/dataset/{dataset}/{version}/download/csv?sql=select count(*) from mytable;",
+            follow_redirects=True,
         )
         assert response.status_code == 200
         assert response.text == '"count"\r\n1\r\n'
@@ -192,7 +204,6 @@ async def test_vector_source_asset(batch_client, async_client):
         # TODO: We currently don't compute stats, will need update this test once feature is available
 
         response = await async_client.get(f"/dataset/{dataset}/{version}/stats")
-        print(response.json())
         assert response.status_code == 200
         assert response.json()["data"] is None
 
@@ -388,7 +399,6 @@ async def test_vector_source_asset(batch_client, async_client):
 
     response = await async_client.delete(f"/asset/{asset_id}")
     assert response.status_code == 409
-    print(response.json())
     assert (
         response.json()["message"]
         == "Deletion failed. You cannot delete a default asset. To delete a default asset you must delete the parent version."
