@@ -11,7 +11,7 @@ based on the same version and do not know the processing history.
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, status
 from fastapi.responses import ORJSONResponse
 from starlette.responses import JSONResponse
 
@@ -335,7 +335,7 @@ async def create_metadata(*, asset_id: UUID = Path(...), request: AssetMetadata)
             asset_id, **input_data
         )
     except RecordAlreadyExistsError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
     validated_metadata = asset_metadata_factory(asset)
 

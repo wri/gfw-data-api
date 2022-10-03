@@ -13,7 +13,15 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Response,
+    status,
+)
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
@@ -393,7 +401,7 @@ async def create_metadata(
             dataset=dataset, version=version, **input_data
         )
     except RecordAlreadyExistsError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
     return VersionMetadataResponse(data=metadata)
 

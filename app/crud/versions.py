@@ -47,8 +47,7 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
             f"Version with name {dataset}.{version} does not exist"
         )
 
-    if getattr(row, "metadata", None) is None:
-        row.metadata = {}
+    row.metadata = getattr(row, "metadata", {})
 
     return row
 
