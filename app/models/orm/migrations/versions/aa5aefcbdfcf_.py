@@ -10,7 +10,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "aa5aefcbdfcf"  # pragma: allowlist secret
-down_revision = "4763f4b8141a"  # pragma: allowlist secret
+down_revision = "a5787f2eefe5"  # pragma: allowlist secret
 branch_labels = None
 depends_on = None
 
@@ -22,7 +22,7 @@ def upgrade():
         sa.Column(
             "revision_history",
             postgresql.ARRAY(postgresql.JSONB(astext_type=sa.Text())),
-            nullable=False,
+            nullable=True,
         ),
     )
     op.add_column("assets", sa.Column("latest_revision", sa.String(), nullable=True))

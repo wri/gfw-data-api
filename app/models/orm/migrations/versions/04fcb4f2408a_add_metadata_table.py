@@ -17,7 +17,7 @@ from app.models.orm.version_metadata import VersionMetadata as ORMVersionMetadat
 
 # revision identifiers, used by Alembic.
 revision = "04fcb4f2408a"  # pragma: allowlist secret
-down_revision = "4763f4b8141a"  # pragma: allowlist secret
+down_revision = "aa5aefcbdfcf"  # pragma: allowlist secret
 branch_labels = None
 depends_on = None
 
