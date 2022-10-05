@@ -8,10 +8,18 @@ assets are only loosely linked to a dataset version and users must
 cannot rely on full integrity. We can only assume that unmanaged are
 based on the same version and do not know the processing history.
 """
-from typing import List, Optional
+from typing import List, Optional, Union
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+)
 from fastapi.responses import ORJSONResponse
 from starlette.responses import JSONResponse
 
@@ -31,7 +39,7 @@ from ...models.pydantic.creation_options import (
 from ...models.pydantic.extent import Extent, ExtentResponse
 from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
-from ...models.pydantic.tasks import TasksResponse
+from ...models.pydantic.tasks import PaginatedTasksResponse, TasksResponse
 from ...tasks.delete_assets import (
     delete_database_table_asset,
     delete_dynamic_vector_tile_cache_assets,
@@ -40,9 +48,10 @@ from ...tasks.delete_assets import (
     delete_single_file_asset,
     delete_static_vector_tile_cache_assets,
 )
+from ...utils.paginate import paginate_collection
 from ...utils.path import infer_srid_from_grid
 from ..assets import asset_response
-from ..tasks import tasks_response
+from ..tasks import paginated_tasks_response, tasks_response
 
 router = APIRouter()
 
@@ -175,10 +184,45 @@ async def delete_asset(
     "/{asset_id}/tasks",
     response_class=ORJSONResponse,
     tags=["Assets"],
-    response_model=TasksResponse,
+    response_model=Union[PaginatedTasksResponse, TasksResponse],
 )
-async def get_tasks(*, asset_id: UUID = Path(...)) -> TasksResponse:
-    """Get all Tasks for selected asset."""
+async def get_tasks(
+    *,
+    asset_id: UUID = Path(...),
+    request: Request,
+    page_number: Optional[int] = Query(
+        default=None, alias="page[number]", ge=1, description="The page number."
+    ),
+    page_size: Optional[int] = Query(
+        default=None,
+        alias="page[size]",
+        ge=1,
+        description="The number of tasks per page. Default is `10`.",
+    ),
+) -> Union[PaginatedTasksResponse, TasksResponse]:
+    """Get all Tasks for selected asset.
+
+    Will attempt to paginate if `page[size]` or `page[number]` is
+    provided. Otherwise, it will attempt to return the entire list of
+    tasks in the response.
+    """
+
+    if page_number or page_size:
+        try:
+            data, links, meta = await paginate_collection(
+                paged_items_fn=await tasks.get_filtered_tasks_fn(asset_id),
+                item_count_fn=await tasks.count_filtered_tasks_fn(asset_id),
+                request_url=f"{request.url}".split("?")[0],
+                page=page_number,
+                size=page_size,
+            )
+
+            return await paginated_tasks_response(
+                tasks_orm=data, links=links, meta=meta
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     rows: List[ORMTask] = await tasks.get_tasks(asset_id)
     return await tasks_response(rows)
 
