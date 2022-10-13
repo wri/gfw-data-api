@@ -23,6 +23,8 @@ from fastapi import (
 from fastapi.responses import ORJSONResponse
 from starlette.responses import JSONResponse
 
+from app.settings.globals import API_URL
+
 from ...authentication.token import is_admin
 from ...crud import assets, tasks
 from ...errors import RecordNotFoundError
@@ -212,7 +214,7 @@ async def get_tasks(
             data, links, meta = await paginate_collection(
                 paged_items_fn=await tasks.get_filtered_tasks_fn(asset_id),
                 item_count_fn=await tasks.count_filtered_tasks_fn(asset_id),
-                request_url=f"{request.url}".split("?")[0],
+                request_url=f"{API_URL}{request.url.path}",
                 page=page_number,
                 size=page_size,
             )
