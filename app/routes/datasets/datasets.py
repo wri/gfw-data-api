@@ -8,6 +8,7 @@ from fastapi.responses import ORJSONResponse
 from app.crud.datasets import count_datasets as count_datasets_fn
 from app.crud.datasets import get_datasets as datasets_fn
 from app.models.pydantic.datasets import DatasetsResponse, PaginatedDatasetsResponse
+from app.settings.globals import API_URL
 from app.utils.paginate import paginate_collection
 
 router = APIRouter()
@@ -42,7 +43,7 @@ async def get_datasets(
             data, links, meta = await paginate_collection(
                 paged_items_fn=datasets_fn,
                 item_count_fn=count_datasets_fn,
-                request_url=f"{request.url}".split("?")[0],
+                request_url=f"{API_URL}{request.url.path}",
                 page=page_number,
                 size=page_size,
             )
