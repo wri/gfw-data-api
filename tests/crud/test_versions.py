@@ -21,6 +21,7 @@ from app.models.pydantic.metadata import VersionMetadata
 
 from ..utils import version_metadata, dataset_metadata
 
+
 @pytest.mark.asyncio
 async def test_versions():
     """Testing all CRUD operations on dataset in one go."""
@@ -115,7 +116,6 @@ async def test_versions():
             change_log=[logs.dict(by_alias=True)],
         )
     assert row.metadata.resolution == version_metadata["resolution"]
-    assert row.metadata.creation_date.strftime("%Y-%m-%d") == version_metadata["creation_date"]
     assert row.change_log[0]["date_time"] == json.loads(logs.json())["date_time"]
     assert row.change_log[0]["status"] == logs.dict(by_alias=True)["status"]
     assert row.change_log[0]["message"] == logs.dict(by_alias=True)["message"]

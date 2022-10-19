@@ -8,7 +8,7 @@ class VersionMetadata(Base, MetadataMixin):
     id = db.Column(db.UUID, primary_key=True)
     dataset = db.Column(db.String, nullable=False)
     version = db.Column(db.String, nullable=False)
-    creation_date = db.Column(db.Date)
+    content_date = db.Column(db.Date)
     content_start_date = db.Column(db.Date)
     content_end_date = db.Column(db.Date)
     last_update = db.Column(db.Date)

@@ -101,9 +101,9 @@ class VersionMetadataGetter(GetterDict):
 
 
 class VersionMetadata(CommonMetadata):
-    creation_date: Optional[date] = Field(
+    content_date: Optional[date] = Field(
         None,
-        description="Date resource was created",
+        description="Date of content.",
     )
     content_date_range: Optional[ContentDateRange] = Field(
         None,
@@ -115,7 +115,7 @@ class VersionMetadata(CommonMetadata):
         description="Date the data were last updated",
     )
 
-    @validator("last_update", "creation_date", pre=True)
+    @validator("last_update", "content_date", pre=True)
     def parse_date_str(cls, value):
         return _date_validator(value)
 
@@ -127,7 +127,6 @@ class VersionMetadata(CommonMetadata):
                         "start_date": "2000-01-01",  # TODO fix date
                         "end_date": "2021-04-06",
                     },
-                    "creation_date": "2021-04-07",
                 }
             ]
         }
@@ -149,9 +148,9 @@ class VersionMetadataOutWithParent(VersionMetadataOut):
 
 
 class VersionMetadataUpdate(VersionMetadataIn):
-    creation_date: Optional[date] = Field(
+    content_date: Optional[date] = Field(
         None,
-        description="Date resource was created",
+        description="Date of content",
     )
     content_date_range: Optional[ContentDateRange] = Field(
         None,

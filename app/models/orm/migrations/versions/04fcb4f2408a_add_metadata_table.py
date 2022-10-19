@@ -169,7 +169,7 @@ def upgrade():
         sa.Column("title", sa.String()),
         sa.Column("dataset", sa.String(), nullable=False),
         sa.Column("version", sa.String(), nullable=False),
-        sa.Column("creation_date", sa.Date(), nullable=True),
+        sa.Column("content_date", sa.Date(), nullable=True),
         sa.Column("content_start_date", sa.Date(), nullable=True),
         sa.Column("content_end_date", sa.Date(), nullable=True),
         sa.Column("last_update", sa.Date()),

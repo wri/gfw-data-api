@@ -59,8 +59,8 @@ async def test_versions(async_client: AsyncClient):
         version_data["data"]["metadata"]["resolution"] == version_metadata["resolution"]
     )
     assert (
-        version_data["data"]["metadata"]["creation_date"]
-        == version_metadata["creation_date"]
+        version_data["data"]["metadata"]["content_date_range"]["start_date"]
+        == version_metadata["content_date_range"]["start_date"]
     )
 
     assert version_data["data"]["version"] == "v1.1.1"
@@ -184,8 +184,8 @@ async def test_version_metadata(async_client: AsyncClient):
         == version_metadata["resolution"]
     )
     assert (
-        response.json()["data"]["metadata"]["creation_date"]
-        == version_metadata["creation_date"]
+        response.json()["data"]["metadata"]["content_date_range"]
+        == version_metadata["content_date_range"]
     )
 
     new_metadata = {"title": "New title"}
