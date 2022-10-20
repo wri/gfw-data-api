@@ -94,7 +94,7 @@ resource "aws_api_gateway_gateway_response" "integration_timeout" {
     "application/json" = <<EOF
 {
   "status": "failed",
-  "message": "$context.error.messageString : Use the pagination query parameters when available. See the API documentation."
+  "message": "$context.error.message : Use the pagination query parameters when available. See the API documentation."
 }
 EOF
   }
