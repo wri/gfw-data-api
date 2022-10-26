@@ -84,3 +84,18 @@ resource "aws_api_gateway_gateway_response" "throttled" {
     "application/json" = "{\"status\":\"failed\",\"message\":\"Exceeded the rate limit for this resource. Please try again later.\"}"
   }
 }
+
+resource "aws_api_gateway_gateway_response" "integration_timeout" {
+  rest_api_id = var.rest_api_id
+  status_code = "504"
+  response_type = "INTEGRATION_TIMEOUT"
+
+  response_templates = {
+    "application/json" = <<EOF
+{
+  "status": "failed",
+  "message": "$context.error.message : Use the pagination query parameters when available. See the API documentation."
+}
+EOF
+  }
+}

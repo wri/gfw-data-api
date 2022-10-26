@@ -3,7 +3,7 @@ from uuid import UUID
 
 from .base import BaseRecord, StrictBaseModel
 from .change_log import ChangeLog
-from .responses import Response
+from .responses import PaginationLinks, PaginationMeta, Response
 
 
 class Task(BaseRecord):
@@ -27,3 +27,8 @@ class TaskResponse(Response):
 
 class TasksResponse(Response):
     data: List[Task]
+
+
+class PaginatedTasksResponse(TasksResponse):
+    links: PaginationLinks
+    meta: PaginationMeta
