@@ -46,7 +46,7 @@ psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET ${GEOMETRY_NAME}_wm = ST_Transform
 
 # transform to web mercator (WM) ensuring polygons outside WM bounds are clipped.
 psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET ${GEOMETRY_NAME}_wm = ST_Transform(ST_Force2D(ST_Buffer(ST_Intersection($GEOMETRY_NAME, ST_MakeEnvelope(-180, -85, 180, 85, 4326)), 0)), 3857)
-                                    WHERE ST_Overlaps($GEOMETRY_NAME, ST_MakeEnvelope(-180, -85, 180, 85, 4326));"
+                                    WHERE NOT ST_Within($GEOMETRY_NAME, ST_MakeEnvelope(-180, -85, 180, 85, 4326));"
 
 # Set gfw_geostore_id not NULL to be compliant with GEOSTORE
 echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". SET gfw_geostore_id SET NOT NULL"
