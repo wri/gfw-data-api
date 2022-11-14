@@ -196,13 +196,50 @@ class VectorSourceCreationOptions(StrictBaseModel):
     )
     add_to_geostore: bool = Field(
         True,
-        description="Include features to geostore, to make geometries searchable via geostore endpoint.",
+        description="Make geometries searchable via geostore endpoint.",
     )
     timeout: int = DEFAULT_JOB_DURATION
 
     @validator("source_uri")
     def validate_source_uri(cls, v, values, **kwargs):
-        if values.get("source_driver") != VectorDrivers.csv:
+        if values.get("source_driver") == VectorDrivers.csv:
+            assert len(v) >= 1, "CSV sources require at least one input file"
+        else:
+            assert (
+                len(v) == 1
+            ), "Non-CSV vector sources require one and only one input file"
+        return v
+
+
+class VectorSourceAppendOptions(StrictBaseModel):
+    source_type: VectorSourceType = Field(..., description="Source type of input file.")
+    source_driver: VectorDrivers = Field(
+        ..., description="Driver of source file. Must be an OGR driver"
+    )
+    source_uri: List[str] = Field(
+        ...,
+        description="List of input files. Vector source layers can only have one list item. "
+        "Must be a s3:// url.",
+    )
+    layers: Optional[List[str]] = Field(
+        None, description="List of input layers. Only required for .gdb and .gpkg."
+    )
+    create_dynamic_vector_tile_cache: bool = Field(
+        True,
+        description="By default, vector sources will implicitly create a dynamic vector tile cache. "
+        "Disable this option by setting value to `false`",
+    )
+    add_to_geostore: bool = Field(
+        True,
+        description="Make geometries searchable via geostore endpoint.",
+    )
+    timeout: int = DEFAULT_JOB_DURATION
+
+    @validator("source_uri")
+    def validate_source_uri(cls, v, values, **kwargs):
+        if values.get("source_driver") == VectorDrivers.csv:
+            assert len(v) >= 1, "CSV sources require at least one input file"
+        else:
             assert (
                 len(v) == 1
             ), "Non-CSV vector sources require one and only one input file"
