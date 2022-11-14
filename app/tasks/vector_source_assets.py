@@ -23,13 +23,12 @@ async def vector_source_asset(
     asset_id: UUID,
     input_data: Dict[str, Any],
 ) -> ChangeLog:
-
-    source_uris: List[str] = input_data["creation_options"].get("source_uri", [])
-
-    creation_options = VectorSourceCreationOptions(**input_data["creation_options"])
     callback: Callback = callback_constructor(asset_id)
 
+    creation_options = VectorSourceCreationOptions(**input_data["creation_options"])
+    source_uris: List[str] = creation_options.source_uri
     first_source_uri: str = source_uris[0]
+
     local_file: str = os.path.basename(first_source_uri)
     zipped: bool = is_zipped(first_source_uri)
 
