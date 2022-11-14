@@ -10,6 +10,9 @@ set -e
 # -f | --local_file
 # -X | --zipped
 
+# optional arguments
+# -g | --geometry_name (get_arguments.sh specifies default)
+
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 

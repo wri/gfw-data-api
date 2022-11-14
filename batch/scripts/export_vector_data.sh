@@ -12,6 +12,8 @@ set -e
 # -C | --column_names
 # -X | --zipped
 
+# optional arguments
+# -g | --geometry_name (get_arguments.sh specifies default)
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"
@@ -30,6 +32,5 @@ fi
 
 echo "AWSCLI: COPY DATA FROM $LOCAL_FILE TO $TARGET"
 aws s3 cp "$LOCAL_FILE" "$TARGET"
-
 
 echo "Done"
