@@ -13,9 +13,9 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
-# Set gfw_geostore_id nullable if it's not, such as if we're appending
-echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". ALTER COLUMN gfw_geostore_id DROP NOT NULL IF gfw_geostore_id NOT NULL"
-psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ALTER COLUMN gfw_geostore_id DROP NOT NULL IF gfw_geostore_id NOT NULL;"
+# FIXME: This only works if the column was already not null
+echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". ALTER COLUMN gfw_geostore_id DROP NOT NULL"
+psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ALTER COLUMN gfw_geostore_id DROP NOT NULL;"
 
 for uri in "${SRC[@]}"; do
   # convert to vsis3 protocol for ogr

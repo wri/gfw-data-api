@@ -69,6 +69,16 @@ async def vector_source_asset(
         callback=callback,
     )
 
+    add_gfw_attributes_job: PostgresqlClientJob = PostgresqlClientJob(
+        dataset=dataset,
+        job_name="add_gfw_fields",
+        command=["add_gfw_fields.sh", "-d", dataset, "-v", version],
+        parents=[create_vector_schema_job.job_name],
+        environment=job_env,
+        callback=callback,
+        attempt_duration_seconds=creation_options.timeout,
+    )
+
     load_vector_data_jobs: List[GdalPythonImportJob] = list()
     final_load_vector_data_job_names: List[str] = list()
 
@@ -97,7 +107,7 @@ async def vector_source_asset(
                     dataset=dataset,
                     job_name=f"load_vector_csv_data_{i}",
                     command=load_data_command,
-                    parents=[create_vector_schema_job.job_name],
+                    parents=[add_gfw_attributes_job.job_name],
                     environment=job_env,
                     callback=callback,
                     attempt_duration_seconds=creation_options.timeout,
@@ -136,7 +146,7 @@ async def vector_source_asset(
                 job_name=f"load_vector_data_layer_{i}",
                 command=load_data_command,
                 parents=[
-                    queue[-1].job_name if queue else create_vector_schema_job.job_name
+                    queue[-1].job_name if queue else add_gfw_attributes_job.job_name
                 ],
                 environment=job_env,
                 callback=callback,
@@ -149,28 +159,15 @@ async def vector_source_asset(
             queue[-1].job_name for queue in job_queues.all() if queue
         ]
 
-    gfw_attribute_jobs: List[PostgresqlClientJob] = list()
-    add_gfw_attributes_job: PostgresqlClientJob = PostgresqlClientJob(
+    set_gfw_attributes_job: PostgresqlClientJob = PostgresqlClientJob(
         dataset=dataset,
-        job_name="add_gfw_fields",
-        command=["add_gfw_fields.sh", "-d", dataset, "-v", version],
+        job_name="update_gfw_fields",
+        command=["update_gfw_fields.sh", "-d", dataset, "-v", version],
         parents=final_load_vector_data_job_names,
         environment=job_env,
         callback=callback,
         attempt_duration_seconds=creation_options.timeout,
     )
-    gfw_attribute_jobs.append(add_gfw_attributes_job)
-
-    set_gfw_attributes_job: PostgresqlClientJob = PostgresqlClientJob(
-        dataset=dataset,
-        job_name="update_gfw_fields",
-        command=["update_gfw_fields.sh", "-d", dataset, "-v", version],
-        parents=[add_gfw_attributes_job.job_name],
-        environment=job_env,
-        callback=callback,
-        attempt_duration_seconds=creation_options.timeout,
-    )
-    gfw_attribute_jobs.append(set_gfw_attributes_job)
 
     index_jobs: List[Job] = list()
     for index in creation_options.indices:
@@ -226,7 +223,7 @@ async def vector_source_asset(
             dataset=dataset,
             job_name="inherit_from_geostore",
             command=["inherit_geostore.sh", "-d", dataset, "-v", version],
-            parents=[job.job_name for job in index_jobs + cluster_jobs],
+            parents=[job.job_name for job in cluster_jobs],
             environment=job_env,
             callback=callback,
             attempt_duration_seconds=creation_options.timeout,
@@ -236,8 +233,9 @@ async def vector_source_asset(
     log: ChangeLog = await execute(
         [
             create_vector_schema_job,
+            add_gfw_attributes_job,
             *load_vector_data_jobs,
-            *gfw_attribute_jobs,
+            set_gfw_attributes_job,
             *index_jobs,
             *cluster_jobs,
             *geostore_jobs,

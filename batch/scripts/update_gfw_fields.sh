@@ -12,7 +12,7 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
-# Set GFW fields where null
+# Set GFW fields where needed (new records)
 echo "PSQL: UPDATE \"$DATASET\".\"$VERSION\". Set GFW attributes"
 psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET
   gfw_area__ha = ST_Area($GEOMETRY_NAME::geography)/10000,

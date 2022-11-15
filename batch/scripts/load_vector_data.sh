@@ -24,8 +24,9 @@ if [ "${ZIPPED}" == "True" ]; then
   LOCAL_FILE="/vsizip/${LOCAL_FILE}"
 fi
 
-echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". ALTER COLUMN gfw_geostore_id DROP NOT NULL IF gfw_geostore_id NOT NULL"
-psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ALTER COLUMN gfw_geostore_id DROP NOT NULL IF gfw_geostore_id NOT NULL;"
+# FIXME: This only works if the column was already not null
+echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". ALTER COLUMN gfw_geostore_id DROP NOT NULL"
+psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ALTER COLUMN gfw_geostore_id DROP NOT NULL;"
 
 echo "OGR2OGR: Import \"${DATASET}\".\"${VERSION}\" from ${LOCAL_FILE} ${SRC_LAYER}"
 ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=$PGDATABASE user=$PGUSER" \
