@@ -7,10 +7,19 @@ ALLOWABLE_CHARS = set(string.ascii_letters + string.digits + "-" + "_")
 
 
 class RingOfLists:
+    """A data structure that consists of a number of lists attached to a
+    circular buffer.
+
+    One may iterate over it and append items to the element in hand in
+    order to evenly distribute whatever it is one has amongst the
+    different lists. Later, one can call the all() method to get all the
+    lists to do with as one pleases.
+    """
+
     def __init__(self, size):
-        self._size = size
-        self._lists = [list() for i in range(0, size)]
-        self._idx = -1
+        self._size: int = size
+        self._lists: List[List[Any]] = [list() for i in range(0, size)]
+        self._idx: int = -1
 
     def __next__(self):
         self._idx += 1

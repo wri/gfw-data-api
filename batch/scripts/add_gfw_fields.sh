@@ -30,3 +30,7 @@ psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN ${GEOMETRY_NAME}_wm ge
          ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN gfw_bbox NUMERIC[];
          ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN created_on timestamp without time zone DEFAULT now();
          ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN updated_on timestamp without time zone DEFAULT now();"
+
+# Set gfw_geostore_id not NULL to be compliant with GEOSTORE
+echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". ALTER COLUMN gfw_geostore_id SET NOT NULL"
+psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ALTER COLUMN gfw_geostore_id SET NOT NULL;"
