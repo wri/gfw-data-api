@@ -14,7 +14,7 @@ from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
 from ..utils.path import get_layer_name, is_zipped
 from . import Callback, callback_constructor, writer_secrets
 from .batch import BATCH_DEPENDENCY_LIMIT, execute
-from .utils import RingOfLists
+from .utils import RingOfLists, chunk_list
 
 
 async def _create_vector_schema_job(
@@ -89,9 +89,7 @@ async def _create_load_csv_data_jobs(
 ) -> List[GdalPythonImportJob]:
 
     chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
-    uri_chunks = [
-        source_uris[x : x + chunk_size] for x in range(0, len(source_uris), chunk_size)
-    ]
+    uri_chunks: List[List[str]] = chunk_list(source_uris, chunk_size)
 
     load_vector_data_jobs: List[GdalPythonImportJob] = list()
 

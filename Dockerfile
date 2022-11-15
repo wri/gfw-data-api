@@ -4,7 +4,7 @@ FROM tiangolo/uvicorn-gunicorn-fastapi:python3.8-slim
 ARG ENV
 
 RUN apt-get update -y \
-    && apt-get install --no-install-recommends -y gcc libc-dev musl-dev postgresql-client libpq-dev \
+    && apt-get install --no-install-recommends -y gcc libc-dev musl-dev postgresql-client libpq-dev git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -17,8 +17,7 @@ COPY Pipfile.lock Pipfile.lock
 
 RUN if [ "$ENV" = "dev" ] || [ "$ENV" = "test" ]; then \
 	     echo "Install all dependencies" && \
-	     apt-get install -y --no-install-recommends git && \
-	     pipenv install --system --deploy --ignore-pipfile --dev;  \
+	     pipenv install --system --deploy --ignore-pipfile --dev; \
 	else \
 	     echo "Install production dependencies only" && \
 	     pipenv install --system --deploy; \
