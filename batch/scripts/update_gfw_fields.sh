@@ -22,8 +22,8 @@ psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET
       ST_XMin(ST_Envelope($GEOMETRY_NAME)::geometry),
       ST_YMin(ST_Envelope($GEOMETRY_NAME)::geometry),
       ST_XMax(ST_Envelope($GEOMETRY_NAME)::geometry),
-      ST_YMax(ST_Envelope($GEOMETRY_NAME)::geometry)]::NUMERIC[]
-  WHERE NOT gfw_geostore_id;"
+      ST_YMax(ST_Envelope($GEOMETRY_NAME)::geometry)]::NUMERIC[];"
+#  WHERE NOT gfw_geostore_id;"
 
 # splitting the transform to web mercator (WM) in two steps for performance
 # to isolate the slower/involved one for polygons that overflow WM lat bounds of -85/85 deg

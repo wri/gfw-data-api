@@ -1,7 +1,7 @@
 import json
 import math
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from ..models.enum.creation_options import VectorDrivers
@@ -17,6 +17,164 @@ from .batch import BATCH_DEPENDENCY_LIMIT, execute
 from .utils import RingOfLists, chunk_list
 
 
+async def _create_vector_schema_job(
+    dataset: str,
+    version: str,
+    source_uri: str,
+    layer: str,
+    zipped: bool,
+    table_schema,
+    job_env: List[Dict[str, str]],
+    callback: Callback,
+) -> GdalPythonImportJob:
+
+    create_schema_command: List[str] = [
+        "create_vector_schema.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+        "-s",
+        source_uri,
+        "-l",
+        layer,
+        "-f",
+        os.path.basename(source_uri),
+        "-X",
+        str(zipped),
+    ]
+
+    if table_schema:
+        create_schema_command += [
+            "-m",
+            json.dumps(table_schema.dict(by_alias=True)["table_schema"]),
+        ]
+
+    return GdalPythonImportJob(
+        dataset=dataset,
+        job_name="create_vector_schema",
+        command=create_schema_command,
+        environment=job_env,
+        callback=callback,
+    )
+
+
+async def _create_add_gfw_fields_job(
+    dataset: str,
+    version: str,
+    parents: List[str],
+    job_env: List[Dict[str, str]],
+    callback: Callback,
+    attempt_duration_seconds: int,
+) -> PostgresqlClientJob:
+    return PostgresqlClientJob(
+        dataset=dataset,
+        job_name="add_gfw_fields",
+        command=["add_gfw_fields.sh", "-d", dataset, "-v", version],
+        parents=parents,
+        environment=job_env,
+        callback=callback,
+        attempt_duration_seconds=attempt_duration_seconds,
+    )
+
+
+async def _create_load_csv_data_jobs(
+    dataset: str,
+    version: str,
+    source_uris: List[str],
+    parents: List[str],
+    job_env: List[Dict[str, str]],
+    callback: Callback,
+    attempt_duration_seconds: int,
+) -> List[GdalPythonImportJob]:
+
+    chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
+    uri_chunks = [
+        source_uris[x : x + chunk_size] for x in range(0, len(source_uris), chunk_size)
+    ]
+
+    load_vector_data_jobs: List[GdalPythonImportJob] = list()
+
+    for i, uri_chunk in enumerate(uri_chunks):
+        load_data_command: List[str] = [
+            "load_vector_csv_data.sh",
+            "-d",
+            dataset,
+            "-v",
+            version,
+        ]
+
+        for uri in uri_chunk:
+            load_data_command.append("-s")
+            load_data_command.append(uri)
+
+        load_vector_data_jobs.append(
+            GdalPythonImportJob(
+                dataset=dataset,
+                job_name=f"load_vector_csv_data_{i}",
+                command=load_data_command,
+                parents=parents,
+                environment=job_env,
+                callback=callback,
+                attempt_duration_seconds=attempt_duration_seconds,
+            )
+        )
+    return load_vector_data_jobs
+
+
+async def _create_load_other_data_jobs(
+    dataset: str,
+    version: str,
+    source_uri: str,
+    layers: List[str],
+    zipped: bool,
+    parents: List[str],
+    job_env: List[Dict[str, str]],
+    callback: Callback,
+    attempt_duration_seconds: int,
+) -> Tuple[List[GdalPythonImportJob], List[GdalPythonImportJob]]:
+    # AWS Batch jobs can't have more than 20 parents. In case of excessive
+    # numbers of layers, create multiple "queues" of dependent jobs, with
+    # the next phase being dependent on the last job of each queue.
+    num_queues: int = min(16, len(layers))
+    job_queues: RingOfLists = RingOfLists(num_queues)
+
+    load_vector_data_jobs: List[GdalPythonImportJob] = list()
+
+    for i, layer in enumerate(layers):
+        current_queue = next(job_queues)
+
+        load_data_command: List[str] = [
+            "load_vector_data.sh",
+            "-d",
+            dataset,
+            "-v",
+            version,
+            "-s",
+            source_uri,
+            "-l",
+            layer,
+            "-f",
+            os.path.basename(source_uri),
+            "-X",
+            str(zipped),
+        ]
+
+        load_data_job: GdalPythonImportJob = GdalPythonImportJob(
+            dataset=dataset,
+            job_name=f"load_vector_data_layer_{i}",
+            command=load_data_command,
+            parents=[current_queue[-1].job_name] if current_queue else parents,
+            environment=job_env,
+            callback=callback,
+            attempt_duration_seconds=attempt_duration_seconds,
+        )
+        current_queue.append(load_data_job)
+        load_vector_data_jobs.append(load_data_job)
+
+    return (load_vector_data_jobs, [queue[-1] for queue in job_queues.all() if queue])
+
+
 async def vector_source_asset(
     dataset: str,
     version: str,
@@ -29,7 +187,6 @@ async def vector_source_asset(
     source_uris: List[str] = creation_options.source_uri
     first_source_uri: str = source_uris[0]
 
-    local_file: str = os.path.basename(first_source_uri)
     zipped: bool = is_zipped(first_source_uri)
 
     if creation_options.layers:
@@ -39,131 +196,56 @@ async def vector_source_asset(
 
     job_env = writer_secrets + [{"name": "ASSET_ID", "value": str(asset_id)}]
 
-    create_schema_command: List[str] = [
-        "create_vector_schema.sh",
-        "-d",
+    create_schema_job: GdalPythonImportJob = await _create_vector_schema_job(
         dataset,
-        "-v",
         version,
-        "-s",
         first_source_uri,
-        "-l",
         layers[0],
-        "-f",
-        local_file,
-        "-X",
-        str(zipped),
-    ]
-
-    if creation_options.table_schema:
-        create_schema_command += [
-            "-m",
-            json.dumps(creation_options.dict(by_alias=True)["table_schema"]),
-        ]
-
-    create_vector_schema_job = GdalPythonImportJob(
-        dataset=dataset,
-        job_name="create_vector_schema",
-        command=create_schema_command,
-        environment=job_env,
+        zipped,
+        creation_options.table_schema,
+        job_env=job_env,
         callback=callback,
     )
 
-    add_gfw_attributes_job: PostgresqlClientJob = PostgresqlClientJob(
-        dataset=dataset,
-        job_name="add_gfw_fields",
-        command=["add_gfw_fields.sh", "-d", dataset, "-v", version],
-        parents=[create_vector_schema_job.job_name],
-        environment=job_env,
+    add_gfw_fields_job: PostgresqlClientJob = await _create_add_gfw_fields_job(
+        dataset,
+        version,
+        [create_schema_job.job_name],
+        job_env=job_env,
         callback=callback,
         attempt_duration_seconds=creation_options.timeout,
     )
 
-    load_vector_data_jobs: List[GdalPythonImportJob] = list()
-    final_load_vector_data_job_names: List[str] = list()
-
     if creation_options.source_driver == VectorDrivers.csv:
-        chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
-        uri_chunks = [
-            source_uris[x : x + chunk_size]
-            for x in range(0, len(source_uris), chunk_size)
-        ]
-
-        for i, uri_chunk in enumerate(uri_chunks):
-            load_data_command: List[str] = [
-                "load_vector_csv_data.sh",
-                "-d",
-                dataset,
-                "-v",
-                version,
-            ]
-
-            for uri in uri_chunk:
-                load_data_command.append("-s")
-                load_data_command.append(uri)
-
-            load_vector_data_jobs.append(
-                GdalPythonImportJob(
-                    dataset=dataset,
-                    job_name=f"load_vector_csv_data_{i}",
-                    command=load_data_command,
-                    parents=[add_gfw_attributes_job.job_name],
-                    environment=job_env,
-                    callback=callback,
-                    attempt_duration_seconds=creation_options.timeout,
-                )
-            )
-        final_load_vector_data_job_names = [
-            job.job_name for job in load_vector_data_jobs
-        ]
+        load_data_jobs: List[GdalPythonImportJob] = await _create_load_csv_data_jobs(
+            dataset,
+            version,
+            source_uris,
+            parents=[add_gfw_fields_job.job_name],
+            job_env=job_env,
+            callback=callback,
+            attempt_duration_seconds=creation_options.timeout,
+        )
+        final_load_data_jobs: List[GdalPythonImportJob] = load_data_jobs
     else:
-        # AWS Batch jobs can't have more than 20 parents. In case of excessive
-        # numbers of layers, create multiple "queues" of dependent jobs, with
-        # the next phase being dependent on the last job of each queue.
-        num_queues: int = min(16, len(layers))
-        job_queues: RingOfLists = RingOfLists(num_queues)
-        for i, layer in enumerate(layers):
-            queue = next(job_queues)
+        # TODO: Explain why different
+        load_data_jobs, final_load_data_jobs = await _create_load_other_data_jobs(
+            dataset,
+            version,
+            first_source_uri,
+            layers,
+            zipped,
+            parents=[add_gfw_fields_job.job_name],
+            job_env=job_env,
+            callback=callback,
+            attempt_duration_seconds=creation_options.timeout,
+        )
 
-            load_data_command = [
-                "load_vector_data.sh",
-                "-d",
-                dataset,
-                "-v",
-                version,
-                "-s",
-                first_source_uri,
-                "-l",
-                layer,
-                "-f",
-                local_file,
-                "-X",
-                str(zipped),
-            ]
-
-            load_data_job: GdalPythonImportJob = GdalPythonImportJob(
-                dataset=dataset,
-                job_name=f"load_vector_data_layer_{i}",
-                command=load_data_command,
-                parents=[
-                    queue[-1].job_name if queue else add_gfw_attributes_job.job_name
-                ],
-                environment=job_env,
-                callback=callback,
-                attempt_duration_seconds=creation_options.timeout,
-            )
-            queue.append(load_data_job)
-            load_vector_data_jobs.append(load_data_job)
-
-        final_load_vector_data_job_names = [
-            queue[-1].job_name for queue in job_queues.all() if queue
-        ]
-
-    set_gfw_attributes_job: PostgresqlClientJob = PostgresqlClientJob(
+    update_gfw_fields_job: PostgresqlClientJob = PostgresqlClientJob(
         dataset=dataset,
         job_name="update_gfw_fields",
         command=["update_gfw_fields.sh", "-d", dataset, "-v", version],
-        parents=final_load_vector_data_job_names,
+        parents=[job.job_name for job in final_load_data_jobs],
         environment=job_env,
         callback=callback,
         attempt_duration_seconds=creation_options.timeout,
@@ -186,7 +268,7 @@ async def vector_source_asset(
                     "-x",
                     index.index_type,
                 ],
-                parents=[set_gfw_attributes_job.job_name],
+                parents=[update_gfw_fields_job.job_name],
                 environment=job_env,
                 callback=callback,
                 attempt_duration_seconds=creation_options.timeout,
@@ -223,7 +305,7 @@ async def vector_source_asset(
             dataset=dataset,
             job_name="inherit_from_geostore",
             command=["inherit_geostore.sh", "-d", dataset, "-v", version],
-            parents=[job.job_name for job in cluster_jobs],
+            parents=[update_gfw_fields_job.job_name],
             environment=job_env,
             callback=callback,
             attempt_duration_seconds=creation_options.timeout,
@@ -232,10 +314,10 @@ async def vector_source_asset(
 
     log: ChangeLog = await execute(
         [
-            create_vector_schema_job,
-            add_gfw_attributes_job,
-            *load_vector_data_jobs,
-            set_gfw_attributes_job,
+            create_schema_job,
+            add_gfw_fields_job,
+            *load_data_jobs,
+            update_gfw_fields_job,
             *index_jobs,
             *cluster_jobs,
             *geostore_jobs,
