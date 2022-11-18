@@ -35,7 +35,7 @@ args=(-f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=
 
 # If source is CSV, there's no SRS information so add it manually
 if [[ "$SRC" == *".csv" ]]; then
-  echo "OGR2OGR: Add creation options for CSV source"
+  echo "OGR2OGR: Set SRS for CSV source"
   args+=(-s_srs EPSG:4326 -oo GEOM_POSSIBLE_NAMES="$GEOMETRY_NAME" -oo KEEP_GEOM_COLUMNS=NO)
 fi
 

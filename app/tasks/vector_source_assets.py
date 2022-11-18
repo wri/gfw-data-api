@@ -10,7 +10,7 @@ from ..models.pydantic.creation_options import (
     VectorSourceAppendOptions,
     VectorSourceCreationOptions,
 )
-from ..models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
+from ..models.pydantic.jobs import GdalPythonImportJob, PostgresqlClientJob
 from ..utils.path import get_layer_name, is_zipped
 from . import Callback, callback_constructor, writer_secrets
 from .batch import BATCH_DEPENDENCY_LIMIT, execute
@@ -170,7 +170,7 @@ async def _create_load_other_data_jobs(
         current_queue.append(load_data_job)
         load_vector_data_jobs.append(load_data_job)
 
-    return (load_vector_data_jobs, [queue[-1] for queue in job_queues.all() if queue])
+    return load_vector_data_jobs, [queue[-1] for queue in job_queues.all() if queue]
 
 
 async def vector_source_asset(
@@ -208,7 +208,7 @@ async def vector_source_asset(
     add_gfw_fields_job: PostgresqlClientJob = await _create_add_gfw_fields_job(
         dataset,
         version,
-        [create_schema_job.job_name],
+        parents=[create_schema_job.job_name],
         job_env=job_env,
         callback=callback,
         attempt_duration_seconds=creation_options.timeout,
@@ -249,7 +249,7 @@ async def vector_source_asset(
         attempt_duration_seconds=creation_options.timeout,
     )
 
-    index_jobs: List[Job] = list()
+    index_jobs: List[PostgresqlClientJob] = list()
     for index in creation_options.indices:
         index_jobs.append(
             PostgresqlClientJob(
