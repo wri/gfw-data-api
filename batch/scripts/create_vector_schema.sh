@@ -12,6 +12,7 @@ set -e
 
 # optional arguments
 # -g | --geometry_name (get_arguments.sh specifies default)
+# -i | --fid_name (get_arguments.sh specifies default)
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"
