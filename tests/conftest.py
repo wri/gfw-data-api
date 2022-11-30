@@ -53,10 +53,15 @@ from .utils import delete_logs, print_logs, upload_fake_data
 
 FAKE_INT_DATA_PARAMS = {
     "dtype": rasterio.uint16,
-    "no_data": 0,
+    "no_data": None,
     "dtype_name": "uint16",
     "prefix": "test/v1.1.1/raw/uint16",
-    "data": (numpy.ones((300, 300), rasterio.uint16) * 30100).astype("uint16"),
+    "data": numpy.row_stack(
+        (
+            numpy.zeros((150, 300), rasterio.uint16),
+            numpy.ones((150, 300), rasterio.uint16) * 10000,
+        )
+    ),
 }
 FAKE_FLOAT_DATA_PARAMS = {
     "dtype": rasterio.float32,
