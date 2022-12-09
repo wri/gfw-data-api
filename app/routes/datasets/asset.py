@@ -9,10 +9,12 @@ cannot rely on full integrity. We can only assume that unmanaged are
 based on the same version and do not know the processing history.
 """
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import ORJSONResponse
+
+from app.settings.globals import API_URL
 
 from ...authentication.token import is_admin
 from ...crud import assets
@@ -23,11 +25,13 @@ from ...models.pydantic.assets import (
     AssetResponse,
     AssetsResponse,
     AssetType,
+    PaginatedAssetsResponse,
 )
 from ...routes import dataset_version_dependency
 from ...tasks.assets import put_asset
+from ...utils.paginate import paginate_collection
 from ...utils.path import get_asset_uri
-from ..assets import asset_response, assets_response
+from ..assets import asset_response, assets_response, paginated_assets_response
 from . import (
     validate_creation_options,
     verify_asset_dependencies,
@@ -41,7 +45,7 @@ router = APIRouter()
     "/{dataset}/{version}/assets",
     response_class=ORJSONResponse,
     tags=["Versions"],
-    response_model=AssetsResponse,
+    response_model=Union[PaginatedAssetsResponse, AssetsResponse],
 )
 async def get_version_assets(
     *,
@@ -50,8 +54,23 @@ async def get_version_assets(
     asset_uri: Optional[str] = Query(None),
     is_latest: Optional[bool] = Query(None),
     is_default: Optional[bool] = Query(None),
-):
-    """Get all assets for a given dataset version."""
+    request: Request,
+    page_number: Optional[int] = Query(
+        default=None, alias="page[number]", ge=1, description="The page number."
+    ),
+    page_size: Optional[int] = Query(
+        default=None,
+        alias="page[size]",
+        ge=1,
+        description="The number of assets per page. Default is `10`.",
+    ),
+) -> Union[PaginatedAssetsResponse, AssetsResponse]:
+    """Get all assets for a given dataset version.
+
+    Will attempt to paginate if `page[size]` or `page[number]` is
+    provided. Otherwise, it will attempt to return the entire list of
+    assets in the response.
+    """
 
     dataset, version = dv
 
@@ -60,11 +79,31 @@ async def get_version_assets(
     else:
         a_t = None
 
-    data: List[ORMAsset] = await assets.get_assets_by_filter(
+    if page_number or page_size:
+        try:
+            data, links, meta = await paginate_collection(
+                paged_items_fn=await assets.get_filtered_assets_fn(
+                    dataset, version, a_t, asset_uri, is_latest, is_default
+                ),
+                item_count_fn=await assets.count_filtered_assets_fn(
+                    dataset, version, a_t, asset_uri, is_latest, is_default
+                ),
+                request_url=f"{API_URL}{request.url.path}",
+                page=page_number,
+                size=page_size,
+            )
+
+            return await paginated_assets_response(
+                assets_orm=data, links=links, meta=meta
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    all_assets: List[ORMAsset] = await assets.get_assets_by_filter(
         dataset, version, a_t, asset_uri, is_latest, is_default
     )
 
-    return await assets_response(data)
+    return await assets_response(all_assets)
 
 
 @router.post(

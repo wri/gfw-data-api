@@ -3,6 +3,8 @@ from typing import List, Optional, Union
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import ORJSONResponse
 
+from app.settings.globals import API_URL
+
 from ...crud import assets
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.pydantic.assets import AssetsResponse, AssetType, PaginatedAssetsResponse
@@ -35,7 +37,7 @@ async def get_assets(
         default=None,
         alias="page[size]",
         ge=1,
-        description="The number of datasets per page. Default is `10`.",
+        description="The number of assets per page. Default is `10`.",
     ),
 ) -> Union[PaginatedAssetsResponse, AssetsResponse]:
     """Get all assets for a given dataset version.
@@ -62,7 +64,7 @@ async def get_assets(
                 item_count_fn=await assets.count_filtered_assets_fn(
                     dataset, version, a_t, asset_uri, is_latest, is_default
                 ),
-                request_url=f"{request.url}".split("?")[0],
+                request_url=f"{API_URL}{request.url.path}",
                 page=page_number,
                 size=page_size,
             )
