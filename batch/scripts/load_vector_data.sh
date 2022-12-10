@@ -30,6 +30,4 @@ ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbnam
      "$LOCAL_FILE" "$SRC_LAYER" \
      -nlt PROMOTE_TO_MULTI -nln "$DATASET.$VERSION" \
      -t_srs EPSG:4326 --config PG_USE_COPY YES \
-     --config OGR_DEBUG_ORGANIZE_POLYGONS YES \
-     --config CPL_DEBUG ON \
      -update -append -makevalid
