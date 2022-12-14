@@ -1,4 +1,4 @@
-FROM globalforestwatch/data-api-postgresql:1.0.2
+FROM globalforestwatch/data-api-postgresql:v1.0.3
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/
