@@ -12,6 +12,7 @@ set -e
 
 # optional arguments
 # -g | --geometry_name (get_arguments.sh specifies default)
+# -i | --fid_name (get_arguments.sh specifies default)
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"
@@ -27,20 +28,24 @@ if [ "${ZIPPED}" == "True" ]; then
   LOCAL_FILE="/vsizip/${LOCAL_FILE}"
 fi
 
-TEMP_TABLE=temp_table
+TEMP_TABLE=bazinga
 
-#CREATE_TEMP_TABLE_SQL="
-#  CREATE TEMPORARY TABLE $TEMP_TABLE (LIKE \"$DATASET\".\"$VERSION\" INCLUDING ALL) ON COMMIT DROP;
-#  ALTER TABLE $TEMP_TABLE ALTER COLUMN gfw_geostore_id DROP NOT NULL
-#"
-CREATE_TEMP_TABLE_SQL="
-  CREATE TEMPORARY TABLE $TEMP_TABLE (LIKE \"$DATASET\".\"$VERSION\") ON COMMIT DROP;
-  ALTER TABLE $TEMP_TABLE ALTER COLUMN gfw_geostore_id DROP NOT NULL
-"
-#CREATE_TEMP_TABLE_SQL="
-#  CREATE TEMPORARY TABLE $TEMP_TABLE AS \"$DATASET\".\"$VERSION\" WITH NO DATA;
-#  ALTER TABLE $TEMP_TABLE ALTER COLUMN gfw_geostore_id DROP NOT NULL
-#"
+GEOMETRY_TYPE_SQL="
+  SELECT type
+  FROM geometry_columns
+  WHERE f_table_schema = '${DATASET}'
+    AND f_table_name = '${VERSION}'
+    AND f_geometry_column = '${GEOMETRY_NAME}';"
+
+ADD_GFW_FIELDS_SQL="
+  ALTER TABLE $TEMP_TABLE ADD COLUMN ${GEOMETRY_NAME}_wm geometry(${GEOMETRY_TYPE_SQL},3857);
+  ALTER TABLE $TEMP_TABLE ALTER COLUMN ${GEOMETRY_NAME}_wm SET STORAGE EXTERNAL;
+  ALTER TABLE $TEMP_TABLE ADD COLUMN gfw_area__ha NUMERIC;
+  ALTER TABLE $TEMP_TABLE ADD COLUMN gfw_geostore_id UUID;
+  ALTER TABLE $TEMP_TABLE ADD COLUMN gfw_geojson TEXT COLLATE pg_catalog.\"default\";
+  ALTER TABLE $TEMP_TABLE ADD COLUMN gfw_bbox NUMERIC[];
+  ALTER TABLE $TEMP_TABLE ADD COLUMN created_on timestamp without time zone DEFAULT now();
+  ALTER TABLE $TEMP_TABLE ADD COLUMN updated_on timestamp without time zone DEFAULT now();"
 
 ENRICH_SQL="
   UPDATE
@@ -61,10 +66,11 @@ COPY_FROM_TEMP_SQL="INSERT INTO \"$DATASET\".\"$VERSION\" SELECT * FROM $TEMP_TA
 echo "OGR2OGR: Import \"${DATASET}\".\"${VERSION}\" from ${LOCAL_FILE} ${SRC_LAYER}"
 ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=$PGDATABASE user=$PGUSER" \
     "$LOCAL_FILE" "$SRC_LAYER" \
-    -doo PRELUDE_STATEMENTS="BEGIN; $CREATE_TEMP_TABLE_SQL;" \
-    -doo CLOSING_STATEMENTS="$ENRICH_SQL; $COPY_FROM_TEMP_SQL; COMMIT;" \
+    -doo CLOSING_STATEMENTS="$ADD_GFW_FIELDS_SQL; $ENRICH_SQL; $COPY_FROM_TEMP_SQL;" \
+    -lco GEOMETRY_NAME="$GEOMETRY_NAME" -lco SPATIAL_INDEX=NONE -lco FID="$FID_NAME" \
+    -lco TEMPORARY=ON \
     -nlt PROMOTE_TO_MULTI \
     -nln $TEMP_TABLE \
     -t_srs EPSG:4326 \
     --config PG_USE_COPY YES \
-    -update -append -makevalid
+    -makevalid -update
