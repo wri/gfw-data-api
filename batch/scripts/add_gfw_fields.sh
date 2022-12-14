@@ -20,6 +20,7 @@ GEOMETRY_TYPE=$(psql -X -A -t -c "SELECT type
                                       AND f_table_name = '${VERSION}'
                                       AND f_geometry_column = '${GEOMETRY_NAME}';")
 
+
 # Add GFW specific layers
 echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". Add GFW columns"
 psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN ${GEOMETRY_NAME}_wm geometry(${GEOMETRY_TYPE},3857);
