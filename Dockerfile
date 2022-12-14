@@ -4,7 +4,7 @@ FROM tiangolo/uvicorn-gunicorn-fastapi:python3.10-slim
 ARG ENV
 
 RUN apt-get update -y \
-    && apt-get install --no-install-recommends -y gcc libc-dev musl-dev postgresql-client libpq-dev make \
+    && apt-get install --no-install-recommends -y gcc libc-dev musl-dev postgresql-client libpq-dev make git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -22,9 +22,6 @@ RUN if [ "$ENV" = "dev" ] || [ "$ENV" = "test" ]; then \
 	     echo "Install production dependencies only" && \
 	     pipenv install --system --deploy; \
 	fi
-
-RUN apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
 
 COPY ./app /app/app
 
