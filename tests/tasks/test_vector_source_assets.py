@@ -5,6 +5,7 @@ from uuid import UUID
 
 import httpx
 import pytest
+from httpx import AsyncClient
 
 from app.application import ContextEngine, db
 from app.models.orm.geostore import Geostore
@@ -21,7 +22,7 @@ from . import (
 
 
 @pytest.mark.asyncio
-async def test_vector_source_asset(batch_client, async_client):
+async def test_vector_source_asset(batch_client, async_client: AsyncClient):
     _, logs = batch_client
 
     ############################
@@ -37,7 +38,7 @@ async def test_vector_source_asset(batch_client, async_client):
             "creation_options": {
                 "source_type": "vector",
                 "source_uri": [f"s3://{BUCKET}/{source}"],
-                "source_driver": "GeoJSON",
+                "source_driver": "GeoJSON",  # FIXME: True for ESRI Shapefile?
                 "create_dynamic_vector_tile_cache": True,
             },
             "metadata": {},
@@ -61,7 +62,7 @@ async def test_vector_source_asset(batch_client, async_client):
 
         await check_version_status(dataset, version, 3)
         await check_asset_status(dataset, version, 1)
-        await check_task_status(asset_id, 7, "inherit_from_geostore")
+        await check_task_status(asset_id, 8, "inherit_from_geostore")
 
         # There should be a table called "test"."v1.1.1" with one row
         async with ContextEngine("READ"):

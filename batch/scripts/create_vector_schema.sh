@@ -17,6 +17,8 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
+# FIXME: Downloading the whole file for this step should be unnecessary
+# Access over the network to dramatically decrease run time for this step?
 echo "AWSCLI: COPY DATA FROM $SRC TO $LOCAL_FILE"
 aws s3 cp "$SRC" "$LOCAL_FILE"
 

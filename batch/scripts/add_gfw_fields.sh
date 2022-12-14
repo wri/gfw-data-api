@@ -14,12 +14,14 @@ ME=$(basename "$0")
 
 # Get geometry type of current table
 echo "PSQL: Get geometry type"
-GEOMETRY_TYPE=$(psql -X -A -t -c "SELECT type
-                                    FROM geometry_columns
-                                    WHERE f_table_schema = '${DATASET}'
-                                      AND f_table_name = '${VERSION}'
-                                      AND f_geometry_column = '${GEOMETRY_NAME}';")
+GEOMETRY_TYPE_SQL="
+  SELECT type
+  FROM geometry_columns
+  WHERE f_table_schema = '${DATASET}'
+    AND f_table_name = '${VERSION}'
+    AND f_geometry_column = '${GEOMETRY_NAME}';"
 
+GEOMETRY_TYPE=$(psql -X -A -t -c "${GEOMETRY_TYPE_SQL}")
 
 # Add GFW specific layers
 echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". Add GFW columns"
