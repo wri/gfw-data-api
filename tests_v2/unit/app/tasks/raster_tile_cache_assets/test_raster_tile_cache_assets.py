@@ -12,6 +12,33 @@ from app.tasks.raster_tile_cache_assets import raster_tile_cache_asset
 from app.tasks.raster_tile_cache_assets.symbology import SymbologyInfo
 
 
+@pytest.fixture(scope="module")
+def tile_cache_asset_uuid():
+    return UUID("e0a2dc44-aee1-4f71-963b-70a85869685d")
+
+
+@pytest.fixture(scope="module")
+def source_asset_uuid():
+    return UUID("a8230040-23ad-4def-aca3-a292b6161557")
+
+
+@pytest.fixture()
+def creation_options_dict(source_asset_uuid):
+    return {
+        "creation_options": {
+            "min_zoom": 0,
+            "max_zoom": 0,  # make sure to test this at least with 1
+            "max_static_zoom": 0,
+            "implementation": "default",
+            "symbology": {
+                "type": "date_conf_intensity",  # try no_symbology
+            },
+            "resampling": "nearest",
+            "source_asset_id": source_asset_uuid,
+        }
+    }
+
+
 @pytest.fixture()
 def source_asset():
     return ORMAsset(
@@ -74,6 +101,8 @@ async def test_exploratory_test_runs_without_error(
     web_mercator_dummy,
     symbology_constructor_dummy,
     execute_dummy,
+    tile_cache_asset_uuid,
+    creation_options_dict,
     source_asset,
     reprojection,
     symbology_info,
@@ -87,25 +116,8 @@ async def test_exploratory_test_runs_without_error(
     web_mercator_dummy.return_value = reprojection
     execute_dummy.return_value = change_log
 
-    TILE_CACHE_ASSET_UUID = UUID("e0a2dc44-aee1-4f71-963b-70a85869685d")
-    SOURCE_ASSET_UUID = UUID("a8230040-23ad-4def-aca3-a292b6161557")
-
-    CREATION_OPTIONS = {
-        "creation_options": {
-            "min_zoom": 0,
-            "max_zoom": 0,  # make sure to test this at least with 1
-            "max_static_zoom": 0,
-            "implementation": "default",
-            "symbology": {
-                "type": "date_conf_intensity",  # try no_symbology
-            },
-            "resampling": "nearest",
-            "source_asset_id": SOURCE_ASSET_UUID,
-        }
-    }
-
     result = await raster_tile_cache_asset(
-        "test_dataset", "2022", TILE_CACHE_ASSET_UUID, CREATION_OPTIONS
+        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
     )
 
     assert result.status == ChangeLogStatus.success
@@ -132,40 +144,25 @@ async def test_source_asset_is_retrieved_by_uuid(
     web_mercator_dummy,
     symbology_constructor_dummy,
     execute_dummy,
+    tile_cache_asset_uuid,
+    creation_options_dict,
     source_asset,
     reprojection,
     symbology_info,
     change_log,
 ):
-    """Goal of this test is to determine the minimum amount of patching we need
-    to do to get the function to run as much side-effect free code as
-    possible."""
     get_asset_mock.return_value = source_asset
     symbology_constructor_dummy.__getitem__.return_value = symbology_info
     web_mercator_dummy.return_value = reprojection
     execute_dummy.return_value = change_log
 
-    TILE_CACHE_ASSET_UUID = UUID("e0a2dc44-aee1-4f71-963b-70a85869685d")
-    SOURCE_ASSET_UUID = UUID("a8230040-23ad-4def-aca3-a292b6161557")
-    CREATION_OPTIONS = {
-        "creation_options": {
-            "min_zoom": 0,
-            "max_zoom": 0,  # make sure to test this at least with 1
-            "max_static_zoom": 0,
-            "implementation": "default",
-            "symbology": {
-                "type": "date_conf_intensity",  # try no_symbology
-            },
-            "resampling": "nearest",
-            "source_asset_id": SOURCE_ASSET_UUID,
-        }
-    }
-
     await raster_tile_cache_asset(
-        "test_dataset", "2022", TILE_CACHE_ASSET_UUID, CREATION_OPTIONS
+        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
     )
 
-    get_asset_mock.assert_called_with(SOURCE_ASSET_UUID)
+    get_asset_mock.assert_called_with(
+        creation_options_dict["creation_options"]["source_asset_id"]
+    )
 
 
 @patch(
@@ -189,37 +186,20 @@ async def test_reproject_to_web_mercator_is_called_with_dataset_and_version(
     web_mercator_mock,
     symbology_constructor_dummy,
     execute_dummy,
+    tile_cache_asset_uuid,
+    creation_options_dict,
     source_asset,
     reprojection,
     symbology_info,
     change_log,
 ):
-    """Goal of this test is to determine the minimum amount of patching we need
-    to do to get the function to run as much side-effect free code as
-    possible."""
     get_asset_dummy.return_value = source_asset
     symbology_constructor_dummy.__getitem__.return_value = symbology_info
     web_mercator_mock.return_value = reprojection
     execute_dummy.return_value = change_log
 
-    TILE_CACHE_ASSET_UUID = UUID("e0a2dc44-aee1-4f71-963b-70a85869685d")
-    SOURCE_ASSET_UUID = UUID("a8230040-23ad-4def-aca3-a292b6161557")
-    CREATION_OPTIONS = {
-        "creation_options": {
-            "min_zoom": 0,
-            "max_zoom": 0,  # make sure to test this at least with 1
-            "max_static_zoom": 0,
-            "implementation": "default",
-            "symbology": {
-                "type": "date_conf_intensity",  # try no_symbology
-            },
-            "resampling": "nearest",
-            "source_asset_id": SOURCE_ASSET_UUID,
-        }
-    }
-
     await raster_tile_cache_asset(
-        "test_dataset", "2022", TILE_CACHE_ASSET_UUID, CREATION_OPTIONS
+        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
     )
 
     args, _ = web_mercator_mock.call_args_list[-1]
@@ -247,37 +227,20 @@ async def test_reproject_to_web_mercator_is_called_same_max_zoom_level_as_passed
     web_mercator_mock,
     symbology_constructor_dummy,
     execute_dummy,
+    tile_cache_asset_uuid,
+    creation_options_dict,
     source_asset,
     reprojection,
     symbology_info,
     change_log,
 ):
-    """Goal of this test is to determine the minimum amount of patching we need
-    to do to get the function to run as much side-effect free code as
-    possible."""
     get_asset_dummy.return_value = source_asset
     symbology_constructor_dummy.__getitem__.return_value = symbology_info
     web_mercator_mock.return_value = reprojection
     execute_dummy.return_value = change_log
 
-    TILE_CACHE_ASSET_UUID = UUID("e0a2dc44-aee1-4f71-963b-70a85869685d")
-    SOURCE_ASSET_UUID = UUID("a8230040-23ad-4def-aca3-a292b6161557")
-    CREATION_OPTIONS = {
-        "creation_options": {
-            "min_zoom": 0,
-            "max_zoom": 0,  # make sure to test this at least with 1
-            "max_static_zoom": 0,
-            "implementation": "default",
-            "symbology": {
-                "type": "date_conf_intensity",  # try no_symbology
-            },
-            "resampling": "nearest",
-            "source_asset_id": SOURCE_ASSET_UUID,
-        }
-    }
-
     await raster_tile_cache_asset(
-        "test_dataset", "2022", TILE_CACHE_ASSET_UUID, CREATION_OPTIONS
+        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
     )
 
     args, _ = web_mercator_mock.call_args_list[-1]
@@ -308,37 +271,20 @@ async def test_reproject_to_web_mercator_is_called_with_resampling_kwargs(
     web_mercator_mock,
     symbology_constructor_dummy,
     execute_dummy,
+    tile_cache_asset_uuid,
+    creation_options_dict,
     source_asset,
     reprojection,
     symbology_info,
     change_log,
 ):
-    """Goal of this test is to determine the minimum amount of patching we need
-    to do to get the function to run as much side-effect free code as
-    possible."""
     get_asset_dummy.return_value = source_asset
     symbology_constructor_dummy.__getitem__.return_value = symbology_info
     web_mercator_mock.return_value = reprojection
     execute_dummy.return_value = change_log
 
-    TILE_CACHE_ASSET_UUID = UUID("e0a2dc44-aee1-4f71-963b-70a85869685d")
-    SOURCE_ASSET_UUID = UUID("a8230040-23ad-4def-aca3-a292b6161557")
-    CREATION_OPTIONS = {
-        "creation_options": {
-            "min_zoom": 0,
-            "max_zoom": 0,  # make sure to test this at least with 1
-            "max_static_zoom": 0,
-            "implementation": "default",
-            "symbology": {
-                "type": "date_conf_intensity",  # try no_symbology
-            },
-            "resampling": "nearest",
-            "source_asset_id": SOURCE_ASSET_UUID,
-        }
-    }
-
     await raster_tile_cache_asset(
-        "test_dataset", "2022", TILE_CACHE_ASSET_UUID, CREATION_OPTIONS
+        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
     )
 
     _, kwargs = web_mercator_mock.call_args_list[-1]
