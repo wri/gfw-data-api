@@ -226,7 +226,6 @@ async def vector_source_asset(
         )
         final_load_data_jobs: List[GdalPythonImportJob] = load_data_jobs
     else:
-        # TODO: Explain why different
         load_data_jobs, final_load_data_jobs = await _create_load_other_data_jobs(
             dataset,
             version,
@@ -357,7 +356,6 @@ async def append_vector_source_asset(
         )
         final_load_data_jobs: List[GdalPythonImportJob] = load_data_jobs
     else:
-        # TODO: Explain why different
         load_data_jobs, final_load_data_jobs = await _create_load_other_data_jobs(
             dataset,
             version,

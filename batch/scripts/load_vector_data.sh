@@ -28,7 +28,7 @@ if [ "${ZIPPED}" == "True" ]; then
   LOCAL_FILE="/vsizip/${LOCAL_FILE}"
 fi
 
-TEMP_TABLE="bazinga"
+TEMP_TABLE="temp_table"
 
 GEOMETRY_TYPE_SQL="
   SELECT type
@@ -67,12 +67,12 @@ COPY_FROM_TEMP_SQL="INSERT INTO \"$DATASET\".\"$VERSION\" SELECT * FROM $TEMP_TA
 
 echo "OGR2OGR: Import \"${DATASET}\".\"${VERSION}\" from ${LOCAL_FILE} ${SRC_LAYER}"
 ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=$PGDATABASE user=$PGUSER" \
-    "$LOCAL_FILE" "$SRC_LAYER" \
-    -doo CLOSING_STATEMENTS="$ADD_GFW_FIELDS_SQL; $ENRICH_SQL; $COPY_FROM_TEMP_SQL;" \
-    -lco GEOMETRY_NAME="$GEOMETRY_NAME" -lco SPATIAL_INDEX=NONE -lco FID="$FID_NAME" \
-    -lco TEMPORARY=ON \
-    -nlt PROMOTE_TO_MULTI \
-    -nln $TEMP_TABLE \
-    -t_srs EPSG:4326 \
-    --config PG_USE_COPY YES \
-    -makevalid -update
+  "$LOCAL_FILE" "$SRC_LAYER" \
+  -doo CLOSING_STATEMENTS="$ADD_GFW_FIELDS_SQL; $ENRICH_SQL; $COPY_FROM_TEMP_SQL;" \
+  -lco GEOMETRY_NAME="$GEOMETRY_NAME" -lco SPATIAL_INDEX=NONE -lco FID="$FID_NAME" \
+  -lco TEMPORARY=ON \
+  -nlt PROMOTE_TO_MULTI \
+  -nln $TEMP_TABLE \
+  -t_srs EPSG:4326 \
+  --config PG_USE_COPY YES \
+  -makevalid -update
