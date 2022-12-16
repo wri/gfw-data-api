@@ -44,7 +44,7 @@ async def db():
 
 @pytest.fixture(scope="module")
 def module_db():
-    """make sure that the db is only initialized and teared down once per
+    """make sure that the db is only initialized and torn down once per
     module."""
     main(["--raiseerr", "upgrade", "head"])
     yield
@@ -228,7 +228,7 @@ async def generic_raster_version(
     generic_dataset: Tuple[str, str],
     monkeypatch: MonkeyPatch,
 ) -> AsyncGenerator[Tuple[str, str, Dict[str, Any]], None]:
-    """Create generic vector source version."""
+    """Create generic raster source version."""
 
     dataset_name, _ = generic_dataset
     version_name: str = "v1"
@@ -238,7 +238,6 @@ async def generic_raster_version(
     batch_job_mock = BatchJobMock()
     monkeypatch.setattr(versions, "_verify_source_file_access", void_coroutine)
     monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
-    monkeypatch.setattr(vector_source_assets, "is_zipped", bool_function_closure(False))
     monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
     monkeypatch.setattr(raster_tile_set_assets, "get_extent", get_extent_mocked)
     monkeypatch.setattr(
@@ -256,7 +255,6 @@ async def generic_raster_version(
 
     # mock batch processes
     # TODO need to add anything here?
-    # await _create_vector_source_assets(dataset_name, version_name)
 
     # Set all pending tasks to success
     for job_id in batch_job_mock.jobs:

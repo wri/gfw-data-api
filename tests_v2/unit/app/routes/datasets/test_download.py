@@ -74,7 +74,7 @@ async def test_downloads(
 
 
 @pytest.mark.asyncio()
-async def test_download_vector_asset_disallowed_1(
+async def test_download_vector_asset_count(
     generic_vector_source_version, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
