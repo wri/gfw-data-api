@@ -8,7 +8,7 @@ black = "==22.6.0"  # Pin to avoid having to allow pre-releases
 detect-secrets = "*"
 docker = "*"
 flake8 = "*"
-moto = {editable = true,git = "https://github.com/wri/moto.git",ref = "more_updates"}
+moto = {version = "*", extras = ["all"]}
 openapi_spec_validator = "*"
 pre-commit = "*"
 pytest = "*"
