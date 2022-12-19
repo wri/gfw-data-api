@@ -309,10 +309,3 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
 
     response = await async_client.get("/dataset/different/v1.1.1/assets")
     assert response.status_code == 404
-
-    response = await async_client.delete(f"/asset/{asset_id}")
-    assert response.status_code == 409
-    assert (
-        response.json()["message"]
-        == "Deletion failed. You cannot delete a default asset. To delete a default asset you must delete the parent version."
-    )
