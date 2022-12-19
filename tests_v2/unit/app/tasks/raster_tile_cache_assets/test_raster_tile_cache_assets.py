@@ -139,496 +139,517 @@ async def test_exploratory_test_runs_without_error(
     assert result.status == ChangeLogStatus.success
 
 
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute", autospec=True
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-    autospec=True,
-)
-@pytest.mark.asyncio
-async def test_source_asset_is_retrieved_by_uuid(
-    get_asset_mock,
-    web_mercator_dummy,
-    symbology_constructor_dummy,
-    execute_dummy,
-    tile_cache_asset_uuid,
-    creation_options_dict,
-    source_asset,
-    reprojection,
-    symbology_info,
-    change_log,
-):
-    get_asset_mock.return_value = source_asset
-    symbology_constructor_dummy.__getitem__.return_value = symbology_info
-    web_mercator_dummy.return_value = reprojection
-    execute_dummy.return_value = change_log
-
-    await raster_tile_cache_asset(
-        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+class TestCRUDIntegration:
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+        autospec=True,
     )
-
-    get_asset_mock.assert_called_with(
-        creation_options_dict["creation_options"]["source_asset_id"]
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+        autospec=True,
     )
-
-
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute", autospec=True
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-    autospec=True,
-)
-@pytest.mark.asyncio
-async def test_overrides_source_information_of_raster_tile_set_source_creation_options(
-    get_asset_dummy,
-    raster_tile_set_source_creation_options_mock,
-    web_mercator_dummy,
-    symbology_constructor_dummy,
-    execute_dummy,
-    tile_cache_asset_uuid,
-    creation_options_dict,
-    source_asset,
-    raster_tile_set_source_creation_options,
-    reprojection,
-    symbology_info,
-    change_log,
-):
-    get_asset_dummy.return_value = source_asset
-    raster_tile_set_source_creation_options_mock.return_value = (
-        raster_tile_set_source_creation_options
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+        autospec=True,
     )
-    symbology_constructor_dummy.__getitem__.return_value = symbology_info
-    web_mercator_dummy.return_value = reprojection
-    execute_dummy.return_value = change_log
-
-    await raster_tile_cache_asset(
-        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+        autospec=True,
     )
+    @pytest.mark.asyncio
+    async def test_source_asset_is_retrieved_by_uuid(
+        self,
+        get_asset_mock,
+        web_mercator_dummy,
+        symbology_constructor_dummy,
+        execute_dummy,
+        tile_cache_asset_uuid,
+        creation_options_dict,
+        source_asset,
+        reprojection,
+        symbology_info,
+        change_log,
+    ):
+        get_asset_mock.return_value = source_asset
+        symbology_constructor_dummy.__getitem__.return_value = symbology_info
+        web_mercator_dummy.return_value = reprojection
+        execute_dummy.return_value = change_log
 
-    _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
-    expected = {
-        "source_type": RasterSourceType.raster,
-        "source_driver": RasterDrivers.geotiff,
-        "source_uri": [
-            "s3://gfw-data-lake-test/test_dataset/2022/raster/epsg-4326/1/4000/test_pixels/geotiff/tiles.geojson"
-        ],
-    }
-    assert expected == {k: v for k, v in kwargs.items() if k in expected}
+        await raster_tile_cache_asset(
+            "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+        )
+
+        get_asset_mock.assert_called_with(
+            creation_options_dict["creation_options"]["source_asset_id"]
+        )
 
 
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute", autospec=True
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-    autospec=True,
-)
-@pytest.mark.asyncio
-async def test_sets_calc_to_none_in_raster_tile_set_source_creation_options_for_web_mercator_projection(
-    get_asset_dummy,
-    raster_tile_set_source_creation_options_mock,
-    web_mercator_dummy,
-    symbology_constructor_dummy,
-    execute_dummy,
-    tile_cache_asset_uuid,
-    creation_options_dict,
-    source_asset,
-    raster_tile_set_source_creation_options,
-    reprojection,
-    symbology_info,
-    change_log,
-):
-    get_asset_dummy.return_value = source_asset
-    raster_tile_set_source_creation_options_mock.return_value = (
-        raster_tile_set_source_creation_options
+class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+        autospec=True,
     )
-    symbology_constructor_dummy.__getitem__.return_value = symbology_info
-    web_mercator_dummy.return_value = reprojection
-    execute_dummy.return_value = change_log
-
-    await raster_tile_cache_asset(
-        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+        autospec=True,
     )
-
-    _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
-    expected = {
-        "calc": None,
-    }
-    assert expected == {k: v for k, v in kwargs.items() if k in expected}
-
-
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute", autospec=True
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-    autospec=True,
-)
-@pytest.mark.asyncio
-async def test_sets_resampling_method_from_input_params_in_raster_tile_set_source_creation_options_for_web_mercator_projection(
-    get_asset_dummy,
-    raster_tile_set_source_creation_options_mock,
-    web_mercator_dummy,
-    symbology_constructor_dummy,
-    execute_dummy,
-    tile_cache_asset_uuid,
-    creation_options_dict,
-    source_asset,
-    raster_tile_set_source_creation_options,
-    reprojection,
-    symbology_info,
-    change_log,
-):
-    get_asset_dummy.return_value = source_asset
-    raster_tile_set_source_creation_options_mock.return_value = (
-        raster_tile_set_source_creation_options
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+        autospec=True,
     )
-    symbology_constructor_dummy.__getitem__.return_value = symbology_info
-    web_mercator_dummy.return_value = reprojection
-    execute_dummy.return_value = change_log
-
-    await raster_tile_cache_asset(
-        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
+        autospec=True,
     )
-
-    _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
-    expected = {"resampling": creation_options_dict["creation_options"]["resampling"]}
-    assert expected == {k: v for k, v in kwargs.items() if k in expected}
-
-
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute", autospec=True
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-    autospec=True,
-)
-@pytest.mark.asyncio
-async def test_sets_compute_information_to_false_in_raster_tile_set_source_creation_options_for_web_mercator_projection(
-    get_asset_dummy,
-    raster_tile_set_source_creation_options_mock,
-    web_mercator_dummy,
-    symbology_constructor_dummy,
-    execute_dummy,
-    tile_cache_asset_uuid,
-    creation_options_dict,
-    source_asset,
-    raster_tile_set_source_creation_options,
-    reprojection,
-    symbology_info,
-    change_log,
-):
-    get_asset_dummy.return_value = source_asset
-    raster_tile_set_source_creation_options_mock.return_value = (
-        raster_tile_set_source_creation_options
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+        autospec=True,
     )
-    symbology_constructor_dummy.__getitem__.return_value = symbology_info
-    web_mercator_dummy.return_value = reprojection
-    execute_dummy.return_value = change_log
+    @pytest.mark.asyncio
+    async def test_overrides_source_information(
+        self,
+        get_asset_dummy,
+        raster_tile_set_source_creation_options_mock,
+        web_mercator_dummy,
+        symbology_constructor_dummy,
+        execute_dummy,
+        tile_cache_asset_uuid,
+        creation_options_dict,
+        source_asset,
+        raster_tile_set_source_creation_options,
+        reprojection,
+        symbology_info,
+        change_log,
+    ):
+        get_asset_dummy.return_value = source_asset
+        raster_tile_set_source_creation_options_mock.return_value = (
+            raster_tile_set_source_creation_options
+        )
+        symbology_constructor_dummy.__getitem__.return_value = symbology_info
+        web_mercator_dummy.return_value = reprojection
+        execute_dummy.return_value = change_log
 
-    await raster_tile_cache_asset(
-        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+        await raster_tile_cache_asset(
+            "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+        )
+
+        _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
+        expected = {
+            "source_type": RasterSourceType.raster,
+            "source_driver": RasterDrivers.geotiff,
+            "source_uri": [
+                "s3://gfw-data-lake-test/test_dataset/2022/raster/epsg-4326/1/4000/test_pixels/geotiff/tiles.geojson"
+            ],
+        }
+        assert expected == {k: v for k, v in kwargs.items() if k in expected}
+
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+        autospec=True,
     )
-
-    _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
-    expected = {
-        "compute_stats": False,
-        "compute_histogram": False,
-    }
-    assert expected == {k: v for k, v in kwargs.items() if k in expected}
-
-
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute", autospec=True
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-    autospec=True,
-)
-@pytest.mark.asyncio
-async def test_sets_symbology_from_input_data_in_raster_tile_set_source_creation_options_for_web_mercator_projection(
-    get_asset_dummy,
-    raster_tile_set_source_creation_options_mock,
-    web_mercator_dummy,
-    symbology_constructor_dummy,
-    execute_dummy,
-    tile_cache_asset_uuid,
-    creation_options_dict,
-    source_asset,
-    raster_tile_set_source_creation_options,
-    reprojection,
-    symbology_info,
-    change_log,
-):
-    get_asset_dummy.return_value = source_asset
-    raster_tile_set_source_creation_options_mock.return_value = (
-        raster_tile_set_source_creation_options
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+        autospec=True,
     )
-    symbology_constructor_dummy.__getitem__.return_value = symbology_info
-    web_mercator_dummy.return_value = reprojection
-    execute_dummy.return_value = change_log
-
-    await raster_tile_cache_asset(
-        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+        autospec=True,
     )
-
-    _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
-    expected = {
-        "symbology": Symbology(
-            **creation_options_dict["creation_options"]["symbology"]
-        ),
-    }
-    assert expected == {k: v for k, v in kwargs.items() if k in expected}
-
-
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute", autospec=True
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-    autospec=True,
-)
-@pytest.mark.asyncio
-async def test_sets_subset_to_none_in_raster_tile_set_source_creation_options_for_web_mercator_projection(
-    get_asset_dummy,
-    raster_tile_set_source_creation_options_mock,
-    web_mercator_dummy,
-    symbology_constructor_dummy,
-    execute_dummy,
-    tile_cache_asset_uuid,
-    creation_options_dict,
-    source_asset,
-    raster_tile_set_source_creation_options,
-    reprojection,
-    symbology_info,
-    change_log,
-):
-    get_asset_dummy.return_value = source_asset
-    raster_tile_set_source_creation_options_mock.return_value = (
-        raster_tile_set_source_creation_options
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
+        autospec=True,
     )
-    symbology_constructor_dummy.__getitem__.return_value = symbology_info
-    web_mercator_dummy.return_value = reprojection
-    execute_dummy.return_value = change_log
-
-    await raster_tile_cache_asset(
-        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+        autospec=True,
     )
+    @pytest.mark.asyncio
+    async def test_sets_calc_to_none(
+        self,
+        get_asset_dummy,
+        raster_tile_set_source_creation_options_mock,
+        web_mercator_dummy,
+        symbology_constructor_dummy,
+        execute_dummy,
+        tile_cache_asset_uuid,
+        creation_options_dict,
+        source_asset,
+        raster_tile_set_source_creation_options,
+        reprojection,
+        symbology_info,
+        change_log,
+    ):
+        get_asset_dummy.return_value = source_asset
+        raster_tile_set_source_creation_options_mock.return_value = (
+            raster_tile_set_source_creation_options
+        )
+        symbology_constructor_dummy.__getitem__.return_value = symbology_info
+        web_mercator_dummy.return_value = reprojection
+        execute_dummy.return_value = change_log
 
-    _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
-    expected = {
-        "subset": None,
-    }
-    assert expected == {k: v for k, v in kwargs.items() if k in expected}
+        await raster_tile_cache_asset(
+            "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+        )
 
+        _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
+        expected = {
+            "calc": None,
+        }
+        assert expected == {k: v for k, v in kwargs.items() if k in expected}
 
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute", autospec=True
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-    autospec=True,
-)
-@pytest.mark.asyncio
-async def test_reproject_to_web_mercator_is_called_with_dataset_and_version(
-    get_asset_dummy,
-    web_mercator_mock,
-    symbology_constructor_dummy,
-    execute_dummy,
-    tile_cache_asset_uuid,
-    creation_options_dict,
-    source_asset,
-    reprojection,
-    symbology_info,
-    change_log,
-):
-    get_asset_dummy.return_value = source_asset
-    symbology_constructor_dummy.__getitem__.return_value = symbology_info
-    web_mercator_mock.return_value = reprojection
-    execute_dummy.return_value = change_log
-
-    await raster_tile_cache_asset(
-        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+        autospec=True,
     )
-
-    args, _ = web_mercator_mock.call_args_list[-1]
-    assert args[:2] == ("test_dataset", "2022"), "`dataset` and `version` do not match"
-
-
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute", autospec=True
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-    autospec=True,
-)
-@pytest.mark.asyncio
-async def test_reproject_to_web_mercator_is_called_same_max_zoom_level_as_passed_in_creation_options(
-    get_asset_dummy,
-    web_mercator_mock,
-    symbology_constructor_dummy,
-    execute_dummy,
-    tile_cache_asset_uuid,
-    creation_options_dict,
-    source_asset,
-    reprojection,
-    symbology_info,
-    change_log,
-):
-    get_asset_dummy.return_value = source_asset
-    symbology_constructor_dummy.__getitem__.return_value = symbology_info
-    web_mercator_mock.return_value = reprojection
-    execute_dummy.return_value = change_log
-
-    await raster_tile_cache_asset(
-        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+        autospec=True,
     )
-
-    args, _ = web_mercator_mock.call_args_list[-1]
-    assert args[3:5] == (
-        0,
-        0,
-    ), "`zoom_level` and `max_zoom` values were not as expected"
-
-
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute", autospec=True
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-    autospec=True,
-)
-@pytest.mark.asyncio
-async def test_reproject_to_web_mercator_is_called_with_resampling_kwargs(
-    get_asset_dummy,
-    web_mercator_mock,
-    symbology_constructor_dummy,
-    execute_dummy,
-    tile_cache_asset_uuid,
-    creation_options_dict,
-    source_asset,
-    reprojection,
-    symbology_info,
-    change_log,
-):
-    get_asset_dummy.return_value = source_asset
-    symbology_constructor_dummy.__getitem__.return_value = symbology_info
-    web_mercator_mock.return_value = reprojection
-    execute_dummy.return_value = change_log
-
-    await raster_tile_cache_asset(
-        "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+        autospec=True,
     )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+        autospec=True,
+    )
+    @pytest.mark.asyncio
+    async def test_sets_resampling_method_from_input_params(
+        self,
+        get_asset_dummy,
+        raster_tile_set_source_creation_options_mock,
+        web_mercator_dummy,
+        symbology_constructor_dummy,
+        execute_dummy,
+        tile_cache_asset_uuid,
+        creation_options_dict,
+        source_asset,
+        raster_tile_set_source_creation_options,
+        reprojection,
+        symbology_info,
+        change_log,
+    ):
+        get_asset_dummy.return_value = source_asset
+        raster_tile_set_source_creation_options_mock.return_value = (
+            raster_tile_set_source_creation_options
+        )
+        symbology_constructor_dummy.__getitem__.return_value = symbology_info
+        web_mercator_dummy.return_value = reprojection
+        execute_dummy.return_value = change_log
 
-    _, kwargs = web_mercator_mock.call_args_list[-1]
-    assert kwargs == {
-        "max_zoom_resampling": "nearest",
-        "max_zoom_calc": None,
-        "use_resampler": True,
-    }, "`Resampling` arguments do not match"
+        await raster_tile_cache_asset(
+            "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+        )
+
+        _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
+        expected = {
+            "resampling": creation_options_dict["creation_options"]["resampling"]
+        }
+        assert expected == {k: v for k, v in kwargs.items() if k in expected}
+
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+        autospec=True,
+    )
+    @pytest.mark.asyncio
+    async def test_sets_compute_information_to_false(
+        self,
+        get_asset_dummy,
+        raster_tile_set_source_creation_options_mock,
+        web_mercator_dummy,
+        symbology_constructor_dummy,
+        execute_dummy,
+        tile_cache_asset_uuid,
+        creation_options_dict,
+        source_asset,
+        raster_tile_set_source_creation_options,
+        reprojection,
+        symbology_info,
+        change_log,
+    ):
+        get_asset_dummy.return_value = source_asset
+        raster_tile_set_source_creation_options_mock.return_value = (
+            raster_tile_set_source_creation_options
+        )
+        symbology_constructor_dummy.__getitem__.return_value = symbology_info
+        web_mercator_dummy.return_value = reprojection
+        execute_dummy.return_value = change_log
+
+        await raster_tile_cache_asset(
+            "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+        )
+
+        _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
+        expected = {
+            "compute_stats": False,
+            "compute_histogram": False,
+        }
+        assert expected == {k: v for k, v in kwargs.items() if k in expected}
+
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+        autospec=True,
+    )
+    @pytest.mark.asyncio
+    async def test_sets_symbology_from_input_data(
+        self,
+        get_asset_dummy,
+        raster_tile_set_source_creation_options_mock,
+        web_mercator_dummy,
+        symbology_constructor_dummy,
+        execute_dummy,
+        tile_cache_asset_uuid,
+        creation_options_dict,
+        source_asset,
+        raster_tile_set_source_creation_options,
+        reprojection,
+        symbology_info,
+        change_log,
+    ):
+        get_asset_dummy.return_value = source_asset
+        raster_tile_set_source_creation_options_mock.return_value = (
+            raster_tile_set_source_creation_options
+        )
+        symbology_constructor_dummy.__getitem__.return_value = symbology_info
+        web_mercator_dummy.return_value = reprojection
+        execute_dummy.return_value = change_log
+
+        await raster_tile_cache_asset(
+            "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+        )
+
+        _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
+        expected = {
+            "symbology": Symbology(
+                **creation_options_dict["creation_options"]["symbology"]
+            ),
+        }
+        assert expected == {k: v for k, v in kwargs.items() if k in expected}
+
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+        autospec=True,
+    )
+    @pytest.mark.asyncio
+    async def test_sets_subset_to_none(
+        self,
+        get_asset_dummy,
+        raster_tile_set_source_creation_options_mock,
+        web_mercator_dummy,
+        symbology_constructor_dummy,
+        execute_dummy,
+        tile_cache_asset_uuid,
+        creation_options_dict,
+        source_asset,
+        raster_tile_set_source_creation_options,
+        reprojection,
+        symbology_info,
+        change_log,
+    ):
+        get_asset_dummy.return_value = source_asset
+        raster_tile_set_source_creation_options_mock.return_value = (
+            raster_tile_set_source_creation_options
+        )
+        symbology_constructor_dummy.__getitem__.return_value = symbology_info
+        web_mercator_dummy.return_value = reprojection
+        execute_dummy.return_value = change_log
+
+        await raster_tile_cache_asset(
+            "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+        )
+
+        _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
+        expected = {
+            "subset": None,
+        }
+        assert expected == {k: v for k, v in kwargs.items() if k in expected}
+
+
+class TestWebMercatorReProjectionIntegration:
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+        autospec=True,
+    )
+    @pytest.mark.asyncio
+    async def test_is_called_with_dataset_and_version(
+        self,
+        get_asset_dummy,
+        web_mercator_mock,
+        symbology_constructor_dummy,
+        execute_dummy,
+        tile_cache_asset_uuid,
+        creation_options_dict,
+        source_asset,
+        reprojection,
+        symbology_info,
+        change_log,
+    ):
+        get_asset_dummy.return_value = source_asset
+        symbology_constructor_dummy.__getitem__.return_value = symbology_info
+        web_mercator_mock.return_value = reprojection
+        execute_dummy.return_value = change_log
+
+        await raster_tile_cache_asset(
+            "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+        )
+
+        args, _ = web_mercator_mock.call_args_list[-1]
+        assert args[:2] == (
+            "test_dataset",
+            "2022",
+        ), "`dataset` and `version` do not match"
+
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+        autospec=True,
+    )
+    @pytest.mark.asyncio
+    async def test_is_called_same_max_zoom_level_as_passed_in_creation_options(
+        self,
+        get_asset_dummy,
+        web_mercator_mock,
+        symbology_constructor_dummy,
+        execute_dummy,
+        tile_cache_asset_uuid,
+        creation_options_dict,
+        source_asset,
+        reprojection,
+        symbology_info,
+        change_log,
+    ):
+        get_asset_dummy.return_value = source_asset
+        symbology_constructor_dummy.__getitem__.return_value = symbology_info
+        web_mercator_mock.return_value = reprojection
+        execute_dummy.return_value = change_log
+
+        await raster_tile_cache_asset(
+            "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+        )
+
+        args, _ = web_mercator_mock.call_args_list[-1]
+        assert args[3:5] == (
+            0,
+            0,
+        ), "`zoom_level` and `max_zoom` values were not as expected"
+
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+        autospec=True,
+    )
+    @patch(
+        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+        autospec=True,
+    )
+    @pytest.mark.asyncio
+    async def test_is_called_with_resampling_kwargs(
+        self,
+        get_asset_dummy,
+        web_mercator_mock,
+        symbology_constructor_dummy,
+        execute_dummy,
+        tile_cache_asset_uuid,
+        creation_options_dict,
+        source_asset,
+        reprojection,
+        symbology_info,
+        change_log,
+    ):
+        get_asset_dummy.return_value = source_asset
+        symbology_constructor_dummy.__getitem__.return_value = symbology_info
+        web_mercator_mock.return_value = reprojection
+        execute_dummy.return_value = change_log
+
+        await raster_tile_cache_asset(
+            "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+        )
+
+        _, kwargs = web_mercator_mock.call_args_list[-1]
+        assert kwargs == {
+            "max_zoom_resampling": "nearest",
+            "max_zoom_calc": None,
+            "use_resampler": True,
+        }, "`Resampling` arguments do not match"
