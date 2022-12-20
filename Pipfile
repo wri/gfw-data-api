@@ -8,7 +8,7 @@ black = "==22.6.0"  # Pin to avoid having to allow pre-releases
 detect-secrets = "*"
 docker = "*"
 flake8 = "*"
-moto = {version = "*", extras = ["all"]}
+moto = {version = "*", extras = ["awslambda", "batch", "ec2", "s3"]}
 openapi_spec_validator = "*"
 pre-commit = "*"
 pytest = "*"
@@ -38,7 +38,6 @@ httpcore = "*"
 httpx = "*"
 httpx-auth = "*"
 numpy = "*"
-openapi-spec-validator = "<0.5"  # See https://github.com/spulec/moto/issues/5457
 orjson = "*"
 packaging = "*"
 pendulum = "*"
