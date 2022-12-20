@@ -36,6 +36,7 @@ class TestTaskExecutionCollaboration:
         web_mercator_dummy.return_value = reprojection
         create_tile_cache_dummy.return_value = tile_cache_job
         execute_mock.return_value = change_log
+
         await raster_tile_cache_asset(
             "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
         )

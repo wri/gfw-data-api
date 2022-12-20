@@ -185,6 +185,7 @@ class TestCreateTileCacheCollaboration:
         web_mercator_dummy.return_value = reprojection
         create_tile_cache_mock.return_value = job
         execute_dummy.return_value = change_log
+
         await raster_tile_cache_asset(
             "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
         )
@@ -216,6 +217,7 @@ class TestCreateTileCacheCollaboration:
         web_mercator_dummy.return_value = reprojection
         create_tile_cache_mock.return_value = job
         execute_dummy.return_value = change_log
+
         await raster_tile_cache_asset(
             "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
         )
@@ -245,6 +247,7 @@ class TestCreateTileCacheCollaboration:
         web_mercator_dummy.return_value = reprojection
         create_tile_cache_mock.return_value = job
         execute_dummy.return_value = change_log
+
         await raster_tile_cache_asset(
             "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
         )
@@ -274,6 +277,7 @@ class TestCreateTileCacheCollaboration:
         web_mercator_dummy.return_value = reprojection
         create_tile_cache_mock.return_value = job
         execute_dummy.return_value = change_log
+
         await raster_tile_cache_asset(
             "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
         )
