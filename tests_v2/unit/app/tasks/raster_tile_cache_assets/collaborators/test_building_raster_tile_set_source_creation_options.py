@@ -10,6 +10,13 @@ from app.tasks.raster_tile_cache_assets import raster_tile_cache_asset
 from . import MODULE_PATH_UNDER_TEST
 
 
+def assert_contains_subset(kwargs, expected_subset):
+    """Simple assertion helper function for asserting fewer keys than what's in
+    the entire dict."""
+    __tracebackhide__ = True
+    assert expected_subset == {k: v for k, v in kwargs.items() if k in expected_subset}
+
+
 @patch(f"{MODULE_PATH_UNDER_TEST}.execute", autospec=True)
 @patch(f"{MODULE_PATH_UNDER_TEST}.symbology_constructor", autospec=True)
 @patch(f"{MODULE_PATH_UNDER_TEST}.reproject_to_web_mercator", autospec=True)
@@ -52,7 +59,7 @@ class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
                 "s3://gfw-data-lake-test/test_dataset/2022/raster/epsg-4326/1/4000/test_pixels/geotiff/tiles.geojson"
             ],
         }
-        assert expected == {k: v for k, v in kwargs.items() if k in expected}
+        assert_contains_subset(kwargs, expected)
 
     @pytest.mark.asyncio
     async def test_sets_calc_to_none(
@@ -83,10 +90,8 @@ class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
         )
 
         _, kwargs = raster_tile_set_source_creation_options_mock.call_args_list[-1]
-        expected = {
-            "calc": None,
-        }
-        assert expected == {k: v for k, v in kwargs.items() if k in expected}
+        expected = {"calc": None}
+        assert_contains_subset(kwargs, expected)
 
     @pytest.mark.asyncio
     async def test_sets_resampling_method_from_input_params(
@@ -120,7 +125,7 @@ class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
         expected = {
             "resampling": creation_options_dict["creation_options"]["resampling"]
         }
-        assert expected == {k: v for k, v in kwargs.items() if k in expected}
+        assert_contains_subset(kwargs, expected)
 
     @pytest.mark.asyncio
     async def test_sets_compute_information_to_false(
@@ -155,7 +160,7 @@ class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
             "compute_stats": False,
             "compute_histogram": False,
         }
-        assert expected == {k: v for k, v in kwargs.items() if k in expected}
+        assert_contains_subset(kwargs, expected)
 
     @pytest.mark.asyncio
     async def test_sets_symbology_from_input_data(
@@ -191,7 +196,7 @@ class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
                 **creation_options_dict["creation_options"]["symbology"]
             ),
         }
-        assert expected == {k: v for k, v in kwargs.items() if k in expected}
+        assert_contains_subset(kwargs, expected)
 
     @pytest.mark.asyncio
     async def test_sets_subset_to_none(
@@ -225,4 +230,4 @@ class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
         expected = {
             "subset": None,
         }
-        assert expected == {k: v for k, v in kwargs.items() if k in expected}
+        assert_contains_subset(kwargs, expected)
