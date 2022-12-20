@@ -17,7 +17,7 @@ async def test_default_asset_cant_delete(batch_client, async_client: AsyncClient
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
             "source_driver": "ESRI Shapefile",
-            "create_dynamic_vector_tile_cache": True,
+            "create_dynamic_vector_tile_cache": False,
         },
     }
 
@@ -35,7 +35,7 @@ async def test_default_asset_cant_delete(batch_client, async_client: AsyncClient
     response = await async_client.delete(f"/asset/{asset_id}")
     assert response.status_code == 409
     expected_message = (
-        "Deletion failed. You cannot delete a default asset. \n"
+        "Deletion failed. You cannot delete a default asset. "
         "To delete a default asset you must delete the parent version."
     )
     assert response.json()["message"] == expected_message

@@ -50,7 +50,6 @@ shapely = "*"
 sqlalchemy = "<1.4"
 sqlalchemy-utils = "*"
 starlette = "<0.15"
-typing-extensions = "*"
 uvicorn = {version = "*", extras = ["standard"]}
 
 [requires]
