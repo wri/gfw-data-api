@@ -184,23 +184,23 @@ async def test_exploratory_test_runs_without_error(
     assert result.status == ChangeLogStatus.success
 
 
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+    autospec=True,
+)
 class TestCRUDIntegration:
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_source_asset_is_retrieved_by_uuid(
         self,
@@ -229,27 +229,27 @@ class TestCRUDIntegration:
         )
 
 
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+    autospec=True,
+)
 class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_overrides_source_information(
         self,
@@ -288,26 +288,6 @@ class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
         }
         assert expected == {k: v for k, v in kwargs.items() if k in expected}
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_sets_calc_to_none(
         self,
@@ -342,26 +322,6 @@ class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
         }
         assert expected == {k: v for k, v in kwargs.items() if k in expected}
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_sets_resampling_method_from_input_params(
         self,
@@ -396,26 +356,6 @@ class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
         }
         assert expected == {k: v for k, v in kwargs.items() if k in expected}
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_sets_compute_information_to_false(
         self,
@@ -451,26 +391,6 @@ class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
         }
         assert expected == {k: v for k, v in kwargs.items() if k in expected}
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_sets_symbology_from_input_data(
         self,
@@ -507,26 +427,6 @@ class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
         }
         assert expected == {k: v for k, v in kwargs.items() if k in expected}
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.RasterTileSetSourceCreationOptions",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_sets_subset_to_none(
         self,
@@ -562,23 +462,23 @@ class TestBuildingRasterTileSetSourceCreationOptionsFromSourceAsset:
         assert expected == {k: v for k, v in kwargs.items() if k in expected}
 
 
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+    autospec=True,
+)
 class TestWebMercatorReProjectionIntegration:
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_dataset_and_version(
         self,
@@ -608,22 +508,6 @@ class TestWebMercatorReProjectionIntegration:
             "2022",
         ), "`dataset` and `version` do not match"
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_asset_creation_options(
         self,
@@ -651,22 +535,6 @@ class TestWebMercatorReProjectionIntegration:
         args, _ = web_mercator_mock.call_args_list[-1]
         assert args[2].pixel_meaning == "test_pixels_default"
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_same_max_zoom_level_as_passed_in_creation_options(
         self,
@@ -696,22 +564,6 @@ class TestWebMercatorReProjectionIntegration:
             0,
         ), "`zoom_level` and `max_zoom` values were not as expected"
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_no_source_reprojection_parent_jobs(
         self,
@@ -738,22 +590,6 @@ class TestWebMercatorReProjectionIntegration:
         args, _ = web_mercator_mock.call_args_list[-1]
         assert args[5] == []
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_resampling_kwargs(
         self,
@@ -785,23 +621,23 @@ class TestWebMercatorReProjectionIntegration:
         }, "`Resampling` arguments do not match"
 
 
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+    autospec=True,
+)
 class TestSymbologyFunctionIntegration:
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_dataset_and_version(
         self,
@@ -829,22 +665,6 @@ class TestSymbologyFunctionIntegration:
 
         assert args[:2] == ("test_dataset", "2022")
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_the_implementation_from_the_input_creation_options(
         self,
@@ -872,22 +692,6 @@ class TestSymbologyFunctionIntegration:
 
         assert args[2] == "default"
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_creation_options_that_list_the_web_mercator_reprojection_as_the_source_uri(
         self,
@@ -915,22 +719,6 @@ class TestSymbologyFunctionIntegration:
         (_, source_uri) = reprojection
         assert args[3].source_uri == [source_uri]
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_zoom_level_and_max_zoom(
         self,
@@ -958,22 +746,6 @@ class TestSymbologyFunctionIntegration:
         zoom_level, max_zoom = args[4:6]
         assert (zoom_level, max_zoom) == (0, 0)
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_all_jobs_for_the_current_zoom_level(
         self,
@@ -1002,33 +774,38 @@ class TestSymbologyFunctionIntegration:
         assert args[6] == {0: {"source_reprojection_job": reprojection_job}}
 
 
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.callback_constructor",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+    autospec=True,
+)
 class TestCreateTileCacheIntegration:
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_dataset_and_version(
         self,
         get_asset_dummy,
         web_mercator_dummy,
         symbology_constructor_dummy,
+        callback_constructor_dummy,
         create_tile_cache_mock,
         execute_dummy,
         tile_cache_asset_uuid,
@@ -1052,32 +829,13 @@ class TestCreateTileCacheIntegration:
         args, _ = create_tile_cache_mock.call_args_list[-1]
         assert args[:2] == ("test_dataset", "2022")
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_symbology_asset_uri(
         self,
         get_asset_dummy,
         web_mercator_dummy,
         symbology_constructor_dummy,
+        callback_constructor_dummy,
         create_tile_cache_mock,
         execute_dummy,
         tile_cache_asset_uuid,
@@ -1101,32 +859,13 @@ class TestCreateTileCacheIntegration:
         args, _ = create_tile_cache_mock.call_args_list[-1]
         assert args[2] == "/dummy/symbology/uri"
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_zoom_level(
         self,
         get_asset_dummy,
         web_mercator_dummy,
         symbology_constructor_dummy,
+        callback_constructor_dummy,
         create_tile_cache_mock,
         execute_dummy,
         tile_cache_asset_uuid,
@@ -1150,32 +889,13 @@ class TestCreateTileCacheIntegration:
         args, _ = create_tile_cache_mock.call_args_list[-1]
         assert args[3] == 0
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_implementation_from_input_data_creation_options(
         self,
         get_asset_dummy,
         web_mercator_dummy,
         symbology_constructor_dummy,
+        callback_constructor_dummy,
         create_tile_cache_mock,
         execute_dummy,
         tile_cache_asset_uuid,
@@ -1199,30 +919,6 @@ class TestCreateTileCacheIntegration:
         args, _ = create_tile_cache_mock.call_args_list[-1]
         assert args[4] == "default"
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.callback_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_sets_the_context_for_the_task_factory_as_the_tile_cache_asset_uuid(
         self,
@@ -1252,30 +948,6 @@ class TestCreateTileCacheIntegration:
 
         callback_constructor_mock.assert_called_with(tile_cache_asset_uuid)
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.callback_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_the_task_factory(
         self,
@@ -1307,30 +979,6 @@ class TestCreateTileCacheIntegration:
             args[5] == callback_constructor_dummy.return_value
         ), "Task factory wasn't passed to `create_tile_cache`"
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.callback_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_symbology_job(
         self,
@@ -1360,30 +1008,6 @@ class TestCreateTileCacheIntegration:
         args, _ = create_tile_cache_mock.call_args_list[-1]
         assert args[6][0].job_definition == "symbology job"
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.callback_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_a_source_reprojection_job(
         self,
@@ -1413,30 +1037,6 @@ class TestCreateTileCacheIntegration:
         args, _ = create_tile_cache_mock.call_args_list[-1]
         assert args[6][-1].job_definition == "source reprojection job"
 
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.callback_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_a_bit_depth_from_the_symbology_info(
         self,
@@ -1467,31 +1067,31 @@ class TestCreateTileCacheIntegration:
         assert args[7] == 8
 
 
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.callback_constructor",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
+    autospec=True,
+)
+@patch(
+    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
+    autospec=True,
+)
 class TestTaskExecutionIntegration:
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.callback_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-        autospec=True,
-    )
-    @patch(
-        "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-        autospec=True,
-    )
     @pytest.mark.asyncio
     async def test_is_called_with_complete_job_list_for_execution(
         self,
