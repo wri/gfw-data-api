@@ -5,8 +5,18 @@ import pytest
 from app.models.orm.assets import Asset as ORMAsset
 from app.models.pydantic.statistics import BandStats
 from app.tasks.raster_tile_cache_assets import raster_tile_cache_asset
+from app.tasks.raster_tile_cache_assets.symbology import SymbologyInfo, no_symbology
 
 from . import MODULE_PATH_UNDER_TEST
+
+
+@pytest.fixture()
+def no_symbology_info():
+    return SymbologyInfo(
+        8,
+        1,
+        no_symbology,
+    )
 
 
 @pytest.fixture()
@@ -64,7 +74,7 @@ class TestWebMercatorReProjectionCollaboration:
         ), "`dataset` and `version` do not match"
 
     @pytest.mark.asyncio
-    async def test_is_called_with_asset_creation_options(
+    async def test_is_called_with_asset_creation_options_pixel_meaning_modified(
         self,
         get_asset_dummy,
         web_mercator_mock,
@@ -89,6 +99,33 @@ class TestWebMercatorReProjectionCollaboration:
 
         args, _ = web_mercator_mock.call_args_list[-1]
         assert args[2].pixel_meaning == "test_pixels_default"
+
+    @pytest.mark.asyncio
+    async def test_is_called_with_asset_creation_options_pixel_meaning_not_modified_due_to_no_symbology(
+        self,
+        get_asset_dummy,
+        web_mercator_mock,
+        symbology_constructor_dummy,
+        execute_dummy,
+        tile_cache_asset_uuid,
+        creation_options_dict,
+        source_asset,
+        reprojection,
+        no_symbology_info,
+        change_log,
+        raster_tile_set_source_creation_options,
+    ):
+        get_asset_dummy.return_value = source_asset
+        symbology_constructor_dummy.__getitem__.return_value = no_symbology_info
+        web_mercator_mock.return_value = reprojection
+        execute_dummy.return_value = change_log
+
+        await raster_tile_cache_asset(
+            "test_dataset", "2022", tile_cache_asset_uuid, creation_options_dict
+        )
+
+        args, _ = web_mercator_mock.call_args_list[-1]
+        assert args[2].pixel_meaning == "default"
 
     @pytest.mark.asyncio
     async def test_is_called_same_max_zoom_level_as_passed_in_creation_options(
