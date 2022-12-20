@@ -32,7 +32,7 @@ jobs:
         verbose: false
 
     - name: Deploy production
-      if: success() && github.ref == 'master'
+      if: success() && (github.ref_name == 'master')
       env:
         ENV: production
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_production }}
@@ -43,7 +43,7 @@ jobs:
         ./scripts/infra apply
 
     - name: Deploy staging
-      if: success() && github.ref == 'develop'
+      if: success() && (github.ref_name == 'develop')
       env:
         ENV: staging
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_staging }}
@@ -54,7 +54,7 @@ jobs:
         ./scripts/infra apply
 
     - name: Deploy dev
-      if: success() && github.ref != 'develop' && github.ref != 'master'
+      if: success() && (github.ref_name != 'develop') && (github.ref_name != 'master')
       env:
         ENV: dev
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_dev }}
