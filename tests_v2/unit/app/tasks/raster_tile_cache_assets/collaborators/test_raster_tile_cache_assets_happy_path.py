@@ -5,22 +5,13 @@ import pytest
 from app.models.enum.change_log import ChangeLogStatus
 from app.tasks.raster_tile_cache_assets import raster_tile_cache_asset
 
+from . import MODULE_PATH_UNDER_TEST
 
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute", autospec=True
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-    autospec=True,
-)
+
+@patch(f"{MODULE_PATH_UNDER_TEST}.execute", autospec=True)
+@patch(f"{MODULE_PATH_UNDER_TEST}.symbology_constructor", autospec=True)
+@patch(f"{MODULE_PATH_UNDER_TEST}.reproject_to_web_mercator", autospec=True)
+@patch(f"{MODULE_PATH_UNDER_TEST}.get_asset", autospec=True)
 @pytest.mark.asyncio
 async def test_exploratory_test_runs_without_error(
     get_asset_dummy,

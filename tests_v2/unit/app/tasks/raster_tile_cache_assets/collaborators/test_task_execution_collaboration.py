@@ -4,32 +4,16 @@ import pytest
 
 from app.tasks.raster_tile_cache_assets import raster_tile_cache_asset
 
+from . import MODULE_PATH_UNDER_TEST
 
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.execute",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.create_tile_cache",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.callback_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.symbology_constructor",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.reproject_to_web_mercator",
-    autospec=True,
-)
-@patch(
-    "app.tasks.raster_tile_cache_assets.raster_tile_cache_assets.get_asset",
-    autospec=True,
-)
-class TestTaskExecutionIntegration:
+
+@patch(f"{MODULE_PATH_UNDER_TEST}.execute", autospec=True)
+@patch(f"{MODULE_PATH_UNDER_TEST}.create_tile_cache", autospec=True)
+@patch(f"{MODULE_PATH_UNDER_TEST}.callback_constructor", autospec=True)
+@patch(f"{MODULE_PATH_UNDER_TEST}.symbology_constructor", autospec=True)
+@patch(f"{MODULE_PATH_UNDER_TEST}.reproject_to_web_mercator", autospec=True)
+@patch(f"{MODULE_PATH_UNDER_TEST}.get_asset", autospec=True)
+class TestTaskExecutionCollaboration:
     @pytest.mark.asyncio
     async def test_is_called_with_complete_job_list_for_execution(
         self,
