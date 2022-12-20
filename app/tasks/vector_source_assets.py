@@ -1,12 +1,15 @@
 import json
 import math
 import os
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
+
+from fastapi.encoders import jsonable_encoder
 
 from ..models.enum.creation_options import VectorDrivers
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import (
+    FieldType,
     VectorSourceAppendOptions,
     VectorSourceCreationOptions,
 )
@@ -23,7 +26,7 @@ async def _create_vector_schema_job(
     source_uri: str,
     layer: str,
     zipped: bool,
-    table_schema,
+    table_schema: Optional[List[FieldType]],
     job_env: List[Dict[str, str]],
     callback: Callback,
 ) -> GdalPythonImportJob:
@@ -44,10 +47,10 @@ async def _create_vector_schema_job(
         str(zipped),
     ]
 
-    if table_schema:
+    if table_schema is not None:
         create_schema_command += [
             "-m",
-            json.dumps(table_schema.dict(by_alias=True)["table_schema"]),
+            json.dumps(jsonable_encoder(table_schema)),
         ]
 
     return GdalPythonImportJob(

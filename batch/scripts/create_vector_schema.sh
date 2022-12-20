@@ -8,6 +8,7 @@ set -e
 # -s | --source
 # -l | --source_layer
 # -f | --local_file
+# -m | --field_map
 # -X | --zipped
 
 # optional arguments

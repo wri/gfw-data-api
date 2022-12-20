@@ -191,8 +191,10 @@ class VectorSourceCreationOptions(StrictBaseModel):
     )
     create_dynamic_vector_tile_cache: bool = Field(
         True,
-        description="By default, vector sources will implicitly create a dynamic vector tile cache. "
-        "Disable this option by setting value to `false`",
+        description=(
+            "By default, vector sources will implicitly create a dynamic vector tile cache. "
+            "Disable this option by setting value to `false`"
+        ),
     )
     add_to_geostore: bool = Field(
         True,
@@ -218,16 +220,20 @@ class VectorSourceAppendOptions(StrictBaseModel):
     )
     source_uri: List[str] = Field(
         ...,
-        description="List of input files. Vector source layers can only have one list item. "
-        "Must be a s3:// url.",
+        description=(
+            "List of input files. Vector source layers can only have one list item. "
+            "Must be a s3:// url."
+        ),
     )
     layers: Optional[List[str]] = Field(
         None, description="List of input layers. Only required for .gdb and .gpkg."
     )
     create_dynamic_vector_tile_cache: bool = Field(
         True,
-        description="By default, vector sources will implicitly create a dynamic vector tile cache. "
-        "Disable this option by setting value to `false`",
+        description=(
+            "By default, vector sources will implicitly create a dynamic vector tile cache. "
+            "Disable this option by setting value to `false`"
+        ),
     )
     add_to_geostore: bool = Field(
         True,
