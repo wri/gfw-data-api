@@ -43,6 +43,23 @@ def creation_options_dict(source_asset_uuid):
 
 
 @pytest.fixture()
+def max_zoom_and_min_zoom_different_creation_options_dict(source_asset_uuid):
+    return {
+        "creation_options": {
+            "min_zoom": 0,
+            "max_zoom": 1,
+            "max_static_zoom": 0,
+            "implementation": "default",
+            "symbology": {
+                "type": "date_conf_intensity",  # try no_symbology
+            },
+            "resampling": "nearest",
+            "source_asset_id": source_asset_uuid,
+        }
+    }
+
+
+@pytest.fixture()
 def source_asset():
     return ORMAsset(
         creation_options={

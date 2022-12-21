@@ -183,6 +183,35 @@ class TestWebMercatorReProjectionCollaboration:
         assert args[5] == []
 
     @pytest.mark.asyncio
+    async def test_is_called_with_source_reprojection_parent_jobs(
+        self,
+        get_asset_dummy,
+        web_mercator_mock,
+        symbology_constructor_dummy,
+        execute_dummy,
+        tile_cache_asset_uuid,
+        max_zoom_and_min_zoom_different_creation_options_dict,
+        source_asset,
+        reprojection,
+        symbology_info,
+        change_log,
+    ):
+        get_asset_dummy.return_value = source_asset
+        symbology_constructor_dummy.__getitem__.return_value = symbology_info
+        web_mercator_mock.return_value = reprojection
+        execute_dummy.return_value = change_log
+
+        await raster_tile_cache_asset(
+            "test_dataset",
+            "2022",
+            tile_cache_asset_uuid,
+            max_zoom_and_min_zoom_different_creation_options_dict,
+        )
+
+        args, _ = web_mercator_mock.call_args_list[-1]
+        assert args[5] == [reprojection[0]]
+
+    @pytest.mark.asyncio
     async def test_is_called_with_resampling_kwargs(
         self,
         get_asset_dummy,
