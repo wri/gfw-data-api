@@ -67,8 +67,7 @@ def init_db():
         yield
 
 
-@pytest.fixture()
-@pytest.mark.asyncio
+@pytest_asyncio.fixture
 async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
@@ -92,8 +91,7 @@ async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides = {}
 
 
-@pytest.fixture()
-@pytest.mark.asyncio
+@pytest_asyncio.fixture
 async def async_client_unauthenticated(
     db, init_db
 ) -> AsyncGenerator[AsyncClient, None]:
@@ -131,8 +129,7 @@ async def async_client_no_admin(db, init_db) -> AsyncGenerator[AsyncClient, None
     app.dependency_overrides = {}
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
 async def generic_dataset(
     async_client: AsyncClient,
 ) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
@@ -153,8 +150,7 @@ async def generic_dataset(
     await async_client.delete(f"/dataset/{dataset_name}")
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
 async def generic_vector_source_version(
     async_client: AsyncClient,
     generic_dataset: Tuple[str, str],
@@ -221,8 +217,7 @@ async def generic_vector_source_version(
     await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
 async def generic_raster_version(
     async_client: AsyncClient,
     generic_dataset: Tuple[str, str],
@@ -286,8 +281,7 @@ async def generic_raster_version(
     await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
 async def apikey(
     async_client: AsyncClient, monkeypatch: MonkeyPatch
 ) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
@@ -313,8 +307,7 @@ async def apikey(
     await async_client.delete(f"/auth/apikey/{api_key}")
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
 async def apikey_unrestricted(
     async_client: AsyncClient, monkeypatch: MonkeyPatch
 ) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
