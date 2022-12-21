@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, Tuple
 
 import pytest
+import pytest_asyncio
 from _pytest.monkeypatch import MonkeyPatch
 from alembic.config import main
 from fastapi.testclient import TestClient
@@ -106,8 +107,7 @@ async def async_client_unauthenticated(
     app.dependency_overrides = {}
 
 
-@pytest.fixture()
-@pytest.mark.asyncio
+@pytest_asyncio.fixture
 async def async_client_no_admin(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
@@ -357,8 +357,7 @@ def _load_geojson(name):
     return geojson
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
 async def geostore_huge(
     async_client: AsyncClient, geojson_huge
 ) -> AsyncGenerator[str, None]:
@@ -371,8 +370,7 @@ async def geostore_huge(
     # Nothing to do here. No clean up function for geostore_huge.
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
 async def geostore(async_client: AsyncClient, geojson) -> AsyncGenerator[str, None]:
     # Get geostore ID
     geostore_id = await _create_geostore(geojson, async_client)
