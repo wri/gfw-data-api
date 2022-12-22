@@ -32,17 +32,6 @@ async def dummy_function():
     pass
 
 
-class DummyAsyncContextManager:
-    def _init_(self):
-        pass
-
-    async def __aenter__(self):
-        await dummy_function()
-
-    async def __aexit__(self):
-        await dummy_function()
-
-
 async def mock_callback(task_id: UUID, change_log: ChangeLog):
     return dummy_function
 
@@ -211,7 +200,7 @@ class TestVectorSourceAssetsHelpers:
         )
 
         assert isinstance(job, PostgresqlClientJob)
-        assert job.parents is ["some_job"]
+        assert job.parents == ["some_job"]
         assert job.attempt_duration_seconds == attempt_duration_seconds
 
     @pytest.mark.asyncio
