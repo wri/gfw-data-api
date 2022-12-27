@@ -134,10 +134,16 @@ async def _create_load_other_data_jobs(
     callback: Callback,
     attempt_duration_seconds: int,
 ) -> Tuple[List[GdalPythonImportJob], List[GdalPythonImportJob]]:
+    """Create jobs (1 per layer) for a non-CSV vector source file.
+
+    WRT the return value, the first list is the total list of jobs
+    created, the second is the last job in each "queue", suitable as the
+    parents for any subsequent job(s).
+    """
     # AWS Batch jobs can't have more than 20 parents. In case of excessive
     # numbers of layers, create multiple "queues" of dependent jobs, with
     # the next phase being dependent on the last job of each queue.
-    num_queues: int = min(16, len(layers))
+    num_queues: int = min(BATCH_DEPENDENCY_LIMIT, len(layers))
     job_queues: RingOfLists = RingOfLists(num_queues)
 
     load_vector_data_jobs: List[GdalPythonImportJob] = list()

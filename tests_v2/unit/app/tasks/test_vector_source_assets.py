@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 from unittest.mock import Mock, patch
 from uuid import UUID
 
@@ -11,6 +11,7 @@ from app.models.pydantic.jobs import GdalPythonImportJob, PostgresqlClientJob
 from app.tasks.vector_source_assets import (
     _create_add_gfw_fields_job,
     _create_load_csv_data_jobs,
+    _create_load_other_data_jobs,
     _create_vector_schema_job,
     vector_source_asset,
 )
@@ -209,7 +210,7 @@ class TestVectorSourceAssetsHelpers:
         mock_chunk_list.return_value = [
             ["s3://bucket/some_key.shp"],
             ["gs://bucket/some_other_key.shp"],
-            ["gs://bucket/yet_anoother_key.shp"],
+            ["gs://bucket/yet_another_key.shp"],
         ]
 
         dataset: str = "some_dataset"
@@ -217,7 +218,7 @@ class TestVectorSourceAssetsHelpers:
         source_uris: List[str] = [
             "s3://bucket/some_key.shp",
             "gs://bucket/some_other_key.shp",
-            "gs://bucket/yet_anoother_key.shp",
+            "gs://bucket/yet_another_key.shp",
         ]
         parents: List[str] = ["some_job", "some_other_job"]
         attempt_duration_seconds: int = 100
@@ -233,10 +234,18 @@ class TestVectorSourceAssetsHelpers:
         )
 
         assert len(jobs) == 3
-        for j in jobs:
-            assert isinstance(j, GdalPythonImportJob)
-            assert j.parents == parents
-            assert j.attempt_duration_seconds == attempt_duration_seconds
+        for job in jobs:
+            assert isinstance(job, GdalPythonImportJob)
+            assert job.parents == parents
+            assert job.attempt_duration_seconds == attempt_duration_seconds
+
+        source_uris_set = set(source_uris)
+        for job in jobs:
+            for i, cmd_frag in enumerate(job.command):
+                if cmd_frag == "-s":
+                    assert job.command[i + 1] in source_uris_set
+                    source_uris_set.discard(job.command[i + 1])
+        assert len(source_uris_set) == 0
 
     @pytest.mark.asyncio
     @patch(f"{MODULE_PATH_UNDER_TEST}.chunk_list", autospec=True)
@@ -245,7 +254,7 @@ class TestVectorSourceAssetsHelpers:
             [
                 "s3://bucket/some_key.shp",
                 "gs://bucket/some_other_key.shp",
-                "gs://bucket/yet_anoother_key.shp",
+                "gs://bucket/yet_another_key.shp",
             ]
         ]
 
@@ -270,6 +279,93 @@ class TestVectorSourceAssetsHelpers:
         )
 
         assert len(jobs) == 1
-        assert isinstance(jobs[0], GdalPythonImportJob)
-        assert jobs[0].parents == parents
-        assert jobs[0].attempt_duration_seconds == attempt_duration_seconds
+        job = jobs[0]
+        assert isinstance(job, GdalPythonImportJob)
+        assert job.parents == parents
+        assert job.attempt_duration_seconds == attempt_duration_seconds
+
+        source_args_found = 0
+        source_uris_set = set(source_uris)
+        for i, cmd_frag in enumerate(job.command):
+            if cmd_frag == "-s":
+                source_args_found += 1
+                assert job.command[i + 1] in source_uris_set
+        assert source_args_found == 3
+
+    @pytest.mark.asyncio
+    @patch(f"{MODULE_PATH_UNDER_TEST}.min")
+    async def test__create_load_other_data_jobs_1_queue(self, mock_min):
+        mock_min.return_value = 1
+
+        dataset: str = "some_dataset"
+        version: str = "v42"
+        source_uri: str = "s3://bucket/some_key.shp"
+        layers = ["layer1", "layer2", "layer3"]
+        zipped = False
+        parents: List[str] = ["some_job"]
+        attempt_duration_seconds: int = 100
+
+        jobs, _ = await _create_load_other_data_jobs(
+            dataset,
+            version,
+            source_uri,
+            layers,
+            zipped,
+            parents,
+            TEST_JOB_ENV,
+            mock_callback,
+            attempt_duration_seconds,
+        )
+
+        assert len(jobs) == len(layers)
+
+        # With only 1 queue, the 3 created jobs will be in series. The first
+        # job will have the original parents, and the two successive jobs
+        # will have one of the created jobs as a parent.
+        observed_job_parents: Set = set()
+        expected_job_parents = {
+            *parents,
+            "load_vector_data_layer_0",
+            "load_vector_data_layer_1",
+        }
+        for job in jobs:
+            assert isinstance(job, GdalPythonImportJob)
+            assert len(job.parents) == 1
+            observed_job_parents.add(job.parents[0])
+            assert job.attempt_duration_seconds == attempt_duration_seconds
+
+        assert observed_job_parents == expected_job_parents
+
+    @pytest.mark.asyncio
+    @patch(f"{MODULE_PATH_UNDER_TEST}.min")
+    async def test__create_load_other_data_jobs_3_queues(self, mock_min):
+        mock_min.return_value = 3
+
+        dataset: str = "some_dataset"
+        version: str = "v42"
+        source_uri: str = "s3://bucket/some_key.shp"
+        layers = ["layer1", "layer2", "layer3"]
+        zipped = False
+        parents: List[str] = ["some_job"]
+        attempt_duration_seconds: int = 100
+
+        jobs, _ = await _create_load_other_data_jobs(
+            dataset,
+            version,
+            source_uri,
+            layers,
+            zipped,
+            parents,
+            TEST_JOB_ENV,
+            mock_callback,
+            attempt_duration_seconds,
+        )
+
+        assert len(jobs) == len(layers)
+
+        # There's 3 queues, enough for each layer to have its own, so
+        # each job will have the original parents
+        for job in jobs:
+            assert isinstance(job, GdalPythonImportJob)
+            assert job.parents == parents
+            assert job.attempt_duration_seconds == attempt_duration_seconds
