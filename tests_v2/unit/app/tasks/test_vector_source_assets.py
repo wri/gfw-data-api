@@ -118,14 +118,6 @@ class TestVectorSourceAssetsHelpers:
                 break
         assert schema_arg_found, "Table schema arg not found"
 
-        # mock_default_asset.return_value = ORMAsset(
-        #     creation_options={
-        #         "pixel_meaning": "test_pixels",
-        #         "data_type": "boolean",
-        #         "grid": "1/4000",
-        #     }
-        # )
-
     @pytest.mark.asyncio
     async def test__create_vector_schema_job_zipped(self):
         dataset: str = "some_dataset"
@@ -369,3 +361,5 @@ class TestVectorSourceAssetsHelpers:
             assert isinstance(job, GdalPythonImportJob)
             assert job.parents == parents
             assert job.attempt_duration_seconds == attempt_duration_seconds
+
+    # TODO: Test the second return value from _create_load_other_data_jobs too
