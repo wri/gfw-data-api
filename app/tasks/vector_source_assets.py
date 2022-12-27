@@ -387,24 +387,10 @@ async def append_vector_source_asset(
         attempt_duration_seconds=creation_options.timeout,
     )
 
-    inherit_geostore_jobs: List[PostgresqlClientJob] = list()
-    if creation_options.add_to_geostore:
-        inherit_geostore_job = PostgresqlClientJob(
-            dataset=dataset,
-            job_name="inherit_from_geostore",
-            command=["inherit_geostore.sh", "-d", dataset, "-v", version],
-            parents=[update_gfw_fields_job.job_name],
-            environment=job_env,
-            callback=callback,
-            attempt_duration_seconds=creation_options.timeout,
-        )
-        inherit_geostore_jobs.append(inherit_geostore_job)
-
     log: ChangeLog = await execute(
         [
             *load_data_jobs,
             update_gfw_fields_job,
-            *inherit_geostore_jobs,
         ]
     )
 

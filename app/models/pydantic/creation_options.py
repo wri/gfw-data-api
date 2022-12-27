@@ -235,10 +235,6 @@ class VectorSourceAppendOptions(StrictBaseModel):
             "Disable this option by setting value to `false`"
         ),
     )
-    add_to_geostore: bool = Field(
-        True,
-        description="Make geometries searchable via geostore endpoint.",
-    )
     timeout: int = DEFAULT_JOB_DURATION
 
     @validator("source_uri")
