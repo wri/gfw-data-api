@@ -7,7 +7,7 @@ import pytest as pytest
 
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import FieldType
-from app.models.pydantic.jobs import GdalPythonImportJob, PostgresqlClientJob
+from app.models.pydantic.jobs import GdalPythonImportJob, Job, PostgresqlClientJob
 from app.tasks.vector_source_assets import (
     _create_add_gfw_fields_job,
     _create_load_csv_data_jobs,
@@ -20,12 +20,16 @@ MODULE_PATH_UNDER_TEST = "app.tasks.vector_source_assets"
 
 TEST_JOB_ENV: List[Dict[str, str]] = [{"name": "CORES", "value": "1"}]
 
-input_data = {
-    "creation_options": {
-        "source_type": "vector",
-        "source_uri": ["s3://some_bucket/some_source_uri.zip"],
-        "source_driver": "ESRI Shapefile",
-    },
+input_data_c_o = {
+    "source_type": "vector",
+    "source_uri": ["s3://some_bucket/some_source_uri.zip"],
+    "source_driver": "ESRI Shapefile",
+    "cluster": None,
+    "create_dynamic_vector_tile_cache": False,
+    "add_to_geostore": False,
+    "table_schema": None,
+    "layers": None,
+    "indices": [],
 }
 
 
@@ -35,27 +39,6 @@ async def dummy_function():
 
 async def mock_callback(task_id: UUID, change_log: ChangeLog):
     return dummy_function
-
-
-@patch(f"{MODULE_PATH_UNDER_TEST}.execute", autospec=True)
-class TestVectorSourceAssets:
-    @pytest.mark.asyncio
-    async def test_vector_source_asset(
-        self,
-        mock_execute: Mock,
-    ):
-        mock_execute.return_value = ChangeLog(
-            date_time=datetime(2022, 12, 20), message="All done!", status="success"
-        )
-        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
-
-        _ = await vector_source_asset(
-            "test_dataset", "v2022", vector_asset_uuid, input_data
-        )
-
-        assert mock_execute.call_count == 1
-        jobs = mock_execute.call_args_list[0].args[0]
-        assert len(jobs) == 8
 
 
 class TestVectorSourceAssetsHelpers:
@@ -363,3 +346,123 @@ class TestVectorSourceAssetsHelpers:
             assert job.attempt_duration_seconds == attempt_duration_seconds
 
     # TODO: Test the second return value from _create_load_other_data_jobs too
+
+
+@patch(f"{MODULE_PATH_UNDER_TEST}.execute", autospec=True)
+class TestVectorSourceAssets:
+    @pytest.mark.asyncio
+    async def test_vector_source_asset_geostore_disabled(
+        self,
+        mock_execute: Mock,
+    ):
+        mock_execute.return_value = ChangeLog(
+            date_time=datetime(2022, 12, 20), message="All done!", status="success"
+        )
+        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
+
+        _ = await vector_source_asset(
+            "test_dataset",
+            "v2022",
+            vector_asset_uuid,
+            {"creation_options": input_data_c_o},
+        )
+
+        assert mock_execute.call_count == 1
+        jobs: List[Job] = mock_execute.call_args_list[0].args[0]
+        assert len(jobs) == 4
+
+        for job in jobs:
+            assert job.job_name != "inherit_from_geostore"
+
+    @pytest.mark.asyncio
+    async def test_vector_source_asset_geostore_enabled(
+        self,
+        mock_execute: Mock,
+    ):
+        mock_execute.return_value = ChangeLog(
+            date_time=datetime(2022, 12, 20), message="All done!", status="success"
+        )
+        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
+
+        _ = await vector_source_asset(
+            "test_dataset",
+            "v2022",
+            vector_asset_uuid,
+            {"creation_options": input_data_c_o | {"add_to_geostore": True}},
+        )
+
+        assert mock_execute.call_count == 1
+        jobs: List[Job] = mock_execute.call_args_list[0].args[0]
+        assert len(jobs) == 5
+
+        expected_geostore_jobs: int = 1
+        found_geostore_jobs: int = 0
+        for job in jobs:
+            if job.job_name == "inherit_from_geostore":
+                found_geostore_jobs += 1
+        assert expected_geostore_jobs == found_geostore_jobs
+
+    @pytest.mark.asyncio
+    async def test_vector_source_asset_geostore_default_indices(
+        self,
+        mock_execute: Mock,
+    ):
+        mock_execute.return_value = ChangeLog(
+            date_time=datetime(2022, 12, 20), message="All done!", status="success"
+        )
+        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
+
+        input_data_c_o_copy = input_data_c_o.copy()
+        input_data_c_o_copy.pop("indices")
+        _ = await vector_source_asset(
+            "test_dataset",
+            "v2022",
+            vector_asset_uuid,
+            {"creation_options": input_data_c_o_copy},
+        )
+
+        assert mock_execute.call_count == 1
+        jobs: List[Job] = mock_execute.call_args_list[0].args[0]
+        assert len(jobs) == 7
+
+        expected_index_jobs: int = 3
+        found_index_jobs: int = 0
+        for job in jobs:
+            if job.job_name.startswith("create_index_"):
+                found_index_jobs += 1
+        assert expected_index_jobs == found_index_jobs
+
+    @pytest.mark.asyncio
+    async def test_vector_source_asset_geostore_with_clustering(
+        self,
+        mock_execute: Mock,
+    ):
+        mock_execute.return_value = ChangeLog(
+            date_time=datetime(2022, 12, 20), message="All done!", status="success"
+        )
+        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
+
+        cluster_field = {
+            "cluster": {
+                "index_type": "btree",
+                "column_names": ["gfw_geostore_id", "gfw_bbox"],
+            }
+        }
+
+        _ = await vector_source_asset(
+            "test_dataset",
+            "v2022",
+            vector_asset_uuid,
+            {"creation_options": input_data_c_o | cluster_field},
+        )
+
+        assert mock_execute.call_count == 1
+        jobs: List[Job] = mock_execute.call_args_list[0].args[0]
+        assert len(jobs) == 5
+
+        expected_cluster_jobs: int = 1
+        found_cluster_jobs: int = 0
+        for job in jobs:
+            if job.job_name == "cluster_table":
+                found_cluster_jobs += 1
+        assert expected_cluster_jobs == found_cluster_jobs
