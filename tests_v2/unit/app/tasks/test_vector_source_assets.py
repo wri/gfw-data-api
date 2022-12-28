@@ -119,7 +119,7 @@ class TestVectorSourceAssetsHelpers:
                 zip_arg_observed = True
                 assert job.command[i + 1] == "True"
                 break
-        assert zip_arg_observed, "Zip argument not observed"
+        assert zip_arg_observed, "Zip argument not found when it should be"
 
     @pytest.mark.asyncio
     async def test__create_vector_schema_job_not_zipped(self):
@@ -142,7 +142,7 @@ class TestVectorSourceAssetsHelpers:
                 zip_arg_observed = True
                 assert job.command[i + 1] == "False"
                 break
-        assert zip_arg_observed, "Zip argument not observed"
+        assert zip_arg_observed, "Zip argument found when it shouldn't be"
 
     @pytest.mark.asyncio
     async def test__create_add_gfw_fields_job(self):
