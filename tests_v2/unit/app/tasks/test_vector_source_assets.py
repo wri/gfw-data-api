@@ -21,7 +21,13 @@ MODULE_PATH_UNDER_TEST = "app.tasks.vector_source_assets"
 
 TEST_JOB_ENV: List[Dict[str, str]] = [{"name": "CORES", "value": "1"}]
 
-input_data_c_o = {
+DATASET: str = "some_dataset"
+VERSION: str = "v42"
+SOURCE_URI: str = "s3://bucket/test.shp"
+LAYER: str = "test"
+ZIPPED: bool = False
+TABLE_SCHEMA: Optional[List[FieldType]] = None
+CREATION_OPTIONS = {
     "source_type": "vector",
     "source_uri": ["s3://some_bucket/some_source_uri.zip"],
     "source_driver": "ESRI Shapefile",
@@ -45,20 +51,14 @@ async def mock_callback(task_id: UUID, change_log: ChangeLog):
 class TestVectorSourceAssetsHelpers:
     @pytest.mark.asyncio
     async def test__create_vector_schema_job_no_schema(self):
-        dataset: str = "some_dataset"
-        version: str = "v42"
-        source_uri: str = "s3://bucket/test.shp"
-        layer: str = "test"
-        zipped: bool = False
-        table_schema: Optional[List[FieldType]] = None
 
         job = await _create_vector_schema_job(
-            dataset,
-            version,
-            source_uri,
-            layer,
-            zipped,
-            table_schema,
+            DATASET,
+            VERSION,
+            SOURCE_URI,
+            LAYER,
+            ZIPPED,
+            TABLE_SCHEMA,
             TEST_JOB_ENV,
             mock_callback,
         )
@@ -69,23 +69,18 @@ class TestVectorSourceAssetsHelpers:
 
     @pytest.mark.asyncio
     async def test__create_vector_schema_job_with_schema(self):
-        dataset: str = "some_dataset"
-        version: str = "v42"
-        source_uri: str = "s3://bucket/test.zip"
-        layer: str = "test"
-        zipped: bool = True
-        table_schema: Optional[List[FieldType]] = [
+        different_table_schema: Optional[List[FieldType]] = [
             FieldType(**{"field_name": "fid", "field_type": "numeric"}),
             FieldType(**{"field_name": "geom", "field_type": "geometry"}),
         ]
 
         job = await _create_vector_schema_job(
-            dataset,
-            version,
-            source_uri,
-            layer,
-            zipped,
-            table_schema,
+            DATASET,
+            VERSION,
+            SOURCE_URI,
+            LAYER,
+            ZIPPED,
+            different_table_schema,
             TEST_JOB_ENV,
             mock_callback,
         )
@@ -104,20 +99,15 @@ class TestVectorSourceAssetsHelpers:
 
     @pytest.mark.asyncio
     async def test__create_vector_schema_job_zipped(self):
-        dataset: str = "some_dataset"
-        version: str = "v42"
-        source_uri: str = "s3://bucket/test.shp"
-        layer: str = "test"
-        zipped: bool = True
-        table_schema: Optional[List[FieldType]] = None
+        zipped_true: bool = True
 
         job = await _create_vector_schema_job(
-            dataset,
-            version,
-            source_uri,
-            layer,
-            zipped,
-            table_schema,
+            DATASET,
+            VERSION,
+            SOURCE_URI,
+            LAYER,
+            zipped_true,
+            TABLE_SCHEMA,
             TEST_JOB_ENV,
             mock_callback,
         )
@@ -133,20 +123,14 @@ class TestVectorSourceAssetsHelpers:
 
     @pytest.mark.asyncio
     async def test__create_vector_schema_job_not_zipped(self):
-        dataset: str = "some_dataset"
-        version: str = "v42"
-        source_uri: str = "s3://bucket/test.shp"
-        layer: str = "test"
-        zipped: bool = False
-        table_schema: Optional[List[FieldType]] = None
 
         job = await _create_vector_schema_job(
-            dataset,
-            version,
-            source_uri,
-            layer,
-            zipped,
-            table_schema,
+            DATASET,
+            VERSION,
+            SOURCE_URI,
+            LAYER,
+            ZIPPED,
+            TABLE_SCHEMA,
             TEST_JOB_ENV,
             mock_callback,
         )
@@ -162,14 +146,12 @@ class TestVectorSourceAssetsHelpers:
 
     @pytest.mark.asyncio
     async def test__create_add_gfw_fields_job(self):
-        dataset: str = "some_dataset"
-        version: str = "v42"
         parents: List[str] = ["some_job"]
         attempt_duration_seconds: int = 100
 
         job = await _create_add_gfw_fields_job(
-            dataset,
-            version,
+            DATASET,
+            VERSION,
             parents,
             TEST_JOB_ENV,
             mock_callback,
@@ -189,8 +171,6 @@ class TestVectorSourceAssetsHelpers:
             ["gs://bucket/yet_another_key.shp"],
         ]
 
-        dataset: str = "some_dataset"
-        version: str = "v42"
         source_uris: List[str] = [
             "s3://bucket/some_key.shp",
             "gs://bucket/some_other_key.shp",
@@ -200,8 +180,8 @@ class TestVectorSourceAssetsHelpers:
         attempt_duration_seconds: int = 100
 
         jobs = await _create_load_csv_data_jobs(
-            dataset,
-            version,
+            DATASET,
+            VERSION,
             source_uris,
             parents,
             TEST_JOB_ENV,
@@ -234,8 +214,6 @@ class TestVectorSourceAssetsHelpers:
             ]
         ]
 
-        dataset: str = "some_dataset"
-        version: str = "v42"
         source_uris: List[str] = [
             "s3://bucket/some_key.shp",
             "gs://bucket/some_other_key.shp",
@@ -245,8 +223,8 @@ class TestVectorSourceAssetsHelpers:
         attempt_duration_seconds: int = 100
 
         jobs = await _create_load_csv_data_jobs(
-            dataset,
-            version,
+            DATASET,
+            VERSION,
             source_uris,
             parents,
             TEST_JOB_ENV,
@@ -273,20 +251,16 @@ class TestVectorSourceAssetsHelpers:
     async def test__create_load_other_data_jobs_1_queue(self, mock_min):
         mock_min.return_value = 1
 
-        dataset: str = "some_dataset"
-        version: str = "v42"
-        source_uri: str = "s3://bucket/some_key.shp"
         layers = ["layer1", "layer2", "layer3"]
-        zipped = False
         parents: List[str] = ["some_job"]
         attempt_duration_seconds: int = 100
 
         jobs, _ = await _create_load_other_data_jobs(
-            dataset,
-            version,
-            source_uri,
+            DATASET,
+            VERSION,
+            SOURCE_URI,
             layers,
-            zipped,
+            ZIPPED,
             parents,
             TEST_JOB_ENV,
             mock_callback,
@@ -317,20 +291,16 @@ class TestVectorSourceAssetsHelpers:
     async def test__create_load_other_data_jobs_3_queues(self, mock_min):
         mock_min.return_value = 3
 
-        dataset: str = "some_dataset"
-        version: str = "v42"
-        source_uri: str = "s3://bucket/some_key.shp"
         layers = ["layer1", "layer2", "layer3"]
-        zipped = False
         parents: List[str] = ["some_job"]
         attempt_duration_seconds: int = 100
 
         jobs, _ = await _create_load_other_data_jobs(
-            dataset,
-            version,
-            source_uri,
+            DATASET,
+            VERSION,
+            SOURCE_URI,
             layers,
-            zipped,
+            ZIPPED,
             parents,
             TEST_JOB_ENV,
             mock_callback,
@@ -360,10 +330,10 @@ class TestVectorSourceAssets:
         vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
         _ = await vector_source_asset(
-            "test_dataset",
-            "v2022",
+            DATASET,
+            VERSION,
             vector_asset_uuid,
-            {"creation_options": input_data_c_o},
+            {"creation_options": CREATION_OPTIONS},
         )
 
         assert mock_execute.call_count == 1
@@ -398,10 +368,10 @@ class TestVectorSourceAssets:
         vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
         _ = await vector_source_asset(
-            "test_dataset",
-            "v2022",
+            DATASET,
+            VERSION,
             vector_asset_uuid,
-            {"creation_options": input_data_c_o | {"source_driver": "CSV"}},
+            {"creation_options": CREATION_OPTIONS | {"source_driver": "CSV"}},
         )
 
         assert mock_execute.call_count == 1
@@ -436,10 +406,10 @@ class TestVectorSourceAssets:
         vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
         _ = await vector_source_asset(
-            "test_dataset",
-            "v2022",
+            DATASET,
+            VERSION,
             vector_asset_uuid,
-            {"creation_options": input_data_c_o | {"add_to_geostore": True}},
+            {"creation_options": CREATION_OPTIONS | {"add_to_geostore": True}},
         )
 
         assert mock_execute.call_count == 1
@@ -463,11 +433,11 @@ class TestVectorSourceAssets:
         )
         vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
-        input_data_c_o_copy = input_data_c_o.copy()
+        input_data_c_o_copy = CREATION_OPTIONS.copy()
         input_data_c_o_copy.pop("indices")
         _ = await vector_source_asset(
-            "test_dataset",
-            "v2022",
+            DATASET,
+            VERSION,
             vector_asset_uuid,
             {"creation_options": input_data_c_o_copy},
         )
@@ -501,10 +471,10 @@ class TestVectorSourceAssets:
         }
 
         _ = await vector_source_asset(
-            "test_dataset",
-            "v2022",
+            DATASET,
+            VERSION,
             vector_asset_uuid,
-            {"creation_options": input_data_c_o | cluster_field},
+            {"creation_options": CREATION_OPTIONS | cluster_field},
         )
 
         assert mock_execute.call_count == 1
@@ -540,8 +510,8 @@ class TestAppendVectorSourceAssets:
         }
 
         _ = await append_vector_source_asset(
-            "test_dataset",
-            "v2022",
+            DATASET,
+            VERSION,
             vector_asset_uuid,
             {"creation_options": append_input_data_c_o},
         )
@@ -586,8 +556,8 @@ class TestAppendVectorSourceAssets:
         }
 
         _ = await append_vector_source_asset(
-            "test_dataset",
-            "v2022",
+            DATASET,
+            VERSION,
             vector_asset_uuid,
             {"creation_options": append_input_data_c_o},
         )
