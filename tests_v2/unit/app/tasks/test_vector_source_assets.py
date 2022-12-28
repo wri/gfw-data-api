@@ -351,7 +351,7 @@ class TestVectorSourceAssetsHelpers:
 @patch(f"{MODULE_PATH_UNDER_TEST}.execute", autospec=True)
 class TestVectorSourceAssets:
     @pytest.mark.asyncio
-    async def test_vector_source_asset_geostore_disabled(
+    async def test_vector_source_asset_minimal(
         self,
         mock_execute: Mock,
     ):
@@ -372,7 +372,9 @@ class TestVectorSourceAssets:
         assert len(jobs) == 4
 
         for job in jobs:
+            assert job.job_name != "cluster_table"
             assert job.job_name != "inherit_from_geostore"
+            assert not job.job_name.startswith("create_index_")
 
     @pytest.mark.asyncio
     async def test_vector_source_asset_geostore_enabled(
