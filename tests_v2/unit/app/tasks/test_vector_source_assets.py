@@ -38,6 +38,7 @@ CREATION_OPTIONS = {
     "layers": None,
     "indices": [],
 }
+VECTOR_ASSET_UUID = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
 
 async def dummy_function():
@@ -327,12 +328,11 @@ class TestVectorSourceAssets:
         mock_execute.return_value = ChangeLog(
             date_time=datetime(2022, 12, 20), message="All done!", status="success"
         )
-        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
         _ = await vector_source_asset(
             DATASET,
             VERSION,
-            vector_asset_uuid,
+            VECTOR_ASSET_UUID,
             {"creation_options": CREATION_OPTIONS},
         )
 
@@ -365,12 +365,11 @@ class TestVectorSourceAssets:
         mock_execute.return_value = ChangeLog(
             date_time=datetime(2022, 12, 20), message="All done!", status="success"
         )
-        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
         _ = await vector_source_asset(
             DATASET,
             VERSION,
-            vector_asset_uuid,
+            VECTOR_ASSET_UUID,
             {"creation_options": CREATION_OPTIONS | {"source_driver": "CSV"}},
         )
 
@@ -403,12 +402,11 @@ class TestVectorSourceAssets:
         mock_execute.return_value = ChangeLog(
             date_time=datetime(2022, 12, 20), message="All done!", status="success"
         )
-        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
         _ = await vector_source_asset(
             DATASET,
             VERSION,
-            vector_asset_uuid,
+            VECTOR_ASSET_UUID,
             {"creation_options": CREATION_OPTIONS | {"add_to_geostore": True}},
         )
 
@@ -431,14 +429,13 @@ class TestVectorSourceAssets:
         mock_execute.return_value = ChangeLog(
             date_time=datetime(2022, 12, 20), message="All done!", status="success"
         )
-        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
         input_data_c_o_copy = CREATION_OPTIONS.copy()
         input_data_c_o_copy.pop("indices")
         _ = await vector_source_asset(
             DATASET,
             VERSION,
-            vector_asset_uuid,
+            VECTOR_ASSET_UUID,
             {"creation_options": input_data_c_o_copy},
         )
 
@@ -461,7 +458,6 @@ class TestVectorSourceAssets:
         mock_execute.return_value = ChangeLog(
             date_time=datetime(2022, 12, 20), message="All done!", status="success"
         )
-        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
         cluster_field = {
             "cluster": {
@@ -473,7 +469,7 @@ class TestVectorSourceAssets:
         _ = await vector_source_asset(
             DATASET,
             VERSION,
-            vector_asset_uuid,
+            VECTOR_ASSET_UUID,
             {"creation_options": CREATION_OPTIONS | cluster_field},
         )
 
@@ -499,7 +495,6 @@ class TestAppendVectorSourceAssets:
         mock_execute.return_value = ChangeLog(
             date_time=datetime(2022, 12, 20), message="All done!", status="success"
         )
-        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
         append_input_data_c_o = {
             "source_type": "vector",
@@ -512,7 +507,7 @@ class TestAppendVectorSourceAssets:
         _ = await append_vector_source_asset(
             DATASET,
             VERSION,
-            vector_asset_uuid,
+            VECTOR_ASSET_UUID,
             {"creation_options": append_input_data_c_o},
         )
 
@@ -545,7 +540,6 @@ class TestAppendVectorSourceAssets:
         mock_execute.return_value = ChangeLog(
             date_time=datetime(2022, 12, 20), message="All done!", status="success"
         )
-        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
 
         append_input_data_c_o = {
             "source_type": "vector",
@@ -558,7 +552,7 @@ class TestAppendVectorSourceAssets:
         _ = await append_vector_source_asset(
             DATASET,
             VERSION,
-            vector_asset_uuid,
+            VECTOR_ASSET_UUID,
             {"creation_options": append_input_data_c_o},
         )
 
