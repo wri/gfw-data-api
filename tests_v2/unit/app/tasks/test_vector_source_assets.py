@@ -13,6 +13,7 @@ from app.tasks.vector_source_assets import (
     _create_load_csv_data_jobs,
     _create_load_other_data_jobs,
     _create_vector_schema_job,
+    append_vector_source_asset,
     vector_source_asset,
 )
 
@@ -371,10 +372,60 @@ class TestVectorSourceAssets:
         jobs: List[Job] = mock_execute.call_args_list[0].args[0]
         assert len(jobs) == 4
 
+        expected_load_csv_data_jobs: int = 0
+        observed_load_csv_data_jobs: int = 0
+        expected_load_other_data_jobs: int = 1
+        observed_load_other_data_jobs: int = 0
+
         for job in jobs:
             assert job.job_name != "cluster_table"
             assert job.job_name != "inherit_from_geostore"
             assert not job.job_name.startswith("create_index_")
+            if job.job_name.startswith("load_vector_csv_data_"):
+                observed_load_csv_data_jobs += 1
+            elif job.job_name.startswith("load_vector_data_layer_"):
+                observed_load_other_data_jobs += 1
+
+        assert observed_load_csv_data_jobs == expected_load_csv_data_jobs
+        assert observed_load_other_data_jobs == expected_load_other_data_jobs
+
+    @pytest.mark.asyncio
+    async def test_vector_source_asset_minimal_csv(
+        self,
+        mock_execute: Mock,
+    ):
+        mock_execute.return_value = ChangeLog(
+            date_time=datetime(2022, 12, 20), message="All done!", status="success"
+        )
+        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
+
+        _ = await vector_source_asset(
+            "test_dataset",
+            "v2022",
+            vector_asset_uuid,
+            {"creation_options": input_data_c_o | {"source_driver": "CSV"}},
+        )
+
+        assert mock_execute.call_count == 1
+        jobs: List[Job] = mock_execute.call_args_list[0].args[0]
+        assert len(jobs) == 4
+
+        expected_load_csv_data_jobs: int = 1
+        observed_load_csv_data_jobs: int = 0
+        expected_load_other_data_jobs: int = 0
+        observed_load_other_data_jobs: int = 0
+
+        for job in jobs:
+            assert job.job_name != "cluster_table"
+            assert job.job_name != "inherit_from_geostore"
+            assert not job.job_name.startswith("create_index_")
+            if job.job_name.startswith("load_vector_csv_data_"):
+                observed_load_csv_data_jobs += 1
+            elif job.job_name.startswith("load_vector_data_layer_"):
+                observed_load_other_data_jobs += 1
+
+        assert observed_load_csv_data_jobs == expected_load_csv_data_jobs
+        assert observed_load_other_data_jobs == expected_load_other_data_jobs
 
     @pytest.mark.asyncio
     async def test_vector_source_asset_geostore_enabled(
@@ -468,3 +519,98 @@ class TestVectorSourceAssets:
             if job.job_name == "cluster_table":
                 found_cluster_jobs += 1
         assert expected_cluster_jobs == found_cluster_jobs
+
+
+@patch(f"{MODULE_PATH_UNDER_TEST}.execute", autospec=True)
+class TestAppendVectorSourceAssets:
+    @pytest.mark.asyncio
+    async def test_append_vector_source_asset(
+        self,
+        mock_execute: Mock,
+    ):
+        mock_execute.return_value = ChangeLog(
+            date_time=datetime(2022, 12, 20), message="All done!", status="success"
+        )
+        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
+
+        append_input_data_c_o = {
+            "source_type": "vector",
+            "source_uri": ["s3://some_bucket/some_source_uri.zip"],
+            "source_driver": "ESRI Shapefile",
+            "layers": None,
+            "create_dynamic_vector_tile_cache": False,
+        }
+
+        _ = await append_vector_source_asset(
+            "test_dataset",
+            "v2022",
+            vector_asset_uuid,
+            {"creation_options": append_input_data_c_o},
+        )
+
+        assert mock_execute.call_count == 1
+        jobs: List[Job] = mock_execute.call_args_list[0].args[0]
+        assert len(jobs) == 2
+
+        expected_load_csv_data_jobs: int = 0
+        observed_load_csv_data_jobs: int = 0
+        expected_load_other_data_jobs: int = 1
+        observed_load_other_data_jobs: int = 0
+
+        for job in jobs:
+            assert job.job_name != "cluster_table"
+            assert job.job_name != "inherit_from_geostore"
+            assert not job.job_name.startswith("create_index_")
+            if job.job_name.startswith("load_vector_csv_data_"):
+                observed_load_csv_data_jobs += 1
+            elif job.job_name.startswith("load_vector_data_layer_"):
+                observed_load_other_data_jobs += 1
+
+        assert observed_load_csv_data_jobs == expected_load_csv_data_jobs
+        assert observed_load_other_data_jobs == expected_load_other_data_jobs
+
+    @pytest.mark.asyncio
+    async def test_append_vector_source_asset_csv(
+        self,
+        mock_execute: Mock,
+    ):
+        mock_execute.return_value = ChangeLog(
+            date_time=datetime(2022, 12, 20), message="All done!", status="success"
+        )
+        vector_asset_uuid = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
+
+        append_input_data_c_o = {
+            "source_type": "vector",
+            "source_uri": ["s3://some_bucket/some_source_uri.zip"],
+            "source_driver": "CSV",
+            "layers": None,
+            "create_dynamic_vector_tile_cache": False,
+        }
+
+        _ = await append_vector_source_asset(
+            "test_dataset",
+            "v2022",
+            vector_asset_uuid,
+            {"creation_options": append_input_data_c_o},
+        )
+
+        assert mock_execute.call_count == 1
+        jobs: List[Job] = mock_execute.call_args_list[0].args[0]
+        assert len(jobs) == 2
+
+        expected_load_csv_data_jobs: int = 1
+        observed_load_csv_data_jobs: int = 0
+        expected_load_other_data_jobs: int = 0
+        observed_load_other_data_jobs: int = 0
+
+        for job in jobs:
+            assert job.job_name != "cluster_table"
+            assert job.job_name != "inherit_from_geostore"
+            assert not job.job_name.startswith("create_index_")
+            if job.job_name.startswith("load_vector_csv_data_"):
+                observed_load_csv_data_jobs += 1
+            elif job.job_name.startswith("load_vector_data_layer_"):
+                observed_load_other_data_jobs += 1
+
+        assert observed_load_csv_data_jobs == expected_load_csv_data_jobs
+        assert observed_load_other_data_jobs == expected_load_other_data_jobs
