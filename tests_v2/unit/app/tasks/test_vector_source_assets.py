@@ -91,16 +91,16 @@ class TestVectorSourceAssetsHelpers:
         )
 
         assert isinstance(job, GdalPythonImportJob)
-        schema_arg_found = False
+        schema_arg_observed = False
         for i, cmd_frag in enumerate(job.command):
             if cmd_frag == "-m":
-                schema_arg_found = True
+                schema_arg_observed = True
                 assert job.command[i + 1] == (
                     '[{"field_name": "fid", "field_type": "numeric"}, '
                     '{"field_name": "geom", "field_type": "geometry"}]'
                 )
                 break
-        assert schema_arg_found, "Table schema arg not found"
+        assert schema_arg_observed, "Table schema arg not observed"
 
     @pytest.mark.asyncio
     async def test__create_vector_schema_job_zipped(self):
@@ -123,13 +123,13 @@ class TestVectorSourceAssetsHelpers:
         )
 
         assert isinstance(job, GdalPythonImportJob)
-        zip_arg_found = False
+        zip_arg_observed = False
         for i, cmd_frag in enumerate(job.command):
             if cmd_frag == "-X":
-                zip_arg_found = True
+                zip_arg_observed = True
                 assert job.command[i + 1] == "True"
                 break
-        assert zip_arg_found, "Zip argument not found"
+        assert zip_arg_observed, "Zip argument not observed"
 
     @pytest.mark.asyncio
     async def test__create_vector_schema_job_not_zipped(self):
@@ -152,13 +152,13 @@ class TestVectorSourceAssetsHelpers:
         )
 
         assert isinstance(job, GdalPythonImportJob)
-        zip_arg_found = False
+        zip_arg_observed = False
         for i, cmd_frag in enumerate(job.command):
             if cmd_frag == "-X":
-                zip_arg_found = True
+                zip_arg_observed = True
                 assert job.command[i + 1] == "False"
                 break
-        assert zip_arg_found, "Zip argument not found"
+        assert zip_arg_observed, "Zip argument not observed"
 
     @pytest.mark.asyncio
     async def test__create_add_gfw_fields_job(self):
@@ -260,13 +260,13 @@ class TestVectorSourceAssetsHelpers:
         assert job.parents == parents
         assert job.attempt_duration_seconds == attempt_duration_seconds
 
-        source_args_found = 0
+        source_args_observed = 0
         source_uris_set = set(source_uris)
         for i, cmd_frag in enumerate(job.command):
             if cmd_frag == "-s":
-                source_args_found += 1
+                source_args_observed += 1
                 assert job.command[i + 1] in source_uris_set
-        assert source_args_found == 3
+        assert source_args_observed == 3
 
     @pytest.mark.asyncio
     @patch(f"{MODULE_PATH_UNDER_TEST}.min")
@@ -345,8 +345,6 @@ class TestVectorSourceAssetsHelpers:
             assert isinstance(job, GdalPythonImportJob)
             assert job.parents == parents
             assert job.attempt_duration_seconds == attempt_duration_seconds
-
-    # TODO: Test the second return value from _create_load_other_data_jobs too
 
 
 @patch(f"{MODULE_PATH_UNDER_TEST}.execute", autospec=True)
@@ -449,11 +447,11 @@ class TestVectorSourceAssets:
         assert len(jobs) == 5
 
         expected_geostore_jobs: int = 1
-        found_geostore_jobs: int = 0
+        observed_geostore_jobs: int = 0
         for job in jobs:
             if job.job_name == "inherit_from_geostore":
-                found_geostore_jobs += 1
-        assert expected_geostore_jobs == found_geostore_jobs
+                observed_geostore_jobs += 1
+        assert expected_geostore_jobs == observed_geostore_jobs
 
     @pytest.mark.asyncio
     async def test_vector_source_asset_geostore_default_indices(
@@ -479,11 +477,11 @@ class TestVectorSourceAssets:
         assert len(jobs) == 7
 
         expected_index_jobs: int = 3
-        found_index_jobs: int = 0
+        observed_index_jobs: int = 0
         for job in jobs:
             if job.job_name.startswith("create_index_"):
-                found_index_jobs += 1
-        assert expected_index_jobs == found_index_jobs
+                observed_index_jobs += 1
+        assert expected_index_jobs == observed_index_jobs
 
     @pytest.mark.asyncio
     async def test_vector_source_asset_geostore_with_clustering(
@@ -514,11 +512,11 @@ class TestVectorSourceAssets:
         assert len(jobs) == 5
 
         expected_cluster_jobs: int = 1
-        found_cluster_jobs: int = 0
+        observed_cluster_jobs: int = 0
         for job in jobs:
             if job.job_name == "cluster_table":
-                found_cluster_jobs += 1
-        assert expected_cluster_jobs == found_cluster_jobs
+                observed_cluster_jobs += 1
+        assert expected_cluster_jobs == observed_cluster_jobs
 
 
 @patch(f"{MODULE_PATH_UNDER_TEST}.execute", autospec=True)
