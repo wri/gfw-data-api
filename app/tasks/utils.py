@@ -16,7 +16,7 @@ class RingOfLists:
     lists to do with as one pleases.
     """
 
-    def __init__(self, size):
+    def __init__(self, size: int) -> None:
         self._size: int = size
         self._lists: List[List[Any]] = [list() for i in range(0, size)]
         self._idx: int = -1

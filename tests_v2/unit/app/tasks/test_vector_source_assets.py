@@ -32,7 +32,6 @@ CREATION_OPTIONS = {
     "source_uri": ["s3://some_bucket/some_source_uri.zip"],
     "source_driver": "ESRI Shapefile",
     "cluster": None,
-    "create_dynamic_vector_tile_cache": False,
     "add_to_geostore": False,
     "table_schema": None,
     "layers": None,

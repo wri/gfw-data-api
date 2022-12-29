@@ -228,13 +228,6 @@ class VectorSourceAppendOptions(StrictBaseModel):
     layers: Optional[List[str]] = Field(
         None, description="List of input layers. Only required for .gdb and .gpkg."
     )
-    create_dynamic_vector_tile_cache: bool = Field(
-        True,
-        description=(
-            "By default, vector sources will implicitly create a dynamic vector tile cache. "
-            "Disable this option by setting value to `false`"
-        ),
-    )
     timeout: int = DEFAULT_JOB_DURATION
 
     @validator("source_uri")
