@@ -35,5 +35,3 @@ psql -c "$ADD_GFW_FIELDS_SQL"
 # Set gfw_geostore_id not NULL to be compliant with GEOSTORE
 echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". ALTER COLUMN gfw_geostore_id SET NOT NULL"
 psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ALTER COLUMN gfw_geostore_id SET NOT NULL;"
-
-set +u

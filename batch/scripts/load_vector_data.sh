@@ -63,5 +63,3 @@ ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbnam
   -t_srs EPSG:4326 \
   --config PG_USE_COPY YES \
   -makevalid -update
-
-set +u

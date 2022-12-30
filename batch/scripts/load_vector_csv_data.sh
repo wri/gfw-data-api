@@ -54,5 +54,3 @@ for uri in "${SRC[@]}"; do
     --config PG_USE_COPY YES \
     -makevalid -update
 done
-
-set +u
