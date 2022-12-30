@@ -18,8 +18,10 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
-# FIXME: Downloading the whole file for this step should be unnecessary
-# Access over the network to dramatically decrease run time for this step?
+set -u
+
+# FIXME: Downloading the whole file for this step might be unnecessary
+# Access over the network to possibly decrease run time for this step?
 echo "AWSCLI: COPY DATA FROM $SRC TO $LOCAL_FILE"
 aws s3 cp "$SRC" "$LOCAL_FILE"
 
@@ -43,7 +45,7 @@ if [[ "$SRC" == *".csv" ]]; then
   args+=(-s_srs EPSG:4326 -oo GEOM_POSSIBLE_NAMES="$GEOMETRY_NAME" -oo KEEP_GEOM_COLUMNS=NO)
 fi
 
-if [[ -n "${FIELD_MAP}" ]]; then
+if [[ -n "${FIELD_MAP:-}" ]]; then
   echo "OGR2OGR: Override table schema in creation options"
   COLUMN_TYPES=""
   for row in $(echo "${FIELD_MAP}" | jq -r '.[] | @base64'); do
@@ -68,3 +70,4 @@ echo "PSQL: ALTER TABLE. Set storage external"
 psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ALTER COLUMN $GEOMETRY_NAME SET STORAGE EXTERNAL;"
 
 echo "DONE"
+set +u

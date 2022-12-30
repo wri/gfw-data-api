@@ -247,10 +247,10 @@ async def vector_source_asset(
             attempt_duration_seconds=creation_options.timeout,
         )
 
-    update_gfw_fields_job: PostgresqlClientJob = PostgresqlClientJob(
+    clip_and_reproject_geom_job: PostgresqlClientJob = PostgresqlClientJob(
         dataset=dataset,
-        job_name="update_gfw_fields",
-        command=["update_gfw_fields.sh", "-d", dataset, "-v", version],
+        job_name="clip_and_reproject_geom",
+        command=["clip_and_reproject_geom.sh", "-d", dataset, "-v", version],
         parents=[job.job_name for job in final_load_data_jobs],
         environment=job_env,
         callback=callback,
@@ -274,7 +274,7 @@ async def vector_source_asset(
                     "-x",
                     index.index_type,
                 ],
-                parents=[update_gfw_fields_job.job_name],
+                parents=[clip_and_reproject_geom_job.job_name],
                 environment=job_env,
                 callback=callback,
                 attempt_duration_seconds=creation_options.timeout,
@@ -311,7 +311,7 @@ async def vector_source_asset(
             dataset=dataset,
             job_name="inherit_from_geostore",
             command=["inherit_geostore.sh", "-d", dataset, "-v", version],
-            parents=[update_gfw_fields_job.job_name],
+            parents=[clip_and_reproject_geom_job.job_name],
             environment=job_env,
             callback=callback,
             attempt_duration_seconds=creation_options.timeout,
@@ -323,7 +323,7 @@ async def vector_source_asset(
             create_schema_job,
             add_gfw_fields_job,
             *load_data_jobs,
-            update_gfw_fields_job,
+            clip_and_reproject_geom_job,
             *index_jobs,
             *cluster_jobs,
             *geostore_jobs,
@@ -377,10 +377,10 @@ async def append_vector_source_asset(
             attempt_duration_seconds=creation_options.timeout,
         )
 
-    update_gfw_fields_job: PostgresqlClientJob = PostgresqlClientJob(
+    clip_and_reproject_geom_job: PostgresqlClientJob = PostgresqlClientJob(
         dataset=dataset,
-        job_name="update_gfw_fields",
-        command=["update_gfw_fields.sh", "-d", dataset, "-v", version],
+        job_name="clip_and_reproject_geom",
+        command=["clip_and_reproject_geom.sh", "-d", dataset, "-v", version],
         parents=[job.job_name for job in final_load_data_jobs],
         environment=job_env,
         callback=callback,
@@ -390,7 +390,7 @@ async def append_vector_source_asset(
     log: ChangeLog = await execute(
         [
             *load_data_jobs,
-            update_gfw_fields_job,
+            clip_and_reproject_geom_job,
         ]
     )
 

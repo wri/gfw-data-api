@@ -12,6 +12,8 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
+set -u
+
 # Transform to web mercator (WM) in two steps to isolate the more involved
 # one for polygons that overflow WM lat bounds of -85/85 degrees
 
@@ -36,3 +38,5 @@ psql -c "
     ${GEOMETRY_NAME}_wm IS NULL
   AND
     NOT ST_Within($GEOMETRY_NAME, ST_MakeEnvelope(-180, -85, 180, 85, 4326));"
+
+set +u
