@@ -16,6 +16,7 @@ GEOMETRY_TYPE=$(psql -X -A -t -c "SELECT type
                                       AND f_table_name = '${VERSION}'
                                       AND f_geometry_column = '${GEOMETRY_NAME}';")
 
+
 # Add GFW specific layers
 echo "PSQL: ALTER TABLE \"$DATASET\".\"$VERSION\". Add GFW columns"
 psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ADD COLUMN ${GEOMETRY_NAME}_wm geometry(${GEOMETRY_TYPE},3857);
@@ -41,11 +42,11 @@ psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET gfw_area__ha = ST_Area($GEOMETRY_N
 # splitting the transform to web mercator (WM) in two steps for performance
 # to isolate the slower/involved one for polygons that overflow WM lat bounds of -85/85 deg
 # transform to WM ensuring polygons outside WM bounds are clipped.
-psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET ${GEOMETRY_NAME}_wm = ST_Transform(ST_Force2D($GEOMETRY_NAME), 3857)
+psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET ${GEOMETRY_NAME}_wm = ST_Multi(ST_Transform(ST_Force2D($GEOMETRY_NAME), 3857))
                                     WHERE ST_Within($GEOMETRY_NAME, ST_MakeEnvelope(-180, -85, 180, 85, 4326));"
 
 # transform to web mercator (WM) ensuring polygons outside WM bounds are clipped.
-psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET ${GEOMETRY_NAME}_wm = ST_Transform(ST_Force2D(ST_Buffer(ST_Intersection($GEOMETRY_NAME, ST_MakeEnvelope(-180, -85, 180, 85, 4326)), 0)), 3857)
+psql -c "UPDATE \"$DATASET\".\"$VERSION\" SET ${GEOMETRY_NAME}_wm = ST_Multi(ST_Transform(ST_Force2D(ST_Buffer(ST_Intersection($GEOMETRY_NAME, ST_MakeEnvelope(-180, -85, 180, 85, 4326)), 0)), 3857))
                                     WHERE NOT ST_Within($GEOMETRY_NAME, ST_MakeEnvelope(-180, -85, 180, 85, 4326));"
 
 # Set gfw_geostore_id not NULL to be compliant with GEOSTORE
