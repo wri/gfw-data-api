@@ -14,6 +14,8 @@ from typing import List, Optional, Tuple, Union
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import ORJSONResponse
 
+from app.settings.globals import API_URL
+
 from ...authentication.token import is_admin
 from ...crud import assets
 from ...errors import RecordAlreadyExistsError
@@ -86,7 +88,7 @@ async def get_version_assets(
                 item_count_fn=await assets.count_filtered_assets_fn(
                     dataset, version, a_t, asset_uri, is_latest, is_default
                 ),
-                request_url=f"{request.url}".split("?")[0],
+                request_url=f"{API_URL}{request.url.path}",
                 page=page_number,
                 size=page_size,
             )
