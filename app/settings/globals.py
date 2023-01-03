@@ -81,6 +81,10 @@ WRITER_HOST: str = config("DB_HOST", cast=str, default=DB_WRITER_SECRET["host"])
 WRITER_PORT: int = config("DB_PORT", cast=int, default=DB_WRITER_SECRET["port"])
 WRITER_DBNAME = config("DATABASE", cast=str, default=DB_WRITER_SECRET["dbname"])
 
+if ENV == "dev":
+    NAME_SUFFIX = config("NAME_SUFFIX", cast=str)
+    READER_DBNAME = f"{READER_DBNAME}{NAME_SUFFIX.replace('-', '_')}"
+    WRITER_DBNAME = f"{WRITER_DBNAME}{NAME_SUFFIX.replace('-', '_')}"
 
 DATABASE_CONFIG: DatabaseURL = DatabaseURL(
     drivername="asyncpg",

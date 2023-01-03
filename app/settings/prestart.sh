@@ -1,2 +1,17 @@
 #!/usr/bin/env bash
+if [ "${ENV}" = "dev" ]; then
+    DB_HOST=$(jq -nr 'env.DB_WRITER_SECRET' | jq '.host' | sed 's/"//g')
+    DB_PORT=$(jq -nr 'env.DB_WRITER_SECRET' | jq '.port' | sed 's/"//g')
+    DB_USER=$(jq -nr 'env.DB_WRITER_SECRET' | jq '.username' | sed 's/"//g')
+    DB_PASSWORD=$(jq -nr 'env.DB_WRITER_SECRET' | jq '.password' | sed 's/"//g')
+    DATABASE_MAIN=$(jq -nr 'env.DB_WRITER_SECRET' | jq '.dbname' | sed 's/"//g')
+    DATABASE="$DATABASE_MAIN$(echo $NAME_SUFFIX | sed 's/-/_/g')"
+
+    PGPASSWORD=$DB_PASSWORD psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DATABASE_MAIN} \
+    -tc "SELECT 1 FROM pg_database WHERE datname = '$DATABASE'" | \
+    grep -q 1 || PGPASSWORD=$DB_PASSWORD psql -h ${DB_HOST} \
+    -p ${DB_PORT} -U ${DB_USER} -d ${DATABASE_MAIN} \
+    -c "CREATE DATABASE $DATABASE WITH TEMPLATE ${DATABASE_MAIN}_template OWNER $DB_USER"
+fi
+
 alembic upgrade head
