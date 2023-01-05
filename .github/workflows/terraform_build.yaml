@@ -12,14 +12,15 @@ jobs:
 
     - name: Test with pytest
       run: |
-        ./scripts/test_v2
         ./scripts/test
+        ./scripts/test_v2 --no_build
 
     - name: Run codacy-coverage-reporter
       uses: codacy/codacy-coverage-reporter-action@master
       with:
         project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
         coverage-reports: tests/cobertura.xml, tests_v2/cobertura.xml
+
     - name: Run CodeCOV action
       uses: codecov/codecov-action@v1
       with:
@@ -29,8 +30,9 @@ jobs:
         name: codecov-umbrella
         fail_ci_if_error: false
         verbose: false
+
     - name: Deploy production
-      if: success() && contains(github.ref, 'master')
+      if: success() && (github.ref_name == 'master')
       env:
         ENV: production
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_production }}
@@ -41,7 +43,7 @@ jobs:
         ./scripts/infra apply
 
     - name: Deploy staging
-      if: success() && contains(github.ref, 'develop')
+      if: success() && (github.ref_name == 'develop')
       env:
         ENV: staging
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_staging }}
@@ -52,7 +54,7 @@ jobs:
         ./scripts/infra apply
 
     - name: Deploy dev
-      if: success() && (! contains(github.ref, 'develop')) && (! contains(github.ref, 'master'))
+      if: success() && (github.ref_name != 'develop') && (github.ref_name != 'master')
       env:
         ENV: dev
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_dev }}
