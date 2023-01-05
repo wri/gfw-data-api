@@ -30,7 +30,11 @@ if [ "${ZIPPED}" == "True" ]; then
   LOCAL_FILE="/vsizip/${LOCAL_FILE}"
 fi
 
-TEMP_TABLE="temp_table"
+# I think Postgres temporary tables are such that concurrent jobs won't
+# interfere with each other, but make the temp table name unique just
+# in case.
+UUID=$(python -c 'import uuid; print(uuid.uuid4(), end="")' | sed s/-//g)
+TEMP_TABLE="temp_${UUID}"
 
 # Add GFW-specific columns to the new table
 TABLE_MISSING_COLUMNS=$TEMP_TABLE
