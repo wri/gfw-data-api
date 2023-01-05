@@ -196,6 +196,8 @@ async def vector_source_asset(
 
     zipped: bool = is_zipped(first_source_uri)
 
+    # FIXME: Shouldn't we by default get all the layers, which might not be
+    #  named as the file is?
     if creation_options.layers:
         layers: List[str] = creation_options.layers
     else:

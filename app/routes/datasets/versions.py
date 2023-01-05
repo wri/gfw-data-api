@@ -111,6 +111,10 @@ async def add_new_version(
 
     _verify_source_file_access(creation_options["source_uri"])
 
+    # TODO: Do more to verify that any specified options are valid for
+    #  the actual source file. For example, check any specified schema
+    #  with ogrinfo for vector files
+
     # Register version with DB
     try:
         new_version: ORMVersion = await versions.create_version(
@@ -196,6 +200,9 @@ async def append_to_version(
     _verify_source_file_access(request.dict()["source_uri"])
 
     default_asset: ORMAsset = await assets.get_default_asset(dataset, version)
+
+    # TODO: Verify that original asset schema is valid for the actual source
+    #  file(s) with ogrinfo
 
     # For the background task, we only need the new source uri from the request
     input_data = {"creation_options": deepcopy(default_asset.creation_options)}
