@@ -213,34 +213,6 @@ class VectorSourceCreationOptions(StrictBaseModel):
         return v
 
 
-class VectorSourceAppendOptions(StrictBaseModel):
-    source_type: VectorSourceType = Field(..., description="Source type of input file.")
-    source_driver: VectorDrivers = Field(
-        ..., description="Driver of source file. Must be an OGR driver"
-    )
-    source_uri: List[str] = Field(
-        ...,
-        description=(
-            "List of input files. Vector source layers can only have one list item. "
-            "Must be a s3:// url."
-        ),
-    )
-    layers: Optional[List[str]] = Field(
-        None, description="List of input layers. Only required for .gdb and .gpkg."
-    )
-    timeout: int = DEFAULT_JOB_DURATION
-
-    @validator("source_uri")
-    def validate_source_uri(cls, v, values, **kwargs):
-        if values.get("source_driver") == VectorDrivers.csv:
-            assert len(v) >= 1, "CSV sources require at least one input file"
-        else:
-            assert (
-                len(v) == 1
-            ), "Non-CSV vector sources require one and only one input file"
-        return v
-
-
 class TableAssetCreationOptions(StrictBaseModel):
     has_header: bool = Field(True, description="Input file has header. Must be true")
     delimiter: Delimiters = Field(..., description="Delimiter used in input file")

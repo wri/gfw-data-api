@@ -192,8 +192,10 @@ def logs(batch_client):
 
 @pytest.fixture(autouse=True)
 def client():
-    """Set up a clean database before running a test Run all migrations before
-    test and downgrade afterwards."""
+    """Set up a clean database before running a test.
+
+    Run all migrations before test and downgrade afterwards.
+    """
     from app.main import app
 
     main(["--raiseerr", "upgrade", "head"])

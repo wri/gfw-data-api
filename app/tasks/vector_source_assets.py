@@ -8,11 +8,7 @@ from fastapi.encoders import jsonable_encoder
 
 from ..models.enum.creation_options import VectorDrivers
 from ..models.pydantic.change_log import ChangeLog
-from ..models.pydantic.creation_options import (
-    FieldType,
-    VectorSourceAppendOptions,
-    VectorSourceCreationOptions,
-)
+from ..models.pydantic.creation_options import FieldType, VectorSourceCreationOptions
 from ..models.pydantic.jobs import GdalPythonImportJob, PostgresqlClientJob
 from ..utils.path import get_layer_name, is_zipped
 from . import Callback, callback_constructor, writer_secrets
@@ -344,7 +340,7 @@ async def append_vector_source_asset(
     callback: Callback = callback_constructor(asset_id)
     job_env = writer_secrets + [{"name": "ASSET_ID", "value": str(asset_id)}]
 
-    creation_options = VectorSourceAppendOptions(**input_data["creation_options"])
+    creation_options = VectorSourceCreationOptions(**input_data["creation_options"])
     source_uris: List[str] = creation_options.source_uri
     first_source_uri: str = source_uris[0]
 
