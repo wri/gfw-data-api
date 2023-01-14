@@ -20,8 +20,8 @@ ME=$(basename "$0")
 
 set -u
 
-# FIXME: Downloading the whole file for this step might be unnecessary
-# Access over the network to possibly decrease run time for this step?
+# TODO: Downloading the whole file for this step might be unnecessary
+# See https://gfw.atlassian.net/browse/GTC-2233
 echo "AWSCLI: COPY DATA FROM $SRC TO $LOCAL_FILE"
 aws s3 cp "$SRC" "$LOCAL_FILE"
 

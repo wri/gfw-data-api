@@ -114,6 +114,7 @@ async def add_new_version(
     # TODO: Do more to verify that any specified options are valid for
     #  the actual source file. For example, check any specified schema
     #  with ogrinfo for vector files
+    #  See https://gfw.atlassian.net/browse/GTC-2235
 
     # Register version with DB
     try:
@@ -203,6 +204,7 @@ async def append_to_version(
 
     # TODO: Verify that original asset schema is valid for the actual source
     #  file(s) with ogrinfo
+    #  See https://gfw.atlassian.net/browse/GTC-2234
 
     # For the background task, we only need the new source uri from the request
     input_data = {"creation_options": deepcopy(default_asset.creation_options)}
