@@ -8,7 +8,7 @@ set -e
 # -p | --partition_type
 # -P | --partition_schema
 # -x | --index_type
-# -c | --column_name
+# -C | --column_names
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"

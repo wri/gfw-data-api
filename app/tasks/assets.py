@@ -53,7 +53,7 @@ async def put_asset(
 
     try:
 
-        if asset_type in asset_constructor.keys():
+        if asset_type in asset_constructor:
             log: ChangeLog = await asset_constructor[asset_type](
                 dataset,
                 version,

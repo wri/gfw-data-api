@@ -5,7 +5,7 @@ set -e
 # requires arguments
 # -d | --dataset
 # -v | --version
-# -c | --column_name
+# -C | --column_names
 # -x | --index_type
 ME=$(basename "$0")
 . get_arguments.sh "$@"
