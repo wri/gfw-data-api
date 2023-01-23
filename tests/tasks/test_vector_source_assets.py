@@ -18,6 +18,7 @@ from .. import (
     CSV2_NAME,
     CSV_NAME,
     GEOJSON_NAME,
+    GEOJSON_NAME2,
     GEOJSON_PATH,
     GEOJSON_PATH2,
     PORT,
@@ -397,6 +398,58 @@ async def test_vector_source_asset_csv_append(batch_client, async_client: AsyncC
         json={"source_uri": [f"s3://{BUCKET}/{CSV2_NAME}"]},
     )
     assert resp.status_code == 200
+
+    tasks: List[ORMTask] = await get_tasks(asset_id)
+    task_ids = [str(task.task_id) for task in tasks]
+    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
+    assert status == "saved"
+
+    # Now "test"."v1.1.1" should have an additional row
+    async with ContextEngine("READ"):
+        count = await db.scalar(db.text(f'SELECT count(*) FROM {dataset}."{version}"'))
+    assert count == 2
+
+
+@pytest.mark.asyncio
+async def test_vector_source_asset_geojson_append(
+    batch_client, async_client: AsyncClient
+):
+    _, logs = batch_client
+
+    dataset = "test"
+    version = "v1.1.2"
+    input_data = {
+        "creation_options": {
+            "source_type": "vector",
+            "source_uri": [f"s3://{BUCKET}/{GEOJSON_NAME}"],
+            "source_driver": "GeoJSON",
+            "create_dynamic_vector_tile_cache": False,
+            "add_to_geostore": False,
+            "indices": [],
+        },
+    }
+
+    asset = await create_default_asset(
+        dataset,
+        version,
+        version_payload=input_data,
+        async_client=async_client,
+        logs=logs,
+        execute_batch_jobs=True,
+    )
+    asset_id = asset["asset_id"]
+
+    # There should be a table called "test"."v1.1.1" with one row
+    async with ContextEngine("READ"):
+        count = await db.scalar(db.text(f'SELECT count(*) FROM {dataset}."{version}"'))
+    assert count == 1
+
+    # Now test appending
+    resp = await async_client.post(
+        f"/dataset/{dataset}/{version}/append",
+        json={"source_uri": [f"s3://{BUCKET}/{GEOJSON_NAME2}"]},
+    )
+    assert resp.status_code == 200, resp.text
 
     tasks: List[ORMTask] = await get_tasks(asset_id)
     task_ids = [str(task.task_id) for task in tasks]
