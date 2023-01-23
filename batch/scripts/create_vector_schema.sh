@@ -46,7 +46,7 @@ if [[ "$SRC" == *".csv" ]]; then
 fi
 
 if [[ -n "${FIELD_MAP:-}" ]]; then
-  echo "OGR2OGR: Override table schema in creation options"
+  echo "OGR2OGR: Override table schema with that specified in creation options"
   COLUMN_TYPES=""
   for row in $(echo "${FIELD_MAP}" | jq -r '.[] | @base64'); do
       _jq() {

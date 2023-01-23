@@ -35,6 +35,10 @@ from . import (
     APPEND_TSV_NAME,
     APPEND_TSV_PATH,
     BUCKET,
+    CSV2_NAME,
+    CSV2_PATH,
+    CSV_NAME,
+    CSV_PATH,
     GEOJSON_NAME,
     GEOJSON_PATH,
     PORT,
@@ -290,6 +294,8 @@ def copy_fixtures():
     upload_fake_data(**FAKE_FLOAT_DATA_PARAMS)
 
     s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
+    s3_client.upload_file(CSV_PATH, BUCKET, CSV_NAME)
+    s3_client.upload_file(CSV2_PATH, BUCKET, CSV2_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
     s3_client.upload_file(SHP_PATH, BUCKET, SHP_NAME)
     s3_client.upload_file(APPEND_TSV_PATH, BUCKET, APPEND_TSV_NAME)

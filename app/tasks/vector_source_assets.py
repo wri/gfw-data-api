@@ -81,6 +81,7 @@ async def _create_load_csv_data_jobs(
     dataset: str,
     version: str,
     source_uris: List[str],
+    table_schema: Optional[List[FieldType]],
     parents: List[str],
     job_env: List[Dict[str, str]],
     callback: Callback,
@@ -105,6 +106,12 @@ async def _create_load_csv_data_jobs(
             load_data_command.append("-s")
             load_data_command.append(uri)
 
+        if table_schema is not None:
+            load_data_command += [
+                "-m",
+                json.dumps(jsonable_encoder(table_schema)),
+            ]
+
         load_vector_data_jobs.append(
             GdalPythonImportJob(
                 dataset=dataset,
@@ -125,6 +132,7 @@ async def _create_load_other_data_jobs(
     source_uri: str,
     layers: List[str],
     zipped: bool,
+    table_schema: Optional[List[FieldType]],
     parents: List[str],
     job_env: List[Dict[str, str]],
     callback: Callback,
@@ -162,6 +170,12 @@ async def _create_load_other_data_jobs(
             "-X",
             str(zipped),
         ]
+
+        if table_schema is not None:
+            load_data_command += [
+                "-m",
+                json.dumps(jsonable_encoder(table_schema)),
+            ]
 
         load_data_job: GdalPythonImportJob = GdalPythonImportJob(
             dataset=dataset,
@@ -226,6 +240,7 @@ async def vector_source_asset(
             dataset,
             version,
             source_uris,
+            creation_options.table_schema,
             parents=[add_gfw_fields_job.job_name],
             job_env=job_env,
             callback=callback,
@@ -239,6 +254,7 @@ async def vector_source_asset(
             first_source_uri,
             layers,
             zipped,
+            creation_options.table_schema,
             parents=[add_gfw_fields_job.job_name],
             job_env=job_env,
             callback=callback,
@@ -356,6 +372,7 @@ async def append_vector_source_asset(
             dataset,
             version,
             source_uris,
+            creation_options.table_schema,
             parents=[],
             job_env=job_env,
             callback=callback,
@@ -369,6 +386,7 @@ async def append_vector_source_asset(
             first_source_uri,
             layers,
             zipped,
+            creation_options.table_schema,
             parents=[],
             job_env=job_env,
             callback=callback,

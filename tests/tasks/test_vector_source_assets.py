@@ -8,11 +8,22 @@ import pytest
 from httpx import AsyncClient
 
 from app.application import ContextEngine, db
+from app.crud.tasks import get_tasks
 from app.models.orm.geostore import Geostore
+from app.models.orm.tasks import Task as ORMTask
 from app.models.pydantic.geostore import Geometry, GeostoreCommon
 
-from .. import BUCKET, GEOJSON_NAME, GEOJSON_PATH, GEOJSON_PATH2, PORT, SHP_NAME
-from ..utils import create_default_asset
+from .. import (
+    BUCKET,
+    CSV2_NAME,
+    CSV_NAME,
+    GEOJSON_NAME,
+    GEOJSON_PATH,
+    GEOJSON_PATH2,
+    PORT,
+    SHP_NAME,
+)
+from ..utils import create_default_asset, poll_jobs
 from . import (
     check_asset_status,
     check_dynamic_vector_tile_cache_status,
@@ -309,3 +320,90 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
 
     response = await async_client.get("/dataset/different/v1.1.1/assets")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_vector_source_asset_csv(batch_client, async_client: AsyncClient):
+    _, logs = batch_client
+
+    dataset = "test"
+    version = "v1.1.1"
+    input_data = {
+        "creation_options": {
+            "source_type": "vector",
+            "source_uri": [f"s3://{BUCKET}/{CSV_NAME}"],
+            "source_driver": "CSV",
+            "table_schema": [{"field_name": "alert__date", "field_type": "date"}],
+            "create_dynamic_vector_tile_cache": True,
+        },
+    }
+
+    asset = await create_default_asset(
+        dataset,
+        version,
+        version_payload=input_data,
+        async_client=async_client,
+        logs=logs,
+        execute_batch_jobs=True,
+    )
+    asset_id = asset["asset_id"]
+
+    await check_version_status(dataset, version, 3)
+    await check_asset_status(dataset, version, 1)
+    await check_task_status(asset_id, 8, "inherit_from_geostore")
+
+    # There should be a table called "test"."v1.1.1" with one row
+    async with ContextEngine("READ"):
+        count = await db.scalar(db.text(f'SELECT count(*) FROM {dataset}."{version}"'))
+    assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_vector_source_asset_csv_append(batch_client, async_client: AsyncClient):
+    _, logs = batch_client
+
+    dataset = "test"
+    version = "v1.1.1"
+    input_data = {
+        "creation_options": {
+            "source_type": "vector",
+            "source_uri": [f"s3://{BUCKET}/{CSV_NAME}"],
+            "source_driver": "CSV",
+            "table_schema": [{"field_name": "alert__date", "field_type": "date"}],
+            "create_dynamic_vector_tile_cache": False,
+            "add_to_geostore": False,
+            "indices": [],
+        },
+    }
+
+    asset = await create_default_asset(
+        dataset,
+        version,
+        version_payload=input_data,
+        async_client=async_client,
+        logs=logs,
+        execute_batch_jobs=True,
+    )
+    asset_id = asset["asset_id"]
+
+    # There should be a table called "test"."v1.1.1" with one row
+    async with ContextEngine("READ"):
+        count = await db.scalar(db.text(f'SELECT count(*) FROM {dataset}."{version}"'))
+    assert count == 1
+
+    # Now test appending
+    resp = await async_client.post(
+        f"/dataset/{dataset}/{version}/append",
+        json={"source_uri": [f"s3://{BUCKET}/{CSV2_NAME}"]},
+    )
+    assert resp.status_code == 200
+
+    tasks: List[ORMTask] = await get_tasks(asset_id)
+    task_ids = [str(task.task_id) for task in tasks]
+    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
+    assert status == "saved"
+
+    # Now "test"."v1.1.1" should have an additional row
+    async with ContextEngine("READ"):
+        count = await db.scalar(db.text(f'SELECT count(*) FROM {dataset}."{version}"'))
+    assert count == 2
