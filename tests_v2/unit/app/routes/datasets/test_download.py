@@ -71,3 +71,17 @@ async def test_downloads(
         )
 
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio()
+async def test_download_vector_asset_count(
+    generic_vector_source_version, async_client: AsyncClient
+):
+    dataset, version, _ = generic_vector_source_version
+
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/download/csv?sql=select count(*) from mytable;",
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert response.text == '"count"\r\n1\r\n'

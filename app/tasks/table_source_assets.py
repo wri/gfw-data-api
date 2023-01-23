@@ -10,9 +10,10 @@ from ..models.pydantic.creation_options import (
     TableSourceCreationOptions,
 )
 from ..models.pydantic.jobs import Job, PostgresqlClientJob
-from ..settings.globals import AURORA_JOB_QUEUE_FAST, CHUNK_SIZE
+from ..settings.globals import AURORA_JOB_QUEUE_FAST
 from ..tasks import Callback, callback_constructor, writer_secrets
 from ..tasks.batch import BATCH_DEPENDENCY_LIMIT, execute
+from .utils import chunk_list
 
 
 async def table_source_asset(
@@ -85,12 +86,11 @@ async def table_source_asset(
     parents = [create_table_job.job_name]
     parents.extend([job.job_name for job in partition_jobs])
 
-    # We can break into at most BATCH_DEPENDENCY_LIMIT parallel jobs, otherwise future jobs will hit the dependency
-    # limit, so break sources into chunks
+    # We can break into at most BATCH_DEPENDENCY_LIMIT parallel jobs
+    # (otherwise future jobs will hit the dependency limit) so break
+    # source_uris into chunks
     chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
-    uri_chunks = [
-        source_uris[x : x + chunk_size] for x in range(0, len(source_uris), chunk_size)
-    ]
+    uri_chunks = chunk_list(source_uris, chunk_size)
 
     for i, uri_chunk in enumerate(uri_chunks):
         command = [
@@ -146,7 +146,7 @@ async def table_source_asset(
             ),
         )
 
-    # Add indicies
+    # Add indices
     index_jobs: List[Job] = list()
     parents = [job.job_name for job in load_data_jobs]
     parents.extend([job.job_name for job in geometry_jobs])
@@ -228,12 +228,11 @@ async def append_table_source_asset(
     # Load data
     load_data_jobs: List[Job] = list()
 
-    # We can break into at most BATCH_DEPENDENCY_LIMIT parallel jobs, otherwise future jobs will hit the dependency
-    # limit, so break sources into chunks
+    # We can break into at most BATCH_DEPENDENCY_LIMIT parallel jobs
+    # (otherwise future jobs will hit the dependency limit)
+    # so break source_uris into chunks
     chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
-    uri_chunks = [
-        source_uris[x : x + chunk_size] for x in range(0, len(source_uris), chunk_size)
-    ]
+    uri_chunks = chunk_list(source_uris, chunk_size)
 
     for i, uri_chunk in enumerate(uri_chunks):
         command = [
@@ -312,7 +311,7 @@ def _create_partition_jobs(
     partition_jobs: List[PostgresqlClientJob] = list()
 
     if isinstance(partitions.partition_schema, list):
-        chunks = _chunk_list(
+        chunks = chunk_list(
             [schema.dict(by_alias=True) for schema in partitions.partition_schema]
         )
         for i, chunk in enumerate(chunks):
@@ -399,10 +398,10 @@ def _create_cluster_jobs(
         # Playing it save and cluster partition tables one after the other.
         # TODO: Still need to test if we can cluster tables which are part of the same partition concurrently.
         #  this would speed up this step by a lot. Partitions require a full lock on the table,
-        #  but I don't know if the lock is aquired for the entire partition or only the partition table.
+        #  but I don't know if the lock is acquired for the entire partition or only the partition table.
 
         if isinstance(partitions.partition_schema, list):
-            chunks = _chunk_list(
+            chunks = chunk_list(
                 [schema.dict(by_alias=True) for schema in partitions.partition_schema]
             )
             for i, chunk in enumerate(chunks):
@@ -506,8 +505,3 @@ def _cluster_partition_job(
         callback=callback,
         attempt_duration_seconds=timeout,
     )
-
-
-def _chunk_list(data: List[Any], chunk_size: int = CHUNK_SIZE) -> List[List[Any]]:
-    """Split list into chunks of fixed size."""
-    return [data[x : x + chunk_size] for x in range(0, len(data), chunk_size)]
