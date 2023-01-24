@@ -54,5 +54,4 @@ async def test_redirect_latest(
     response = await async_client.post(
         f"/dataset/{dataset}/latest/assets", follow_redirects=False
     )
-    print(response.text)
     assert response.status_code == 400

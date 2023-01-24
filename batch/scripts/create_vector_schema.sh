@@ -8,11 +8,20 @@ set -e
 # -s | --source
 # -l | --source_layer
 # -f | --local_file
+# -m | --field_map
 # -X | --zipped
+
+# optional arguments
+# -g | --geometry_name (get_arguments.sh specifies default)
+# -i | --fid_name (get_arguments.sh specifies default)
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
+set -u
+
+# TODO: Downloading the whole file for this step might be unnecessary
+# See https://gfw.atlassian.net/browse/GTC-2233
 echo "AWSCLI: COPY DATA FROM $SRC TO $LOCAL_FILE"
 aws s3 cp "$SRC" "$LOCAL_FILE"
 
@@ -32,12 +41,12 @@ args=(-f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=
 
 # If source is CSV, there's no SRS information so add it manually
 if [[ "$SRC" == *".csv" ]]; then
-  echo "OGR2OGR: Add creation options for CSV source"
+  echo "OGR2OGR: Set SRS for CSV source"
   args+=(-s_srs EPSG:4326 -oo GEOM_POSSIBLE_NAMES="$GEOMETRY_NAME" -oo KEEP_GEOM_COLUMNS=NO)
 fi
 
-if [[ -n "${FIELD_MAP}" ]]; then
-  echo "OGR2OGR: Override table schema in creation options"
+if [[ -n "${FIELD_MAP:-}" ]]; then
+  echo "OGR2OGR: Override table schema with that specified in creation options"
   COLUMN_TYPES=""
   for row in $(echo "${FIELD_MAP}" | jq -r '.[] | @base64'); do
       _jq() {
@@ -61,3 +70,4 @@ echo "PSQL: ALTER TABLE. Set storage external"
 psql -c "ALTER TABLE \"$DATASET\".\"$VERSION\" ALTER COLUMN $GEOMETRY_NAME SET STORAGE EXTERNAL;"
 
 echo "DONE"
+set +u

@@ -44,6 +44,19 @@ CACHE_MEM = min(1024, int(MEM_PER_PROC * 0.08))
 
 GEOTIFF_COMPRESSION = "DEFLATE"
 
+TARGET_CRS = CRS.from_epsg(3857)  # This script always creates WM tiles
+
+GDAL_TRANSLATE_RESAMPLING_METHODS = (
+    "nearest",
+    "bilinear",
+    "cubic",
+    "cubicspline",
+    "lanczos",
+    "average",
+    "rms",
+    "mode",
+)
+
 Bounds = Tuple[float, float, float, float]
 
 
@@ -180,6 +193,81 @@ def download_tile(args: Tuple[str, str, Queue, Callable]) -> str:
     return local_src_file_path
 
 
+def scale_raster(
+    tile_bounds: Bounds,
+    width: int,
+    height: int,
+    resampling_method: str,
+    vrt_path,
+    scaled_tile_path,
+    logger,
+):
+    """Scale/extract a raster tile from a VRT with gdal_translate."""
+    cmd: List[str] = [
+        "gdal_translate",
+        "-r",
+        resampling_method,
+        "-projwin",
+        f"{tile_bounds[0]}",
+        f"{tile_bounds[3]}",
+        f"{tile_bounds[2]}",
+        f"{tile_bounds[1]}",
+        "-outsize",
+        f"{width}",
+        f"{height}",
+        "-co",
+        f"COMPRESS={GEOTIFF_COMPRESSION}",
+        "-co",
+        "TILED=YES",
+        vrt_path,
+        scaled_tile_path,
+    ]
+    env = dict(
+        os.environ,
+        GDAL_CACHEMAX=f"{CACHE_MEM}",
+        VRT_SHARED_SOURCE="0",
+    )
+
+    logger.log(
+        logging.INFO,
+        f"Begin scaling/extracting {vrt_path} to {scaled_tile_path} with the command {cmd}",
+    )
+
+    tic = time.perf_counter()
+    proc = subprocess.Popen(
+        cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
+    pid = proc.pid
+    while proc.poll() is None:
+        mem = psutil.Process(pid).memory_info().rss / (1024**2)
+        logger.log(
+            logging.INFO,
+            f"Scaling process {pid} currently consuming {mem} MB of memory",
+        )
+        time.sleep(10)
+    toc = time.perf_counter()
+
+    if proc.returncode == -9:
+        logger.log(
+            logging.ERROR,
+            f"Scaling subprocess {pid} killed with signal 9 (likely OOM)!",
+        )
+        raise SubprocessKilledError
+    if proc.returncode != 0:
+        logger.log(
+            logging.ERROR,
+            f"Scaling subprocess {pid} FAILED with exit code {proc.returncode}",
+        )
+        logger.log(logging.ERROR, proc.stdout)
+        raise Exception(f"Scaling {vrt_path} failed")
+
+    logger.log(
+        logging.INFO,
+        f"Scaling {vrt_path} to {scaled_tile_path} took {toc - tic:0.4f} seconds",
+    )
+    return toc - tic
+
+
 def warp_raster(
     bounds: Bounds, width, height, resampling_method, source_path, target_path, logger
 ):
@@ -187,7 +275,7 @@ def warp_raster(
     cmd: List[str] = [
         "gdalwarp",
         "-t_srs",
-        "epsg:3857",  # TODO: Parameterize?
+        f"{TARGET_CRS}",
         "-te",
         f"{bounds[0]}",
         f"{bounds[1]}",
@@ -223,7 +311,7 @@ def warp_raster(
     )
     pid = proc.pid
     while proc.poll() is None:
-        mem = psutil.Process(pid).memory_info().rss / (1024 ** 2)
+        mem = psutil.Process(pid).memory_info().rss / (1024**2)
         logger.log(
             logging.INFO, f"Warp process {pid} currently consuming {mem} MB of memory"
         )
@@ -279,7 +367,7 @@ def compress_raster(source_path, target_path, logger):
     )
     pid = proc.pid
     while proc.poll() is None:
-        mem = psutil.Process(pid).memory_info().rss / (1024 ** 2)
+        mem = psutil.Process(pid).memory_info().rss / (1024**2)
         logger.log(
             logging.INFO,
             f"Compression process {pid} currently consuming {mem} MB of memory",
@@ -299,7 +387,7 @@ def compress_raster(source_path, target_path, logger):
             f"Compressing subprocess {pid} FAILED with exit code {proc.returncode}",
         )
         logger.log(logging.ERROR, proc.stdout)
-        raise Exception(f"Warping {source_path} failed")
+        raise Exception(f"Compressing {source_path} failed")
 
     logger.log(
         logging.INFO,
@@ -309,7 +397,7 @@ def compress_raster(source_path, target_path, logger):
 
 
 def process_tile(
-    args: Tuple[str, Bounds, str, int, str, str, str, Queue, Callable]
+    args: Tuple[str, Bounds, str, int, str, str, str, CRS, Queue, Callable]
 ) -> str:
     """Extract a tile from a source VRT, compress and upload it."""
     (
@@ -320,6 +408,7 @@ def process_tile(
         vrt_path,
         target_bucket,
         target_prefix,
+        source_crs,
         q,
         q_configurer,
     ) = args
@@ -335,10 +424,6 @@ def process_tile(
         logger.log(logging.INFO, f"Tile {tile_id} already exists in S3, skipping")
         return tile_id
 
-    nb_tiles = max(1, int(2 ** target_zoom / 256)) ** 2
-    height = int(2 ** target_zoom * 256 / math.sqrt(nb_tiles))
-    width = height
-
     warp_dir = os.path.join(os.path.curdir, "warped")
     os.makedirs(warp_dir, exist_ok=True)
     warped_tile_path = os.path.join(warp_dir, tile_file_name)
@@ -347,25 +432,45 @@ def process_tile(
     os.makedirs(compressed_dir, exist_ok=True)
     compressed_tile_path = os.path.join(compressed_dir, tile_file_name)
 
-    # If the compressed file exists, we know we at least started the gdal_translate
-    # step, but don't know if it finished. So remove that file and re-run translate
-    # from the warped file (which should exist). If the compressed file doesn't exist
-    # at all, run starting with the warp command (with the overwrite option
-    # regardless).
-    if os.path.isfile(compressed_tile_path):
-        os.remove(compressed_tile_path)
-    else:
-        warp_raster(
+    tiles_in_zoom_level = max(1, int(2**target_zoom / 256)) ** 2
+    width = height = int(2**target_zoom * 256 / math.sqrt(tiles_in_zoom_level))
+
+    # For some situations (scaling within the same CRS) we can use just
+    # gdal_translate instead of gdalwarp... and gdal_translate seems to be
+    # much faster.
+    if (
+        source_crs == TARGET_CRS
+        and resampling_method in GDAL_TRANSLATE_RESAMPLING_METHODS
+    ):
+        scale_raster(
             tile_bounds,
             width,
             height,
             resampling_method,
             vrt_path,
-            warped_tile_path,
+            compressed_tile_path,
             logger,
         )
+    else:
+        # If the compressed file exists, we know we at least started the
+        # compression step, but don't know if it finished. So remove that file
+        # and re-compress from the warped file (which should exist). If the
+        # compressed file doesn't exist at all, run starting with the warp
+        # command.
+        if os.path.isfile(compressed_tile_path):
+            os.remove(compressed_tile_path)
+        else:
+            warp_raster(
+                tile_bounds,
+                width,
+                height,
+                resampling_method,
+                vrt_path,
+                warped_tile_path,
+                logger,
+            )
 
-    compress_raster(warped_tile_path, compressed_tile_path, logger)
+        compress_raster(warped_tile_path, compressed_tile_path, logger)
 
     logger.log(logging.INFO, f"Uploading {tile_id} to S3...")
     s3_client = get_s3_client()
@@ -373,7 +478,8 @@ def process_tile(
     logger.log(logging.INFO, f"Finished uploading {tile_id} to S3")
 
     os.remove(compressed_tile_path)
-    os.remove(warped_tile_path)
+    if os.path.isfile(warped_tile_path):
+        os.remove(warped_tile_path)
 
     return tile_id
 
@@ -381,7 +487,7 @@ def process_tile(
 def resample(
     dataset: str = Option(..., help="Dataset name."),
     version: str = Option(..., help="Version string."),
-    source_uri: str = Option(..., help="URI of asset's tiles.geojson."),
+    source_uri: str = Option(..., help="URI of source asset's tiles.geojson."),
     resampling_method: str = Option(..., help="Resampling method to use."),
     target_zoom: int = Option(..., help="Target zoom level."),
     target_prefix: str = Option(..., help="Destination S3 prefix."),
@@ -396,7 +502,7 @@ def resample(
     log_client_configurer(log_queue)
     logger = logging.getLogger("main")
 
-    logger.log(logging.INFO, f"Reprojecting/resampling tiles in {source_uri}")
+    logger.log(logging.INFO, f"Resampling tiles in {source_uri}")
     logger.log(
         logging.INFO,
         f"# procs:{NUM_PROCESSES} MEM_PER_PROC:{MEM_PER_PROC} WARP_MEM:{WARP_MEM} CACHE_MEM:{CACHE_MEM}",
@@ -449,10 +555,13 @@ def resample(
     dest_proj_grid = grid_factory(f"zoom_{target_zoom}")
     all_dest_proj_tile_ids = dest_proj_grid.get_tile_ids()
 
+    with rasterio.open(overall_vrt) as src_vrt:
+        source_crs = src_vrt.crs
+
     wm_extent = Polygon()
     for tile_info in src_tiles_info:
         left, bottom, right, top = reproject_bounds(
-            shape(tile_info[1]).bounds, CRS.from_epsg(4326), CRS.from_epsg(3857)
+            shape(tile_info[1]).bounds, source_crs, TARGET_CRS
         )
         wm_extent = unary_union(
             [
@@ -469,6 +578,7 @@ def resample(
             ]
         )
 
+    print(f"WM Extent: {wm_extent}")
     target_tiles: List[Tuple[str, Bounds]] = list()
     for tile_id in all_dest_proj_tile_ids:
         left, bottom, right, top = dest_proj_grid.get_tile_bounds(tile_id)
@@ -494,6 +604,7 @@ def resample(
             overall_vrt,
             bucket,
             target_prefix,
+            source_crs,
             log_queue,
             log_client_configurer,
         )
