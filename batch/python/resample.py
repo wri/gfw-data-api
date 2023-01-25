@@ -44,7 +44,10 @@ CACHE_MEM = min(1024, int(MEM_PER_PROC * 0.08))
 
 GEOTIFF_COMPRESSION = "DEFLATE"
 
-TARGET_CRS = CRS.from_epsg(3857)  # This script always creates WM tiles
+# Tiles.geojson feature coords always seem to be expressed in lat/lng
+TILES_GEOJSON_CRS = CRS.from_epsg(4326)
+# This script always creates WM tiles
+TARGET_CRS = CRS.from_epsg(3857)
 
 GDAL_TRANSLATE_RESAMPLING_METHODS = (
     "nearest",
@@ -555,8 +558,12 @@ def resample(
     dest_proj_grid = grid_factory(f"zoom_{target_zoom}")
     all_dest_proj_tile_ids = dest_proj_grid.get_tile_ids()
 
-    with rasterio.open(overall_vrt) as src_vrt:
-        source_crs = src_vrt.crs
+    # NOTE: pixetl seems to always write features in tiles.geojson in
+    # epsg:4326 coordinates. If that ever changes, something similar to
+    # the following may be helpful:
+    # with rasterio.open(overall_vrt) as src_vrt:
+    #     source_crs = src_vrt.crs
+    source_crs: CRS = TILES_GEOJSON_CRS
 
     wm_extent = Polygon()
     for tile_info in src_tiles_info:
