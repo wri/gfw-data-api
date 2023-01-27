@@ -25,7 +25,7 @@ from gfw_pixetl.grids import grid_factory
 from gfw_pixetl.pixetl_prep import create_geojsons
 from logging_utils import listener_configurer, log_client_configurer, log_listener
 from pyproj import CRS, Transformer
-from shapely.geometry import Polygon, shape
+from shapely.geometry import MultiPolygon, Polygon, shape
 from shapely.ops import unary_union
 from typer import Option, run
 
@@ -487,6 +487,69 @@ def process_tile(
     return tile_id
 
 
+def intersecting_tiles(
+    source_crs: CRS,
+    src_tiles_info: List[Tuple[str, Any]],
+    target_grid_name: str,
+    logger,
+) -> List[Tuple[str, Bounds]]:
+    """Find all tiles in the target zoom level which intersect the source
+    tiles."""
+    target_grid = grid_factory(f"{target_grid_name}")
+    all_target_grid_tile_ids = target_grid.get_tile_ids()
+    logger.log(
+        logging.INFO,
+        f"Target grid ({target_grid_name}) has {len(all_target_grid_tile_ids)} tiles",
+    )
+
+    extent_in_target_grid = MultiPolygon()
+    for tile_info in src_tiles_info:
+        left, bottom, right, top = reproject_bounds(
+            shape(tile_info[1]).bounds, source_crs, TARGET_CRS
+        )
+        extent_in_target_grid = unary_union(
+            [
+                extent_in_target_grid,
+                Polygon(
+                    (
+                        (left, top),
+                        (right, top),
+                        (right, bottom),
+                        (left, bottom),
+                        (left, top),
+                    )
+                ),
+            ]
+        )
+    logger.log(
+        logging.INFO, f"Source tiles extent in target grid: {extent_in_target_grid}"
+    )
+
+    tiles_in_target_grid: List[Tuple[str, Bounds]] = list()
+    for tile_id in all_target_grid_tile_ids:
+        left, bottom, right, top = target_grid.get_tile_bounds(tile_id)
+
+        tile_geom = Polygon(
+            ((left, top), (right, top), (right, bottom), (left, bottom), (left, top))
+        )
+
+        if tile_geom.intersects(extent_in_target_grid) and not tile_geom.touches(
+            extent_in_target_grid
+        ):
+            logger.log(
+                logging.INFO,
+                f"Tile {tile_id} of grid {target_grid_name} intersects the source data",
+            )
+            tiles_in_target_grid.append((tile_id, (left, bottom, right, top)))
+
+    logger.log(
+        logging.INFO,
+        f"Found {len(tiles_in_target_grid)} tiles in the target grid "
+        f"which intersect the source tiles: {tiles_in_target_grid}",
+    )
+    return tiles_in_target_grid
+
+
 def resample(
     dataset: str = Option(..., help="Dataset name."),
     version: str = Option(..., help="Version string."),
@@ -511,7 +574,7 @@ def resample(
         f"# procs:{NUM_PROCESSES} MEM_PER_PROC:{MEM_PER_PROC} WARP_MEM:{WARP_MEM} CACHE_MEM:{CACHE_MEM}",
     )
 
-    src_tiles_info = get_source_tiles_info(source_uri)
+    src_tiles_info: List[Tuple[str, Any]] = get_source_tiles_info(source_uri)
 
     if not src_tiles_info:
         logger.log(logging.INFO, "No input files! I guess we're good then.")
@@ -555,8 +618,6 @@ def resample(
 
     # Determine which tiles in the target CRS + zoom level intersect with the
     # extent of the source
-    dest_proj_grid = grid_factory(f"zoom_{target_zoom}")
-    all_dest_proj_tile_ids = dest_proj_grid.get_tile_ids()
 
     # NOTE: pixetl seems to always write features in tiles.geojson in
     # epsg:4326 coordinates. If that ever changes, something similar to
@@ -564,41 +625,10 @@ def resample(
     # with rasterio.open(overall_vrt) as src_vrt:
     #     source_crs = src_vrt.crs
     source_crs: CRS = TILES_GEOJSON_CRS
-
-    wm_extent = Polygon()
-    for tile_info in src_tiles_info:
-        left, bottom, right, top = reproject_bounds(
-            shape(tile_info[1]).bounds, source_crs, TARGET_CRS
-        )
-        wm_extent = unary_union(
-            [
-                wm_extent,
-                Polygon(
-                    (
-                        (left, top),
-                        (right, top),
-                        (right, bottom),
-                        (left, bottom),
-                        (left, top),
-                    )
-                ),
-            ]
-        )
-
-    print(f"WM Extent: {wm_extent}")
-    target_tiles: List[Tuple[str, Bounds]] = list()
-    for tile_id in all_dest_proj_tile_ids:
-        left, bottom, right, top = dest_proj_grid.get_tile_bounds(tile_id)
-
-        tile_geom = Polygon(
-            ((left, top), (right, top), (right, bottom), (left, bottom), (left, top))
-        )
-
-        if tile_geom.intersects(wm_extent) and not tile_geom.touches(wm_extent):
-            logger.log(logging.INFO, f"Tile {tile_id} intersects!")
-            target_tiles.append((tile_id, (left, bottom, right, top)))
-
-    logger.log(logging.INFO, f"Found {len(target_tiles)} intersecting tiles")
+    target_grid_name = f"zoom_{target_zoom}"
+    tiles_in_target_grid: List[Tuple[str, Bounds]] = intersecting_tiles(
+        source_crs, src_tiles_info, target_grid_name, logger
+    )
 
     bucket, _ = get_s3_path_parts(source_uri)
 
@@ -615,7 +645,7 @@ def resample(
             log_queue,
             log_client_configurer,
         )
-        for tile_id, tile_bounds in target_tiles
+        for tile_id, tile_bounds in tiles_in_target_grid
     ]
 
     # Cannot use normal pool here since we run sub-processes
