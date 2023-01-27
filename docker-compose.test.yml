@@ -14,6 +14,7 @@ services:
       - ./tests_v2:/app/tests_v2
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
+      - PYTHONPATH=batch/python
       - ENV=test
       - DB_HOST=test_database_12
       - DATABASE=_test
