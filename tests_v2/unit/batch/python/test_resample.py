@@ -5,9 +5,6 @@ from pyproj import CRS
 
 from batch.python.resample import Bounds, intersecting_tiles
 
-# from unittest.mock import patch
-
-
 MODULE_PATH_UNDER_TEST = "batch.python.resample"
 
 
@@ -90,6 +87,8 @@ def test_intersecting_tiles_wm_same_crs_no_scaling_straddling_4_tiles():
 
 
 def test_intersecting_tiles_wm_same_crs_zoom_out():
+    """Also an area straddling the corners of 4 wm tiles, but this time target
+    zoom level is one level out, turning those 4 into one tile."""
     source_crs = CRS.from_epsg(3857)
     src_tiles_info: List[Tuple[str, Any]] = [
         (
@@ -121,7 +120,8 @@ def test_intersecting_tiles_wm_same_crs_zoom_out():
     assert expected_tile_ids == set([tile_info[0] for tile_info in result])
 
 
-def test_intersecting_tiles_wm_to_epsg_4326():
+def test_intersecting_tiles_epsg_4326_to_wm():
+    """Go from a small epsg:4326 source tile to zoom level 10 tiles."""
     source_crs = CRS.from_epsg(4326)
     src_tiles_info: List[Tuple[str, Any]] = [
         (
