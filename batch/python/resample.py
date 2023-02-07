@@ -620,15 +620,17 @@ def resample(
     # extent of the source
 
     # NOTE: pixetl seems to always write features in tiles.geojson in
-    # epsg:4326 coordinates. If that ever changes, something similar to
-    # the following may be helpful:
-    # with rasterio.open(overall_vrt) as src_vrt:
-    #     source_crs = src_vrt.crs
-    source_crs: CRS = TILES_GEOJSON_CRS
+    # epsg:4326 coordinates (even when the tiles themselves are
+    # epsg:3857). If that ever changes, update TILES_GEOJSON_CRS
+    # or get the CRS from tiles.geojson dynamically
     target_grid_name = f"zoom_{target_zoom}"
     tiles_in_target_grid: List[Tuple[str, Bounds]] = intersecting_tiles(
-        source_crs, src_tiles_info, target_grid_name, logger
+        TILES_GEOJSON_CRS, src_tiles_info, target_grid_name, logger
     )
+
+    # Now get the ACTUAL CRS of the source tiles
+    with rasterio.open(overall_vrt) as src_vrt:
+        source_crs: CRS = src_vrt.crs
 
     bucket, _ = get_s3_path_parts(source_uri)
 
