@@ -690,7 +690,10 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
                 f"{row.dataset}__{row.creation_options['pixel_meaning']}"
             )
 
-        no_data_val = parse_obj_as(Optional[Union[List[NoDataType], NoDataType]])
+        no_data_val = parse_obj_as(
+            Optional[Union[List[NoDataType], NoDataType]],
+            row.creation_options["no_data"],
+        )
         if isinstance(no_data_val, List):
             no_data_val = no_data_val[0]
 
