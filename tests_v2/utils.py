@@ -1,12 +1,18 @@
 import json
 import os
 import uuid
+from contextlib import asynccontextmanager
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import httpx
+from _pytest.monkeypatch import MonkeyPatch
 
 from app.application import ContextEngine
 from app.models.pydantic.extent import Extent
+from app.routes.datasets import versions
+from app.tasks import batch, delete_assets
+from app.tasks.raster_tile_set_assets import raster_tile_set_assets
+from tests_v2.fixtures.creation_options.versions import RASTER_CREATION_OPTIONS
 
 
 class BatchJobMock:
@@ -98,3 +104,43 @@ async def _create_vector_source_assets(dataset_name, version_name):
         await db.all(
             f"""INSERT INTO "{dataset_name}"."{version_name}" (fid, geom) SELECT 1,  ST_GeomFromGeoJSON('{json.dumps(geojson["features"][0]["geometry"])}');"""
         )
+
+
+@asynccontextmanager
+async def custom_raster_version(
+    async_client: httpx.AsyncClient,
+    dataset_name: str,
+    monkeypatch: MonkeyPatch,
+    **kwarg_creation_options,
+):
+    version_name: str = "v1"
+
+    # Patch all functions which reach out to external services
+    # Basically we're leaving out everything but the DB entries being created
+    batch_job_mock = BatchJobMock()
+    monkeypatch.setattr(versions, "_verify_source_file_access", void_coroutine)
+    monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
+    monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
+    monkeypatch.setattr(raster_tile_set_assets, "get_extent", get_extent_mocked)
+    monkeypatch.setattr(
+        delete_assets, "flush_cloudfront_cache", dict_function_closure({})
+    )
+
+    await async_client.put(
+        f"/dataset/{dataset_name}/{version_name}",
+        json={
+            "creation_options": {
+                **RASTER_CREATION_OPTIONS,
+                **kwarg_creation_options,
+            }
+        },
+    )
+
+    await async_client.patch(
+        f"/dataset/{dataset_name}/{version_name}", json={"is_latest": True}
+    )
+
+    try:
+        yield version_name
+    finally:
+        pass
