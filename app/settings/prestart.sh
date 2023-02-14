@@ -5,7 +5,7 @@ if [ "${ENV}" = "dev" ]; then
     DB_USER=$(jq -nr 'env.DB_WRITER_SECRET' | jq '.username' | sed 's/"//g')
     DB_PASSWORD=$(jq -nr 'env.DB_WRITER_SECRET' | jq '.password' | sed 's/"//g')
     DATABASE_MAIN=$(jq -nr 'env.DB_WRITER_SECRET' | jq '.dbname' | sed 's/"//g')
-    DATABASE="$DATABASE_MAIN$(echo $NAME_SUFFIX | sed 's/-/_/g')"
+    DATABASE="$DATABASE_MAIN$NAME_SUFFIX" # branch database
 
     PGPASSWORD=$DB_PASSWORD psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DATABASE_MAIN} \
     -tc "SELECT 1 FROM pg_database WHERE datname = '$DATABASE'" | \

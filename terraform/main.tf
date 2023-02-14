@@ -78,7 +78,7 @@ module "batch_tile_cache_image" {
 module "fargate_autoscaling" {
   source                    = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.2"
   project                   = local.project
-  name_suffix               = local.name_suffix
+  name_suffix               = replace(local.name_suffix, "-", "_")
   tags                      = local.fargate_tags
   vpc_id                    = data.terraform_remote_state.core.outputs.vpc_id
   private_subnet_ids        = data.terraform_remote_state.core.outputs.private_subnet_ids
