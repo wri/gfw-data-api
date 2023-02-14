@@ -124,7 +124,10 @@ module "batch_aurora_writer" {
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn
   ]
-  instance_types = ["c5.large", "c4.large", "m5.large", "m4.large"]
+  instance_types = [
+    "c6a.large", "c6i.large", "c5a.large", "c5.large", "c4.large",
+    "m6a.large", "m6i.large", "m5a.large", "m5.large", "m4.large"
+  ]
   # "a1.medium" works but needs special ARM docker file
   # currently not supported but want to have "m6g.medium", "t2.nano", "t2.micro", "t2.small"
   key_pair  = var.key_pair
@@ -167,7 +170,11 @@ module "batch_data_lake_writer" {
   use_ephemeral_storage    = true
   # SPOT is actually the default, this is just a placeholder until GTC-1791 is done
   launch_type              = "SPOT"
-  instance_types           = ["r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge", "c5d.12xlarge", "c5d.18xlarge", "c5d.24xlarge"]
+  instance_types           = [
+    "r6id.large", "r6id.xlarge", "r6id.2xlarge", "r6id.4xlarge", "r6id.8xlarge", "r6id.12xlarge", "r6id.16xlarge", "r6id.24xlarge",
+    "r5ad.large", "r5ad.xlarge", "r5ad.2xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge",
+    "r5d.large", "r5d.xlarge", "r5d.2xlarge", "r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge"
+  ]
   compute_environment_name = "data_lake_writer"
 }
 
