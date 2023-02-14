@@ -576,14 +576,6 @@ async def _test_raster_tile_cache(
     c_o_resp = await async_client.get(f"/asset/{tile_cache_asset_id}/creation_options")
     assert c_o_resp.json()["status"] == "success"
 
-    ########
-    print("#############################################################")
-    print("DATALAKE: ", s3_client.list_objects_v2(Bucket=DATA_LAKE_BUCKET))
-    print("#############################################################")
-    print("TILECACHE: ", s3_client.list_objects_v2(Bucket=TILE_CACHE_BUCKET))
-    print("#############################################################")
-    ########
-
     # Check if file for all expected assets are present
     for pixel_meaning in wm_tile_set_assets:
         test_files = [
@@ -780,13 +772,11 @@ async def test_asset_extent(async_client):
     asset_id = resp.json()["data"][0]["asset_id"]
 
     resp = await async_client.get(f"/asset/{asset_id}/extent")
-    # print(f"ASSET EXTENT RESP: {json.dumps(resp.json(), indent=2)}")
     assert (
         resp.json()["data"]["features"][0]["geometry"]["coordinates"] == expected_coords
     )
 
     resp = await async_client.get(f"/dataset/{dataset}/{version}/extent")
-    # print(f"VERSION EXTENT RESP: {json.dumps(resp.json(), indent=2)}")
     assert (
         resp.json()["data"]["features"][0]["geometry"]["coordinates"] == expected_coords
     )

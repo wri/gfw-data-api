@@ -35,8 +35,14 @@ from . import (
     APPEND_TSV_NAME,
     APPEND_TSV_PATH,
     BUCKET,
+    CSV2_NAME,
+    CSV2_PATH,
+    CSV_NAME,
+    CSV_PATH,
     GEOJSON_NAME,
+    GEOJSON_NAME2,
     GEOJSON_PATH,
+    GEOJSON_PATH2,
     PORT,
     SHP_NAME,
     SHP_PATH,
@@ -192,8 +198,10 @@ def logs(batch_client):
 
 @pytest.fixture(autouse=True)
 def client():
-    """Set up a clean database before running a test Run all migrations before
-    test and downgrade afterwards."""
+    """Set up a clean database before running a test.
+
+    Run all migrations before test and downgrade afterwards.
+    """
     from app.main import app
 
     main(["--raiseerr", "upgrade", "head"])
@@ -288,6 +296,9 @@ def copy_fixtures():
     upload_fake_data(**FAKE_FLOAT_DATA_PARAMS)
 
     s3_client.upload_file(GEOJSON_PATH, BUCKET, GEOJSON_NAME)
+    s3_client.upload_file(GEOJSON_PATH2, BUCKET, GEOJSON_NAME2)
+    s3_client.upload_file(CSV_PATH, BUCKET, CSV_NAME)
+    s3_client.upload_file(CSV2_PATH, BUCKET, CSV2_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
     s3_client.upload_file(SHP_PATH, BUCKET, SHP_NAME)
     s3_client.upload_file(APPEND_TSV_PATH, BUCKET, APPEND_TSV_NAME)
