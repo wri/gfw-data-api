@@ -248,9 +248,6 @@ async def generic_raster_version(
         },
     )
 
-    # mock batch processes
-    # TODO need to add anything here?
-
     # Set all pending tasks to success
     for job_id in batch_job_mock.jobs:
         payload = {

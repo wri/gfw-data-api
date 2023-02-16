@@ -2,11 +2,13 @@ from typing import List, Optional, Union
 
 from ..enum.pixetl import Grid
 from .base import StrictBaseModel
+from .creation_options import NoDataType
 from .metadata import RasterTable
 
 
 class BaseLayer(StrictBaseModel):
     name: str
+    no_data: Optional[NoDataType]
 
 
 class EncodedLayer(BaseLayer):
