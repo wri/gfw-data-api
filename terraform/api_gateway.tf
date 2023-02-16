@@ -1,7 +1,7 @@
 resource "aws_api_gateway_rest_api" "api_gw_api" {
   name           = "GFWDataAPIGateway${local.name_suffix}"
   description    = "GFW Data API Gateway"
-  api_key_source = "AUTHORIZER"
+  api_key_source = "AUTHORIZER" # pragma: allowlist secret
 
   endpoint_configuration {
     types = ["REGIONAL"]
@@ -222,6 +222,17 @@ resource "aws_api_gateway_deployment" "api_gw_dep" {
   triggers = {
     redeployment = "${md5(file("api_gateway.tf"))}-${md5(file("./modules/api_gateway/endpoint/main.tf"))}-${md5(file("./modules/api_gateway/resource/main.tf"))}"
   }
+
+  depends_on = [
+    module.query_get.integration_point,
+    module.query_post.integration_point,
+    #FIXME don't hardcode the spatial integration points
+    module.download_shapes_endpoint["shp"].integration_point,
+    module.download_shapes_endpoint["gpkg"].integration_point,
+    module.download_shapes_endpoint["geotiff"].integration_point,
+    module.unprotected_endpoints.integration_point
+  ]
+
   lifecycle {
     create_before_destroy = true
   }
