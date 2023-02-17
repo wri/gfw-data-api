@@ -3,13 +3,13 @@ locals {
 }
 
 resource "aws_batch_job_definition" "aurora" {
-  name                 = "${var.project}-aurora${var.name_suffix}"
+  name                 = substr("${var.project}-aurora${var.name_suffix}", 0, 64)
   type                 = "container"
   container_properties = data.template_file.postgres_container_properties.rendered
 }
 
 resource "aws_batch_job_queue" "aurora" {
-  name                 = "${var.project}-aurora-job-queue${var.name_suffix}"
+  name                 = substr("${var.project}-aurora-job-queue${var.name_suffix}", 0, 64)
   state                = "ENABLED"
   priority             = 1
   compute_environments = [var.aurora_compute_environment_arn]
@@ -17,7 +17,7 @@ resource "aws_batch_job_queue" "aurora" {
 }
 
 resource "aws_batch_job_queue" "aurora_fast" {
-  name                 = "${var.project}-aurora-job-queue_fast${var.name_suffix}"
+  name                 = substr("${var.project}-aurora-job-queue_fast${var.name_suffix}", 0, 64)
   state                = "ENABLED"
   priority             = 10
   compute_environments = [var.aurora_compute_environment_arn]
@@ -25,13 +25,13 @@ resource "aws_batch_job_queue" "aurora_fast" {
 }
 
 resource "aws_batch_job_definition" "data_lake" {
-  name                 = "${var.project}-data-lake${var.name_suffix}"
+  name                 = substr("${var.project}-data-lake${var.name_suffix}", 0, 64)
   type                 = "container"
   container_properties = data.template_file.gdal_container_properties.rendered
 }
 
 resource "aws_batch_job_queue" "data_lake" {
-  name                 = "${var.project}-data-lake-job-queue${var.name_suffix}"
+  name                 = substr("${var.project}-data-lake-job-queue${var.name_suffix}", 0, 64)
   state                = "ENABLED"
   priority             = 1
   compute_environments = [var.data_lake_compute_environment_arn]
@@ -39,13 +39,13 @@ resource "aws_batch_job_queue" "data_lake" {
 }
 
 resource "aws_batch_job_definition" "pixetl" {
-  name                 = "${var.project}-pixetl${var.name_suffix}"
+  name                 = substr("${var.project}-pixetl${var.name_suffix}", 0, 64)
   type                 = "container"
   container_properties = data.template_file.pixetl_container_properties.rendered
 }
 
 resource "aws_batch_job_queue" "pixetl" {
-  name                 = "${var.project}-pixetl-job-queue${var.name_suffix}"
+  name                 = substr("${var.project}-pixetl-job-queue${var.name_suffix}", 0, 64)
   state                = "ENABLED"
   priority             = 1
   compute_environments = [var.pixetl_compute_environment_arn]
@@ -54,13 +54,13 @@ resource "aws_batch_job_queue" "pixetl" {
 
 
 resource "aws_batch_job_definition" "tile_cache" {
-  name                 = "${var.project}-tile_cache${var.name_suffix}"
+  name                 = substr("${var.project}-tile_cache${var.name_suffix}", 0, 64)
   type                 = "container"
   container_properties = data.template_file.tile_cache_container_properties.rendered
 }
 
 resource "aws_batch_job_queue" "tile_cache" {
-  name                 = "${var.project}-tile_cache-job-queue${var.name_suffix}"
+  name                 = substr("${var.project}-tile_cache-job-queue${var.name_suffix}", 0, 64)
   state                = "ENABLED"
   priority             = 1
   compute_environments = [var.tile_cache_compute_environment_arn]

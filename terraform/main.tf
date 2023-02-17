@@ -27,13 +27,13 @@ locals {
   aurora_max_vcpus      = local.aurora_instance_class == "db.t3.medium" ? 2 : local.aurora_instance_class == "db.r6g.large" ? 2 : local.aurora_instance_class == "db.r6g.xlarge" ? 4 : local.aurora_instance_class == "db.r6g.2xlarge" ? 8 : local.aurora_instance_class == "db.r6g.4xlarge" ? 16 : local.aurora_instance_class == "db.r6g.8xlarge" ? 32 : local.aurora_instance_class == "db.r6g.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.large" ? 2 : local.aurora_instance_class == "db.r5.xlarge" ? 4 : local.aurora_instance_class == "db.r5.2xlarge" ? 8 : local.aurora_instance_class == "db.r5.4xlarge" ? 16 : local.aurora_instance_class == "db.r5.8xlarge" ? 32 : local.aurora_instance_class == "db.r5.12xlarge" ? 48 : local.aurora_instance_class == "db.r5.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.24xlarge" ? 96 : ""
   service_url           = var.environment == "dev" ? "http://${module.fargate_autoscaling.lb_dns_name}" : var.service_url
   container_tag         = substr(var.git_sha, 0, 7)
-  api_gw_stage_name     = "deploy${replace(local.name_suffix, "-", "_")}"
+  api_gw_stage_name     = substr("deploy${replace(local.name_suffix, "-", "_")}", 0, 64)
 }
 
 # Docker image for FastAPI app
 module "app_docker_image" {
   source     = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.2"
-  image_name = lower("${local.project}${local.name_suffix}")
+  image_name = substr(lower("${local.project}${local.name_suffix}"), 0, 64)
   root_dir   = "${path.root}/../"
   tag        = local.container_tag
 }
@@ -41,7 +41,7 @@ module "app_docker_image" {
 # Docker image for GDAL Python Batch jobs
 module "batch_gdal_python_image" {
   source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.2"
-  image_name      = lower("${local.project}-gdal_python${local.name_suffix}")
+  image_name      = substr(lower("${local.project}-gdal_python${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "gdal-python.dockerfile"
@@ -50,7 +50,7 @@ module "batch_gdal_python_image" {
 # Docker image for PixETL Batch jobs
 module "batch_pixetl_image" {
   source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.2"
-  image_name      = lower("${local.project}-pixetl${local.name_suffix}")
+  image_name      = substr(lower("${local.project}-pixetl${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "pixetl.dockerfile"
@@ -59,7 +59,7 @@ module "batch_pixetl_image" {
 # Docker image for PostgreSQL Client Batch jobs
 module "batch_postgresql_client_image" {
   source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.2"
-  image_name      = lower("${local.project}-postgresql_client${local.name_suffix}")
+  image_name      = substr(lower("${local.project}-postgresql_client${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "postgresql-client.dockerfile"
@@ -68,7 +68,7 @@ module "batch_postgresql_client_image" {
 # Docker image for Tile Cache Batch jobs
 module "batch_tile_cache_image" {
   source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.2"
-  image_name      = lower("${local.project}-tile_cache${local.name_suffix}")
+  image_name      = substr(lower("${local.project}-tile_cache${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "tile_cache.dockerfile"
