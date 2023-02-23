@@ -1,5 +1,5 @@
 resource "aws_api_gateway_rest_api" "api_gw_api" {
-  name           = "GFWDataAPIGateway${local.name_suffix}"
+  name           = substr("GFWDataAPIGateway${local.name_suffix}", 0, 64)
   description    = "GFW Data API Gateway"
   api_key_source = "AUTHORIZER" # pragma: allowlist secret
 
@@ -164,7 +164,7 @@ module "unprotected_endpoints" {
 
 
 resource "aws_api_gateway_usage_plan" "internal" {
-  name = "internal_apps${local.name_suffix}"
+  name = substr("internal_apps${local.name_suffix}", 0, 64)
 
   api_stages {
     api_id = aws_api_gateway_rest_api.api_gw_api.id
@@ -190,7 +190,7 @@ resource "aws_api_gateway_usage_plan" "internal" {
 }
 
 resource "aws_api_gateway_usage_plan" "external" {
-  name = "external_apps${local.name_suffix}"
+  name = substr("external_apps${local.name_suffix}", 0, 64)
 
   api_stages {
     api_id = aws_api_gateway_rest_api.api_gw_api.id
@@ -260,7 +260,7 @@ resource "aws_api_gateway_authorizer" "api_key" {
 
 
 resource "aws_iam_role" "invocation_role" {
-  name = "api_gateway_auth_invocation${local.name_suffix}"
+  name = substr("api_gateway_auth_invocation${local.name_suffix}", 0, 64)
   path = "/"
 
   assume_role_policy = data.template_file.api_gateway_role_policy.rendered
@@ -274,14 +274,14 @@ resource "aws_iam_role_policy" "invocation_policy" {
 }
 
 resource "aws_iam_role" "lambda" {
-  name = "api_gw_authorizer_lambda${local.name_suffix}"
+  name = substr("api_gw_authorizer_lambda${local.name_suffix}", 0, 64)
 
   assume_role_policy = data.template_file.lambda_role_policy.rendered
 }
 
 resource "aws_lambda_function" "authorizer" {
   filename      = "api_gateway/api_key_authorizer_lambda.zip"
-  function_name = "api_gateway_authorizer${local.name_suffix}"
+  function_name = substr("api_gateway_authorizer${local.name_suffix}", 0, 64)
   runtime       = "python3.8"
   role          = aws_iam_role.lambda.arn
   handler       = "lambda_function.handler"
@@ -300,7 +300,7 @@ resource "aws_api_gateway_account" "main" {
 }
 
 resource "aws_iam_role" "cloudwatch" {
-  name = "api_gateway_cloudwatch_global${local.name_suffix}"
+  name = substr("api_gateway_cloudwatch_global${local.name_suffix}", 0, 64)
 
   assume_role_policy = data.template_file.api_gateway_role_policy.rendered
 }
