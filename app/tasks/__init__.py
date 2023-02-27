@@ -10,6 +10,7 @@ from ..models.orm.tasks import Task as ORMTask
 from ..models.pydantic.change_log import ChangeLog
 from ..settings.globals import (
     API_URL,
+    AWS_REGION,
     READER_DBNAME,
     READER_HOST,
     READER_PASSWORD,
@@ -26,6 +27,7 @@ from ..settings.globals import (
 report_vars: List = [
     {"name": "STATUS_URL", "value": urljoin(API_URL, "task")},
     {"name": "SERVICE_ACCOUNT_TOKEN", "value": SERVICE_ACCOUNT_TOKEN},
+    {"name": "AWS_REGION", "value": AWS_REGION},
 ]
 
 writer_secrets: List = [

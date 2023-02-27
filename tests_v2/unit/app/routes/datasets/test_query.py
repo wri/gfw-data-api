@@ -1,9 +1,16 @@
+from typing import Tuple
+from unittest.mock import Mock
+
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient
 
+from app.models.enum.pixetl import Grid
+from app.models.pydantic.raster_analysis import DerivedLayer, SourceLayer
 from app.routes.datasets import queries
-from tests_v2.utils import invoke_lambda_mocked
+from app.routes.datasets.queries import _get_data_environment
+from tests_v2.fixtures.creation_options.versions import RASTER_CREATION_OPTIONS
+from tests_v2.utils import custom_raster_version, invoke_lambda_mocked
 
 
 @pytest.mark.skip("Temporarily skip until we require API keys")
@@ -379,3 +386,154 @@ async def test_query_vector_asset_disallowed_10(
         "HINT:  No function matches the given name and argument types. "
         "You might need to add explicit type casts."
     )
+
+
+@pytest.mark.asyncio
+async def test__get_data_environment_helpers_called_dateconf(
+    async_client: AsyncClient,
+    generic_dataset: Tuple[str, str],
+    monkeypatch: MonkeyPatch,
+):
+    dataset_name, _ = generic_dataset
+    pixel_meaning: str = "date_conf"
+    no_data_value = 0
+    grid: Grid = Grid(RASTER_CREATION_OPTIONS["grid"])
+
+    async with custom_raster_version(
+        async_client,
+        dataset_name,
+        monkeypatch,
+        pixel_meaning=pixel_meaning,
+        no_data=no_data_value,
+    ) as version_name:
+
+        _get_source_layer_mock = Mock(
+            queries._get_source_layer,
+            return_value=SourceLayer(
+                name="some_layer_name",
+                source_uri="some_source_uri",
+                grid=grid,
+                no_data=no_data_value,
+            ),
+        )
+        monkeypatch.setattr(queries, "_get_source_layer", _get_source_layer_mock)
+        _get_date_conf_derived_layers_mock = Mock(
+            queries._get_date_conf_derived_layers, return_value=[]
+        )
+        monkeypatch.setattr(
+            queries, "_get_date_conf_derived_layers", _get_date_conf_derived_layers_mock
+        )
+
+        _ = await _get_data_environment(grid)
+
+        assert _get_date_conf_derived_layers_mock.call_args.args == (
+            f"{dataset_name}__{pixel_meaning}",
+            no_data_value,
+        )
+
+        assert _get_source_layer_mock.call_args.args == (
+            f"s3://gfw-data-lake-test/{dataset_name}/{version_name}/raster/epsg-4326/{grid.value}/{pixel_meaning}/geotiff/"
+            + "{tile_id}.tif",
+            f"{dataset_name}__{pixel_meaning}",
+            grid,
+            no_data_value,
+            None,
+        )
+
+
+@pytest.mark.asyncio
+async def test__get_data_environment_helpers_called_area_density(
+    async_client: AsyncClient,
+    generic_dataset: Tuple[str, str],
+    monkeypatch: MonkeyPatch,
+):
+    dataset_name, _ = generic_dataset
+    pixel_meaning: str = "hamsters_ha-1"
+    no_data_value = None
+    grid: Grid = Grid(RASTER_CREATION_OPTIONS["grid"])
+
+    async with custom_raster_version(
+        async_client,
+        dataset_name,
+        monkeypatch,
+        pixel_meaning=pixel_meaning,
+        no_data=no_data_value,
+    ) as version_name:
+
+        _get_source_layer_mock = Mock(
+            queries._get_source_layer,
+            return_value=SourceLayer(
+                name="some_layer_name",
+                source_uri="some_source_uri",
+                grid=grid,
+                no_data=no_data_value,
+            ),
+        )
+        monkeypatch.setattr(queries, "_get_source_layer", _get_source_layer_mock)
+
+        _get_area_density_layer_mock = Mock(
+            queries._get_area_density_layer,
+            return_value=Mock(DerivedLayer, autospec=True),
+        )
+        monkeypatch.setattr(
+            queries, "_get_area_density_layer", _get_area_density_layer_mock
+        )
+
+        _ = await _get_data_environment(grid)
+
+        assert _get_area_density_layer_mock.call_args.args == (
+            f"{dataset_name}__{pixel_meaning}",
+            no_data_value,
+        )
+
+        assert _get_source_layer_mock.call_args.args == (
+            f"s3://gfw-data-lake-test/{dataset_name}/{version_name}/raster/epsg-4326/{grid.value}/{pixel_meaning}/geotiff/"
+            + "{tile_id}.tif",
+            f"{dataset_name}__{pixel_meaning}",
+            grid,
+            no_data_value,
+            None,
+        )
+
+
+@pytest.mark.asyncio
+async def test__get_data_environment_helper_called(
+    async_client: AsyncClient,
+    generic_dataset: Tuple[str, str],
+    monkeypatch: MonkeyPatch,
+):
+    dataset_name, _ = generic_dataset
+
+    pixel_meaning: str = "foo"
+    no_data_value = 255
+    grid: Grid = Grid(RASTER_CREATION_OPTIONS["grid"])
+
+    async with custom_raster_version(
+        async_client,
+        dataset_name,
+        monkeypatch,
+        pixel_meaning=pixel_meaning,
+        no_data=no_data_value,
+    ) as version_name:
+
+        _get_source_layer_mock = Mock(
+            queries._get_source_layer,
+            return_value=SourceLayer(
+                name="some_layer_name",
+                source_uri="some_source_uri",
+                grid=grid,
+                no_data=no_data_value,
+            ),
+        )
+        monkeypatch.setattr(queries, "_get_source_layer", _get_source_layer_mock)
+
+        _ = await _get_data_environment(grid)
+
+        assert _get_source_layer_mock.call_args.args == (
+            f"s3://gfw-data-lake-test/{dataset_name}/{version_name}/raster/epsg-4326/{grid.value}/{pixel_meaning}/geotiff/"
+            + "{tile_id}.tif",
+            f"{dataset_name}__{pixel_meaning}",
+            grid,
+            no_data_value,
+            None,
+        )
