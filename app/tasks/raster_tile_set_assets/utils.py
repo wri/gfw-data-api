@@ -10,7 +10,6 @@ from app.models.pydantic.creation_options import PixETLCreationOptions
 from app.models.pydantic.jobs import GDALDEMJob, Job, PixETLJob
 from app.settings.globals import (
     AWS_GCS_KEY_SECRET_ARN,
-    AWS_REGION,
     DEFAULT_JOB_DURATION,
     ENV,
     MAX_CORES,
@@ -21,7 +20,6 @@ from app.tasks import Callback, reader_secrets
 from app.utils.path import get_asset_uri, split_s3_path, tile_uri_to_tiles_geojson
 
 JOB_ENV = reader_secrets + [
-    {"name": "AWS_REGION", "value": AWS_REGION},
     {"name": "ENV", "value": ENV},
 ]
 
