@@ -220,7 +220,7 @@ async def raster_tile_cache_validator(
         req_input_bands: Optional[List[int]] = symbology_info.req_input_bands
 
         if req_input_bands and (
-            req_input_bands in source_asset.creation_options.get("band_count", [1])
+            source_asset.creation_options.get("band_count", 1) in req_input_bands
         ):
             message = (
                 f"Symbology type {symbology_type} requires a source "
