@@ -83,3 +83,4 @@ class ColorMapType(str, Enum):
     date_conf_intensity_multi_8 = "date_conf_intensity_multi_8"
     date_conf_intensity_multi_16 = "date_conf_intensity_multi_16"
     year_intensity = "year_intensity"
+    value_intensity = "value_intensity"
