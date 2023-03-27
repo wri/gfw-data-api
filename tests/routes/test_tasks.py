@@ -42,7 +42,7 @@ async def test_tasks_success(async_client):
     get_resp = await async_client.get(f"/asset/{asset_id}/tasks")
     existing_tasks = get_resp.json()["data"]
 
-    assert len(existing_tasks) == 7
+    assert len(existing_tasks) == 8
     for task in existing_tasks:
         assert len(task["change_log"]) == 1
         assert task["change_log"][0]["status"] == "pending"
@@ -217,7 +217,7 @@ async def test_tasks_failure(async_client):
     get_resp = await async_client.get(f"/asset/{asset_id}/tasks")
     existing_tasks = get_resp.json()["data"]
 
-    assert len(existing_tasks) == 7
+    assert len(existing_tasks) == 8
     for task in existing_tasks:
         assert len(task["change_log"]) == 1
         assert task["change_log"][0]["status"] == "pending"

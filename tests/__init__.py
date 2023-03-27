@@ -27,6 +27,12 @@ REQUESTS_THUS_FAR: List = list()
 LOG_GROUP = "/aws/batch/job"
 ROOT = os.environ["ROOT"]
 
+CSV_NAME = "test.csv"
+CSV_PATH = os.path.join(os.path.dirname(__file__), "fixtures", CSV_NAME)
+
+CSV2_NAME = "test2.csv"
+CSV2_PATH = os.path.join(os.path.dirname(__file__), "fixtures", CSV_NAME)
+
 TSV_NAME = "test.tsv"
 TSV_PATH = os.path.join(os.path.dirname(__file__), "fixtures", TSV_NAME)
 

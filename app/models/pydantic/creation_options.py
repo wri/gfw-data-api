@@ -158,7 +158,7 @@ class RasterTileSetSourceCreationOptions(PixETLCreationOptions):
     source_type: RasterSourceType = Field(..., description="Source type of input file.")
     source_driver: RasterDrivers = Field(
         ...,
-        description="Driver of source file. Must be an OGR driver",
+        description="Driver of source file. Must be a GDAL driver",
     )
 
 
@@ -191,18 +191,22 @@ class VectorSourceCreationOptions(StrictBaseModel):
     )
     create_dynamic_vector_tile_cache: bool = Field(
         True,
-        description="By default, vector sources will implicitly create a dynamic vector tile cache. "
-        "Disable this option by setting value to `false`",
+        description=(
+            "By default, vector sources will implicitly create a dynamic vector tile cache. "
+            "Disable this option by setting value to `false`"
+        ),
     )
     add_to_geostore: bool = Field(
         True,
-        description="Include features to geostore, to make geometries searchable via geostore endpoint.",
+        description="Make geometries searchable via geostore endpoint.",
     )
     timeout: int = DEFAULT_JOB_DURATION
 
     @validator("source_uri")
     def validate_source_uri(cls, v, values, **kwargs):
-        if values.get("source_driver") != VectorDrivers.csv:
+        if values.get("source_driver") == VectorDrivers.csv:
+            assert len(v) >= 1, "CSV sources require at least one input file"
+        else:
             assert (
                 len(v) == 1
             ), "Non-CSV vector sources require one and only one input file"

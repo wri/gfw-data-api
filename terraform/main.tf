@@ -27,21 +27,21 @@ locals {
   aurora_max_vcpus      = local.aurora_instance_class == "db.t3.medium" ? 2 : local.aurora_instance_class == "db.r6g.large" ? 2 : local.aurora_instance_class == "db.r6g.xlarge" ? 4 : local.aurora_instance_class == "db.r6g.2xlarge" ? 8 : local.aurora_instance_class == "db.r6g.4xlarge" ? 16 : local.aurora_instance_class == "db.r6g.8xlarge" ? 32 : local.aurora_instance_class == "db.r6g.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.large" ? 2 : local.aurora_instance_class == "db.r5.xlarge" ? 4 : local.aurora_instance_class == "db.r5.2xlarge" ? 8 : local.aurora_instance_class == "db.r5.4xlarge" ? 16 : local.aurora_instance_class == "db.r5.8xlarge" ? 32 : local.aurora_instance_class == "db.r5.12xlarge" ? 48 : local.aurora_instance_class == "db.r5.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.24xlarge" ? 96 : ""
   service_url           = var.environment == "dev" ? "http://${module.fargate_autoscaling.lb_dns_name}" : var.service_url
   container_tag         = substr(var.git_sha, 0, 7)
-  api_gw_stage_name     = "deploy${replace(local.name_suffix, "-", "_")}"
+  api_gw_stage_name     = substr("deploy${replace(local.name_suffix, "-", "_")}", 0, 64)
 }
 
 # Docker image for FastAPI app
 module "app_docker_image" {
-  source     = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.2"
-  image_name = lower("${local.project}${local.name_suffix}")
+  source     = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
+  image_name = substr(lower("${local.project}${local.name_suffix}"), 0, 64)
   root_dir   = "${path.root}/../"
   tag        = local.container_tag
 }
 
 # Docker image for GDAL Python Batch jobs
 module "batch_gdal_python_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.2"
-  image_name      = lower("${local.project}-gdal_python${local.name_suffix}")
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
+  image_name      = substr(lower("${local.project}-gdal_python${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "gdal-python.dockerfile"
@@ -49,8 +49,8 @@ module "batch_gdal_python_image" {
 
 # Docker image for PixETL Batch jobs
 module "batch_pixetl_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.2"
-  image_name      = lower("${local.project}-pixetl${local.name_suffix}")
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
+  image_name      = substr(lower("${local.project}-pixetl${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "pixetl.dockerfile"
@@ -58,8 +58,8 @@ module "batch_pixetl_image" {
 
 # Docker image for PostgreSQL Client Batch jobs
 module "batch_postgresql_client_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.2"
-  image_name      = lower("${local.project}-postgresql_client${local.name_suffix}")
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
+  image_name      = substr(lower("${local.project}-postgresql_client${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "postgresql-client.dockerfile"
@@ -67,8 +67,8 @@ module "batch_postgresql_client_image" {
 
 # Docker image for Tile Cache Batch jobs
 module "batch_tile_cache_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.2"
-  image_name      = lower("${local.project}-tile_cache${local.name_suffix}")
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
+  image_name      = substr(lower("${local.project}-tile_cache${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "tile_cache.dockerfile"
@@ -76,7 +76,7 @@ module "batch_tile_cache_image" {
 
 
 module "fargate_autoscaling" {
-  source                    = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.2"
+  source                    = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.3"
   project                   = local.project
   name_suffix               = local.name_suffix
   tags                      = local.fargate_tags
@@ -116,7 +116,7 @@ module "fargate_autoscaling" {
 
 # Using instance types with 1 core only
 module "batch_aurora_writer" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.2"
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.3"
   ecs_role_policy_arns = [
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
@@ -124,7 +124,10 @@ module "batch_aurora_writer" {
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn
   ]
-  instance_types = ["c5.large", "c4.large", "m5.large", "m4.large"]
+  instance_types = [
+    "c6a.large", "c6i.large", "c5a.large", "c5.large", "c4.large",
+    "m6a.large", "m6i.large", "m5a.large", "m5.large", "m4.large"
+  ]
   # "a1.medium" works but needs special ARM docker file
   # currently not supported but want to have "m6g.medium", "t2.nano", "t2.micro", "t2.small"
   key_pair  = var.key_pair
@@ -144,7 +147,7 @@ module "batch_aurora_writer" {
 
 
 module "batch_data_lake_writer" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.2"
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.3"
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
@@ -167,7 +170,11 @@ module "batch_data_lake_writer" {
   use_ephemeral_storage    = true
   # SPOT is actually the default, this is just a placeholder until GTC-1791 is done
   launch_type              = "SPOT"
-  instance_types           = ["r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge", "c5d.12xlarge", "c5d.18xlarge", "c5d.24xlarge"]
+  instance_types           = [
+    "r6id.large", "r6id.xlarge", "r6id.2xlarge", "r6id.4xlarge", "r6id.8xlarge", "r6id.12xlarge", "r6id.16xlarge", "r6id.24xlarge",
+    "r5ad.large", "r5ad.xlarge", "r5ad.2xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge",
+    "r5d.large", "r5d.xlarge", "r5d.2xlarge", "r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge"
+  ]
   compute_environment_name = "data_lake_writer"
 }
 

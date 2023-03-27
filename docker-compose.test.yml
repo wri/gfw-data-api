@@ -14,6 +14,7 @@ services:
       - ./tests_v2:/app/tests_v2
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
+      - PYTHONPATH=batch/python
       - ENV=test
       - DB_HOST=test_database_12
       - DATABASE=_test
@@ -81,11 +82,12 @@ services:
       - POSTGRES_PASSWORD=postgres # pragma: allowlist secret
     volumes:
       - test_database_data_12:/var/lib/postgresql/data
+    command: ["postgres", "-c", "log_statement=all"]
     restart: on-failure
 
   motoserver-s3:
     container_name: motoserver-s3
-    image: motoserver/moto:2.0.10
+    image: motoserver/moto:4.0.11
     ports:
       - "${MOTO_PORT-5000}:5000"
     entrypoint: moto_server s3 -H 0.0.0.0

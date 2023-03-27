@@ -2,7 +2,7 @@
 import csv
 import re
 from io import StringIO
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
@@ -13,12 +13,14 @@ from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
+
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
+from pydantic.tools import parse_obj_as
 from sqlalchemy.sql import and_
 
 from ...application import db
@@ -59,6 +61,7 @@ from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
 from ...models.orm.versions import Version as VersionORM
+from ...models.pydantic.creation_options import NoDataType
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
 from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
 from ...models.pydantic.query import CsvQueryRequestIn, QueryRequestIn
@@ -669,28 +672,52 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
                 f"{row.dataset}__{row.creation_options['pixel_meaning']}"
             )
 
-        layers.append(_get_source_layer(row, source_layer_name, grid))
+        no_data_val = parse_obj_as(
+            Optional[Union[List[NoDataType], NoDataType]],
+            row.creation_options["no_data"],
+        )
+        if isinstance(no_data_val, List):
+            no_data_val = no_data_val[0]
+
+        layers.append(
+            _get_source_layer(
+                row.asset_uri,
+                source_layer_name,
+                grid,
+                no_data_val,
+                row.metadata.get("raster_table", None),
+            )
+        )
 
         if row.creation_options["pixel_meaning"] == "date_conf":
-            layers += _get_date_conf_derived_layers(row, source_layer_name)
+            layers += _get_date_conf_derived_layers(source_layer_name, no_data_val)
 
         if row.creation_options["pixel_meaning"].endswith("_ha-1"):
-            layers.append(_get_area_density_layer(row, source_layer_name))
+            layers.append(_get_area_density_layer(source_layer_name, no_data_val))
 
     return DataEnvironment(layers=layers)
 
 
-def _get_source_layer(row, source_layer_name: str, grid: Grid) -> SourceLayer:
+def _get_source_layer(
+    asset_uri: str,
+    source_layer_name: str,
+    grid: Grid,
+    no_data_val: Optional[NoDataType],
+    raster_table: Optional[RasterTable],
+) -> SourceLayer:
     return SourceLayer(
-        source_uri=row.asset_uri,
+        source_uri=asset_uri,
         tile_scheme="nw",
         grid=grid,
         name=source_layer_name,
-        raster_table=row.metadata.bands[0]("raster_table", None),
+        no_data=no_data_val,
+        raster_table=raster_table,
     )
 
 
-def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
+def _get_date_conf_derived_layers(
+    source_layer_name: str, no_data_val: Optional[NoDataType]
+) -> List[DerivedLayer]:
     """Get derived layers that decode our date_conf layers for alert
     systems."""
     # TODO should these somehow be in the metadata or creation options instead of hardcoded?
@@ -712,6 +739,7 @@ def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__date"),
             calc="A % 10000",
+            no_data=no_data_val,
             decode_expression=decode_expression,
             encode_expression=encode_expression,
         ),
@@ -719,18 +747,22 @@ def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__confidence"),
             calc="floor(A / 10000).astype(uint8)",
+            no_data=no_data_val,
             raster_table=conf_encoding,
         ),
     ]
 
 
-def _get_area_density_layer(row, source_layer_name) -> DerivedLayer:
+def _get_area_density_layer(
+    source_layer_name: str, no_data_val: Optional[NoDataType]
+) -> DerivedLayer:
     """Get the derived gross layer for whose values represent density per pixel
     area."""
     return DerivedLayer(
         source_layer=source_layer_name,
         name=source_layer_name.replace("_ha-1", ""),
         calc="A * area",
+        no_data=no_data_val,
     )
 
 

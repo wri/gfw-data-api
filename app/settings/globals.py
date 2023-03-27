@@ -83,8 +83,8 @@ WRITER_DBNAME = config("DATABASE", cast=str, default=DB_WRITER_SECRET["dbname"])
 
 if ENV == "dev":
     NAME_SUFFIX = config("NAME_SUFFIX", cast=str)
-    READER_DBNAME = f"{READER_DBNAME}{NAME_SUFFIX.replace('-', '_')}"
-    WRITER_DBNAME = f"{WRITER_DBNAME}{NAME_SUFFIX.replace('-', '_')}"
+    READER_DBNAME = f"{READER_DBNAME}{NAME_SUFFIX}"
+    WRITER_DBNAME = f"{WRITER_DBNAME}{NAME_SUFFIX}"
 
 DATABASE_CONFIG: DatabaseURL = DatabaseURL(
     drivername="asyncpg",

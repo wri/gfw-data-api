@@ -17,8 +17,11 @@ from ..utils.path import get_asset_uri, split_s3_path
 from .assets import put_asset
 from .raster_tile_set_assets import raster_tile_set_asset
 from .table_source_assets import append_table_source_asset, table_source_asset
-from .vector_source_assets import vector_source_asset
+from .vector_source_assets import append_vector_source_asset, vector_source_asset
 
+# WRT type, these look more to me like
+# FrozenSet[Tuple[SourceType, Coroutine[Any, Any, ChangeLog]]
+# but I cannot get PyCharm to agree.
 DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
     {
         SourceType.vector: vector_source_asset,
@@ -26,9 +29,11 @@ DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
         SourceType.raster: raster_tile_set_asset,
     }.items()
 )
-
 DEFAULT_APPEND_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
-    {SourceType.table: append_table_source_asset}.items()
+    {
+        SourceType.table: append_table_source_asset,
+        SourceType.vector: append_vector_source_asset,
+    }.items()
 )
 
 

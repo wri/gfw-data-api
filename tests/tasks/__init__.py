@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any, Dict, List
+from uuid import UUID
 
 from sqlalchemy.sql.ddl import CreateSchema
 
@@ -109,10 +110,8 @@ def assert_fields(field_list, field_schema):
 
 async def check_version_status(dataset, version, log_count):
     row = await versions.get_version(dataset, version)
-
     assert row.status == "saved"
 
-    print(f"TABLE SOURCE VERSION LOGS: {row.change_log}")
     assert len(row.change_log) == log_count
     assert row.change_log[0]["message"] == "Successfully scheduled batch jobs"
 
@@ -126,17 +125,17 @@ async def check_asset_status(dataset, version, nb_assets):
     assert rows[0].is_default is True
 
     # in this test we only see the logs from background task, not from batch jobs
-    print(f"TABLE SOURCE ASSET LOGS: {rows[0].change_log}")
     assert len(rows[0].change_log) == nb_assets * 2
 
 
-async def check_task_status(asset_id, nb_jobs, last_job_name):
+async def check_task_status(asset_id: UUID, nb_jobs: int, last_job_name: str):
     rows = await tasks.get_tasks(asset_id)
     assert len(rows) == nb_jobs
 
     for row in rows:
         # in this test we don't set the final asset status to saved or failed
         assert row.status == "pending"
+
     # in this test we only see the logs from background task, not from batch jobs
     assert rows[-1].change_log[0]["message"] == f"Scheduled job {last_job_name}"
 

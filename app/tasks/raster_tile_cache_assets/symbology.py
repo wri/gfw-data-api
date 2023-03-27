@@ -45,7 +45,7 @@ SymbologyFuncType = Callable[
 
 class SymbologyInfo(NamedTuple):
     bit_depth: Literal[8, 16]
-    req_input_bands: Optional[int]
+    req_input_bands: Optional[List[int]]
     function: SymbologyFuncType
 
 
@@ -375,7 +375,7 @@ async def date_conf_intensity_multi_8_symbology(
     return [*intensity_jobs, *merge_jobs], final_asset_uri
 
 
-async def year_intensity_symbology(
+async def value_intensity_symbology(
     dataset: str,
     version: str,
     pixel_meaning: str,
@@ -395,7 +395,14 @@ async def year_intensity_symbology(
     Tree Cover Loss dataset.
     """
 
-    intensity_calc_string = "(A > 0) * 255"
+    if source_asset_co.band_count == 1:
+        intensity_calc_string = "(A > 0) * 255"
+    elif source_asset_co.band_count == 2:
+        intensity_calc_string = "((A > 0) & (B > 0)) * 255"
+    else:
+        raise RuntimeError(
+            f"Too many bands in source asset ({source_asset_co.band_count}), max 2 bands supported."
+        )
 
     intensity_jobs, intensity_uri = await _create_intensity_asset(
         dataset,
@@ -411,10 +418,19 @@ async def year_intensity_symbology(
 
     # The resulting raster channels are as follows:
     # 1. Intensity
-    # 2. All zeros
-    # 3. Year
+    # 2. Values in second band of sources asset, or all zeros if only one band
+    # 3. Values in first band of source assets (B for backwards compatibility)
     # 4. Alpha (which is set to 255 everywhere intensity is >0)
-    merge_calc_string = "np.ma.array([B, np.ma.zeros(A.shape, dtype='uint8'), A, (B > 0) * 255], fill_value=0).astype('uint8')"
+    if source_asset_co.band_count == 1:
+        merge_calc_string = "np.ma.array([B, np.ma.zeros(A.shape, dtype='uint8'), A, (B > 0) * 255], fill_value=0).astype('uint8')"
+    elif source_asset_co.band_count == 2:
+        merge_calc_string = (
+            "np.ma.array([C, A, B, (B > 0) * 255], fill_value=0).astype('uint8')"
+        )
+    else:
+        raise RuntimeError(
+            f"Too many bands in source asset ({source_asset_co.band_count}), max 2 bands supported."
+        )
 
     wm_source_uri: str = get_asset_uri(
         dataset,
@@ -543,6 +559,7 @@ async def _create_intensity_asset(
             "no_data": None,
             "pixel_meaning": f"intensity_{pixel_meaning}",
             "resampling": resampling,
+            "band_count": 1,
         },
     )
 
@@ -642,16 +659,17 @@ async def _merge_assets(
 
 _symbology_constructor: Dict[str, SymbologyInfo] = {
     ColorMapType.date_conf_intensity: SymbologyInfo(
-        8, 1, date_conf_intensity_symbology
+        8, [1], date_conf_intensity_symbology
     ),
     ColorMapType.date_conf_intensity_multi_8: SymbologyInfo(
-        8, 1, date_conf_intensity_multi_8_symbology
+        8, [1], date_conf_intensity_multi_8_symbology
     ),
-    ColorMapType.year_intensity: SymbologyInfo(8, 1, year_intensity_symbology),
-    ColorMapType.gradient: SymbologyInfo(8, 1, colormap_symbology),
-    ColorMapType.gradient_intensity: SymbologyInfo(8, 1, colormap_symbology),
-    ColorMapType.discrete: SymbologyInfo(8, 1, colormap_symbology),
-    ColorMapType.discrete_intensity: SymbologyInfo(8, 1, colormap_symbology),
+    ColorMapType.year_intensity: SymbologyInfo(8, [1], value_intensity_symbology),
+    ColorMapType.value_intensity: SymbologyInfo(8, [1, 2], value_intensity_symbology),
+    ColorMapType.gradient: SymbologyInfo(8, [1], colormap_symbology),
+    ColorMapType.gradient_intensity: SymbologyInfo(8, [1], colormap_symbology),
+    ColorMapType.discrete: SymbologyInfo(8, [1], colormap_symbology),
+    ColorMapType.discrete_intensity: SymbologyInfo(8, [1], colormap_symbology),
 }
 
 symbology_constructor: DefaultDict[str, SymbologyInfo] = defaultdict(

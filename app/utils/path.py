@@ -21,18 +21,16 @@ def infer_srid_from_grid(grid: str) -> str:
 
 
 def is_zipped(s3_uri: str) -> bool:
-    """Get basename of source file.
-
-    If Zipfile, add VSIZIP prefix for GDAL
-    """
-    bucket, key = split_s3_path(s3_uri)
-    client = get_s3_client()
+    """Determine from file name or header if URI points to a Zip file."""
     _, ext = os.path.splitext(s3_uri)
+    if ext.lower() == ".zip":
+        return True
 
+    client = get_s3_client()
+    bucket, key = split_s3_path(s3_uri)
     try:
         header = client.head_object(Bucket=bucket, Key=key)
-        # TODO: moto does not return the correct ContentType so have to go for the ext
-        if header["ContentType"] == "application/x-zip-compressed" or ext == ".zip":
+        if header["ContentType"] == "application/x-zip-compressed":
             return True
     except (KeyError, ClientError):
         raise FileNotFoundError(f"Cannot access source file {s3_uri}")
