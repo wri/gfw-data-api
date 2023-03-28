@@ -9,7 +9,6 @@ from _pytest.monkeypatch import MonkeyPatch
 from alembic.config import main
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from pytz import VERSION
 
 from app.authentication.token import get_user, is_admin, is_service_account
 from app.crud import api_keys

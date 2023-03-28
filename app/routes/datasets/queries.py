@@ -685,7 +685,7 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
                 source_layer_name,
                 grid,
                 no_data_val,
-                row.metadata.get("raster_table", None),
+                getattr(getattr(row, "metadata", None), "raster_table", None),
             )
         )
 

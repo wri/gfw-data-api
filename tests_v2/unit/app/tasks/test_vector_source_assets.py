@@ -70,8 +70,8 @@ class TestVectorSourceAssetsHelpers:
     @pytest.mark.asyncio
     async def test__create_vector_schema_job_with_schema(self):
         different_table_schema: Optional[List[FieldType]] = [
-            FieldType(**{"field_name": "fid", "field_type": "numeric"}),
-            FieldType(**{"field_name": "geom", "field_type": "geometry"}),
+            FieldType(**{"name": "fid", "data_type": "numeric"}),
+            FieldType(**{"name": "geom", "data_type": "geometry"}),
         ]
 
         job = await _create_vector_schema_job(
@@ -91,8 +91,8 @@ class TestVectorSourceAssetsHelpers:
             if cmd_frag == "-m":
                 schema_arg_observed = True
                 assert job.command[i + 1] == (
-                    '[{"field_name": "fid", "field_type": "numeric"}, '
-                    '{"field_name": "geom", "field_type": "geometry"}]'
+                    '[{"name": "fid", "data_type": "numeric"}, '
+                    '{"name": "geom", "data_type": "geometry"}]'
                 )
                 break
         assert schema_arg_observed, "Table schema arg not observed"

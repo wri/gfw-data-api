@@ -42,6 +42,7 @@ async def get_raster_tile_sets():
         .select()
         .with_only_columns(
             [
+                ORMAsset.asset_id,
                 ORMAsset.dataset,
                 ORMAsset.version,
                 ORMAsset.creation_options,

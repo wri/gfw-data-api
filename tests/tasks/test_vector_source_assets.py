@@ -353,7 +353,7 @@ async def test_vector_source_asset_csv(batch_client, async_client: AsyncClient):
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{CSV_NAME}"],
             "source_driver": "CSV",
-            "table_schema": [{"field_name": "alert__date", "field_type": "date"}],
+            "table_schema": [{"name": "alert__date", "data_type": "date"}],
             "create_dynamic_vector_tile_cache": True,
         },
     }
@@ -389,7 +389,7 @@ async def test_vector_source_asset_csv_append(batch_client, async_client: AsyncC
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{CSV_NAME}"],
             "source_driver": "CSV",
-            "table_schema": [{"field_name": "alert__date", "field_type": "date"}],
+            "table_schema": [{"name": "alert__date", "data_type": "date"}],
             "create_dynamic_vector_tile_cache": False,
             "add_to_geostore": False,
             "indices": [],
