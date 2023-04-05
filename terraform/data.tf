@@ -50,6 +50,7 @@ data "template_file" "container_definition" {
     project           = local.project
     environment       = var.environment
     aws_region        = var.region
+    name_suffix       = replace(local.name_suffix, "-", "_")
 
     data_lake_bucket         = data.terraform_remote_state.core.outputs.data-lake_bucket
     tile_cache_bucket        = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_name
@@ -155,6 +156,6 @@ data "aws_iam_policy_document" "read_gcs_secret_doc" {
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
     resources = [data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn]
-    effect = "Allow"
+    effect    = "Allow"
   }
 }

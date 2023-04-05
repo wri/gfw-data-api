@@ -217,13 +217,13 @@ async def raster_tile_cache_validator(
     symbology_type = input_data["creation_options"].get("symbology", {}).get("type")
     if symbology_type:
         symbology_info = symbology_constructor[symbology_type]
-        req_input_bands: Optional[int] = symbology_info.req_input_bands
+        req_input_bands: Optional[List[int]] = symbology_info.req_input_bands
+        band_count = source_asset.creation_options.get("band_count", 1)
 
-        if req_input_bands and (
-            req_input_bands != source_asset.creation_options.get("band_count", 1)
-        ):
+        if req_input_bands and (band_count not in req_input_bands):
             message = (
                 f"Symbology type {symbology_type} requires a source "
-                f"asset with {req_input_bands} bands"
+                f"asset with one of {req_input_bands} bands, but has "
+                f"{band_count} band(s)."
             )
             raise HTTPException(status_code=400, detail=message)
