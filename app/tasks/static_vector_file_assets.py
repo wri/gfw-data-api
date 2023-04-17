@@ -73,7 +73,7 @@ async def static_vector_file_asset(
         "-T",
         uri,
         "-C",
-        ",".join([field["field_name"] for field in field_attributes]),
+        ",".join([field["name"] for field in field_attributes]),
         "-X",
         str(options[asset_type]["zipped"]),
     ]

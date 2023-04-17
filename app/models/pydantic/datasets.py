@@ -1,16 +1,16 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from pydantic import Field
+from pydantic import Field, BaseModel
 
 from .base import BaseRecord, StrictBaseModel
-from .metadata import DatasetMetadata
+from .metadata import DatasetMetadata, DatasetMetadataOut, DatasetMetadataUpdate
 from .responses import PaginationLinks, PaginationMeta, Response
 
 
 class Dataset(BaseRecord):
     dataset: str
     is_downloadable: bool
-    metadata: DatasetMetadata
+    metadata: Optional[Union[DatasetMetadataOut, BaseModel]]
     versions: Optional[List[str]] = list()
 
 
@@ -26,7 +26,7 @@ class DatasetCreateIn(StrictBaseModel):
 
 class DatasetUpdateIn(StrictBaseModel):
     is_downloadable: Optional[bool]
-    metadata: Optional[DatasetMetadata]
+    metadata: Optional[DatasetMetadataUpdate]
 
 
 class DatasetResponse(Response):
