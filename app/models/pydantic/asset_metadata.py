@@ -229,7 +229,7 @@ def asset_metadata_factory(asset: ORMAsset) -> AssetMetadata:
 
 
 class FieldsMetadataResponse(Response):
-    data: List[FieldMetadataOut]
+    data: Union[List[FieldMetadataOut], List[RasterBandMetadataOut]]
 
 
 class FieldMetadataResponse(Response):

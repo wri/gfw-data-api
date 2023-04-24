@@ -38,6 +38,8 @@ from ...models.pydantic.asset_metadata import (
     FieldMetadataOut,
     FieldsMetadataResponse,
     RasterBandMetadata,
+    RasterTableRow,
+    RasterTable
 )
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
@@ -469,15 +471,17 @@ async def _get_raster_fields(asset: ORMAsset) -> List[RasterBandMetadata]:
     logger.debug(f"Processing data environment f{raster_data_environment}")
     for layer in raster_data_environment.layers:
         field_kwargs: Dict[str, Any] = {
-            "field_name": layer.name,
+            "pixel_meaning": layer.name,
         }
 
         if layer.raster_table:
-            field_kwargs["field_values"] = [
-                row.meaning for row in layer.raster_table.rows
-            ]
-            if layer.raster_table.default_meaning:
-                field_kwargs["field_values"].append(layer.raster_table.default_meaning)
+            field_kwargs["values_table"] = RasterTable(
+                rows=[
+                    RasterTableRow(meaning=row.meaning, value=row.value)
+                    for row in layer.raster_table.rows
+                ],
+                default_meaning=layer.raster_table.default_meaning
+            )
 
         fields.append(RasterBandMetadata(**field_kwargs))
 
