@@ -3,6 +3,7 @@ import math
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from ..models.enum.creation_options import ConstraintType
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import (
     Index,
@@ -22,7 +23,6 @@ async def table_source_asset(
     asset_id: UUID,
     input_data: Dict[str, Any],
 ) -> ChangeLog:
-
     creation_options = TableSourceCreationOptions(**input_data["creation_options"])
     if creation_options.source_uri:
         source_uris: List[str] = creation_options.source_uri
@@ -52,6 +52,14 @@ async def table_source_asset(
                 creation_options.partitions.partition_column,
             ]
         )
+
+    if creation_options.constraints:
+        unique_constraint_columns = []
+        for constraint in creation_options.constraints:
+            if constraint.constraint_type == ConstraintType.unique:
+                unique_constraint_columns += constraint.column_names
+
+        command.extend(["-u", ",".join(unique_constraint_columns)])
 
     job_env: List[Dict[str, Any]] = writer_secrets + [
         {"name": "ASSET_ID", "value": str(asset_id)}

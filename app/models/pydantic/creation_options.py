@@ -8,6 +8,7 @@ from pydantic.types import PositiveInt, StrictInt
 from ...settings.globals import DEFAULT_JOB_DURATION, PIXETL_DEFAULT_RESAMPLING
 from ..enum.assets import AssetType, is_default_asset
 from ..enum.creation_options import (
+    ConstraintType,
     Delimiters,
     IndexType,
     PartitionType,
@@ -48,6 +49,16 @@ class Index(StrictBaseModel):
     column_names: List[str] = Field(
         ..., description="Columns to be used by index", regex=COLUMN_REGEX
     )
+
+
+class Constraint(StrictBaseModel):
+    constraint_type: ConstraintType
+    column_names: List[str] = Field(
+        ..., description="Columns included in the constraint", regex=COLUMN_REGEX
+    )
+
+    class Config:
+        orm_mode = True
 
 
 class HashPartitionSchema(StrictBaseModel):
@@ -216,7 +227,6 @@ class VectorSourceCreationOptions(StrictBaseModel):
 class TableAssetCreationOptions(StrictBaseModel):
     has_header: bool = Field(True, description="Input file has header. Must be true")
     delimiter: Delimiters = Field(..., description="Delimiter used in input file")
-
     latitude: Optional[str] = Field(
         None, description="Column with latitude coordinate", regex=COLUMN_REGEX
     )
@@ -230,6 +240,9 @@ class TableAssetCreationOptions(StrictBaseModel):
         None, description="Partitioning schema (optional)"
     )
     indices: List[Index] = Field([], description="List of indices to add to table")
+    constraints: Optional[List[Constraint]] = Field(
+        None, description="List of constrains to add to table. (optional)"
+    )
     table_schema: Optional[List[FieldType]] = Field(
         None,
         description="List of Field Types. Missing field types will be inferred. (optional)",

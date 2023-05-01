@@ -188,6 +188,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      -u|--unique_constraint)
+      UNIQUE_CONSTRAINT_COLUMN_NAMES="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -v|--version)
       VERSION="$2"
       shift # past argument

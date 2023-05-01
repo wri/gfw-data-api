@@ -78,6 +78,9 @@ async def test_table_source_asset(batch_client, async_client):
                 {"field_name": "adm1", "field_type": "integer"},
                 {"field_name": "adm2", "field_type": "integer"},
             ],
+            "constraints": [
+                {"constraint_type": "unique", "column_names": ["adm1", "adm2"]}
+            ],
         },
         "metadata": {},
     }
@@ -98,6 +101,7 @@ async def test_table_source_asset(batch_client, async_client):
 
     await check_version_status(dataset, version, 3)
     await check_asset_status(dataset, version, 1)
+    assert False
     await check_task_status(asset_id, 14, "cluster_partitions_3")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
