@@ -61,6 +61,8 @@ if [[ -n "${PARTITION_TYPE}" ]]; then
   sed -i "s/);$/) PARTITION BY $PARTITION_TYPE ($COLUMN_NAME);/g" create_table.sql
 fi
 
+echo "Resulting create_table.sql:"
 cat create_table.sql
+echo "end of create_table.sql"
 
 psql -v ON_ERROR_STOP=1 -f create_table.sql
