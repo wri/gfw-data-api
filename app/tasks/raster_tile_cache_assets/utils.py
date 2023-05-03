@@ -11,7 +11,6 @@ from app.models.enum.pixetl import DataType
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import GDAL2TilesJob, Job
-from app.models.pydantic.metadata import RasterTileSetMetadata
 from app.models.pydantic.statistics import RasterStats
 from app.settings.globals import (
     DEFAULT_JOB_DURATION,
@@ -107,7 +106,6 @@ async def create_wm_tile_set_job(
         asset_uri=asset_uri,
         is_managed=True,
         creation_options=creation_options,
-        metadata=RasterTileSetMetadata(),
     ).dict(by_alias=True)
     wm_asset_record = await create_asset(dataset, version, **asset_options)
 

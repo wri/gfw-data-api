@@ -3,14 +3,22 @@ from uuid import UUID
 
 from asyncpg import UniqueViolationError
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy.sql import and_
+
+from app.crud.metadata import (
+    create_asset_metadata,
+    get_asset_metadata,
+    update_asset_metadata,
+)
 from sqlalchemy import func
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
+from ..models.enum.assets import AssetType
+from ..models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.creation_options import CreationOptions, creation_option_factory
 from . import update_data, versions
-from .metadata import update_all_metadata, update_metadata
 
 
 async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
@@ -25,9 +33,43 @@ async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
             f"No assets for version with name {dataset}.{version} found"
         )
 
-    v: ORMVersion = await versions.get_version(dataset, version)
+    return rows
 
-    return update_all_metadata(rows, v)
+
+async def get_raster_tile_sets():
+    latest_tile_sets = await (
+        ORMAsset.join(ORMVersion)
+        .select()
+        .with_only_columns(
+            [
+                ORMAsset.asset_id,
+                ORMAsset.dataset,
+                ORMAsset.version,
+                ORMAsset.creation_options,
+                ORMAsset.asset_uri,
+            ]
+        )
+        .where(
+            and_(
+                ORMAsset.asset_type == AssetType.raster_tile_set,
+                ORMVersion.is_latest == True,  # noqa: E712
+            )
+        )
+    ).gino.all()
+
+    for asset in latest_tile_sets:
+        try:
+            asset.metadata = await get_asset_metadata(asset.asset_id)
+        except RecordNotFoundError:
+            continue
+
+    return latest_tile_sets
+
+
+async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
+    assets = await ORMAsset.query.where(ORMAsset.asset_type == asset_type).gino.all()
+
+    return assets
 
 
 async def _build_filtered_query(
@@ -64,6 +106,7 @@ async def get_assets_by_filter(
     asset_uri: Optional[str] = None,
     is_latest: Optional[bool] = None,
     is_default: Optional[bool] = None,
+    include_metadata: Optional[bool] = True,
 ) -> List[ORMAsset]:
 
     query = await _build_filtered_query(
@@ -71,7 +114,14 @@ async def get_assets_by_filter(
     )
     assets = await query.gino.load(ORMAsset).all()
 
-    return await _update_all_asset_metadata(assets)
+    if include_metadata:
+        for asset in assets:
+            try:
+                asset.metadata = await get_asset_metadata(asset.asset_id)
+            except RecordNotFoundError:
+                asset.metadata = None
+
+    return assets
 
 
 async def count_filtered_assets_fn(
@@ -106,6 +156,7 @@ async def get_filtered_assets_fn(
     asset_uri: Optional[str] = None,
     is_latest: Optional[bool] = None,
     is_default: Optional[bool] = None,
+    include_metadata: Optional[bool] = True,
 ) -> func:
     """Returns a function that retrieves all filtered assets.
 
@@ -120,36 +171,52 @@ async def get_filtered_assets_fn(
 
     async def paginated_assets(size: int = None, offset: int = 0) -> List[ORMAsset]:
         assets = await query.limit(size).offset(offset).gino.load(ORMAsset).all()
-        return await _update_all_asset_metadata(assets)
+        if include_metadata:
+            for asset in assets:
+                try:
+                    asset.metadata = await get_asset_metadata(asset.asset_id)
+                except RecordNotFoundError:
+                    asset.metadata = None
+
+        return assets
 
     return paginated_assets
 
 
 async def get_asset(asset_id: UUID) -> ORMAsset:
-    row: ORMAsset = await ORMAsset.get([asset_id])
-    if row is None:
+    asset = await ORMAsset.get([asset_id])
+
+    if asset is None:
         raise RecordNotFoundError(f"Could not find requested asset {asset_id}")
 
-    version: ORMVersion = await versions.get_version(row.dataset, row.version)
+    try:
+        metadata: ORMAssetMetadata = await get_asset_metadata(asset_id)
+        asset.metadata = metadata
+    except RecordNotFoundError:
+        asset.metadata = None
 
-    return update_metadata(row, version)
+    return asset
 
 
 async def get_default_asset(dataset: str, version: str) -> ORMAsset:
-    row: ORMAsset = (
+    asset: ORMAsset = (
         await ORMAsset.query.where(ORMAsset.dataset == dataset)
         .where(ORMAsset.version == version)
         .where(ORMAsset.is_default == True)  # noqa: E712
         .gino.first()
     )
-    if row is None:
+    if asset is None:
         raise RecordNotFoundError(
             f"Could not find default asset for {dataset}.{version}"
         )
 
-    v: ORMVersion = await versions.get_version(row.dataset, row.version)
+    try:
+        metadata: ORMAssetMetadata = await get_asset_metadata(asset.asset_id)
+        asset.metadata = metadata
+    except RecordNotFoundError:
+        asset.metadata = None
 
-    return update_metadata(row, v)
+    return asset
 
 
 async def create_asset(dataset, version, **data) -> ORMAsset:
@@ -159,51 +226,54 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
     if data.get("is_downloadable") is None:
         data["is_downloadable"] = v.is_downloadable
 
+    metadata_data = data.pop("metadata", None)
+    if metadata_data:
+        metadata_data = jsonable_encoder(metadata_data, exclude_unset=True)
     data = _validate_creation_options(**data)
     jsonable_data = jsonable_encoder(data)
-
     try:
         new_asset: ORMAsset = await ORMAsset.create(
             dataset=dataset, version=version, **jsonable_data
         )
+        new_asset.metadata = None
     except UniqueViolationError:
         raise RecordAlreadyExistsError(
             f"Cannot create asset of type {data['asset_type']}. "
             f"Asset uri must be unique. An asset with uri {data['asset_uri']} already exists"
         )
 
-    return update_metadata(new_asset, v)
+    if metadata_data:
+        metadata: ORMAssetMetadata = await create_asset_metadata(
+            new_asset.asset_id, **metadata_data
+        )
+        new_asset.metadata = metadata
+
+    return new_asset
 
 
 async def update_asset(asset_id: UUID, **data) -> ORMAsset:
+    metadata_data = data.pop("metadata", None)
     data = _validate_creation_options(**data)
     jsonable_data = jsonable_encoder(data)
 
-    row: ORMAsset = await get_asset(asset_id)
-    row = await update_data(row, jsonable_data)
+    asset: ORMAsset = await get_asset(asset_id)
+    asset = await update_data(asset, jsonable_data)
 
-    version: ORMVersion = await versions.get_version(row.dataset, row.version)
+    if metadata_data:
+        try:
+            metadata = await update_asset_metadata(asset_id, **metadata_data)
+        except RecordNotFoundError:
+            metadata = await create_asset_metadata(asset_id, **metadata_data)
+        asset.metadata = metadata
 
-    return update_metadata(row, version)
+    return asset
 
 
 async def delete_asset(asset_id: UUID) -> ORMAsset:
-    row: ORMAsset = await get_asset(asset_id)
+    asset: ORMAsset = await get_asset(asset_id)
     await ORMAsset.delete.where(ORMAsset.asset_id == asset_id).gino.status()
 
-    version: ORMVersion = await versions.get_version(row.dataset, row.version)
-
-    return update_metadata(row, version)
-
-
-async def _update_all_asset_metadata(assets) -> List[ORMAsset]:
-    new_rows: List[ORMAsset] = list()
-    for row in assets:
-        version: ORMVersion = await versions.get_version(row.dataset, row.version)
-        new_row = update_metadata(row, version)
-        new_rows.append(new_row)
-
-    return new_rows
+    return asset
 
 
 def _validate_creation_options(**data) -> Dict[str, Any]:

@@ -23,7 +23,6 @@ from app.models.enum.sources import RasterSourceType
 from app.models.pydantic.assets import AssetCreateIn
 from app.models.pydantic.creation_options import RasterTileSetSourceCreationOptions
 from app.models.pydantic.jobs import Job
-from app.models.pydantic.metadata import RasterTileSetMetadata
 from app.settings.globals import PIXETL_DEFAULT_RESAMPLING
 from app.tasks import callback_constructor
 from app.tasks.raster_tile_cache_assets.utils import (
@@ -633,7 +632,6 @@ async def _merge_assets(
         asset_uri=asset_uri,
         is_managed=True,
         creation_options=encoded_co,
-        metadata=RasterTileSetMetadata(),
     ).dict(by_alias=True)
 
     asset = await create_asset(dataset, version, **asset_options)

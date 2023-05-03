@@ -8,10 +8,10 @@ from ..crud import assets, versions
 from ..models.enum.assets import default_asset_type
 from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
+from ..models.pydantic.asset_metadata import asset_metadata_factory
 from ..models.pydantic.assets import AssetTaskCreate
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import creation_option_factory
-from ..models.pydantic.metadata import asset_metadata_factory
 from ..utils.aws import get_s3_client
 from ..utils.path import get_asset_uri, split_s3_path
 from .assets import put_asset
@@ -112,7 +112,6 @@ async def _create_default_asset(
     creation_option = input_data["creation_options"]
     source_type = creation_option["source_type"]
     asset_type = default_asset_type(source_type, creation_option)
-    metadata = asset_metadata_factory(asset_type, input_data.get("metadata", {}))
     asset_uri = get_asset_uri(dataset, version, asset_type, creation_option)
     creation_options = creation_option_factory(asset_type, creation_option)
 
@@ -124,7 +123,6 @@ async def _create_default_asset(
         is_managed=True,
         is_default=True,
         creation_options=creation_options,
-        metadata=metadata,
     )
 
     async with ContextEngine("WRITE"):

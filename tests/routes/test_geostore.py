@@ -8,7 +8,7 @@ from app.application import ContextEngine, db
 from app.models.orm.geostore import Geostore
 from app.models.pydantic.geostore import GeostoreResponse
 from tests import BUCKET, GEOJSON_NAME
-from tests.utils import create_default_asset
+from tests.utils import create_default_asset, version_metadata
 
 
 @pytest.mark.asyncio
@@ -73,7 +73,7 @@ async def test_dataset_version_geostore(async_client: AsyncClient, batch_client)
             "source_driver": "GeoJSON",
             "create_dynamic_vector_tile_cache": True,
         },
-        "metadata": {},
+        "metadata": version_metadata,
     }
 
     _ = await create_default_asset(

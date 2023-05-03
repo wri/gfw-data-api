@@ -3,8 +3,9 @@ import json
 from typing import Any, Dict, List
 from uuid import UUID
 
-from ..crud import assets
+from ..crud import assets, metadata
 from ..models.orm.assets import Asset as ORMAsset
+from ..models.orm.dataset_metadata import DatasetMetadata as ORMDatasetMetadata
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import (
@@ -81,7 +82,7 @@ async def static_vector_tile_cache_asset(
         "-T",
         ndjson_uri,
         "-C",
-        ",".join([field["field_name"] for field in field_attributes]),
+        ",".join([field["name"] for field in field_attributes]),
     ]
 
     export_ndjson = GdalPythonExportJob(
@@ -179,8 +180,7 @@ async def _get_vector_tile_server(
     creation_options: StaticVectorTileCacheCreationOptions,
 ) -> Dict[str, Any]:
 
-    asset: ORMAsset = await assets.get_asset(asset_id)
-    metadata: Dict[str, Any] = asset.metadata
+    dataset_metadata: ORMDatasetMetadata = await metadata.get_dataset_metadata(dataset)
 
     resolution = 78271.51696401172
     scale = 295829355.45453244
@@ -197,8 +197,8 @@ async def _get_vector_tile_server(
 
     response = {
         "currentVersion": 10.7,
-        "name": metadata["title"],
-        "copyrightText": metadata["citation"],
+        "name": dataset_metadata.title,
+        "copyrightText": dataset_metadata.citation,
         "capabilities": "TilesOnly",
         "type": "indexedVector",
         "defaultStyles": "resources/styles",

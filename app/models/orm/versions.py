@@ -12,7 +12,7 @@ class Version(Base):
     # source_uri = db.Column(db.ARRAY(db.String), default=list())
     status = db.Column(db.String, nullable=False, default="pending")
     # has_geostore = db.Column(db.Boolean, nullable=False, default=False)
-    metadata = db.Column(db.JSONB, default=dict())
+    # metadata = db.Column(db.JSONB, default=dict())
     change_log = db.Column(db.ARRAY(db.JSONB), default=list())
     # creation_options = db.Column(db.JSONB, default=dict())
 

@@ -101,8 +101,8 @@ class Partitions(StrictBaseModel):
 
 
 class FieldType(StrictBaseModel):
-    field_name: str = Field(..., description="Name of field", regex=COLUMN_REGEX)
-    field_type: PGType = Field(..., description="Type of field (PostgreSQL type).")
+    name: str = Field(..., description="Name of field", regex=COLUMN_REGEX)
+    data_type: PGType = Field(..., description="Type of field (PostgreSQL data type).")
 
 
 class RasterTileSetAssetCreationOptions(StrictBaseModel):
