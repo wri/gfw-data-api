@@ -19,11 +19,19 @@ if [[ -n "${UNIQUE_CONSTRAINT_COLUMN_NAMES}" ]]; then
   UNIQUE_CONSTRAINT="--unique-constraint ${UNIQUE_CONSTRAINT_COLUMN_NAMES}"
 fi
 
-# The `head` command will cause a broken pipe error for `aws s3 cp`, this is expected and can be ignored
-# We hence we have to temporarily use set +e here
+# Fetch first 100 lines from CSV, analyze and create table create statement
+# The `head` command will cause a broken pipe error for `aws s3 cp`: This is
+# expected and can be ignored, so temporarily use set +e here. HOWEVER we
+# still want to know if csvsql had a problem, so check its exit status
 set +e
 aws s3 cp "${SRC}" - | head -100 | csvsql -i postgresql --no-constraints $UNIQUE_CONSTRAINT --tables "$VERSION" -q \" > create_table.sql
+CSVSQL_EXIT_CODE="${PIPESTATUS[2]}"  # Grab the exit code of the csvsql command
 set -e
+
+if [ $CSVSQL_EXIT_CODE -ne 0 ]; then
+  echo "csvsql exited with code ${CSVSQL_EXIT_CODE}"
+  exit $CSVSQL_EXIT_CODE
+fi
 
 # csvsql sets the quotes for schema and table wrong. It is safer to set the schema separately
 sed -i "1s/^/SET SCHEMA '$DATASET';\n/" create_table.sql
