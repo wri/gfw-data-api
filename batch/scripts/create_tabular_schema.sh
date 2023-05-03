@@ -14,19 +14,15 @@ set -e
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
+
+if [[ -n "${UNIQUE_CONSTRAINT_COLUMN_NAMES}" ]]; then
+  UNIQUE_CONSTRAINT="--unique-constraint ${UNIQUE_CONSTRAINT_COLUMN_NAMES}"
+fi
+
 # The `head` command will cause a broken pipe error for `aws s3 cp`, this is expected and can be ignored
 # We hence we have to temporarily use set +e here
 set +e
-
-echo "${UNIQUE_CONSTRAINT_COLUMN_NAMES}"
-echo "csvsql -i postgresql --no-constraints --unique-constraint \"${UNIQUE_CONSTRAINT_COLUMN_NAMES}\" --tables $VERSION"
-if [[ -n "${UNIQUE_CONSTRAINT_COLUMN_NAMES}" ]]; then
-  # Fetch first 100 rows from input table, analyse and create table create statement
-  aws s3 cp "${SRC}" - | head -100 | csvsql -i postgresql --no-constraints --unique-constraint "${UNIQUE_CONSTRAINT_COLUMN_NAMES}" --tables "$VERSION" -q \" > create_table.sql
-else
-  # Fetch first 100 rows from input table, analyse and create table create statement
-  aws s3 cp "${SRC}" - | head -100 | csvsql -i postgresql --no-constraints --tables "$VERSION" -q \" > create_table.sql
-fi
+aws s3 cp "${SRC}" - | head -100 | csvsql -i postgresql --no-constraints $UNIQUE_CONSTRAINT --tables "$VERSION" -q \" > create_table.sql
 set -e
 
 # csvsql sets the quotes for schema and table wrong. It is safer to set the schema separately
