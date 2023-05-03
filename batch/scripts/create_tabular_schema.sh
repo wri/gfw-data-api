@@ -49,11 +49,9 @@ if [[ -n "${FIELD_MAP}" ]]; then
     FIELD_NAME=$(_jq '.name')
     FIELD_TYPE=$(_jq '.data_type')
 
-    # field names might be in double quotes
-    # make sure there is no comma after the last field
+    # Override the field types, whether naked or in double quotes
     sed -i "s/^\t${FIELD_NAME} .*$/\t${FIELD_NAME} ${FIELD_TYPE},/" create_table.sql
     sed -i "s/^\t\"${FIELD_NAME}\" .*$/\t\"${FIELD_NAME}\" ${FIELD_TYPE},/" create_table.sql
-    sed -i 'x; ${s/,//;p;x}; 1d' create_table.sql
   done
 fi
 
