@@ -65,4 +65,4 @@ fi
 
 cat create_table.sql
 
-psql -f create_table.sql
+psql -v ON_ERROR_STOP=1 -f create_table.sql
