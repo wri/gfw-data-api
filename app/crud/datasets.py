@@ -6,10 +6,12 @@ from sqlalchemy import func
 from ..application import db
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
+from ..models.orm.dataset_metadata import DatasetMetadata as ORMDatasetMetadata
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.queries.datasets import all_datasets
 from ..models.orm.versions import Version as ORMVersion
 from ..utils.generators import list_to_async_generator
+from . import metadata as metadata_crud
 from . import update_data
 
 
@@ -30,25 +32,50 @@ async def get_datasets(size: int = None, offset: int = 0) -> List[ORMDataset]:
 
 
 async def get_dataset(dataset: str) -> ORMDataset:
-    row: ORMDataset = await ORMDataset.get(dataset)
+    row: ORMDataset = (
+        await ORMDataset.load(metadata=ORMDatasetMetadata)
+        .where(ORMDataset.dataset == dataset)
+        .gino.first()
+    )
+
     if row is None:
         raise RecordNotFoundError(f"Dataset with name {dataset} does not exist")
+
+    if getattr(row, "metadata", None) is None:
+        row.metadata = {}
 
     return row
 
 
 async def create_dataset(dataset: str, **data) -> ORMDataset:
+    metadata_data = data.pop("metadata", None)
     try:
         new_dataset: ORMDataset = await ORMDataset.create(dataset=dataset, **data)
     except UniqueViolationError:
         raise RecordAlreadyExistsError(f"Dataset with name {dataset} already exists")
+
+    if metadata_data:
+        metadata: ORMDatasetMetadata = await metadata_crud.create_dataset_metadata(
+            dataset, **metadata_data
+        )
+        new_dataset.metadata = metadata
 
     return new_dataset
 
 
 async def update_dataset(dataset: str, **data) -> ORMDataset:
     row: ORMDataset = await get_dataset(dataset)
+    metadata_data = data.pop("metadata", None)
     new_row = await update_data(row, data)
+
+    if metadata_data:
+        try:
+            metadata = await metadata_crud.update_dataset_metadata(dataset, **metadata_data)
+        except RecordNotFoundError:
+            metadata = await metadata_crud.create_dataset_metadata(
+                dataset, **metadata_data
+            )
+        new_row.metadata = metadata
 
     await _update_is_downloadable(dataset, data)
 

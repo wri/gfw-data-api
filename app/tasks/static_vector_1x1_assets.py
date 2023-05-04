@@ -52,7 +52,7 @@ async def static_vector_1x1_asset(
         "-v",
         version,
         "-C",
-        ",".join([field["field_name"] for field in field_attributes]),
+        ",".join([field["name"] for field in field_attributes]),
         "-T",
         grid_1x1_uri,
     ]

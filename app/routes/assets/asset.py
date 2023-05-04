@@ -11,6 +11,11 @@ based on the same version and do not know the processing history.
 from typing import List, Optional, Union
 from uuid import UUID
 
+# from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, status
+from fastapi.responses import ORJSONResponse
+from starlette.responses import JSONResponse
+
+from app.models.pydantic.responses import Response
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -19,18 +24,29 @@ from fastapi import (
     Path,
     Query,
     Request,
+    status,
 )
-from fastapi.responses import ORJSONResponse
-from starlette.responses import JSONResponse
 
 from app.settings.globals import API_URL
 
 from ...authentication.token import is_admin
-from ...crud import assets, tasks
-from ...errors import RecordNotFoundError
+from ...crud import assets
+from ...crud import metadata as metadata_crud
+from ...crud import tasks
+from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import is_database_asset, is_single_file_asset
+from ...models.orm.asset_metadata import FieldMetadata as ORMFieldMetadata
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.tasks import Task as ORMTask
+from ...models.pydantic.asset_metadata import (
+    AssetMetadata,
+    AssetMetadataResponse,
+    AssetMetadataUpdate,
+    FieldMetadataResponse,
+    FieldMetadataUpdate,
+    FieldsMetadataResponse,
+    asset_metadata_factory,
+)
 from ...models.pydantic.assets import AssetResponse, AssetType, AssetUpdateIn
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
@@ -39,7 +55,6 @@ from ...models.pydantic.creation_options import (
     creation_option_factory,
 )
 from ...models.pydantic.extent import Extent, ExtentResponse
-from ...models.pydantic.metadata import FieldMetadata, FieldMetadataResponse
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.tasks import PaginatedTasksResponse, TasksResponse
 from ...tasks.delete_assets import (
@@ -288,10 +303,130 @@ async def get_stats(asset_id: UUID = Path(...)):
     "/{asset_id}/fields",
     response_class=ORJSONResponse,
     tags=["Assets"],
-    response_model=FieldMetadataResponse,
+    response_model=FieldsMetadataResponse,
 )
 async def get_fields(asset_id: UUID = Path(...)):
-    asset: ORMAsset = await assets.get_asset(asset_id)
-    fields: List[FieldMetadata] = [FieldMetadata(**field) for field in asset.fields]
+    asset_metadata = await metadata_crud.get_asset_metadata(asset_id)
+    fields: List[ORMFieldMetadata] = await metadata_crud.get_asset_fields(
+        asset_metadata.id
+    )
 
-    return FieldMetadataResponse(data=fields)
+    return FieldsMetadataResponse(data=fields)
+
+
+@router.get(
+    "/{asset_id}/fields/{field_name}",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=FieldMetadataResponse,
+)
+async def get_field_metadata(*, asset_id: UUID = Path(...), field_name: str):
+    metadata = await metadata_crud.get_asset_metadata(asset_id)
+
+    try:
+        field_metadata: ORMFieldMetadata = await metadata_crud.get_asset_field(
+            metadata.id, field_name
+        )
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return FieldMetadataResponse(data=field_metadata)
+
+
+@router.patch(
+    "/{asset_id}/fields/{field_name}",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=FieldMetadataResponse,
+)
+async def update_field_metadata(
+    *, asset_id: UUID = Path(...), field_name: str, request: FieldMetadataUpdate
+):
+    input_data = request.dict(exclude_none=True, by_alias=True)
+    metadata = await metadata_crud.get_asset_metadata(asset_id)
+    field_metadata: ORMFieldMetadata = await metadata_crud.update_field_metadata(
+        metadata.id, field_name, **input_data
+    )
+
+    return FieldMetadataResponse(data=field_metadata)
+
+
+@router.get(
+    "/{asset_id}/metadata",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=AssetMetadataResponse,
+)
+async def get_metadata(asset_id: UUID = Path(...)):
+    try:
+        asset = await assets.get_asset(asset_id)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    validated_metadata = asset_metadata_factory(asset)
+
+    return Response(data=validated_metadata)
+
+
+@router.post(
+    "/{asset_id}/metadata",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=AssetMetadataResponse,
+)
+async def create_metadata(*, asset_id: UUID = Path(...), request: AssetMetadata):
+    input_data = request.dict(exclude_none=True, by_alias=True)
+    asset = await assets.get_asset(asset_id)
+
+    try:
+        asset.metadata = await metadata_crud.create_asset_metadata(
+            asset_id, **input_data
+        )
+    except RecordAlreadyExistsError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+    validated_metadata = asset_metadata_factory(asset)
+
+    return Response(data=validated_metadata)
+
+
+@router.patch(
+    "/{asset_id}/metadata",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=AssetMetadataResponse,
+)
+async def update_metadata(*, asset_id: UUID = Path(...), request: AssetMetadataUpdate):
+
+    input_data = request.dict(exclude_none=True, by_alias=True)
+
+    try:
+        asset = await assets.get_asset(asset_id)
+        asset.metadata = await metadata_crud.update_asset_metadata(
+            asset_id, **input_data
+        )
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    validated_metadata = asset_metadata_factory(asset)
+
+    return Response(data=validated_metadata)
+
+
+@router.delete(
+    "/{asset_id}/metadata",
+    response_class=ORJSONResponse,
+    tags=["Assets"],
+    response_model=AssetMetadataResponse,
+)
+async def delete_metadata(asset_id: UUID = Path(...)):
+
+    try:
+        asset = await assets.get_asset(asset_id)
+        asset.metadata = await metadata_crud.delete_asset_metadata(asset_id)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    validated_metadata = asset_metadata_factory(asset)
+
+    return Response(data=validated_metadata)

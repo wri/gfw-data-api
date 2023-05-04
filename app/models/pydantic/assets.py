@@ -1,12 +1,12 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from ..enum.assets import AssetStatus, AssetType
+from .asset_metadata import AssetMetadata, AssetMetadataOut
 from .base import BaseRecord, StrictBaseModel
 from .creation_options import CreationOptions, OtherCreationOptions
-from .metadata import AssetMetadata
 from .responses import PaginationLinks, PaginationMeta, Response
 
 
@@ -19,7 +19,7 @@ class Asset(BaseRecord):
     status: AssetStatus = AssetStatus.pending
     is_managed: bool
     is_downloadable: bool
-    metadata: AssetMetadata
+    metadata: Optional[Union[AssetMetadataOut, BaseModel]]
 
 
 class AssetCreateIn(StrictBaseModel):
@@ -53,7 +53,6 @@ class AssetTaskCreate(StrictBaseModel):
     is_default: bool = False
     is_downloadable: Optional[bool] = None
     creation_options: CreationOptions  # should this also be OtherCreationOptions?
-    metadata: Optional[AssetMetadata]
 
 
 class AssetResponse(Response):

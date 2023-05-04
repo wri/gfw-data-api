@@ -63,7 +63,7 @@ from ...models.orm.assets import Asset as AssetORM
 from ...models.orm.versions import Version as VersionORM
 from ...models.pydantic.creation_options import NoDataType
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
-from ...models.pydantic.metadata import RasterTable, RasterTableRow
+from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
 from ...models.pydantic.query import CsvQueryRequestIn, QueryRequestIn
 from ...models.pydantic.raster_analysis import (
     DataEnvironment,
@@ -646,25 +646,7 @@ def _get_default_layer(dataset, pixel_meaning):
 
 async def _get_data_environment(grid: Grid) -> DataEnvironment:
     # get all Raster tile set assets
-    latest_tile_sets = await (
-        AssetORM.join(VersionORM)
-        .select()
-        .with_only_columns(
-            [
-                AssetORM.dataset,
-                AssetORM.version,
-                AssetORM.creation_options,
-                AssetORM.asset_uri,
-                AssetORM.metadata,
-            ]
-        )
-        .where(
-            and_(
-                AssetORM.asset_type == AssetType.raster_tile_set,
-                VersionORM.is_latest == True,  # noqa: E712
-            )
-        )
-    ).gino.all()
+    latest_tile_sets = await assets.get_raster_tile_sets()
 
     # create layers
     layers: List[Layer] = []
@@ -703,7 +685,7 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
                 source_layer_name,
                 grid,
                 no_data_val,
-                row.metadata.get("raster_table", None),
+                getattr(getattr(row, "metadata", None), "raster_table", None),
             )
         )
 

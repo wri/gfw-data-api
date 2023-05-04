@@ -9,7 +9,7 @@ from app.application import ContextEngine, db
 from app.utils.aws import get_s3_client
 
 from .. import APPEND_TSV_NAME, BUCKET, PORT, TSV_NAME, TSV_PATH
-from ..utils import create_default_asset, poll_jobs
+from ..utils import create_default_asset, poll_jobs, version_metadata
 from . import check_asset_status, check_task_status, check_version_status
 
 
@@ -69,17 +69,17 @@ async def test_table_source_asset(batch_client, async_client):
             ],
             "table_schema": [
                 {
-                    "field_name": "rspo_oil_palm__certification_status",
-                    "field_type": "text",
+                    "name": "rspo_oil_palm__certification_status",
+                    "data_type": "text",
                 },
-                {"field_name": "per_forest_concession__type", "field_type": "text"},
-                {"field_name": "idn_forest_area__type", "field_type": "text"},
-                {"field_name": "alert__count", "field_type": "integer"},
-                {"field_name": "adm1", "field_type": "integer"},
-                {"field_name": "adm2", "field_type": "integer"},
+                {"name": "per_forest_concession__type", "data_type": "text"},
+                {"name": "idn_forest_area__type", "data_type": "text"},
+                {"name": "alert__count", "data_type": "integer"},
+                {"name": "adm1", "data_type": "integer"},
+                {"name": "adm2", "data_type": "integer"},
             ],
         },
-        "metadata": {},
+        "metadata": version_metadata,
     }
 
     #####################
@@ -258,17 +258,17 @@ async def test_table_source_asset_parallel(batch_client, async_client):
             ],
             "table_schema": [
                 {
-                    "field_name": "rspo_oil_palm__certification_status",
-                    "field_type": "text",
+                    "name": "rspo_oil_palm__certification_status",
+                    "data_type": "text",
                 },
-                {"field_name": "per_forest_concession__type", "field_type": "text"},
-                {"field_name": "idn_forest_area__type", "field_type": "text"},
-                {"field_name": "alert__count", "field_type": "integer"},
-                {"field_name": "adm1", "field_type": "integer"},
-                {"field_name": "adm2", "field_type": "integer"},
+                {"name": "per_forest_concession__type", "data_type": "text"},
+                {"name": "idn_forest_area__type", "data_type": "text"},
+                {"name": "alert__count", "data_type": "integer"},
+                {"name": "adm1", "data_type": "integer"},
+                {"name": "adm2", "data_type": "integer"},
             ],
         },
-        "metadata": {},
+        "metadata": version_metadata,
     }
 
     #####################

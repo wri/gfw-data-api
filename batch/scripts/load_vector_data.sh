@@ -75,8 +75,8 @@ if [[ -n "${FIELD_MAP:-}" ]]; then
     _jq() {
       echo "${row}" | base64 --decode | jq -r "${1}"
     }
-    FIELD_NAME=$(_jq '.field_name')
-    FIELD_TYPE=$(_jq '.field_type')
+    FIELD_NAME=$(_jq '.name')
+    FIELD_TYPE=$(_jq '.data_type')
 
     COLUMN_TYPES+="$FIELD_NAME=$FIELD_TYPE,"
   done

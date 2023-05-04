@@ -12,14 +12,11 @@ async def update_data(
 ) -> db.Model:  # type: ignore
     """Merge updated metadata filed with existing fields."""
 
+    if not input_data:
+        return row
+
     if isinstance(input_data, BaseModel):
         input_data = input_data.dict(skip_defaults=True, by_alias=True)
-
-    # Make sure, existing metadata not mentioned in request remain untouched
-    if input_data.get("metadata"):
-        metadata = row.metadata
-        metadata.update(input_data["metadata"])
-        input_data["metadata"] = metadata
 
     if input_data.get("change_log"):
         change_log = row.change_log

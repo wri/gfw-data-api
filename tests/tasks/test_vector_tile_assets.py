@@ -11,7 +11,12 @@ from app.settings.globals import DATA_LAKE_BUCKET, S3_ENTRYPOINT_URL, TILE_CACHE
 from app.utils.aws import get_s3_client
 
 from .. import BUCKET, PORT, SHP_NAME
-from ..utils import check_tasks_status, create_default_asset, poll_jobs
+from ..utils import (
+    check_tasks_status,
+    create_default_asset,
+    poll_jobs,
+    version_metadata
+)
 from . import MockCloudfrontClient, MockECSClient
 
 
@@ -38,7 +43,7 @@ async def test_vector_tile_asset(
             "source_driver": "GeoJSON",
             "create_dynamic_vector_tile_cache": True,
         },
-        "metadata": {},
+        "metadata": version_metadata,
     }
 
     await create_default_asset(

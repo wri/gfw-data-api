@@ -289,7 +289,7 @@ def session():
 
     if SessionLocal is None:
         db_conn = f"postgresql://{WRITER_USERNAME}:{WRITER_PASSWORD}@{WRITER_HOST}:{WRITER_PORT}/{WRITER_DBNAME}"  # pragma: allowlist secret
-        engine = create_engine(db_conn, pool_size=1, max_overflow=0)
+        engine = create_engine(db_conn, pool_size=1, max_overflow=0, echo=True)
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     db: Optional[Session] = None
