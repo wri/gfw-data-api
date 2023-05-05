@@ -647,52 +647,57 @@ def _get_default_layer(dataset, pixel_meaning):
 async def _get_data_environment(grid: Grid) -> DataEnvironment:
     # get all Raster tile set assets
     latest_tile_sets = await assets.get_raster_tile_sets()
-
     # create layers
     layers: List[Layer] = []
     for row in latest_tile_sets:
-        if row.creation_options["grid"] != grid:
+        creation_options = row["creation_options"]
+        if creation_options["grid"] != grid:
             # skip if not on the right grid
             continue
 
         # TODO skip intermediate raster for tile cache until field is in metadata
-        if "tcd" in row.creation_options["pixel_meaning"]:
+        if "tcd" in creation_options["pixel_meaning"]:
             continue
 
         # only include single band rasters
-        if row.creation_options.get("band_count", 1) > 1:
+        if creation_options.get("band_count", 1) > 1:
             continue
 
-        if row.creation_options["pixel_meaning"] == "is":
+        if creation_options["pixel_meaning"] == "is":
             source_layer_name = (
-                f"{row.creation_options['pixel_meaning']}__{row.dataset}"
+                f"{creation_options['pixel_meaning']}__{row['dataset']}"
             )
         else:
             source_layer_name = (
-                f"{row.dataset}__{row.creation_options['pixel_meaning']}"
+                f"{row['dataset']}__{creation_options['pixel_meaning']}"
             )
 
         no_data_val = parse_obj_as(
             Optional[Union[List[NoDataType], NoDataType]],
-            row.creation_options["no_data"],
+            creation_options["no_data"],
         )
         if isinstance(no_data_val, List):
             no_data_val = no_data_val[0]
 
+        bands = getattr(row.get("metadata"), "bands", [])
+        raster_table = None
+        if bands:
+            raster_table = RasterTable(**bands[0].to_dict()["values_table"])
+        print("TABLE", raster_table)
         layers.append(
             _get_source_layer(
-                row.asset_uri,
+                row['asset_uri'],
                 source_layer_name,
                 grid,
                 no_data_val,
-                getattr(getattr(row, "metadata", None), "raster_table", None),
+                raster_table,
             )
         )
 
-        if row.creation_options["pixel_meaning"] == "date_conf":
+        if creation_options["pixel_meaning"] == "date_conf":
             layers += _get_date_conf_derived_layers(source_layer_name, no_data_val)
 
-        if row.creation_options["pixel_meaning"].endswith("_ha-1"):
+        if creation_options["pixel_meaning"].endswith("_ha-1"):
             layers.append(_get_area_density_layer(source_layer_name, no_data_val))
 
     return DataEnvironment(layers=layers)

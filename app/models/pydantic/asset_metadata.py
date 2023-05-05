@@ -234,3 +234,6 @@ class FieldsMetadataResponse(Response):
 
 class FieldMetadataResponse(Response):
     data: FieldMetadataOut
+
+class RasterBandsMetadataResponse(Response):
+    data: List[RasterBandMetadata]
