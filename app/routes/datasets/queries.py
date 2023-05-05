@@ -15,7 +15,6 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 
 # from fastapi.openapi.models import APIKey
-from async_lru import alru_cache
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
@@ -645,7 +644,6 @@ def _get_default_layer(dataset, pixel_meaning):
         return f"{dataset}__{default_type}"
 
 
-@alru_cache(maxsize=128)
 async def _get_data_environment(grid: Grid) -> DataEnvironment:
     # get all Raster tile set assets
     latest_tile_sets = await assets.get_raster_tile_sets()

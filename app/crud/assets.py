@@ -11,6 +11,7 @@ from app.crud.metadata import (
     update_asset_metadata,
 )
 from sqlalchemy import func
+from async_lru import alru_cache
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.enum.assets import AssetType
@@ -36,7 +37,7 @@ async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
 
     return rows
 
-
+@alru_cache(maxsize=128)
 async def get_raster_tile_sets():
     latest_tile_sets = await (
         ORMAsset.join(ORMVersion)
