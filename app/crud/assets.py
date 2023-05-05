@@ -18,6 +18,7 @@ from ..models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.creation_options import CreationOptions, creation_option_factory
+from ..models.pydantic.asset_metadata import RasterTileSetMetadataOut
 from . import update_data, versions
 
 
@@ -57,13 +58,17 @@ async def get_raster_tile_sets():
         )
     ).gino.all()
 
+    assets_with_metadata = []
     for asset in latest_tile_sets:
+        asset_dict = dict(asset.items())
         try:
-            asset.metadata = await get_asset_metadata(asset.asset_id)
+            metadata = await get_asset_metadata(asset.asset_id)
+            asset_dict["metadata"] = metadata
         except RecordNotFoundError:
-            continue
+            pass
+        assets_with_metadata.append(asset_dict)
 
-    return latest_tile_sets
+    return assets_with_metadata
 
 
 async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
