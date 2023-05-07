@@ -38,7 +38,7 @@ from ...models.pydantic.asset_metadata import (
     FieldMetadataOut,
     FieldsMetadataResponse,
     RasterBandMetadata,
-    RasterBandsMetadataResponse
+    RasterBandsMetadataResponse,
 )
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
@@ -351,21 +351,20 @@ async def get_stats(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     "/{dataset}/{version}/fields",
     response_class=ORJSONResponse,
     tags=["Versions"],
-    response_model=Union[FieldsMetadataResponse,RasterBandsMetadataResponse]
+    response_model=Union[FieldsMetadataResponse, RasterBandsMetadataResponse],
 )
 async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     dataset, version = dv
-    asset = await assets.get_default_asset(dataset, version)
+    orm_asset: ORMAsset = await assets.get_default_asset(dataset, version)
 
-    logger.debug(f"Processing default asset type {asset.asset_type}")
-    fields = []
-    if asset.asset_type == AssetType.raster_tile_set:
-        fields = await _get_raster_fields(asset)
+    logger.debug(f"Processing default asset type {orm_asset.asset_type}")
+    if orm_asset.asset_type == AssetType.raster_tile_set:
+        fields = await _get_raster_fields(orm_asset)
         response = RasterBandsMetadataResponse(data=fields)
     else:
-        fields = [FieldMetadataOut.from_orm(field) for field in asset.metadata.fields]
+        fields = await metadata_crud.get_asset_fields_dicts(orm_asset)
         response = FieldsMetadataResponse(data=fields)
-    # return FieldsMetadataResponse(data=fields)
+
     return response
 
 
@@ -475,11 +474,11 @@ async def _get_raster_fields(asset: ORMAsset) -> List[RasterBandMetadata]:
             "pixel_meaning": asset.creation_options["pixel_meaning"],
         }
         # if layer.raster_table:
-            # field_kwargs["field_values"] = [
-            #     row.meaning for row in layer.raster_table.rows
-            # ]
-            # if layer.raster_table.default_meaning:
-            #     field_kwargs["field_values"].append(layer.raster_table.default_meaning)
+        # field_kwargs["field_values"] = [
+        #     row.meaning for row in layer.raster_table.rows
+        # ]
+        # if layer.raster_table.default_meaning:
+        #     field_kwargs["field_values"].append(layer.raster_table.default_meaning)
 
         fields.append(RasterBandMetadata(**field_kwargs))
 

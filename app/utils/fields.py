@@ -1,8 +1,6 @@
 from typing import Any, Dict, List
 
-from app.models.pydantic.asset_metadata import FieldMetadataOut
-
-from ..crud import assets
+from ..crud import assets, metadata as metadata_crud
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.pydantic.creation_options import CreationOptions
 
@@ -18,10 +16,7 @@ async def get_field_attributes(
     """
 
     default_asset: ORMAsset = await assets.get_default_asset(dataset, version)
-    fields: List[Dict[str, str]] = [
-        FieldMetadataOut.from_orm(field).dict()
-        for field in default_asset.metadata.fields
-    ]
+    fields = await metadata_crud.get_asset_fields_dicts(default_asset)
 
     field_attributes: List[Dict[str, Any]] = [
         field for field in fields if field["is_feature_info"]

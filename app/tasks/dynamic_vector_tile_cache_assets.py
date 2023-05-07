@@ -35,9 +35,8 @@ async def dynamic_vector_tile_cache_asset(
 
     # My first walrus, yahoo!
     if orm_asset := _get_database_table_asset(orm_assets):
-        if _has_geom_wm(orm_asset.metadata.fields) and _has_spatial_index(
-            orm_asset.creation_options
-        ):
+        fields = orm_asset.metadata.fields if orm_asset.metadata else []
+        if _has_geom_wm(fields) and _has_spatial_index(orm_asset.creation_options):
             change_log = ChangeLog(
                 date_time=datetime.now(),
                 status=ChangeLogStatus.success,
