@@ -297,9 +297,7 @@ async def _register_dynamic_vector_tile_cache(dataset: str, version: str) -> Non
     ] = default_asset.creation_options.get("create_dynamic_vector_tile_cache", None)
 
     creation_options = DynamicVectorTileCacheCreationOptions()
-    fields_metadata = [
-        FieldMetadataOut.from_orm(field) for field in default_asset.metadata.fields
-    ]
+    fields_metadata = await metadata_crud.get_asset_fields_dicts(default_asset)
     creation_options.field_attributes = fields_metadata
 
     if create_dynamic_vector_tile_cache:
