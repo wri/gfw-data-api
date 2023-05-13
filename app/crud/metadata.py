@@ -8,9 +8,11 @@ from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
 from ..models.orm.asset_metadata import FieldMetadata as ORMFieldMetadata
 from ..models.orm.asset_metadata import RasterBandMetadata as ORMRasterBandMetadata
+from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.base import Base
 from ..models.orm.dataset_metadata import DatasetMetadata as ORMDatasetMetadata
 from ..models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
+from ..models.pydantic.asset_metadata import FieldMetadataOut
 
 
 async def create_dataset_metadata(dataset: str, **data) -> ORMDatasetMetadata:
@@ -246,6 +248,17 @@ async def get_asset_fields(asset_metadata_id: UUID) -> List[ORMFieldMetadata]:
     ).gino.all()
 
     return fields_metadata
+
+
+async def get_asset_fields_dicts(asset: ORMAsset):
+    if not asset.metadata:
+        return []
+
+    fields = [
+        FieldMetadataOut.from_orm(field).dict() for field in asset.metadata.fields
+    ]
+
+    return fields
 
 
 async def get_asset_field(asset_metadata_id: UUID, field_name: str) -> ORMFieldMetadata:
