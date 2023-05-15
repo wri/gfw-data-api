@@ -61,8 +61,11 @@ async def create_version(
 ) -> Dict[str, Any]:
 
     resp = await async_client.put(f"/dataset/{dataset}/{version}", json=payload)
-    assert resp.json()["status"] == "success"
-
+    try:
+        assert resp.json()["status"] == "success"
+    except AssertionError:
+        print(f"UNSUCCESSFUL PUT RESPONSE: {resp.json()}")
+        raise
     return resp.json()["data"]
 
 
