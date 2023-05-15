@@ -130,6 +130,7 @@ async def check_asset_status(dataset, version, nb_assets):
 
 async def check_task_status(asset_id: UUID, nb_jobs: int, last_job_name: str):
     rows = await tasks.get_tasks(asset_id)
+    print(f"Found {len(rows)} jobs: {[row.change_log[0]['message'] for row in rows]}")
     assert len(rows) == nb_jobs
 
     for row in rows:
@@ -155,7 +156,19 @@ async def check_dynamic_vector_tile_cache_status(dataset, version):
     assert geo_database.asset_type == AssetType.geo_database_table
     assert dynamic_vector_tile.asset_type == AssetType.dynamic_vector_tile_cache
     assert dynamic_vector_tile.status == AssetStatus.saved
-    assert geo_database.metadata.fields[0].name == dynamic_vector_tile.metadata.fields[0].name
-    assert geo_database.metadata.fields[0].data_type == dynamic_vector_tile.metadata.fields[0].data_type
-    assert geo_database.metadata.fields[1].name == dynamic_vector_tile.metadata.fields[1].name
-    assert geo_database.metadata.fields[1].data_type == dynamic_vector_tile.metadata.fields[1].data_type
+    assert (
+        geo_database.metadata.fields[0].name
+        == dynamic_vector_tile.metadata.fields[0].name
+    )
+    assert (
+        geo_database.metadata.fields[0].data_type
+        == dynamic_vector_tile.metadata.fields[0].data_type
+    )
+    assert (
+        geo_database.metadata.fields[1].name
+        == dynamic_vector_tile.metadata.fields[1].name
+    )
+    assert (
+        geo_database.metadata.fields[1].data_type
+        == dynamic_vector_tile.metadata.fields[1].data_type
+    )

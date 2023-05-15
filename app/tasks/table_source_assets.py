@@ -403,7 +403,7 @@ def _create_cluster_jobs(
 
     if partitions:
         # When using partitions we need to cluster each partition table separately.
-        # Playing it save and cluster partition tables one after the other.
+        # Play it safe and cluster partition tables one after the other.
         # TODO: Still need to test if we can cluster tables which are part of the same partition concurrently.
         #  this would speed up this step by a lot. Partitions require a full lock on the table,
         #  but I don't know if the lock is acquired for the entire partition or only the partition table.
