@@ -62,7 +62,7 @@ if [[ -n "${PARTITION_TYPE}" ]]; then
 fi
 
 # After enforcing the field map above, the last field will now have a trailing
-# before a parenthesis . Remove it.
+# comma before a parenthesis . Remove it.
 # This is difficult to do with sed because the comma and parenthesis are on
 # different lines, and sed likes to work with a line at a time. So first turn
 # all tabs into spaces, turn all newlines into spaces, and then squish all

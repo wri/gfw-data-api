@@ -241,7 +241,7 @@ class TableAssetCreationOptions(StrictBaseModel):
     )
     indices: List[Index] = Field([], description="List of indices to add to table")
     constraints: Optional[List[Constraint]] = Field(
-        None, description="List of constrains to add to table. (optional)"
+        None, description="List of constraints to add to table. (optional)"
     )
     table_schema: Optional[List[FieldType]] = Field(
         None,
