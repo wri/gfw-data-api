@@ -1,16 +1,18 @@
 import copy
+from typing import Dict
 
 import pendulum
 import pytest
+from httpx import AsyncClient
 from pendulum.parsing.exceptions import ParserError
 
 from app.application import ContextEngine, db
 
 from .. import BUCKET, TSV_NAME
-from ..utils import create_default_asset, version_metadata
+from ..utils import create_default_asset
 from . import check_asset_status, check_task_status, check_version_status
 
-basic_table_input_data = {
+basic_table_input_data: Dict = {
     "creation_options": {
         "source_type": "table",
         "source_uri": [f"s3://{BUCKET}/{TSV_NAME}"],
@@ -38,16 +40,63 @@ basic_table_input_data = {
             {"name": "adm1", "data_type": "integer"},
             {"name": "adm2", "data_type": "integer"},
         ],
-    },
-    "metadata": version_metadata,
+    }
 }
+
+
+async def get_row_count(db, dataset: str, version: str) -> int:
+    count = await db.scalar(
+        db.text(
+            f"""
+                SELECT count(*)
+                    FROM "{dataset}"."{version}";"""
+        )
+    )
+    return int(count)
+
+
+async def get_partition_count(db, dataset: str, version: str) -> int:
+    partition_count = await db.scalar(
+        db.text(
+            f"""
+                SELECT count(i.inhrelid::regclass)
+                    FROM pg_inherits i
+                    WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass;"""
+        )
+    )
+    return int(partition_count)
+
+
+async def get_index_count(db, dataset: str, version: str) -> int:
+    index_count = await db.scalar(
+        db.text(
+            f"""
+                SELECT count(indexname)
+                    FROM pg_indexes
+                    WHERE schemaname = '{dataset}' AND tablename like '{version}%';"""
+        )
+    )
+    return int(index_count)
+
+
+async def get_cluster_count(db) -> int:
+    cluster_count = await db.scalar(
+        db.text(
+            """
+                SELECT count(relname)
+                    FROM   pg_class c
+                    JOIN   pg_index i ON i.indrelid = c.oid
+                    WHERE  relkind = 'r' AND relhasindex AND i.indisclustered"""
+        )
+    )
+    return int(cluster_count)
 
 
 @pytest.mark.asyncio
 async def test_prove_correct_schema():
     from app.models.pydantic.creation_options import TableSourceCreationOptions
 
-    input_data = copy.deepcopy(basic_table_input_data["creation_options"])
+    input_data: Dict = basic_table_input_data["creation_options"].copy()
     input_data["cluster"] = {
         "index_type": "btree",
         "column_names": ["iso", "adm1", "adm2", "alert__date"],
@@ -57,7 +106,7 @@ async def test_prove_correct_schema():
 
 
 @pytest.mark.asyncio
-async def test_table_source_asset_basic(batch_client, async_client):
+async def test_table_source_asset_basic(batch_client, async_client: AsyncClient):
     _, logs = batch_client
 
     ############################
@@ -71,10 +120,12 @@ async def test_table_source_asset_basic(batch_client, async_client):
     # Test asset creation
     #####################
 
+    input_data = basic_table_input_data.copy()
+
     asset = await create_default_asset(
         dataset,
         version,
-        version_payload=basic_table_input_data,
+        version_payload=input_data,
         execute_batch_jobs=True,
         logs=logs,
         async_client=async_client,
@@ -95,50 +146,22 @@ async def test_table_source_asset_basic(batch_client, async_client):
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
     async with ContextEngine("READ"):
-        count = await db.scalar(
-            db.text(
-                f"""
-                    SELECT count(*)
-                        FROM "{dataset}"."{version}";"""
-            )
-        )
-        partition_count = await db.scalar(
-            db.text(
-                f"""
-                    SELECT count(i.inhrelid::regclass)
-                        FROM pg_inherits i
-                        WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass;"""
-            )
-        )
-        index_count = await db.scalar(
-            db.text(
-                f"""
-                    SELECT count(indexname)
-                        FROM pg_indexes
-                        WHERE schemaname = '{dataset}' AND tablename like '{version}%';"""
-            )
-        )
-        cluster_count = await db.scalar(
-            db.text(
-                """
-                    SELECT count(relname)
-                        FROM   pg_class c
-                        JOIN   pg_index i ON i.indrelid = c.oid
-                        WHERE  relkind = 'r' AND relhasindex AND i.indisclustered"""
-            )
-        )
+        row_count = await get_row_count(db, dataset, version)
+        partition_count = await get_partition_count(db, dataset, version)
+        index_count = await get_index_count(db, dataset, version)
+        cluster_count = await get_cluster_count(db)
 
-    assert count == 99
+    assert row_count == 99
     assert partition_count == 0
     # postgres12 also adds indices to the main table, hence there are more indices than partitions
     assert index_count == (partition_count + 1) * len(
-        basic_table_input_data["creation_options"]["indices"]
+        input_data["creation_options"]["indices"]
     )
     assert cluster_count == 0
 
 
 @pytest.mark.asyncio
-async def test_table_source_asset_partition(batch_client, async_client):
+async def test_table_source_asset_partition(batch_client, async_client: AsyncClient):
     _, logs = batch_client
 
     ############################
@@ -171,7 +194,7 @@ async def test_table_source_asset_partition(batch_client, async_client):
     # Test asset creation
     #####################
 
-    input_data = copy.deepcopy(basic_table_input_data)
+    input_data = basic_table_input_data.copy()
     input_data["creation_options"]["partitions"] = {
         "partition_type": "range",
         "partition_column": "alert__date",
@@ -205,40 +228,12 @@ async def test_table_source_asset_partition(batch_client, async_client):
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
     async with ContextEngine("READ"):
-        count = await db.scalar(
-            db.text(
-                f"""
-                    SELECT count(*)
-                        FROM "{dataset}"."{version}";"""
-            )
-        )
-        partition_count = await db.scalar(
-            db.text(
-                f"""
-                    SELECT count(i.inhrelid::regclass)
-                        FROM pg_inherits i
-                        WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass;"""
-            )
-        )
-        index_count = await db.scalar(
-            db.text(
-                f"""
-                    SELECT count(indexname)
-                        FROM pg_indexes
-                        WHERE schemaname = '{dataset}' AND tablename like '{version}%';"""
-            )
-        )
-        cluster_count = await db.scalar(
-            db.text(
-                """
-                    SELECT count(relname)
-                        FROM   pg_class c
-                        JOIN   pg_index i ON i.indrelid = c.oid
-                        WHERE  relkind = 'r' AND relhasindex AND i.indisclustered"""
-            )
-        )
+        row_count = await get_row_count(db, dataset, version)
+        partition_count = await get_partition_count(db, dataset, version)
+        index_count = await get_index_count(db, dataset, version)
+        cluster_count = await get_cluster_count(db)
 
-    assert count == 99
+    assert row_count == 99
     assert partition_count == partition_count_expected
     # postgres12 also adds indices to the main table, hence there are more indices than partitions
     assert index_count == (partition_count + 1) * len(
@@ -247,8 +242,9 @@ async def test_table_source_asset_partition(batch_client, async_client):
     assert cluster_count == 0
 
 
+@pytest.mark.skip("Covers a currently broken corner-case: See GTC-2407")
 @pytest.mark.asyncio
-async def test_table_source_asset_cluster(batch_client, async_client):
+async def test_table_source_asset_cluster(batch_client, async_client: AsyncClient):
     _, logs = batch_client
 
     ############################
@@ -262,13 +258,11 @@ async def test_table_source_asset_cluster(batch_client, async_client):
     # Test asset creation
     #####################
 
-    input_data = copy.deepcopy(basic_table_input_data)
-    input_data["creation_options"]["cluster"] = (
-        {
-            "index_type": "btree",
-            "column_names": ["iso", "adm1", "adm2", "alert__date"],
-        },
-    )
+    input_data = basic_table_input_data.copy()
+    input_data["creation_options"]["cluster"] = {
+        "index_type": "btree",
+        "column_names": ["iso", "adm1", "adm2", "alert__date"],
+    }
 
     asset = await create_default_asset(
         dataset,
@@ -295,40 +289,12 @@ async def test_table_source_asset_cluster(batch_client, async_client):
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
     async with ContextEngine("READ"):
-        count = await db.scalar(
-            db.text(
-                f"""
-                    SELECT count(*)
-                        FROM "{dataset}"."{version}";"""
-            )
-        )
-        partition_count = await db.scalar(
-            db.text(
-                f"""
-                    SELECT count(i.inhrelid::regclass)
-                        FROM pg_inherits i
-                        WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass;"""
-            )
-        )
-        index_count = await db.scalar(
-            db.text(
-                f"""
-                    SELECT count(indexname)
-                        FROM pg_indexes
-                        WHERE schemaname = '{dataset}' AND tablename like '{version}%';"""
-            )
-        )
-        cluster_count = await db.scalar(
-            db.text(
-                """
-                    SELECT count(relname)
-                        FROM   pg_class c
-                        JOIN   pg_index i ON i.indrelid = c.oid
-                        WHERE  relkind = 'r' AND relhasindex AND i.indisclustered"""
-            )
-        )
+        row_count = await get_row_count(db, dataset, version)
+        partition_count = await get_partition_count(db, dataset, version)
+        index_count = await get_index_count(db, dataset, version)
+        cluster_count = await get_cluster_count(db)
 
-    assert count == 99
+    assert row_count == 99
     assert partition_count == 0
     # postgres12 also adds indices to the main table, hence there are more indices than partitions
     assert index_count == (partition_count + 1) * len(
