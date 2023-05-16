@@ -9,7 +9,13 @@ from pendulum.parsing.exceptions import ParserError
 from app.application import ContextEngine, db
 
 from .. import BUCKET, TSV_NAME
-from ..utils import create_default_asset
+from ..utils import (
+    create_default_asset,
+    get_cluster_count,
+    get_index_count,
+    get_partition_count,
+    get_row_count,
+)
 from . import check_asset_status, check_task_status, check_version_status
 
 basic_table_input_data: Dict = {
@@ -42,54 +48,6 @@ basic_table_input_data: Dict = {
         ],
     }
 }
-
-
-async def get_row_count(db, dataset: str, version: str) -> int:
-    count = await db.scalar(
-        db.text(
-            f"""
-                SELECT count(*)
-                    FROM "{dataset}"."{version}";"""
-        )
-    )
-    return int(count)
-
-
-async def get_partition_count(db, dataset: str, version: str) -> int:
-    partition_count = await db.scalar(
-        db.text(
-            f"""
-                SELECT count(i.inhrelid::regclass)
-                    FROM pg_inherits i
-                    WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass;"""
-        )
-    )
-    return int(partition_count)
-
-
-async def get_index_count(db, dataset: str, version: str) -> int:
-    index_count = await db.scalar(
-        db.text(
-            f"""
-                SELECT count(indexname)
-                    FROM pg_indexes
-                    WHERE schemaname = '{dataset}' AND tablename like '{version}%';"""
-        )
-    )
-    return int(index_count)
-
-
-async def get_cluster_count(db) -> int:
-    cluster_count = await db.scalar(
-        db.text(
-            """
-                SELECT count(relname)
-                    FROM   pg_class c
-                    JOIN   pg_index i ON i.indrelid = c.oid
-                    WHERE  relkind = 'r' AND relhasindex AND i.indisclustered"""
-        )
-    )
-    return int(cluster_count)
 
 
 @pytest.mark.asyncio
