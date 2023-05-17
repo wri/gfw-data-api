@@ -362,18 +362,18 @@ class StaticVectorFileCreationOptions(StrictBaseModel):
 
 
 SourceCreationOptions = Union[
-    RasterTileSetSourceCreationOptions,
     TableSourceCreationOptions,
+    RasterTileSetSourceCreationOptions,
     VectorSourceCreationOptions,
 ]
 
 OtherCreationOptions = Union[
+    TableAssetCreationOptions,
     RasterTileCacheCreationOptions,
     StaticVectorTileCacheCreationOptions,
     StaticVectorFileCreationOptions,
     DynamicVectorTileCacheCreationOptions,
     RasterTileSetAssetCreationOptions,
-    TableAssetCreationOptions,
 ]
 
 CreationOptions = Union[SourceCreationOptions, OtherCreationOptions]
