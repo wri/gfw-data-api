@@ -40,9 +40,14 @@ async def table_source_asset(
         version,
         "-s",
         source_uris[0],
-        "-m",
-        json.dumps(creation_options.dict(by_alias=True)["table_schema"]),
     ]
+    if creation_options.table_schema:
+        command.extend(
+            [
+                "-m",
+                json.dumps(creation_options.dict(by_alias=True)["table_schema"]),
+            ]
+        )
     if creation_options.partitions:
         command.extend(
             [
@@ -52,7 +57,6 @@ async def table_source_asset(
                 creation_options.partitions.partition_column,
             ]
         )
-
     if creation_options.constraints:
         unique_constraint_columns = []
         for constraint in creation_options.constraints:
