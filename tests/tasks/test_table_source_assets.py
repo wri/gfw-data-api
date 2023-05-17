@@ -1,6 +1,8 @@
 import copy
+import json
 from typing import Dict
 
+import httpx
 import pendulum
 import pytest
 from httpx import AsyncClient
@@ -8,13 +10,14 @@ from pendulum.parsing.exceptions import ParserError
 
 from app.application import ContextEngine, db
 
-from .. import BUCKET, TSV_NAME
+from .. import APPEND_TSV_NAME, BUCKET, PORT, TSV_NAME
 from ..utils import (
     create_default_asset,
     get_cluster_count,
     get_index_count,
     get_partition_count,
     get_row_count,
+    poll_jobs,
 )
 from . import check_asset_status, check_task_status, check_version_status
 
@@ -25,16 +28,6 @@ basic_table_input_data: Dict = {
         "source_driver": "text",
         "delimiter": "\t",
         "has_header": True,
-        "latitude": "latitude",
-        "longitude": "longitude",
-        "indices": [
-            {"index_type": "gist", "column_names": ["geom"]},
-            {"index_type": "gist", "column_names": ["geom_wm"]},
-            {
-                "index_type": "btree",
-                "column_names": ["iso", "adm1", "adm2", "alert__date"],
-            },
-        ],
         "table_schema": [
             {
                 "name": "rspo_oil_palm__certification_status",
@@ -64,22 +57,19 @@ async def test_prove_correct_schema():
 
 
 @pytest.mark.asyncio
-async def test_table_source_asset_basic(batch_client, async_client: AsyncClient):
+async def test_table_source_asset_minimal(batch_client, async_client: AsyncClient):
     _, logs = batch_client
 
     ############################
     # Setup test
     ############################
-
     dataset = "table_test"
     version = "v202002.1"
+    input_data: Dict = copy.deepcopy(basic_table_input_data)
 
     #####################
     # Test asset creation
     #####################
-
-    input_data: Dict = copy.deepcopy(basic_table_input_data)
-
     asset = await create_default_asset(
         dataset,
         version,
@@ -90,16 +80,84 @@ async def test_table_source_asset_basic(batch_client, async_client: AsyncClient)
     )
     asset_id = asset["asset_id"]
 
+    #################
+    # Check results
+    #################
     await check_version_status(dataset, version, 3)
     await check_asset_status(dataset, version, 1)  # There should be 1 asset
-    # There should be 6 tasks:
+
+    # There should be the following tasks:
     # 1 to create the table schema
     # 0 to partition because we didn't specify it
     # 1 to load the data
-    # 1 to add point geometry
+    # 0 to add point geometry because we didn't specify it
+    # 0 to add indices because we didn't specify them
+    # 0 to add clustering because we didn't specify it
+    await check_task_status(asset_id, 2, "load_data_0")
+
+    # There should be a table called "table_test"."v202002.1" with 99 rows.
+    # It should have the right amount of partitions and indices
+    async with ContextEngine("READ"):
+        row_count = await get_row_count(db, dataset, version)
+        partition_count = await get_partition_count(db, dataset, version)
+        index_count = await get_index_count(db, dataset, version)
+        cluster_count = await get_cluster_count(db)
+
+    assert row_count == 99
+    assert partition_count == 0
+    assert index_count == 0
+    assert cluster_count == 0
+
+
+@pytest.mark.skip("Covers a currently broken corner-case: See GTC-2407")
+@pytest.mark.asyncio
+async def test_table_source_asset_indices(batch_client, async_client: AsyncClient):
+    _, logs = batch_client
+
+    ############################
+    # Setup test
+    ############################
+    dataset = "table_test"
+    version = "v202002.1"
+    input_data: Dict = copy.deepcopy(basic_table_input_data)
+    input_data["creation_options"]["indices"] = (
+        [
+            {"index_type": "gist", "column_names": ["geom"]},
+            {"index_type": "gist", "column_names": ["geom_wm"]},
+            {
+                "index_type": "btree",
+                "column_names": ["iso", "adm1", "adm2", "alert__date"],
+            },
+        ],
+    )
+
+    #####################
+    # Test asset creation
+    #####################
+    asset = await create_default_asset(
+        dataset,
+        version,
+        version_payload=input_data,
+        execute_batch_jobs=True,
+        logs=logs,
+        async_client=async_client,
+    )
+    asset_id = asset["asset_id"]
+
+    #################
+    # Check results
+    #################
+    await check_version_status(dataset, version, 3)
+    await check_asset_status(dataset, version, 1)  # There should be 1 asset
+
+    # There should be the following tasks:
+    # 1 to create the table schema
+    # 0 to partition because we didn't specify it
+    # 1 to load the data
+    # 0 to add point geometry because we didn't specify it
     # 3 to add indices
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 6, "create_index_iso_adm1_adm2_alert__date_btree")
+    await check_task_status(asset_id, 5, "create_index_iso_adm1_adm2_alert__date_btree")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -119,13 +177,67 @@ async def test_table_source_asset_basic(batch_client, async_client: AsyncClient)
 
 
 @pytest.mark.asyncio
+async def test_table_source_asset_lat_long(batch_client, async_client: AsyncClient):
+    _, logs = batch_client
+
+    ############################
+    # Setup test
+    ############################
+    dataset = "table_test"
+    version = "v202002.1"
+    input_data: Dict = copy.deepcopy(basic_table_input_data)
+    input_data["creation_options"]["latitude"] = "latitude"
+    input_data["creation_options"]["longitude"] = "longitude"
+
+    #####################
+    # Test asset creation
+    #####################
+    asset = await create_default_asset(
+        dataset,
+        version,
+        version_payload=input_data,
+        execute_batch_jobs=True,
+        logs=logs,
+        async_client=async_client,
+    )
+    asset_id = asset["asset_id"]
+
+    #################
+    # Check results
+    #################
+    await check_version_status(dataset, version, 3)
+    await check_asset_status(dataset, version, 1)  # There should be 1 asset
+
+    # There should be the following tasks:
+    # 1 to create the table schema
+    # 0 to partition because we didn't specify it
+    # 1 to load the data
+    # 1 to add point geometry
+    # 0 to add indices because we didn't specify it
+    # 0 to add clustering because we didn't specify it
+    await check_task_status(asset_id, 3, "add_point_geometry")
+
+    # There should be a table called "table_test"."v202002.1" with 99 rows.
+    # It should have the right amount of partitions and indices
+    async with ContextEngine("READ"):
+        row_count = await get_row_count(db, dataset, version)
+        partition_count = await get_partition_count(db, dataset, version)
+        index_count = await get_index_count(db, dataset, version)
+        cluster_count = await get_cluster_count(db)
+
+    assert row_count == 99
+    assert partition_count == 0
+    assert index_count == 0
+    assert cluster_count == 0
+
+
+@pytest.mark.asyncio
 async def test_table_source_asset_partition(batch_client, async_client: AsyncClient):
     _, logs = batch_client
 
     ############################
     # Setup test
     ############################
-
     dataset = "table_test"
     version = "v202002.1"
 
@@ -146,12 +258,6 @@ async def test_table_source_asset_partition(batch_client, async_client: AsyncCli
                 # Year has only 52 weeks
                 pass
 
-    partition_count_expected = len(partition_schema)
-
-    #####################
-    # Test asset creation
-    #####################
-
     input_data: Dict = copy.deepcopy(basic_table_input_data)
     input_data["creation_options"]["partitions"] = {
         "partition_type": "range",
@@ -159,6 +265,11 @@ async def test_table_source_asset_partition(batch_client, async_client: AsyncCli
         "partition_schema": partition_schema,
     }
 
+    partition_count_expected = len(partition_schema)
+
+    #####################
+    # Test asset creation
+    #####################
     asset = await create_default_asset(
         dataset,
         version,
@@ -169,6 +280,9 @@ async def test_table_source_asset_partition(batch_client, async_client: AsyncCli
     )
     asset_id = asset["asset_id"]
 
+    #################
+    # Check results
+    #################
     await check_version_status(dataset, version, 3)
     await check_asset_status(dataset, version, 1)  # There should be 1 asset
 
@@ -176,12 +290,10 @@ async def test_table_source_asset_partition(batch_client, async_client: AsyncCli
     # 1 to create the table schema
     # 4 to partition
     # 1 to load the data
-    # 1 to add point geometry
-    # 3 to add indices
+    # 0 to add point geometry
+    # 0 to add indices
     # 0 to add clustering because we didn't specify it
-    await check_task_status(
-        asset_id, 10, "create_index_iso_adm1_adm2_alert__date_btree"
-    )
+    await check_task_status(asset_id, 6, "load_data_0")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -194,9 +306,7 @@ async def test_table_source_asset_partition(batch_client, async_client: AsyncCli
     assert row_count == 99
     assert partition_count == partition_count_expected
     # postgres12 also adds indices to the main table, hence there are more indices than partitions
-    assert index_count == (partition_count + 1) * len(
-        input_data["creation_options"]["indices"]
-    )
+    assert index_count == 0
     assert cluster_count == 0
 
 
@@ -208,20 +318,27 @@ async def test_table_source_asset_cluster(batch_client, async_client: AsyncClien
     ############################
     # Setup test
     ############################
-
     dataset = "table_test"
     version = "v202002.1"
-
-    #####################
-    # Test asset creation
-    #####################
-
     input_data: Dict = copy.deepcopy(basic_table_input_data)
     input_data["creation_options"]["cluster"] = {
         "index_type": "btree",
         "column_names": ["iso", "adm1", "adm2", "alert__date"],
     }
+    input_data["creation_options"]["indices"] = (
+        [
+            {"index_type": "gist", "column_names": ["geom"]},
+            {"index_type": "gist", "column_names": ["geom_wm"]},
+            {
+                "index_type": "btree",
+                "column_names": ["iso", "adm1", "adm2", "alert__date"],
+            },
+        ],
+    )
 
+    #####################
+    # Test asset creation
+    #####################
     asset = await create_default_asset(
         dataset,
         version,
@@ -232,6 +349,9 @@ async def test_table_source_asset_cluster(batch_client, async_client: AsyncClien
     )
     asset_id = asset["asset_id"]
 
+    #################
+    # Check results
+    #################
     await check_version_status(dataset, version, 3)
     await check_asset_status(dataset, version, 1)  # There should be 1 asset
 
@@ -239,10 +359,10 @@ async def test_table_source_asset_cluster(batch_client, async_client: AsyncClien
     # 1 to create the table schema
     # 0 to partition because we didn't specify it
     # 1 to load the data
-    # 1 to add point geometry
+    # 0 to add point geometry because we didn't specify it
     # 3 to add indices
     # 1 to add clustering
-    await check_task_status(asset_id, 8, "create_index_iso_adm1_adm2_alert__date_btree")
+    await check_task_status(asset_id, 6, "cluster_table")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -268,19 +388,16 @@ async def test_table_source_asset_constraints(batch_client, async_client: AsyncC
     ############################
     # Setup test
     ############################
-
     dataset = "table_test"
     version = "v202002.1"
-
-    #####################
-    # Test asset creation
-    #####################
-
     input_data: Dict = copy.deepcopy(basic_table_input_data)
     input_data["creation_options"]["constraints"] = [
         {"constraint_type": "unique", "column_names": ["adm1", "adm2", "alert__date"]}
     ]
 
+    #####################
+    # Test asset creation
+    #####################
     asset = await create_default_asset(
         dataset,
         version,
@@ -291,6 +408,9 @@ async def test_table_source_asset_constraints(batch_client, async_client: AsyncC
     )
     asset_id = asset["asset_id"]
 
+    #################
+    # Check results
+    #################
     await check_version_status(dataset, version, 3)
     await check_asset_status(dataset, version, 1)  # There should be 1 asset
 
@@ -298,10 +418,10 @@ async def test_table_source_asset_constraints(batch_client, async_client: AsyncC
     # 1 to create the table schema
     # 0 to partition because we didn't specify it
     # 1 to load the data
-    # 1 to add point geometry
-    # 3 to add indices
+    # 0 to add point geometry because we didn't specify it
+    # 0 to add indices
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 6, "create_index_iso_adm1_adm2_alert__date_btree")
+    await check_task_status(asset_id, 2, "load_data_0")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -314,7 +434,68 @@ async def test_table_source_asset_constraints(batch_client, async_client: AsyncC
     assert row_count == 99
     assert partition_count == 0
     # postgres12 also adds indices to the main table, hence there are more indices than partitions
-    assert index_count == (partition_count + 1) * len(
-        input_data["creation_options"]["indices"]
-    ) + len(input_data["creation_options"]["constraints"])
+    assert index_count == len(input_data["creation_options"]["constraints"])
     assert cluster_count == 0
+
+
+@pytest.mark.asyncio
+async def test_table_source_asset_append(batch_client, async_client: AsyncClient):
+    _, logs = batch_client
+
+    ############################
+    # Setup test
+    ############################
+    dataset = "table_test"
+    version = "v202002.1"
+    input_data: Dict = copy.deepcopy(basic_table_input_data)
+
+    #####################
+    # Test asset creation
+    #####################
+    asset = await create_default_asset(
+        dataset,
+        version,
+        version_payload=input_data,
+        execute_batch_jobs=True,
+        logs=logs,
+        async_client=async_client,
+    )
+    asset_id = asset["asset_id"]
+
+    #################
+    # Check results
+    #################
+    await check_version_status(dataset, version, 3)
+    await check_asset_status(dataset, version, 1)  # There should be 1 asset
+
+    # There should be the following tasks:
+    # 1 to create the table schema
+    # 0 to partition because we didn't specify it
+    # 1 to load the data
+    # 0 to add point geometry because we didn't specify it
+    # 0 to add indices because we didn't specify them
+    # 0 to add clustering because we didn't specify it
+    await check_task_status(asset_id, 2, "load_data_0")
+
+    ########################
+    # Append
+    #########################
+    httpx.delete(f"http://localhost:{PORT}")
+
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/append",
+        json={"source_uri": [f"s3://{BUCKET}/{APPEND_TSV_NAME}"]},
+    )
+    assert response.status_code == 200
+
+    response = await async_client.get(f"/dataset/{dataset}/{version}/change_log")
+    assert response.status_code == 200
+    tasks = json.loads(response.json()["data"][-1]["detail"])
+    task_ids = [task["job_id"] for task in tasks]
+
+    # make sure all jobs completed
+    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
+    assert status == "saved"
+
+    await check_version_status(dataset, version, 6)
+    await check_asset_status(dataset, version, 2)
