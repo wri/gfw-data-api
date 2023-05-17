@@ -241,6 +241,10 @@ async def append_to_version(
     await assets.update_asset(default_asset.asset_id, **update_data)
 
     version_orm: ORMVersion = await versions.get_version(dataset, version)
+    if request.metadata:
+        metadata = request.metadata.dict(exclude_none=True)
+        version_orm = await versions.update_version(dataset, version, metadata=metadata)
+
     return await _version_response(dataset, version, version_orm)
 
 
