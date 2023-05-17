@@ -6,6 +6,8 @@ set -e
 # -d | --dataset
 # -v | --version
 # -s | --source
+
+# optional arguments
 # -p | --partition_type
 # -c | --column_name
 # -m | --field_map
