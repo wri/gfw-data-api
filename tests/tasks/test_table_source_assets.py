@@ -28,6 +28,14 @@ basic_table_input_data: Dict = {
         "source_driver": "text",
         "delimiter": "\t",
         "has_header": True,
+        "timeout": 600,
+        "latitude": None,
+        "longitude": None,
+        "create_dynamic_vector_tile_cache": False,
+        "partitions": None,
+        "cluster": None,
+        "indices": [],
+        "constraints": None,
         "table_schema": [
             {
                 "name": "rspo_oil_palm__certification_status",
@@ -83,7 +91,7 @@ async def test_table_source_asset_minimal(batch_client, async_client: AsyncClien
     #################
     # Check results
     #################
-    await check_version_status(dataset, version, 3)
+    await check_version_status(dataset, version, 2)
     await check_asset_status(dataset, version, 1)  # There should be 1 asset
 
     # There should be the following tasks:
@@ -109,7 +117,6 @@ async def test_table_source_asset_minimal(batch_client, async_client: AsyncClien
     assert cluster_count == 0
 
 
-@pytest.mark.skip("Covers a currently broken corner-case: See GTC-2407")
 @pytest.mark.asyncio
 async def test_table_source_asset_indices(batch_client, async_client: AsyncClient):
     _, logs = batch_client
@@ -120,16 +127,11 @@ async def test_table_source_asset_indices(batch_client, async_client: AsyncClien
     dataset = "table_test"
     version = "v202002.1"
     input_data: Dict = copy.deepcopy(basic_table_input_data)
-    input_data["creation_options"]["indices"] = (
-        [
-            {"index_type": "gist", "column_names": ["geom"]},
-            {"index_type": "gist", "column_names": ["geom_wm"]},
-            {
-                "index_type": "btree",
-                "column_names": ["iso", "adm1", "adm2", "alert__date"],
-            },
-        ],
-    )
+    input_data["creation_options"]["indices"] = [
+        {"index_type": "btree", "column_names": ["iso"]},
+        {"index_type": "hash", "column_names": ["rspo_oil_palm__certification_status"]},
+        {"index_type": "btree", "column_names": ["iso", "adm1", "adm2", "alert__date"]},
+    ]
 
     #####################
     # Test asset creation
@@ -147,7 +149,7 @@ async def test_table_source_asset_indices(batch_client, async_client: AsyncClien
     #################
     # Check results
     #################
-    await check_version_status(dataset, version, 3)
+    await check_version_status(dataset, version, 2)
     await check_asset_status(dataset, version, 1)  # There should be 1 asset
 
     # There should be the following tasks:
@@ -188,6 +190,7 @@ async def test_table_source_asset_lat_long(batch_client, async_client: AsyncClie
     input_data: Dict = copy.deepcopy(basic_table_input_data)
     input_data["creation_options"]["latitude"] = "latitude"
     input_data["creation_options"]["longitude"] = "longitude"
+    input_data["creation_options"]["create_dynamic_vector_tile_cache"] = True
 
     #####################
     # Test asset creation
@@ -206,7 +209,8 @@ async def test_table_source_asset_lat_long(batch_client, async_client: AsyncClie
     # Check results
     #################
     await check_version_status(dataset, version, 3)
-    await check_asset_status(dataset, version, 1)  # There should be 1 asset
+    # There should be an extra asset from the dynamic vector tile cache
+    await check_asset_status(dataset, version, 2)
 
     # There should be the following tasks:
     # 1 to create the table schema
@@ -283,7 +287,7 @@ async def test_table_source_asset_partition(batch_client, async_client: AsyncCli
     #################
     # Check results
     #################
-    await check_version_status(dataset, version, 3)
+    await check_version_status(dataset, version, 2)
     await check_asset_status(dataset, version, 1)  # There should be 1 asset
 
     # There should be the following tasks:
@@ -310,7 +314,6 @@ async def test_table_source_asset_partition(batch_client, async_client: AsyncCli
     assert cluster_count == 0
 
 
-@pytest.mark.skip("Covers a currently broken corner-case: See GTC-2407")
 @pytest.mark.asyncio
 async def test_table_source_asset_cluster(batch_client, async_client: AsyncClient):
     _, logs = batch_client
@@ -325,16 +328,11 @@ async def test_table_source_asset_cluster(batch_client, async_client: AsyncClien
         "index_type": "btree",
         "column_names": ["iso", "adm1", "adm2", "alert__date"],
     }
-    input_data["creation_options"]["indices"] = (
-        [
-            {"index_type": "gist", "column_names": ["geom"]},
-            {"index_type": "gist", "column_names": ["geom_wm"]},
-            {
-                "index_type": "btree",
-                "column_names": ["iso", "adm1", "adm2", "alert__date"],
-            },
-        ],
-    )
+    input_data["creation_options"]["indices"] = [
+        {"index_type": "btree", "column_names": ["iso"]},
+        {"index_type": "hash", "column_names": ["rspo_oil_palm__certification_status"]},
+        {"index_type": "btree", "column_names": ["iso", "adm1", "adm2", "alert__date"]},
+    ]
 
     #####################
     # Test asset creation
@@ -352,7 +350,7 @@ async def test_table_source_asset_cluster(batch_client, async_client: AsyncClien
     #################
     # Check results
     #################
-    await check_version_status(dataset, version, 3)
+    await check_version_status(dataset, version, 2)
     await check_asset_status(dataset, version, 1)  # There should be 1 asset
 
     # There should be the following tasks:
@@ -411,7 +409,7 @@ async def test_table_source_asset_constraints(batch_client, async_client: AsyncC
     #################
     # Check results
     #################
-    await check_version_status(dataset, version, 3)
+    await check_version_status(dataset, version, 2)
     await check_asset_status(dataset, version, 1)  # There should be 1 asset
 
     # There should be the following tasks:
@@ -436,6 +434,104 @@ async def test_table_source_asset_constraints(batch_client, async_client: AsyncC
     # postgres12 also adds indices to the main table, hence there are more indices than partitions
     assert index_count == len(input_data["creation_options"]["constraints"])
     assert cluster_count == 0
+
+
+@pytest.mark.asyncio
+async def test_table_source_asset_everything(batch_client, async_client: AsyncClient):
+    _, logs = batch_client
+
+    ############################
+    # Setup test
+    ############################
+    dataset = "table_test"
+    version = "v202002.1"
+
+    # define partition schema
+    partition_schema = list()
+    years = range(2018, 2021)
+    for year in years:
+        for week in range(1, 54):
+            try:
+                name = f"y{year}_w{week:02}"
+                start = pendulum.parse(f"{year}-W{week:02}").to_date_string()
+                end = pendulum.parse(f"{year}-W{week:02}").add(days=7).to_date_string()
+                partition_schema.append(
+                    {"partition_suffix": name, "start_value": start, "end_value": end}
+                )
+
+            except ParserError:
+                # Year has only 52 weeks
+                pass
+
+    input_data: Dict = copy.deepcopy(basic_table_input_data)
+    input_data["creation_options"]["timeout"] = 600
+    input_data["creation_options"]["latitude"] = "latitude"
+    input_data["creation_options"]["longitude"] = "longitude"
+    input_data["creation_options"]["create_dynamic_vector_tile_cache"] = True
+    input_data["creation_options"]["partitions"] = {
+        "partition_type": "range",
+        "partition_column": "alert__date",
+        "partition_schema": partition_schema,
+    }
+    input_data["creation_options"]["constraints"] = [
+        {"constraint_type": "unique", "column_names": ["adm1", "adm2", "alert__date"]}
+    ]
+    input_data["creation_options"]["indices"] = [
+        {"index_type": "btree", "column_names": ["iso"]},
+        {"index_type": "hash", "column_names": ["rspo_oil_palm__certification_status"]},
+        {"index_type": "btree", "column_names": ["iso", "adm1", "adm2", "alert__date"]},
+    ]
+    input_data["creation_options"]["cluster"] = {
+        "index_type": "btree",
+        "column_names": ["iso", "adm1", "adm2", "alert__date"],
+    }
+
+    partition_count_expected = len(partition_schema)
+
+    #####################
+    # Test asset creation
+    #####################
+    asset = await create_default_asset(
+        dataset,
+        version,
+        version_payload=input_data,
+        execute_batch_jobs=True,
+        logs=logs,
+        async_client=async_client,
+    )
+    asset_id = asset["asset_id"]
+
+    #################
+    # Check results
+    #################
+    await check_version_status(dataset, version, 3)
+    # There should be an extra asset from the dynamic vector tile cache
+    await check_asset_status(dataset, version, 2)
+
+    # There should be the following tasks:
+    # 1 to create the table schema
+    # 4 to partition
+    # 1 to load the data
+    # 1 to add point geometry
+    # 3 to add indices
+    # 4 to add clustering
+    await check_task_status(asset_id, 14, "cluster_partitions_3")
+
+    # There should be a table called "table_test"."v202002.1" with 99 rows.
+    # It should have the right amount of partitions and indices
+    async with ContextEngine("READ"):
+        row_count = await get_row_count(db, dataset, version)
+        partition_count = await get_partition_count(db, dataset, version)
+        index_count = await get_index_count(db, dataset, version)
+        cluster_count = await get_cluster_count(db)
+
+    assert row_count == 99
+    assert partition_count == partition_count_expected
+    # Disclaimer: These next two values are observed... I have no idea how
+    # to calculate whether or not they are correct. Probably by some
+    # multiplication of indices, partitions, constraints, and clusters
+    assert index_count == 632
+    assert cluster_count == 157
 
 
 @pytest.mark.asyncio
@@ -465,7 +561,7 @@ async def test_table_source_asset_append(batch_client, async_client: AsyncClient
     #################
     # Check results
     #################
-    await check_version_status(dataset, version, 3)
+    await check_version_status(dataset, version, 2)
     await check_asset_status(dataset, version, 1)  # There should be 1 asset
 
     # There should be the following tasks:
@@ -497,5 +593,5 @@ async def test_table_source_asset_append(batch_client, async_client: AsyncClient
     status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
     assert status == "saved"
 
-    await check_version_status(dataset, version, 6)
-    await check_asset_status(dataset, version, 2)
+    await check_version_status(dataset, version, 4)
+    await check_asset_status(dataset, version, 1)
