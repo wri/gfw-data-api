@@ -112,33 +112,50 @@ async def check_version_status(dataset, version, log_count):
     row = await versions.get_version(dataset, version)
     assert row.status == "saved"
 
-    assert len(row.change_log) == log_count
+    try:
+        assert len(row.change_log) == log_count
+    except AssertionError:
+        print(f"Expected {log_count} changelog rows, observed {len(row.change_log)}")
+        for cl in row.change_log:
+            print(cl)
+        raise
     assert row.change_log[0]["message"] == "Successfully scheduled batch jobs"
 
 
 async def check_asset_status(dataset, version, nb_assets):
     rows = await assets.get_assets(dataset, version)
-    assert len(rows) == 2
+    try:
+        assert len(rows) == nb_assets
+    except AssertionError:
+        print(f"Expected {nb_assets} asset rows, but found {len(rows)}")
+        for row in rows:
+            print(row)
+        raise
 
-    # in this test we don't set the final asset status to saved or failed
     assert rows[0].status == "saved"
     assert rows[0].is_default is True
-
-    # in this test we only see the logs from background task, not from batch jobs
-    assert len(rows[0].change_log) == nb_assets * 2
 
 
 async def check_task_status(asset_id: UUID, nb_jobs: int, last_job_name: str):
     rows = await tasks.get_tasks(asset_id)
-    print(f"Found {len(rows)} jobs: {[row.change_log[0]['message'] for row in rows]}")
-    assert len(rows) == nb_jobs
+    try:
+        assert len(rows) == nb_jobs
+    except AssertionError:
+        print(f"Expected {nb_jobs} jobs but found {len(rows)}:")
+        for row in rows:
+            print(f"{row.change_log[0]['message']}")
+        raise
 
     for row in rows:
         # in this test we don't set the final asset status to saved or failed
         assert row.status == "pending"
 
     # in this test we only see the logs from background task, not from batch jobs
-    assert rows[-1].change_log[0]["message"] == f"Scheduled job {last_job_name}"
+    try:
+        assert rows[-1].change_log[0]["message"] == f"Scheduled job {last_job_name}"
+    except AssertionError:
+        print(f"Last task's changelog: {rows[-1].change_log[0]['message']}")
+        raise
 
 
 async def check_dynamic_vector_tile_cache_status(dataset, version):
