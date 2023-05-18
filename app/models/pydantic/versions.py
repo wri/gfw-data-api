@@ -58,7 +58,6 @@ class VersionUpdateIn(StrictBaseModel):
 
 class VersionAppendIn(StrictBaseModel):
     source_uri: List[str]
-    metadata: Optional[VersionMetadataIn]
 
 
 class VersionResponse(Response):
