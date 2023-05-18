@@ -80,8 +80,8 @@ async def create_version_metadata(dataset: str, version: str, **data):
 
     content_date_range = data.pop("content_date_range", None)
     if content_date_range:
-        data["content_start_date"] = content_date_range["start_date"]
-        data["content_end_date"] = content_date_range["end_date"]
+        data["content_start_date"] = content_date_range.get("start_date")
+        data["content_end_date"] = content_date_range.get("end_date")
 
     try:
         new_metadata: ORMVersionMetadata = await ORMVersionMetadata.create(
