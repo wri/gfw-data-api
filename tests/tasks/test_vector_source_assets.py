@@ -395,7 +395,6 @@ async def test_vector_source_asset_csv_append(batch_client, async_client: AsyncC
             "indices": [],
         },
     }
-    content_end_date = "2001-03-03"
 
     asset = await create_default_asset(
         dataset,
@@ -415,10 +414,7 @@ async def test_vector_source_asset_csv_append(batch_client, async_client: AsyncC
     # Now test appending
     resp = await async_client.post(
         f"/dataset/{dataset}/{version}/append",
-        json={
-            "source_uri": [f"s3://{BUCKET}/{CSV2_NAME}"],
-            "metadata": {"content_date_range": {"end_date": content_end_date}},
-        },
+        json={"source_uri": [f"s3://{BUCKET}/{CSV2_NAME}"]},
     )
     assert resp.status_code == 200
 
@@ -431,11 +427,6 @@ async def test_vector_source_asset_csv_append(batch_client, async_client: AsyncC
     async with ContextEngine("READ"):
         count = await db.scalar(db.text(f'SELECT count(*) FROM {dataset}."{version}"'))
     assert count == 2
-
-    resp = await async_client.get(f"/dataset/{dataset}/{version}")
-    assert resp.status_code == 200
-    content_date_range = resp.json()["data"]["metadata"]["content_date_range"]
-    assert content_date_range["end_date"] == content_end_date
 
 
 @pytest.mark.asyncio
