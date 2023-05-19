@@ -1,5 +1,6 @@
 import copy
 import json
+import string
 from typing import Dict
 
 import httpx
@@ -12,6 +13,7 @@ from app.application import ContextEngine, db
 
 from .. import APPEND_TSV_NAME, BUCKET, PORT, TSV_NAME
 from ..utils import (
+    create_dataset,
     create_default_asset,
     get_cluster_count,
     get_index_count,
@@ -595,3 +597,104 @@ async def test_table_source_asset_append(batch_client, async_client: AsyncClient
 
     await check_version_status(dataset, version, 4)
     await check_asset_status(dataset, version, 1)
+
+
+@pytest.mark.asyncio
+async def test_table_source_asset_too_many_columns_in_unique_constraint(
+    async_client: AsyncClient,
+):
+    dataset = "table_test"
+    version = "v202002.1"
+    input_data: Dict = copy.deepcopy(basic_table_input_data)
+    input_data["creation_options"]["constraints"] = [
+        {
+            "constraint_type": "unique",
+            "column_names": [f"a_{letter}" for letter in string.ascii_letters],
+        }
+    ]
+
+    await create_dataset(dataset, async_client)
+
+    resp = await async_client.put(f"/dataset/{dataset}/{version}", json=input_data)
+
+    assert resp.status_code == 422
+    assert "ensure this value has at most 32 items" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_table_source_asset_no_columns_in_unique_constraint(
+    async_client: AsyncClient,
+):
+    dataset = "table_test"
+    version = "v202002.1"
+    input_data: Dict = copy.deepcopy(basic_table_input_data)
+    input_data["creation_options"]["constraints"] = [
+        {"constraint_type": "unique", "column_names": []}
+    ]
+
+    await create_dataset(dataset, async_client)
+
+    resp = await async_client.put(f"/dataset/{dataset}/{version}", json=input_data)
+
+    assert resp.status_code == 422
+    assert "ensure this value has at least 1 items" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_table_source_asset_too_many_unique_constraints(
+    async_client: AsyncClient,
+):
+    dataset = "table_test"
+    version = "v202002.1"
+    input_data: Dict = copy.deepcopy(basic_table_input_data)
+    input_data["creation_options"]["constraints"] = [
+        {"constraint_type": "unique", "column_names": ["foo", "bar"]},
+        {
+            "constraint_type": "unique",
+            "column_names": [f"a_{letter}" for letter in string.ascii_lowercase],
+        },
+    ]
+
+    await create_dataset(dataset, async_client)
+
+    resp = await async_client.put(f"/dataset/{dataset}/{version}", json=input_data)
+
+    assert resp.status_code == 422
+    assert "Currently cannot specify more than 1 unique constraint" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_table_source_asset_too_many_columns_in_index(async_client: AsyncClient):
+    dataset = "table_test"
+    version = "v202002.1"
+    input_data: Dict = copy.deepcopy(basic_table_input_data)
+    input_data["creation_options"]["indices"] = [
+        {
+            "index_type": "btree",
+            "column_names": [f"a_{letter}" for letter in string.ascii_letters],
+        }
+    ]
+
+    await create_dataset(dataset, async_client)
+
+    resp = await async_client.put(f"/dataset/{dataset}/{version}", json=input_data)
+
+    assert resp.status_code == 422
+    assert "ensure this value has at most 32 items" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_table_source_asset_no_columns_in_index(async_client: AsyncClient):
+    dataset = "table_test"
+    version = "v202002.1"
+    input_data: Dict = copy.deepcopy(basic_table_input_data)
+    input_data["creation_options"]["indices"] = [
+        {"index_type": "btree", "column_names": []}
+    ]
+
+    await create_dataset(dataset, async_client)
+
+    resp = await async_client.put(f"/dataset/{dataset}/{version}", json=input_data)
+
+    assert resp.status_code == 422
+    assert "ensure this value has at least 1 items" in resp.text

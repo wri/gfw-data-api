@@ -47,14 +47,22 @@ NoDataType = Union[StrictInt, NonNumericFloat]
 class Index(StrictBaseModel):
     index_type: IndexType
     column_names: List[str] = Field(
-        ..., description="Columns to be used by index", regex=COLUMN_REGEX
+        ...,
+        description="Columns to be used by index",
+        regex=COLUMN_REGEX,
+        min_items=1,
+        max_items=32,  # A PostgreSQL upper limit
     )
 
 
 class Constraint(StrictBaseModel):
     constraint_type: ConstraintType
     column_names: List[str] = Field(
-        ..., description="Columns included in the constraint", regex=COLUMN_REGEX
+        ...,
+        description="Columns included in the constraint",
+        regex=COLUMN_REGEX,
+        min_items=1,
+        max_items=32,  # A PostgreSQL upper limit
     )
 
     class Config:
@@ -254,6 +262,17 @@ class TableAssetCreationOptions(StrictBaseModel):
         "Disable this option by setting value to `false`",
     )
     timeout: int = DEFAULT_JOB_DURATION
+
+    @validator("constraints")
+    def validate_max_1_unique_constraints(cls, v, values, **kwargs):
+        if v is not None:
+            unique_constraints = [
+                c for c in v if c.constraint_type == ConstraintType.unique
+            ]
+            assert (
+                len(unique_constraints) < 2
+            ), "Currently cannot specify more than 1 unique constraint"
+        return v
 
 
 class TableSourceCreationOptions(TableAssetCreationOptions):
