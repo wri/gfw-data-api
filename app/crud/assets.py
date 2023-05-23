@@ -37,7 +37,7 @@ async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
 
     return rows
 
-@alru_cache(maxsize=128)
+
 async def get_raster_tile_sets():
     latest_tile_sets = await (
         ORMAsset.join(ORMVersion)
@@ -64,7 +64,9 @@ async def get_raster_tile_sets():
         asset_dict = dict(asset.items())
         try:
             metadata = await get_asset_metadata(asset.asset_id)
+            # metadata = {}
             asset_dict["metadata"] = metadata
+            # raise RecordNotFoundError
         except RecordNotFoundError:
             pass
         assets_with_metadata.append(asset_dict)
