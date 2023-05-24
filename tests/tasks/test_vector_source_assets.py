@@ -13,7 +13,6 @@ from app.models.orm.geostore import Geostore
 from app.models.orm.tasks import Task as ORMTask
 from app.models.pydantic.geostore import Geometry, GeostoreCommon
 
-from ..utils import create_default_asset, version_metadata, poll_jobs
 from .. import (
     BUCKET,
     CSV2_NAME,
@@ -25,6 +24,7 @@ from .. import (
     PORT,
     SHP_NAME,
 )
+from ..utils import create_default_asset, poll_jobs, version_metadata
 from . import (
     check_asset_status,
     check_dynamic_vector_tile_cache_status,
@@ -73,7 +73,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
         asset_id = asset["asset_id"]
 
         await check_version_status(dataset, version, 3)
-        await check_asset_status(dataset, version, 1)
+        await check_asset_status(dataset, version, 2)
         await check_task_status(asset_id, 8, "inherit_from_geostore")
 
         # There should be a table called "test"."v1.1.1" with one row
@@ -163,7 +163,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "integer",
                     "is_feature_info": True,
                     "is_filter": True,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "fid",
@@ -172,7 +172,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "numeric",
                     "is_feature_info": True,
                     "is_filter": True,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "geom",
@@ -181,7 +181,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "geometry",
                     "is_feature_info": False,
                     "is_filter": False,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "geom_wm",
@@ -190,7 +190,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "geometry",
                     "is_feature_info": False,
                     "is_filter": False,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "gfw_area__ha",
@@ -199,7 +199,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "numeric",
                     "is_feature_info": True,
                     "is_filter": True,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "gfw_geostore_id",
@@ -208,7 +208,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "uuid",
                     "is_feature_info": True,
                     "is_filter": True,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "gfw_geojson",
@@ -217,7 +217,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "text",
                     "is_feature_info": False,
                     "is_filter": False,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "gfw_bbox",
@@ -226,7 +226,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "ARRAY",
                     "is_feature_info": False,
                     "is_filter": False,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "created_on",
@@ -235,7 +235,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "timestamp without time zone",
                     "is_feature_info": False,
                     "is_filter": False,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "updated_on",
@@ -244,7 +244,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "timestamp without time zone",
                     "is_feature_info": False,
                     "is_filter": False,
-                    "unit": None
+                    "unit": None,
                 },
             ]
         else:
@@ -257,7 +257,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "integer",
                     "is_feature_info": True,
                     "is_filter": True,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "geom",
@@ -266,7 +266,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "geometry",
                     "is_feature_info": False,
                     "is_filter": False,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "geom_wm",
@@ -275,7 +275,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "geometry",
                     "is_feature_info": False,
                     "is_filter": False,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "gfw_area__ha",
@@ -284,7 +284,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "numeric",
                     "is_feature_info": True,
                     "is_filter": True,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "gfw_geostore_id",
@@ -293,7 +293,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "uuid",
                     "is_feature_info": True,
                     "is_filter": True,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "gfw_geojson",
@@ -302,7 +302,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "text",
                     "is_feature_info": False,
                     "is_filter": False,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "gfw_bbox",
@@ -311,7 +311,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "ARRAY",
                     "is_feature_info": False,
                     "is_filter": False,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "created_on",
@@ -320,7 +320,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "timestamp without time zone",
                     "is_feature_info": False,
                     "is_filter": False,
-                    "unit": None
+                    "unit": None,
                 },
                 {
                     "name": "updated_on",
@@ -329,7 +329,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
                     "data_type": "timestamp without time zone",
                     "is_feature_info": False,
                     "is_filter": False,
-                    "unit": None
+                    "unit": None,
                 },
             ]
 
@@ -369,7 +369,7 @@ async def test_vector_source_asset_csv(batch_client, async_client: AsyncClient):
     asset_id = asset["asset_id"]
 
     await check_version_status(dataset, version, 3)
-    await check_asset_status(dataset, version, 1)
+    await check_asset_status(dataset, version, 2)
     await check_task_status(asset_id, 8, "inherit_from_geostore")
 
     # There should be a table called "test"."v1.1.1" with one row
