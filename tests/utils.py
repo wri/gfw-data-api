@@ -10,7 +10,6 @@ import httpx
 import rasterio
 from affine import Affine
 from botocore.exceptions import ClientError
-from gino import Gino
 from rasterio.crs import CRS
 
 from app.crud import tasks
@@ -62,11 +61,8 @@ async def create_version(
 ) -> Dict[str, Any]:
 
     resp = await async_client.put(f"/dataset/{dataset}/{version}", json=payload)
-    try:
-        assert resp.json()["status"] == "success"
-    except AssertionError:
-        print(f"UNSUCCESSFUL PUT RESPONSE: {resp.json()}")
-        raise
+    assert resp.json()["status"] == "success"
+
     return resp.json()["data"]
 
 
@@ -325,51 +321,3 @@ def upload_fake_data(dtype, dtype_name, no_data, prefix, data):
             DATA_LAKE_BUCKET,
             f"{prefix}/{data_file_name}",
         )
-
-
-async def get_row_count(db: Gino, dataset: str, version: str) -> int:
-    count = await db.scalar(
-        db.text(
-            f"""
-                SELECT count(*)
-                    FROM "{dataset}"."{version}";"""
-        )
-    )
-    return int(count)
-
-
-async def get_partition_count(db: Gino, dataset: str, version: str) -> int:
-    partition_count = await db.scalar(
-        db.text(
-            f"""
-                SELECT count(i.inhrelid::regclass)
-                    FROM pg_inherits i
-                    WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass;"""
-        )
-    )
-    return int(partition_count)
-
-
-async def get_index_count(db: Gino, dataset: str, version: str) -> int:
-    index_count = await db.scalar(
-        db.text(
-            f"""
-                SELECT count(indexname)
-                    FROM pg_indexes
-                    WHERE schemaname = '{dataset}' AND tablename like '{version}%';"""
-        )
-    )
-    return int(index_count)
-
-
-async def get_cluster_count(db: Gino) -> int:
-    cluster_count = await db.scalar(
-        db.text(
-            """
-                SELECT count(relname)
-                    FROM   pg_class c
-                    JOIN   pg_index i ON i.indrelid = c.oid
-                    WHERE  relkind = 'r' AND relhasindex AND i.indisclustered"""
-        )
-    )
-    return int(cluster_count)
