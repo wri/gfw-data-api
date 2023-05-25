@@ -3,7 +3,6 @@ import math
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from ..models.enum.creation_options import ConstraintType
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import (
     Index,
@@ -23,6 +22,7 @@ async def table_source_asset(
     asset_id: UUID,
     input_data: Dict[str, Any],
 ) -> ChangeLog:
+
     creation_options = TableSourceCreationOptions(**input_data["creation_options"])
     if creation_options.source_uri:
         source_uris: List[str] = creation_options.source_uri
@@ -40,14 +40,9 @@ async def table_source_asset(
         version,
         "-s",
         source_uris[0],
+        "-m",
+        json.dumps(creation_options.dict(by_alias=True)["table_schema"]),
     ]
-    if creation_options.table_schema:
-        command.extend(
-            [
-                "-m",
-                json.dumps(creation_options.dict(by_alias=True)["table_schema"]),
-            ]
-        )
     if creation_options.partitions:
         command.extend(
             [
@@ -57,13 +52,6 @@ async def table_source_asset(
                 creation_options.partitions.partition_column,
             ]
         )
-    if creation_options.constraints:
-        unique_constraint_columns = []
-        for constraint in creation_options.constraints:
-            if constraint.constraint_type == ConstraintType.unique:
-                unique_constraint_columns += constraint.column_names
-
-        command.extend(["-u", ",".join(unique_constraint_columns)])
 
     job_env: List[Dict[str, Any]] = writer_secrets + [
         {"name": "ASSET_ID", "value": str(asset_id)}
@@ -407,7 +395,7 @@ def _create_cluster_jobs(
 
     if partitions:
         # When using partitions we need to cluster each partition table separately.
-        # Play it safe and cluster partition tables one after the other.
+        # Playing it save and cluster partition tables one after the other.
         # TODO: Still need to test if we can cluster tables which are part of the same partition concurrently.
         #  this would speed up this step by a lot. Partitions require a full lock on the table,
         #  but I don't know if the lock is acquired for the entire partition or only the partition table.

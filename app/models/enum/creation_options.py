@@ -38,11 +38,6 @@ class IndexType(str, Enum):
     hash = "hash"
 
 
-class ConstraintType(str, Enum):
-    __doc__ = "Constraint type"
-    unique = "unique"
-
-
 class TileStrategy(str, Enum):
     __doc__ = (
         "Tile strategy for generating vector tiles. "
