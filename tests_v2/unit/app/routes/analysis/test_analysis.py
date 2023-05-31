@@ -109,3 +109,4 @@ async def test_raster_analysis_payload_shape(
         payload = mock_invoke_lambda.call_args.args[1]
         assert payload["query"] == sql
         assert payload["environment"] == environment
+        assert payload["geometry"] == geostore_common.geojson
