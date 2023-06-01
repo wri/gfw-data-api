@@ -647,19 +647,11 @@ def _get_default_layer(dataset, pixel_meaning):
 
 async def _get_data_environment(grid: Grid) -> DataEnvironment:
     # get all Raster tile set assets
-    latest_tile_sets = await db.all(latest_raster_tile_sets)
+    latest_tile_sets = await db.all(latest_raster_tile_sets, {"grid": grid})
     # create layers
     layers: List[Layer] = []
     for row in latest_tile_sets:
         creation_options = row.creation_options
-        if creation_options["grid"] != grid:
-            # skip if not on the right grid
-            continue
-
-        # TODO skip intermediate raster for tile cache until field is in metadata
-        if "tcd" in creation_options["pixel_meaning"]:
-            continue
-
         # only include single band rasters
         if creation_options.get("band_count", 1) > 1:
             continue
