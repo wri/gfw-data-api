@@ -37,40 +37,6 @@ async def get_assets(dataset: str, version: str) -> List[ORMAsset]:
 
     return rows
 
-@alru_cache(maxsize=128)
-async def get_raster_tile_sets():
-    latest_tile_sets = await (
-        ORMAsset.join(ORMVersion)
-        .select()
-        .with_only_columns(
-            [
-                ORMAsset.asset_id,
-                ORMAsset.dataset,
-                ORMAsset.version,
-                ORMAsset.creation_options,
-                ORMAsset.asset_uri,
-            ]
-        )
-        .where(
-            and_(
-                ORMAsset.asset_type == AssetType.raster_tile_set,
-                ORMVersion.is_latest == True,  # noqa: E712
-            )
-        )
-    ).gino.all()
-
-    assets_with_metadata = []
-    for asset in latest_tile_sets:
-        asset_dict = dict(asset.items())
-        try:
-            metadata = await get_asset_metadata(asset.asset_id)
-            asset_dict["metadata"] = metadata
-        except RecordNotFoundError:
-            pass
-        assets_with_metadata.append(asset_dict)
-
-    return assets_with_metadata
-
 
 async def get_assets_by_type(asset_type: str) -> List[ORMAsset]:
     assets = await ORMAsset.query.where(ORMAsset.asset_type == asset_type).gino.all()
