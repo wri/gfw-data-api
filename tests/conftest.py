@@ -8,7 +8,6 @@ from http.server import HTTPServer
 import httpx
 import numpy
 import pytest
-import pytest_asyncio
 import rasterio
 from alembic.config import main
 from docker.models.containers import ContainerCollection
@@ -241,7 +240,8 @@ def client():
     main(["--raiseerr", "downgrade", "base"])
 
 
-@pytest_asyncio.fixture(autouse=True)
+@pytest.fixture(autouse=True)
+@pytest.mark.asyncio
 async def async_client():
     """Async Test Client."""
     from app.main import app
@@ -319,7 +319,7 @@ def copy_fixtures():
         out.close()
 
 
-@pytest_asyncio.fixture(autouse=True)
+@pytest.fixture(autouse=True)
 async def tmp_folder():
     """Create TMP dir."""
 
