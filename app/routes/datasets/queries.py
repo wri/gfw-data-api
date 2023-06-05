@@ -27,6 +27,7 @@ from ...application import db
 
 # from ...authentication.api_keys import get_api_key
 from ...crud import assets
+from ...models.orm.queries.raster_assets import latest_raster_tile_sets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
@@ -667,11 +668,7 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
         if isinstance(no_data_val, List):
             no_data_val = no_data_val[0]
 
-        bands = getattr(row.get("metadata"), "bands", [])
-        raster_table = None
-        if bands:
-            raster_table = RasterTable(**bands[0].to_dict()["values_table"])
-        print("TABLE", raster_table)
+        raster_table = getattr(row, "values_table", None)
         layers.append(
             _get_source_layer(
                 row["asset_uri"],
