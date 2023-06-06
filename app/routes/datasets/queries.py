@@ -27,6 +27,7 @@ from ...application import db
 
 # from ...authentication.api_keys import get_api_key
 from ...crud import assets
+from ...models.orm.queries.raster_assets import latest_raster_tile_sets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
@@ -646,31 +647,19 @@ def _get_default_layer(dataset, pixel_meaning):
 
 async def _get_data_environment(grid: Grid) -> DataEnvironment:
     # get all Raster tile set assets
-    latest_tile_sets = await assets.get_raster_tile_sets()
+    latest_tile_sets = await db.all(latest_raster_tile_sets, {"grid": grid})
     # create layers
     layers: List[Layer] = []
     for row in latest_tile_sets:
-        creation_options = row["creation_options"]
-        if creation_options["grid"] != grid:
-            # skip if not on the right grid
-            continue
-
-        # TODO skip intermediate raster for tile cache until field is in metadata
-        if "tcd" in creation_options["pixel_meaning"]:
-            continue
-
+        creation_options = row.creation_options
         # only include single band rasters
         if creation_options.get("band_count", 1) > 1:
             continue
 
         if creation_options["pixel_meaning"] == "is":
-            source_layer_name = (
-                f"{creation_options['pixel_meaning']}__{row['dataset']}"
-            )
+            source_layer_name = f"{creation_options['pixel_meaning']}__{row['dataset']}"
         else:
-            source_layer_name = (
-                f"{row['dataset']}__{creation_options['pixel_meaning']}"
-            )
+            source_layer_name = f"{row['dataset']}__{creation_options['pixel_meaning']}"
 
         no_data_val = parse_obj_as(
             Optional[Union[List[NoDataType], NoDataType]],
@@ -679,14 +668,10 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
         if isinstance(no_data_val, List):
             no_data_val = no_data_val[0]
 
-        bands = getattr(row.get("metadata"), "bands", [])
-        raster_table = None
-        if bands:
-            raster_table = RasterTable(**bands[0].to_dict()["values_table"])
-        print("TABLE", raster_table)
+        raster_table = getattr(row, "values_table", None)
         layers.append(
             _get_source_layer(
-                row['asset_uri'],
+                row["asset_uri"],
                 source_layer_name,
                 grid,
                 no_data_val,

@@ -36,8 +36,7 @@ from tests_v2.utils import (
 )
 
 
-@pytest.fixture()
-@pytest.mark.asyncio
+@pytest_asyncio.fixture
 async def db():
     """In between tests, tear down/set up all DBs."""
     main(["--raiseerr", "upgrade", "head"])
