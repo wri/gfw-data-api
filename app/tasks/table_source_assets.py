@@ -79,8 +79,9 @@ async def table_source_asset(
     )
 
     # Create partitions
+    partition_jobs: List[Job] = list()
     if creation_options.partitions:
-        partition_jobs: List[Job] = _create_partition_jobs(
+        partition_jobs = _create_partition_jobs(
             dataset,
             version,
             creation_options.partitions,
@@ -89,14 +90,36 @@ async def table_source_asset(
             callback,
             creation_options.timeout,
         )
-    else:
-        partition_jobs = list()
 
-    # Load data
+    # Add geometry columns
+    geometry_jobs: List[Job] = list()
+    if creation_options.latitude and creation_options.longitude:
+        geometry_jobs.append(
+            PostgresqlClientJob(
+                dataset=dataset,
+                job_name="add_point_geometry",
+                command=[
+                    "add_point_geometry_fields.sh",
+                    "-d",
+                    dataset,
+                    "-v",
+                    version,
+                ],
+                environment=job_env,
+                parents=[create_table_job.job_name]
+                + [job.job_name for job in partition_jobs],
+                callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
+            ),
+        )
+
+    # Load data and fill geometry fields if lat, lng specified
     load_data_jobs: List[Job] = list()
 
-    parents = [create_table_job.job_name]
-    parents.extend([job.job_name for job in partition_jobs])
+    load_data_job_parents = [
+        create_table_job.job_name,
+        *[job.job_name for job in geometry_jobs + partition_jobs],
+    ]
 
     # We can break into at most BATCH_DEPENDENCY_LIMIT parallel jobs
     # (otherwise future jobs will hit the dependency limit) so break
@@ -121,48 +144,28 @@ async def table_source_asset(
             command.append("-s")
             command.append(uri)
 
+        if creation_options.latitude and creation_options.longitude:
+            command += [
+                "--lat",
+                creation_options.latitude,
+                "--lng",
+                creation_options.longitude,
+            ]
+
         load_data_jobs.append(
             PostgresqlClientJob(
                 dataset=dataset,
-                job_name=f"load_data_{i}",
+                job_name=f"load_tabular_data_{i}",
                 command=command,
                 environment=job_env,
-                parents=parents,
+                parents=load_data_job_parents,
                 callback=callback,
                 attempt_duration_seconds=creation_options.timeout,
             )
         )
 
-    # Add geometry columns and update geometries
-    geometry_jobs: List[Job] = list()
-    if creation_options.latitude and creation_options.longitude:
-        geometry_jobs.append(
-            PostgresqlClientJob(
-                dataset=dataset,
-                job_name="add_point_geometry",
-                command=[
-                    "add_point_geometry.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "--lat",
-                    creation_options.latitude,
-                    "--lng",
-                    creation_options.longitude,
-                ],
-                environment=job_env,
-                parents=[job.job_name for job in load_data_jobs],
-                callback=callback,
-                attempt_duration_seconds=creation_options.timeout,
-            ),
-        )
-
     # Add indices
     index_jobs: List[Job] = list()
-    parents = [job.job_name for job in load_data_jobs]
-    parents.extend([job.job_name for job in geometry_jobs])
-
     for index in creation_options.indices:
         index_jobs.append(
             PostgresqlClientJob(
@@ -179,30 +182,26 @@ async def table_source_asset(
                     "-x",
                     index.index_type,
                 ],
-                parents=parents,
+                parents=[job.job_name for job in load_data_jobs],
                 environment=job_env,
                 callback=callback,
                 attempt_duration_seconds=creation_options.timeout,
             )
         )
 
-    parents = [job.job_name for job in load_data_jobs]
-    parents.extend([job.job_name for job in geometry_jobs])
-    parents.extend([job.job_name for job in index_jobs])
-
+    # Add clusters
+    cluster_jobs: List[Job] = list()
     if creation_options.cluster:
-        cluster_jobs: List[Job] = _create_cluster_jobs(
+        cluster_jobs = _create_cluster_jobs(
             dataset,
             version,
             creation_options.partitions,
             creation_options.cluster,
-            parents,
+            [job.job_name for job in load_data_jobs + index_jobs],
             job_env,
             callback,
             creation_options.timeout,
         )
-    else:
-        cluster_jobs = list()
 
     log: ChangeLog = await execute(
         [
@@ -262,11 +261,19 @@ async def append_table_source_asset(
         for uri in uri_chunk:
             command += ["-s", uri]
 
+        if creation_options.latitude and creation_options.longitude:
+            command += [
+                "--lat",
+                creation_options.latitude,
+                "--lng",
+                creation_options.longitude,
+            ]
+
         load_data_jobs.append(
             PostgresqlClientJob(
                 dataset=dataset,
                 job_queue=AURORA_JOB_QUEUE_FAST,
-                job_name=f"load_data_{i}",
+                job_name=f"load_tabular_data_{i}",
                 command=command,
                 environment=job_env,
                 callback=callback,
@@ -274,34 +281,7 @@ async def append_table_source_asset(
             )
         )
 
-    # Add geometry columns and update geometries
-    # TODO is it possible to do this only for new data?
-    geometry_jobs: List[Job] = list()
-    if creation_options.latitude and creation_options.longitude:
-        geometry_jobs.append(
-            PostgresqlClientJob(
-                dataset=dataset,
-                job_queue=AURORA_JOB_QUEUE_FAST,
-                job_name="update_point_geometry",
-                command=[
-                    "update_point_geometry.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "--lat",
-                    creation_options.latitude,
-                    "--lng",
-                    creation_options.longitude,
-                ],
-                environment=job_env,
-                parents=[job.job_name for job in load_data_jobs],
-                callback=callback,
-                attempt_duration_seconds=creation_options.timeout,
-            ),
-        )
-
-    log: ChangeLog = await execute([*load_data_jobs, *geometry_jobs])
+    log: ChangeLog = await execute(load_data_jobs)
 
     return log
 
@@ -342,7 +322,6 @@ def _create_partition_jobs(
 
             partition_jobs.append(job)
     else:
-
         partition_schema = json.dumps(partitions.partition_schema.dict(by_alias=True))
         job = _partition_job(
             dataset,
