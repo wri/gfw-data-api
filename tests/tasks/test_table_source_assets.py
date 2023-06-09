@@ -103,7 +103,7 @@ async def test_table_source_asset_minimal(batch_client, async_client: AsyncClien
     # 0 to add point geometry because we didn't specify it
     # 0 to add indices because we didn't specify them
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 2, "load_data_0")
+    await check_task_status(asset_id, 2, "load_tabular_data_0")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -221,7 +221,7 @@ async def test_table_source_asset_lat_long(batch_client, async_client: AsyncClie
     # 1 to load the data
     # 0 to add indices because we didn't specify it
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 3, "load_data_0")
+    await check_task_status(asset_id, 3, "load_tabular_data_0")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -299,7 +299,7 @@ async def test_table_source_asset_partition(batch_client, async_client: AsyncCli
     # 0 to add point geometry
     # 0 to add indices
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 6, "load_data_0")
+    await check_task_status(asset_id, 6, "load_tabular_data_0")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -421,7 +421,7 @@ async def test_table_source_asset_constraints(batch_client, async_client: AsyncC
     # 0 to add point geometry because we didn't specify it
     # 0 to add indices
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 2, "load_data_0")
+    await check_task_status(asset_id, 2, "load_tabular_data_0")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -573,7 +573,7 @@ async def test_table_source_asset_append(batch_client, async_client: AsyncClient
     # 0 to add point geometry because we didn't specify it
     # 0 to add indices because we didn't specify them
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 2, "load_data_0")
+    await check_task_status(asset_id, 2, "load_tabular_data_0")
 
     ########################
     # Append
@@ -640,7 +640,7 @@ async def test_table_source_asset_append_with_geom(
     # 1 to add point geometry
     # 0 to add indices because we didn't specify them
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 3, "load_data_0")
+    await check_task_status(asset_id, 3, "load_tabular_data_0")
 
     ########################
     # Append

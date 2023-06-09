@@ -104,10 +104,6 @@ async def table_source_asset(
                     dataset,
                     "-v",
                     version,
-                    "--lat",
-                    creation_options.latitude,
-                    "--lng",
-                    creation_options.longitude,
                 ],
                 environment=job_env,
                 parents=[create_table_job.job_name]
@@ -159,7 +155,7 @@ async def table_source_asset(
         load_data_jobs.append(
             PostgresqlClientJob(
                 dataset=dataset,
-                job_name=f"load_data_{i}",
+                job_name=f"load_tabular_data_{i}",
                 command=command,
                 environment=job_env,
                 parents=load_data_job_parents,
@@ -277,7 +273,7 @@ async def append_table_source_asset(
             PostgresqlClientJob(
                 dataset=dataset,
                 job_queue=AURORA_JOB_QUEUE_FAST,
-                job_name=f"load_data_{i}",
+                job_name=f"load_tabular_data_{i}",
                 command=command,
                 environment=job_env,
                 callback=callback,
