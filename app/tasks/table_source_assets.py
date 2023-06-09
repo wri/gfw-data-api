@@ -99,7 +99,7 @@ async def table_source_asset(
                 dataset=dataset,
                 job_name="add_point_geometry",
                 command=[
-                    "add_point_geometry.sh",
+                    "add_point_geometry_fields.sh",
                     "-d",
                     dataset,
                     "-v",

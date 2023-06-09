@@ -34,8 +34,10 @@ TEMP_TABLE="temp_${UUID}"
 if [[ -n "${GEOMETRY_NAME:-}" ]] && [[ -n "${LAT:-}" ]] && [[ -n "${LNG:-}" ]]
 then
   . _add_point_geometry_fields_sql.sh
+  . _fill_point_geometry_fields_sql.sh
 else
   ADD_POINT_GEOMETRY_FIELDS_SQL=""
+  FILL_POINT_GEOMETRY_FIELDS_SQL=""
 fi
 
 for uri in "${SRC[@]}"; do
@@ -51,6 +53,7 @@ for uri in "${SRC[@]}"; do
     COPY \"$TEMP_TABLE\" FROM STDIN WITH (FORMAT CSV, DELIMITER '$DELIMITER', HEADER);
 
     $ADD_POINT_GEOMETRY_FIELDS_SQL
+    $FILL_POINT_GEOMETRY_FIELDS_SQL
 
     INSERT INTO \"$DATASET\".\"$VERSION\"
     SELECT * FROM \"$TEMP_TABLE\"
