@@ -103,7 +103,7 @@ async def test_table_source_asset_minimal(batch_client, async_client: AsyncClien
     # 0 to add point geometry because we didn't specify it
     # 0 to add indices because we didn't specify them
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 2, "load_data_0")
+    await check_task_status(asset_id, 2, "load_tabular_data_0")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -217,11 +217,11 @@ async def test_table_source_asset_lat_long(batch_client, async_client: AsyncClie
     # There should be the following tasks:
     # 1 to create the table schema
     # 0 to partition because we didn't specify it
-    # 1 to load the data
     # 1 to add point geometry
+    # 1 to load the data
     # 0 to add indices because we didn't specify it
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 3, "add_point_geometry")
+    await check_task_status(asset_id, 3, "load_tabular_data_0")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -299,7 +299,7 @@ async def test_table_source_asset_partition(batch_client, async_client: AsyncCli
     # 0 to add point geometry
     # 0 to add indices
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 6, "load_data_0")
+    await check_task_status(asset_id, 6, "load_tabular_data_0")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -421,7 +421,7 @@ async def test_table_source_asset_constraints(batch_client, async_client: AsyncC
     # 0 to add point geometry because we didn't specify it
     # 0 to add indices
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 2, "load_data_0")
+    await check_task_status(asset_id, 2, "load_tabular_data_0")
 
     # There should be a table called "table_test"."v202002.1" with 99 rows.
     # It should have the right amount of partitions and indices
@@ -573,7 +573,74 @@ async def test_table_source_asset_append(batch_client, async_client: AsyncClient
     # 0 to add point geometry because we didn't specify it
     # 0 to add indices because we didn't specify them
     # 0 to add clustering because we didn't specify it
-    await check_task_status(asset_id, 2, "load_data_0")
+    await check_task_status(asset_id, 2, "load_tabular_data_0")
+
+    ########################
+    # Append
+    #########################
+    httpx.delete(f"http://localhost:{PORT}")
+
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/append",
+        json={"source_uri": [f"s3://{BUCKET}/{APPEND_TSV_NAME}"]},
+    )
+    assert response.status_code == 200
+
+    response = await async_client.get(f"/dataset/{dataset}/{version}/change_log")
+    assert response.status_code == 200
+    tasks = json.loads(response.json()["data"][-1]["detail"])
+    task_ids = [task["job_id"] for task in tasks]
+
+    # make sure all jobs completed
+    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
+    assert status == "saved"
+
+    await check_version_status(dataset, version, 4)
+    await check_asset_status(dataset, version, 1)
+
+
+@pytest.mark.asyncio
+async def test_table_source_asset_append_with_geom(
+    batch_client, async_client: AsyncClient
+):
+    _, logs = batch_client
+
+    ############################
+    # Setup test
+    ############################
+    dataset = "table_test"
+    version = "v202002.1"
+    input_data: Dict = copy.deepcopy(basic_table_input_data)
+    input_data["creation_options"]["latitude"] = "latitude"
+    input_data["creation_options"]["longitude"] = "longitude"
+
+    #####################
+    # Test asset creation
+    #####################
+    asset = await create_default_asset(
+        dataset,
+        version,
+        version_payload=input_data,
+        execute_batch_jobs=True,
+        logs=logs,
+        async_client=async_client,
+    )
+    asset_id = asset["asset_id"]
+
+    #################
+    # Check results
+    #################
+    await check_version_status(dataset, version, 2)
+    await check_asset_status(dataset, version, 1)  # There should be 1 asset
+
+    # There should be the following tasks:
+    # 1 to create the table schema
+    # 0 to partition because we didn't specify it
+    # 1 to load the data
+    # 1 to add point geometry
+    # 0 to add indices because we didn't specify them
+    # 0 to add clustering because we didn't specify it
+    await check_task_status(asset_id, 3, "load_tabular_data_0")
 
     ########################
     # Append
