@@ -1,4 +1,4 @@
-FROM globalforestwatch/pixetl:v1.7.3
+FROM globalforestwatch/pixetl:v1.7.4
 
 
 # Copy scripts
