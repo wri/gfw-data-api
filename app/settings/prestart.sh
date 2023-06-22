@@ -15,7 +15,7 @@ if [ "${ENV}" = "dev" ]; then
         -tc "SELECT 1 FROM pg_database WHERE datname = '$DATABASE'" | grep -q 1 \
     || PGPASSWORD=$DB_PASSWORD psql -h ${DB_HOST} \
         -p ${DB_PORT} -U ${DB_USER} -d ${DATABASE_MAIN} \
-        -c "CREATE DATABASE $DATABASE WITH TEMPLATE ${DATABASE_MAIN}_template OWNER $DB_USER"
+        -c "CREATE DATABASE $DATABASE WITH TEMPLATE ${DATABASE_MAIN} OWNER $DB_USER"
 fi
 
 alembic upgrade head
