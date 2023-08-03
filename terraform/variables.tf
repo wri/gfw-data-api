@@ -109,5 +109,4 @@ variable "download_endpoints" {
 variable "new_relic_license_key_arn" {
   type        = string
   description = "New Relic license key ARN"
-  default     = "arn:aws:secretsmanager:us-east-1:563860007740:secret:newrelic/license_key-lolw24"
 }
