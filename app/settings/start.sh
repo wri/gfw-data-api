@@ -34,7 +34,6 @@ export NEW_RELIC_LICENSE_KEY=$(jq -nr 'env.NEW_RELIC_LICENSE_KEY' | jq '.license
 NEW_RELIC_CONFIG_FILE=/app/newrelic.ini
 export NEW_RELIC_CONFIG_FILE
 
-export ENV=dev
 if [ "${ENV}" = "staging" ]; then
     export NEW_RELIC_ENVIRONMENT=staging
     # Start Gunicorn
