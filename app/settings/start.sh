@@ -35,7 +35,7 @@ NEW_RELIC_CONFIG_FILE=/app/newrelic.ini
 export NEW_RELIC_CONFIG_FILE
 
 export ENV=dev
-if [ "${ENV}" = "dev" ]; then
+if [ "${ENV}" = "staging" ]; then
     export NEW_RELIC_ENVIRONMENT=staging
     # Start Gunicorn
     exec newrelic-admin run-program gunicorn -k "$WORKER_CLASS" -c "$GUNICORN_CONF" "$APP_MODULE"
