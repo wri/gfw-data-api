@@ -14,7 +14,7 @@ High-performance Async REST API, in Python. FastAPI + GINO + Uvicorn (powered by
   * `--no_build` - don't rebuild the containers
   * `--moto-port=<port_number>` - explicitly sets the motoserver port (default `5000`)
 * Run specific tests: `./scripts/test tasks/test_vector_source_assets.py::test_vector_source_asset`
-* Each development branch app instance gets its isolated database in AWS dev account that's cloned from `geostore_template` database. This database is named with the branch suffix (like `geostore_<branch_name>`). If a PR includes a database migration, once the change is merged to higher environments, the `geostore_template` database needs to also be updated with the migration. This can be done by manually replacing the existing database by a copy of a cleaned up version of the branch database (see `./prestart.sh` script for cloning command).
+* Each development branch app instance gets its isolated database in AWS dev account that's cloned from `geostore` database. This database is named with the branch suffix (like `geostore_<branch_name>`). If a PR includes a database migration, once the change is merged to higher environments, the `geostore` database needs to also be updated with the migration. This can be done by manually replacing the existing database by a copy of a cleaned up version of the branch database (see `./prestart.sh` script for cloning command).
 * Debug memory usage of Batch jobs with memory_profiler:
     1. Install memory_profiler in the job's Dockerfile
     2. Modify the job's script to run with memory_profiler. Ex: `pixetl "${ARG_ARRAY[@]}"` -> `mprof run -M -C -T 1 --python /usr/local/app/gfw_pixetl/pixetl.py "${ARG_ARRAY[@]}"`
