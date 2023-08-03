@@ -49,7 +49,7 @@ variable "auto_scaling_min_capacity" {
   type = number
 }
 variable "key_pair" {
-  type    = string
+  type = string
 }
 
 variable "service_url" {
@@ -74,16 +74,16 @@ variable "data_lake_max_vcpus" {
 }
 
 variable "api_gateway_usage_plans" {
-  type        = map
+  type        = map(any)
   description = "Throttling limits for API Gateway"
-  default     = {
+  default = {
     internal_apps = {
-      quota_limit  = 10000 # per day
-      burst_limit = 100     # per second
+      quota_limit = 10000 # per day
+      burst_limit = 100   # per second
       rate_limit  = 200
     }
     external_apps = {
-      quota_limit  = 500
+      quota_limit = 500
       burst_limit = 10
       rate_limit  = 20
     }
@@ -97,10 +97,17 @@ variable "internal_domains" {
 }
 
 variable "download_endpoints" {
-  type = list(string)
+  type        = list(string)
   description = "path parts to download endpoints"
 
   # listing spatial endpoints as gateway needs them explicitly created
   # in order to apply endpoint-level throttling to them
   default = ["geotiff", "gpkg", "shp"]
+}
+
+#TODO import from core-infrastructure when operational
+variable "new_relic_license_key_arn" {
+  type        = string
+  description = "New Relic license key ARN"
+  default     = "arn:aws:secretsmanager:us-east-1:563860007740:secret:newrelic/license_key-lolw24"
 }

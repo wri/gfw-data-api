@@ -92,8 +92,8 @@ module "fargate_autoscaling" {
   auto_scaling_max_capacity = var.auto_scaling_max_capacity
   auto_scaling_max_cpu_util = var.auto_scaling_max_cpu_util
   auto_scaling_min_capacity = var.auto_scaling_min_capacity
-//  acm_certificate_arn       = var.environment == "dev" ? null : data.terraform_remote_state.core.outputs.acm_certificate
-  security_group_ids        = [data.terraform_remote_state.core.outputs.postgresql_security_group_id]
+  //  acm_certificate_arn       = var.environment == "dev" ? null : data.terraform_remote_state.core.outputs.acm_certificate
+  security_group_ids = [data.terraform_remote_state.core.outputs.postgresql_security_group_id]
   task_role_policies = [
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     aws_iam_policy.run_batch_jobs.arn,
@@ -107,6 +107,7 @@ module "fargate_autoscaling" {
   ]
   task_execution_role_policies = [
     aws_iam_policy.query_batch_jobs.arn,
+    aws_iam_policy.read_new_relic_secret.arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_policy_arn
@@ -164,13 +165,13 @@ module "batch_data_lake_writer" {
     data.terraform_remote_state.core.outputs.default_security_group_id,
     data.terraform_remote_state.core.outputs.postgresql_security_group_id
   ]
-  subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
-  suffix                   = local.name_suffix
-  tags                     = local.batch_tags
-  use_ephemeral_storage    = true
+  subnets               = data.terraform_remote_state.core.outputs.private_subnet_ids
+  suffix                = local.name_suffix
+  tags                  = local.batch_tags
+  use_ephemeral_storage = true
   # SPOT is actually the default, this is just a placeholder until GTC-1791 is done
-  launch_type              = "SPOT"
-  instance_types           = [
+  launch_type = "SPOT"
+  instance_types = [
     "r6id.large", "r6id.xlarge", "r6id.2xlarge", "r6id.4xlarge", "r6id.8xlarge", "r6id.12xlarge", "r6id.16xlarge", "r6id.24xlarge",
     "r5ad.large", "r5ad.xlarge", "r5ad.2xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge",
     "r5d.large", "r5d.xlarge", "r5d.2xlarge", "r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge"
