@@ -28,3 +28,8 @@ resource "aws_iam_policy" "read_gcs_secret" {
   name = substr("${local.project}-read_gcs_secret${local.name_suffix}", 0, 64)
   policy = data.aws_iam_policy_document.read_gcs_secret_doc.json
 }
+
+resource "aws_iam_policy" "read_new_relic_secret" {
+  name = substr("${local.project}-read_new-relic_secret${local.name_suffix}", 0, 64)
+  policy = data.aws_iam_policy_document.read_new_relic_lic.json
+}
