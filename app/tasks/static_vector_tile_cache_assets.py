@@ -1,9 +1,10 @@
 import io
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from ..crud import assets, metadata
+from ..errors import RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.dataset_metadata import DatasetMetadata as ORMDatasetMetadata
 from ..models.pydantic.assets import AssetType
@@ -180,7 +181,12 @@ async def _get_vector_tile_server(
     creation_options: StaticVectorTileCacheCreationOptions,
 ) -> Dict[str, Any]:
 
-    dataset_metadata: ORMDatasetMetadata = await metadata.get_dataset_metadata(dataset)
+    try:
+        dataset_metadata: Optional[
+            ORMDatasetMetadata
+        ] = await metadata.get_dataset_metadata(dataset)
+    except RecordNotFoundError:
+        dataset_metadata = None
 
     resolution = 78271.51696401172
     scale = 295829355.45453244
@@ -197,8 +203,8 @@ async def _get_vector_tile_server(
 
     response = {
         "currentVersion": 10.7,
-        "name": dataset_metadata.title,
-        "copyrightText": dataset_metadata.citation,
+        "name": dataset_metadata.title if dataset_metadata else "",
+        "copyrightText": dataset_metadata.citation if dataset_metadata else "",
         "capabilities": "TilesOnly",
         "type": "indexedVector",
         "defaultStyles": "resources/styles",
@@ -220,8 +226,8 @@ async def _get_vector_tile_server(
             "lods": [
                 {
                     "level": i,
-                    "resolution": resolution / (2 ** i),
-                    "scale": scale / (2 ** i),
+                    "resolution": resolution / (2**i),
+                    "scale": scale / (2**i),
                 }
                 for i in range(creation_options.min_zoom, creation_options.max_zoom + 1)
             ],
