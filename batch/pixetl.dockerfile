@@ -1,4 +1,4 @@
-FROM globalforestwatch/pixetl:refactor-raster-src-tile-1
+FROM globalforestwatch/pixetl:v1.7.4
 
 
 # Copy scripts
