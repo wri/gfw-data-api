@@ -31,7 +31,7 @@ keep_all) # never drop or coalesce feature, ignore size and feature count
 esac
 
 echo "Fetch NDJSON data from Data Lake ${SRC} -> ${DATASET}"
-aws s3 cp "${SRC}" "${DATASET}"
+aws s3 cp "${SRC}" "${DATASET}" --no-progress
 
 echo "Build Tile Cache"
 tippecanoe -Z"${MIN_ZOOM}" -z"${MAX_ZOOM}" -e tilecache "${STRATEGY[@]}" -P -n "${DATASET}" "${DATASET}"
