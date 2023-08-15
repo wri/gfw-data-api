@@ -10,6 +10,8 @@ RUN apt-get update -y \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --upgrade pip && pip install pipenv==v2022.11.30
+#TODO move to pipfile when operational
+RUN pip install newrelic
 
 # Install python dependencies
 # Install everything for dev and test otherwise just core dependencies
@@ -29,6 +31,11 @@ COPY ./app /app/app
 COPY alembic.ini /app/alembic.ini
 
 COPY app/settings/prestart.sh /app/prestart.sh
+COPY app/settings/start.sh /app/start.sh
+COPY newrelic.ini /app/newrelic.ini
 
 COPY wait_for_postgres.sh /usr/local/bin/wait_for_postgres.sh
 RUN chmod +x /usr/local/bin/wait_for_postgres.sh
+RUN chmod +x /app/start.sh
+
+ENTRYPOINT [ "/app/start.sh" ]
