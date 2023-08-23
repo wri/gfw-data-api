@@ -2,10 +2,10 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient
 
-from tests_v2.fixtures.metadata.version import VERSION_METADATA
 from app.routes.datasets import versions
 from app.tasks import batch
 from tests_v2.fixtures.creation_options.versions import VECTOR_SOURCE_CREATION_OPTIONS
+from tests_v2.fixtures.metadata.version import VERSION_METADATA
 from tests_v2.unit.app.routes.utils import assert_jsend
 from tests_v2.utils import BatchJobMock, void_coroutine
 
@@ -69,6 +69,9 @@ async def test_delete_version_metadata(
         f"/dataset/{dataset_name}/{version_name}/metadata",
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_create_version_bare_minimum(
     async_client: AsyncClient, generic_dataset, monkeypatch: MonkeyPatch
 ):

@@ -5,6 +5,7 @@ from uuid import UUID
 import asyncpg
 import boto3
 import pytest
+import pytest_asyncio
 from moto import mock_apigateway
 
 from app.application import ContextEngine
@@ -31,7 +32,7 @@ GOOD_PAYLOAD = (
 )
 
 
-@pytest.fixture(autouse=True)
+@pytest_asyncio.fixture(autouse=True)
 @pytest.mark.asyncio
 async def delete_api_keys():
     yield
