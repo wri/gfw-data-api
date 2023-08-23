@@ -59,7 +59,7 @@ def _get_database_table_asset(assets: List[ORMAsset]) -> Optional[ORMAsset]:
 def _has_geom_wm(fields: List[Dict[str, Any]]) -> bool:
     """Check if geom_wm column is present."""
     for field in fields:
-        if field.name == "geom_wm":
+        if field["name"] == "geom_wm":
             return True
     return False
 
