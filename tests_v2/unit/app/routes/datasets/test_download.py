@@ -85,3 +85,68 @@ async def test_download_vector_asset_count(
     )
     assert response.status_code == 200
     assert response.text == '"count"\r\n1\r\n'
+
+
+@pytest.mark.asyncio
+async def test_download_raster_json_with_geometry(
+    generic_raster_version,
+    apikey,
+    async_client: AsyncClient,
+):
+    dataset_name, version_name, _ = generic_raster_version
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+    headers = {"origin": origin, "x-api-key": api_key}
+
+    response = await async_client.post(
+        f"/dataset/{dataset_name}/{version_name}/download/json",
+        headers=headers,
+        json={
+            **PARAMS,
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [-60.590457916259766, -15.095079526355857],
+                        [-60.60298919677734, -15.090936030923759],
+                        [-60.60161590576172, -15.104774989795663],
+                        [-60.590457916259766, -15.095079526355857],
+                    ]
+                ],
+            },
+        },
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_download_raster_csv_with_geometry(
+    generic_raster_version,
+    apikey,
+    async_client: AsyncClient,
+):
+    dataset_name, version_name, _ = generic_raster_version
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+    headers = {"origin": origin, "x-api-key": api_key}
+
+    response = await async_client.post(
+        f"/dataset/{dataset_name}/{version_name}/download/csv",
+        headers=headers,
+        json={
+            **PARAMS,
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [-60.590457916259766, -15.095079526355857],
+                        [-60.60298919677734, -15.090936030923759],
+                        [-60.60161590576172, -15.104774989795663],
+                        [-60.590457916259766, -15.095079526355857],
+                    ]
+                ],
+            },
+        },
+    )
+    assert response.status_code == 200
