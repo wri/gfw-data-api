@@ -1,5 +1,9 @@
+import httpx
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient
+
+from app.routes.datasets import queries
 
 PARAMS = {"sql": "select count(*) as count from data"}
 GEOTIFF_PARAMS = {"tile_id": "10N_010E", "grid": "10/40000", "pixel_meaning": "test"}
@@ -89,14 +93,17 @@ async def test_download_vector_asset_count(
 
 @pytest.mark.asyncio
 async def test_download_raster_json_with_geometry(
-    generic_raster_version,
-    apikey,
-    async_client: AsyncClient,
+    generic_raster_version, apikey, async_client: AsyncClient, monkeypatch: MonkeyPatch
 ):
     dataset_name, version_name, _ = generic_raster_version
     api_key, payload = apikey
     origin = "https://" + payload["domains"][0]
     headers = {"origin": origin, "x-api-key": api_key}
+
+    async def httpx_response_coroutine(*args, **kwargs) -> httpx.Response:
+        return httpx.Response(status_code=200, json={"status": "success", "data": {}})
+
+    monkeypatch.setattr(queries, "invoke_lambda", httpx_response_coroutine)
 
     response = await async_client.post(
         f"/dataset/{dataset_name}/{version_name}/download/json",
@@ -122,14 +129,17 @@ async def test_download_raster_json_with_geometry(
 
 @pytest.mark.asyncio
 async def test_download_raster_csv_with_geometry(
-    generic_raster_version,
-    apikey,
-    async_client: AsyncClient,
+    generic_raster_version, apikey, async_client: AsyncClient, monkeypatch: MonkeyPatch
 ):
     dataset_name, version_name, _ = generic_raster_version
     api_key, payload = apikey
     origin = "https://" + payload["domains"][0]
     headers = {"origin": origin, "x-api-key": api_key}
+
+    async def httpx_response_coroutine(*args, **kwargs) -> httpx.Response:
+        return httpx.Response(status_code=200, json={"status": "success", "data": None})
+
+    monkeypatch.setattr(queries, "invoke_lambda", httpx_response_coroutine)
 
     response = await async_client.post(
         f"/dataset/{dataset_name}/{version_name}/download/csv",
