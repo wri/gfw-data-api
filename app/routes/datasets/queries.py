@@ -82,6 +82,10 @@ from .. import dataset_version_dependency
 router = APIRouter()
 
 
+# Special suffixes to do an extra area density calculation on the raster data set.
+AREA_DENSITY_RASTER_SUFFIX1 = "_ha-1"
+AREA_DENSITY_RASTER_SUFFIX2 = "_ha/yr-1"
+
 @router.get(
     "/{dataset}/{version}/query",
     response_class=RedirectResponse,
@@ -640,14 +644,14 @@ def _get_default_layer(dataset, pixel_meaning):
     elif "date_conf" in default_type:
         # use date layer for date_conf encoding
         return f"{dataset}__date"
-    elif default_type.endswith("ha-1"):
+    elif default_type.endswith(AREA_DENSITY_RASTER_SUFFIX1):
         # remove _ha-1 suffix for area density rasters
         # OTF will multiply by pixel area to get base type
         # and table names can't include '-1'
-        return f"{dataset}__{default_type[:-5]}"
-    elif default_type.endswith("ha/yr-1"):
+        return f"{dataset}__{default_type[:len(AREA_DENSITY_RASTER_SUFFIX1)]}"
+    elif default_type.endswith(AREA_DENSITY_RASTER_SUFFIX2):
         # similarly, remove _ha/yr-1 suffix for area density rasters
-        return f"{dataset}__{default_type[:-8]}"
+        return f"{dataset}__{default_type[:len(AREA_DENSITY_RASTER_SUFFIX2)]}"
     else:
         return f"{dataset}__{default_type}"
 
@@ -689,7 +693,7 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
         if creation_options["pixel_meaning"] == "date_conf":
             layers += _get_date_conf_derived_layers(source_layer_name, no_data_val)
 
-        if creation_options["pixel_meaning"].endswith("_ha-1") or creation_options["pixel_meaning"].endswith("_ha/yr-1"):
+        if creation_options["pixel_meaning"].endswith(AREA_DENSITY_RASTER_SUFFIX1) or creation_options["pixel_meaning"].endswith(AREA_DENSITY_RASTER_SUFFIX2):
             layers.append(_get_area_density_layer(source_layer_name, no_data_val))
 
     return DataEnvironment(layers=layers)
@@ -756,10 +760,10 @@ def _get_area_density_layer(
     """Get the derived gross layer for whose values represent density per pixel
     area."""
     nm = source_layer_name
-    if source_layer_name.ends_with("_ha-1"):
-        nm = nm.replace("_ha-1", "")
-    elif source_layer_name.ends_with("_ha/yr-1"):
-        nm = nm.replace("_ha/yr-1", "")
+    if source_layer_name.ends_with(AREA_DENSITY_RASTER_SUFFIX1):
+        nm = nm.replace(AREA_DENSITY_RASTER_SUFFIX1, "")
+    elif source_layer_name.ends_with(AREA_DENSITY_RASTER_SUFFIX2):
+        nm = nm.replace(AREA_DENSITY_RASTER_SUFFIX2, "")
     return DerivedLayer(
         source_layer=source_layer_name,
         name=nm,
