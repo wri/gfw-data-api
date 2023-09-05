@@ -84,7 +84,7 @@ router = APIRouter()
 
 # Special suffixes to do an extra area density calculation on the raster data set.
 AREA_DENSITY_RASTER_SUFFIX1 = "_ha-1"
-AREA_DENSITY_RASTER_SUFFIX2 = "_ha/yr-1"
+AREA_DENSITY_RASTER_SUFFIX2 = "_ha_yr-1"
 
 @router.get(
     "/{dataset}/{version}/query",
