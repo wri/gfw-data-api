@@ -7,7 +7,7 @@ from ..crud import assets
 from ..models.enum.assets import AssetStatus, is_database_asset
 from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.creation_options import IndexType
-from ..models.orm.asset_metadata import FieldMetadata
+from ..models.orm.asset_metadata import FieldMetadata as ORMFieldMetadata
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.pydantic.change_log import ChangeLog
 from ..utils.tile_cache import redeploy_tile_cache_service
@@ -36,7 +36,7 @@ async def dynamic_vector_tile_cache_asset(
 
     # My first walrus, yahoo!
     if orm_asset := _get_database_table_asset(orm_assets):
-        fields: List[FieldMetadata] = (
+        fields: List[ORMFieldMetadata] = (
             orm_asset.metadata.fields if orm_asset.metadata else []
         )
         if _has_geom_wm(fields) and _has_spatial_index(orm_asset.creation_options):
@@ -59,7 +59,7 @@ def _get_database_table_asset(assets: List[ORMAsset]) -> Optional[ORMAsset]:
     return None
 
 
-def _has_geom_wm(fields: List[FieldMetadata]) -> bool:
+def _has_geom_wm(fields: List[ORMFieldMetadata]) -> bool:
     """Check if geom_wm column is present."""
     for field in fields:
         if field.name == "geom_wm":
