@@ -575,6 +575,11 @@ async def _query_raster(
             status_code=400,
             detail=f"Geostore area exceeds limit of {GEOSTORE_SIZE_LIMIT_OTF} ha for raster analysis.",
         )
+    if geostore.geojson.type != "Polygon" and geostore.geojson.type != "MultiPolygon":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Geostore must be a Polygon or MultiPolygon for raster analysis"
+        )
 
     # use default data type to get default raster layer for dataset
     default_layer = _get_default_layer(dataset, asset.creation_options["pixel_meaning"])

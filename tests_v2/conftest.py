@@ -338,6 +338,11 @@ def geojson_huge():
     return _load_geojson("test_huge")
 
 
+@pytest.fixture()
+def geojson_bad():
+    return _load_geojson("test_bad")
+
+
 def _load_geojson(name):
     with open(f"{os.path.dirname(__file__)}/fixtures/geojson/{name}.geojson") as src:
         geojson = json.load(src)
@@ -356,6 +361,19 @@ async def geostore_huge(
 
     # Clean up
     # Nothing to do here. No clean up function for geostore_huge.
+
+
+@pytest_asyncio.fixture
+async def geostore_bad(
+    async_client: AsyncClient, geojson_bad
+) -> AsyncGenerator[str, None]:
+    # Get geostore ID
+    geostore_id = await _create_geostore(geojson_bad, async_client)
+
+    yield geostore_id
+
+    # Clean up
+    # Nothing to do here. No clean up function for geostore_bad.
 
 
 @pytest_asyncio.fixture
