@@ -27,7 +27,6 @@ from ...application import db
 
 # from ...authentication.api_keys import get_api_key
 from ...crud import assets
-from ...models.orm.queries.raster_assets import latest_raster_tile_sets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
@@ -61,10 +60,11 @@ from ...models.enum.pg_sys_functions import (
 from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
+from ...models.orm.queries.raster_assets import latest_raster_tile_sets
 from ...models.orm.versions import Version as VersionORM
+from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
 from ...models.pydantic.creation_options import NoDataType
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
-from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
 from ...models.pydantic.query import CsvQueryRequestIn, QueryRequestIn
 from ...models.pydantic.raster_analysis import (
     DataEnvironment,
@@ -81,6 +81,9 @@ from .. import dataset_version_dependency
 
 router = APIRouter()
 
+
+# Special suffixes to do an extra area density calculation on the raster data set.
+AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "ha_yr-1"]
 
 @router.get(
     "/{dataset}/{version}/query",
@@ -148,7 +151,11 @@ async def query_dataset_json(
     else:
         geostore = None
 
-    response.headers["Cache-Control"] = "max-age=7200"  # 2h
+    if "gadm__tcl__" in dataset:
+        response.headers["Cache-Control"] = "max-age=31536000"  # 1y for TCL tables
+    else:
+        response.headers["Cache-Control"] = "max-age=7200"  # 2h
+
     json_data: List[Dict[str, Any]] = await _query_dataset_json(
         dataset, version, sql, geostore
     )
@@ -571,6 +578,11 @@ async def _query_raster(
             status_code=400,
             detail=f"Geostore area exceeds limit of {GEOSTORE_SIZE_LIMIT_OTF} ha for raster analysis.",
         )
+    if geostore.geojson.type != "Polygon" and geostore.geojson.type != "MultiPolygon":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Geostore must be a Polygon or MultiPolygon for raster analysis"
+        )
 
     # use default data type to get default raster layer for dataset
     default_layer = _get_default_layer(dataset, asset.creation_options["pixel_meaning"])
@@ -629,18 +641,27 @@ async def _query_raster_lambda(
     return response_body
 
 
+def _get_area_density_name(nm):
+    """Return empty string if nm doesn't not have an area-density suffix, else
+    return nm with the area-density suffix removed."""
+    for suffix in AREA_DENSITY_RASTER_SUFFIXES:
+        if nm.endswith(suffix):
+            return nm[:len(suffix)]
+        return ""
+
 def _get_default_layer(dataset, pixel_meaning):
     default_type = pixel_meaning
+    area_density_name = _get_area_density_name(default_type)
     if default_type == "is":
         return f"{default_type}__{dataset}"
     elif "date_conf" in default_type:
         # use date layer for date_conf encoding
         return f"{dataset}__date"
-    elif default_type.endswith("ha-1"):
-        # remove ha-1 suffix for area density rasters
+    elif area_density_name != "":
+        # use the area_density name, in which the _ha-1 suffix (or similar) is removed.
         # OTF will multiply by pixel area to get base type
         # and table names can't include '-1'
-        return f"{dataset}__{default_type[:-5]}"
+        return f"{dataset}__{area_density_name}"
     else:
         return f"{dataset}__{default_type}"
 
@@ -682,7 +703,7 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
         if creation_options["pixel_meaning"] == "date_conf":
             layers += _get_date_conf_derived_layers(source_layer_name, no_data_val)
 
-        if creation_options["pixel_meaning"].endswith("_ha-1"):
+        if _get_area_density_name(creation_options["pixel_meaning"]) != "":
             layers.append(_get_area_density_layer(source_layer_name, no_data_val))
 
     return DataEnvironment(layers=layers)
@@ -748,9 +769,10 @@ def _get_area_density_layer(
 ) -> DerivedLayer:
     """Get the derived gross layer for whose values represent density per pixel
     area."""
+    nm = _get_area_density_name(source_layer_name)
     return DerivedLayer(
         source_layer=source_layer_name,
-        name=source_layer_name.replace("_ha-1", ""),
+        name=nm,
         calc="A * area",
         no_data=no_data_val,
     )
