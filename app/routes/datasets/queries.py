@@ -1,5 +1,6 @@
 """Explore data entries for a given dataset version using standard SQL."""
 import csv
+import json
 import re
 from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
@@ -7,15 +8,16 @@ from urllib.parse import unquote
 from uuid import UUID, uuid4
 
 import httpx
+from aiohttp import ClientError
 from asyncpg import DataError, InsufficientPrivilegeError, SyntaxOrAccessError
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 
 # from fastapi.openapi.models import APIKey
-from fastapi.responses import RedirectResponse
+from fastapi.responses import ORJSONResponse, RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
@@ -65,7 +67,11 @@ from ...models.orm.versions import Version as VersionORM
 from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
 from ...models.pydantic.creation_options import NoDataType
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
-from ...models.pydantic.query import CsvQueryRequestIn, QueryRequestIn
+from ...models.pydantic.query import (
+    CsvQueryRequestIn,
+    QueryListRequestIn,
+    QueryRequestIn,
+)
 from ...models.pydantic.raster_analysis import (
     DataEnvironment,
     DerivedLayer,
@@ -74,8 +80,13 @@ from ...models.pydantic.raster_analysis import (
 )
 from ...models.pydantic.responses import Response
 from ...responses import CSVStreamingResponse, ORJSONLiteResponse
-from ...settings.globals import GEOSTORE_SIZE_LIMIT_OTF, RASTER_ANALYSIS_LAMBDA_NAME
-from ...utils.aws import invoke_lambda
+from ...settings.globals import (
+    API_URL,
+    GEOSTORE_SIZE_LIMIT_OTF,
+    RASTER_ANALYSIS_LAMBDA_NAME,
+    RASTER_ANALYSIS_STEP_FUNCTION_ARN, PIPELINES_BUCKET,
+)
+from ...utils.aws import get_step_function_client, invoke_lambda, get_s3_client
 from ...utils.geostore import get_geostore
 from .. import dataset_version_dependency
 
@@ -125,7 +136,7 @@ async def query_dataset_json(
     geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
-    ),
+    )
     # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -288,6 +299,29 @@ async def query_dataset_csv_post(
     return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
 
 
+@router.post(
+    "/{dataset}/{version}/query",
+    response_class=RedirectResponse,
+    status_code=308,
+    tags=["Query"],
+    deprecated=True,
+)
+async def query_dataset_post(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    request: QueryRequestIn,
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented).
+
+    This path is deprecated and will permanently redirect to
+    /query/json.
+    """
+    dataset, version = dataset_version
+
+    return f"/dataset/{dataset}/{version}/query/json"
+
+
 async def _query_dataset_json(
     dataset: str,
     version: str,
@@ -309,6 +343,131 @@ async def _query_dataset_json(
             status_code=501,
             detail="This endpoint is not implemented for the given dataset.",
         )
+
+
+@router.post(
+    "/{dataset}/{version}/query/json",
+    response_class=ORJSONLiteResponse,
+    response_model=Response,
+    tags=["Query"],
+)
+async def query_dataset_json_post(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    request: QueryRequestIn,
+    # api_key: APIKey = Depends(get_api_key),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented)."""
+
+    dataset, version = dataset_version
+
+    # create geostore with unknowns as blank
+    if request.geometry:
+        geostore: Optional[GeostoreCommon] = GeostoreCommon(
+            geojson=request.geometry, geostore_id=uuid4(), area__ha=0, bbox=[0, 0, 0, 0]
+        )
+    else:
+        geostore = None
+
+    json_data: List[Dict[str, Any]] = await _query_dataset_json(
+        dataset, version, request.sql, geostore
+    )
+    return ORJSONLiteResponse(Response(data=json_data).dict())
+
+
+@router.post(
+    "/{dataset}/{version}/query/list/json",
+    response_class=ORJSONResponse,
+    response_model=Response,
+    tags=["Query"],
+    status_code=202,
+)
+async def query_dataset_list_json_post(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    request: QueryListRequestIn,
+    # api_key: APIKey = Depends(get_api_key),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented)."""
+
+    dataset, version = dataset_version
+
+    # use default data type to get default raster layer for dataset
+    default_asset: AssetORM = await assets.get_default_asset(dataset, version)
+    default_layer = _get_default_layer(
+        dataset, default_asset.creation_options["pixel_meaning"]
+    )
+    grid = default_asset.creation_options["grid"]
+    sql = re.sub("from \w+", f"from {default_layer}", request.sql, flags=re.IGNORECASE)
+
+    result = await _query_raster_step_function(
+        request.feature_collection, request.feature_id_field, sql, grid
+    )
+
+    return {
+        "status": "success",
+        "data": result
+    }
+
+
+@router.get(
+    "/analysis/job/{job_id}",
+    response_class=ORJSONResponse,
+    response_model=Response,
+    tags=["Query"],
+    status_code=200,
+)
+async def get_analysis_job(
+    *,
+    job_id: UUID = Path(..., title="job_id"),
+    # api_key: APIKey = Depends(get_api_key),
+):
+    execution_arn = f"{RASTER_ANALYSIS_STEP_FUNCTION_ARN.replace('stateMachine', 'execution')}:{job_id}"
+    logger.info(execution_arn)
+    sfn = get_step_function_client().describe_execution(executionArn=execution_arn)
+
+    status = sfn['status'].lower()
+
+    if status == "succeeded":
+        output = json.loads(sfn['output'])
+        output_key = output['ResultWriterDetails']['Key'].replace("manifest", "SUCCEEDED_0")
+        download_url = await _get_presigned_url(PIPELINES_BUCKET, output_key)
+
+        return {
+            "data": {
+                "job_id": job_id,
+                "download_url": download_url
+            },
+            "status": "success",
+        }
+    elif status == "running":
+        map_runs = get_step_function_client().list_map_runs(
+            executionArn=execution_arn
+        )
+
+        # only per state machine
+        map_run_arn = map_runs['mapRuns'][0]['mapRunArn']
+        map_run = get_step_function_client().describe_map_run(mapRunArn=map_run_arn)
+
+        item_counts = map_run['itemCounts']
+        progress = round((item_counts['succeeded'] / item_counts['total']) * 100)
+
+        return {
+            "data": {
+                "job_id": job_id,
+                "progress_percent": progress
+            },
+            "status": "pending",
+        }
+    else:
+        return {
+            "data": {
+                "job_id": job_id,
+            },
+            "status": "failed",
+        }
 
 
 async def _query_dataset_csv(
@@ -633,6 +792,55 @@ async def _query_raster_lambda(
     return response_body
 
 
+async def _query_raster_step_function(
+    feature_collection,
+    feature_id_field,
+    sql: str,
+    grid: Grid = Grid.ten_by_forty_thousand,
+    format: QueryFormat = QueryFormat.json,
+    delimiter: Delimiters = Delimiters.comma,
+) -> Dict[str, Any]:
+
+    import json
+    from io import StringIO
+
+    import geopandas as gpd
+
+    job_id = uuid4()
+    input_path = f"analysis/{job_id}/geometries.csv"
+    output_path = f"analysis/{job_id}/output/{format.value}/"
+
+    # convert CSV and save to S3
+    gdf = gpd.read_file(StringIO(json.dumps(feature_collection.dict())))
+    gdf["geometry"] = gdf.geometry.apply(lambda geom: geom.wkb_hex)
+    gdf[[feature_id_field, "geometry"]].rename(columns={feature_id_field: "fid"}).to_csv(f"s3://{PIPELINES_BUCKET}/{input_path}", index=False)
+
+    # create hash for output
+    data_environment = await _get_data_environment(grid)
+    payload = {
+        "geometries": {"bucket": PIPELINES_BUCKET, "key": input_path},
+        "query": sql,
+        "environment": data_environment.dict()["layers"],
+        "format": format,
+        "output": {"bucket": PIPELINES_BUCKET, "prefix": output_path},
+        "feature_id_field": feature_id_field,
+    }
+
+    logger.info(
+        f"Submitting raster analysis step function request with payload: {payload}"
+    )
+
+    try:
+        get_step_function_client().start_execution(
+            stateMachineArn=RASTER_ANALYSIS_STEP_FUNCTION_ARN, name=str(job_id), input=json.dumps(payload)
+        )
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(500, f"Could not start analysis for job {job_id}.")
+
+    return {"job_id": job_id, "status_url": f"{API_URL}/analysis/job/{job_id}"}
+
+
 def _get_default_layer(dataset, pixel_meaning):
     default_type = pixel_meaning
     if default_type == "is":
@@ -771,3 +979,17 @@ def _get_predefined_layers(row, source_layer_name):
                 "calc": "A * area * (0.5 * 44 / 12)",
             }
         ]
+
+
+async def _get_presigned_url(bucket, key, expires=900):
+    s3_client = get_s3_client()
+    try:
+        presigned_url = s3_client.generate_presigned_url(
+            "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=expires
+        )
+    except ClientError as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=404, detail="Requested resources does not exist."
+        )
+    return presigned_url

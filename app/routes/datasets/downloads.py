@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from aiohttp import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Query
+
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 
@@ -23,7 +24,7 @@ from ...utils.aws import get_s3_client
 from ...utils.geostore import get_geostore
 from ...utils.path import split_s3_path
 from .. import dataset_version_dependency
-from .queries import _query_dataset_csv, _query_dataset_json
+from .queries import _query_dataset_csv, _query_dataset_json, _get_presigned_url
 
 router: APIRouter = APIRouter()
 
@@ -307,21 +308,6 @@ async def _get_asset_url(dataset: str, version: str, asset_type: str) -> str:
         )
 
     return assets[0].asset_uri
-
-
-async def _get_presigned_url(bucket, key):
-    s3_client = get_s3_client()
-    try:
-        presigned_url = s3_client.generate_presigned_url(
-            "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=900
-        )
-    except ClientError as e:
-        logger.error(e)
-        raise HTTPException(
-            status_code=404, detail="Requested resources does not exist."
-        )
-    return presigned_url
-
 
 async def _check_downloadability(dataset, version):
     v = await get_version(dataset, version)

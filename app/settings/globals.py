@@ -55,6 +55,9 @@ ENV = config("ENV", cast=str, default="dev")
 
 DATA_LAKE_BUCKET = config("DATA_LAKE_BUCKET", cast=str, default=None)
 
+# TODO read from terraform
+PIPELINES_BUCKET = "gfw-pipelines-dev"
+
 TILE_CACHE_BUCKET = config("TILE_CACHE_BUCKET", cast=str, default=None)
 TILE_CACHE_CLOUDFRONT_ID = config("TILE_CACHE_CLOUDFRONT_ID", cast=str, default=None)
 TILE_CACHE_URL = config("TILE_CACHE_URL", cast=str, default=None)
@@ -132,6 +135,9 @@ PIXETL_DEFAULT_RESAMPLING = config(
     "DEFAULT_RESAMPLING", cast=str, default=ResamplingMethod.nearest.value
 )
 RASTER_ANALYSIS_LAMBDA_NAME = config("RASTER_ANALYSIS_LAMBDA_NAME", cast=str)
+
+# TODO read from terraform state
+RASTER_ANALYSIS_STEP_FUNCTION_ARN = "arn:aws:states:us-east-1:563860007740:stateMachine:raster-analysis-process_list-feature-process_lists"
 
 
 POLL_WAIT_TIME = config("POLL_WAIT_TIME", cast=int, default=30)
