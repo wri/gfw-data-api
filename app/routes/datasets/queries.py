@@ -27,7 +27,6 @@ from ...application import db
 
 # from ...authentication.api_keys import get_api_key
 from ...crud import assets
-from ...models.orm.queries.raster_assets import latest_raster_tile_sets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
@@ -61,10 +60,11 @@ from ...models.enum.pg_sys_functions import (
 from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
+from ...models.orm.queries.raster_assets import latest_raster_tile_sets
 from ...models.orm.versions import Version as VersionORM
+from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
 from ...models.pydantic.creation_options import NoDataType
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
-from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
 from ...models.pydantic.query import CsvQueryRequestIn, QueryRequestIn
 from ...models.pydantic.raster_analysis import (
     DataEnvironment,
@@ -148,7 +148,11 @@ async def query_dataset_json(
     else:
         geostore = None
 
-    response.headers["Cache-Control"] = "max-age=7200"  # 2h
+    if "gadm__tcl__" in dataset:
+        response.headers["Cache-Control"] = "max-age=31536000"  # 1y for TCL tables
+    else:
+        response.headers["Cache-Control"] = "max-age=7200"  # 2h
+
     json_data: List[Dict[str, Any]] = await _query_dataset_json(
         dataset, version, sql, geostore
     )
@@ -570,6 +574,11 @@ async def _query_raster(
         raise HTTPException(
             status_code=400,
             detail=f"Geostore area exceeds limit of {GEOSTORE_SIZE_LIMIT_OTF} ha for raster analysis.",
+        )
+    if geostore.geojson.type != "Polygon" and geostore.geojson.type != "MultiPolygon":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Geostore must be a Polygon or MultiPolygon for raster analysis"
         )
 
     # use default data type to get default raster layer for dataset
