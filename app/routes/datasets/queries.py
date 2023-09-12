@@ -82,6 +82,9 @@ from .. import dataset_version_dependency
 router = APIRouter()
 
 
+# Special suffixes to do an extra area density calculation on the raster data set.
+AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "ha_yr-1"]
+
 @router.get(
     "/{dataset}/{version}/query",
     response_class=RedirectResponse,
@@ -638,18 +641,27 @@ async def _query_raster_lambda(
     return response_body
 
 
+def _get_area_density_name(nm):
+    """Return empty string if nm doesn't not have an area-density suffix, else
+    return nm with the area-density suffix removed."""
+    for suffix in AREA_DENSITY_RASTER_SUFFIXES:
+        if nm.endswith(suffix):
+            return nm[:len(suffix)]
+        return ""
+
 def _get_default_layer(dataset, pixel_meaning):
     default_type = pixel_meaning
+    area_density_name = _get_area_density_name(default_type)
     if default_type == "is":
         return f"{default_type}__{dataset}"
     elif "date_conf" in default_type:
         # use date layer for date_conf encoding
         return f"{dataset}__date"
-    elif default_type.endswith("ha-1"):
-        # remove ha-1 suffix for area density rasters
+    elif area_density_name != "":
+        # use the area_density name, in which the _ha-1 suffix (or similar) is removed.
         # OTF will multiply by pixel area to get base type
         # and table names can't include '-1'
-        return f"{dataset}__{default_type[:-5]}"
+        return f"{dataset}__{area_density_name}"
     else:
         return f"{dataset}__{default_type}"
 
@@ -691,7 +703,7 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
         if creation_options["pixel_meaning"] == "date_conf":
             layers += _get_date_conf_derived_layers(source_layer_name, no_data_val)
 
-        if creation_options["pixel_meaning"].endswith("_ha-1"):
+        if _get_area_density_name(creation_options["pixel_meaning"]) != "":
             layers.append(_get_area_density_layer(source_layer_name, no_data_val))
 
     return DataEnvironment(layers=layers)
@@ -757,9 +769,10 @@ def _get_area_density_layer(
 ) -> DerivedLayer:
     """Get the derived gross layer for whose values represent density per pixel
     area."""
+    nm = _get_area_density_name(source_layer_name)
     return DerivedLayer(
         source_layer=source_layer_name,
-        name=source_layer_name.replace("_ha-1", ""),
+        name=nm,
         calc="A * area",
         no_data=no_data_val,
     )
