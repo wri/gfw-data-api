@@ -12,4 +12,12 @@ GOOD_DOMAINS = [
 ]
 
 BAD_EMAILS = ["not an email", "also_not@n-email", "nope", None]
-BAD_DOMAINS = ["www.*.com", "*", "www.test*.org", "www.test.*", "*.com"]
+BAD_DOMAINS = [
+    "www.*.com",
+    "*",
+    "www.test*.org",
+    "www.test.*",
+    "*.com",
+    "globalforestwatch.org:443",
+    "localhost:3000",
+]
