@@ -83,7 +83,7 @@ router = APIRouter()
 
 
 # Special suffixes to do an extra area density calculation on the raster data set.
-AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "ha_yr-1"]
+AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "_ha_yr-1"]
 
 @router.get(
     "/{dataset}/{version}/query",
@@ -646,8 +646,8 @@ def _get_area_density_name(nm):
     return nm with the area-density suffix removed."""
     for suffix in AREA_DENSITY_RASTER_SUFFIXES:
         if nm.endswith(suffix):
-            return nm[:len(suffix)]
-        return ""
+            return nm[:-len(suffix)]
+    return ""
 
 def _get_default_layer(dataset, pixel_meaning):
     default_type = pixel_meaning
