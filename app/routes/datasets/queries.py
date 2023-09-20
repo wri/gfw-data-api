@@ -667,9 +667,11 @@ def _get_default_layer(dataset, pixel_meaning):
 
 
 async def _get_data_environment(grid: Grid) -> DataEnvironment:
-    # get all Raster tile set assets
+    # get all raster tile set assets with the same grid.
     latest_tile_sets = await db.all(latest_raster_tile_sets, {"grid": grid})
-    # create layers
+
+    # build list of layers, including any derived layers, for all
+    # single-band rasters found
     layers: List[Layer] = []
     for row in latest_tile_sets:
         creation_options = row.creation_options
