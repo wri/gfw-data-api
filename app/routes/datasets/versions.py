@@ -70,6 +70,7 @@ from ...tasks.delete_assets import delete_all_assets
 from ...utils.aws import get_aws_files
 from ...utils.google import get_gs_files
 from .queries import _get_data_environment
+from typing import cast
 
 router = APIRouter()
 
@@ -479,11 +480,12 @@ async def _get_raster_fields(asset: ORMAsset) -> List[RasterBandMetadata]:
             "pixel_meaning": layer.name
         }
         if layer.raster_table:
-            field_kwargs["values_table"] = [
-                 row.meaning for row in layer.raster_table.rows
+            field_kwargs["values_table"] = cast(Dict[str, Any], {})
+            field_kwargs["values_table"]["rows"] = [
+                 row for row in layer.raster_table.rows
             ]
             if layer.raster_table.default_meaning:
-                field_kwargs["values_table"].append(layer.raster_table.default_meaning)
+                field_kwargs["values_table"]["default_meaning"] = layer.raster_table.default_meaning
 
         fields.append(RasterBandMetadata(**field_kwargs))
 
