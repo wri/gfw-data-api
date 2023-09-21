@@ -10,7 +10,7 @@ Available assets and endpoints to choose from depend on the source type.
 """
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
 
 from fastapi import (
@@ -31,11 +31,10 @@ from ...crud import metadata as metadata_crud
 from ...crud import versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import AssetStatus, AssetType
+from ...models.enum.pixetl import Grid
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.asset_metadata import (
-    FieldMetadata,
-    FieldMetadataOut,
     FieldsMetadataResponse,
     RasterBandMetadata,
     RasterBandsMetadataResponse,
@@ -54,6 +53,7 @@ from ...models.pydantic.metadata import (
     VersionMetadataUpdate,
     VersionMetadataWithParentResponse,
 )
+from ...models.pydantic.raster_analysis import DataEnvironment
 from ...models.pydantic.statistics import Stats, StatsResponse, stats_factory
 from ...models.pydantic.versions import (
     Version,
@@ -70,7 +70,6 @@ from ...tasks.delete_assets import delete_all_assets
 from ...utils.aws import get_aws_files
 from ...utils.google import get_gs_files
 from .queries import _get_data_environment
-from typing import cast
 
 router = APIRouter()
 
@@ -467,27 +466,18 @@ async def _get_raster_fields(asset: ORMAsset) -> List[RasterBandMetadata]:
     fields: List[RasterBandMetadata] = []
 
     # Magic field which is the area of the region satisfying the query
-    args: Dict[str, Any] = {"pixel_meaning": "area__ha"}
-    fields.append(RasterBandMetadata(**args))
+    fields.append(RasterBandMetadata(pixel_meaning="area__ha"))
 
     # Fetch all raster tile sets that have the same grid
-    grid = asset.creation_options["grid"]
-    raster_data_environment = await _get_data_environment(grid)
+    grid: Grid = Grid(asset.creation_options["grid"])
+    raster_data_environment: DataEnvironment = await _get_data_environment(grid)
 
-    logger.debug(f"Processing data environment f{raster_data_environment}")
+    logger.debug(f"Processing data environment {raster_data_environment}")
     for layer in raster_data_environment.layers:
-        field_kwargs: Dict[str, Any] = {
-            "pixel_meaning": layer.name
-        }
-        if layer.raster_table:
-            field_kwargs["values_table"] = cast(Dict[str, Any], {})
-            field_kwargs["values_table"]["rows"] = [
-                 row for row in layer.raster_table.rows
-            ]
-            if layer.raster_table.default_meaning:
-                field_kwargs["values_table"]["default_meaning"] = layer.raster_table.default_meaning
-
-        fields.append(RasterBandMetadata(**field_kwargs))
+        raster_band_metadata: RasterBandMetadata = RasterBandMetadata(
+            pixel_meaning=layer.name, values_table=layer.raster_table
+        )
+        fields.append(raster_band_metadata)
 
     return fields
 
