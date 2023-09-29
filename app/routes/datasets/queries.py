@@ -148,8 +148,9 @@ async def query_dataset_json(
     GET to /dataset/{dataset}/{version}/fields will show fields that can
     be used in the query. For raster-only datasets, fields for other
     raster datasets that use the same grid are listed and can be
-    referenced. There are also several "magic" fields that can be used,
-    including "area__ha", "latitude", and "longitude".
+    referenced. There are also several reserved fields with special
+    meaning that can be used, including "area__ha", "latitude", and
+    "longitude".
 
     """
 
