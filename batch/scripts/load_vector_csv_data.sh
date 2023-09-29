@@ -80,6 +80,7 @@ for uri in "${SRC[@]}"; do
   # since CSV has no inherent concept of CRS, just manually set source CRS (s_srs) to EPSG:4326
   ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=$PGDATABASE user=$PGUSER" \
     "$VSIS3_URI" \
+    -oo MAX_LINE_SIZE=11000000 \
     -oo GEOM_POSSIBLE_NAMES="$GEOMETRY_NAME" -oo KEEP_GEOM_COLUMNS=NO \
     -doo CLOSING_STATEMENTS="$ADD_GFW_FIELDS_SQL; $FILL_GFW_FIELDS_SQL; $COPY_FROM_TEMP_SQL;" \
     "${LCO_ARGS[@]}" \
