@@ -82,11 +82,15 @@ async def test_fields_dataset_raster(
 
     assert response.status_code == 200
     data = response.json()["data"]
-    assert len(data) == 2
+    assert len(data) == 4
     assert data[0]["pixel_meaning"] == 'area__ha'
     assert data[0]["values_table"] == None
-    assert data[1]["pixel_meaning"] == 'my_first_dataset__year'
+    assert data[1]["pixel_meaning"] == 'latitude'
     assert data[1]["values_table"] == None
+    assert data[2]["pixel_meaning"] == 'longitude'
+    assert data[2]["values_table"] == None
+    assert data[3]["pixel_meaning"] == 'my_first_dataset__year'
+    assert data[3]["values_table"] == None
 
 @pytest.mark.asyncio
 async def test_query_dataset_raster_bad_get(
