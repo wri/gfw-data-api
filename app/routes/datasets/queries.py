@@ -125,7 +125,7 @@ async def query_dataset_json(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
@@ -182,7 +182,7 @@ async def query_dataset_csv(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
