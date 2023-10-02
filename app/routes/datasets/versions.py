@@ -466,9 +466,10 @@ async def update_metadata(
 async def _get_raster_fields(asset: ORMAsset) -> List[RasterBandMetadata]:
     fields: List[RasterBandMetadata] = []
 
-    # Magic field which is the area of the region satisfying the query
-    args: Dict[str, Any] = {"pixel_meaning": "area__ha"}
-    fields.append(RasterBandMetadata(**args))
+    # Add in reserved fields that have special meaning.
+    for reserved_field in ["area__ha", "latitude", "longitude"]:
+        args: Dict[str, Any] = {"pixel_meaning": reserved_field}
+        fields.append(RasterBandMetadata(**args))
 
     # Fetch all raster tile sets that have the same grid
     grid = asset.creation_options["grid"]
