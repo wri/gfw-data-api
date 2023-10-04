@@ -82,6 +82,9 @@ from .. import dataset_version_dependency
 router = APIRouter()
 
 
+# Special suffixes to do an extra area density calculation on the raster data set.
+AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "_ha_yr-1"]
+
 @router.get(
     "/{dataset}/{version}/query",
     response_class=RedirectResponse,
@@ -122,7 +125,7 @@ async def query_dataset_json(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
@@ -131,13 +134,24 @@ async def query_dataset_json(
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in JSON format.
 
-    Adding a geostore ID to the query will apply a spatial filter to the
-    query, only returning results for features intersecting with the
-    geostore geometry. For vector datasets, this filter will not clip
-    feature geometries to the geostore boundaries. Hence any spatial
-    transformation such as area calculations will be applied on the
-    entire feature geometry, including areas outside the geostore
-    boundaries.
+    Adding a geostore ID or directly-specified geometry to the query
+    will apply a spatial filter to the query, only returning results for
+    features intersecting with the geostore geometry. For vector
+    datasets, this filter will not clip feature geometries to the
+    geostore boundaries. Hence any spatial transformation such as area
+    calculations will be applied on the entire feature geometry,
+    including areas outside the geostore boundaries.
+
+    A geostore ID or geometry must be specified for a query to a
+    raster-only dataset.
+
+    GET to /dataset/{dataset}/{version}/fields will show fields that can
+    be used in the query. For raster-only datasets, fields for other
+    raster datasets that use the same grid are listed and can be
+    referenced. There are also several reserved fields with special
+    meaning that can be used, including "area__ha", "latitude", and
+    "longitude".
+
     """
 
     dataset, version = dataset_version
@@ -168,7 +182,7 @@ async def query_dataset_csv(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
@@ -638,26 +652,37 @@ async def _query_raster_lambda(
     return response_body
 
 
+def _get_area_density_name(nm):
+    """Return empty string if nm doesn't not have an area-density suffix, else
+    return nm with the area-density suffix removed."""
+    for suffix in AREA_DENSITY_RASTER_SUFFIXES:
+        if nm.endswith(suffix):
+            return nm[:-len(suffix)]
+    return ""
+
 def _get_default_layer(dataset, pixel_meaning):
     default_type = pixel_meaning
+    area_density_name = _get_area_density_name(default_type)
     if default_type == "is":
         return f"{default_type}__{dataset}"
     elif "date_conf" in default_type:
         # use date layer for date_conf encoding
         return f"{dataset}__date"
-    elif default_type.endswith("ha-1"):
-        # remove ha-1 suffix for area density rasters
+    elif area_density_name != "":
+        # use the area_density name, in which the _ha-1 suffix (or similar) is removed.
         # OTF will multiply by pixel area to get base type
         # and table names can't include '-1'
-        return f"{dataset}__{default_type[:-5]}"
+        return f"{dataset}__{area_density_name}"
     else:
         return f"{dataset}__{default_type}"
 
 
 async def _get_data_environment(grid: Grid) -> DataEnvironment:
-    # get all Raster tile set assets
+    # get all raster tile set assets with the same grid.
     latest_tile_sets = await db.all(latest_raster_tile_sets, {"grid": grid})
-    # create layers
+
+    # build list of layers, including any derived layers, for all
+    # single-band rasters found
     layers: List[Layer] = []
     for row in latest_tile_sets:
         creation_options = row.creation_options
@@ -691,7 +716,7 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
         if creation_options["pixel_meaning"] == "date_conf":
             layers += _get_date_conf_derived_layers(source_layer_name, no_data_val)
 
-        if creation_options["pixel_meaning"].endswith("_ha-1"):
+        if _get_area_density_name(creation_options["pixel_meaning"]) != "":
             layers.append(_get_area_density_layer(source_layer_name, no_data_val))
 
     return DataEnvironment(layers=layers)
@@ -757,9 +782,10 @@ def _get_area_density_layer(
 ) -> DerivedLayer:
     """Get the derived gross layer for whose values represent density per pixel
     area."""
+    nm = _get_area_density_name(source_layer_name)
     return DerivedLayer(
         source_layer=source_layer_name,
-        name=source_layer_name.replace("_ha-1", ""),
+        name=nm,
         calc="A * area",
         no_data=no_data_val,
     )

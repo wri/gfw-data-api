@@ -29,21 +29,30 @@ class SignUpResponse(Response):
 
 class APIKeyRequestIn(StrictBaseModel):
 
-    alias: str = Query(..., description="Nick name for API Key")
-    organization: str = Query(..., description="Name of organization or Website")
+    alias: str = Query(..., description="Nickname for API Key")
+    organization: str = Query(..., description="Name of organization or website")
     email: EmailStr = Query(..., description="Email address of POC")
     domains: List[str] = Query(
         [],
-        description="List of domains which can be used this API key. If no domain is listed, the key will be set by default to the lowest rate limiting tier. "
-        "When making request using the API key, make sure you add the correct `origin` header matching a whitelisted domain. "
-        "You can use wildcards for subdomains such as *.yourdomain.com. "
-        "Our validation methord for wildcard will allow only subdomains. So make sure you also add yourdomain.com if you use root without any subdomains. "
-        "www.yourdomain.com and yourdomain.com are two different domains in terms of security. Include www. if required. ",
-        regex=r"^(\*\.)?([\w-]+\.)+[\w-]+$|(localhost)",
+        description="""List of domains which can be used this API key.
+        If no domain is listed, the key will be set by default to the lowest rate
+        limiting tier. <br/>
+        When making request using the API key, make sure you add the correct `origin`
+        header matching a domain in this allowlist.<br/><br/>
+        You can use wildcards for subdomains such as `*.yourdomain.com`.<br/>
+        **Our validation method for wildcards will allow only subdomains.**<br/><br/>
+        Make sure you also add `yourdomain.com` if you use root without any subdomains.<br/>
+        `www.yourdomain.com` and `yourdomain.com` are two different domains in terms
+        of security.<br/>
+        Include `www.` if required.<br/><br/>
+        **Do not** include port numbers in the domain names. `localhost`~:3000~<br/><br/>
+        A `domains` example for local development might look like this:<br/>
+        `["www.yourdomain.com", "*.yourdomain.com", "yourdomain.com", "localhost"]`""",
+        regex=r"^(\*\.)?([\w-]+\.)+[\w-]+$|^(localhost)$",
     )
     never_expires: bool = Query(
         False,
-        description="Set API Key to never expire, only admin uses can set this to True",
+        description="Set API Key to never expire, only `admin` users can set this to `true`",
     )
 
 

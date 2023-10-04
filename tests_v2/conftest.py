@@ -245,6 +245,12 @@ async def generic_raster_version(
             "creation_options": RASTER_CREATION_OPTIONS,
         },
     )
+    await async_client.patch(
+        f"/dataset/{dataset_name}/{version_name}",
+        json={
+            "is_latest": True,
+        },
+    )
 
     # Set all pending tasks to success
     for job_id in batch_job_mock.jobs:

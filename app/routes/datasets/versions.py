@@ -70,6 +70,7 @@ from ...tasks.delete_assets import delete_all_assets
 from ...utils.aws import get_aws_files
 from ...utils.google import get_gs_files
 from .queries import _get_data_environment
+from typing import cast
 
 router = APIRouter()
 
@@ -464,21 +465,28 @@ async def update_metadata(
 
 async def _get_raster_fields(asset: ORMAsset) -> List[RasterBandMetadata]:
     fields: List[RasterBandMetadata] = []
-    grid = asset.creation_options["grid"]
 
+    # Add in reserved fields that have special meaning.
+    for reserved_field in ["area__ha", "latitude", "longitude"]:
+        args: Dict[str, Any] = {"pixel_meaning": reserved_field}
+        fields.append(RasterBandMetadata(**args))
+
+    # Fetch all raster tile sets that have the same grid
+    grid = asset.creation_options["grid"]
     raster_data_environment = await _get_data_environment(grid)
 
     logger.debug(f"Processing data environment f{raster_data_environment}")
     for layer in raster_data_environment.layers:
         field_kwargs: Dict[str, Any] = {
-            "pixel_meaning": asset.creation_options["pixel_meaning"],
+            "pixel_meaning": layer.name
         }
-        # if layer.raster_table:
-        # field_kwargs["field_values"] = [
-        #     row.meaning for row in layer.raster_table.rows
-        # ]
-        # if layer.raster_table.default_meaning:
-        #     field_kwargs["field_values"].append(layer.raster_table.default_meaning)
+        if layer.raster_table:
+            field_kwargs["values_table"] = cast(Dict[str, Any], {})
+            field_kwargs["values_table"]["rows"] = [
+                 row for row in layer.raster_table.rows
+            ]
+            if layer.raster_table.default_meaning:
+                field_kwargs["values_table"]["default_meaning"] = layer.raster_table.default_meaning
 
         fields.append(RasterBandMetadata(**field_kwargs))
 
