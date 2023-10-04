@@ -1,4 +1,4 @@
-FROM globalforestwatch/pixetl:v1.7.4
+FROM globalforestwatch/pixetl:robustify_vector_tiles
 
 
 # Copy scripts
