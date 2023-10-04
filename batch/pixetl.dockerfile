@@ -1,5 +1,4 @@
-FROM globalforestwatch/pixetl:robustify_vector_tiles
-
+FROM globalforestwatch/pixetl:robustify_vector_tiles_1
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/
