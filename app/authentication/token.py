@@ -28,6 +28,8 @@ async def is_service_account(token: str = Depends(oauth2_scheme)) -> bool:
         return True
 
 
+# Check is the authorized user is an admin. Return true if so, throw
+# an exception if not.
 async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
     """Calls GFW API to authorize user.
 
@@ -42,6 +44,25 @@ async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
     ):
         logger.warning(f"ADMIN privileges required. Unauthorized user: {response.text}")
         raise HTTPException(status_code=401, detail="Unauthorized")
+    else:
+        return True
+
+# Check is the authorized user is an admin. Return true if so, false if not (with no
+# exception).
+async def is_admin_no_exception(token: str = Depends(oauth2_scheme)) -> bool:
+    """Calls GFW API to authorize user.
+
+    User must be ADMIN for gfw app
+    """
+
+    response: Response = await who_am_i(token)
+
+    if response.status_code == 401 or not (
+        response.json()["role"] == "ADMIN"
+        and "gfw" in response.json()["extraUserData"]["apps"]
+    ):
+        logger.warning(f"ADMIN privileges required. Unauthorized user: {response.text}")
+        return False
     else:
         return True
 

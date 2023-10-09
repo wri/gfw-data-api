@@ -433,6 +433,20 @@ async def test_query_vector_asset_disallowed_10(
         "You might need to add explicit type casts."
     )
 
+@pytest.mark.asyncio()
+async def test_query_licensed_disallowed_11(
+        licensed_version, async_client: AsyncClient
+):
+    dataset, version, _ = licensed_version
+
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=select(*) from mytable;",
+        follow_redirects=True,
+    )
+    assert response.status_code == 401
+    assert response.json()["message"] == (
+        "Unauthorized"
+    )
 
 @pytest.mark.asyncio
 @pytest.mark.skip("Temporarily skip while _get_data_environment is being cached")

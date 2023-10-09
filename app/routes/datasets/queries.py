@@ -23,6 +23,7 @@ from pglast.printer import RawStream
 from pydantic.tools import parse_obj_as
 from sqlalchemy.sql import and_
 
+from ...authentication.token import is_admin_no_exception
 from ...application import db
 
 # from ...authentication.api_keys import get_api_key
@@ -84,6 +85,10 @@ router = APIRouter()
 
 # Special suffixes to do an extra area density calculation on the raster data set.
 AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "_ha_yr-1"]
+
+# Datasets that require admin privileges to do a query. (Extra protection on
+# commercial datasets which shouldn't be downloaded in any way.)
+PROTECTED_QUERY_DATASETS = ["licensed_wdpa_protected_areas"]
 
 @router.get(
     "/{dataset}/{version}/query",
@@ -155,6 +160,11 @@ async def query_dataset_json(
     """
 
     dataset, version = dataset_version
+    if dataset in PROTECTED_QUERY_DATASETS:
+        is_authorized = await is_admin_no_exception()
+        if not is_authorized:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
     if geostore_id:
         geostore: Optional[GeostoreCommon] = await get_geostore(
             geostore_id, geostore_origin

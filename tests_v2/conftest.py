@@ -161,6 +161,25 @@ async def generic_vector_source_version(
     dataset_name, _ = generic_dataset
     version_name: str = "v1"
 
+    await create_vector_source_version(async_client, dataset_name, version_name, monkeypatch)
+
+    # yield version
+    yield dataset_name, version_name, VERSION_METADATA
+
+    # clean up
+    await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
+
+
+# Create a vector version, given the name of an existing dataset, plus a new version
+# name.
+async def create_vector_source_version(
+    async_client: AsyncClient,
+    dataset_name: str,
+    version_name: str,
+    monkeypatch: MonkeyPatch,
+):
+    """Create generic vector source version."""
+
     # patch all functions which reach out to external services
     batch_job_mock = BatchJobMock()
     monkeypatch.setattr(versions, "_verify_source_file_access", void_coroutine)
@@ -208,13 +227,6 @@ async def generic_vector_source_version(
     # Assert that version is saved, just to make sure
     response = await async_client.get(f"/dataset/{dataset_name}/{version_name}")
     assert response.json()["data"]["status"] == "saved"
-
-    # yield version
-    yield dataset_name, version_name, VERSION_METADATA
-
-    # clean up
-    await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
-
 
 @pytest_asyncio.fixture
 async def generic_raster_version(
@@ -281,6 +293,43 @@ async def generic_raster_version(
     # clean up
     await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
 
+@pytest_asyncio.fixture
+async def licensed_dataset(
+    async_client: AsyncClient,
+) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
+    """Create licensed dataset."""
+
+    # Create dataset
+    dataset_name: str = "licensed_wdpa_protected_areas"
+
+    await async_client.put(
+        f"/dataset/{dataset_name}", json={"metadata": DATASET_METADATA}
+    )
+
+    # Yield dataset name and associated metadata
+    yield dataset_name, DATASET_METADATA
+
+    # Clean up
+    await async_client.delete(f"/dataset/{dataset_name}")
+
+@pytest_asyncio.fixture
+async def licensed_version(
+    async_client: AsyncClient,
+    licensed_dataset: Tuple[str, str],
+    monkeypatch: MonkeyPatch,
+) -> AsyncGenerator[Tuple[str, str, Dict[str, Any]], None]:
+    """Create licensed version."""
+
+    dataset_name, _ = licensed_dataset
+    version_name: str = "v1"
+
+    await create_vector_source_version(async_client, dataset_name, version_name, monkeypatch)
+
+    # yield version
+    yield dataset_name, version_name, VERSION_METADATA
+
+    # clean up
+    await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
 
 @pytest_asyncio.fixture
 async def apikey(
