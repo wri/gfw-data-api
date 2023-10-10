@@ -125,7 +125,7 @@ async def query_dataset_json(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
@@ -134,13 +134,24 @@ async def query_dataset_json(
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in JSON format.
 
-    Adding a geostore ID to the query will apply a spatial filter to the
-    query, only returning results for features intersecting with the
-    geostore geometry. For vector datasets, this filter will not clip
-    feature geometries to the geostore boundaries. Hence any spatial
-    transformation such as area calculations will be applied on the
-    entire feature geometry, including areas outside the geostore
-    boundaries.
+    Adding a geostore ID or directly-specified geometry to the query
+    will apply a spatial filter to the query, only returning results for
+    features intersecting with the geostore geometry. For vector
+    datasets, this filter will not clip feature geometries to the
+    geostore boundaries. Hence any spatial transformation such as area
+    calculations will be applied on the entire feature geometry,
+    including areas outside the geostore boundaries.
+
+    A geostore ID or geometry must be specified for a query to a
+    raster-only dataset.
+
+    GET to /dataset/{dataset}/{version}/fields will show fields that can
+    be used in the query. For raster-only datasets, fields for other
+    raster datasets that use the same grid are listed and can be
+    referenced. There are also several reserved fields with special
+    meaning that can be used, including "area__ha", "latitude", and
+    "longitude".
+
     """
 
     dataset, version = dataset_version
@@ -171,7 +182,7 @@ async def query_dataset_csv(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
