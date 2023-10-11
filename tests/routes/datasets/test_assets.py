@@ -5,6 +5,7 @@ from uuid import UUID
 import httpx
 import pytest
 from botocore.exceptions import ClientError
+from httpx import AsyncClient
 
 from app.application import ContextEngine
 from app.crud import tasks
@@ -255,21 +256,22 @@ async def test_auxiliary_raster_asset(async_client, httpd, logs):
 
 
 @pytest.mark.asyncio
-async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
+async def test_rasterize_vector_asset(async_client: AsyncClient, batch_client, httpd):
     """"""
     _, logs = batch_client
 
     # Add a dataset, version, and default asset
     dataset = "test_vector"
     version = "v1.1.1"
+    grid = "10/40000"
 
     pixetl_output_files = [
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/gdal-geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/geotiff/extent.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/gdal-geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/geotiff/tiles.geojson",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/gdal-geotiff/90N_000E.tif",
-        f"{dataset}/{version}/raster/epsg-4326/90/27008/gfw_fid/geotiff/90N_000E.tif",
+        f"{dataset}/{version}/raster/epsg-4326/{grid}/gfw_fid/gdal-geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/{grid}/gfw_fid/geotiff/extent.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/{grid}/gfw_fid/gdal-geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/{grid}/gfw_fid/geotiff/tiles.geojson",
+        f"{dataset}/{version}/raster/epsg-4326/{grid}/gfw_fid/gdal-geotiff/60N_010E.tif",
+        f"{dataset}/{version}/raster/epsg-4326/{grid}/gfw_fid/geotiff/60N_010E.tif",
     ]
 
     for key in pixetl_output_files:
@@ -294,15 +296,12 @@ async def test_auxiliary_vector_asset(async_client, batch_client, httpd):
     # vector asset
     asset_payload = {
         "asset_type": "Raster tile set",
-        "asset_uri": "http://www.osnews.com",
         "is_managed": True,
         "creation_options": {
             "data_type": FAKE_INT_DATA_PARAMS["dtype"],
             "pixel_meaning": "gfw_fid",
-            "grid": "90/27008",
+            "grid": grid,
             "resampling": "nearest",
-            "overwrite": True,
-            "subset": "90N_000E",
         },
     }
 
