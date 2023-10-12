@@ -445,7 +445,7 @@ async def test_query_licensed_disallowed_11(
     )
     assert response.status_code == 401
     assert response.json()["message"] == (
-        "Unauthorized"
+        "Unauthorized query on a restricted dataset"
     )
 
 @pytest.mark.asyncio

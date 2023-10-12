@@ -23,7 +23,7 @@ from pglast.printer import RawStream
 from pydantic.tools import parse_obj_as
 from sqlalchemy.sql import and_
 
-from ...authentication.token import is_admin_no_exception
+from ...authentication.token import is_gfwpro_admin
 from ...application import db
 
 # from ...authentication.api_keys import get_api_key
@@ -161,9 +161,7 @@ async def query_dataset_json(
 
     dataset, version = dataset_version
     if dataset in PROTECTED_QUERY_DATASETS:
-        is_authorized = await is_admin_no_exception()
-        if not is_authorized:
-            raise HTTPException(status_code=401, detail="Unauthorized")
+        await is_gfwpro_admin(error_str="Unauthorized query on a restricted dataset")
 
     if geostore_id:
         geostore: Optional[GeostoreCommon] = await get_geostore(
