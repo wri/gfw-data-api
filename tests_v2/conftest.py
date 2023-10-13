@@ -300,7 +300,7 @@ async def licensed_dataset(
     """Create licensed dataset."""
 
     # Create dataset
-    dataset_name: str = "licensed_wdpa_protected_areas"
+    dataset_name: str = "wdpa_licensed_protected_areas"
 
     await async_client.put(
         f"/dataset/{dataset_name}", json={"metadata": DATASET_METADATA}

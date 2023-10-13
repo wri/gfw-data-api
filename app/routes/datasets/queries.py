@@ -88,7 +88,7 @@ AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "_ha_yr-1"]
 
 # Datasets that require admin privileges to do a query. (Extra protection on
 # commercial datasets which shouldn't be downloaded in any way.)
-PROTECTED_QUERY_DATASETS = ["licensed_wdpa_protected_areas"]
+PROTECTED_QUERY_DATASETS = ["wdpa_licensed_protected_areas"]
 
 @router.get(
     "/{dataset}/{version}/query",
