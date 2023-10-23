@@ -11,7 +11,9 @@ import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
+from multiprocessing import Process
 from multiprocessing.queues import Queue
+from queue import Empty
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import psutil
@@ -550,6 +552,34 @@ def intersecting_tiles(
     return tiles_in_target_grid
 
 
+def report_stats(
+    done_queue: Queue, log_queue: Queue, report_interval: float = 4.0
+) -> None:
+    log_client_configurer(log_queue)
+    logger = logging.getLogger("reporter")
+    cwd: str = os.getcwd()
+
+    while True:
+        cpu_usage: List[float] = psutil.cpu_percent(interval=1)
+        mem_usage: float = psutil.virtual_memory().percent
+        swap_usage: float = psutil.swap_memory().percent
+        disk_usage: float = psutil.disk_usage(cwd).percent
+
+        logger.log(
+            logging.INFO,
+            f"System Memory: {mem_usage}% CPU: {cpu_usage}% Swap: {swap_usage}% Disk: {disk_usage}%",
+        )
+
+        time.sleep(report_interval)
+
+        try:
+            if done_queue.get_nowait() == "stop":
+                done_queue.task_done()
+                break
+        except Empty:
+            pass
+
+
 def resample(
     dataset: str = Option(..., help="Dataset name."),
     version: str = Option(..., help="Version string."),
@@ -567,6 +597,10 @@ def resample(
 
     log_client_configurer(log_queue)
     logger = logging.getLogger("main")
+
+    done_queue: Queue[str] = multiprocessing.Manager().Queue(maxsize=1)
+    report_proc = Process(target=report_stats, args=(done_queue, log_queue))
+    report_proc.start()
 
     logger.log(logging.INFO, f"Resampling tiles in {source_uri}")
     logger.log(
@@ -662,6 +696,9 @@ def resample(
     logger.log(logging.INFO, f"Uploading tiles.geojson to {create_geojsons_prefix}")
 
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
+
+    done_queue.put("stop")
+    done_queue.join()
 
     log_queue.put_nowait(None)
     listener.join()
