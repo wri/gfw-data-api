@@ -11,13 +11,17 @@
 
 # Environment Files
 /.env
+.python-version
+
+# Mac stuff
+*.DS_Store
 
 # Test stuff
 tests/cobertura.xml
 tests_v2/cobertura.xml
 
-# TF stuff
+# Terraform stuff
 terraform/*
 
-# Virtualenvs
+# Virtual Environments
 .venv*
