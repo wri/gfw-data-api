@@ -3,17 +3,28 @@
 *__pycache__*
 *.idea*
 
-#MyPy
+# MyPy
 .mypy_cache/*
 
 # Docker Files
 docker-compose.dev.yml
+docker-compose.prod.yml
 docker-compose.test.yml
+
+# GIT
+.git
 
 # Ignore Files
 .gitignore
 
-# Terraform
+# Mac stuff
+*.DS_Store
+
+# Test stuff
+tests/cobertura.xml
+tests_v2/cobertura.xml
+
+# Terraform stuff
 *terraform*
 
 # Virtual Environments
