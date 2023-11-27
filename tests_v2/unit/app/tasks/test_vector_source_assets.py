@@ -16,6 +16,7 @@ from app.tasks.vector_source_assets import (
     append_vector_source_asset,
     vector_source_asset,
 )
+from tests_v2.conftest import mock_callback
 
 MODULE_PATH_UNDER_TEST = "app.tasks.vector_source_assets"
 
@@ -38,14 +39,6 @@ CREATION_OPTIONS = {
     "indices": [],
 }
 VECTOR_ASSET_UUID = UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
-
-
-async def dummy_function():
-    pass
-
-
-async def mock_callback(task_id: UUID, change_log: ChangeLog):
-    return dummy_function
 
 
 class TestVectorSourceAssetsHelpers:

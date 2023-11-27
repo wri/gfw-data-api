@@ -1,23 +1,13 @@
-import asyncio
-from typing import Any, Coroutine, Dict, List
+from typing import Dict, List
 from unittest.mock import MagicMock, patch
-from uuid import UUID
 
 from fastapi.logger import logger
 
-from app.models.pydantic.change_log import ChangeLog
 from app.tasks.batch import submit_batch_job
 from app.tasks.vector_source_assets import _create_add_gfw_fields_job
+from tests_v2.conftest import mock_callback
 
 TEST_JOB_ENV: List[Dict[str, str]] = [{"name": "PASSWORD", "value": "DON'T LOG ME"}]
-
-
-async def mock_callback(uuid: UUID, changelog: ChangeLog):
-    async def helper_function() -> Coroutine[Any, Any, None]:
-        # Simulate some asynchronous work
-        return asyncio.sleep(0)
-
-    return helper_function()
 
 
 @patch("app.utils.aws.boto3.client")
