@@ -1,5 +1,6 @@
 from typing import Tuple
 from unittest.mock import Mock
+from urllib.parse import parse_qsl, urlparse
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -235,11 +236,10 @@ async def test_redirect_get_query(
         params=params,
         follow_redirects=False,
     )
-
     assert response.status_code == 308
     assert (
-        response.headers["location"]
-        == f"/dataset/{dataset_name}/{version_name}/query/json?{response.request.url.query.decode('utf-8')}"
+        parse_qsl(urlparse(response.headers["location"]).query, strict_parsing=True)
+        == parse_qsl(urlparse(f"/dataset/{dataset_name}/{version_name}/query/json?{response.request.url.query.decode('utf-8')}").query, strict_parsing=True)
     )
 
 

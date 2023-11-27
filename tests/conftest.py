@@ -229,6 +229,7 @@ def client():
                         except Exception as ex:
                             print(f"Exception deleting asset {asset['asset_id']}: {ex}")
                     try:
+                        # FIXME: Mock-out cache invalidation function
                         _ = client.delete(f"/dataset/{ds_id}/{version}")
                     except Exception as ex:
                         print(f"Exception deleting version {version}: {ex}")

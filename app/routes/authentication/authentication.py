@@ -83,6 +83,16 @@ async def create_api_key(
             detail="Domain name did not match the request origin or referrer.",
         )
 
+    # Give a good error code/message if user is specifying an alias that exists for
+    # another one of his API keys.
+    prev_keys: List[ORMApiKey] = await api_keys.get_api_keys_from_user(user_id=user_id)
+    for key in prev_keys:
+        if key.alias == api_key_data.alias:
+            raise HTTPException(
+                status_code=409,
+                detail="Key with specified alias already exists; use a different alias"
+            )
+
     row: ORMApiKey = await api_keys.create_api_key(user_id=user_id, **input_data)
 
     is_internal = api_key_is_internal(
