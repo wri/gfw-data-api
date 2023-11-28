@@ -129,7 +129,7 @@ def submit_batch_job(
             "command": job.command,
             "vcpus": job.vcpus,
             "memory": job.memory,
-            "environment": job.environment,
+            "environment": "<redacted>",
         },
         "retryStrategy": {
             "attempts": job.attempts,
@@ -151,6 +151,8 @@ def submit_batch_job(
     }
 
     logger.info(f"Submitting batch job with payload: {payload}")
+
+    payload["containerOverrides"]["environment"] = job.environment
 
     response = client.submit_job(**payload)
 
