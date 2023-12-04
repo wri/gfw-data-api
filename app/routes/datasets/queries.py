@@ -157,6 +157,8 @@ async def query_dataset_json(
     """
 
     dataset, version = dataset_version
+    #if dataset in PROTECTED_QUERY_DATASETS:
+    #    await is_gfwpro_admin(error_str="Unauthorized query on a restricted dataset")
 
     if geostore_id:
         geostore: Optional[GeostoreCommon] = await get_geostore(
