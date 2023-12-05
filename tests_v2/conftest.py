@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, Tuple
+from uuid import UUID
 
 import pytest
 import pytest_asyncio
@@ -161,7 +162,9 @@ async def generic_vector_source_version(
     dataset_name, _ = generic_dataset
     version_name: str = "v1"
 
-    await create_vector_source_version(async_client, dataset_name, version_name, monkeypatch)
+    await create_vector_source_version(
+        async_client, dataset_name, version_name, monkeypatch
+    )
 
     # yield version
     yield dataset_name, version_name, VERSION_METADATA
@@ -228,6 +231,7 @@ async def create_vector_source_version(
     response = await async_client.get(f"/dataset/{dataset_name}/{version_name}")
     assert response.json()["data"]["status"] == "saved"
 
+
 @pytest_asyncio.fixture
 async def generic_raster_version(
     async_client: AsyncClient,
@@ -293,6 +297,7 @@ async def generic_raster_version(
     # clean up
     await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
 
+
 @pytest_asyncio.fixture
 async def licensed_dataset(
     async_client: AsyncClient,
@@ -312,6 +317,7 @@ async def licensed_dataset(
     # Clean up
     await async_client.delete(f"/dataset/{dataset_name}")
 
+
 @pytest_asyncio.fixture
 async def licensed_version(
     async_client: AsyncClient,
@@ -323,13 +329,16 @@ async def licensed_version(
     dataset_name, _ = licensed_dataset
     version_name: str = "v1"
 
-    await create_vector_source_version(async_client, dataset_name, version_name, monkeypatch)
+    await create_vector_source_version(
+        async_client, dataset_name, version_name, monkeypatch
+    )
 
     # yield version
     yield dataset_name, version_name, VERSION_METADATA
 
     # clean up
     await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
+
 
 @pytest_asyncio.fixture
 async def apikey(
@@ -451,3 +460,10 @@ async def _create_geostore(geojson: Dict[str, Any], async_client: AsyncClient) -
     assert response.status_code == 201
 
     return response.json()["data"]["gfw_geostore_id"]
+
+
+async def mock_callback(task_id: UUID, change_log: ChangeLog):
+    async def dummy_function():
+        pass
+
+    return dummy_function
