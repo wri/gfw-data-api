@@ -58,6 +58,11 @@ class VersionUpdateIn(StrictBaseModel):
 
 class VersionAppendIn(StrictBaseModel):
     source_uri: List[str]
+    layers: Optional[List[str]] = Field(
+        None,
+        description="List of layer names to append to version. "
+        "If not set, all layers in source_uri will be appended.",
+    )
 
 
 class VersionResponse(Response):

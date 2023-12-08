@@ -206,7 +206,6 @@ async def update_version(
     response_class=ORJSONResponse,
     tags=["Versions"],
     response_model=VersionResponse,
-    deprecated=True,
 )
 async def append_to_version(
     *,
@@ -232,6 +231,7 @@ async def append_to_version(
     # For the background task, we only need the new source uri from the request
     input_data = {"creation_options": deepcopy(default_asset.creation_options)}
     input_data["creation_options"]["source_uri"] = request.source_uri
+    input_data["creation_options"]["layers"] = request.layers # TODO handle if None 
     background_tasks.add_task(
         append_default_asset, dataset, version, input_data, default_asset.asset_id
     )
@@ -239,6 +239,7 @@ async def append_to_version(
     # We now want to append the new uris to the existing ones and update the asset
     update_data = {"creation_options": deepcopy(default_asset.creation_options)}
     update_data["creation_options"]["source_uri"] += request.source_uri
+    update_data["creation_options"]["layers"] += request.layers # TODO replace failed layers with new layers
     await assets.update_asset(default_asset.asset_id, **update_data)
 
     version_orm: ORMVersion = await versions.get_version(dataset, version)
