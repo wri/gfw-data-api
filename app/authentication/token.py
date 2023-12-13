@@ -1,18 +1,26 @@
 from typing import Tuple, cast
+from typing import Tuple, cast
 
 from fastapi import Depends, HTTPException
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
 from httpx import Response
 from ..routes import dataset_dependency
+from ..routes import dataset_dependency
 
 from ..utils.rw_api import who_am_i
 from ..settings.globals import PROTECTED_QUERY_DATASETS
 
 # token dependency where we immediately cause an exception if there is no auth token
+# token dependency where we immediately cause an exception if there is no auth token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 # token dependency where we don't cause exception if there is no auth token
 oauth2_scheme_no_auto = OAuth2PasswordBearer(tokenUrl="/token", auto_error=False)
+
+# Datasets that require admin privileges to do a query. (Extra protection on
+# commercial datasets which shouldn't be downloaded in any way.)
+PROTECTED_QUERY_DATASETS = ["wdpa_licensed_protected_areas"]
+
 
 async def is_service_account(token: str = Depends(oauth2_scheme)) -> bool:
     """Calls GFW API to authorize user.
@@ -51,7 +59,7 @@ async def is_gfwpro_admin_for_query(dataset: str = Depends(dataset_dependency),
         if token == None:
             raise HTTPException(status_code=401, detail="Unauthorized query on a restricted dataset")
         else:
-            return await is_app_admin(cast(str, token), "gfw-pro",
+            await is_app_admin(cast(str, token), "gfw-pro",
                                error_str="Unauthorized query on a restricted dataset")
 
     return True
