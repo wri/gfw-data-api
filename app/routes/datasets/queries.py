@@ -23,7 +23,7 @@ from pglast.printer import RawStream
 from pydantic.tools import parse_obj_as
 from sqlalchemy.sql import and_
 
-from ...authentication.token import is_gfwpro_admin
+from ...authentication.token import is_gfwpro_admin_for_query
 from ...application import db
 
 # from ...authentication.api_keys import get_api_key
@@ -86,10 +86,6 @@ router = APIRouter()
 # Special suffixes to do an extra area density calculation on the raster data set.
 AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "_ha_yr-1"]
 
-# Datasets that require admin privileges to do a query. (Extra protection on
-# commercial datasets which shouldn't be downloaded in any way.)
-PROTECTED_QUERY_DATASETS = ["wdpa_licensed_protected_areas"]
-
 @router.get(
     "/{dataset}/{version}/query",
     response_class=RedirectResponse,
@@ -134,7 +130,7 @@ async def query_dataset_json(
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
-    # api_key: APIKey = Depends(get_api_key),
+    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in JSON format.
@@ -160,8 +156,6 @@ async def query_dataset_json(
     """
 
     dataset, version = dataset_version
-    #if dataset in PROTECTED_QUERY_DATASETS:
-    #    await is_gfwpro_admin(error_str="Unauthorized query on a restricted dataset")
 
     if geostore_id:
         geostore: Optional[GeostoreCommon] = await get_geostore(
@@ -197,7 +191,7 @@ async def query_dataset_csv(
     delimiter: Delimiters = Query(
         Delimiters.comma, description="Delimiter to use for CSV file."
     ),
-    # api_key: APIKey = Depends(get_api_key),
+    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in CSV format.
@@ -259,7 +253,7 @@ async def query_dataset_json_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
-    # api_key: APIKey = Depends(get_api_key),
+    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -289,7 +283,7 @@ async def query_dataset_csv_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: CsvQueryRequestIn,
-    # api_key: APIKey = Depends(get_api_key),
+    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
