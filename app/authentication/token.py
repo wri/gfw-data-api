@@ -7,16 +7,12 @@ from httpx import Response
 from ..routes import dataset_dependency
 
 from ..utils.rw_api import who_am_i
+from ..settings.globals import PROTECTED_QUERY_DATASETS
 
 # token dependency where we immediately cause an exception if there is no auth token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 # token dependency where we don't cause exception if there is no auth token
 oauth2_scheme_no_auto = OAuth2PasswordBearer(tokenUrl="/token", auto_error=False)
-
-# Datasets that require admin privileges to do a query. (Extra protection on
-# commercial datasets which shouldn't be downloaded in any way.)
-PROTECTED_QUERY_DATASETS = ["wdpa_licensed_protected_areas"]
-
 
 async def is_service_account(token: str = Depends(oauth2_scheme)) -> bool:
     """Calls GFW API to authorize user.
