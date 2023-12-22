@@ -51,7 +51,7 @@ async def is_gfwpro_admin_for_query(dataset: str = Depends(dataset_dependency),
         if token == None:
             raise HTTPException(status_code=401, detail="Unauthorized query on a restricted dataset")
         else:
-            await is_app_admin(cast(str, token), "gfw-pro",
+            return await is_app_admin(cast(str, token), "gfw-pro",
                                error_str="Unauthorized query on a restricted dataset")
 
     return True
