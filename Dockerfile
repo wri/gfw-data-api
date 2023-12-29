@@ -7,7 +7,7 @@ ENV RYE_HOME="/opt/rye"
 ENV PATH="$RYE_HOME/shims:$PATH"
 
 RUN apt-get update -y \
-    && apt-get install --no-install-recommends -y gcc clang libc-dev musl-dev \
+    && apt-get install --no-install-recommends -y clang libc-dev \
       postgresql-client libpq-dev make git jq curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
