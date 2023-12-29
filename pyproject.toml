@@ -25,7 +25,7 @@ dependencies = [
     "numpy>=1.26.2",
     "orjson>=3.9.10",
     "packaging>=23.2",
-    "pendulum>=3.0.0",
+    "pendulum<3",
     "pglast<2",
     "psutil>=5.9.7",
     "psycopg2>=2.9.9",
