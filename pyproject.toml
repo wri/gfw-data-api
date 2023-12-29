@@ -11,9 +11,11 @@ dependencies = [
     "alembic>=1.13.1",
     "arq>=0.25.0",
     "async-lru>=2.0.4",
+    "asyncpg>=0.29.0",
     "boto3>=1.34.9",
     "botocore>=1.34.9",
     "email-validator>=2.1.0.post1",
+    "fastapi<0.68",
     "geojson>=3.1.0",
     "gino>=1.0.1",
     "gino_starlette==0.1.2",
@@ -22,6 +24,7 @@ dependencies = [
     "httpcore>=1.0.2",
     "httpx>=0.25.1",
     "httpx-auth>=0.18.0",
+    "newrelic>=9.3.0",
     "numpy>=1.26.2",
     "orjson>=3.9.10",
     "packaging>=23.2",
@@ -29,6 +32,7 @@ dependencies = [
     "pglast<2",
     "psutil>=5.9.7",
     "psycopg2>=2.9.9",
+    "pydantic<2",
     "pyproj>=3.6.1",
     "python-multipart>=0.0.6",
     "retrying>=1.3.4",
@@ -36,12 +40,8 @@ dependencies = [
     "sqlalchemy<1.4",
     "sqlalchemy-utils>=0.41.1",
     "starlette<0.15",
-    "pydantic~=1.9",
     "typer>=0.9.0",
     "uvicorn[standard]>=0.25.0",
-    "fastapi<0.68",
-    "asyncpg>=0.29.0",
-    "newrelic>=9.3.0",
 ]
 readme = "README.md"
 requires-python = "~= 3.10"
@@ -53,17 +53,17 @@ build-backend = "hatchling.build"
 [tool.rye]
 managed = true
 dev-dependencies = [
-    "pytest>=7.4.3",
+    "gfw_pixetl @ git+https://github.com/wri/gfw_pixetl.git@develop",
     "docker>=7.0.0",
     "moto[awslambda, batch, ec2, s3]>=4.2.12",
-    "pytest-asyncio<0.19",
-    "pytest-timeout>=2.2.0",
-    "responses<0.16",
-    "rasterio>=1.3.9",
-    "pytest-cov>=4.1.0",
-    "gfw_pixetl @ git+https://github.com/wri/gfw_pixetl.git@develop",
-    "pandas>=2.1.4",
     "openapi_spec_validator>=0.7.1",
+    "pandas>=2.1.4",
+    "pytest>=7.4.3",
+    "pytest-asyncio<0.19",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.2.0",
+    "rasterio>=1.3.9",
+    "responses<0.16",
 ]
 
 [tool.hatch.metadata]
