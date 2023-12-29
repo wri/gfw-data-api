@@ -13,6 +13,7 @@ flake8 = "*"
 gfw_pixetl = {git = "https://github.com/wri/gfw_pixetl.git", ref = "develop"}
 moto = {version = "*", extras = ["awslambda", "batch", "ec2", "s3"]}
 openapi_spec_validator = "*"
+pandas = "*"  # Needed by a batch script test
 pre-commit = "*"
 pytest = "*"
 pytest-asyncio = "<0.19"
