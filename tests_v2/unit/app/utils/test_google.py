@@ -6,7 +6,7 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from google.cloud import storage
 
-from app.utils.google import get_gs_files
+from app.utils.google import get_gs_files_async
 
 
 class MockBlob:
@@ -46,31 +46,31 @@ async def test_get_gs_files(monkeypatch: MonkeyPatch):
 
     blob_store_client.add_blobs(good_bucket, [f"{good_prefix}/world.tif"])
 
-    keys = get_gs_files(good_bucket, good_prefix)
+    keys = await get_gs_files_async(good_bucket, good_prefix)
     assert len(keys) == 1
     assert keys[0] == f"/vsigs/{good_bucket}/{good_prefix}/world.tif"
 
-    keys = get_gs_files(good_bucket, good_prefix, extensions=[".pdf"])
+    keys = await get_gs_files_async(good_bucket, good_prefix, extensions=[".pdf"])
     assert len(keys) == 0
 
-    keys = get_gs_files(good_bucket, "bad_prefix")
+    keys = await get_gs_files_async(good_bucket, "bad_prefix")
     assert len(keys) == 0
 
-    keys = get_gs_files("bad_bucket", "doesnt_matter")
+    keys = await get_gs_files_async("bad_bucket", "doesnt_matter")
     assert len(keys) == 0
 
     blob_store_client.add_blobs(good_bucket, [f"{good_prefix}/another_world.csv"])
 
-    keys = get_gs_files(good_bucket, good_prefix)
+    keys = await get_gs_files_async(good_bucket, good_prefix)
     assert len(keys) == 2
     assert f"/vsigs/{good_bucket}/{good_prefix}/another_world.csv" in keys
     assert f"/vsigs/{good_bucket}/{good_prefix}/world.tif" in keys
 
-    keys = get_gs_files(good_bucket, good_prefix, extensions=[".csv"])
+    keys = await get_gs_files_async(good_bucket, good_prefix, extensions=[".csv"])
     assert len(keys) == 1
     assert keys[0] == f"/vsigs/{good_bucket}/{good_prefix}/another_world.csv"
 
-    keys = get_gs_files(good_bucket, good_prefix, limit=1)
+    keys = await get_gs_files_async(good_bucket, good_prefix, limit=1)
     assert len(keys) == 1
     assert (
         f"/vsigs/{good_bucket}/{good_prefix}/another_world.csv" in keys
@@ -78,13 +78,13 @@ async def test_get_gs_files(monkeypatch: MonkeyPatch):
     )
 
     blob_store_client.add_blobs(good_bucket, [f"{good_prefix}/coverage_layer.tif"])
-    keys = get_gs_files(good_bucket, good_prefix)
+    keys = await get_gs_files_async(good_bucket, good_prefix)
     assert len(keys) == 3
     assert f"/vsigs/{good_bucket}/{good_prefix}/another_world.csv" in keys
     assert f"/vsigs/{good_bucket}/{good_prefix}/coverage_layer.tif" in keys
     assert f"/vsigs/{good_bucket}/{good_prefix}/world.tif" in keys
 
-    keys = get_gs_files(good_bucket, good_prefix, exit_after_max=1, extensions=[".tif"])
+    keys = await get_gs_files_async(good_bucket, good_prefix, exit_after_max=1, extensions=[".tif"])
     assert len(keys) == 1
     assert (
         f"/vsigs/{good_bucket}/{good_prefix}/coverage_layer.tif" in keys
