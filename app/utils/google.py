@@ -1,9 +1,10 @@
+import json
 import os
 from typing import List, Optional, Sequence
 
+import aiogoogle
+from aiogoogle.auth.creds import ServiceAccountCreds
 from fastapi.logger import logger
-from google.auth.exceptions import DefaultCredentialsError
-from google.cloud import storage
 from retrying import retry
 
 from ..settings.globals import AWS_GCS_KEY_SECRET_ARN, GOOGLE_APPLICATION_CREDENTIALS
@@ -12,7 +13,10 @@ from .aws import get_secret_client
 
 def set_google_application_credentials(exception: Exception) -> bool:
     # Only continue + retry if we can't find the GCS credentials file
-    if not isinstance(exception, (DefaultCredentialsError, FileNotFoundError)):
+    if not (
+        isinstance(exception, RuntimeError) and
+        str(exception).endswith("GOOGLE_APPLICATION_CREDENTIALS is invalid.")
+    ):
         logger.error(f"Some other exception happened!: {exception}")
         return False
     # We will not reach out to AWS Secret Manager if no secret is set...
@@ -56,29 +60,41 @@ def set_google_application_credentials(exception: Exception) -> bool:
     retry_on_exception=set_google_application_credentials,
     stop_max_attempt_number=2,
 )
-def get_gs_files(
+async def get_gs_files_async(
     bucket: str,
     prefix: str,
-    limit: Optional[int] = None,
+    limit: Optional[int] = None,  # Ignored for this function! :(
     exit_after_max: Optional[int] = None,
     extensions: Sequence[str] = tuple(),
 ) -> List[str]:
     """Get all matching files in GCS."""
 
-    storage_client = storage.Client.from_service_account_json(
-        GOOGLE_APPLICATION_CREDENTIALS
-    )
-
     matches: List[str] = list()
     num_matches: int = 0
 
-    blobs = storage_client.list_blobs(bucket, prefix=prefix, max_results=limit)
+    sam = aiogoogle.auth.ServiceAccountManager()
+    await sam.detect_default_creds_source()
+    creds = sam.creds
+    creds["scopes"] = [
+        "https://www.googleapis.com/auth/devstorage.read_only",
+        "https://www.googleapis.com/auth/cloud-platform.read-only",
+    ]
 
-    for blob in blobs:
-        if not extensions or any(blob.name.endswith(ext) for ext in extensions):
-            matches.append(f"/vsigs/{bucket}/{blob.name}")
-            num_matches += 1
-            if exit_after_max and num_matches >= exit_after_max:
-                break
+    async with aiogoogle.Aiogoogle(service_account_creds=creds) as aiogoogle_api:
+        storage = await aiogoogle_api.discover('storage', 'v1')
+        full_res = await aiogoogle_api.as_service_account(
+            # NOTE: maxResults limits the number of results per page, but not
+            # the total results returned. So I'm afraid the limit arg to this
+            # function is a lie :(
+            storage.objects.list(bucket=bucket, prefix=prefix),
+            full_res=True
+        )
+    async for page in full_res:
+        for blob in page["items"]:
+            if not extensions or any(blob.name.endswith(ext) for ext in extensions):
+                matches.append(f"/vsigs/{bucket}/{blob['name']}")
+                num_matches += 1
+                if exit_after_max and num_matches >= exit_after_max:
+                    return matches
 
     return matches

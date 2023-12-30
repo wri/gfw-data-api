@@ -67,8 +67,8 @@ from ...settings.globals import TILE_CACHE_CLOUDFRONT_ID
 from ...tasks.aws_tasks import flush_cloudfront_cache
 from ...tasks.default_assets import append_default_asset, create_default_asset
 from ...tasks.delete_assets import delete_all_assets
-from ...utils.aws import get_aws_files
-from ...utils.google import get_gs_files
+from ...utils.aws import get_aws_files_async
+from ...utils.google import get_gs_files_async
 from .queries import _get_data_environment
 from typing import cast
 
@@ -88,7 +88,7 @@ SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
 # I cannot seem to satisfy mypy WRT the type of this default dict. Last thing I tried:
 # DefaultDict[str, Callable[[str, str, int, int, ...], List[str]]]
 source_uri_lister_constructor = defaultdict((lambda: lambda w, x, limit=None, exit_after_max=None, extensions=None: list()))  # type: ignore
-source_uri_lister_constructor.update(**{"gs": get_gs_files, "s3": get_aws_files})  # type: ignore
+source_uri_lister_constructor.update(**{"gs": get_gs_files_async, "s3": get_aws_files_async})  # type: ignore
 
 
 @router.get(
@@ -512,7 +512,7 @@ async def _version_response(
     return VersionResponse(data=Version(**data))
 
 
-def _verify_source_file_access(sources: List[str]) -> None:
+async def _verify_source_file_access(sources: List[str]) -> None:
 
     # TODO:
     # 1. Making the list functions asynchronous and using asyncio.gather
@@ -547,7 +547,7 @@ def _verify_source_file_access(sources: List[str]) -> None:
         ):
             new_prefix += "/"
 
-        if not list_func(
+        if not await list_func(
             bucket,
             new_prefix,
             limit=10,

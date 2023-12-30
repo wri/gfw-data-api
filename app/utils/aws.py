@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional, Sequence
 
+import aioboto3
 import boto3
 import httpx
 from httpx_auth import AWS4Auth
@@ -73,7 +74,7 @@ async def head_s3(bucket: str, key: str) -> bool:
     return response.status_code == 200
 
 
-def get_aws_files(
+def get_aws_files_async(
     bucket: str,
     prefix: str,
     limit: Optional[int] = None,
@@ -85,7 +86,9 @@ def get_aws_files(
     matches: List[str] = list()
     num_matches: int = 0
 
-    s3_client = get_s3_client()
+    s3_client = aioboto3.client(
+        "s3", region_name=AWS_REGION, endpoint_url=S3_ENTRYPOINT_URL
+    )
     paginator = s3_client.get_paginator("list_objects_v2")
     page_iterator = paginator.paginate(
         Bucket=bucket, Prefix=prefix, PaginationConfig={"MaxItems": limit}
