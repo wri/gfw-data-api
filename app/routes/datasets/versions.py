@@ -8,7 +8,6 @@ uploaded file. Based on the source file(s), users can create additional
 assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
-from collections import defaultdict
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
@@ -85,10 +84,7 @@ SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
     ".zip",
 )
 
-# I cannot seem to satisfy mypy WRT the type of this default dict. Last thing I tried:
-# DefaultDict[str, Callable[[str, str, int, int, ...], List[str]]]
-source_uri_lister_constructor = defaultdict((lambda: lambda w, x, limit=None, exit_after_max=None, extensions=None: list()))  # type: ignore
-source_uri_lister_constructor.update(**{"gs": get_gs_files_async, "s3": get_aws_files_async})  # type: ignore
+source_uri_lister_constructor = {"gs": get_gs_files_async, "s3": get_aws_files_async}
 
 
 @router.get(
@@ -513,11 +509,12 @@ async def _version_response(
 
 
 async def _verify_source_file_access(sources: List[str]) -> None:
-
+    """For each source URI, verify that it points to an existing object
+    or a bucket and prefix which contain one or more objects. Returns
+    nothing on success, but raises an HTTPException if one or more
+    sources are invalid"""
     # TODO:
-    # 1. Making the list functions asynchronous and using asyncio.gather
-    # to check for valid sources in a non-blocking fashion would be good.
-    # Perhaps use the aioboto3 package for aws, gcloud-aio-storage for gcs.
+    # 1. Use asyncio.gather to check for valid sources concurrently.
     # 2. It would be nice if the acceptable file extensions were passed
     # into this function so we could say, for example, that there must be
     # TIFFs found for a new raster tile set, but a CSV is required for a new
@@ -528,7 +525,11 @@ async def _verify_source_file_access(sources: List[str]) -> None:
 
     for source in sources:
         url_parts = urlparse(source, allow_fragments=False)
-        list_func = source_uri_lister_constructor[url_parts.scheme.lower()]
+        try:
+            list_func = source_uri_lister_constructor[url_parts.scheme.lower()]
+        except KeyError:
+            invalid_sources.append(source)
+            continue
         bucket = url_parts.netloc
         prefix = url_parts.path.lstrip("/")
 
@@ -547,13 +548,14 @@ async def _verify_source_file_access(sources: List[str]) -> None:
         ):
             new_prefix += "/"
 
-        if not await list_func(
+        results = await list_func(
             bucket,
             new_prefix,
             limit=10,
             exit_after_max=1,
             extensions=SUPPORTED_FILE_EXTENSIONS,
-        ):
+        )
+        if not results:
             invalid_sources.append(source)
 
     if invalid_sources:

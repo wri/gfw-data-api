@@ -281,7 +281,33 @@ async def test_latest_middleware(async_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_invalid_source_uri(async_client: AsyncClient):
-    """Test version path operations.
+    """Test API response for version creation with invalid source."""
+    dataset = "test"
+    version = "v1.1.1"
+
+    await create_dataset(dataset, async_client, dataset_payload)
+
+    bad_uri = "s3://bad_source_uri/foo"
+    new_version_payload = {
+        "creation_options": {
+            "source_type": "vector",
+            "source_uri": [bad_uri],
+            "source_driver": "ESRI Shapefile",
+        },
+        "metadata": version_metadata,
+    }
+    response = await async_client.put(f"/dataset/{dataset}/{version}", json=new_version_payload)
+    assert response.status_code == 400
+    assert response.json()["status"] == "failed"
+    assert (
+        response.json()["message"]
+        == f"Cannot access all of the source files. Invalid sources: ['{bad_uri}']"
+    )
+
+
+@pytest.mark.asyncio
+async def test_vector_appends(async_client: AsyncClient):
+    """Test version append operations.
 
     We patch/ disable background tasks here, as they run asynchronously.
     Such tasks are tested separately in a different module
@@ -289,63 +315,40 @@ async def test_invalid_source_uri(async_client: AsyncClient):
     dataset = "test"
     version = "v1.1.1"
 
-    source_uri = [
-        "s3://doesnotexist",
-    ]
-    new_payload = {
-        "creation_options": {
-            "source_type": "vector",
-            "source_uri": source_uri,
-            "source_driver": "ESRI Shapefile",
-        },
-        "metadata": version_metadata,
-    }
-
-    await create_dataset(dataset, async_client, dataset_payload)
-
-    # Test creating a version with (some) bad source URIs
-    bad_uri = "s3://doesnotexist"
-    response = await async_client.put(f"/dataset/{dataset}/{version}", json=new_payload)
-    assert response.status_code == 400
-    assert response.json()["status"] == "failed"
-    assert (
-        response.json()["message"]
-        == f"Cannot access all of the source files. Invalid sources: ['{bad_uri}']"
-    )
-
-    # Create a version with a valid source_uri so we have something to append to
-    version_payload["creation_options"]["source_uri"] = [f"s3://{BUCKET}/{SHP_NAME}"]
+    # Create a version so we have something to append to
     await create_default_asset(
         dataset,
         version,
-        skip_dataset=True,
+        skip_dataset=False,
         version_payload=version_payload,
         async_client=async_client,
         execute_batch_jobs=False,
     )
 
-    # Test appending to a version that exists
-    response = await async_client.post(
-        f"/dataset/{dataset}/{version}/append", json={"source_uri": source_uri}
-    )
-    assert response.status_code == 400
-    assert response.json()["status"] == "failed"
-    assert (
-        response.json()["message"]
-        == f"Cannot access all of the source files. Invalid sources: ['{bad_uri}']"
-    )
-
+    good_source_uri = f"s3://{BUCKET}/{SHP_NAME}"
     # Test appending to a version that DOESN'T exist
     # Really this tests dataset_version_dependency, but that isn't done elsewhere yet
     bad_version = "v1.42"
     response = await async_client.post(
-        f"/dataset/{dataset}/{bad_version}/append", json={"source_uri": source_uri}
+        f"/dataset/{dataset}/{bad_version}/append", json={"source_uri": good_source_uri}
     )
     assert response.status_code == 404
     assert response.json()["status"] == "failed"
     assert (
         response.json()["message"]
         == f"Version with name {dataset}.{bad_version} does not exist"
+    )
+
+    # Test appending to a version that DOES exist
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/append",
+        json={"source_uri": [good_source_uri]}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert (
+        response.json()["data"]
+        == f"Cannot access all of the source files. Invalid sources: ['{good_source_uri}']"
     )
 
 
