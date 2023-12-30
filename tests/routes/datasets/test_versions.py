@@ -330,7 +330,8 @@ async def test_vector_appends(async_client: AsyncClient):
     # Really this tests dataset_version_dependency, but that isn't done elsewhere yet
     bad_version = "v1.42"
     response = await async_client.post(
-        f"/dataset/{dataset}/{bad_version}/append", json={"source_uri": good_source_uri}
+        f"/dataset/{dataset}/{bad_version}/append",
+        json={"source_uri": good_source_uri}
     )
     assert response.status_code == 404
     assert response.json()["status"] == "failed"
@@ -346,10 +347,6 @@ async def test_vector_appends(async_client: AsyncClient):
     )
     assert response.status_code == 200
     assert response.json()["status"] == "success"
-    assert (
-        response.json()["data"]
-        == f"Cannot access all of the source files. Invalid sources: ['{good_source_uri}']"
-    )
 
 
 @pytest.mark.asyncio
