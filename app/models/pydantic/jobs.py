@@ -87,14 +87,14 @@ class PostgresqlClientJob(Job):
 
 
 class GdalPythonImportJob(Job):
-    """Use for write operations to PostgreSQL which require GDAL/ Ogr2Ogr
-    drivers."""
+    """Use for write operations to PostgreSQL which require GDAL/Ogr2Ogr
+    drivers. NOTE: JOB MUST BE SAFE TO RETRY!"""
 
     job_queue = AURORA_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
     vcpus = 1
     memory = 2500
-    attempts = 1
+    attempts = 10
     attempt_duration_seconds = DEFAULT_JOB_DURATION
 
 
