@@ -242,7 +242,7 @@ async def append_to_version(
     update_data = {"creation_options": deepcopy(default_asset.creation_options)}
     update_data["creation_options"]["source_uri"] += request.source_uri
     if input_data["creation_options"].get("layers"):
-        update_data["creation_options"]["layers"] += request.layers # TODO replace failed layers with new layers
+        update_data["creation_options"]["layers"] += request.layers 
     await assets.update_asset(default_asset.asset_id, **update_data)
 
     version_orm: ORMVersion = await versions.get_version(dataset, version)
