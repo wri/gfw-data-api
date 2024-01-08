@@ -1,26 +1,18 @@
-import json
 import os
 from typing import List, Optional, Sequence
 
 import aiogoogle
 from aiogoogle.auth.creds import ServiceAccountCreds
 from fastapi.logger import logger
-from retrying import retry
+from the_retry import retry
 
 from ..settings.globals import AWS_GCS_KEY_SECRET_ARN, GOOGLE_APPLICATION_CREDENTIALS
 from .aws import get_secret_client
 
 
-def set_google_application_credentials(exception: Exception) -> bool:
-    # Only continue + retry if we can't find the GCS credentials file
-    if not (
-        isinstance(exception, RuntimeError) and
-        str(exception).endswith("GOOGLE_APPLICATION_CREDENTIALS is invalid.")
-    ):
-        logger.error(f"Some other exception happened!: {exception}")
-        return False
+async def set_google_application_credentials() -> bool:
     # We will not reach out to AWS Secret Manager if no secret is set...
-    elif not AWS_GCS_KEY_SECRET_ARN:
+    if not AWS_GCS_KEY_SECRET_ARN:
         logger.error(
             "No AWS_GCS_KEY_SECRET_ARN set. "
             "Cannot write Google Application Credential file."
@@ -33,21 +25,21 @@ def set_google_application_credentials(exception: Exception) -> bool:
             "Cannot write Google Application Credential file"
         )
         return False
+
     # But if all those conditions are met, write the GCS credentials file
     # and return True to retry
-    else:
-        logger.info("GCS key file is missing. Fetching key from secret manager")
-        client = get_secret_client()
-        response = client.get_secret_value(SecretId=AWS_GCS_KEY_SECRET_ARN)
+    logger.info("GCS key file is missing. Fetching key from secret manager")
+    client = get_secret_client()
+    response = client.get_secret_value(SecretId=AWS_GCS_KEY_SECRET_ARN)
 
-        os.makedirs(
-            os.path.dirname(GOOGLE_APPLICATION_CREDENTIALS),
-            exist_ok=True,
-        )
+    os.makedirs(
+        os.path.dirname(GOOGLE_APPLICATION_CREDENTIALS),
+        exist_ok=True,
+    )
 
-        logger.info("Writing GCS key to file")
-        with open(GOOGLE_APPLICATION_CREDENTIALS, "w") as f:
-            f.write(response["SecretString"])
+    logger.info("Writing GCS key to file")
+    with open(GOOGLE_APPLICATION_CREDENTIALS, "w") as f:
+        f.write(response["SecretString"])
 
     # make sure that global ENV VAR is set
     logger.info("Setting environment's GOOGLE_APPLICATION_CREDENTIALS")
@@ -57,8 +49,9 @@ def set_google_application_credentials(exception: Exception) -> bool:
 
 
 @retry(
-    retry_on_exception=set_google_application_credentials,
-    stop_max_attempt_number=2,
+    attempts=2,
+    expected_exception=(RuntimeError,),
+    on_exception=set_google_application_credentials,
 )
 async def get_gs_files_async(
     bucket: str,
