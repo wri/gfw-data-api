@@ -48,6 +48,9 @@ GEOJSON_PATH2 = os.path.join(os.path.dirname(__file__), "fixtures", GEOJSON_NAME
 SHP_NAME = "test.shp.zip"
 SHP_PATH = os.path.join(os.path.dirname(__file__), "fixtures", SHP_NAME)
 
+GPKG_NAME = "test.gpkg.zip"
+GPKG_PATH = os.path.join(os.path.dirname(__file__), "fixtures", GPKG_NAME)
+
 BUCKET = "test-bucket"
 PORT = 9000
 
