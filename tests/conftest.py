@@ -304,6 +304,7 @@ def copy_fixtures():
     s3_client.upload_file(CSV2_PATH, BUCKET, CSV2_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
     s3_client.upload_file(SHP_PATH, BUCKET, SHP_NAME)
+    s3_client.upload_file(GPKG_PATH, BUCKET, GPKG_NAME)
     s3_client.upload_file(APPEND_TSV_PATH, BUCKET, APPEND_TSV_NAME)
 
     # upload a separate for each row so we can test running large numbers of sources in parallel
