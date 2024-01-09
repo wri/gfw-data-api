@@ -232,7 +232,7 @@ async def append_to_version(
     input_data = {"creation_options": deepcopy(default_asset.creation_options)}
     input_data["creation_options"]["source_uri"] = request.source_uri
     # check if layers are provided and append to creation options
-    if input_data["creation_options"].get("layers"):
+    if input_data["creation_options"].get("layers") is not None:
         input_data["creation_options"]["layers"] = request.layers
     background_tasks.add_task(
         append_default_asset, dataset, version, input_data, default_asset.asset_id
@@ -241,7 +241,7 @@ async def append_to_version(
     # We now want to append the new uris to the existing ones and update the asset
     update_data = {"creation_options": deepcopy(default_asset.creation_options)}
     update_data["creation_options"]["source_uri"] += request.source_uri
-    if input_data["creation_options"].get("layers"):
+    if input_data["creation_options"].get("layers") is not None:
         update_data["creation_options"]["layers"] += request.layers
     await assets.update_asset(default_asset.asset_id, **update_data)
 

@@ -47,6 +47,8 @@ from . import (
     PORT,
     SHP_NAME,
     SHP_PATH,
+    GPKG_NAME,
+    GPKG_PATH,
     TSV_NAME,
     TSV_PATH,
     AWSMock,
