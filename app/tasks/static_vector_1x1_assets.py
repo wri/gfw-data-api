@@ -53,6 +53,8 @@ async def static_vector_1x1_asset(
         version,
         "-C",
         ",".join([field["name"] for field in field_attributes]),
+        "--include_tile_id",
+        str(creation_options.include_tile_id),
         "-T",
         grid_1x1_uri,
     ]

@@ -380,6 +380,13 @@ class StaticVectorFileCreationOptions(StrictBaseModel):
     )
 
 
+class StaticVector1x1CreationOptions(StaticVectorFileCreationOptions):
+    include_tile_id: Optional[bool] = Field(
+        False,
+        description="Whether or not to include the tile_id of each feature"
+    )
+
+
 SourceCreationOptions = Union[
     TableSourceCreationOptions,
     RasterTileSetSourceCreationOptions,
@@ -390,6 +397,7 @@ OtherCreationOptions = Union[
     TableAssetCreationOptions,
     RasterTileCacheCreationOptions,
     StaticVectorTileCacheCreationOptions,
+    StaticVector1x1CreationOptions,
     StaticVectorFileCreationOptions,
     DynamicVectorTileCacheCreationOptions,
     RasterTileSetAssetCreationOptions,
@@ -412,7 +420,7 @@ AssetCreationOptionsLookup: Dict[str, Type[OtherCreationOptions]] = {
     AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheCreationOptions,
     AssetType.static_vector_tile_cache: StaticVectorTileCacheCreationOptions,
     AssetType.ndjson: StaticVectorFileCreationOptions,
-    AssetType.grid_1x1: StaticVectorFileCreationOptions,
+    AssetType.grid_1x1: StaticVector1x1CreationOptions,
     AssetType.shapefile: StaticVectorFileCreationOptions,
     AssetType.geopackage: StaticVectorFileCreationOptions,
     AssetType.raster_tile_set: RasterTileSetAssetCreationOptions,
