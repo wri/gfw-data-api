@@ -397,8 +397,8 @@ OtherCreationOptions = Union[
     TableAssetCreationOptions,
     RasterTileCacheCreationOptions,
     StaticVectorTileCacheCreationOptions,
-    StaticVector1x1CreationOptions,
     StaticVectorFileCreationOptions,
+    StaticVector1x1CreationOptions,
     DynamicVectorTileCacheCreationOptions,
     RasterTileSetAssetCreationOptions,
 ]
