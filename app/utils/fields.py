@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 from ..crud import assets, metadata as metadata_crud
 from ..models.orm.assets import Asset as ORMAsset
@@ -8,28 +8,30 @@ from ..models.pydantic.creation_options import CreationOptions
 async def get_field_attributes(
     dataset: str, version: str, creation_options: CreationOptions
 ) -> List[Dict[str, Any]]:
-    """Get field attribute list from creation options.
-
-    If no attribute list provided, use all fields from DB table, marked
-    as `is_feature_info`. Otherwise compare to provide list with
-    available fields and use intersection.
+    """Get list of field attributes on the asset which are marked as `is_feature_info`
+    If a field list is provided in creation options, limit the list to those provided,
+    in the order provided. Invalid provided fields are silently ignored.
     """
 
     default_asset: ORMAsset = await assets.get_default_asset(dataset, version)
-    fields = await metadata_crud.get_asset_fields_dicts(default_asset)
+    asset_fields = await metadata_crud.get_asset_fields_dicts(default_asset)
 
-    field_attributes: List[Dict[str, Any]] = [
-        field for field in fields if field["is_feature_info"]
-    ]
+    name_to_feature_fields: Dict[str, Dict] = {
+        field["name"]: field
+        for field in asset_fields
+        if field["is_feature_info"]
+    }
 
     if (
         "field_attributes" in creation_options.__fields__
         and creation_options.field_attributes
     ):
-        field_attributes = [
-            field
-            for field in field_attributes
-            if field["name"] in creation_options.field_attributes
+        asset_field_attributes = [
+            name_to_feature_fields[field_name]
+            for field_name in creation_options.field_attributes
+            if field_name in name_to_feature_fields
         ]
+    else:
+        asset_field_attributes = list(name_to_feature_fields.values())
 
-    return field_attributes
+    return asset_field_attributes
