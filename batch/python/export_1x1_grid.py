@@ -459,7 +459,7 @@ if __name__ == "__main__":
         "--column_names", "-C", type=str, nargs="+", help="Column names to include"
     )
     parser.add_argument(
-        "--include_tile_id", type=bool, default=False, help="Include tile_id in the output"
+        "--include_tile_id", action='store_true', help="Include tile_id in the output"
     )
     args = parser.parse_args()
     loop: AbstractEventLoop = asyncio.get_event_loop()
