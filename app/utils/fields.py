@@ -1,6 +1,7 @@
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List
 
-from ..crud import assets, metadata as metadata_crud
+from ..crud.assets import get_default_asset
+from ..crud.metadata import get_asset_fields_dicts
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.pydantic.creation_options import CreationOptions
 
@@ -13,8 +14,8 @@ async def get_field_attributes(
     in the order provided. Invalid provided fields are silently ignored.
     """
 
-    default_asset: ORMAsset = await assets.get_default_asset(dataset, version)
-    asset_fields = await metadata_crud.get_asset_fields_dicts(default_asset)
+    default_asset: ORMAsset = await get_default_asset(dataset, version)
+    asset_fields = await get_asset_fields_dicts(default_asset)
 
     name_to_feature_fields: Dict[str, Dict] = {
         field["name"]: field
