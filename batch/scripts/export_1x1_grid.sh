@@ -15,7 +15,14 @@ ME=$(basename "$0")
 . get_arguments.sh "$@"
 
 echo "PYTHON: Create 1x1 grid files"
-export_1x1_grid.py -d "$DATASET" -v "$VERSION" -C "$COLUMN_NAMES" --include_tile_id "$INCLUDE_TILE_ID"
+ARG_ARRAY=("--dataset" "${DATASET}"
+           "--version" "${VERSION}"
+           "-C" "${COLUMN_NAMES}")
+
+if [ -n "${INCLUDE_TILE_ID}" ]; then
+  ARG_ARRAY+=("--include_tile_id")
+fi
+export_1x1_grid.py "${ARG_ARRAY[@]}"
 
 echo "Combine output files"
 echo ./*.tmp | xargs cat >> "${DATASET}_${VERSION}_1x1.tsv"
