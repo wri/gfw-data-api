@@ -105,6 +105,10 @@ do
       shift # past argument
       shift # past value
       ;;
+      --include_tile_id)
+      INCLUDE_TILE_ID="TRUE"
+      shift # past argument
+      ;;
       -j|--json)
       JSON="$2"
       shift # past argument

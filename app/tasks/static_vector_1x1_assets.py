@@ -19,7 +19,7 @@ async def static_vector_1x1_asset(
     asset_id: UUID,
     input_data: Dict[str, Any],
 ) -> ChangeLog:
-    """Create Vector tile cache and NDJSON file as intermediate data."""
+    """Export a TSV to S3 with features in a 1x1 grid of tiles."""
 
     #######################
     # Update asset metadata
@@ -56,6 +56,9 @@ async def static_vector_1x1_asset(
         "-T",
         grid_1x1_uri,
     ]
+
+    if creation_options.include_tile_id:
+        command.append("--include_tile_id")
 
     export_1x1_grid = PostgresqlClientJob(
         dataset=dataset,
