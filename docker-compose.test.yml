@@ -64,7 +64,7 @@ services:
       - API_GATEWAY_STAGE_NAME=test
     #      - AWS_GCS_KEY_SECRET_ARN=testing
     #      - AWS_SECRETSMANAGER_URL=http://motoserver-secretsmanager:5001
-    entrypoint: wait_for_postgres.sh pytest --timeout 480 -vv --cov-report term  --cov=app
+    entrypoint: wait_for_postgres.sh rye run pytest --timeout 480 -vv --cov-report term  --cov=app
     depends_on:
       - test_database_12
       - motoserver-s3
