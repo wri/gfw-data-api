@@ -8,6 +8,7 @@ uploaded file. Based on the source file(s), users can create additional
 assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
+from asyncio import Task, create_task, gather
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import urlparse
@@ -523,6 +524,8 @@ async def _verify_source_file_access(sources: List[str]) -> None:
 
     invalid_sources: List[str] = list()
 
+    tasks: List[Task] = list()
+
     for source in sources:
         url_parts = urlparse(source, allow_fragments=False)
         try:
@@ -548,15 +551,22 @@ async def _verify_source_file_access(sources: List[str]) -> None:
         ):
             new_prefix += "/"
 
-        results = await list_func(
-            bucket,
-            new_prefix,
-            limit=10,
-            exit_after_max=1,
-            extensions=SUPPORTED_FILE_EXTENSIONS,
+        tasks.append(
+            create_task(
+                list_func(
+                    bucket,
+                    new_prefix,
+                    limit=10,
+                    exit_after_max=1,
+                    extensions=SUPPORTED_FILE_EXTENSIONS,
+                )
+            )
         )
-        if not results:
-            invalid_sources.append(source)
+
+    results = await gather(*tasks, return_exceptions=True)
+    for uri, result in zip(sources, results):
+        if isinstance(result, Exception) or result == []:
+            invalid_sources.append(uri)
 
     if invalid_sources:
         raise HTTPException(
