@@ -20,7 +20,7 @@ async def get_gcs_service_account_key() -> Dict[str, str]:
         return json.loads(response["SecretString"])
 
 
-async def list_gs_objects(bucket: str, prefix: str) -> Dict:
+async def get_prefix_objects(bucket: str, prefix: str) -> Dict:
     service_account_info = await get_gcs_service_account_key()
 
     creds = ServiceAccountCreds(
@@ -41,7 +41,7 @@ async def list_gs_objects(bucket: str, prefix: str) -> Dict:
     return results.json
 
 
-async def get_gs_files_async(
+async def get_matching_gs_files(
     bucket: str,
     prefix: str,
     limit: Optional[int] = None,  # Ignored for this function! :(
@@ -57,7 +57,7 @@ async def get_gs_files_async(
     matches: List[str] = list()
     num_matches: int = 0
 
-    results: Dict = await list_gs_objects(bucket, prefix)
+    results: Dict = await get_prefix_objects(bucket, prefix)
     for blob in results.get("items", []):
         if not extensions or any(blob["name"].endswith(ext) for ext in extensions):
             matches.append(f"/vsigs/{bucket}/{blob['name']}")

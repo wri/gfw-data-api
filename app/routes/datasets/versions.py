@@ -67,8 +67,8 @@ from ...settings.globals import TILE_CACHE_CLOUDFRONT_ID
 from ...tasks.aws_tasks import flush_cloudfront_cache
 from ...tasks.default_assets import append_default_asset, create_default_asset
 from ...tasks.delete_assets import delete_all_assets
-from ...utils.aws import get_aws_files_async
-from ...utils.google import get_gs_files_async
+from ...utils.aws import get_matching_s3_files
+from ...utils.google import get_matching_gs_files
 from .queries import _get_data_environment
 from typing import cast
 
@@ -85,7 +85,7 @@ SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
     ".zip",
 )
 
-source_uri_lister_constructor = {"gs": get_gs_files_async, "s3": get_aws_files_async}
+source_uri_lister_constructor = {"gs": get_matching_gs_files, "s3": get_matching_s3_files}
 
 
 @router.get(
@@ -515,8 +515,7 @@ async def _verify_source_file_access(sources: List[str]) -> None:
     nothing on success, but raises an HTTPException if one or more
     sources are invalid"""
     # TODO:
-    # 1. Use asyncio.gather to check for valid sources concurrently.
-    # 2. It would be nice if the acceptable file extensions were passed
+    # 1. It would be nice if the acceptable file extensions were passed
     # into this function so we could say, for example, that there must be
     # TIFFs found for a new raster tile set, but a CSV is required for a new
     # vector tile set version. Even better would be to specify whether
