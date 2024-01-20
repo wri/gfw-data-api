@@ -20,7 +20,7 @@ async def get_gcs_service_account_key() -> Dict[str, str]:
         return json.loads(response["SecretString"])
 
 
-async def get_prefix_objects(bucket: str, prefix: str) -> Dict:
+async def get_prefix_objects(bucket: str, prefix: str) -> List[str]:
     service_account_info = await get_gcs_service_account_key()
 
     creds = ServiceAccountCreds(
@@ -33,12 +33,13 @@ async def get_prefix_objects(bucket: str, prefix: str) -> Dict:
 
     async with aiogoogle.Aiogoogle(service_account_creds=creds) as aiogoogle_api:
         storage = await aiogoogle_api.discover('storage', 'v1')
-        results = await aiogoogle_api.as_service_account(
+        response: aiogoogle.models.Response = await aiogoogle_api.as_service_account(
             storage.objects.list(bucket=bucket, prefix=prefix),
             full_res=True
         )
+    results = response.json.get("items", [])
 
-    return results.json
+    return [blob["name"] for blob in results]
 
 
 async def get_matching_gs_files(
@@ -57,10 +58,9 @@ async def get_matching_gs_files(
     matches: List[str] = list()
     num_matches: int = 0
 
-    results: Dict = await get_prefix_objects(bucket, prefix)
-    for blob in results.get("items", []):
-        if not extensions or any(blob["name"].endswith(ext) for ext in extensions):
-            matches.append(f"/vsigs/{bucket}/{blob['name']}")
+    for blob_name in await get_prefix_objects(bucket, prefix):
+        if not extensions or any(blob_name.endswith(ext) for ext in extensions):
+            matches.append(f"/vsigs/{bucket}/{blob_name}")
             num_matches += 1
             if exit_after_max and num_matches >= exit_after_max:
                 return matches
