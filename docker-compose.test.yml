@@ -90,7 +90,7 @@ services:
     ports:
       - "${MOTO_PORT-50000}:50000"
     environment:
-      - "${MOTO_PORT-50000}:50000"
+      - MOTO_PORT=50000
     entrypoint: moto_server -H 0.0.0.0
     restart: on-failure
 
