@@ -5,8 +5,13 @@ import aioboto3
 import aiogoogle
 from aiogoogle.auth.creds import ServiceAccountCreds
 from async_lru import alru_cache
+from limiter import Limiter
 
 from ..settings.globals import AWS_GCS_KEY_SECRET_ARN, AWS_REGION, S3_ENTRYPOINT_URL
+
+
+# Don't hit the GCS API with more than 10 requests per second
+limit_api_calls = Limiter(rate=10, capacity=10, consume=1)
 
 
 @alru_cache(maxsize=1)
@@ -19,6 +24,7 @@ async def get_gcs_service_account_key() -> Dict[str, str]:
         return json.loads(response["SecretString"])
 
 
+@limit_api_calls
 async def get_prefix_objects(bucket: str, prefix: str) -> List[str]:
     """Get ALL object names under a bucket and prefix in GCS."""
 
