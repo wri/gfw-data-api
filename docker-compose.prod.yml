@@ -37,7 +37,6 @@ services:
       - RASTER_ANALYSIS_LAMBDA_NAME=raster_analysis
       - API_URL="http://app_dev:80"
       - RW_API_URL=https://api.resourcewatch.org
-      - GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcs_key.json
     ports:
       - 8000:80
     entrypoint: wait_for_postgres.sh /app/start.sh

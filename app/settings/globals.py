@@ -182,9 +182,6 @@ default_domains = ",".join(
 )
 
 INTERNAL_DOMAINS = config("INTERNAL_DOMAINS", cast=str, default=default_domains)
-GOOGLE_APPLICATION_CREDENTIALS = config(
-    "GOOGLE_APPLICATION_CREDENTIALS", cast=str, default="/root/.gcs/private_key.json"
-)
 
 # Datasets that require admin privileges to do a query. (Extra protection on
 # commercial datasets which shouldn't be downloaded in any way.)
