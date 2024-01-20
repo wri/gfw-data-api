@@ -1,68 +1,34 @@
-import os
-from typing import List, Optional, Sequence
+import json
+from typing import List, Optional, Sequence, Dict
 
+import aioboto3
 import aiogoogle
 from aiogoogle.auth.creds import ServiceAccountCreds
-from fastapi.logger import logger
-from the_retry import retry
+from async_lru import alru_cache
 
-from ..settings.globals import AWS_GCS_KEY_SECRET_ARN, GOOGLE_APPLICATION_CREDENTIALS
-from .aws import get_secret_client
+from ..settings.globals import AWS_GCS_KEY_SECRET_ARN, AWS_REGION, S3_ENTRYPOINT_URL
 
 
-async def set_google_application_credentials() -> bool:
-    # We will not reach out to AWS Secret Manager if no secret is set...
-    if not AWS_GCS_KEY_SECRET_ARN:
-        logger.error(
-            "No AWS_GCS_KEY_SECRET_ARN set. "
-            "Cannot write Google Application Credential file."
-        )
-        return False
-    # ...or if we don't know where to write the credential file.
-    elif not GOOGLE_APPLICATION_CREDENTIALS:
-        logger.error(
-            "No GOOGLE_APPLICATION_CREDENTIALS set. "
-            "Cannot write Google Application Credential file"
-        )
-        return False
-
-    # But if all those conditions are met, write the GCS credentials file
-    # and return True to retry
-    logger.info("GCS key file is missing. Fetching key from secret manager")
-    client = get_secret_client()
-    response = client.get_secret_value(SecretId=AWS_GCS_KEY_SECRET_ARN)
-
-    os.makedirs(
-        os.path.dirname(GOOGLE_APPLICATION_CREDENTIALS),
-        exist_ok=True,
-    )
-
-    logger.info("Writing GCS key to file")
-    with open(GOOGLE_APPLICATION_CREDENTIALS, "w") as f:
-        f.write(response["SecretString"])
-
-    # make sure that global ENV VAR is set
-    logger.info("Setting environment's GOOGLE_APPLICATION_CREDENTIALS")
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
-
-    return True
+@alru_cache(maxsize=1)
+async def get_gcs_service_account_key() -> Dict[str, str]:
+    session = aioboto3.Session()
+    async with session.client(
+        "secretsmanager", region_name=AWS_REGION, endpoint_url=S3_ENTRYPOINT_URL
+    ) as secrets_client:
+        response = await secrets_client.get_secret_value(SecretId=AWS_GCS_KEY_SECRET_ARN)
+        return json.loads(response["SecretString"])
 
 
-@retry(
-    attempts=2,
-    expected_exception=(RuntimeError,),
-    on_exception=set_google_application_credentials,
-)
 async def list_gs_objects(bucket: str, prefix: str) -> aiogoogle.models.Response:
-    sam = aiogoogle.auth.ServiceAccountManager()
+    service_account_info = await get_gcs_service_account_key()
 
-    await sam.detect_default_creds_source()
-
-    creds = sam.creds
-    creds["scopes"] = [
-        "https://www.googleapis.com/auth/devstorage.read_only",
-        "https://www.googleapis.com/auth/cloud-platform.read-only",
-    ]
+    creds = ServiceAccountCreds(
+        scopes=[
+            "https://www.googleapis.com/auth/devstorage.read_only",
+            "https://www.googleapis.com/auth/cloud-platform.read-only",
+        ],
+        **service_account_info
+    )
 
     async with aiogoogle.Aiogoogle(service_account_creds=creds) as aiogoogle_api:
         storage = await aiogoogle_api.discover('storage', 'v1')
