@@ -5,6 +5,7 @@ import aioboto3
 import aiogoogle
 from aiogoogle.auth.creds import ServiceAccountCreds
 from async_lru import alru_cache
+from fastapi.logger import logger
 
 from ..settings.globals import AWS_GCS_KEY_SECRET_ARN, AWS_REGION, S3_ENTRYPOINT_URL
 
@@ -19,7 +20,7 @@ async def get_gcs_service_account_key() -> Dict[str, str]:
         return json.loads(response["SecretString"])
 
 
-async def list_gs_objects(bucket: str, prefix: str) -> aiogoogle.models.Response:
+async def list_gs_objects(bucket: str, prefix: str) -> Dict:
     service_account_info = await get_gcs_service_account_key()
 
     creds = ServiceAccountCreds(
@@ -36,7 +37,8 @@ async def list_gs_objects(bucket: str, prefix: str) -> aiogoogle.models.Response
             storage.objects.list(bucket=bucket, prefix=prefix),
             full_res=True
         )
-    return results
+
+    return results.json
 
 
 async def get_gs_files_async(
@@ -55,13 +57,12 @@ async def get_gs_files_async(
     matches: List[str] = list()
     num_matches: int = 0
 
-    list_resp: aiogoogle.models.Response = await list_gs_objects(bucket, prefix)
-    async for page in list_resp:
-        for blob in page["items"]:
-            if not extensions or any(blob.name.endswith(ext) for ext in extensions):
-                matches.append(f"/vsigs/{bucket}/{blob['name']}")
-                num_matches += 1
-                if exit_after_max and num_matches >= exit_after_max:
-                    return matches
+    results: Dict = await list_gs_objects(bucket, prefix)
+    for blob in results.get("items", []):
+        if not extensions or any(blob["name"].endswith(ext) for ext in extensions):
+            matches.append(f"/vsigs/{bucket}/{blob['name']}")
+            num_matches += 1
+            if exit_after_max and num_matches >= exit_after_max:
+                return matches
 
     return matches

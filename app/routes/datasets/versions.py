@@ -565,7 +565,10 @@ async def _verify_source_file_access(sources: List[str]) -> None:
 
     results = await gather(*tasks, return_exceptions=True)
     for uri, result in zip(sources, results):
-        if isinstance(result, Exception) or result == []:
+        if isinstance(result, Exception):
+            logger.error(f"Encountered exception checking src_uri {uri}: {result}")
+            invalid_sources.append(uri)
+        elif not result:
             invalid_sources.append(uri)
 
     if invalid_sources:
