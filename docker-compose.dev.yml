@@ -42,6 +42,7 @@ services:
       - API_URL=http://app_dev:80
       - RASTER_ANALYSIS_LAMBDA_NAME=raster-analysis-tiled_raster_analysis-default
       - RW_API_URL=https://staging-api.resourcewatch.org
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.gcs/private_key.json
       - PIXETL_CORES=4
       - MAX_CORES=4
       - NUM_PROCESSES=4
