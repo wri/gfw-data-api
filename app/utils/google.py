@@ -1,11 +1,10 @@
 import json
-from typing import List, Optional, Sequence, Dict
+from typing import Dict, List, Optional, Sequence
 
 import aioboto3
 import aiogoogle
 from aiogoogle.auth.creds import ServiceAccountCreds
 from async_lru import alru_cache
-from fastapi.logger import logger
 
 from ..settings.globals import AWS_GCS_KEY_SECRET_ARN, AWS_REGION, S3_ENTRYPOINT_URL
 
@@ -21,6 +20,8 @@ async def get_gcs_service_account_key() -> Dict[str, str]:
 
 
 async def get_prefix_objects(bucket: str, prefix: str) -> List[str]:
+    """Get ALL object names under a bucket and prefix in GCS."""
+
     service_account_info = await get_gcs_service_account_key()
 
     creds = ServiceAccountCreds(
@@ -49,7 +50,7 @@ async def get_matching_gs_files(
     exit_after_max: Optional[int] = None,
     extensions: Sequence[str] = tuple(),
 ) -> List[str]:
-    """Get all matching files in GCS."""
+    """Get matching object names under a bucket and prefix in GCS."""
 
     # NOTE: We can limit the number of results per page in list_gs_objects
     # but not the total results returned from GCS. So I'm afraid the limit
