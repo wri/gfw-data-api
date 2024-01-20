@@ -19,35 +19,35 @@ async def test_get_aws_files():
 
     # Import this inside the test function so we're covered
     # by the mock_s3 decorator
-    from app.utils.aws import get_aws_files_async
+    from app.utils.aws import get_matching_s3_files
 
-    keys = await get_aws_files_async(good_bucket, good_prefix)
+    keys = await get_matching_s3_files(good_bucket, good_prefix)
     assert len(keys) == 1
     assert keys[0] == f"/vsis3/{good_bucket}/{good_prefix}/world.tif"
 
-    keys = await get_aws_files_async(good_bucket, good_prefix, extensions=[".pdf"])
+    keys = await get_matching_s3_files(good_bucket, good_prefix, extensions=[".pdf"])
     assert len(keys) == 0
 
-    keys = await get_aws_files_async(good_bucket, "bad_prefix")
+    keys = await get_matching_s3_files(good_bucket, "bad_prefix")
     assert len(keys) == 0
 
-    keys = await get_aws_files_async("bad_bucket", "doesnt_matter")
+    keys = await get_matching_s3_files("bad_bucket", "doesnt_matter")
     assert len(keys) == 0
 
     s3_client.put_object(
         Bucket=good_bucket, Key=f"{good_prefix}/another_world.csv", Body="booga booga!"
     )
 
-    keys = await get_aws_files_async(good_bucket, good_prefix)
+    keys = await get_matching_s3_files(good_bucket, good_prefix)
     assert len(keys) == 2
     assert f"/vsis3/{good_bucket}/{good_prefix}/another_world.csv" in keys
     assert f"/vsis3/{good_bucket}/{good_prefix}/world.tif" in keys
 
-    keys = await get_aws_files_async(good_bucket, good_prefix, extensions=[".csv"])
+    keys = await get_matching_s3_files(good_bucket, good_prefix, extensions=[".csv"])
     assert len(keys) == 1
     assert keys[0] == f"/vsis3/{good_bucket}/{good_prefix}/another_world.csv"
 
-    keys = await get_aws_files_async(good_bucket, good_prefix, limit=1)
+    keys = await get_matching_s3_files(good_bucket, good_prefix, limit=1)
     assert len(keys) == 1
     assert (
         f"/vsis3/{good_bucket}/{good_prefix}/another_world.csv" in keys
@@ -57,13 +57,13 @@ async def test_get_aws_files():
     s3_client.put_object(
         Bucket=good_bucket, Key=f"{good_prefix}/coverage_layer.tif", Body="booga booga!"
     )
-    keys = await get_aws_files_async(good_bucket, good_prefix)
+    keys = await get_matching_s3_files(good_bucket, good_prefix)
     assert len(keys) == 3
     assert f"/vsis3/{good_bucket}/{good_prefix}/another_world.csv" in keys
     assert f"/vsis3/{good_bucket}/{good_prefix}/coverage_layer.tif" in keys
     assert f"/vsis3/{good_bucket}/{good_prefix}/world.tif" in keys
 
-    keys = await get_aws_files_async(
+    keys = await get_matching_s3_files(
         good_bucket, good_prefix, exit_after_max=1, extensions=[".tif"]
     )
     assert len(keys) == 1
