@@ -14,13 +14,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.settings.globals import (
     AWS_REGION,
+    AWS_SECRETSMANAGER_URL,
     DATA_LAKE_BUCKET,
+    S3_ENTRYPOINT_URL,
     TILE_CACHE_BUCKET,
     WRITER_DBNAME,
     WRITER_HOST,
     WRITER_PASSWORD,
     WRITER_PORT,
-    WRITER_USERNAME,
+    WRITER_USERNAME
 )
 
 REQUESTS_THUS_FAR: List = list()
@@ -210,17 +212,17 @@ class AWSMock(object):
             "environment": [
                 {"name": "AWS_ACCESS_KEY_ID", "value": "testing"},
                 {"name": "AWS_SECRET_ACCESS_KEY", "value": "testing"},
-                {"name": "ENDPOINT_URL", "value": "http://motoserver-s3:5000"},
+                {"name": "ENDPOINT_URL", "value": S3_ENTRYPOINT_URL},
                 {"name": "DEBUG", "value": "1"},
                 {"name": "TILE_CACHE", "value": TILE_CACHE_BUCKET},
                 {"name": "DATA_LAKE", "value": DATA_LAKE_BUCKET},
                 {"name": "AWS_HTTPS", "value": "NO"},
-                {"name": "AWS_S3_ENDPOINT", "value": "motoserver-s3:5000"},
+                {"name": "AWS_S3_ENDPOINT", "value": S3_ENTRYPOINT_URL},
                 {"name": "AWS_VIRTUAL_HOSTING", "value": "FALSE"},
                 {"name": "GDAL_DISABLE_READDIR_ON_OPEN", "value": "YES"},
                 {
                     "name": "AWS_SECRETSMANAGER_URL",
-                    "value": "http://motoserver-secretsmanager:5001",
+                    "value": AWS_SECRETSMANAGER_URL,
                 },
             ],
             "volumes": [

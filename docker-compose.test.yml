@@ -55,6 +55,7 @@ services:
       - MAX_MEM=3800
       - API_URL=http://app_test:9000
       - S3_ENTRYPOINT_URL=http://motoserver:50000
+      - AWS_SECRETSMANAGER_URL=http://motoserver:50000
       - SERVICE_ACCOUNT_TOKEN=testing
       - RASTER_ANALYSIS_LAMBDA_NAME=test_raster_analysis
       - RW_API_URL=https://staging-api.resourcewatch.org
@@ -63,7 +64,6 @@ services:
       - API_GATEWAY_EXTERNAL_USAGE_PLAN=test
       - API_GATEWAY_STAGE_NAME=test
       - AWS_GCS_KEY_SECRET_ARN=testing
-      - AWS_SECRETSMANAGER_URL=http://motoserver:50000
     entrypoint: wait_for_postgres.sh pytest --timeout 480 -vv --cov-report term  --cov=app
     depends_on:
       - test_database_12
@@ -90,7 +90,7 @@ services:
     ports:
       - "${MOTO_PORT-50000}:50000"
     environment:
-      - MOTO_PORT=50000
+      - "${MOTO_PORT-50000}:50000"
     entrypoint: moto_server -H 0.0.0.0
     restart: on-failure
 
