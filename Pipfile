@@ -8,6 +8,7 @@ black = "*"
 detect-secrets = "*"
 docker = "*"
 flake8 = "*"
+geopandas = "*"  # Needed by a batch script test
 # Pixetl is already installed in the pixetl image that's run in Batch, this
 # is to enable tests to run in the test container:
 gfw_pixetl = {git = "https://github.com/wri/gfw_pixetl.git", ref = "develop"}
@@ -56,6 +57,7 @@ sqlalchemy = "<1.4"
 sqlalchemy-utils = "*"
 starlette = "<0.15"
 pydantic = "<2"
+retrying = "*"
 typer = "*"
 uvicorn = {version = "*", extras = ["standard"]}
 
