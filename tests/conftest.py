@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import io
 import os
@@ -373,8 +374,16 @@ async def tmp_folder():
 #     aws_mock.stop_services()
 
 
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.get_event_loop()
+    yield loop
+    loop.close()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def secrets():
+
     secret_client = boto3.client(
         "secretsmanager", region_name=AWS_REGION, endpoint_url=AWS_SECRETSMANAGER_URL
     )
