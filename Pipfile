@@ -26,6 +26,7 @@ responses = "<0.16"
 
 [packages]
 aenum = "*"
+aioboto3 = "*"
 aiofiles = "*"
 aiogoogle = "*"
 aiohttp = "*"
