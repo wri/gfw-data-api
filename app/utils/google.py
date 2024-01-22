@@ -15,7 +15,7 @@ limit_api_calls = Limiter(rate=10, capacity=10, consume=1)
 
 
 @alru_cache(maxsize=1)
-def get_gcs_service_account_key() -> Dict[str, str]:
+async def get_gcs_service_account_key() -> Dict[str, str]:
     session = boto3.Session()
     with session.client(
         "secretsmanager", region_name=AWS_REGION, endpoint_url=S3_ENTRYPOINT_URL
