@@ -118,7 +118,7 @@ async def custom_raster_version(
     # Patch all functions which reach out to external services
     # Basically we're leaving out everything but the DB entries being created
     batch_job_mock = BatchJobMock()
-    monkeypatch.setattr(versions, "_verify_source_file_access", void_coroutine)
+    monkeypatch.setattr(versions, "verify_source_file_access", void_coroutine)
     monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
     monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
     monkeypatch.setattr(raster_tile_set_assets, "get_extent", get_extent_mocked)
