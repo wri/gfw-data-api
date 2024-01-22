@@ -66,7 +66,7 @@ async def dataset_version_dependency(
     return dataset, version
 
 
-def _verify_source_file_access(sources: List[str]) -> None:
+async def verify_source_file_access(sources: List[str]) -> None:
 
     # TODO:
     # 1. Making the list functions asynchronous and using asyncio.gather
