@@ -73,7 +73,7 @@ async def head_s3(bucket: str, key: str) -> bool:
     return response.status_code == 200
 
 
-def get_aws_files(
+async def get_aws_files(
     bucket: str,
     prefix: str,
     limit: Optional[int] = None,

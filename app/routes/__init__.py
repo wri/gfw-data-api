@@ -6,6 +6,8 @@ from fastapi.security import OAuth2PasswordBearer
 
 from ..crud.versions import get_version
 from ..errors import RecordNotFoundError
+from ..utils.aws import get_aws_files
+from ..utils.google import get_gs_files
 
 DATASET_REGEX = r"^[a-z][a-z0-9_-]{2,}$"
 VERSION_REGEX = r"^v\d{1,8}(\.\d{1,3}){0,2}?$|^latest$"
@@ -23,10 +25,7 @@ SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
     ".zip",
 )
 
-# I cannot seem to satisfy mypy WRT the type of this default dict. Last thing I tried:
-# DefaultDict[str, Callable[[str, str, int, int, ...], List[str]]]
-source_uri_lister_constructor = defaultdict((lambda: lambda w, x, limit=None, exit_after_max=None, extensions=None: list()))  # type: ignore
-source_uri_lister_constructor.update(**{"gs": get_gs_files, "s3": get_aws_files})  # type: ignore
+source_uri_lister_constructor = {"gs": get_gs_files, "s3": get_aws_files}
 
 
 async def dataset_dependency(
@@ -101,7 +100,7 @@ async def verify_source_file_access(sources: List[str]) -> None:
         ):
             new_prefix += "/"
 
-        if not list_func(
+        if not await list_func(
             bucket,
             new_prefix,
             limit=10,

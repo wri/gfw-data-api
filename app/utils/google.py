@@ -56,7 +56,7 @@ def set_google_application_credentials(exception: Exception) -> bool:
     retry_on_exception=set_google_application_credentials,
     stop_max_attempt_number=2,
 )
-def get_gs_files(
+async def get_gs_files(
     bucket: str,
     prefix: str,
     limit: Optional[int] = None,
