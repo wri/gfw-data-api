@@ -11,7 +11,6 @@ from alembic.config import main
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from app import routes
 from app.authentication.token import get_user, is_admin, is_service_account
 from app.crud import api_keys
 from app.models.enum.change_log import ChangeLogStatus
@@ -344,7 +343,6 @@ async def licensed_version(
 async def apikey(
     async_client: AsyncClient, monkeypatch: MonkeyPatch
 ) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
-
     monkeypatch.setattr(api_keys, "add_api_key_to_gateway", void_coroutine)
     monkeypatch.setattr(api_keys, "delete_api_key_from_gateway", void_coroutine)
     # Get API Key
@@ -370,7 +368,6 @@ async def apikey(
 async def apikey_unrestricted(
     async_client: AsyncClient, monkeypatch: MonkeyPatch
 ) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
-
     monkeypatch.setattr(api_keys, "add_api_key_to_gateway", void_coroutine)
     monkeypatch.setattr(api_keys, "delete_api_key_from_gateway", void_coroutine)
     # Get API Key

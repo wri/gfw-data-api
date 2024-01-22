@@ -35,14 +35,13 @@ async def get_prefix_objects(bucket: str, prefix: str) -> List[str]:
             "https://www.googleapis.com/auth/devstorage.read_only",
             "https://www.googleapis.com/auth/cloud-platform.read-only",
         ],
-        **service_account_info
+        **service_account_info,
     )
 
     async with aiogoogle.Aiogoogle(service_account_creds=creds) as aiogoogle_api:
-        storage = await aiogoogle_api.discover('storage', 'v1')
+        storage = await aiogoogle_api.discover("storage", "v1")
         response: aiogoogle.models.Response = await aiogoogle_api.as_service_account(
-            storage.objects.list(bucket=bucket, prefix=prefix),
-            full_res=True
+            storage.objects.list(bucket=bucket, prefix=prefix), full_res=True
         )
     results = response.json.get("items", [])
 

@@ -47,7 +47,6 @@ get_secret_client = client_constructor("secretsmanager", AWS_SECRETSMANAGER_URL)
 async def invoke_lambda(
     lambda_name: str, payload: Dict[str, Any], timeout: int = 55
 ) -> httpx.Response:
-
     auth = _aws_auth("lambda")
     headers = {"X-Amz-Invocation-Type": "RequestResponse"}
 
