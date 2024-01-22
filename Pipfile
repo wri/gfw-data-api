@@ -12,6 +12,7 @@ geopandas = "*"  # Needed by a batch script test
 # Pixetl is already installed in the pixetl image that's run in Batch, this
 # is to enable tests to run in the test container:
 gfw_pixetl = {git = "https://github.com/wri/gfw_pixetl.git", ref = "develop"}
+google-cloud-storage = "*" # Needed by a batch script test
 moto = {version = "*", extras = ["awslambda", "batch", "ec2", "s3"]}
 openapi_spec_validator = "*"
 pandas = "*"  # Needed by a batch script test
@@ -26,6 +27,7 @@ responses = "<0.16"
 [packages]
 aenum = "*"
 aiofiles = "*"
+aiogoogle = "*"
 aiohttp = "*"
 alembic = "*"
 arq = "*"
@@ -39,7 +41,6 @@ geoalchemy2 = "<0.12"
 geojson = "*"
 gino = "*"
 gino_starlette = "==0.1.2"
-google-cloud-storage = "*"
 httpcore = "*"
 httpx = "*"
 httpx-auth = "*"

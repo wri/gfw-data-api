@@ -1,84 +1,67 @@
-import os
-from typing import List, Optional, Sequence
+import json
+from typing import List, Optional, Sequence, Dict
 
-from fastapi.logger import logger
-from google.auth.exceptions import DefaultCredentialsError
-from google.cloud import storage
-from retrying import retry
+import aiogoogle
+import boto3
+from aiogoogle.auth.creds import ServiceAccountCreds
 
-from ..settings.globals import AWS_GCS_KEY_SECRET_ARN, GOOGLE_APPLICATION_CREDENTIALS
-from .aws import get_secret_client
+from ..settings.globals import AWS_GCS_KEY_SECRET_ARN, S3_ENTRYPOINT_URL, AWS_REGION
 
 
-def set_google_application_credentials(exception: Exception) -> bool:
-    # Only continue + retry if we can't find the GCS credentials file
-    if not isinstance(exception, (DefaultCredentialsError, FileNotFoundError)):
-        logger.error(f"Some other exception happened!: {exception}")
-        return False
-    # We will not reach out to AWS Secret Manager if no secret is set...
-    elif not AWS_GCS_KEY_SECRET_ARN:
-        logger.error(
-            "No AWS_GCS_KEY_SECRET_ARN set. "
-            "Cannot write Google Application Credential file."
+def get_gcs_service_account_key() -> Dict[str, str]:
+    session = boto3.Session()
+    with session.client(
+        "secretsmanager", region_name=AWS_REGION, endpoint_url=S3_ENTRYPOINT_URL
+    ) as secrets_client:
+        response = secrets_client.get_secret_value(SecretId=AWS_GCS_KEY_SECRET_ARN)
+        return json.loads(response["SecretString"])
+
+
+async def get_prefix_objects(bucket: str, prefix: str) -> List[str]:
+    """Get ALL object names under a bucket and prefix in GCS."""
+
+    service_account_info = await get_gcs_service_account_key()
+
+    creds = ServiceAccountCreds(
+        scopes=[
+            "https://www.googleapis.com/auth/devstorage.read_only",
+            "https://www.googleapis.com/auth/cloud-platform.read-only",
+        ],
+        **service_account_info
+    )
+
+    async with aiogoogle.Aiogoogle(service_account_creds=creds) as aiogoogle_api:
+        storage = await aiogoogle_api.discover('storage', 'v1')
+        response: aiogoogle.models.Response = await aiogoogle_api.as_service_account(
+            storage.objects.list(bucket=bucket, prefix=prefix),
+            full_res=True
         )
-        return False
-    # ...or if we don't know where to write the credential file.
-    elif not GOOGLE_APPLICATION_CREDENTIALS:
-        logger.error(
-            "No GOOGLE_APPLICATION_CREDENTIALS set. "
-            "Cannot write Google Application Credential file"
-        )
-        return False
-    # But if all those conditions are met, write the GCS credentials file
-    # and return True to retry
-    else:
-        logger.info("GCS key file is missing. Fetching key from secret manager")
-        client = get_secret_client()
-        response = client.get_secret_value(SecretId=AWS_GCS_KEY_SECRET_ARN)
+    results = response.json.get("items", [])
 
-        os.makedirs(
-            os.path.dirname(GOOGLE_APPLICATION_CREDENTIALS),
-            exist_ok=True,
-        )
-
-        logger.info("Writing GCS key to file")
-        with open(GOOGLE_APPLICATION_CREDENTIALS, "w") as f:
-            f.write(response["SecretString"])
-
-    # make sure that global ENV VAR is set
-    logger.info("Setting environment's GOOGLE_APPLICATION_CREDENTIALS")
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
-
-    return True
+    return [blob["name"] for blob in results]
 
 
-@retry(
-    retry_on_exception=set_google_application_credentials,
-    stop_max_attempt_number=2,
-)
 async def get_gs_files(
     bucket: str,
     prefix: str,
-    limit: Optional[int] = None,
+    limit: Optional[int] = None,  # Ignored for this function! :(
     exit_after_max: Optional[int] = None,
     extensions: Sequence[str] = tuple(),
 ) -> List[str]:
-    """Get all matching files in GCS."""
+    """Get matching object names under a bucket and prefix in GCS."""
 
-    storage_client = storage.Client.from_service_account_json(
-        GOOGLE_APPLICATION_CREDENTIALS
-    )
+    # NOTE: We can limit the number of results per page in list_gs_objects
+    # but not the total results returned from GCS. So I'm afraid the limit
+    # arg to this function is a lie :(
 
     matches: List[str] = list()
     num_matches: int = 0
 
-    blobs = storage_client.list_blobs(bucket, prefix=prefix, max_results=limit)
-
-    for blob in blobs:
-        if not extensions or any(blob.name.endswith(ext) for ext in extensions):
-            matches.append(f"/vsigs/{bucket}/{blob.name}")
+    for blob_name in await get_prefix_objects(bucket, prefix):
+        if not extensions or any(blob_name.endswith(ext) for ext in extensions):
+            matches.append(f"/vsigs/{bucket}/{blob_name}")
             num_matches += 1
             if exit_after_max and num_matches >= exit_after_max:
-                break
+                return matches
 
     return matches
