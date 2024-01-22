@@ -8,10 +8,8 @@ uploaded file. Based on the source file(s), users can create additional
 assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
-from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
-from urllib.parse import urlparse
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from fastapi import (
     APIRouter,
@@ -25,6 +23,7 @@ from fastapi import (
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
+from .. import _verify_source_file_access
 from ...authentication.token import is_admin
 from ...crud import assets
 from ...crud import metadata as metadata_crud
@@ -34,8 +33,6 @@ from ...models.enum.assets import AssetStatus, AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.asset_metadata import (
-    FieldMetadata,
-    FieldMetadataOut,
     FieldsMetadataResponse,
     RasterBandMetadata,
     RasterBandsMetadataResponse,
@@ -67,28 +64,10 @@ from ...settings.globals import TILE_CACHE_CLOUDFRONT_ID
 from ...tasks.aws_tasks import flush_cloudfront_cache
 from ...tasks.default_assets import append_default_asset, create_default_asset
 from ...tasks.delete_assets import delete_all_assets
-from ...utils.aws import get_aws_files
-from ...utils.google import get_gs_files
 from .queries import _get_data_environment
 from typing import cast
 
 router = APIRouter()
-
-SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
-    ".csv",
-    ".geojson",
-    ".gpkg",
-    ".ndjson",
-    ".shp",
-    ".tif",
-    ".tsv",
-    ".zip",
-)
-
-# I cannot seem to satisfy mypy WRT the type of this default dict. Last thing I tried:
-# DefaultDict[str, Callable[[str, str, int, int, ...], List[str]]]
-source_uri_lister_constructor = defaultdict((lambda: lambda w, x, limit=None, exit_after_max=None, extensions=None: list()))  # type: ignore
-source_uri_lister_constructor.update(**{"gs": get_gs_files, "s3": get_aws_files})  # type: ignore
 
 
 @router.get(
@@ -510,57 +489,3 @@ async def _version_response(
     data["assets"] = [(asset[0], asset[1]) for asset in assets]
 
     return VersionResponse(data=Version(**data))
-
-
-def _verify_source_file_access(sources: List[str]) -> None:
-
-    # TODO:
-    # 1. Making the list functions asynchronous and using asyncio.gather
-    # to check for valid sources in a non-blocking fashion would be good.
-    # Perhaps use the aioboto3 package for aws, gcloud-aio-storage for gcs.
-    # 2. It would be nice if the acceptable file extensions were passed
-    # into this function so we could say, for example, that there must be
-    # TIFFs found for a new raster tile set, but a CSV is required for a new
-    # vector tile set version. Even better would be to specify whether
-    # paths to individual files or "folders" (prefixes) are allowed.
-
-    invalid_sources: List[str] = list()
-
-    for source in sources:
-        url_parts = urlparse(source, allow_fragments=False)
-        list_func = source_uri_lister_constructor[url_parts.scheme.lower()]
-        bucket = url_parts.netloc
-        prefix = url_parts.path.lstrip("/")
-
-        # Allow pseudo-globbing: Tolerate a "*" at the end of a
-        # src_uri entry to allow partial prefixes (for example
-        # /bucket/prefix_part_1/prefix_fragment* will match
-        # /bucket/prefix_part_1/prefix_fragment_1.tif and
-        # /bucket/prefix_part_1/prefix_fragment_2.tif, etc.)
-        # If the prefix doesn't end in "*" or an acceptable file extension
-        # add a "/" to the end of the prefix to enforce it being a "folder".
-        new_prefix: str = prefix
-        if new_prefix.endswith("*"):
-            new_prefix = new_prefix[:-1]
-        elif not new_prefix.endswith("/") and not any(
-            [new_prefix.endswith(suffix) for suffix in SUPPORTED_FILE_EXTENSIONS]
-        ):
-            new_prefix += "/"
-
-        if not list_func(
-            bucket,
-            new_prefix,
-            limit=10,
-            exit_after_max=1,
-            extensions=SUPPORTED_FILE_EXTENSIONS,
-        ):
-            invalid_sources.append(source)
-
-    if invalid_sources:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Cannot access all of the source files. "
-                f"Invalid sources: {invalid_sources}"
-            ),
-        )
