@@ -1,8 +1,8 @@
 import json
 from typing import List, Optional, Sequence, Dict
 
+import aioboto3
 import aiogoogle
-import boto3
 from aiogoogle.auth.creds import ServiceAccountCreds
 from async_lru import alru_cache
 from limiter import Limiter
@@ -16,11 +16,11 @@ limit_api_calls = Limiter(rate=10, capacity=10, consume=1)
 
 @alru_cache(maxsize=1)
 async def get_gcs_service_account_key() -> Dict[str, str]:
-    session = boto3.Session()
-    with session.client(
+    session = aioboto3.Session()
+    async with session.client(
         "secretsmanager", region_name=AWS_REGION, endpoint_url=S3_ENTRYPOINT_URL
     ) as secrets_client:
-        response = secrets_client.get_secret_value(SecretId=AWS_GCS_KEY_SECRET_ARN)
+        response = await secrets_client.get_secret_value(SecretId=AWS_GCS_KEY_SECRET_ARN)
         return json.loads(response["SecretString"])
 
 
