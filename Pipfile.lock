@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "0db80ac3f87cfc7780eff0a088efb320bcda5d0e3f580449a5f7fb1843dcf72c"
+            "sha256": "7d0c2987a9348b5499b7398d3c983bceaa12bcf2ce2b2dfea875d441646c5d6b"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -667,6 +667,15 @@
             ],
             "markers": "python_version >= '3.7'",
             "version": "==1.0.1"
+        },
+        "limiter": {
+            "hashes": [
+                "sha256:4851837b2e5c236b1c07f2d61c2ce09612a41549b8229c799862fed3ffc1d07f",
+                "sha256:87ae4d02742a61e9be25c40ef826bdd18cd7aad99ccb6adcc3f7b781cb2ec0f5"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.10'",
+            "version": "==0.3.1"
         },
         "mako": {
             "hashes": [
@@ -1372,6 +1381,21 @@
             "markers": "python_version >= '3.6'",
             "version": "==0.14.2"
         },
+        "strenum": {
+            "hashes": [
+                "sha256:878fb5ab705442070e4dd1929bb5e2249511c0bcf2b0eeacf3bcd80875c82eff",
+                "sha256:a30cda4af7cc6b5bf52c8055bc4bf4b2b6b14a93b574626da33df53cf7740659"
+            ],
+            "version": "==0.4.15"
+        },
+        "token-bucket": {
+            "hashes": [
+                "sha256:6df24309e3cf5b808ae5ef714a3191ec5b54f48c34ef959e4882eef140703369",
+                "sha256:979571c99db2ff9e651f2b2146a62b2ebadf7de6c217a8781698282976cb675f"
+            ],
+            "markers": "python_version >= '3.5'",
+            "version": "==0.3.0"
+        },
         "tonyg-rfc3339": {
             "hashes": [
                 "sha256:e424e7b4ddf2a2f5c70d7317faecf9b69b7da099c9fc08d046c3ac679dd30d3d"
@@ -1392,7 +1416,7 @@
                 "sha256:23478f88c37f27d76ac8aee6c905017a143b0b1b886c3c9f66bc2fd94f9f5783",
                 "sha256:af72aea155e91adfc61c3ae9e0e342dbc0cba726d6cba4b6c72c1f34e47291cd"
             ],
-            "markers": "python_version >= '3.8'",
+            "markers": "python_version < '3.11'",
             "version": "==4.9.0"
         },
         "urllib3": {
@@ -3200,7 +3224,7 @@
                 "sha256:23478f88c37f27d76ac8aee6c905017a143b0b1b886c3c9f66bc2fd94f9f5783",
                 "sha256:af72aea155e91adfc61c3ae9e0e342dbc0cba726d6cba4b6c72c1f34e47291cd"
             ],
-            "markers": "python_version >= '3.8'",
+            "markers": "python_version < '3.11'",
             "version": "==4.9.0"
         },
         "tzdata": {
