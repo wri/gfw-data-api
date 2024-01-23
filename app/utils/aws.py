@@ -76,6 +76,7 @@ async def head_s3(bucket: str, key: str) -> bool:
 def get_aws_files(
     bucket: str,
     prefix: str,
+    files: List[str] = [],
     limit: Optional[int] = None,
     exit_after_max: Optional[int] = None,
     extensions: Sequence[str] = tuple(),
@@ -100,7 +101,9 @@ def get_aws_files(
 
             for obj in contents:
                 key = str(obj["Key"])
-                if not extensions or any(key.endswith(ext) for ext in extensions):
+                if files and key in files:
+                    matches.append(key)
+                elif not extensions or any(key.endswith(ext) for ext in extensions):
                     matches.append(f"/vsis3/{bucket}/{key}")
                     num_matches += 1
                     if exit_after_max and num_matches >= exit_after_max:

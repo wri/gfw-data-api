@@ -59,6 +59,7 @@ def set_google_application_credentials(exception: Exception) -> bool:
 def get_gs_files(
     bucket: str,
     prefix: str,
+    files: List[str] = [],
     limit: Optional[int] = None,
     exit_after_max: Optional[int] = None,
     extensions: Sequence[str] = tuple(),
@@ -75,7 +76,9 @@ def get_gs_files(
     blobs = storage_client.list_blobs(bucket, prefix=prefix, max_results=limit)
 
     for blob in blobs:
-        if not extensions or any(blob.name.endswith(ext) for ext in extensions):
+        if files and blob.name in files:
+            matches.append(blob.name)
+        elif not extensions or any(blob.name.endswith(ext) for ext in extensions):
             matches.append(f"/vsigs/{bucket}/{blob.name}")
             num_matches += 1
             if exit_after_max and num_matches >= exit_after_max:

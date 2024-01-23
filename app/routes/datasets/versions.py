@@ -10,7 +10,7 @@ Available assets and endpoints to choose from depend on the source type.
 """
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
 from urllib.parse import urlparse
 
 from fastapi import (
@@ -34,8 +34,6 @@ from ...models.enum.assets import AssetStatus, AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.asset_metadata import (
-    FieldMetadata,
-    FieldMetadataOut,
     FieldsMetadataResponse,
     RasterBandMetadata,
     RasterBandsMetadataResponse,
@@ -70,7 +68,6 @@ from ...tasks.delete_assets import delete_all_assets
 from ...utils.aws import get_aws_files
 from ...utils.google import get_gs_files
 from .queries import _get_data_environment
-from typing import cast
 
 router = APIRouter()
 
@@ -87,7 +84,7 @@ SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
 
 # I cannot seem to satisfy mypy WRT the type of this default dict. Last thing I tried:
 # DefaultDict[str, Callable[[str, str, int, int, ...], List[str]]]
-source_uri_lister_constructor = defaultdict((lambda: lambda w, x, limit=None, exit_after_max=None, extensions=None: list()))  # type: ignore
+source_uri_lister_constructor = defaultdict((lambda: lambda w, x, files=[], limit=None, exit_after_max=None, extensions=None: list()))  # type: ignore
 source_uri_lister_constructor.update(**{"gs": get_gs_files, "s3": get_aws_files})  # type: ignore
 
 
@@ -477,16 +474,16 @@ async def _get_raster_fields(asset: ORMAsset) -> List[RasterBandMetadata]:
 
     logger.debug(f"Processing data environment f{raster_data_environment}")
     for layer in raster_data_environment.layers:
-        field_kwargs: Dict[str, Any] = {
-            "pixel_meaning": layer.name
-        }
+        field_kwargs: Dict[str, Any] = {"pixel_meaning": layer.name}
         if layer.raster_table:
             field_kwargs["values_table"] = cast(Dict[str, Any], {})
             field_kwargs["values_table"]["rows"] = [
-                 row for row in layer.raster_table.rows
+                row for row in layer.raster_table.rows
             ]
             if layer.raster_table.default_meaning:
-                field_kwargs["values_table"]["default_meaning"] = layer.raster_table.default_meaning
+                field_kwargs["values_table"][
+                    "default_meaning"
+                ] = layer.raster_table.default_meaning
 
         fields.append(RasterBandMetadata(**field_kwargs))
 
@@ -525,6 +522,7 @@ def _verify_source_file_access(sources: List[str]) -> None:
     # paths to individual files or "folders" (prefixes) are allowed.
 
     invalid_sources: List[str] = list()
+    prefixes: Dict[str, List[str]] = {}
 
     for source in sources:
         url_parts = urlparse(source, allow_fragments=False)
@@ -539,17 +537,33 @@ def _verify_source_file_access(sources: List[str]) -> None:
         # /bucket/prefix_part_1/prefix_fragment_2.tif, etc.)
         # If the prefix doesn't end in "*" or an acceptable file extension
         # add a "/" to the end of the prefix to enforce it being a "folder".
-        new_prefix: str = prefix
-        if new_prefix.endswith("*"):
-            new_prefix = new_prefix[:-1]
-        elif not new_prefix.endswith("/") and not any(
-            [new_prefix.endswith(suffix) for suffix in SUPPORTED_FILE_EXTENSIONS]
-        ):
-            new_prefix += "/"
 
-        if not list_func(
+        if prefix.endswith("*"):
+            new_prefix = prefix[:-1]
+            prefixes[new_prefix] = []
+        elif prefix.endswith("/"):
+            prefixes[prefix] = []
+        elif not any([prefix.endswith(suffix) for suffix in SUPPORTED_FILE_EXTENSIONS]):
+            new_prefix = prefix + "/"
+            prefixes[prefix] = []
+        else:
+            # get prefix of full file
+            new_prefix = "/".join(prefix.split("/")[:-1])
+            prefixes[new_prefix].append(prefix)
+
+    for prefix, files in prefixes.items():
+        if files:
+            matches = list_func(
+                bucket,
+                new_prefix,
+                files=files,
+                extensions=SUPPORTED_FILE_EXTENSIONS,
+            )
+            invalid_sources += set(files) - set(matches)
+        elif not list_func(
             bucket,
             new_prefix,
+            files=files,
             limit=10,
             exit_after_max=1,
             extensions=SUPPORTED_FILE_EXTENSIONS,
