@@ -1,8 +1,9 @@
 from typing import Any, Dict, List, Optional, Sequence
 
-import aioboto3
 import boto3
 import httpx
+from aiobotocore.client import AioBaseClient
+from aiobotocore.session import get_session
 from httpx_auth import AWS4Auth
 from limiter import Limiter
 
@@ -78,8 +79,9 @@ async def head_s3(bucket: str, key: str) -> bool:
     return response.status_code == 200
 
 
-@limit_api_calls
+# @limit_api_calls
 async def get_aws_files(
+    s3_client: AioBaseClient,
     bucket: str,
     prefix: str,
     limit: Optional[int] = None,
@@ -91,35 +93,30 @@ async def get_aws_files(
     matches: List[str] = list()
     num_matches: int = 0
 
-    # TODO: See if we can share the async session/client
-    session = aioboto3.Session()
-    async with session.client(
-        "s3", region_name=AWS_REGION, endpoint_url=S3_ENTRYPOINT_URL
-    ) as s3_client:
-        paginator = s3_client.get_paginator("list_objects_v2")
-        page_iterator = paginator.paginate(
-            Bucket=bucket, Prefix=prefix, PaginationConfig={"MaxItems": limit}
-        )
+    paginator = s3_client.get_paginator("list_objects_v2")
+    page_iterator = paginator.paginate(
+        Bucket=bucket, Prefix=prefix, PaginationConfig={"MaxItems": limit}
+    )
 
-        try:
-            async for page in page_iterator:
-                try:
-                    contents = page["Contents"]
-                except KeyError:
-                    break
+    try:
+        async for page in page_iterator:
+            try:
+                contents = page["Contents"]
+            except KeyError:
+                break
 
-                for obj in contents:
-                    key = str(obj["Key"])
-                    if not extensions or any(key.endswith(ext) for ext in extensions):
-                        matches.append(f"/vsis3/{bucket}/{key}")
-                        num_matches += 1
-                        if exit_after_max and num_matches >= exit_after_max:
-                            break
-                if exit_after_max and num_matches >= exit_after_max:
-                    break
+            for obj in contents:
+                key = str(obj["Key"])
+                if not extensions or any(key.endswith(ext) for ext in extensions):
+                    matches.append(f"/vsis3/{bucket}/{key}")
+                    num_matches += 1
+                    if exit_after_max and num_matches >= exit_after_max:
+                        break
+            if exit_after_max and num_matches >= exit_after_max:
+                break
 
-        except s3_client.exceptions.NoSuchBucket:
-            matches = list()
+    except s3_client.exceptions.NoSuchBucket:
+        matches = list()
 
     return matches
 

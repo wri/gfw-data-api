@@ -2,12 +2,14 @@ from asyncio import Task, create_task, gather
 from typing import List, Sequence, Tuple
 from urllib.parse import urlparse
 
+from aiobotocore.session import get_session
 from fastapi import Depends, HTTPException, Path
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
 
 from ..crud.versions import get_version
 from ..errors import RecordNotFoundError
+from ..settings.globals import AWS_REGION, S3_ENTRYPOINT_URL
 from ..utils.aws import get_aws_files
 from ..utils.google import get_gs_files
 
@@ -108,17 +110,22 @@ async def verify_source_file_access(sources: List[str]) -> None:
         ):
             new_prefix += "/"
 
-        tasks.append(
-            create_task(
-                list_func(
-                    bucket,
-                    new_prefix,
-                    limit=10,
-                    exit_after_max=1,
-                    extensions=SUPPORTED_FILE_EXTENSIONS,
+        session = get_session()
+        async with session.create_client(
+            "s3", region_name=AWS_REGION, endpoint_url=S3_ENTRYPOINT_URL
+        ) as s3_client:
+            tasks.append(
+                create_task(
+                    get_aws_files(
+                        s3_client,
+                        bucket,
+                        new_prefix,
+                        limit=10,
+                        exit_after_max=1,
+                        extensions=SUPPORTED_FILE_EXTENSIONS,
+                    )
                 )
             )
-        )
 
     results = await gather(*tasks, return_exceptions=True)
     for uri, result in zip(sources, results):
