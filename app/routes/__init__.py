@@ -67,7 +67,7 @@ async def dataset_version_dependency(
     return dataset, version
 
 
-async def verify_source_file_access(sources: List[str]) -> None:
+def verify_source_file_access(sources: List[str]) -> None:
     """For each source URI, verify that it points to an existing object
     or a bucket and prefix which contain one or more objects. Returns
     nothing on success, but raises an HTTPException if one or more
