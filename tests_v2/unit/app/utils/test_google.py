@@ -1,5 +1,5 @@
 from typing import List
-from unittest.mock import AsyncMock
+from unittest.mock import Mock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -21,39 +21,35 @@ all_the_files_gdal_notation: List[str] = [
 ]
 
 
-@pytest.mark.asyncio
-async def test_get_matching_gs_files_no_filtering(monkeypatch: MonkeyPatch):
-    mock_get_prefix_objects = AsyncMock(return_value=all_the_files)
+def test_get_matching_gs_files_no_filtering(monkeypatch: MonkeyPatch):
+    mock_get_prefix_objects = Mock(return_value=all_the_files)
     monkeypatch.setattr(google, "get_prefix_objects", mock_get_prefix_objects)
 
-    keys = await get_gs_files(good_bucket, good_prefix)
+    keys = get_gs_files(good_bucket, good_prefix)
     assert len(keys) == 3
     assert set(keys) == set(all_the_files_gdal_notation)
 
 
-@pytest.mark.asyncio
-async def test_get_matching_gs_files_match_extensions(monkeypatch: MonkeyPatch):
-    mock_get_prefix_objects = AsyncMock(return_value=all_the_files)
+def test_get_matching_gs_files_match_extensions(monkeypatch: MonkeyPatch):
+    mock_get_prefix_objects = Mock(return_value=all_the_files)
     monkeypatch.setattr(google, "get_prefix_objects", mock_get_prefix_objects)
 
-    keys = await get_gs_files(good_bucket, good_prefix, extensions=[".tif"])
+    keys = get_gs_files(good_bucket, good_prefix, extensions=[".tif"])
     assert keys == [f"/vsigs/{good_bucket}/{good_prefix}/world.tif"]
 
 
-@pytest.mark.asyncio
-async def test_get_matching_gs_files_no_matches(monkeypatch: MonkeyPatch):
-    mock_get_prefix_objects = AsyncMock(return_value=all_the_files)
+def test_get_matching_gs_files_no_matches(monkeypatch: MonkeyPatch):
+    mock_get_prefix_objects = Mock(return_value=all_the_files)
     monkeypatch.setattr(google, "get_prefix_objects", mock_get_prefix_objects)
 
-    keys = await get_gs_files(good_bucket, good_prefix, extensions=[".pdf"])
+    keys = get_gs_files(good_bucket, good_prefix, extensions=[".pdf"])
     assert keys == []
 
 
-@pytest.mark.asyncio
-async def test_get_matching_gs_files_early_exit(monkeypatch: MonkeyPatch):
-    mock_get_prefix_objects = AsyncMock(return_value=all_the_files)
+def test_get_matching_gs_files_early_exit(monkeypatch: MonkeyPatch):
+    mock_get_prefix_objects = Mock(return_value=all_the_files)
     monkeypatch.setattr(google, "get_prefix_objects", mock_get_prefix_objects)
 
-    keys = await get_gs_files(good_bucket, good_prefix, exit_after_max=1)
+    keys = get_gs_files(good_bucket, good_prefix, exit_after_max=1)
     assert len(keys) == 1
     assert keys[0] in all_the_files_gdal_notation
