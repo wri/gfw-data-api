@@ -4,14 +4,9 @@ from typing import List, Optional, Sequence, Dict
 
 from google.cloud.storage import Client
 from google.oauth2 import service_account
-from limiter import Limiter
 
 from .aws import get_secret_client
 from ..settings.globals import AWS_GCS_KEY_SECRET_ARN, S3_ENTRYPOINT_URL, AWS_REGION
-
-
-# Don't hit the GCS API with more than 10 requests per second
-limit_api_calls = Limiter(rate=10, capacity=10, consume=1)
 
 
 @lru_cache(maxsize=1)
@@ -21,7 +16,6 @@ def get_gcs_service_account_auth_info() -> Dict[str, str]:
     return json.loads(response["SecretString"])
 
 
-# @limit_api_calls
 def get_prefix_objects(bucket: str, prefix: str, limit: Optional[int] = None) -> List[str]:
     """Get ALL object names under a bucket and prefix in GCS."""
 

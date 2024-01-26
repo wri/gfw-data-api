@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Optional, Sequence
 import boto3
 import httpx
 from httpx_auth import AWS4Auth
-from limiter import Limiter
 
 from ..settings.globals import (
     AWS_REGION,
@@ -11,10 +10,6 @@ from ..settings.globals import (
     LAMBDA_ENTRYPOINT_URL,
     S3_ENTRYPOINT_URL,
 )
-
-
-# Don't hit the GCS API with more than 10 requests per second
-limit_api_calls = Limiter(rate=10, capacity=10, consume=1)
 
 
 def client_constructor(service: str, entrypoint_url=None):
@@ -77,7 +72,6 @@ async def head_s3(bucket: str, key: str) -> bool:
     return response.status_code == 200
 
 
-# @limit_api_calls
 def get_aws_files(
     bucket: str,
     prefix: str,
