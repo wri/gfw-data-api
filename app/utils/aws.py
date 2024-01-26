@@ -2,8 +2,6 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import boto3
 import httpx
-from aiobotocore.client import AioBaseClient
-from aiobotocore.session import get_session
 from httpx_auth import AWS4Auth
 from limiter import Limiter
 
@@ -80,8 +78,7 @@ async def head_s3(bucket: str, key: str) -> bool:
 
 
 # @limit_api_calls
-async def get_aws_files(
-    s3_client: AioBaseClient,
+def get_aws_files(
     bucket: str,
     prefix: str,
     limit: Optional[int] = None,
@@ -93,13 +90,14 @@ async def get_aws_files(
     matches: List[str] = list()
     num_matches: int = 0
 
+    s3_client = get_s3_client()
     paginator = s3_client.get_paginator("list_objects_v2")
     page_iterator = paginator.paginate(
         Bucket=bucket, Prefix=prefix, PaginationConfig={"MaxItems": limit}
     )
 
     try:
-        async for page in page_iterator:
+        for page in page_iterator:
             try:
                 contents = page["Contents"]
             except KeyError:

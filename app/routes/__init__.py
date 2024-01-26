@@ -1,15 +1,13 @@
-from asyncio import Task, create_task, gather
-from typing import List, Sequence, Tuple
+from concurrent.futures import ThreadPoolExecutor, Future, as_completed
+from typing import List, Sequence, Tuple, Dict
 from urllib.parse import urlparse
 
-from aiobotocore.session import get_session
 from fastapi import Depends, HTTPException, Path
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
 
 from ..crud.versions import get_version
 from ..errors import RecordNotFoundError
-from ..settings.globals import AWS_REGION, S3_ENTRYPOINT_URL
 from ..utils.aws import get_aws_files
 from ..utils.google import get_gs_files
 
@@ -82,58 +80,56 @@ async def verify_source_file_access(sources: List[str]) -> None:
     # paths to individual files or "folders" (prefixes) are allowed.
 
     invalid_sources: List[str] = list()
+    futures_to_sources: Dict[Future, str] = dict()
 
-    tasks: List[Task] = list()
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        for source in sources:
+            url_parts = urlparse(source, allow_fragments=False)
+            try:
+                list_func = source_uri_lister_constructor[url_parts.scheme.lower()]
+            except KeyError:
+                invalid_sources.append(source)
+                continue
+            bucket = url_parts.netloc
+            prefix = url_parts.path.lstrip("/")
 
-    for source in sources:
-        url_parts = urlparse(source, allow_fragments=False)
-        try:
-            list_func = source_uri_lister_constructor[url_parts.scheme.lower()]
-        except KeyError:
-            invalid_sources.append(source)
-            continue
-        bucket = url_parts.netloc
-        prefix = url_parts.path.lstrip("/")
+            # Allow pseudo-globbing: Tolerate a "*" at the end of a
+            # src_uri entry to allow partial prefixes (for example
+            # /bucket/prefix_part_1/prefix_fragment* will match
+            # /bucket/prefix_part_1/prefix_fragment_1.tif and
+            # /bucket/prefix_part_1/prefix_fragment_2.tif, etc.)
+            # If the prefix doesn't end in "*" or an acceptable file extension
+            # add a "/" to the end of the prefix to enforce it being a "folder".
+            new_prefix: str = prefix
+            if new_prefix.endswith("*"):
+                new_prefix = new_prefix[:-1]
+            elif not new_prefix.endswith("/") and not any(
+                [new_prefix.endswith(suffix) for suffix in SUPPORTED_FILE_EXTENSIONS]
+            ):
+                new_prefix += "/"
 
-        # Allow pseudo-globbing: Tolerate a "*" at the end of a
-        # src_uri entry to allow partial prefixes (for example
-        # /bucket/prefix_part_1/prefix_fragment* will match
-        # /bucket/prefix_part_1/prefix_fragment_1.tif and
-        # /bucket/prefix_part_1/prefix_fragment_2.tif, etc.)
-        # If the prefix doesn't end in "*" or an acceptable file extension
-        # add a "/" to the end of the prefix to enforce it being a "folder".
-        new_prefix: str = prefix
-        if new_prefix.endswith("*"):
-            new_prefix = new_prefix[:-1]
-        elif not new_prefix.endswith("/") and not any(
-            [new_prefix.endswith(suffix) for suffix in SUPPORTED_FILE_EXTENSIONS]
-        ):
-            new_prefix += "/"
-
-        session = get_session()
-        async with session.create_client(
-            "s3", region_name=AWS_REGION, endpoint_url=S3_ENTRYPOINT_URL
-        ) as s3_client:
-            tasks.append(
-                create_task(
-                    get_aws_files(
-                        s3_client,
-                        bucket,
-                        new_prefix,
-                        limit=10,
-                        exit_after_max=1,
-                        extensions=SUPPORTED_FILE_EXTENSIONS,
-                    )
-                )
+            future = executor.submit(
+                list_func,
+                bucket,
+                new_prefix,
+                limit=10,
+                exit_after_max=1,
+                extensions=SUPPORTED_FILE_EXTENSIONS
             )
+            futures_to_sources[future] = source
 
-    results = await gather(*tasks, return_exceptions=True)
-    for uri, result in zip(sources, results):
-        if isinstance(result, Exception):
-            logger.error(f"Encountered exception checking src_uri {uri}: {result}")
-            invalid_sources.append(uri)
-        elif not result:
-            invalid_sources.append(uri)
+        for future in as_completed(futures_to_sources.keys()):
+            source = futures_to_sources[future]
+            try:
+                if not future.result():
+                    invalid_sources.append(source)
+            except Exception as ex:
+                logger.error(
+                    f"Encountered exception checking src_uri {source}: {ex}"
+                )
+                invalid_sources.append(source)
+            else:
+                print(f"{future.result()}")
 
     if invalid_sources:
         raise HTTPException(
@@ -141,5 +137,5 @@ async def verify_source_file_access(sources: List[str]) -> None:
             detail=(
                 "Cannot access all of the source files. "
                 f"Invalid sources: {invalid_sources}"
-            ),
+            )
         )
