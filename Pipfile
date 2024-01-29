@@ -12,7 +12,7 @@ geopandas = "*"  # Needed by pixetl in batch script test
 # Pixetl is already installed in the pixetl image that's run in Batch, this
 # is to enable tests to run in the test container:
 gfw_pixetl = {git = "https://github.com/wri/gfw_pixetl.git", ref = "develop"}
-moto = {version = "*", extras = ["awslambda", "batch", "ec2", "s3"]}
+moto = {version = "<5", extras = ["awslambda", "batch", "ec2", "s3", "secretsmanager"]}
 openapi_spec_validator = "*"
 pre-commit = "*"
 pytest = "*"
