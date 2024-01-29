@@ -8,6 +8,7 @@ black = "*"
 detect-secrets = "*"
 docker = "*"
 flake8 = "*"
+geopandas = "*"  # Needed by pixetl in batch script test
 # Pixetl is already installed in the pixetl image that's run in Batch, this
 # is to enable tests to run in the test container:
 gfw_pixetl = {git = "https://github.com/wri/gfw_pixetl.git", ref = "develop"}
@@ -15,11 +16,12 @@ moto = {version = "*", extras = ["awslambda", "batch", "ec2", "s3"]}
 openapi_spec_validator = "*"
 pre-commit = "*"
 pytest = "*"
-pytest-asyncio = "==0.18.3"
+pytest-asyncio = "<0.19"
 pytest-cov = "*"
 pytest-timeout = "*"
 rasterio = "*"
-responses = "~=0.15.0"
+responses = "<0.16"
+retrying = "*"  # Needed by pixetl in batch script test
 
 [packages]
 aenum = "*"
@@ -28,7 +30,7 @@ aiohttp = "*"
 alembic = "*"
 arq = "*"
 async-lru = "*"
-asyncpg = "<0.26"
+asyncpg = "*"
 boto3 = "*"
 botocore = "*"
 email-validator = "*"
@@ -44,18 +46,17 @@ httpx-auth = "*"
 numpy = "*"
 orjson = "*"
 packaging = "*"
-pendulum = "*"
+pendulum = "<3"
 pglast = "<2"
 psutil = "*"
 psycopg2 = "*"
+pydantic = "<2"
 pyproj = "*"
 python-multipart = "*"
-retrying = "*"
 shapely = "*"
 sqlalchemy = "<1.4"
 sqlalchemy-utils = "*"
 starlette = "<0.15"
-pydantic = "~=1.9"
 typer = "*"
 uvicorn = {version = "*", extras = ["standard"]}
 
