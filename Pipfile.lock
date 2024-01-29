@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "55b1f48ebc9763a15093c3a92f26d18fc802eb883b1b3a7f1e47719745d497c0"
+            "sha256": "31799ee534b534382f9aadf0c78558a7a989cc3f09f0e2ebb5464bd1c28b9633"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -2496,15 +2496,16 @@
                 "awslambda",
                 "batch",
                 "ec2",
-                "s3"
+                "s3",
+                "secretsmanager"
             ],
             "hashes": [
-                "sha256:1d01de681da1453335ec09ba43db521e577cbd58d25ddfb61e5965534b8be539",
-                "sha256:4a94a147ee70e85e0842da8d1093728c66085165775d1d302f0f77538bf92b95"
+                "sha256:6d242dbbabe925bb385ddb6958449e5c827670b13b8e153ed63f91dbdb50372c",
+                "sha256:8f9263ca70b646f091edcc93e97cda864a542e6d16ed04066b1370ed217bd190"
             ],
             "index": "pypi",
             "markers": null,
-            "version": "==5.0.0"
+            "version": "==4.2.14"
         },
         "mypy-extensions": {
             "hashes": [
@@ -2777,10 +2778,9 @@
         },
         "pytz": {
             "hashes": [
-                "sha256:7b4fddbeb94a1eba4b557da24f19fdf9db575192544270a9101d8509f9f43d7b",
-                "sha256:ce42d816b81b68506614c11e8937d3aa9e41007ceb50bfdcb0749b921bf646c7"
+                "sha256:f90ef520d95e7c46951105338d918664ebfd6f1d995bd7d153127ce90efafa6a"
             ],
-            "version": "==2023.3.post1"
+            "version": "==2023.4"
         },
         "pyyaml": {
             "hashes": [
