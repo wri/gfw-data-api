@@ -14,19 +14,6 @@ KEY = "KEY"
 VALUE = "VALUE"
 
 
-class MockS3Client(object):
-    rules: List[Dict[str, Any]] = []
-
-    def get_bucket_lifecycle_configuration(self, Bucket):
-        return {"Rules": self.rules}
-
-    def put_bucket_lifecycle_configuration(self, Bucket, LifecycleConfiguration):
-        self.rules = LifecycleConfiguration["Rules"]
-        return {
-            "ResponseMetadata": {"...": "..."},
-        }
-
-
 class MockCloudfrontClient(object):
     def create_invalidation(self, DistributionId, InvalidationBatch):
         return {
