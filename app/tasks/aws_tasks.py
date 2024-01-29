@@ -41,7 +41,7 @@ def delete_s3_objects(
             if len(delete_us["Objects"]) >= 1000:
                 count += len(delete_us["Objects"])
                 logger.debug(
-                    f"Delete {len(delete_us['Objects'])} objects in bucker {bucket} with prefix {prefix}"
+                    f"Delete {len(delete_us['Objects'])} objects in bucket {bucket} with prefix {prefix}"
                 )
                 client.delete_objects(Bucket=bucket, Delete=delete_us)
                 delete_us = dict(Objects=[])
@@ -103,7 +103,7 @@ def _expiration_rule(
 
         rule_filter = {"Prefix": prefix}
     elif not prefix and key and value:
-        rule_filter = {"Tags": {"Key": key, "Value": value}}
+        rule_filter = {"Tag": {"Key": key, "Value": value}}
     else:
         raise ValueError("Cannot create filter using input data")
 
@@ -121,7 +121,7 @@ def _update_lifecycle_rule(bucket, rule) -> Dict[str, Any]:
     client = get_s3_client()
     rules = _get_lifecycle_rules(bucket)
     rules.append(rule)
-    logger.debug(f"Add lifecylce configuration rule {rules} to bucket {bucket}")
+    logger.debug(f"Add lifecycle configuration rule {rules} to bucket {bucket}")
     response = client.put_bucket_lifecycle_configuration(
         Bucket=bucket, LifecycleConfiguration={"Rules": rules}
     )
