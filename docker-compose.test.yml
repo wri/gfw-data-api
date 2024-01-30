@@ -86,7 +86,7 @@ services:
 
   motoserver:
     container_name: motoserver
-    image: motoserver/moto
+    image: motoserver/moto:4.0.11
     ports:
       - "${MOTO_PORT-50000}:50000"
     environment:
