@@ -3,6 +3,7 @@ from enum import Enum
 
 class RasterDrivers(str, Enum):
     __doc__ = "Raster source driver of input file"
+    cog = "COG"
     geotiff = "GeoTIFF"
 
 
