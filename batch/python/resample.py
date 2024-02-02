@@ -11,13 +11,17 @@ import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
+from logging import Logger
 from multiprocessing import Process
 from multiprocessing.queues import Queue
-from queue import Empty
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import psutil
 import rasterio
+from pyproj import CRS, Transformer
+from shapely.geometry import MultiPolygon, Polygon, shape
+from shapely.ops import unary_union
+from typer import Option, run
 
 # Use relative imports because these modules get copied into container
 from aws_utils import exists_in_s3, get_s3_client, get_s3_path_parts
@@ -26,10 +30,6 @@ from gdal_utils import from_vsi_path
 from gfw_pixetl.grids import grid_factory
 from gfw_pixetl.pixetl_prep import create_geojsons
 from logging_utils import listener_configurer, log_client_configurer, log_listener
-from pyproj import CRS, Transformer
-from shapely.geometry import MultiPolygon, Polygon, shape
-from shapely.ops import unary_union
-from typer import Option, run
 
 # Use at least 1 process
 # Try to get NUM_PROCESSES, if that fails get # CPUs divided by 1.5
@@ -553,31 +553,26 @@ def intersecting_tiles(
 
 
 def report_stats(
-    done_queue: Queue, log_queue: Queue, report_interval: float = 4.0
+    ctrl_queue: Queue, log_queue: Queue, report_interval: float = 4.0
 ) -> None:
     log_client_configurer(log_queue)
-    logger = logging.getLogger("reporter")
+    logger: Logger = logging.getLogger("reporter")
+
     cwd: str = os.getcwd()
 
-    while True:
-        cpu_usage: List[float] = psutil.cpu_percent(interval=1)
+    while ctrl_queue.empty():
+        cpu_usage: float = psutil.cpu_percent(interval=0.5)
         mem_usage: float = psutil.virtual_memory().percent
         swap_usage: float = psutil.swap_memory().percent
         disk_usage: float = psutil.disk_usage(cwd).percent
 
         logger.log(
             logging.INFO,
-            f"System Memory: {mem_usage}% CPU: {cpu_usage}% Swap: {swap_usage}% Disk: {disk_usage}%",
+            f"Time:{int(time.time())} System Memory:{mem_usage}% "
+            f"CPU:{cpu_usage}% Swap:{swap_usage}% Disk:{disk_usage}%",
         )
 
         time.sleep(report_interval)
-
-        try:
-            if done_queue.get_nowait() == "stop":
-                done_queue.task_done()
-                break
-        except Empty:
-            pass
 
 
 def resample(
