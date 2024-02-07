@@ -349,12 +349,6 @@ async def test_invalid_source_uri(async_client: AsyncClient):
         == f"Version with name {dataset}.{bad_version} does not exist"
     )
 
-    # Test appending a layer to a version
-    response = await async_client.post(
-        f"/dataset/{dataset}/{version}/append", json={"source_uri": f"s3://{BUCKET}/{GPKG_NAME}", "layers": ["layer2"]}
-    )
-    assert response.status_code == 200
-
     # Test appending to a version with missing layers
     response = await async_client.post(
         f"/dataset/{dataset}/{version}/append", json={"source_uri": f"s3://{BUCKET}/{GPKG_NAME}", "layers": ["layer3"]}

@@ -226,9 +226,7 @@ class VectorSourceCreationOptions(StrictBaseModel):
         if values.get("source_driver") == VectorDrivers.csv:
             assert len(v) >= 1, "CSV sources require at least one input file"
         elif values.get("source_driver") in [VectorDrivers.esrijson, VectorDrivers.shp, VectorDrivers.geojson_seq, VectorDrivers.geojson]:
-            assert (
-                len(v) == 1
-            ), "GeoJSON and ESRI Shapefile vector sources require one and only one input file"
+            assert (len(v) == 1), "GeoJSON and ESRI Shapefile vector sources require one and only one input file"
         return v
 
 

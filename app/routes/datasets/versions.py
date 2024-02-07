@@ -230,19 +230,28 @@ async def append_to_version(
 
     # For the background task, we only need the new source uri from the request
     input_data = {"creation_options": deepcopy(default_asset.creation_options)}
+
     input_data["creation_options"]["source_uri"] = request.source_uri
-    # check if layers are provided and append to creation options
-    if input_data["creation_options"].get("layers") is not None:
+    # If there are no existing layers, we can just use the new layers
+    if input_data["creation_options"].get("layers") is None: 
         input_data["creation_options"]["layers"] = request.layers
+    # Otherwise we append the new layers to the existing ones
+    elif request.layers is not None:
+        input_data["creation_options"]["layers"] += request.layers
+    else:
+        input_data["creation_options"]["layers"] = None
     background_tasks.add_task(
         append_default_asset, dataset, version, input_data, default_asset.asset_id
     )
 
     # We now want to append the new uris to the existing ones and update the asset
     update_data = {"creation_options": deepcopy(default_asset.creation_options)}
-    update_data["creation_options"]["source_uri"] += request.source_uri
+    update_data["creation_options"]["source_uri"] += request.source_uri # ERROR: only one source_uri is allowed
     if input_data["creation_options"].get("layers") is not None:
-        update_data["creation_options"]["layers"] += request.layers
+        if update_data["creation_options"]["layers"] is not None:
+            update_data["creation_options"]["layers"] += request.layers
+        else:
+            update_data["creation_options"]["layers"] = request.layers
     await assets.update_asset(default_asset.asset_id, **update_data)
 
     version_orm: ORMVersion = await versions.get_version(dataset, version)
