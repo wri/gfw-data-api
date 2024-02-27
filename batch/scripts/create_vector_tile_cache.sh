@@ -34,7 +34,7 @@ echo "Fetch NDJSON data from Data Lake ${SRC} -> ${DATASET}"
 aws s3 cp "${SRC}" "${DATASET}" --no-progress
 
 echo "Build Tile Cache"
-tippecanoe -Z"${MIN_ZOOM}" -z"${MAX_ZOOM}" -e tilecache "${STRATEGY[@]}" -P -n "${DATASET}" "${DATASET}"
+tippecanoe -Z"${MIN_ZOOM}" -z"${MAX_ZOOM}" -e tilecache "${STRATEGY[@]}" -P -n "${DATASET}" "${DATASET}" --preserve-input-order
 
 echo "Upload tiles to S3"
 tileputty tilecache --bucket "${TILE_CACHE}" --dataset "${DATASET}" --version "${VERSION}" --implementation "${IMPLEMENTATION}" --cores "${NUM_PROCESSES}"
