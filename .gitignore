@@ -21,7 +21,7 @@ tests/cobertura.xml
 tests_v2/cobertura.xml
 
 # Terraform stuff
-terraform/*
+**/.terraform/*
 
 # Virtual Environments
 .venv*
