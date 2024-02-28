@@ -18,7 +18,8 @@ class Version(BaseRecord):
     metadata: Union[VersionMetadataOut, BaseModel]
     status: VersionStatus = VersionStatus.pending
 
-    assets: List[Tuple[str, str]] = list()
+    # Each element of assets is a tuple (asset_type, assert_uri, asset_id)
+    assets: List[Tuple[str, str, str]] = list()
 
 
 class VersionCreateIn(StrictBaseModel):
