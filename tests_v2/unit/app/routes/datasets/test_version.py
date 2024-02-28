@@ -1,6 +1,7 @@
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient
+import re
 
 from app.routes.datasets import versions
 from app.tasks import batch
@@ -17,6 +18,14 @@ async def test_get_version(async_client: AsyncClient, generic_vector_source_vers
     assert resp.status_code == 200
     data = resp.json()
     assert_jsend(data)
+    first_asset = data["data"]["assets"][0]
+    assert len(first_asset) == 3
+    assert first_asset[0] == "Geo database table"
+    # Check asset_id looks reasonable
+    asset_id = first_asset[2]
+    assert len(asset_id) > 30
+    pattern = re.compile(r'^[a-zA-Z0-9-]+$')
+    assert bool(pattern.match(asset_id))
 
 
 @pytest.mark.asyncio
