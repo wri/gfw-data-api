@@ -1,17 +1,39 @@
 import logging
 from typing import Any, List, Tuple
 
+import boto3
+import pytest
+
+from app.settings.globals import AWS_GCS_KEY_SECRET_ARN, AWS_REGION, AWS_SECRETSMANAGER_URL
 from pyproj import CRS
 
-from batch.python.resample import Bounds, intersecting_tiles
 
 MODULE_PATH_UNDER_TEST = "batch.python.resample"
 
 
-def test_intersecting_tiles_wm_same_crs_no_scaling_within_1_tile():
+@pytest.fixture(scope="module")
+def pixetl_imports():
+    secret_client = boto3.client(
+        "secretsmanager", region_name=AWS_REGION, endpoint_url=AWS_SECRETSMANAGER_URL
+    )
+    secret_client.create_secret(
+        Name=AWS_GCS_KEY_SECRET_ARN,
+        SecretString="foosecret",  # pragma: allowlist secret
+    )
+
+    from batch.python.resample import Bounds, intersecting_tiles
+
+    yield Bounds, intersecting_tiles
+
+    secret_client.delete_secret(SecretId=AWS_GCS_KEY_SECRET_ARN)
+
+
+def test_intersecting_tiles_wm_same_crs_no_scaling_within_1_tile(pixetl_imports):
     """Make sure that when we start with a (region slightly smaller than a) wm
     tile and look for intersecting tiles in the same zoom level we get just
     that tile."""
+    Bounds, intersecting_tiles = pixetl_imports
+
     source_crs = CRS.from_epsg(3857)
     src_tiles_info: List[Tuple[str, Any]] = [
         (
@@ -51,10 +73,12 @@ def test_intersecting_tiles_wm_same_crs_no_scaling_within_1_tile():
     ]
 
 
-def test_intersecting_tiles_wm_same_crs_no_scaling_straddling_4_tiles():
+def test_intersecting_tiles_wm_same_crs_no_scaling_straddling_4_tiles(pixetl_imports):
     """Make sure that when we start with a region straddling the corner of 4 wm
     tiles and look for intersecting tiles in the same zoom level we get all
     4."""
+    Bounds, intersecting_tiles = pixetl_imports
+
     source_crs = CRS.from_epsg(3857)
     src_tiles_info: List[Tuple[str, Any]] = [
         (
@@ -86,9 +110,11 @@ def test_intersecting_tiles_wm_same_crs_no_scaling_straddling_4_tiles():
     assert expected_tile_ids == set([tile_info[0] for tile_info in result])
 
 
-def test_intersecting_tiles_wm_same_crs_zoom_out():
+def test_intersecting_tiles_wm_same_crs_zoom_out(pixetl_imports):
     """Also an area straddling the corners of 4 wm tiles, but this time target
     zoom level is one level out, turning those 4 into one tile."""
+    Bounds, intersecting_tiles = pixetl_imports
+
     source_crs = CRS.from_epsg(3857)
     src_tiles_info: List[Tuple[str, Any]] = [
         (
@@ -120,8 +146,10 @@ def test_intersecting_tiles_wm_same_crs_zoom_out():
     assert expected_tile_ids == set([tile_info[0] for tile_info in result])
 
 
-def test_intersecting_tiles_epsg_4326_to_wm():
+def test_intersecting_tiles_epsg_4326_to_wm(pixetl_imports):
     """Go from a small epsg:4326 source tile to zoom level 10 tiles."""
+    Bounds, intersecting_tiles = pixetl_imports
+
     source_crs = CRS.from_epsg(4326)
     src_tiles_info: List[Tuple[str, Any]] = [
         (

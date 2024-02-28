@@ -1,6 +1,6 @@
 from unittest import mock
 
-import pytest
+from moto import mock_s3, mock_cloudfront
 
 from app.tasks.aws_tasks import (
     delete_s3_objects,
@@ -8,16 +8,15 @@ from app.tasks.aws_tasks import (
     flush_cloudfront_cache,
     update_ecs_service,
 )
-from app.utils.aws import get_s3_client
+from app.utils.aws import get_s3_client, get_cloudfront_client
 
 from .. import BUCKET, TSV_NAME, TSV_PATH
-from . import KEY, VALUE, MockCloudfrontClient, MockECSClient, MockS3Client
+from . import KEY, VALUE, MockECSClient, example_distribution_config
 
 
-@pytest.mark.hanging
+@mock_s3
 def test_delete_s3_objects():
-    """" Make sure we can delete more than 1000 items."""
-
+    """ Make sure we can delete more than 1000 items."""
     s3_client = get_s3_client()
 
     for i in range(1001):
@@ -27,14 +26,12 @@ def test_delete_s3_objects():
     assert count == 1001
 
 
-@mock.patch("app.tasks.aws_tasks.get_s3_client")
-def test_expire_s3_objects(mock_client):
-    """Updating lifecycle policies in Moto doesn't seem to work correctly Hence
-    I created a custom mock."""
-
-    mock_client.return_value = MockS3Client()
-    s3_client = mock_client()
+@mock_s3
+def test_expire_s3_objects():
     prefix = TSV_NAME
+
+    s3_client = get_s3_client()
+    s3_client.put_object(Bucket=BUCKET, Key=prefix, Body="booga booga booga!")
 
     expire_s3_objects(BUCKET, prefix=prefix)
     response = s3_client.get_bucket_lifecycle_configuration(Bucket=BUCKET)
@@ -50,7 +47,7 @@ def test_expire_s3_objects(mock_client):
     assert response["Rules"][1]["ID"] == f"delete_None_{VALUE}".replace(
         "/", "_"
     ).replace(".", "_")
-    assert response["Rules"][1]["Filter"] == {"Tags": {"Key": KEY, "Value": VALUE}}
+    assert response["Rules"][1]["Filter"] == {"Tag": {"Key": KEY, "Value": VALUE}}
 
     expire_s3_objects(BUCKET, prefix, KEY, VALUE)
     response = s3_client.get_bucket_lifecycle_configuration(Bucket=BUCKET)
@@ -71,16 +68,20 @@ def test_expire_s3_objects(mock_client):
     assert message == "Cannot create filter using input data"
 
 
-@mock.patch("app.tasks.aws_tasks.get_cloudfront_client")
-def test_flush_cloudfront_cache(mock_client):
-    """Moto doesn't cover cloudfront, hence my onw mock."""
-    mock_client.return_value = MockCloudfrontClient()
-    # cloudfront_client = mock_client()
+@mock_cloudfront
+def test_flush_cloudfront_cache():
+    config = example_distribution_config("foo")
 
-    response = flush_cloudfront_cache("ID", [TSV_NAME])
+    cloudfront_client = get_cloudfront_client()
+    create_response = cloudfront_client.create_distribution(
+        DistributionConfig=config
+    )
+    distribution_name = create_response["Distribution"]["Id"]
 
-    assert response["Invalidation"]["InvalidationBatch"]["Paths"]["Quantity"] == 1
-    assert response["Invalidation"]["InvalidationBatch"]["Paths"]["Items"] == [TSV_NAME]
+    invalid_response = flush_cloudfront_cache(distribution_name, [TSV_NAME])
+
+    assert invalid_response["Invalidation"]["InvalidationBatch"]["Paths"]["Quantity"] == 1
+    assert invalid_response["Invalidation"]["InvalidationBatch"]["Paths"]["Items"] == [TSV_NAME]
 
 
 @mock.patch("app.tasks.aws_tasks.get_ecs_client")  # TODO use moto client

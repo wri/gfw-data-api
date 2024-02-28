@@ -14,19 +14,6 @@ KEY = "KEY"
 VALUE = "VALUE"
 
 
-class MockS3Client(object):
-    rules: List[Dict[str, Any]] = []
-
-    def get_bucket_lifecycle_configuration(self, Bucket):
-        return {"Rules": self.rules}
-
-    def put_bucket_lifecycle_configuration(self, Bucket, LifecycleConfiguration):
-        self.rules = LifecycleConfiguration["Rules"]
-        return {
-            "ResponseMetadata": {"...": "..."},
-        }
-
-
 class MockCloudfrontClient(object):
     def create_invalidation(self, DistributionId, InvalidationBatch):
         return {
@@ -189,3 +176,33 @@ async def check_dynamic_vector_tile_cache_status(dataset, version):
         geo_database.metadata.fields[1].data_type
         == dynamic_vector_tile.metadata.fields[1].data_type
     )
+
+
+# Borrowed from moto tests:
+# https://github.com/getmoto/moto/blob/master/tests/test_cloudfront/cloudfront_test_scaffolding.py
+def example_distribution_config(ref):
+    """Return a basic example distribution config for use in tests."""
+    return {
+        "CallerReference": ref,
+        "Origins": {
+            "Quantity": 1,
+            "Items": [
+                {
+                    "Id": "origin1",
+                    "DomainName": "asdf.s3.us-east-1.amazonaws.com",
+                    "OriginPath": "/example",
+                    "S3OriginConfig": {
+                        "OriginAccessIdentity": "origin-access-identity/cloudfront/00000000000001"
+                    },
+                }
+            ],
+        },
+        "DefaultCacheBehavior": {
+            "TargetOriginId": "origin1",
+            "ViewerProtocolPolicy": "allow-all",
+            "MinTTL": 10,
+            "ForwardedValues": {"QueryString": False, "Cookies": {"Forward": "none"}},
+        },
+        "Comment": "an optional comment that's not actually optional",
+        "Enabled": False,
+    }
