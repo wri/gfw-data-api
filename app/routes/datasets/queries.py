@@ -2,7 +2,7 @@
 import csv
 import re
 from io import StringIO
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
@@ -13,14 +13,17 @@ from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
+
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
+from pydantic.tools import parse_obj_as
 from sqlalchemy.sql import and_
 
+from ...authentication.token import is_gfwpro_admin_for_query
 from ...application import db
 
 # from ...authentication.api_keys import get_api_key
@@ -58,9 +61,11 @@ from ...models.enum.pg_sys_functions import (
 from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
+from ...models.orm.queries.raster_assets import latest_raster_tile_sets
 from ...models.orm.versions import Version as VersionORM
+from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
+from ...models.pydantic.creation_options import NoDataType
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
-from ...models.pydantic.metadata import RasterTable, RasterTableRow
 from ...models.pydantic.query import CsvQueryRequestIn, QueryRequestIn
 from ...models.pydantic.raster_analysis import (
     DataEnvironment,
@@ -77,6 +82,9 @@ from .. import dataset_version_dependency
 
 router = APIRouter()
 
+
+# Special suffixes to do an extra area density calculation on the raster data set.
+AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "_ha_yr-1"]
 
 @router.get(
     "/{dataset}/{version}/query",
@@ -118,25 +126,38 @@ async def query_dataset_json(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
+    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
     # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in JSON format.
 
-    Adding a geostore ID to the query will apply a spatial filter to the
-    query, only returning results for features intersecting with the
-    geostore geometry. For vector datasets, this filter will not clip
-    feature geometries to the geostore boundaries. Hence any spatial
-    transformation such as area calculations will be applied on the
-    entire feature geometry, including areas outside the geostore
-    boundaries.
+    Adding a geostore ID or directly-specified geometry to the query
+    will apply a spatial filter to the query, only returning results for
+    features intersecting with the geostore geometry. For vector
+    datasets, this filter will not clip feature geometries to the
+    geostore boundaries. Hence any spatial transformation such as area
+    calculations will be applied on the entire feature geometry,
+    including areas outside the geostore boundaries.
+
+    A geostore ID or geometry must be specified for a query to a
+    raster-only dataset.
+
+    GET to /dataset/{dataset}/{version}/fields will show fields that can
+    be used in the query. For raster-only datasets, fields for other
+    raster datasets that use the same grid are listed and can be
+    referenced. There are also several reserved fields with special
+    meaning that can be used, including "area__ha", "latitude", and
+    "longitude".
+
     """
 
     dataset, version = dataset_version
+
     if geostore_id:
         geostore: Optional[GeostoreCommon] = await get_geostore(
             geostore_id, geostore_origin
@@ -144,7 +165,11 @@ async def query_dataset_json(
     else:
         geostore = None
 
-    response.headers["Cache-Control"] = "max-age=7200"  # 2h
+    if "gadm__tcl__" in dataset:
+        response.headers["Cache-Control"] = "max-age=31536000"  # 1y for TCL tables
+    else:
+        response.headers["Cache-Control"] = "max-age=7200"  # 2h
+
     json_data: List[Dict[str, Any]] = await _query_dataset_json(
         dataset, version, sql, geostore
     )
@@ -160,13 +185,14 @@ async def query_dataset_csv(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
     delimiter: Delimiters = Query(
         Delimiters.comma, description="Delimiter to use for CSV file."
     ),
+    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
     # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -229,6 +255,7 @@ async def query_dataset_json_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
+    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
     # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -259,6 +286,7 @@ async def query_dataset_csv_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: CsvQueryRequestIn,
+    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
     # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -567,6 +595,11 @@ async def _query_raster(
             status_code=400,
             detail=f"Geostore area exceeds limit of {GEOSTORE_SIZE_LIMIT_OTF} ha for raster analysis.",
         )
+    if geostore.geojson.type != "Polygon" and geostore.geojson.type != "MultiPolygon":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Geostore must be a Polygon or MultiPolygon for raster analysis"
+        )
 
     # use default data type to get default raster layer for dataset
     default_layer = _get_default_layer(dataset, asset.creation_options["pixel_meaning"])
@@ -625,90 +658,96 @@ async def _query_raster_lambda(
     return response_body
 
 
+def _get_area_density_name(nm):
+    """Return empty string if nm doesn't not have an area-density suffix, else
+    return nm with the area-density suffix removed."""
+    for suffix in AREA_DENSITY_RASTER_SUFFIXES:
+        if nm.endswith(suffix):
+            return nm[:-len(suffix)]
+    return ""
+
 def _get_default_layer(dataset, pixel_meaning):
     default_type = pixel_meaning
+    area_density_name = _get_area_density_name(default_type)
     if default_type == "is":
         return f"{default_type}__{dataset}"
     elif "date_conf" in default_type:
         # use date layer for date_conf encoding
         return f"{dataset}__date"
-    elif default_type.endswith("ha-1"):
-        # remove ha-1 suffix for area density rasters
+    elif area_density_name != "":
+        # use the area_density name, in which the _ha-1 suffix (or similar) is removed.
         # OTF will multiply by pixel area to get base type
         # and table names can't include '-1'
-        return f"{dataset}__{default_type[:-5]}"
+        return f"{dataset}__{area_density_name}"
     else:
         return f"{dataset}__{default_type}"
 
 
 async def _get_data_environment(grid: Grid) -> DataEnvironment:
-    # get all Raster tile set assets
-    latest_tile_sets = await (
-        AssetORM.join(VersionORM)
-        .select()
-        .with_only_columns(
-            [
-                AssetORM.dataset,
-                AssetORM.version,
-                AssetORM.creation_options,
-                AssetORM.asset_uri,
-                AssetORM.metadata,
-            ]
-        )
-        .where(
-            and_(
-                AssetORM.asset_type == AssetType.raster_tile_set,
-                VersionORM.is_latest == True,  # noqa: E712
-            )
-        )
-    ).gino.all()
+    # get all raster tile set assets with the same grid.
+    latest_tile_sets = await db.all(latest_raster_tile_sets, {"grid": grid})
 
-    # create layers
+    # build list of layers, including any derived layers, for all
+    # single-band rasters found
     layers: List[Layer] = []
     for row in latest_tile_sets:
-        if row.creation_options["grid"] != grid:
-            # skip if not on the right grid
-            continue
-
-        # TODO skip intermediate raster for tile cache until field is in metadata
-        if "tcd" in row.creation_options["pixel_meaning"]:
-            continue
-
+        creation_options = row.creation_options
         # only include single band rasters
-        if row.creation_options.get("band_count", 1) > 1:
+        if creation_options.get("band_count", 1) > 1:
             continue
 
-        if row.creation_options["pixel_meaning"] == "is":
-            source_layer_name = (
-                f"{row.creation_options['pixel_meaning']}__{row.dataset}"
-            )
+        if creation_options["pixel_meaning"] == "is":
+            source_layer_name = f"{creation_options['pixel_meaning']}__{row['dataset']}"
         else:
-            source_layer_name = (
-                f"{row.dataset}__{row.creation_options['pixel_meaning']}"
+            source_layer_name = f"{row['dataset']}__{creation_options['pixel_meaning']}"
+
+        no_data_val = parse_obj_as(
+            Optional[Union[List[NoDataType], NoDataType]],
+            creation_options["no_data"],
+        )
+        if isinstance(no_data_val, List):
+            no_data_val = no_data_val[0]
+
+        raster_table = getattr(row, "values_table", None)
+        layers.append(
+            _get_source_layer(
+                row["asset_uri"],
+                source_layer_name,
+                grid,
+                no_data_val,
+                raster_table,
             )
+        )
 
-        layers.append(_get_source_layer(row, source_layer_name, grid))
+        if creation_options["pixel_meaning"] == "date_conf":
+            layers += _get_date_conf_derived_layers(source_layer_name, no_data_val)
 
-        if row.creation_options["pixel_meaning"] == "date_conf":
-            layers += _get_date_conf_derived_layers(row, source_layer_name)
-
-        if row.creation_options["pixel_meaning"].endswith("_ha-1"):
-            layers.append(_get_area_density_layer(row, source_layer_name))
+        if _get_area_density_name(creation_options["pixel_meaning"]) != "":
+            layers.append(_get_area_density_layer(source_layer_name, no_data_val))
 
     return DataEnvironment(layers=layers)
 
 
-def _get_source_layer(row, source_layer_name: str, grid: Grid) -> SourceLayer:
+def _get_source_layer(
+    asset_uri: str,
+    source_layer_name: str,
+    grid: Grid,
+    no_data_val: Optional[NoDataType],
+    raster_table: Optional[RasterTable],
+) -> SourceLayer:
     return SourceLayer(
-        source_uri=row.asset_uri,
+        source_uri=asset_uri,
         tile_scheme="nw",
         grid=grid,
         name=source_layer_name,
-        raster_table=row.metadata.get("raster_table", None),
+        no_data=no_data_val,
+        raster_table=raster_table,
     )
 
 
-def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
+def _get_date_conf_derived_layers(
+    source_layer_name: str, no_data_val: Optional[NoDataType]
+) -> List[DerivedLayer]:
     """Get derived layers that decode our date_conf layers for alert
     systems."""
     # TODO should these somehow be in the metadata or creation options instead of hardcoded?
@@ -730,6 +769,7 @@ def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__date"),
             calc="A % 10000",
+            no_data=no_data_val,
             decode_expression=decode_expression,
             encode_expression=encode_expression,
         ),
@@ -737,18 +777,23 @@ def _get_date_conf_derived_layers(row, source_layer_name) -> List[DerivedLayer]:
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__confidence"),
             calc="floor(A / 10000).astype(uint8)",
+            no_data=no_data_val,
             raster_table=conf_encoding,
         ),
     ]
 
 
-def _get_area_density_layer(row, source_layer_name) -> DerivedLayer:
+def _get_area_density_layer(
+    source_layer_name: str, no_data_val: Optional[NoDataType]
+) -> DerivedLayer:
     """Get the derived gross layer for whose values represent density per pixel
     area."""
+    nm = _get_area_density_name(source_layer_name)
     return DerivedLayer(
         source_layer=source_layer_name,
-        name=source_layer_name.replace("_ha-1", ""),
+        name=nm,
         calc="A * area",
+        no_data=no_data_val,
     )
 
 

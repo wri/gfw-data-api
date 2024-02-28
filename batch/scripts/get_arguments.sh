@@ -105,6 +105,10 @@ do
       shift # past argument
       shift # past value
       ;;
+      --include_tile_id)
+      INCLUDE_TILE_ID="TRUE"
+      shift # past argument
+      ;;
       -j|--json)
       JSON="$2"
       shift # past argument
@@ -185,6 +189,11 @@ do
       ;;
       --target_bucket)
       TARGET_BUCKET="$2"
+      shift # past argument
+      shift # past value
+      ;;
+      -u|--unique_constraint)
+      UNIQUE_CONSTRAINT_COLUMN_NAMES="$2"
       shift # past argument
       shift # past value
       ;;

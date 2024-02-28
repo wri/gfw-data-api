@@ -1,3 +1,4 @@
+import csv
 import json
 from unittest.mock import patch
 from urllib.parse import urlparse
@@ -11,7 +12,12 @@ from app.settings.globals import DATA_LAKE_BUCKET, S3_ENTRYPOINT_URL, TILE_CACHE
 from app.utils.aws import get_s3_client
 
 from .. import BUCKET, PORT, SHP_NAME
-from ..utils import check_tasks_status, create_default_asset, poll_jobs
+from ..utils import (
+    check_tasks_status,
+    create_default_asset,
+    poll_jobs,
+    version_metadata
+)
 from . import MockCloudfrontClient, MockECSClient
 
 
@@ -38,7 +44,7 @@ async def test_vector_tile_asset(
             "source_driver": "GeoJSON",
             "create_dynamic_vector_tile_cache": True,
         },
-        "metadata": {},
+        "metadata": version_metadata,
     }
 
     await create_default_asset(
@@ -126,56 +132,6 @@ async def test_vector_tile_asset(
     assert resp["KeyCount"] == 0
 
     ###########
-    # 1x1 Grid
-    ###########
-    ### Create static tile cache asset
-    httpx.delete(f"http://localhost:{PORT}")
-
-    input_data = {
-        "asset_type": "1x1 grid",
-        "is_managed": True,
-        "creation_options": {},
-    }
-
-    response = await async_client.post(
-        f"/dataset/{dataset}/{version}/assets", json=input_data
-    )
-    assert response.status_code == 202
-    asset_id = response.json()["data"]["asset_id"]
-
-    # get tasks id from change log and wait until finished
-    response = await async_client.get(f"/asset/{asset_id}/change_log")
-
-    assert response.status_code == 200
-    tasks = json.loads(response.json()["data"][-1]["detail"])
-    task_ids = [task["job_id"] for task in tasks]
-
-    # make sure, all jobs completed
-    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
-    assert status == "saved"
-
-    response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
-    assert response.status_code == 200
-
-    # there should be 4 assets now (geodatabase table, dynamic vector tile cache and static vector tile cache (already deleted ndjson)
-    assert len(response.json()["data"]) == 4
-
-    # Check if file is in tile cache
-    resp = s3_client.list_objects_v2(
-        Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
-    )
-    assert resp["KeyCount"] == 1
-
-    response = await async_client.delete(f"/asset/{asset_id}")
-    assert response.status_code == 200
-
-    # Check if file was deleted
-    resp = s3_client.list_objects_v2(
-        Bucket=DATA_LAKE_BUCKET, Prefix=f"{dataset}/{version}/vector/"
-    )
-    assert resp["KeyCount"] == 0
-
-    ###########
     # Vector file export
     ###########
 
@@ -245,3 +201,174 @@ async def test_vector_tile_asset(
     )
     assert response.status_code == 200
     assert mocked_cloudfront_client.called
+
+
+@pytest.mark.asyncio
+async def test_vector_tile_asset_1x1_grid(
+    batch_client, async_client: AsyncClient, monkeypatch
+):
+    _, logs = batch_client
+
+    ############################
+    # Setup test
+    ############################
+
+    dataset = "test"
+
+    version = "v1.1.1"
+    input_data = {
+        "creation_options": {
+            "source_type": "vector",
+            "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
+            "source_driver": "ESRI Shapefile",
+            "create_dynamic_vector_tile_cache": False,
+        },
+    }
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=input_data,
+        async_client=async_client,
+        logs=logs,
+        execute_batch_jobs=True,
+        skip_dataset=False,
+    )
+
+    httpx.delete(f"http://localhost:{PORT}")
+
+    ###########
+    # 1x1 Grid
+    ###########
+    input_data = {
+        "asset_type": "1x1 grid",
+        "creation_options": {
+            "field_attributes": [
+                "gfw_geostore_id"
+            ]
+        },
+    }
+
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/assets", json=input_data
+    )
+    assert response.status_code == 202
+    asset_id = response.json()["data"]["asset_id"]
+
+    # Get task ids from change log and wait until finished
+    changelog_response = await async_client.get(f"/asset/{asset_id}/change_log")
+    tasks_dict = json.loads(changelog_response.json()["data"][-1]["detail"])
+    task_ids = [task["job_id"] for task in tasks_dict]
+
+    # Make sure all jobs completed
+    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
+    assert status == "saved"
+
+    # There should be 2 assets now (geodatabase table and 1x1 TSV)
+    assets_response = await async_client.get(f"/dataset/{dataset}/{version}/assets")
+    assert len(assets_response.json()["data"]) == 2
+
+    # Verify the TSV was created
+    s3_client = get_s3_client()
+    expected_prefix = f"{dataset}/{version}/vector/epsg-4326"
+    resp = s3_client.list_objects_v2(
+        Bucket=DATA_LAKE_BUCKET, Prefix=expected_prefix
+    )
+    assert resp["KeyCount"] == 1
+
+    # Sanity-check the TSV
+    s3_client.download_file(
+        DATA_LAKE_BUCKET,
+        f"{expected_prefix}/{dataset}_{version}_1x1.tsv",
+        "/tmp/1x1.tsv"
+    )
+    with open("/tmp/1x1.tsv", "r") as f:
+        reader = csv.reader(f, dialect=csv.excel_tab)
+        header = next(reader)
+        assert header == ["gfw_geostore_id", 'tcl', 'glad', 'geom']
+
+        assert next(reader, None) is not None
+
+    # Make sure deleting the asset deletes the TSV
+    response = await async_client.delete(f"/asset/{asset_id}")
+    assert response.status_code == 200
+
+    resp = s3_client.list_objects_v2(
+        Bucket=DATA_LAKE_BUCKET, Prefix=expected_prefix
+    )
+    assert resp["KeyCount"] == 0
+
+
+@pytest.mark.asyncio
+async def test_vector_tile_asset_1x1_grid_include_tile_id(
+    batch_client, async_client: AsyncClient, monkeypatch
+):
+    _, logs = batch_client
+
+    ############################
+    # Setup test
+    ############################
+
+    dataset = "test"
+
+    version = "v1.1.1"
+    input_data = {
+        "creation_options": {
+            "source_type": "vector",
+            "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
+            "source_driver": "ESRI Shapefile",
+            "create_dynamic_vector_tile_cache": False,
+        },
+    }
+
+    await create_default_asset(
+        dataset,
+        version,
+        version_payload=input_data,
+        async_client=async_client,
+        logs=logs,
+        execute_batch_jobs=True,
+        skip_dataset=False,
+    )
+
+    httpx.delete(f"http://localhost:{PORT}")
+
+    ###########
+    # 1x1 Grid
+    ###########
+    input_data = {
+        "asset_type": "1x1 grid",
+        "creation_options": {
+            "include_tile_id": True,
+            "field_attributes": [
+                "gfw_geostore_id"
+            ]
+        },
+    }
+
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/assets", json=input_data
+    )
+    assert response.status_code == 202
+    asset_id = response.json()["data"]["asset_id"]
+
+    # Get task ids from change log and wait until finished
+    changelog_response = await async_client.get(f"/asset/{asset_id}/change_log")
+    tasks_dict = json.loads(changelog_response.json()["data"][-1]["detail"])
+    task_ids = [task["job_id"] for task in tasks_dict]
+    await poll_jobs(task_ids, logs=logs, async_client=async_client)
+
+    # Sanity-check the TSV
+    s3_client = get_s3_client()
+    expected_prefix = f"{dataset}/{version}/vector/epsg-4326"
+    s3_client.download_file(
+        DATA_LAKE_BUCKET,
+        f"{expected_prefix}/{dataset}_{version}_1x1.tsv",
+        "/tmp/1x1.tsv"
+    )
+    with open("/tmp/1x1.tsv", "r") as f:
+        reader = csv.reader(f, dialect=csv.excel_tab)
+        header = next(reader)
+        assert header == ["gfw_geostore_id", "tile_id", "tcl", "glad", "geom"]
+
+        assert "60N_010E" in next(reader)

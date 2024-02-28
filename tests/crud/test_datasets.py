@@ -13,6 +13,8 @@ from app.errors import RecordAlreadyExistsError, RecordNotFoundError
 from app.models.pydantic.datasets import DatasetUpdateIn
 from app.models.pydantic.metadata import DatasetMetadata
 
+from ..utils import dataset_metadata
+
 
 @pytest.mark.asyncio
 async def test_dataset():
@@ -78,12 +80,12 @@ async def test_dataset():
     assert result == "Dataset with name test2 does not exist"
 
     # It should be possible to update a dataset using a context engine
-    metadata = DatasetMetadata(title="Test Title", tags=["tag1", "tag2"])
+    metadata = DatasetMetadata(**dataset_metadata)
     data = DatasetUpdateIn(metadata=metadata)
     async with ContextEngine("WRITE"):
         row = await update_dataset("test", **data.dict(exclude_unset=True))
-    assert row.metadata["title"] == "Test Title"
-    assert row.metadata["tags"] == ["tag1", "tag2"]
+    assert row.metadata.title == "test metadata"
+    assert row.metadata.data_language == "en"
 
     # When deleting a dataset, method should return the deleted object
     async with ContextEngine("WRITE"):

@@ -1,9 +1,10 @@
 environment               = "dev"
 log_level                 = "debug"
-service_url               = "https://dev-data-api.globalforestwatch.org"  # fake, needed for CloudFront
+service_url               = "https://dev-data-api.globalforestwatch.org" # fake, needed for CloudFront
 rw_api_url                = "https://api.resourcewatch.org"
 desired_count             = 1
 auto_scaling_min_capacity = 1
 auto_scaling_max_capacity = 5
 lambda_analysis_workspace = "features-lat_lon"
 key_pair                  = "dmannarino_gfw"
+new_relic_license_key_arn = "arn:aws:secretsmanager:us-east-1:563860007740:secret:newrelic/license_key-lolw24"

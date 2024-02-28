@@ -2,8 +2,10 @@ import json
 import os
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, Tuple
+from uuid import UUID
 
 import pytest
+import pytest_asyncio
 from _pytest.monkeypatch import MonkeyPatch
 from alembic.config import main
 from fastapi.testclient import TestClient
@@ -20,6 +22,8 @@ from tests_v2.fixtures.creation_options.versions import (
     RASTER_CREATION_OPTIONS,
     VECTOR_SOURCE_CREATION_OPTIONS,
 )
+from tests_v2.fixtures.metadata.dataset import DATASET_METADATA
+from tests_v2.fixtures.metadata.version import VERSION_METADATA
 from tests_v2.utils import (
     BatchJobMock,
     _create_vector_source_assets,
@@ -33,8 +37,7 @@ from tests_v2.utils import (
 )
 
 
-@pytest.fixture()
-@pytest.mark.asyncio
+@pytest_asyncio.fixture
 async def db():
     """In between tests, tear down/set up all DBs."""
     main(["--raiseerr", "upgrade", "head"])
@@ -44,7 +47,7 @@ async def db():
 
 @pytest.fixture(scope="module")
 def module_db():
-    """make sure that the db is only initialized and teared down once per
+    """make sure that the db is only initialized and torn down once per
     module."""
     main(["--raiseerr", "upgrade", "head"])
     yield
@@ -66,8 +69,7 @@ def init_db():
         yield
 
 
-@pytest.fixture()
-@pytest.mark.asyncio
+@pytest_asyncio.fixture
 async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
@@ -91,8 +93,7 @@ async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides = {}
 
 
-@pytest.fixture()
-@pytest.mark.asyncio
+@pytest_asyncio.fixture
 async def async_client_unauthenticated(
     db, init_db
 ) -> AsyncGenerator[AsyncClient, None]:
@@ -106,8 +107,7 @@ async def async_client_unauthenticated(
     app.dependency_overrides = {}
 
 
-@pytest.fixture()
-@pytest.mark.asyncio
+@pytest_asyncio.fixture
 async def async_client_no_admin(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
@@ -131,8 +131,7 @@ async def async_client_no_admin(db, init_db) -> AsyncGenerator[AsyncClient, None
     app.dependency_overrides = {}
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
 async def generic_dataset(
     async_client: AsyncClient,
 ) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
@@ -140,21 +139,19 @@ async def generic_dataset(
 
     # Create dataset
     dataset_name: str = "my_first_dataset"
-    dataset_metadata: Dict[str, Any] = {}
 
     await async_client.put(
-        f"/dataset/{dataset_name}", json={"metadata": dataset_metadata}
+        f"/dataset/{dataset_name}", json={"metadata": DATASET_METADATA}
     )
 
     # Yield dataset name and associated metadata
-    yield dataset_name, dataset_metadata
+    yield dataset_name, DATASET_METADATA
 
     # Clean up
     await async_client.delete(f"/dataset/{dataset_name}")
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
 async def generic_vector_source_version(
     async_client: AsyncClient,
     generic_dataset: Tuple[str, str],
@@ -164,7 +161,27 @@ async def generic_vector_source_version(
 
     dataset_name, _ = generic_dataset
     version_name: str = "v1"
-    version_metadata: Dict[str, Any] = {}
+
+    await create_vector_source_version(
+        async_client, dataset_name, version_name, monkeypatch
+    )
+
+    # yield version
+    yield dataset_name, version_name, VERSION_METADATA
+
+    # clean up
+    await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
+
+
+# Create a vector version, given the name of an existing dataset, plus a new version
+# name.
+async def create_vector_source_version(
+    async_client: AsyncClient,
+    dataset_name: str,
+    version_name: str,
+    monkeypatch: MonkeyPatch,
+):
+    """Create generic vector source version."""
 
     # patch all functions which reach out to external services
     batch_job_mock = BatchJobMock()
@@ -181,7 +198,7 @@ async def generic_vector_source_version(
     response = await async_client.put(
         f"/dataset/{dataset_name}/{version_name}",
         json={
-            "metadata": version_metadata,
+            "metadata": VERSION_METADATA,
             "creation_options": VECTOR_SOURCE_CREATION_OPTIONS,
         },
     )
@@ -214,31 +231,22 @@ async def generic_vector_source_version(
     response = await async_client.get(f"/dataset/{dataset_name}/{version_name}")
     assert response.json()["data"]["status"] == "saved"
 
-    # yield version
-    yield dataset_name, version_name, version_metadata
 
-    # clean up
-    await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
-
-
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
 async def generic_raster_version(
     async_client: AsyncClient,
     generic_dataset: Tuple[str, str],
     monkeypatch: MonkeyPatch,
 ) -> AsyncGenerator[Tuple[str, str, Dict[str, Any]], None]:
-    """Create generic vector source version."""
+    """Create generic raster source version."""
 
     dataset_name, _ = generic_dataset
     version_name: str = "v1"
-    version_metadata: Dict[str, Any] = {}
 
     # patch all functions which reach out to external services
     batch_job_mock = BatchJobMock()
     monkeypatch.setattr(versions, "_verify_source_file_access", void_coroutine)
     monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
-    monkeypatch.setattr(vector_source_assets, "is_zipped", bool_function_closure(False))
     monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
     monkeypatch.setattr(raster_tile_set_assets, "get_extent", get_extent_mocked)
     monkeypatch.setattr(
@@ -249,14 +257,16 @@ async def generic_raster_version(
     await async_client.put(
         f"/dataset/{dataset_name}/{version_name}",
         json={
-            "metadata": version_metadata,
+            "metadata": VERSION_METADATA,
             "creation_options": RASTER_CREATION_OPTIONS,
         },
     )
-
-    # mock batch processes
-    # TODO need to add anything here?
-    # await _create_vector_source_assets(dataset_name, version_name)
+    await async_client.patch(
+        f"/dataset/{dataset_name}/{version_name}",
+        json={
+            "is_latest": True,
+        },
+    )
 
     # Set all pending tasks to success
     for job_id in batch_job_mock.jobs:
@@ -282,14 +292,55 @@ async def generic_raster_version(
     assert response.json()["data"]["status"] == "saved"
 
     # yield version
-    yield dataset_name, version_name, version_metadata
+    yield dataset_name, version_name, VERSION_METADATA
 
     # clean up
     await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
+async def licensed_dataset(
+    async_client: AsyncClient,
+) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
+    """Create licensed dataset."""
+
+    # Create dataset
+    dataset_name: str = "wdpa_licensed_protected_areas"
+
+    await async_client.put(
+        f"/dataset/{dataset_name}", json={"metadata": DATASET_METADATA}
+    )
+
+    # Yield dataset name and associated metadata
+    yield dataset_name, DATASET_METADATA
+
+    # Clean up
+    await async_client.delete(f"/dataset/{dataset_name}")
+
+
+@pytest_asyncio.fixture
+async def licensed_version(
+    async_client: AsyncClient,
+    licensed_dataset: Tuple[str, str],
+    monkeypatch: MonkeyPatch,
+) -> AsyncGenerator[Tuple[str, str, Dict[str, Any]], None]:
+    """Create licensed version."""
+
+    dataset_name, _ = licensed_dataset
+    version_name: str = "v1"
+
+    await create_vector_source_version(
+        async_client, dataset_name, version_name, monkeypatch
+    )
+
+    # yield version
+    yield dataset_name, version_name, VERSION_METADATA
+
+    # clean up
+    await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
+
+
+@pytest_asyncio.fixture
 async def apikey(
     async_client: AsyncClient, monkeypatch: MonkeyPatch
 ) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
@@ -315,8 +366,7 @@ async def apikey(
     await async_client.delete(f"/auth/apikey/{api_key}")
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
 async def apikey_unrestricted(
     async_client: AsyncClient, monkeypatch: MonkeyPatch
 ) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
@@ -352,6 +402,11 @@ def geojson_huge():
     return _load_geojson("test_huge")
 
 
+@pytest.fixture()
+def geojson_bad():
+    return _load_geojson("test_bad")
+
+
 def _load_geojson(name):
     with open(f"{os.path.dirname(__file__)}/fixtures/geojson/{name}.geojson") as src:
         geojson = json.load(src)
@@ -359,8 +414,7 @@ def _load_geojson(name):
     return geojson
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
 async def geostore_huge(
     async_client: AsyncClient, geojson_huge
 ) -> AsyncGenerator[str, None]:
@@ -373,8 +427,20 @@ async def geostore_huge(
     # Nothing to do here. No clean up function for geostore_huge.
 
 
-@pytest.fixture()
-@pytest.mark.asyncio()
+@pytest_asyncio.fixture
+async def geostore_bad(
+    async_client: AsyncClient, geojson_bad
+) -> AsyncGenerator[str, None]:
+    # Get geostore ID
+    geostore_id = await _create_geostore(geojson_bad, async_client)
+
+    yield geostore_id
+
+    # Clean up
+    # Nothing to do here. No clean up function for geostore_bad.
+
+
+@pytest_asyncio.fixture
 async def geostore(async_client: AsyncClient, geojson) -> AsyncGenerator[str, None]:
     # Get geostore ID
     geostore_id = await _create_geostore(geojson, async_client)
@@ -394,3 +460,10 @@ async def _create_geostore(geojson: Dict[str, Any], async_client: AsyncClient) -
     assert response.status_code == 201
 
     return response.json()["data"]["gfw_geostore_id"]
+
+
+async def mock_callback(task_id: UUID, change_log: ChangeLog):
+    async def dummy_function():
+        pass
+
+    return dummy_function

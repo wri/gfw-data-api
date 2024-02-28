@@ -8,6 +8,7 @@ from pydantic.types import PositiveInt, StrictInt
 from ...settings.globals import DEFAULT_JOB_DURATION, PIXETL_DEFAULT_RESAMPLING
 from ..enum.assets import AssetType, is_default_asset
 from ..enum.creation_options import (
+    ConstraintType,
     Delimiters,
     IndexType,
     PartitionType,
@@ -46,8 +47,26 @@ NoDataType = Union[StrictInt, NonNumericFloat]
 class Index(StrictBaseModel):
     index_type: IndexType
     column_names: List[str] = Field(
-        ..., description="Columns to be used by index", regex=COLUMN_REGEX
+        ...,
+        description="Columns to be used by index",
+        regex=COLUMN_REGEX,
+        min_items=1,
+        max_items=32,  # A PostgreSQL upper limit
     )
+
+
+class Constraint(StrictBaseModel):
+    constraint_type: ConstraintType
+    column_names: List[str] = Field(
+        ...,
+        description="Columns included in the constraint",
+        regex=COLUMN_REGEX,
+        min_items=1,
+        max_items=32,  # A PostgreSQL upper limit
+    )
+
+    class Config:
+        orm_mode = True
 
 
 class HashPartitionSchema(StrictBaseModel):
@@ -90,8 +109,8 @@ class Partitions(StrictBaseModel):
 
 
 class FieldType(StrictBaseModel):
-    field_name: str = Field(..., description="Name of field", regex=COLUMN_REGEX)
-    field_type: PGType = Field(..., description="Type of field (PostgreSQL type).")
+    name: str = Field(..., description="Name of field", regex=COLUMN_REGEX)
+    data_type: PGType = Field(..., description="Type of field (PostgreSQL data type).")
 
 
 class RasterTileSetAssetCreationOptions(StrictBaseModel):
@@ -158,7 +177,7 @@ class RasterTileSetSourceCreationOptions(PixETLCreationOptions):
     source_type: RasterSourceType = Field(..., description="Source type of input file.")
     source_driver: RasterDrivers = Field(
         ...,
-        description="Driver of source file. Must be an OGR driver",
+        description="Driver of source file. Must be a GDAL driver",
     )
 
 
@@ -191,18 +210,22 @@ class VectorSourceCreationOptions(StrictBaseModel):
     )
     create_dynamic_vector_tile_cache: bool = Field(
         True,
-        description="By default, vector sources will implicitly create a dynamic vector tile cache. "
-        "Disable this option by setting value to `false`",
+        description=(
+            "By default, vector sources will implicitly create a dynamic vector tile cache. "
+            "Disable this option by setting value to `false`"
+        ),
     )
     add_to_geostore: bool = Field(
         True,
-        description="Include features to geostore, to make geometries searchable via geostore endpoint.",
+        description="Make geometries searchable via geostore endpoint.",
     )
     timeout: int = DEFAULT_JOB_DURATION
 
     @validator("source_uri")
     def validate_source_uri(cls, v, values, **kwargs):
-        if values.get("source_driver") != VectorDrivers.csv:
+        if values.get("source_driver") == VectorDrivers.csv:
+            assert len(v) >= 1, "CSV sources require at least one input file"
+        else:
             assert (
                 len(v) == 1
             ), "Non-CSV vector sources require one and only one input file"
@@ -212,7 +235,6 @@ class VectorSourceCreationOptions(StrictBaseModel):
 class TableAssetCreationOptions(StrictBaseModel):
     has_header: bool = Field(True, description="Input file has header. Must be true")
     delimiter: Delimiters = Field(..., description="Delimiter used in input file")
-
     latitude: Optional[str] = Field(
         None, description="Column with latitude coordinate", regex=COLUMN_REGEX
     )
@@ -226,6 +248,9 @@ class TableAssetCreationOptions(StrictBaseModel):
         None, description="Partitioning schema (optional)"
     )
     indices: List[Index] = Field([], description="List of indices to add to table")
+    constraints: Optional[List[Constraint]] = Field(
+        None, description="List of constraints to add to table. (optional)"
+    )
     table_schema: Optional[List[FieldType]] = Field(
         None,
         description="List of Field Types. Missing field types will be inferred. (optional)",
@@ -237,6 +262,17 @@ class TableAssetCreationOptions(StrictBaseModel):
         "Disable this option by setting value to `false`",
     )
     timeout: int = DEFAULT_JOB_DURATION
+
+    @validator("constraints")
+    def validate_max_1_unique_constraints(cls, v, values, **kwargs):
+        if v is not None:
+            unique_constraints = [
+                c for c in v if c.constraint_type == ConstraintType.unique
+            ]
+            assert (
+                len(unique_constraints) < 2
+            ), "Currently cannot specify more than 1 unique constraint"
+        return v
 
 
 class TableSourceCreationOptions(TableAssetCreationOptions):
@@ -344,19 +380,27 @@ class StaticVectorFileCreationOptions(StrictBaseModel):
     )
 
 
+class StaticVector1x1CreationOptions(StaticVectorFileCreationOptions):
+    include_tile_id: Optional[bool] = Field(
+        False,
+        description="Whether or not to include the tile_id of each feature"
+    )
+
+
 SourceCreationOptions = Union[
-    RasterTileSetSourceCreationOptions,
     TableSourceCreationOptions,
+    RasterTileSetSourceCreationOptions,
     VectorSourceCreationOptions,
 ]
 
 OtherCreationOptions = Union[
+    TableAssetCreationOptions,
     RasterTileCacheCreationOptions,
     StaticVectorTileCacheCreationOptions,
     StaticVectorFileCreationOptions,
+    StaticVector1x1CreationOptions,
     DynamicVectorTileCacheCreationOptions,
     RasterTileSetAssetCreationOptions,
-    TableAssetCreationOptions,
 ]
 
 CreationOptions = Union[SourceCreationOptions, OtherCreationOptions]
@@ -376,7 +420,7 @@ AssetCreationOptionsLookup: Dict[str, Type[OtherCreationOptions]] = {
     AssetType.dynamic_vector_tile_cache: DynamicVectorTileCacheCreationOptions,
     AssetType.static_vector_tile_cache: StaticVectorTileCacheCreationOptions,
     AssetType.ndjson: StaticVectorFileCreationOptions,
-    AssetType.grid_1x1: StaticVectorFileCreationOptions,
+    AssetType.grid_1x1: StaticVector1x1CreationOptions,
     AssetType.shapefile: StaticVectorFileCreationOptions,
     AssetType.geopackage: StaticVectorFileCreationOptions,
     AssetType.raster_tile_set: RasterTileSetAssetCreationOptions,

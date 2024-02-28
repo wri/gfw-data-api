@@ -81,6 +81,10 @@ WRITER_HOST: str = config("DB_HOST", cast=str, default=DB_WRITER_SECRET["host"])
 WRITER_PORT: int = config("DB_PORT", cast=int, default=DB_WRITER_SECRET["port"])
 WRITER_DBNAME = config("DATABASE", cast=str, default=DB_WRITER_SECRET["dbname"])
 
+if ENV == "dev":
+    NAME_SUFFIX = config("NAME_SUFFIX", cast=str)
+    READER_DBNAME = f"{READER_DBNAME}{NAME_SUFFIX}"
+    WRITER_DBNAME = f"{WRITER_DBNAME}{NAME_SUFFIX}"
 
 DATABASE_CONFIG: DatabaseURL = DatabaseURL(
     drivername="asyncpg",
@@ -181,3 +185,7 @@ INTERNAL_DOMAINS = config("INTERNAL_DOMAINS", cast=str, default=default_domains)
 GOOGLE_APPLICATION_CREDENTIALS = config(
     "GOOGLE_APPLICATION_CREDENTIALS", cast=str, default="/root/.gcs/private_key.json"
 )
+
+# Datasets that require admin privileges to do a query. (Extra protection on
+# commercial datasets which shouldn't be downloaded in any way.)
+PROTECTED_QUERY_DATASETS = ["wdpa_licensed_protected_areas"]

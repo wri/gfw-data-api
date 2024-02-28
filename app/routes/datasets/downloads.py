@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from aiohttp import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Query
+
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 
@@ -36,7 +37,7 @@ router: APIRouter = APIRouter()
 async def download_json(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
@@ -117,7 +118,7 @@ async def download_json_post(
 async def download_csv(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID."),
+    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
@@ -174,8 +175,14 @@ async def download_csv_post(
 
     await _check_downloadability(dataset, version)
 
+    geostore: Optional[GeostoreCommon] = None
+    if request.geometry:
+        geostore = GeostoreCommon(
+            geojson=request.geometry, geostore_id=uuid4(), area__ha=0, bbox=[0, 0, 0, 0]
+        )
+
     data: StringIO = await _query_dataset_csv(
-        dataset, version, request.sql, request.geometry, request.delimiter
+        dataset, version, request.sql, geostore, request.delimiter
     )
 
     response = CSVStreamingResponse(iter([data.getvalue()]), filename=request.filename)

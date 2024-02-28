@@ -50,6 +50,7 @@ data "template_file" "container_definition" {
     project           = local.project
     environment       = var.environment
     aws_region        = var.region
+    name_suffix       = replace(local.name_suffix, "-", "_")
 
     data_lake_bucket         = data.terraform_remote_state.core.outputs.data-lake_bucket
     tile_cache_bucket        = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_name
@@ -78,6 +79,9 @@ data "template_file" "container_definition" {
     api_gateway_external_usage_plan = aws_api_gateway_usage_plan.external.id
     api_gateway_stage_name          = aws_api_gateway_stage.api_gw_stage.stage_name
     internal_domains                = var.internal_domains
+
+    # TODO move to core-infrastructure when operational
+    new_relic_license_key_arn = var.new_relic_license_key_arn
   }
   depends_on = [
     module.batch_job_queues.aurora_job_definition,
@@ -155,6 +159,14 @@ data "aws_iam_policy_document" "read_gcs_secret_doc" {
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
     resources = [data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn]
-    effect = "Allow"
+    effect    = "Allow"
+  }
+}
+
+data "aws_iam_policy_document" "read_new_relic_lic" {
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [var.new_relic_license_key_arn]
+    effect    = "Allow"
   }
 }

@@ -16,8 +16,9 @@ from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import TextClause
 
 from ...application import db
-from ...crud import assets
+from ...crud import assets, metadata as metadata_crud
 from ...models.orm.assets import Asset as ORMAsset
+from ...models.pydantic.asset_metadata import FieldMetadataOut
 from ...models.pydantic.features import FeaturesResponse
 from ...routes import DATE_REGEX, dataset_version_dependency, version_dependency
 
@@ -169,8 +170,8 @@ def geodesic_point_buffer(lat: float, lng: float, zoom: int) -> geoPolygon:
 
 
 async def _get_fields(dataset: str, version: str) -> List[Dict[str, Any]]:
-    asset: ORMAsset = await assets.get_default_asset(dataset, version)
-    return asset.fields
+    orm_asset: ORMAsset = await assets.get_default_asset(dataset, version)
+    return await metadata_crud.get_asset_fields_dicts(orm_asset)
 
 
 def _get_buffer_distance(zoom: int) -> float:
@@ -233,9 +234,7 @@ async def _get_features_by_location_sql(
 
     all_columns = await _get_fields(dataset, version)
     feature_columns = [
-        db.column(field["field_name"])
-        for field in all_columns
-        if field["is_feature_info"]
+        db.column(field["name"]) for field in all_columns if field["is_feature_info"]
     ]
 
     sql: Select = (

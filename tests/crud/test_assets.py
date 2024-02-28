@@ -18,7 +18,10 @@ from app.crud.datasets import create_dataset
 from app.crud.versions import create_version
 from app.errors import RecordAlreadyExistsError, RecordNotFoundError
 from app.models.pydantic.change_log import ChangeLog
-from app.models.pydantic.metadata import DatabaseTableMetadata
+from app.models.pydantic.asset_metadata import DatabaseTableMetadata
+from app.models.pydantic.metadata import VersionMetadata, DatasetMetadata
+
+from ..utils import dataset_metadata, version_metadata, asset_metadata
 
 
 @pytest.mark.asyncio
@@ -39,15 +42,9 @@ async def test_assets():
     # There should be no assert for current version
     # This will throw an error b/c when initialized correctly,
     # there will be always a default asset
-    result = ""
-    try:
-        await get_assets(dataset_name, version_name)
-    except RecordNotFoundError as e:
-        result = str(e)
+    assets = await get_assets_by_filter(dataset=dataset_name, version=version_name)
 
-    assert (
-        result == f"No assets for version with name {dataset_name}.{version_name} found"
-    )
+    assert len(assets) == 0
 
     # Writing to DB using context engine with "READ" shouldn't work
     async with ContextEngine("READ"):
@@ -80,7 +77,7 @@ async def test_assets():
     assert new_row.status == "pending"
     assert new_row.is_managed is True
     assert new_row.creation_options == {}
-    assert new_row.metadata == {}
+    assert new_row.metadata == None
     assert new_row.change_log == []
 
     # This shouldn't work a second time
@@ -102,7 +99,7 @@ async def test_assets():
         )
 
     # There should be an entry now
-    rows = await get_assets(dataset_name, version_name)
+    rows = await get_assets_by_filter(dataset=dataset_name, version=version_name)
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
@@ -145,10 +142,8 @@ async def test_assets():
     assert result == f"Could not find requested asset {_asset_id}"
 
     # It should be possible to update a dataset using a context engine
-    metadata = DatabaseTableMetadata(
-        title="Test Title",
-        tags=["tag1", "tag2"],
-    )
+    fields = asset_metadata["fields"]
+    metadata = DatabaseTableMetadata(**asset_metadata)
     logs = ChangeLog(date_time=datetime.now(), status="pending", message="all good")
     async with ContextEngine("WRITE"):
         row = await update_asset(
@@ -156,8 +151,8 @@ async def test_assets():
             metadata=metadata.dict(by_alias=True),
             change_log=[logs.dict(by_alias=True)],
         )
-    assert row.metadata["title"] == "Test Title"
-    assert row.metadata["tags"] == ["tag1", "tag2"]
+    assert row.metadata.fields[0].name == fields[0]["name"]
+    assert row.metadata.fields[0].data_type == fields[0]["data_type"]
 
     assert row.change_log[0]["date_time"] == json.loads(logs.json())["date_time"]
     assert row.change_log[0]["status"] == logs.dict(by_alias=True)["status"]
@@ -182,18 +177,16 @@ async def test_assets_metadata():
     dataset = "test"
     version = "v1.1.1"
 
-    dataset_metadata = {"title": "Title", "subtitle": "Subtitle"}
-
-    version_metadata = {"subtitle": "New Subtitle", "version_number": version}
-
-    asset_metadata = {
-        "title": "New Title",
-    }
-
     # Add a dataset
     async with ContextEngine("WRITE"):
-        await create_dataset(dataset, metadata=dataset_metadata)
-        await create_version(dataset, version, metadata=version_metadata)
+        await create_dataset(
+            dataset, metadata=DatasetMetadata(**dataset_metadata).dict(by_alias=False)
+        )
+        await create_version(
+            dataset,
+            version,
+            metadata=VersionMetadata(**version_metadata).dict(by_alias=True),
+        )
         new_asset = await create_asset(
             dataset,
             version,
@@ -202,42 +195,51 @@ async def test_assets_metadata():
             metadata=asset_metadata,
         )
 
-    result_metadata = {
-        "title": "New Title",
-        "subtitle": "New Subtitle",
-        "version_number": version,
-    }
-
     asset_id = new_asset.asset_id
-    assert new_asset.metadata == result_metadata
+    assert new_asset.metadata.fields[0].name == asset_metadata["fields"][0]["name"]
+    assert (
+        new_asset.metadata.fields[0].data_type
+        == asset_metadata["fields"][0]["data_type"]
+    )
 
     async with ContextEngine("READ"):
         asset = await get_asset(asset_id)
-    assert asset.metadata == result_metadata
+    assert asset.metadata.fields[0].name == asset_metadata["fields"][0]["name"]
+    assert (
+        asset.metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
+    )
 
     async with ContextEngine("READ"):
-        assets = await get_assets(dataset, version)
-    assert assets[0].metadata == result_metadata
+        assets = await get_assets_by_filter(dataset=dataset, version=version)
+    assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
+    assert (
+        assets[0].metadata.fields[0].data_type
+        == asset_metadata["fields"][0]["data_type"]
+    )
 
     async with ContextEngine("READ"):
         assets = await get_assets_by_filter(asset_types=["Database table"])
-    assert assets[0].metadata == result_metadata
+    assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
+    assert (
+        assets[0].metadata.fields[0].data_type
+        == asset_metadata["fields"][0]["data_type"]
+    )
 
     async with ContextEngine("READ"):
         assets = await get_assets_by_filter()
-    assert assets[0].metadata == result_metadata
-
-    result_metadata = {
-        "title": "New Title",
-        "subtitle": "New Subtitle",
-        "source": "Source",
-        "version_number": version,
-    }
+    assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
+    assert (
+        assets[0].metadata.fields[0].data_type
+        == asset_metadata["fields"][0]["data_type"]
+    )
 
     async with ContextEngine("WRITE"):
-        asset = await update_asset(asset_id, metadata={"source": "Source"})
-    assert asset.metadata == result_metadata
+        asset = await update_asset(asset_id, metadata={"resolution": 10})
+    assert asset.metadata.resolution == 10
 
     async with ContextEngine("WRITE"):
         asset = await delete_asset(asset_id)
-    assert asset.metadata == result_metadata
+    assert asset.metadata.fields[0].name == asset_metadata["fields"][0]["name"]
+    assert (
+        asset.metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
+    )

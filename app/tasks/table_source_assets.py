@@ -3,6 +3,7 @@ import math
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from ..models.enum.creation_options import ConstraintType
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import (
     Index,
@@ -10,9 +11,10 @@ from ..models.pydantic.creation_options import (
     TableSourceCreationOptions,
 )
 from ..models.pydantic.jobs import Job, PostgresqlClientJob
-from ..settings.globals import AURORA_JOB_QUEUE_FAST, CHUNK_SIZE
+from ..settings.globals import AURORA_JOB_QUEUE_FAST
 from ..tasks import Callback, callback_constructor, writer_secrets
 from ..tasks.batch import BATCH_DEPENDENCY_LIMIT, execute
+from .utils import chunk_list
 
 
 async def table_source_asset(
@@ -21,7 +23,6 @@ async def table_source_asset(
     asset_id: UUID,
     input_data: Dict[str, Any],
 ) -> ChangeLog:
-
     creation_options = TableSourceCreationOptions(**input_data["creation_options"])
     if creation_options.source_uri:
         source_uris: List[str] = creation_options.source_uri
@@ -39,9 +40,14 @@ async def table_source_asset(
         version,
         "-s",
         source_uris[0],
-        "-m",
-        json.dumps(creation_options.dict(by_alias=True)["table_schema"]),
     ]
+    if creation_options.table_schema:
+        command.extend(
+            [
+                "-m",
+                json.dumps(creation_options.dict(by_alias=True)["table_schema"]),
+            ]
+        )
     if creation_options.partitions:
         command.extend(
             [
@@ -51,6 +57,13 @@ async def table_source_asset(
                 creation_options.partitions.partition_column,
             ]
         )
+    if creation_options.constraints:
+        unique_constraint_columns = []
+        for constraint in creation_options.constraints:
+            if constraint.constraint_type == ConstraintType.unique:
+                unique_constraint_columns += constraint.column_names
+
+        command.extend(["-u", ",".join(unique_constraint_columns)])
 
     job_env: List[Dict[str, Any]] = writer_secrets + [
         {"name": "ASSET_ID", "value": str(asset_id)}
@@ -66,8 +79,9 @@ async def table_source_asset(
     )
 
     # Create partitions
+    partition_jobs: List[Job] = list()
     if creation_options.partitions:
-        partition_jobs: List[Job] = _create_partition_jobs(
+        partition_jobs = _create_partition_jobs(
             dataset,
             version,
             creation_options.partitions,
@@ -76,21 +90,42 @@ async def table_source_asset(
             callback,
             creation_options.timeout,
         )
-    else:
-        partition_jobs = list()
 
-    # Load data
+    # Add geometry columns
+    geometry_jobs: List[Job] = list()
+    if creation_options.latitude and creation_options.longitude:
+        geometry_jobs.append(
+            PostgresqlClientJob(
+                dataset=dataset,
+                job_name="add_point_geometry",
+                command=[
+                    "add_point_geometry_fields.sh",
+                    "-d",
+                    dataset,
+                    "-v",
+                    version,
+                ],
+                environment=job_env,
+                parents=[create_table_job.job_name]
+                + [job.job_name for job in partition_jobs],
+                callback=callback,
+                attempt_duration_seconds=creation_options.timeout,
+            ),
+        )
+
+    # Load data and fill geometry fields if lat, lng specified
     load_data_jobs: List[Job] = list()
 
-    parents = [create_table_job.job_name]
-    parents.extend([job.job_name for job in partition_jobs])
-
-    # We can break into at most BATCH_DEPENDENCY_LIMIT parallel jobs, otherwise future jobs will hit the dependency
-    # limit, so break sources into chunks
-    chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
-    uri_chunks = [
-        source_uris[x : x + chunk_size] for x in range(0, len(source_uris), chunk_size)
+    load_data_job_parents = [
+        create_table_job.job_name,
+        *[job.job_name for job in geometry_jobs + partition_jobs],
     ]
+
+    # We can break into at most BATCH_DEPENDENCY_LIMIT parallel jobs
+    # (otherwise future jobs will hit the dependency limit) so break
+    # source_uris into chunks
+    chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
+    uri_chunks = chunk_list(source_uris, chunk_size)
 
     for i, uri_chunk in enumerate(uri_chunks):
         command = [
@@ -109,48 +144,28 @@ async def table_source_asset(
             command.append("-s")
             command.append(uri)
 
+        if creation_options.latitude and creation_options.longitude:
+            command += [
+                "--lat",
+                creation_options.latitude,
+                "--lng",
+                creation_options.longitude,
+            ]
+
         load_data_jobs.append(
             PostgresqlClientJob(
                 dataset=dataset,
-                job_name=f"load_data_{i}",
+                job_name=f"load_tabular_data_{i}",
                 command=command,
                 environment=job_env,
-                parents=parents,
+                parents=load_data_job_parents,
                 callback=callback,
                 attempt_duration_seconds=creation_options.timeout,
             )
         )
 
-    # Add geometry columns and update geometries
-    geometry_jobs: List[Job] = list()
-    if creation_options.latitude and creation_options.longitude:
-        geometry_jobs.append(
-            PostgresqlClientJob(
-                dataset=dataset,
-                job_name="add_point_geometry",
-                command=[
-                    "add_point_geometry.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "--lat",
-                    creation_options.latitude,
-                    "--lng",
-                    creation_options.longitude,
-                ],
-                environment=job_env,
-                parents=[job.job_name for job in load_data_jobs],
-                callback=callback,
-                attempt_duration_seconds=creation_options.timeout,
-            ),
-        )
-
-    # Add indicies
+    # Add indices
     index_jobs: List[Job] = list()
-    parents = [job.job_name for job in load_data_jobs]
-    parents.extend([job.job_name for job in geometry_jobs])
-
     for index in creation_options.indices:
         index_jobs.append(
             PostgresqlClientJob(
@@ -167,30 +182,26 @@ async def table_source_asset(
                     "-x",
                     index.index_type,
                 ],
-                parents=parents,
+                parents=[job.job_name for job in load_data_jobs],
                 environment=job_env,
                 callback=callback,
                 attempt_duration_seconds=creation_options.timeout,
             )
         )
 
-    parents = [job.job_name for job in load_data_jobs]
-    parents.extend([job.job_name for job in geometry_jobs])
-    parents.extend([job.job_name for job in index_jobs])
-
+    # Add clusters
+    cluster_jobs: List[Job] = list()
     if creation_options.cluster:
-        cluster_jobs: List[Job] = _create_cluster_jobs(
+        cluster_jobs = _create_cluster_jobs(
             dataset,
             version,
             creation_options.partitions,
             creation_options.cluster,
-            parents,
+            [job.job_name for job in load_data_jobs + index_jobs],
             job_env,
             callback,
             creation_options.timeout,
         )
-    else:
-        cluster_jobs = list()
 
     log: ChangeLog = await execute(
         [
@@ -228,12 +239,11 @@ async def append_table_source_asset(
     # Load data
     load_data_jobs: List[Job] = list()
 
-    # We can break into at most BATCH_DEPENDENCY_LIMIT parallel jobs, otherwise future jobs will hit the dependency
-    # limit, so break sources into chunks
+    # We can break into at most BATCH_DEPENDENCY_LIMIT parallel jobs
+    # (otherwise future jobs will hit the dependency limit)
+    # so break source_uris into chunks
     chunk_size = math.ceil(len(source_uris) / BATCH_DEPENDENCY_LIMIT)
-    uri_chunks = [
-        source_uris[x : x + chunk_size] for x in range(0, len(source_uris), chunk_size)
-    ]
+    uri_chunks = chunk_list(source_uris, chunk_size)
 
     for i, uri_chunk in enumerate(uri_chunks):
         command = [
@@ -251,11 +261,19 @@ async def append_table_source_asset(
         for uri in uri_chunk:
             command += ["-s", uri]
 
+        if creation_options.latitude and creation_options.longitude:
+            command += [
+                "--lat",
+                creation_options.latitude,
+                "--lng",
+                creation_options.longitude,
+            ]
+
         load_data_jobs.append(
             PostgresqlClientJob(
                 dataset=dataset,
                 job_queue=AURORA_JOB_QUEUE_FAST,
-                job_name=f"load_data_{i}",
+                job_name=f"load_tabular_data_{i}",
                 command=command,
                 environment=job_env,
                 callback=callback,
@@ -263,34 +281,7 @@ async def append_table_source_asset(
             )
         )
 
-    # Add geometry columns and update geometries
-    # TODO is it possible to do this only for new data?
-    geometry_jobs: List[Job] = list()
-    if creation_options.latitude and creation_options.longitude:
-        geometry_jobs.append(
-            PostgresqlClientJob(
-                dataset=dataset,
-                job_queue=AURORA_JOB_QUEUE_FAST,
-                job_name="update_point_geometry",
-                command=[
-                    "update_point_geometry.sh",
-                    "-d",
-                    dataset,
-                    "-v",
-                    version,
-                    "--lat",
-                    creation_options.latitude,
-                    "--lng",
-                    creation_options.longitude,
-                ],
-                environment=job_env,
-                parents=[job.job_name for job in load_data_jobs],
-                callback=callback,
-                attempt_duration_seconds=creation_options.timeout,
-            ),
-        )
-
-    log: ChangeLog = await execute([*load_data_jobs, *geometry_jobs])
+    log: ChangeLog = await execute(load_data_jobs)
 
     return log
 
@@ -312,7 +303,7 @@ def _create_partition_jobs(
     partition_jobs: List[PostgresqlClientJob] = list()
 
     if isinstance(partitions.partition_schema, list):
-        chunks = _chunk_list(
+        chunks = chunk_list(
             [schema.dict(by_alias=True) for schema in partitions.partition_schema]
         )
         for i, chunk in enumerate(chunks):
@@ -331,7 +322,6 @@ def _create_partition_jobs(
 
             partition_jobs.append(job)
     else:
-
         partition_schema = json.dumps(partitions.partition_schema.dict(by_alias=True))
         job = _partition_job(
             dataset,
@@ -396,13 +386,13 @@ def _create_cluster_jobs(
 
     if partitions:
         # When using partitions we need to cluster each partition table separately.
-        # Playing it save and cluster partition tables one after the other.
+        # Play it safe and cluster partition tables one after the other.
         # TODO: Still need to test if we can cluster tables which are part of the same partition concurrently.
         #  this would speed up this step by a lot. Partitions require a full lock on the table,
-        #  but I don't know if the lock is aquired for the entire partition or only the partition table.
+        #  but I don't know if the lock is acquired for the entire partition or only the partition table.
 
         if isinstance(partitions.partition_schema, list):
-            chunks = _chunk_list(
+            chunks = chunk_list(
                 [schema.dict(by_alias=True) for schema in partitions.partition_schema]
             )
             for i, chunk in enumerate(chunks):
@@ -506,8 +496,3 @@ def _cluster_partition_job(
         callback=callback,
         attempt_duration_seconds=timeout,
     )
-
-
-def _chunk_list(data: List[Any], chunk_size: int = CHUNK_SIZE) -> List[List[Any]]:
-    """Split list into chunks of fixed size."""
-    return [data[x : x + chunk_size] for x in range(0, len(data), chunk_size)]

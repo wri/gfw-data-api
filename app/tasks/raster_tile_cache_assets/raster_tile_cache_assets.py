@@ -4,6 +4,7 @@ from uuid import UUID
 import numpy as np
 from fastapi import HTTPException
 from fastapi.logger import logger
+from asyncpg import DataError
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
@@ -29,6 +30,7 @@ from app.tasks.raster_tile_cache_assets.utils import (
 )
 from app.utils.path import get_asset_uri, tile_uri_to_tiles_geojson
 
+from ...errors import RecordNotFoundError
 
 async def raster_tile_cache_asset(
     dataset: str,
@@ -204,9 +206,15 @@ async def raster_tile_cache_validator(
     Used in asset route. If validation fails, it will raise an
     HTTPException visible to user.
     """
-    source_asset: ORMAsset = await get_asset(
-        input_data["creation_options"]["source_asset_id"]
-    )
+    try:
+        source_asset: ORMAsset = await get_asset(
+            input_data["creation_options"]["source_asset_id"]
+        )
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except DataError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
     if (source_asset.dataset != dataset) or (source_asset.version != version):
         message: str = (
             "Dataset and version of source asset must match dataset and "
@@ -217,13 +225,13 @@ async def raster_tile_cache_validator(
     symbology_type = input_data["creation_options"].get("symbology", {}).get("type")
     if symbology_type:
         symbology_info = symbology_constructor[symbology_type]
-        req_input_bands: Optional[int] = symbology_info.req_input_bands
+        req_input_bands: Optional[List[int]] = symbology_info.req_input_bands
+        band_count = source_asset.creation_options.get("band_count", 1)
 
-        if req_input_bands and (
-            req_input_bands != source_asset.creation_options.get("band_count", 1)
-        ):
+        if req_input_bands and (band_count not in req_input_bands):
             message = (
                 f"Symbology type {symbology_type} requires a source "
-                f"asset with {req_input_bands} bands"
+                f"asset with one of {req_input_bands} bands, but has "
+                f"{band_count} band(s)."
             )
             raise HTTPException(status_code=400, detail=message)

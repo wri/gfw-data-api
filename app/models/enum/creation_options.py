@@ -38,6 +38,11 @@ class IndexType(str, Enum):
     hash = "hash"
 
 
+class ConstraintType(str, Enum):
+    __doc__ = "Constraint type"
+    unique = "unique"
+
+
 class TileStrategy(str, Enum):
     __doc__ = (
         "Tile strategy for generating vector tiles. "
@@ -83,3 +88,4 @@ class ColorMapType(str, Enum):
     date_conf_intensity_multi_8 = "date_conf_intensity_multi_8"
     date_conf_intensity_multi_16 = "date_conf_intensity_multi_16"
     year_intensity = "year_intensity"
+    value_intensity = "value_intensity"

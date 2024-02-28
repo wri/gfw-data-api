@@ -20,7 +20,7 @@ async def test_update_dataset__is_downloadable(generic_vector_source_version):
 
     # This should update the downstream versions and assets only
     async with ContextEngine("WRITE"):
-        await update_dataset(dataset, **{"is_downloadable": False, "metadata": {}})
+        await update_dataset(dataset, **{"is_downloadable": False, })
 
     dataset_row = await get_dataset(dataset)
     version_row = await get_version(dataset, version)

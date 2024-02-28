@@ -3,13 +3,13 @@ from typing import List
 from fastapi.logger import logger
 
 from ...models.orm.assets import Asset as ORMAsset
+from ...models.pydantic.asset_metadata import asset_metadata_factory
 from ...models.pydantic.assets import (
     Asset,
     AssetResponse,
     AssetsResponse,
     PaginatedAssetsResponse,
 )
-from ...models.pydantic.metadata import asset_metadata_factory
 from ...models.pydantic.responses import PaginationLinks, PaginationMeta
 
 
@@ -35,9 +35,12 @@ async def paginated_assets_response(
 
 
 async def _serialized_asset(asset_orm: ORMAsset) -> Asset:
+    metadata = asset_metadata_factory(asset_orm)
 
+    if hasattr(asset_orm, "metadata"):
+        delattr(asset_orm, "metadata")
     data: Asset = Asset.from_orm(asset_orm)
-    data.metadata = asset_metadata_factory(asset_orm.asset_type, asset_orm.metadata)
+    data.metadata = metadata
 
     logger.debug(f"Metadata: {data.metadata.dict(by_alias=True)}")
     return data
