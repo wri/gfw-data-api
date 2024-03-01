@@ -1,4 +1,5 @@
 from asyncio import Future
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Optional
 
@@ -42,23 +43,6 @@ class ContextualGino(Gino):
         self._bind = val
 
 
-app = FastAPI(title="GFW Data API", redoc_url="/")
-
-# Create Contextual Database, using default connection and pool size = 0
-# We will bind actual connection pools based on path operation using middleware
-# This allows us to query load-balanced Aurora read replicas for read-only operations
-# and Aurora Write Node for write operations
-db = ContextualGino(
-    app=app,
-    host=DATABASE_CONFIG.host,
-    port=DATABASE_CONFIG.port,
-    user=DATABASE_CONFIG.username,
-    password=DATABASE_CONFIG.password,
-    database=DATABASE_CONFIG.database,
-    pool_min_size=0,
-)
-
-
 class ContextEngine(object):
     def __init__(self, method):
         self.method = method
@@ -91,10 +75,8 @@ class ContextEngine(object):
         return engine
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initializing the database connections on startup."""
-
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     global WRITE_ENGINE
     global READ_ENGINE
 
@@ -114,12 +96,7 @@ async def startup_event():
         f"Database connection pool for read operation created: {READ_ENGINE.repr(color=True)}"
     )
 
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Closing the database connections on shutdown."""
-    global WRITE_ENGINE
-    global READ_ENGINE
+    yield
 
     if WRITE_ENGINE:
         logger.info(
@@ -137,3 +114,19 @@ async def shutdown_event():
         logger.info(
             f"Closed database connection for read operations {READ_ENGINE.repr(color=True)}"
         )
+
+app: FastAPI = FastAPI(title="GFW Data API", redoc_url="/", lifespan=lifespan)
+
+# Create Contextual Database, using default connection and pool size = 0
+# We will bind actual connection pools based on path operation using middleware
+# This allows us to query load-balanced Aurora read replicas for read-only operations
+# and Aurora Write Node for write operations
+db = ContextualGino(
+    app=app,
+    host=DATABASE_CONFIG.host,
+    port=DATABASE_CONFIG.port,
+    user=DATABASE_CONFIG.username,
+    password=DATABASE_CONFIG.password,
+    database=DATABASE_CONFIG.database,
+    pool_min_size=0,
+)
