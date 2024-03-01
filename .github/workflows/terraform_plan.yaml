@@ -9,7 +9,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Plan production
-      if: success() && github.ref_name == 'master'
+      if: success() && github.base_ref == 'master'
       env:
         ENV: production
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_production }}
@@ -18,7 +18,7 @@ jobs:
       run: ./scripts/infra plan -w ${{ github.base_ref }}
 
     - name: Plan staging
-      if: success() && github.ref_name == 'develop'
+      if: success() && github.base_ref == 'develop'
       env:
         ENV: staging
         AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_staging }}
