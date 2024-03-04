@@ -4,7 +4,7 @@ on: [delete]
 
 jobs:
   build:
-    if: contains(github.event.ref_type, 'branch') &&  (! github.event.ref_name == 'master') && (! github.event.ref_name == 'develop')
+    if: contains(github.event.ref_type, 'branch') &&  (! github.event.ref == 'refs/heads/master') && (! github.event.ref == 'refs/heads/develop')
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
@@ -17,7 +17,7 @@ jobs:
       run: ./scripts/delete_workspace -w ${{ github.event.ref }} -g "no_sha_available"
 
   build-temp:
-    if: contains(github.event.ref_type, 'branch') && github.event.ref_name == 'merge-from-master'
+    if: contains(github.event.ref_type, 'branch') && github.event.ref == 'refs/heads/merge-from-master'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
