@@ -15,16 +15,3 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_dev }}
         AWS_REGION: ${{ secrets.aws_region_dev }}
       run: ./scripts/delete_workspace -w ${{ github.event.ref }} -g "no_sha_available"
-
-  build-temp:
-    if: contains(github.event.ref_type, 'branch') && github.event.ref == 'merge-from-master'
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v1
-    - name: Destroy state and delete workspace
-      env:
-        ENV: production
-        AWS_ACCESS_KEY_ID: ${{ secrets.aws_key_production }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_production }}
-        AWS_REGION: ${{ secrets.aws_region_production }}
-      run: ./scripts/delete_workspace -w ${{ github.event.ref }} -g "no_sha_available"
