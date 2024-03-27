@@ -181,11 +181,25 @@ async def get_asset_metadata(asset_id: UUID):
 async def update_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
     """Update asset metadata."""
     fields = data.pop("fields", None)
+    bands = data.pop("bands", None)
 
     asset_metadata: ORMAssetMetadata = await get_asset_metadata(asset_id)
 
     if data:
         await asset_metadata.update(**data).apply()
+
+    bands_metadata = []
+    if bands:
+        for band in bands:
+            try:
+                band_metadata = await update_band_metadata(asset_metadata.id, **band)
+            except RecordNotFoundError:
+                band_metadata = await create_raster_band_metadata(
+                    asset_metadata.id, **band
+                )
+            bands_metadata.append(band_metadata)
+
+        asset_metadata.bands = bands_metadata
 
     fields_metadata = []
     if fields:
@@ -238,6 +252,14 @@ async def update_field_metadata(
     await field_metadata.update(**data).apply()
 
     return field_metadata
+
+
+async def update_band_metadata(metadata_id: UUID, **data) -> ORMFieldMetadata:
+    band_metadata: ORMRasterBandMetadata = await ORMRasterBandMetadata(metadata_id)
+
+    await band_metadata.update(**data).apply()
+
+    return band_metadata
 
 
 async def get_asset_fields(asset_metadata_id: UUID) -> List[ORMFieldMetadata]:
