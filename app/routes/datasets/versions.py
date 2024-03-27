@@ -573,7 +573,7 @@ def _verify_source_file_access(sources: List[str]) -> None:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Cannot access all of the source files. "
+                "Cannot access all of the source files (non-existent or access denied). "
                 f"Invalid sources: {invalid_sources}"
             ),
         )
