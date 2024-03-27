@@ -188,16 +188,13 @@ async def update_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
     if data:
         await asset_metadata.update(**data).apply()
 
-    bands_metadata = []
     if bands:
-        for band in bands:
-            try:
-                band_metadata = await update_band_metadata(asset_metadata.id, **band)
-            except RecordNotFoundError:
-                band_metadata = await create_raster_band_metadata(
-                    asset_metadata.id, **band
-                )
-            bands_metadata.append(band_metadata)
+        try:
+            bands_metadata = await update_band_metadata(asset_metadata.id, bands)
+        except RecordNotFoundError:
+            bands_metadata = await create_raster_band_metadata(
+                asset_metadata.id, **bands
+            )
 
         asset_metadata.bands = bands_metadata
 
@@ -254,12 +251,17 @@ async def update_field_metadata(
     return field_metadata
 
 
-async def update_band_metadata(metadata_id: UUID, **data) -> ORMFieldMetadata:
-    band_metadata: ORMRasterBandMetadata = await ORMRasterBandMetadata(metadata_id)
+async def update_band_metadata(metadata_id: UUID, bands) -> ORMFieldMetadata:
+    bands_metadata: List[
+        ORMRasterBandMetadata
+    ] = await ORMRasterBandMetadata.query.where(
+        ORMRasterBandMetadata.asset_metadata_id == metadata_id
+    ).gino.all()
 
-    await band_metadata.update(**data).apply()
+    for band, band_metadata in zip(bands, bands_metadata):
+        await band_metadata.update(**band).apply()
 
-    return band_metadata
+    return bands_metadata
 
 
 async def get_asset_fields(asset_metadata_id: UUID) -> List[ORMFieldMetadata]:
