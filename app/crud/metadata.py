@@ -4,7 +4,7 @@ from uuid import UUID
 
 from asyncpg import UniqueViolationError
 
-from ..errors import RecordAlreadyExistsError, RecordNotFoundError
+from ..errors import BadRequestError, RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
 from ..models.orm.asset_metadata import FieldMetadata as ORMFieldMetadata
 from ..models.orm.asset_metadata import RasterBandMetadata as ORMRasterBandMetadata
@@ -257,6 +257,11 @@ async def update_band_metadata(metadata_id: UUID, bands) -> ORMFieldMetadata:
     ] = await ORMRasterBandMetadata.query.where(
         ORMRasterBandMetadata.asset_metadata_id == metadata_id
     ).gino.all()
+
+    if len(bands) != len(bands_metadata):
+        raise BadRequestError(
+            f"Update request must include metadata for {len(bands)} bands."
+        )
 
     for band, band_metadata in zip(bands, bands_metadata):
         await band_metadata.update(**band).apply()
