@@ -4,7 +4,7 @@ from uuid import UUID
 
 from asyncpg import UniqueViolationError
 
-from ..errors import BadRequestError, RecordAlreadyExistsError, RecordNotFoundError
+from ..errors import RecordAlreadyExistsError, RecordNotFoundError
 from ..models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
 from ..models.orm.asset_metadata import FieldMetadata as ORMFieldMetadata
 from ..models.orm.asset_metadata import RasterBandMetadata as ORMRasterBandMetadata
@@ -188,15 +188,36 @@ async def update_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
     if data:
         await asset_metadata.update(**data).apply()
 
+    bands_metadata = []
     if bands:
-        try:
-            bands_metadata = await update_band_metadata(asset_metadata.id, bands)
-        except RecordNotFoundError:
-            bands_metadata = await create_raster_band_metadata(
-                asset_metadata.id, **bands
-            )
+        for band in bands:
+            try:
+                pixel_meaning = band.pop("pixel_meaning")
+                band_metadata = await update_band_metadata(
+                    asset_metadata.id, pixel_meaning, **band
+                )
+            except RecordNotFoundError:
+                bands_metadata = await create_raster_band_metadata(
+                    asset_metadata.id, **bands
+                )
+            bands_metadata.append(band_metadata)
 
         asset_metadata.bands = bands_metadata
+
+    fields_metadata = []
+    if fields:
+        for field in fields:
+            try:
+                field_metadata = await update_field_metadata(
+                    asset_metadata.id, field["name"], **field
+                )
+            except RecordNotFoundError:
+                field_metadata = await create_field_metadata(asset_metadata.id, **field)
+            fields_metadata.append(field_metadata)
+
+        asset_metadata.fields = fields_metadata
+
+    return asset_metadata
 
     fields_metadata = []
     if fields:
@@ -251,22 +272,16 @@ async def update_field_metadata(
     return field_metadata
 
 
-async def update_band_metadata(metadata_id: UUID, bands) -> ORMFieldMetadata:
-    bands_metadata: List[
-        ORMRasterBandMetadata
-    ] = await ORMRasterBandMetadata.query.where(
-        ORMRasterBandMetadata.asset_metadata_id == metadata_id
-    ).gino.all()
+async def update_band_metadata(
+    metadata_id: UUID, pixel_meaning: str, **data
+) -> ORMFieldMetadata:
+    band_metadata: ORMRasterBandMetadata = await get_asset_raster_band(
+        metadata_id, pixel_meaning
+    )
 
-    if len(bands) != len(bands_metadata):
-        raise BadRequestError(
-            f"Update request must include metadata for {len(bands)} bands."
-        )
+    await band_metadata.update(**data).apply()
 
-    for band, band_metadata in zip(bands, bands_metadata):
-        await band_metadata.update(**band).apply()
-
-    return bands_metadata
+    return band_metadata
 
 
 async def get_asset_fields(asset_metadata_id: UUID) -> List[ORMFieldMetadata]:
@@ -299,6 +314,21 @@ async def get_asset_field(asset_metadata_id: UUID, field_name: str) -> ORMFieldM
         raise RecordNotFoundError("No field metadata record found.")
 
     return field_metadata
+
+
+async def get_asset_raster_band(
+    asset_metadata_id: UUID, pixel_meaning: str
+) -> ORMRasterBandMetadata:
+    band_metadata: ORMRasterBandMetadata = await ORMRasterBandMetadata.get(
+        [asset_metadata_id, pixel_meaning]
+    )
+
+    if band_metadata is None:
+        raise RecordNotFoundError(
+            f"No band metadata record found for pixel meaning {pixel_meaning}."
+        )
+
+    return band_metadata
 
 
 def update_metadata(row: Base, parent: Base):

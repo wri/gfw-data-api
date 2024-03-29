@@ -104,11 +104,7 @@ async def update_asset(
     request: AssetUpdateIn,
     is_authorized: bool = Depends(is_admin),
 ) -> AssetResponse:
-    """Update Asset metadata.
-
-    For raster band metadata, raster band updates must include all bands
-    in the correct order. If no updated is needed for a band, pass `{}`.
-    """
+    """Update Asset metadata."""
 
     input_data = request.dict(exclude_none=True, by_alias=True)
 
