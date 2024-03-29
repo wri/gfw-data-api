@@ -39,6 +39,20 @@ asset_metadata = {
     "fields": [{"name": "field1", "data_type": "numeric", "unit": "meters"}]
 }
 
+raster_asset_metadata = {
+    "bands": [
+        {
+            "pixel_meaning": "year",
+            "values_table": {
+                "rows": [
+                    {"value": 1, "meaning": 2001},
+                    {"value": 2, "meaning": 2002},
+                ],
+            },
+        }
+    ]
+}
+
 generic_version_payload = {
     "metadata": version_metadata,
     "creation_options": {
