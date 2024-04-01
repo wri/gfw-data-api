@@ -1,8 +1,10 @@
 from typing import Any, Dict, List, Optional, Sequence
 
 import boto3
+import botocore
 import httpx
 from httpx_auth import AWS4Auth
+from fastapi.logger import logger
 
 from ..settings.globals import (
     AWS_REGION,
@@ -108,7 +110,11 @@ def get_aws_files(
             if exit_after_max and num_matches >= exit_after_max:
                 break
 
-    except s3_client.exceptions.NoSuchBucket:
+    # Strangely, s3_client.exceptions has NoSuchBucket, but doesn't have
+    # AccessDenied, even though you can get that error, so we just catch all botocore
+    # exceptions.
+    except botocore.exceptions.ClientError as error:
+        logger.warning(f"get_aws_file: {error}")
         matches = list()
 
     return matches
