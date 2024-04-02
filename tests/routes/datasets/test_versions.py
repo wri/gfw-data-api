@@ -310,7 +310,7 @@ async def test_invalid_source_uri(async_client: AsyncClient):
     assert response.json()["status"] == "failed"
     assert (
         response.json()["message"]
-        == f"Cannot access all of the source files. Invalid sources: ['{bad_uri}']"
+        == f"Cannot access all of the source files (non-existent or access denied). Invalid sources: ['{bad_uri}']"
     )
 
     # Create a version with a valid source_uri so we have something to append to
@@ -332,7 +332,7 @@ async def test_invalid_source_uri(async_client: AsyncClient):
     assert response.json()["status"] == "failed"
     assert (
         response.json()["message"]
-        == f"Cannot access all of the source files. Invalid sources: ['{bad_uri}']"
+        == f"Cannot access all of the source files (non-existent or access denied). Invalid sources: ['{bad_uri}']"
     )
 
     # Test appending to a version that DOESN'T exist
