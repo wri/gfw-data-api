@@ -93,6 +93,12 @@ async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides = {}
 
 
+@pytest_asyncio.fixture(scope="function")
+async def async_client_per_function(async_client) -> AsyncGenerator[AsyncClient, None]:
+    """Async Test Client that's limited to per-function scope."""
+    yield async_client
+
+
 @pytest_asyncio.fixture
 async def async_client_unauthenticated(
     db, init_db

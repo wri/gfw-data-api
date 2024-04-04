@@ -79,8 +79,11 @@ async def test_analysis_with_huge_geostore(
 
 @pytest.mark.asyncio
 async def test_raster_analysis_payload_shape(
-    generic_dataset, async_client: AsyncClient, monkeypatch: MonkeyPatch
+    generic_dataset, async_client_per_function: AsyncClient, monkeypatch: MonkeyPatch
 ):
+    """Note that we use the async_client_per_function fixture to avoid
+    the cache getting polluted from other tests"""
+
     dataset_name, _ = generic_dataset
     pixel_meaning: str = "date_conf"
     no_data_value = 0
