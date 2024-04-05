@@ -94,8 +94,10 @@ async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def async_client_per_function(async_client) -> AsyncGenerator[AsyncClient, None]:
-    """Async Test Client that's limited to per-function scope."""
+async def async_client_per_function(db, init_db) -> AsyncGenerator[AsyncClient, None]:
+    """Async Test Client that's limited to per-function scope.
+    Use sparingly (such as when you need to clear caches) to avoid lengthier tests
+    """
     from app.main import app
 
     # mock authentication function to avoid having to reach out to RW API during tests
