@@ -72,7 +72,7 @@ services:
 
   test_database_12:
     container_name: gfw-data-api-test-database-12
-    image: postgis/postgis:12-2.5-alpine
+    image: postgis/postgis:12-3.3-alpine
     ports:
       - 54321:5432
     environment:
