@@ -3,6 +3,7 @@ from typing import List
 from uuid import UUID
 
 import pytest
+from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
 
 from app.application import ContextEngine, db
@@ -20,7 +21,12 @@ async def test_postgis_upgrade(async_client: AsyncClient):
     geom = Geometry(**sample_geojson["features"][0]["geometry"])
 
     async with ContextEngine("WRITE"):
-        assert {"foo": "bar"} == (await create_user_area(geom)).dict()
+        new_geostore = (await create_user_area(geom)).dict()
+    new_geojson = json.dumps(jsonable_encoder(new_geostore), indent=2)
+
+    with open("/app/tests/2.5_geojson.txt", "r") as reference_geojson_file:
+        ref_geojson = json.dumps(json.load(reference_geojson_file), indent=2)
+    assert new_geojson == ref_geojson
 
 
 @pytest.mark.asyncio

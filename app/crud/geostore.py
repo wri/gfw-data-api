@@ -69,7 +69,8 @@ async def create_user_area(geometry: Geometry) -> Geostore:
     # (in particular, via batch/scripts/add_gfw_fields.sh)
     geometry_str = geometry.json()
 
-    sql = db.text("SELECT ST_AsGeoJSON(ST_GeomFromGeoJSON(:geo)::geometry);")
+    sql = db.text("SELECT ST_AsGeoJSON(ST_GeomFromGeoJSON(:geo)::geometry, 15::INTEGER, 0::INTEGER);")
+    # sql = db.text("SELECT ST_AsGeoJSON(ST_GeomFromGeoJSON(:geo)::geometry);")
     bind_vals = {"geo": geometry_str}
     sql = sql.bindparams(**bind_vals)
     logger.debug(sql)
