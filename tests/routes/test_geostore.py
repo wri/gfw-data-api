@@ -1,3 +1,4 @@
+import json
 from typing import List
 from uuid import UUID
 
@@ -5,10 +6,21 @@ import pytest
 from httpx import AsyncClient
 
 from app.application import ContextEngine, db
+from app.crud.geostore import create_user_area
 from app.models.orm.geostore import Geostore
-from app.models.pydantic.geostore import GeostoreResponse
-from tests import BUCKET, GEOJSON_NAME
+from app.models.pydantic.geostore import GeostoreResponse, Geometry
+from tests import BUCKET, GEOJSON_NAME, GEOJSON_PATH
 from tests.utils import create_default_asset, version_metadata
+
+
+@pytest.mark.asyncio
+async def test_postgis_upgrade(async_client: AsyncClient):
+    sample_geojson_text = open(GEOJSON_PATH, "r").read()
+    sample_geojson = json.loads(sample_geojson_text)
+    geom = Geometry(**sample_geojson["features"][0]["geometry"])
+
+    async with ContextEngine("WRITE"):
+        assert {"foo": "bar"} == (await create_user_area(geom)).dict()
 
 
 @pytest.mark.asyncio
