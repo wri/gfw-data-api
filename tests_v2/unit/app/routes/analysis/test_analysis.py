@@ -79,7 +79,7 @@ async def test_analysis_with_huge_geostore(
 
 @pytest.mark.asyncio
 async def test_raster_analysis_payload_shape(
-    generic_dataset, async_client_per_function: AsyncClient, monkeypatch: MonkeyPatch
+    generic_dataset, async_client: AsyncClient, monkeypatch: MonkeyPatch
 ):
     """Note that this test depends on the output of _get_data_environment
     which will likely have cached values from other tests, so we clear it."""
