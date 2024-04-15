@@ -89,7 +89,7 @@ async def test_raster_analysis_payload_shape(
     no_data_value = 0
 
     async with custom_raster_version(
-        async_client_per_function,
+        async_client,
         dataset_name,
         monkeypatch,
         pixel_meaning=pixel_meaning,
@@ -109,7 +109,7 @@ async def test_raster_analysis_payload_shape(
         # The other tests will have polluted the data env cache. Clear it.
         queries._get_data_environment.cache_clear()
 
-        _ = await async_client_per_function.get(
+        _ = await async_client.get(
             f"/analysis/zonal/17076d5ea9f214a5bdb68cc40433addb?geostore_origin=rw&group_by=umd_tree_cover_loss__year&filters=is__umd_regional_primary_forest_2001&filters=umd_tree_cover_density_2000__30&sum=area__ha&start_date=2001"
         )
         payload = mock_invoke_lambda.call_args.args[1]
