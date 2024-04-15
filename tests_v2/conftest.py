@@ -93,32 +93,6 @@ async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides = {}
 
 
-@pytest_asyncio.fixture(scope="function")
-async def async_client_per_function(db, init_db) -> AsyncGenerator[AsyncClient, None]:
-    """Async Test Client that's limited to per-function scope.
-    Use sparingly (such as when you need to clear caches) to avoid lengthier tests
-    """
-    from app.main import app
-
-    # mock authentication function to avoid having to reach out to RW API during tests
-    app.dependency_overrides[is_admin] = bool_function_closure(True, with_args=False)
-    app.dependency_overrides[is_service_account] = bool_function_closure(
-        True, with_args=False
-    )
-    app.dependency_overrides[get_user] = get_admin_mocked
-
-    async with AsyncClient(
-        app=app,
-        base_url="http://test",
-        trust_env=False,
-        headers={"Origin": "https://www.globalforestwatch.org"},
-    ) as client:
-        yield client
-
-    # Clean up
-    app.dependency_overrides = {}
-
-
 @pytest_asyncio.fixture
 async def async_client_unauthenticated(
     db, init_db
