@@ -81,8 +81,8 @@ async def test_analysis_with_huge_geostore(
 async def test_raster_analysis_payload_shape(
     generic_dataset, async_client_per_function: AsyncClient, monkeypatch: MonkeyPatch
 ):
-    """Note that we use the async_client_per_function fixture to avoid
-    the cache getting polluted from other tests"""
+    """Note that this test depends on the output of _get_data_environment
+    which will likely have cached values from other tests, so we clear it."""
 
     dataset_name, _ = generic_dataset
     pixel_meaning: str = "date_conf"
@@ -105,6 +105,9 @@ async def test_raster_analysis_payload_shape(
             geostore.rw_api.get_geostore, return_value=geostore_common
         )
         monkeypatch.setattr(geostore.rw_api, "get_geostore", mock_rw_get_geostore)
+
+        # The other tests will have polluted the data env cache. Clear it.
+        queries._get_data_environment.cache_clear()
 
         _ = await async_client_per_function.get(
             f"/analysis/zonal/17076d5ea9f214a5bdb68cc40433addb?geostore_origin=rw&group_by=umd_tree_cover_loss__year&filters=is__umd_regional_primary_forest_2001&filters=umd_tree_cover_density_2000__30&sum=area__ha&start_date=2001"
