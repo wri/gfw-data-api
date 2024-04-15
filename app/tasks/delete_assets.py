@@ -11,7 +11,7 @@ from .aws_tasks import delete_s3_objects, expire_s3_objects, flush_cloudfront_ca
 async def delete_all_assets(dataset: str, version: str) -> None:
     await delete_database_table_asset(dataset, version)
     delete_s3_objects(DATA_LAKE_BUCKET, f"{dataset}/{version}/")
-    # expire_s3_objects(TILE_CACHE_BUCKET, f"{dataset}/{version}/")
+    expire_s3_objects(TILE_CACHE_BUCKET, f"{dataset}/{version}/")
     flush_cloudfront_cache(TILE_CACHE_CLOUDFRONT_ID, [f"/{dataset}/{version}/*"])
 
 
