@@ -175,3 +175,11 @@ data "external" "generate_port" {
   count   = var.environment == "dev" ? 1 : 0
   program = ["python3", "${path.module}/generate_port.py", local.name_suffix, "30000", "31000"]
 }
+
+data "template_file" "tile_cache_bucket_policy" {
+  template = file("${path.root}/templates/tile_cache_bucket_policy.json.tmpl")
+
+  vars = {
+    bucket_name = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_name
+  }
+}
