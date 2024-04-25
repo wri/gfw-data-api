@@ -313,6 +313,10 @@ async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
     return str(uuid.uuid4()), "localhost"
 
 
+async def get_rw_user_id() -> str:
+    return "5874bfcca049b7a56ad42771"  # pragma: allowlist secret
+
+
 def setup_clients(ec2_client, iam_client):
     """
     Do prerequisite setup

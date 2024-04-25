@@ -8,7 +8,7 @@ from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 from ...application import db
-from ...authentication.token import is_admin
+from ...authentication.token import is_admin, rw_user_id
 from ...crud import datasets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.datasets import Dataset as ORMDataset
@@ -53,11 +53,13 @@ async def create_dataset(
     dataset: str = Depends(dataset_dependency),
     request: DatasetCreateIn,
     is_authorized: bool = Depends(is_admin),
+    owner_id: str = Depends(rw_user_id),
     response: Response,
 ) -> DatasetResponse:
     """Create or update a dataset."""
 
     input_data: Dict = request.dict(exclude_none=True, by_alias=True)
+    input_data["owner_id"] = owner_id
 
     try:
         new_dataset: ORMDataset = await datasets.create_dataset(dataset, **input_data)
