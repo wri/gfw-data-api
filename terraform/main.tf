@@ -105,7 +105,6 @@ module "fargate_autoscaling" {
     aws_iam_policy.iam_api_gateway_policy.arn,
     aws_iam_policy.read_gcs_secret.arn,
     data.terraform_remote_state.tile_cache.outputs.ecs_update_service_policy_arn,
-    data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_full_access_policy_arn,
     aws_iam_policy.tile_cache_bucket_policy.arn,
     data.terraform_remote_state.tile_cache.outputs.cloudfront_invalidation_policy_arn
   ]
