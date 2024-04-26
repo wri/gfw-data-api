@@ -7,13 +7,13 @@
                 "s3:ListBucket",
                 "s3:PutLifecycleConfiguration"
             ],
-            "Resource": "${bucket_name}"
+            "Resource": "${bucket_arn}"
         },
         {
             "Effect": "Allow",
             "Action": "s3:*",
             "Resource": [
-                "${bucket_name}/*"
+                "${bucket_arn}/*"
             ]
         }
     ]

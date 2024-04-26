@@ -180,6 +180,6 @@ data "template_file" "tile_cache_bucket_policy" {
   template = file("${path.root}/templates/tile_cache_bucket_policy.json.tmpl")
 
   vars = {
-    bucket_name = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_name
+    bucket_arn = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_arn
   }
 }
