@@ -3,11 +3,10 @@ from unittest.mock import patch
 import pytest
 
 from app.application import ContextEngine, db
+from tests import RW_USER_ID
 from tests.utils import create_default_asset, dataset_metadata
 
-payload = {
-    "metadata": dataset_metadata
-}
+payload = {"metadata": dataset_metadata}
 
 
 @pytest.mark.asyncio
@@ -23,22 +22,39 @@ async def test_datasets(async_client):
     response = await async_client.put(f"/dataset/{dataset}", json=payload)
     assert response.status_code == 201
     assert response.json()["data"]["metadata"]["title"] == payload["metadata"]["title"]
-    assert response.json()["data"]["metadata"]["source"] == payload["metadata"]["source"]
-    assert response.json()["data"]["metadata"]["data_language"] == payload["metadata"]["data_language"]
+    assert (
+        response.json()["data"]["metadata"]["source"] == payload["metadata"]["source"]
+    )
+    assert (
+        response.json()["data"]["metadata"]["data_language"]
+        == payload["metadata"]["data_language"]
+    )
 
     response = await async_client.get("/datasets")
     assert response.status_code == 200
     assert len(response.json()["data"]) == 1
-    assert response.json()["data"][0]["metadata"]["title"] == payload["metadata"]["title"]
-    assert response.json()["data"][0]["metadata"]["source"] == payload["metadata"]["source"]
-    assert response.json()["data"][0]["metadata"]["data_language"] == payload["metadata"]["data_language"]
-
+    assert (
+        response.json()["data"][0]["metadata"]["title"] == payload["metadata"]["title"]
+    )
+    assert (
+        response.json()["data"][0]["metadata"]["source"]
+        == payload["metadata"]["source"]
+    )
+    assert (
+        response.json()["data"][0]["metadata"]["data_language"]
+        == payload["metadata"]["data_language"]
+    )
 
     response = await async_client.get(f"/dataset/{dataset}")
     assert response.status_code == 200
     assert response.json()["data"]["metadata"]["title"] == payload["metadata"]["title"]
-    assert response.json()["data"]["metadata"]["source"] == payload["metadata"]["source"]
-    assert response.json()["data"]["metadata"]["data_language"] == payload["metadata"]["data_language"]
+    assert (
+        response.json()["data"]["metadata"]["source"] == payload["metadata"]["source"]
+    )
+    assert (
+        response.json()["data"]["metadata"]["data_language"]
+        == payload["metadata"]["data_language"]
+    )
 
     async with ContextEngine("READ"):
         rows = await db.all(
@@ -47,12 +63,23 @@ async def test_datasets(async_client):
 
     assert len(rows) == 1
 
+    async with ContextEngine("READ"):
+        rows = await db.all(
+            f"SELECT owner_id FROM datasets WHERE dataset = '{dataset}';"
+        )
+
+    assert len(rows) == 1
+    assert rows[0][0] == RW_USER_ID
+
     new_payload = {"metadata": {"title": "New Title"}}
     response = await async_client.patch(f"/dataset/{dataset}", json=new_payload)
     assert response.status_code == 200
     assert response.json()["data"]["metadata"] != payload["metadata"]
     assert response.json()["data"]["metadata"]["title"] == "New Title"
-    assert response.json()["data"]["metadata"]["data_language"] == payload["metadata"]["data_language"]
+    assert (
+        response.json()["data"]["metadata"]["data_language"]
+        == payload["metadata"]["data_language"]
+    )
 
     response = await async_client.delete(f"/dataset/{dataset}")
     assert response.status_code == 200

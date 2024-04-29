@@ -51,6 +51,8 @@ SHP_PATH = os.path.join(os.path.dirname(__file__), "fixtures", SHP_NAME)
 BUCKET = "test-bucket"
 PORT = 9000
 
+RW_USER_ID = "5874bfcca049b7a56ad42771"  # pragma: allowlist secret
+
 SessionLocal: Optional[Session] = None
 
 
@@ -314,7 +316,7 @@ async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
 
 
 async def get_rw_user_id() -> str:
-    return "5874bfcca049b7a56ad42771"  # pragma: allowlist secret
+    return RW_USER_ID
 
 
 def setup_clients(ec2_client, iam_client):
