@@ -35,8 +35,19 @@ def test_update_dataset():
     pass
 
 
-def test_delete_dataset():
-    pass
+@pytest.mark.asyncio
+async def test_delete_dataset_requires_creds(async_client: AsyncClient) -> None:
+    dataset_name = "my_first_dataset"
+
+    resp = await async_client.put(
+        f"/dataset/{dataset_name}", json={"metadata": DATASET_METADATA}
+    )
+    assert resp.status_code == 201
+
+    resp = await async_client.delete(
+        f"/dataset/{dataset_name}"
+    )
+    assert resp.status_code == 300
 
 
 def test__dataset_response():
