@@ -56,11 +56,12 @@ async def create_dataset(
     owner_id: str = Depends(rw_user_id),
     response: Response,
 ) -> DatasetResponse:
-    """Create a dataset. A “dataset” is largely a metadata concept: it represents
-    a data product that may have multiple versions or file formats over time.
-    The user that creates a dataset using this operation becomes the owner of
-    the dataset, which provides the user with the privileges to do further write
-    operations on the dataset, including creating and modifying versions and assets.
+    """Create a dataset. A “dataset” is largely a metadata concept: it
+    represents a data product that may have multiple versions or file formats
+    over time. The user that creates a dataset using this operation becomes the
+    owner of the dataset, which provides the user with the privileges to do
+    further write operations on the dataset, including creating and modifying
+    versions and assets.
 
     This operation requires a `MANAGER` or an `ADMIN` user role.
     """
@@ -94,15 +95,24 @@ async def update_dataset(
     dataset: str = Depends(dataset_dependency),
     request: DatasetUpdateIn,
     is_authorized: bool = Depends(is_admin),
+    is_authorized_admin: bool = Depends(is_admin),
 ) -> DatasetResponse:
     """Partially update a dataset.
 
     Only metadata field can be updated. All other fields will be
     ignored.
 
-    Only the dataset owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset owner or a user with `ADMIN` user role can do this operation. Only
+    a user with `ADMIN` role can change the dataset owner.
     """
     input_data: Dict = request.dict(exclude_none=True, by_alias=True)
+
+    if request.owner_id is not None and not is_authorized_admin:
+        raise HTTPException(
+            status_code=401,
+            detail="Only ADMIN users can change owner_id. Please contact an ADMIN if you would like change dataset ownership.",
+        )
+
     row: ORMDataset = await datasets.update_dataset(dataset, **input_data)
 
     return await _dataset_response(dataset, row)

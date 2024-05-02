@@ -307,6 +307,10 @@ async def is_admin_mocked():
     return True
 
 
+async def not_admin_mocked():
+    return False
+
+
 async def is_service_account_mocked():
     return True
 
