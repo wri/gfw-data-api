@@ -55,8 +55,11 @@ async def create_dataset(
     is_authorized: bool = Depends(is_admin),
     response: Response,
 ) -> DatasetResponse:
-    """Create a dataset. a “dataset” is largely a metadata concept: it represents
+    """Create a dataset. A “dataset” is largely a metadata concept: it represents
     a data product that may have multiple versions or file formats over time.
+    The user that creates a dataset using this operation becomes the owner of
+    the dataset, which provides the user with the privileges to do further write
+    operations on the dataset, including creating and modifying versions and assets.
 
     This operation requires a `MANAGER` or an `ADMIN` user role.
     """

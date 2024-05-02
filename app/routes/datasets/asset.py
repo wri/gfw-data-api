@@ -128,7 +128,7 @@ async def add_new_asset(
     If the asset is not managed, you need to specify an Asset URI to
     link to.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
 
     dataset, version = dv

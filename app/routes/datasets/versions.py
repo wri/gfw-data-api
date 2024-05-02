@@ -125,9 +125,9 @@ async def add_new_version(
     is_authorized: bool = Depends(is_admin),
     response: Response,
 ):
-    """Create a version for a given dataset uploading the geospatial/tabular asset.
+    """Create a version for a given dataset by uploading the geospatial/tabular asset.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
 
     input_data = request.dict(exclude_none=True, by_alias=True)
@@ -177,7 +177,7 @@ async def update_version(
 
     Update metadata or change latest tag.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
     dataset, version = dv
     input_data = request.dict(exclude_none=True, by_alias=True)
@@ -226,7 +226,7 @@ async def append_to_version(
     Schema of input file must match or be a subset of previous input
     files.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
     dataset, version = dv
     _verify_source_file_access(request.dict()["source_uri"])
@@ -271,7 +271,7 @@ async def delete_version(
     only version associated with dataset. All associated, managed assets
     will be deleted in consequence.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
     dataset, version = dv
     row: Optional[ORMVersion] = None
@@ -418,7 +418,7 @@ async def create_metadata(
 ):
     """Create a metadata record for a dataset version.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
     dataset, version = dv
     input_data = request.dict(exclude_none=True, by_alias=True)
@@ -445,7 +445,7 @@ async def delete_metadata(
 ):
     """Delete metadata record for a dataset version.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
     dataset, version = dv
 
@@ -473,7 +473,7 @@ async def update_metadata(
 ):
     """Update metadata record for a dataset version.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
     dataset, version = dv
     input_data = request.dict(exclude_none=True, by_alias=True)

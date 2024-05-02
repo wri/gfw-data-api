@@ -107,7 +107,7 @@ async def update_asset(
 ) -> AssetResponse:
     """Update Asset metadata.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
 
     input_data = request.dict(exclude_none=True, by_alias=True)
@@ -141,7 +141,7 @@ async def delete_asset(
     For managed assets, all resources will be deleted. For non-managed
     assets, only the link will be deleted.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
 
     try:
@@ -350,7 +350,7 @@ async def update_field_metadata(
 ):
     """Update the field metadata for an asset.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
     input_data = request.dict(exclude_none=True, by_alias=True)
     metadata = await metadata_crud.get_asset_metadata(asset_id)
@@ -387,7 +387,7 @@ async def get_metadata(asset_id: UUID = Path(...)):
 async def create_metadata(*, asset_id: UUID = Path(...), request: AssetMetadata):
     """Create metadata record for an asset.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
     input_data = request.dict(exclude_none=True, by_alias=True)
     asset = await assets.get_asset(asset_id)
@@ -413,7 +413,7 @@ async def create_metadata(*, asset_id: UUID = Path(...), request: AssetMetadata)
 async def update_metadata(*, asset_id: UUID = Path(...), request: AssetMetadataUpdate):
     """Update metadata record for an asset.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
 
     input_data = request.dict(exclude_none=True, by_alias=True)
@@ -440,7 +440,7 @@ async def update_metadata(*, asset_id: UUID = Path(...), request: AssetMetadataU
 async def delete_metadata(asset_id: UUID = Path(...)):
     """Delete an asset's metadata record.
 
-    Only the parent dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
     try:
         asset = await assets.get_asset(asset_id)
