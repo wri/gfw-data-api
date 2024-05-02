@@ -39,6 +39,10 @@ async def get_admin_mocked() -> Tuple[str, str]:
     return "adminid_123", "ADMIN"
 
 
+async def get_rw_user_id_mocked() -> str:
+    return "userid_123"
+
+
 async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
     return str(uuid.uuid4()), "localhost"
 
