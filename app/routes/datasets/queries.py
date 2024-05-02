@@ -2,7 +2,7 @@
 import csv
 import re
 from io import StringIO
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
@@ -25,7 +25,6 @@ from pydantic.tools import parse_obj_as
 from ...authentication.token import is_gfwpro_admin_for_query
 from ...application import db
 # from ...authentication.api_keys import get_api_key
-from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
@@ -76,6 +75,7 @@ from ...settings.globals import GEOSTORE_SIZE_LIMIT_OTF, RASTER_ANALYSIS_LAMBDA_
 from ...utils.aws import invoke_lambda
 from ...utils.geostore import get_geostore
 from .. import dataset_version_dependency
+from ..utils.downloads import _query_dataset_csv, _query_dataset_json
 
 router = APIRouter()
 
@@ -303,56 +303,6 @@ async def query_dataset_csv_post(
         dataset, version, request.sql, geostore, delimiter=request.delimiter
     )
     return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
-
-
-async def _query_dataset_json(
-    dataset: str,
-    version: str,
-    sql: str,
-    geostore: Optional[GeostoreCommon],
-) -> List[Dict[str, Any]]:
-    # Make sure we can query the dataset
-    default_asset: AssetORM = await assets.get_default_asset(dataset, version)
-    query_type = _get_query_type(default_asset, geostore)
-    if query_type == QueryType.table:
-        geometry = geostore.geojson if geostore else None
-        return await _query_table(dataset, version, sql, geometry)
-    elif query_type == QueryType.raster:
-        geostore = cast(GeostoreCommon, geostore)
-        results = await _query_raster(dataset, default_asset, sql, geostore)
-        return results["data"]
-    else:
-        raise HTTPException(
-            status_code=501,
-            detail="This endpoint is not implemented for the given dataset.",
-        )
-
-
-async def _query_dataset_csv(
-    dataset: str,
-    version: str,
-    sql: str,
-    geostore: Optional[GeostoreCommon],
-    delimiter: Delimiters = Delimiters.comma,
-) -> StringIO:
-    # Make sure we can query the dataset
-    default_asset: AssetORM = await assets.get_default_asset(dataset, version)
-    query_type = _get_query_type(default_asset, geostore)
-    if query_type == QueryType.table:
-        geometry = geostore.geojson if geostore else None
-        response = await _query_table(dataset, version, sql, geometry)
-        return _orm_to_csv(response, delimiter=delimiter)
-    elif query_type == QueryType.raster:
-        geostore = cast(GeostoreCommon, geostore)
-        results = await _query_raster(
-            dataset, default_asset, sql, geostore, QueryFormat.csv, delimiter
-        )
-        return StringIO(results["data"])
-    else:
-        raise HTTPException(
-            status_code=501,
-            detail="This endpoint is not implemented for the given dataset.",
-        )
 
 
 def _get_query_type(default_asset: AssetORM, geostore: Optional[GeostoreCommon]):

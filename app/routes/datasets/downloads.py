@@ -24,7 +24,7 @@ from ...utils.aws import get_s3_client
 from ...utils.geostore import get_geostore
 from ...utils.path import split_s3_path
 from .. import dataset_version_dependency
-from .queries import _query_dataset_csv, _query_dataset_json
+from ..utils.downloads import _query_dataset_csv, _query_dataset_json
 
 router: APIRouter = APIRouter()
 
