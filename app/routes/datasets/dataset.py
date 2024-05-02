@@ -55,7 +55,14 @@ async def create_dataset(
     is_authorized: bool = Depends(is_admin),
     response: Response,
 ) -> DatasetResponse:
-    """Create or update a dataset."""
+    """Create a dataset. A “dataset” is largely a metadata concept: it represents
+    a data product that may have multiple versions or file formats over time.
+    The user that creates a dataset using this operation becomes the owner of
+    the dataset, which provides the user with the privileges to do further write
+    operations on the dataset, including creating and modifying versions and assets.
+
+    This operation requires a `MANAGER` or an `ADMIN` user role.
+    """
 
     input_data: Dict = request.dict(exclude_none=True, by_alias=True)
 
@@ -90,6 +97,8 @@ async def update_dataset(
 
     Only metadata field can be updated. All other fields will be
     ignored.
+
+    Only the dataset owner or a user with `ADMIN` user role can do this operation.
     """
     input_data: Dict = request.dict(exclude_none=True, by_alias=True)
     row: ORMDataset = await datasets.update_dataset(dataset, **input_data)
@@ -113,6 +122,8 @@ async def delete_dataset(
     By the time users are allowed to delete datasets, there should be no
     versions and assets left. So only thing beside deleting the dataset
     row is to drop the schema in the database.
+
+    Only the dataset owner or a user with `ADMIN` user role can do this operation.
     """
 
     version_rows: List[ORMVersion] = await versions.get_versions(dataset)
