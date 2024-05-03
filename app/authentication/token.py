@@ -52,6 +52,7 @@ async def is_admin(token: str = get_request_token()) -> bool:
 
     return await is_app_admin(token, "gfw", "Unauthorized")
 
+
 async def is_gfwpro_admin_for_query(dataset: str = Depends(dataset_dependency),
                                     token: str | None = get_request_token_optional()) -> bool:
     """If the dataset is protected dataset, calls GFW API to authorize user by
@@ -67,6 +68,7 @@ async def is_gfwpro_admin_for_query(dataset: str = Depends(dataset_dependency),
                                error_str="Unauthorized query on a restricted dataset")
 
     return True
+
 
 async def is_app_admin(token: str, app: str, error_str: str) -> bool:
     """Calls GFW API to authorize user.

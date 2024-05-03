@@ -97,7 +97,7 @@ async def update_dataset(
     return await _dataset_response(dataset, row)
 
 
-async def user_is_owner_or_admin(dataset: str) -> bool:
+async def user_is_owner_or_admin(dataset: str = Depends(dataset_dependency)) -> bool:
     user_id, role = await get_request_user()
 
     if role == "ADMIN":
@@ -111,6 +111,14 @@ async def user_is_owner_or_admin(dataset: str) -> bool:
     return False
 
 
+async def assert_user_is_owner_or_admin():
+    if not await user_is_owner_or_admin():
+        raise HTTPException(
+            status_code=401,
+            detail=f"User is not dataset owner or admin!"
+        )
+
+
 @router.delete(
     "/{dataset}",
     response_class=ORJSONResponse,
@@ -120,6 +128,7 @@ async def user_is_owner_or_admin(dataset: str) -> bool:
 async def delete_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
+    is_authorized: bool = Depends(assert_user_is_owner_or_admin)
 ) -> DatasetResponse:
     """Delete a dataset.
 
@@ -127,13 +136,6 @@ async def delete_dataset(
     versions and assets left. So only thing beside deleting the dataset
     row is to drop the schema in the database.
     """
-    is_authorized: bool = await user_is_owner_or_admin(dataset)
-    if not is_authorized:
-        raise HTTPException(
-            status_code=401,
-            detail=f"User is not dataset owner or admin!"
-        )
-
     version_rows: List[ORMVersion] = await versions.get_versions(dataset)
     if len(version_rows):
         raise HTTPException(
