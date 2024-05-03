@@ -5,11 +5,10 @@ from httpx import AsyncClient
 
 from app.authentication.token import is_admin, get_user
 from app.models.pydantic.datasets import DatasetResponse
-from app.routes.datasets.dataset import user_is_owner_or_admin
 
 from tests_v2.unit.app.routes.utils import assert_jsend
 from tests_v2.fixtures.metadata.dataset import DATASET_METADATA
-from tests_v2.utils import get_admin_mocked, bool_function_closure
+from tests_v2.utils import get_admin_mocked, bool_function_closure, async_bool_function_closure
 
 
 @pytest.mark.asyncio
@@ -41,7 +40,8 @@ def test_update_dataset():
 @pytest.mark.asyncio
 async def test_delete_dataset_requires_creds_fail(
     db,
-    init_db
+    init_db,
+    monkeypatch
 ) -> None:
     dataset_name: str = "my_first_dataset"
 
@@ -63,9 +63,13 @@ async def test_delete_dataset_requires_creds_fail(
         )
         assert create_resp.status_code == 201
 
-    # Now try to delete it
     app.dependency_overrides = {}
-    app.dependency_overrides[user_is_owner_or_admin] = bool_function_closure(False, with_args=False)
+
+    # Now try to delete it
+    monkeypatch.setattr(
+        "app.routes.datasets.dataset.user_is_owner_or_admin",
+        async_bool_function_closure(False, with_args=True)
+    )
 
     async with AsyncClient(
         app=app,
@@ -76,16 +80,15 @@ async def test_delete_dataset_requires_creds_fail(
         delete_resp = await async_client.delete(
             f"/dataset/{dataset_name}"
         )
-        assert delete_resp.text == "User is not dataset owner or admin!"
+        assert delete_resp.json()["message"] == "User is not dataset owner or admin!"
         assert delete_resp.status_code == 401
-
-    app.dependency_overrides = {}
 
 
 @pytest.mark.asyncio
 async def test_delete_dataset_requires_creds_succeed(
     db,
-    init_db
+    init_db,
+    monkeypatch
 ) -> None:
     dataset_name: str = "my_first_dataset"
 
@@ -107,10 +110,13 @@ async def test_delete_dataset_requires_creds_succeed(
         )
         assert create_resp.status_code == 201
 
-    # Now try to delete it
     app.dependency_overrides = {}
-    app.dependency_overrides[user_is_owner_or_admin] = bool_function_closure(True, with_args=False)
 
+    # Now try to delete it
+    monkeypatch.setattr(
+        "app.routes.datasets.dataset.user_is_owner_or_admin",
+        async_bool_function_closure(True, with_args=True)
+    )
     async with AsyncClient(
         app=app,
         base_url="http://test",
@@ -121,8 +127,6 @@ async def test_delete_dataset_requires_creds_succeed(
             f"/dataset/{dataset_name}"
         )
         assert delete_resp.status_code == 200
-
-    app.dependency_overrides = {}
 
 
 def test__dataset_response():

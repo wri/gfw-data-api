@@ -74,6 +74,19 @@ def bool_function_closure(value: bool, with_args=True) -> Callable:
         return simple_bool_function
 
 
+def async_bool_function_closure(value: bool, with_args=True) -> Callable:
+    async def bool_function(*args, **kwargs) -> bool:
+        return value
+
+    async def simple_bool_function() -> bool:
+        return value
+
+    if with_args:
+        return bool_function
+    else:
+        return simple_bool_function
+
+
 def int_function_closure(value: int) -> Callable:
     def int_function(*args, **kwargs) -> int:
         return value
