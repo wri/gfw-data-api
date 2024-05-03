@@ -8,7 +8,7 @@ from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 from ...application import db
-from ...authentication.token import is_admin
+from ...authentication.token import is_admin, get_request_user
 from ...crud import datasets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.datasets import Dataset as ORMDataset
@@ -97,6 +97,20 @@ async def update_dataset(
     return await _dataset_response(dataset, row)
 
 
+async def user_is_owner_or_admin(dataset: str) -> bool:
+    user_id, role = await get_request_user()
+
+    if role == "ADMIN":
+        return True
+
+    dataset_row: ORMDataset = await datasets.get_dataset(dataset)
+    owner: str = dataset_row.owner_id
+    if user_id is not None and user_id == owner:
+        return True
+
+    return False
+
+
 @router.delete(
     "/{dataset}",
     response_class=ORJSONResponse,
@@ -106,7 +120,6 @@ async def update_dataset(
 async def delete_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
-    is_authorized: bool = Depends(is_admin),
 ) -> DatasetResponse:
     """Delete a dataset.
 
@@ -114,6 +127,12 @@ async def delete_dataset(
     versions and assets left. So only thing beside deleting the dataset
     row is to drop the schema in the database.
     """
+    is_authorized: bool = await user_is_owner_or_admin(dataset)
+    if not is_authorized:
+        raise HTTPException(
+            status_code=401,
+            detail=f"User is not dataset owner or admin!"
+        )
 
     version_rows: List[ORMVersion] = await versions.get_versions(dataset)
     if len(version_rows):

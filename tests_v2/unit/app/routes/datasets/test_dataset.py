@@ -1,12 +1,15 @@
-from typing import Any, Dict, Tuple
+from typing import Tuple
 
 import pytest
 from httpx import AsyncClient
 
-from app.models.pydantic.datasets import DatasetResponse, Dataset
-from app.models.pydantic.metadata import DatasetMetadata
+from app.authentication.token import is_admin, get_user
+from app.models.pydantic.datasets import DatasetResponse
+from app.routes.datasets.dataset import user_is_owner_or_admin
+
 from tests_v2.unit.app.routes.utils import assert_jsend
 from tests_v2.fixtures.metadata.dataset import DATASET_METADATA
+from tests_v2.utils import get_admin_mocked, bool_function_closure
 
 
 @pytest.mark.asyncio
@@ -36,18 +39,90 @@ def test_update_dataset():
 
 
 @pytest.mark.asyncio
-async def test_delete_dataset_requires_creds(async_client: AsyncClient) -> None:
-    dataset_name = "my_first_dataset"
+async def test_delete_dataset_requires_creds_fail(
+    db,
+    init_db
+) -> None:
+    dataset_name: str = "my_first_dataset"
 
-    resp = await async_client.put(
-        f"/dataset/{dataset_name}", json={"metadata": DATASET_METADATA}
-    )
-    assert resp.status_code == 201
+    from app.main import app
 
-    resp = await async_client.delete(
-        f"/dataset/{dataset_name}"
-    )
-    assert resp.status_code == 300
+    # Create a dataset
+    app.dependency_overrides[is_admin] = bool_function_closure(True, with_args=False)
+    app.dependency_overrides[get_user] = get_admin_mocked
+
+    async with AsyncClient(
+        app=app,
+        base_url="http://test",
+        trust_env=False,
+        headers={"Origin": "https://www.globalforestwatch.org"},
+    ) as async_client:
+        create_resp = await async_client.put(
+            f"/dataset/{dataset_name}",
+            json={"metadata": DATASET_METADATA}
+        )
+        assert create_resp.status_code == 201
+
+    # Now try to delete it
+    app.dependency_overrides = {}
+    app.dependency_overrides[user_is_owner_or_admin] = bool_function_closure(False, with_args=False)
+
+    async with AsyncClient(
+        app=app,
+        base_url="http://test",
+        trust_env=False,
+        headers={"Origin": "https://www.globalforestwatch.org"},
+    ) as async_client:
+        delete_resp = await async_client.delete(
+            f"/dataset/{dataset_name}"
+        )
+        assert delete_resp.text == "User is not dataset owner or admin!"
+        assert delete_resp.status_code == 401
+
+    app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+async def test_delete_dataset_requires_creds_succeed(
+    db,
+    init_db
+) -> None:
+    dataset_name: str = "my_first_dataset"
+
+    from app.main import app
+
+    # Create a dataset
+    app.dependency_overrides[is_admin] = bool_function_closure(True, with_args=False)
+    app.dependency_overrides[get_user] = get_admin_mocked
+
+    async with AsyncClient(
+        app=app,
+        base_url="http://test",
+        trust_env=False,
+        headers={"Origin": "https://www.globalforestwatch.org"},
+    ) as async_client:
+        create_resp = await async_client.put(
+            f"/dataset/{dataset_name}",
+            json={"metadata": DATASET_METADATA}
+        )
+        assert create_resp.status_code == 201
+
+    # Now try to delete it
+    app.dependency_overrides = {}
+    app.dependency_overrides[user_is_owner_or_admin] = bool_function_closure(True, with_args=False)
+
+    async with AsyncClient(
+        app=app,
+        base_url="http://test",
+        trust_env=False,
+        headers={"Origin": "https://www.globalforestwatch.org"},
+    ) as async_client:
+        delete_resp = await async_client.delete(
+            f"/dataset/{dataset_name}"
+        )
+        assert delete_resp.status_code == 200
+
+    app.dependency_overrides = {}
 
 
 def test__dataset_response():
