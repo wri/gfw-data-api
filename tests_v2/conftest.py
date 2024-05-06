@@ -11,7 +11,7 @@ from alembic.config import main
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from app.authentication.token import get_user, is_admin, is_service_account, rw_user_id
+from app.authentication.token import get_manager, get_user, is_admin, is_service_account
 from app.crud import api_keys
 from app.models.enum.change_log import ChangeLogStatus
 from app.models.pydantic.change_log import ChangeLog
@@ -31,7 +31,7 @@ from tests_v2.utils import (
     dict_function_closure,
     get_admin_mocked,
     get_extent_mocked,
-    get_rw_user_id_mocked,
+    get_manager_mocked,
     get_user_mocked,
     int_function_closure,
     void_coroutine,
@@ -81,7 +81,7 @@ async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
         True, with_args=False
     )
     app.dependency_overrides[get_user] = get_admin_mocked
-    app.dependency_overrides[rw_user_id] = get_rw_user_id_mocked
+    app.dependency_overrides[get_manager] = get_manager_mocked
 
     async with AsyncClient(
         app=app,

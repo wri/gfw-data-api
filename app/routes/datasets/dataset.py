@@ -8,11 +8,12 @@ from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 from ...application import db
-from ...authentication.token import is_admin, rw_user_id
+from ...authentication.token import get_manager, is_admin
 from ...crud import datasets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.datasets import Dataset as ORMDataset
 from ...models.orm.versions import Version as ORMVersion
+from ...models.pydantic.authentication import User
 from ...models.pydantic.datasets import (
     Dataset,
     DatasetCreateIn,
@@ -52,21 +53,21 @@ async def create_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
     request: DatasetCreateIn,
-    is_authorized: bool = Depends(is_admin),
-    owner_id: str = Depends(rw_user_id),
+    user: User = Depends(get_manager),
     response: Response,
 ) -> DatasetResponse:
-    """Create a dataset. A “dataset” is largely a metadata concept: it represents
-    a data product that may have multiple versions or file formats over time.
-    The user that creates a dataset using this operation becomes the owner of
-    the dataset, which provides the user with the privileges to do further write
-    operations on the dataset, including creating and modifying versions and assets.
+    """Create a dataset. A “dataset” is largely a metadata concept: it
+    represents a data product that may have multiple versions or file formats
+    over time. The user that creates a dataset using this operation becomes the
+    owner of the dataset, which provides the user with the privileges to do
+    further write operations on the dataset, including creating and modifying
+    versions and assets.
 
     This operation requires a `MANAGER` or an `ADMIN` user role.
     """
 
     input_data: Dict = request.dict(exclude_none=True, by_alias=True)
-    input_data["owner_id"] = owner_id
+    input_data["owner_id"] = user.id
 
     try:
         new_dataset: ORMDataset = await datasets.create_dataset(dataset, **input_data)

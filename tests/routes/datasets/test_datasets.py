@@ -3,7 +3,6 @@ from unittest.mock import patch
 import pytest
 
 from app.application import ContextEngine, db
-from tests import RW_USER_ID
 from tests.utils import create_default_asset, dataset_metadata
 
 payload = {"metadata": dataset_metadata}
@@ -69,7 +68,7 @@ async def test_datasets(async_client):
         )
 
     assert len(rows) == 1
-    assert rows[0][0] == RW_USER_ID
+    assert rows[0][0] == "mr_manager123"
 
     new_payload = {"metadata": {"title": "New Title"}}
     response = await async_client.patch(f"/dataset/{dataset}", json=new_payload)

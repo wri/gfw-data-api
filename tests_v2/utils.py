@@ -8,6 +8,7 @@ import httpx
 from _pytest.monkeypatch import MonkeyPatch
 
 from app.application import ContextEngine
+from app.models.pydantic.authentication import User
 from app.models.pydantic.extent import Extent
 from app.routes.datasets import versions
 from app.tasks import batch, delete_assets
@@ -39,8 +40,16 @@ async def get_admin_mocked() -> Tuple[str, str]:
     return "adminid_123", "ADMIN"
 
 
-async def get_rw_user_id_mocked() -> str:
-    return "userid_123"
+async def get_manager_mocked() -> str:
+    return User(
+        id="mr_manager123",
+        name="Mr. Manager",
+        email="mr_manager@management.com",
+        createdAt="2021-06-13T03:18:23.000Z",
+        role="MANAGER",
+        applications=["data-api"],
+        extraUserData={},
+    )
 
 
 async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:

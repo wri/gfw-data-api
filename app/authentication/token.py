@@ -1,10 +1,11 @@
-from typing import Tuple, cast
+from typing import cast
 
 from fastapi import Depends, HTTPException
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
 from httpx import Response
 
+from ..models.pydantic.authentication import User
 from ..routes import dataset_dependency
 from ..settings.globals import PROTECTED_QUERY_DATASETS
 from ..utils.rw_api import who_am_i
@@ -33,37 +34,13 @@ async def is_service_account(token: str = Depends(oauth2_scheme)) -> bool:
         return True
 
 
-async def assert_admin(token: str = Depends(oauth2_scheme)) -> None:
+async def is_admin(token: str = Depends(oauth2_scheme)) -> None:
     """Calls GFW API to authorize user.
 
     User must be ADMIN for gfw app
     """
 
-    return await assert_app_role(token, "ADMIN", "gfw", "Unauthorized")
-
-
-async def assert_manager(token: str = Depends(oauth2_scheme)) -> None:
-    """Calls GFW API to authorize user.
-
-    User must be MANAGER for data-api app.
-    """
-
-    return await assert_app_role(token, "MANAGER", "data-api", "Unauthorized")
-
-
-async def is_admin_or_manager(token: str = Depends(oauth2_scheme)) -> bool:
-    """Calls GFW API to authorize user.
-
-    User must be ADMIN for gfw app or MANAGER for data-api app.
-    """
-
-    return (await assert_admin(token)) or (await assert_manager(token))
-
-
-async def rw_user_id(token: str = Depends(oauth2_scheme)) -> str:
-    """Gets user ID from token."""
-
-    return await who_am_i(token).json()["id"]
+    return await is_app_admin(token, "gfw", "Unauthorized")
 
 
 async def is_gfwpro_admin_for_query(
@@ -83,9 +60,8 @@ async def is_gfwpro_admin_for_query(
                 status_code=401, detail="Unauthorized query on a restricted dataset"
             )
         else:
-            return await is_app_role(
+            return await is_app_admin(
                 cast(str, token),
-                "ADMIN",
                 "gfw-pro",
                 error_str="Unauthorized query on a restricted dataset",
             )
@@ -93,40 +69,48 @@ async def is_gfwpro_admin_for_query(
     return True
 
 
-async def assert_app_role(token: str, role: str, app: str, error_str: str) -> None:
-    is_authorized = await is_app_role(token, role, app)
-
-    if not is_authorized:
-        raise HTTPException(status_code=401, detail=error_str)
-
-
-async def is_app_role(token: str, role: str, app: str) -> bool:
+async def is_app_admin(token: str, app: str, error_str: str) -> bool:
     """Calls RW API to authorize user for specific role and app."""
 
     response: Response = await who_am_i(token)
 
     if response.status_code == 401 or not (
-        response.json()["role"] == role
+        response.json()["role"] == "ADMIN"
         and app in response.json()["extraUserData"]["apps"]
     ):
-        return False
+        raise HTTPException(status_code=401, detail=error_str)
     else:
         return True
 
 
-async def get_user(token: str = Depends(oauth2_scheme)) -> Tuple[str, str]:
-    """Calls GFW API to authorize user.
-
-    This functions check is user of any level is associated with the GFW
-    app and returns the user ID
-    """
+async def get_user(token: str = Depends(oauth2_scheme)) -> User:
+    """Get the details for authenticated user."""
 
     response: Response = await who_am_i(token)
 
-    if response.status_code == 401 or not (
-        "gfw" in response.json()["extraUserData"]["apps"]
-    ):
+    if response.status_code == 401:
         logger.info("Unauthorized user")
         raise HTTPException(status_code=401, detail="Unauthorized")
     else:
-        return response.json()["id"], response.json()["role"]
+        return User(**response.json()["data"])
+
+
+async def get_admin(user: User = Depends(get_user)) -> User:
+    """Get the details for authenticated ADMIN user."""
+
+    if user.role != "ADMIN":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    return user
+
+
+async def get_manager(user: User = Depends(get_user)) -> User:
+    """Get the details for authenticated MANAGER for data-api application or
+    ADMIN user."""
+
+    if user.role != "ADMIN" or not (
+        user.role == "MANAGER" and "data-api" in user.applications
+    ):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    return user
