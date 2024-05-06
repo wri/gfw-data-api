@@ -97,7 +97,7 @@ async def update_dataset(
     return await _dataset_response(dataset, row)
 
 
-async def user_is_owner_or_admin(dataset: str = Depends(dataset_dependency)) -> bool:
+async def user_is_owner_or_admin(dataset: str) -> bool:
     user_id, role = await get_request_user()
 
     if role == "ADMIN":
@@ -111,12 +111,13 @@ async def user_is_owner_or_admin(dataset: str = Depends(dataset_dependency)) -> 
     return False
 
 
-async def assert_user_is_owner_or_admin():
-    if not await user_is_owner_or_admin():
+async def assert_user_is_owner_or_admin(dataset: str = Depends(dataset_dependency)) -> bool:
+    if not await user_is_owner_or_admin(dataset):
         raise HTTPException(
             status_code=401,
             detail=f"User is not dataset owner or admin!"
         )
+    return True
 
 
 @router.delete(
