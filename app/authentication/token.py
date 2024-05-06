@@ -4,19 +4,21 @@ from fastapi import Depends, HTTPException
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
 from httpx import Response
-from ..routes import dataset_dependency
 
-from ..utils.rw_api import who_am_i
+from ..crud import datasets
+from ..models.orm.datasets import Dataset as ORMDataset
+from ..routes import dataset_dependency
 from ..settings.globals import PROTECTED_QUERY_DATASETS
+from ..utils.rw_api import who_am_i
 
 
 def get_request_token() -> str:
-    """ Get request token if it exists """
+    """Get request token if it exists."""
     return str(OAuth2PasswordBearer(tokenUrl="/token"))
 
 
 def get_request_token_optional() -> str:
-    """ Get request token if it exists, error if not """
+    """Get request token if it exists, error if not."""
     return str(OAuth2PasswordBearer(tokenUrl="/token", auto_error=False))
 
 
@@ -53,19 +55,28 @@ async def is_admin(token: str = get_request_token()) -> bool:
     return await is_app_admin(token, "gfw", "Unauthorized")
 
 
-async def is_gfwpro_admin_for_query(dataset: str = Depends(dataset_dependency),
-                                    token: str | None = get_request_token_optional()) -> bool:
+async def is_gfwpro_admin_for_query(
+    dataset: str = Depends(dataset_dependency),
+    token: str | None = get_request_token_optional(),
+) -> bool:
     """If the dataset is protected dataset, calls GFW API to authorize user by
-    requiring the user must be ADMIN for gfw-pro app.  If the dataset is not
-    protected, just returns True without any required token or authorization.
+    requiring the user must be ADMIN for gfw-pro app.
+
+    If the dataset is not protected, just returns True without any
+    required token or authorization.
     """
-    
+
     if dataset in PROTECTED_QUERY_DATASETS:
         if token == None:
-            raise HTTPException(status_code=401, detail="Unauthorized query on a restricted dataset")
+            raise HTTPException(
+                status_code=401, detail="Unauthorized query on a restricted dataset"
+            )
         else:
-            return await is_app_admin(cast(str, token), "gfw-pro",
-                               error_str="Unauthorized query on a restricted dataset")
+            return await is_app_admin(
+                cast(str, token),
+                "gfw-pro",
+                error_str="Unauthorized query on a restricted dataset",
+            )
 
     return True
 
@@ -73,8 +84,8 @@ async def is_gfwpro_admin_for_query(dataset: str = Depends(dataset_dependency),
 async def is_app_admin(token: str, app: str, error_str: str) -> bool:
     """Calls GFW API to authorize user.
 
-    User must be an ADMIN for the specified app, else it will throw
-    an exception with the specified error string.
+    User must be an ADMIN for the specified app, else it will throw an
+    exception with the specified error string.
     """
 
     response: Response = await who_am_i(token)
@@ -105,3 +116,27 @@ async def get_user(token: str = get_request_token()) -> Tuple[str, str]:
         raise HTTPException(status_code=401, detail="Unauthorized")
     else:
         return response.json()["id"], response.json()["role"]
+
+
+async def user_is_owner_or_admin(dataset: str) -> bool:
+    user_id, role = await get_request_user()
+
+    if role == "ADMIN":
+        return True
+
+    dataset_row: ORMDataset = await datasets.get_dataset(dataset)
+    owner: str = dataset_row.owner_id
+    if user_id is not None and user_id == owner:
+        return True
+
+    return False
+
+
+async def assert_user_is_owner_or_admin(
+    dataset: str = Depends(dataset_dependency),
+) -> bool:
+    if not await user_is_owner_or_admin(dataset):
+        raise HTTPException(
+            status_code=401, detail="User is not dataset owner or admin!"
+        )
+    return True

@@ -3,12 +3,15 @@ from typing import Tuple
 import pytest
 from httpx import AsyncClient
 
-from app.authentication.token import is_admin, get_user
+from app.authentication.token import get_user, is_admin
 from app.models.pydantic.datasets import DatasetResponse
-
-from tests_v2.unit.app.routes.utils import assert_jsend
 from tests_v2.fixtures.metadata.dataset import DATASET_METADATA
-from tests_v2.utils import get_admin_mocked, bool_function_closure, async_bool_function_closure
+from tests_v2.unit.app.routes.utils import assert_jsend
+from tests_v2.utils import (
+    async_bool_function_closure,
+    bool_function_closure,
+    get_admin_mocked,
+)
 
 
 @pytest.mark.asyncio
@@ -38,11 +41,7 @@ def test_update_dataset():
 
 
 @pytest.mark.asyncio
-async def test_delete_dataset_requires_creds_fail(
-    db,
-    init_db,
-    monkeypatch
-) -> None:
+async def test_delete_dataset_requires_creds_fail(db, init_db, monkeypatch) -> None:
     dataset_name: str = "my_first_dataset"
 
     from app.main import app
@@ -58,8 +57,7 @@ async def test_delete_dataset_requires_creds_fail(
         headers={"Origin": "https://www.globalforestwatch.org"},
     ) as async_client:
         create_resp = await async_client.put(
-            f"/dataset/{dataset_name}",
-            json={"metadata": DATASET_METADATA}
+            f"/dataset/{dataset_name}", json={"metadata": DATASET_METADATA}
         )
         assert create_resp.status_code == 201
 
@@ -67,8 +65,8 @@ async def test_delete_dataset_requires_creds_fail(
 
     # Now try to delete it
     monkeypatch.setattr(
-        "app.routes.datasets.dataset.user_is_owner_or_admin",
-        async_bool_function_closure(False, with_args=True)
+        "app.authentication.token.user_is_owner_or_admin",
+        async_bool_function_closure(False, with_args=True),
     )
 
     async with AsyncClient(
@@ -77,19 +75,13 @@ async def test_delete_dataset_requires_creds_fail(
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
     ) as async_client:
-        delete_resp = await async_client.delete(
-            f"/dataset/{dataset_name}"
-        )
+        delete_resp = await async_client.delete(f"/dataset/{dataset_name}")
         assert delete_resp.json()["message"] == "User is not dataset owner or admin!"
         assert delete_resp.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_delete_dataset_requires_creds_succeed(
-    db,
-    init_db,
-    monkeypatch
-) -> None:
+async def test_delete_dataset_requires_creds_succeed(db, init_db, monkeypatch) -> None:
     dataset_name: str = "my_first_dataset"
 
     from app.main import app
@@ -105,8 +97,7 @@ async def test_delete_dataset_requires_creds_succeed(
         headers={"Origin": "https://www.globalforestwatch.org"},
     ) as async_client:
         create_resp = await async_client.put(
-            f"/dataset/{dataset_name}",
-            json={"metadata": DATASET_METADATA}
+            f"/dataset/{dataset_name}", json={"metadata": DATASET_METADATA}
         )
         assert create_resp.status_code == 201
 
@@ -114,8 +105,8 @@ async def test_delete_dataset_requires_creds_succeed(
 
     # Now try to delete it
     monkeypatch.setattr(
-        "app.routes.datasets.dataset.user_is_owner_or_admin",
-        async_bool_function_closure(True, with_args=True)
+        "app.authentication.token.user_is_owner_or_admin",
+        async_bool_function_closure(True, with_args=True),
     )
 
     async with AsyncClient(
@@ -124,9 +115,7 @@ async def test_delete_dataset_requires_creds_succeed(
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
     ) as async_client:
-        delete_resp = await async_client.delete(
-            f"/dataset/{dataset_name}"
-        )
+        delete_resp = await async_client.delete(f"/dataset/{dataset_name}")
         assert delete_resp.status_code == 200
 
 

@@ -8,7 +8,7 @@ from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 from ...application import db
-from ...authentication.token import is_admin, get_request_user
+from ...authentication.token import assert_user_is_owner_or_admin, is_admin
 from ...crud import datasets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.datasets import Dataset as ORMDataset
@@ -97,29 +97,6 @@ async def update_dataset(
     return await _dataset_response(dataset, row)
 
 
-async def user_is_owner_or_admin(dataset: str) -> bool:
-    user_id, role = await get_request_user()
-
-    if role == "ADMIN":
-        return True
-
-    dataset_row: ORMDataset = await datasets.get_dataset(dataset)
-    owner: str = dataset_row.owner_id
-    if user_id is not None and user_id == owner:
-        return True
-
-    return False
-
-
-async def assert_user_is_owner_or_admin(dataset: str = Depends(dataset_dependency)) -> bool:
-    if not await user_is_owner_or_admin(dataset):
-        raise HTTPException(
-            status_code=401,
-            detail=f"User is not dataset owner or admin!"
-        )
-    return True
-
-
 @router.delete(
     "/{dataset}",
     response_class=ORJSONResponse,
@@ -129,7 +106,7 @@ async def assert_user_is_owner_or_admin(dataset: str = Depends(dataset_dependenc
 async def delete_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
-    is_authorized: bool = Depends(assert_user_is_owner_or_admin)
+    is_authorized: bool = Depends(assert_user_is_owner_or_admin),
 ) -> DatasetResponse:
     """Delete a dataset.
 
