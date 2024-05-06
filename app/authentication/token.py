@@ -33,13 +33,31 @@ async def is_service_account(token: str = Depends(oauth2_scheme)) -> bool:
         return True
 
 
-async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
+async def assert_admin(token: str = Depends(oauth2_scheme)) -> None:
     """Calls GFW API to authorize user.
 
     User must be ADMIN for gfw app
     """
 
-    return await is_app_admin(token, "gfw", "Unauthorized")
+    return await assert_app_role(token, "ADMIN", "gfw", "Unauthorized")
+
+
+async def assert_manager(token: str = Depends(oauth2_scheme)) -> None:
+    """Calls GFW API to authorize user.
+
+    User must be MANAGER for data-api app.
+    """
+
+    return await assert_app_role(token, "MANAGER", "data-api", "Unauthorized")
+
+
+async def is_admin_or_manager(token: str = Depends(oauth2_scheme)) -> bool:
+    """Calls GFW API to authorize user.
+
+    User must be ADMIN for gfw app or MANAGER for data-api app.
+    """
+
+    return (await assert_admin(token)) or (await assert_manager(token))
 
 
 async def rw_user_id(token: str = Depends(oauth2_scheme)) -> str:
@@ -65,8 +83,9 @@ async def is_gfwpro_admin_for_query(
                 status_code=401, detail="Unauthorized query on a restricted dataset"
             )
         else:
-            return await is_app_admin(
+            return await is_app_role(
                 cast(str, token),
+                "ADMIN",
                 "gfw-pro",
                 error_str="Unauthorized query on a restricted dataset",
             )
@@ -74,21 +93,23 @@ async def is_gfwpro_admin_for_query(
     return True
 
 
-async def is_app_admin(token: str, app: str, error_str: str) -> bool:
-    """Calls GFW API to authorize user.
+async def assert_app_role(token: str, role: str, app: str, error_str: str) -> None:
+    is_authorized = await is_app_role(token, role, app)
 
-    User must be an ADMIN for the specified app, else it will throw an
-    exception with the specified error string.
-    """
+    if not is_authorized:
+        raise HTTPException(status_code=401, detail=error_str)
+
+
+async def is_app_role(token: str, role: str, app: str) -> bool:
+    """Calls RW API to authorize user for specific role and app."""
 
     response: Response = await who_am_i(token)
 
     if response.status_code == 401 or not (
-        response.json()["role"] == "ADMIN"
+        response.json()["role"] == role
         and app in response.json()["extraUserData"]["apps"]
     ):
-        logger.warning(f"ADMIN privileges required. Unauthorized user: {response.text}")
-        raise HTTPException(status_code=401, detail=error_str)
+        return False
     else:
         return True
 
