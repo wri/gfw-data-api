@@ -66,7 +66,7 @@ async def create_api_key(
     Default keys are valid for one year
     """
 
-    user_id, user_role = user["id"], user["role"]
+    user_id, user_role = user.id, user.role
 
     if api_key_data.never_expires and user_role != "ADMIN":
         raise HTTPException(
@@ -124,7 +124,7 @@ async def get_api_key(
 
     User must own API Key or must be Admin to see details.
     """
-    user_id, role = user["id"], user["role"]
+    user_id, role = user.id, user.role
     try:
         row: ORMApiKey = await api_keys.get_api_key(api_key)
     except RecordNotFoundError:
@@ -148,7 +148,7 @@ async def get_api_keys(
 
     Default keys are valid for one year
     """
-    user_id = user["id"]
+    user_id = user.id
     rows: List[ORMApiKey] = await api_keys.get_api_keys_from_user(user_id)
     data = [ApiKey.from_orm(row) for row in rows]
 
@@ -191,7 +191,7 @@ async def delete_api_key(
 
     API Key must belong to user.
     """
-    user_id = user["id"]
+    user_id = user.id
     try:
         row: ORMApiKey = await api_keys.get_api_key(api_key)
     except RecordNotFoundError:
