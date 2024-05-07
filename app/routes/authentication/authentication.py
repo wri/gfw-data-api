@@ -66,12 +66,10 @@ async def create_api_key(
     Default keys are valid for one year
     """
 
-    user_id, user_role = user.id, user.role
-
-    if api_key_data.never_expires and user_role != "ADMIN":
+    if api_key_data.never_expires and user.role != "ADMIN":
         raise HTTPException(
             status_code=400,
-            detail=f"Users with role {user_role} cannot set `never_expires` to True.",
+            detail=f"Users with role {user.role} cannot set `never_expires` to True.",
         )
 
     input_data = api_key_data.dict(by_alias=True)
@@ -86,7 +84,7 @@ async def create_api_key(
 
     # Give a good error code/message if user is specifying an alias that exists for
     # another one of his API keys.
-    prev_keys: List[ORMApiKey] = await api_keys.get_api_keys_from_user(user_id=user_id)
+    prev_keys: List[ORMApiKey] = await api_keys.get_api_keys_from_user(user_id=user.id)
     for key in prev_keys:
         if key.alias == api_key_data.alias:
             raise HTTPException(
@@ -94,7 +92,7 @@ async def create_api_key(
                 detail="Key with specified alias already exists; use a different alias",
             )
 
-    row: ORMApiKey = await api_keys.create_api_key(user_id=user_id, **input_data)
+    row: ORMApiKey = await api_keys.create_api_key(user_id=user.id, **input_data)
 
     is_internal = api_key_is_internal(
         api_key_data.domains, user_id=None, origin=origin, referrer=referrer
