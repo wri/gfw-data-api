@@ -122,13 +122,13 @@ async def get_api_key(
 
     User must own API Key or must be Admin to see details.
     """
-    user_id, role = user.id, user.role
+
     try:
         row: ORMApiKey = await api_keys.get_api_key(api_key)
     except RecordNotFoundError:
         raise HTTPException(status_code=404, detail="The API Key does not exist.")
 
-    if role != "ADMIN" and row.user_id != user_id:
+    if user.role != "ADMIN" and row.user_id != user.id:
         raise HTTPException(
             status_code=403, detail="API Key is not associated with current user."
         )
@@ -146,8 +146,7 @@ async def get_api_keys(
 
     Default keys are valid for one year
     """
-    user_id = user.id
-    rows: List[ORMApiKey] = await api_keys.get_api_keys_from_user(user_id)
+    rows: List[ORMApiKey] = await api_keys.get_api_keys_from_user(user.id)
     data = [ApiKey.from_orm(row) for row in rows]
 
     return ApiKeysResponse(data=data)
@@ -189,7 +188,6 @@ async def delete_api_key(
 
     API Key must belong to user.
     """
-    user_id = user.id
     try:
         row: ORMApiKey = await api_keys.get_api_key(api_key)
     except RecordNotFoundError:
@@ -198,7 +196,7 @@ async def delete_api_key(
         )
 
     # TODO: we might want to allow admins to delete api keys of other users?
-    if not row.user_id == user_id:
+    if not row.user_id == user.id:
         raise HTTPException(
             status_code=403,
             detail="The requested API key does not belong to the current user.",
