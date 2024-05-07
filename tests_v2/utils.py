@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import httpx
 from _pytest.monkeypatch import MonkeyPatch
+from fastapi.exceptions import HTTPException
 
 from app.application import ContextEngine
 from app.models.pydantic.authentication import User
@@ -40,7 +41,7 @@ async def get_admin_mocked() -> Tuple[str, str]:
     return "adminid_123", "ADMIN"
 
 
-async def get_manager_mocked() -> str:
+async def get_manager_mocked() -> User:
     return User(
         id="mr_manager123",
         name="Mr. Manager",
@@ -157,3 +158,7 @@ async def custom_raster_version(
         yield version_name
     finally:
         pass
+
+
+async def raises_401() -> None:
+    raise HTTPException(status_code=401, detail="Unauthorized")
