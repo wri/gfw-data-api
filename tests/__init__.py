@@ -321,7 +321,7 @@ async def get_manager_mocked() -> User:
         email="mr_manager@management.com",
         createdAt="2021-06-13T03:18:23.000Z",
         role="MANAGER",
-        applications=["data-api"],
+        applications=[],
         extraUserData={},
     )
 

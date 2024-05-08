@@ -113,9 +113,7 @@ async def get_manager(user: User = Depends(get_user)) -> User:
     """Get the details for authenticated MANAGER for data-api application or
     ADMIN user."""
 
-    if user.role != "ADMIN" or not (
-        user.role == "MANAGER" and "data-api" in user.applications
-    ):
+    if user.role != "ADMIN" or user.role != "MANAGER":
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     return user
