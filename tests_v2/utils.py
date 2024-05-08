@@ -34,11 +34,27 @@ class BatchJobMock:
 
 
 async def get_user_mocked() -> Tuple[str, str]:
-    return "userid_123", "USER"
+    return User(
+        id="userid_123",
+        name="Ms. User",
+        email="ms_user@user.com",
+        createdAt="2021-06-13T03:18:23.000Z",
+        role="USER",
+        applications=[],
+        extraUserData={},
+    )
 
 
 async def get_admin_mocked() -> Tuple[str, str]:
-    return "adminid_123", "ADMIN"
+    return User(
+        id="adminid_123",
+        name="Sir Admin",
+        email="sir_admin@admin.com",
+        createdAt="2021-06-13T03:18:23.000Z",
+        role="ADMIN",
+        applications=[],
+        extraUserData={},
+    )
 
 
 async def get_manager_mocked() -> User:

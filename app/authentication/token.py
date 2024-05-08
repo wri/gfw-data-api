@@ -97,7 +97,7 @@ async def get_user(token: str = Depends(oauth2_scheme)) -> User:
         logger.info("Unauthorized user")
         raise HTTPException(status_code=401, detail="Unauthorized")
     else:
-        return User(**response.json()["data"])
+        return User(**response.json())
 
 
 async def get_admin(user: User = Depends(get_user)) -> User:
