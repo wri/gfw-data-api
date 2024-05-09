@@ -1,6 +1,5 @@
 """Datasets are just a bucket, for datasets which share the same core
 metadata."""
-
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -8,7 +7,7 @@ from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 from ...application import db
-from ...authentication.token import get_manager, is_admin
+from ...authentication.token import get_manager
 from ...crud import datasets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.datasets import Dataset as ORMDataset
@@ -24,6 +23,19 @@ from ...routes import dataset_dependency
 from ...settings.globals import READER_USERNAME
 
 router = APIRouter()
+
+
+async def get_owner(
+    dataset: str = Depends(dataset_dependency), user: User = Depends(get_manager)
+) -> User:
+    """Retrieves the user object that owns the dataset if that user is the one
+    making the request, otherwise raises a 401."""
+
+    dataset_row: ORMDataset = await datasets.get_dataset(dataset)
+    owner: str = dataset_row.owner_id
+    if owner != user.id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return user
 
 
 @router.get(
@@ -94,7 +106,7 @@ async def update_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
     request: DatasetUpdateIn,
-    is_authorized: bool = Depends(is_admin),
+    is_authorized: User = Depends(get_owner),
 ) -> DatasetResponse:
     """Partially update a dataset.
 
@@ -118,7 +130,7 @@ async def update_dataset(
 async def delete_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
-    is_authorized: bool = Depends(is_admin),
+    is_authorized: User = Depends(get_owner),
 ) -> DatasetResponse:
     """Delete a dataset.
 
