@@ -33,7 +33,7 @@ class BatchJobMock:
         return job_id
 
 
-async def get_user_mocked() -> Tuple[str, str]:
+async def get_user_mocked() -> User:
     return User(
         id="userid_123",
         name="Ms. User",
@@ -45,7 +45,7 @@ async def get_user_mocked() -> Tuple[str, str]:
     )
 
 
-async def get_admin_mocked() -> Tuple[str, str]:
+async def get_admin_mocked() -> User:
     return User(
         id="adminid_123",
         name="Sir Admin",
