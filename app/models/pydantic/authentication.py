@@ -14,17 +14,18 @@ class SignUpRequestIn(StrictBaseModel):
     email: EmailStr = Query(..., description="User's email address")
 
 
-class SignUp(StrictBaseModel):
+class User(StrictBaseModel):
     id: str
     name: str
     email: EmailStr
     createdAt: datetime
     role: str
+    applications: List[str]
     extraUserData: Dict[str, Any]
 
 
 class SignUpResponse(Response):
-    data: SignUp
+    data: User
 
 
 class APIKeyRequestIn(StrictBaseModel):

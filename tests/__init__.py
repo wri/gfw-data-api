@@ -12,6 +12,7 @@ from moto import mock_batch, mock_ec2, mock_ecs, mock_iam, mock_lambda, mock_log
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.models.pydantic.authentication import User
 from app.settings.globals import (
     AWS_REGION,
     DATA_LAKE_BUCKET,
@@ -50,8 +51,6 @@ SHP_PATH = os.path.join(os.path.dirname(__file__), "fixtures", SHP_NAME)
 
 BUCKET = "test-bucket"
 PORT = 9000
-
-RW_USER_ID = "5874bfcca049b7a56ad42771"  # pragma: allowlist secret
 
 SessionLocal: Optional[Session] = None
 
@@ -315,8 +314,16 @@ async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
     return str(uuid.uuid4()), "localhost"
 
 
-async def get_rw_user_id() -> str:
-    return RW_USER_ID
+async def get_manager_mocked() -> User:
+    return User(
+        id="mr_manager123",
+        name="Mr. Manager",
+        email="mr_manager@management.com",
+        createdAt="2021-06-13T03:18:23.000Z",
+        role="MANAGER",
+        applications=[],
+        extraUserData={},
+    )
 
 
 def setup_clients(ec2_client, iam_client):

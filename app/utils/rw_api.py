@@ -12,7 +12,7 @@ from ..errors import (
     RecordNotFoundError,
     UnauthorizedError,
 )
-from ..models.pydantic.authentication import SignUp
+from ..models.pydantic.authentication import User
 from ..models.pydantic.geostore import Geometry, GeostoreCommon
 from ..settings.globals import RW_API_URL
 
@@ -116,7 +116,7 @@ async def login(user_name: str, password: str) -> str:
     return response.json()["data"]["token"]
 
 
-async def signup(name: str, email: str) -> SignUp:
+async def signup(name: str, email: str) -> User:
     """Obtain a token form RW API using given user name and password."""
 
     headers = {"Content-Type": "application/json"}
@@ -153,4 +153,4 @@ async def signup(name: str, email: str) -> SignUp:
             detail="An error occurred while trying to create a new user account. Please try again.",
         )
 
-    return SignUp(**response.json()["data"])
+    return User(**response.json()["data"])
