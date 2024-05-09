@@ -3,8 +3,6 @@ from unittest.mock import patch
 import pytest
 
 from app.application import ContextEngine, db
-from app.authentication.token import is_admin
-from tests import RW_USER_ID, is_admin_mocked, not_admin_mocked
 from tests.utils import create_default_asset, dataset_metadata
 
 payload = {"metadata": dataset_metadata}
@@ -70,7 +68,7 @@ async def test_datasets(async_client):
         )
 
     assert len(rows) == 1
-    assert rows[0][0] == RW_USER_ID
+    assert rows[0][0] == "mr_manager123"
 
     new_payload = {"metadata": {"title": "New Title"}, "owner_id": "new_owner_id123"}
     response = await async_client.patch(f"/dataset/{dataset}", json=new_payload)
@@ -89,17 +87,6 @@ async def test_datasets(async_client):
 
     assert len(rows) == 1
     assert rows[0][0] == "new_owner_id123"
-
-    # check you can't PATCH owner_id unless admin
-    from app.main import app
-
-    app.dependency_overrides[is_admin] = not_admin_mocked
-
-    new_payload = {"owner_id": "will_fail123"}
-    response = await async_client.patch(f"/dataset/{dataset}", json=new_payload)
-    assert response.status_code == 401
-
-    app.dependency_overrides[is_admin] = is_admin_mocked
 
     response = await async_client.delete(f"/dataset/{dataset}")
     assert response.status_code == 200

@@ -1,10 +1,11 @@
-from typing import Tuple, cast
+from typing import cast
 
 from fastapi import Depends, HTTPException
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
 from httpx import Response
 
+from ..models.pydantic.authentication import User
 from ..routes import dataset_dependency
 from ..settings.globals import PROTECTED_QUERY_DATASETS
 from ..utils.rw_api import who_am_i
@@ -40,12 +41,6 @@ async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
     """
 
     return await is_app_admin(token, "gfw", "Unauthorized")
-
-
-async def rw_user_id(token: str = Depends(oauth2_scheme)) -> str:
-    """Gets user ID from token."""
-
-    return await who_am_i(token).json()["id"]
 
 
 async def is_gfwpro_admin_for_query(
@@ -93,19 +88,32 @@ async def is_app_admin(token: str, app: str, error_str: str) -> bool:
         return True
 
 
-async def get_user(token: str = Depends(oauth2_scheme)) -> Tuple[str, str]:
-    """Calls GFW API to authorize user.
-
-    This functions check is user of any level is associated with the GFW
-    app and returns the user ID
-    """
+async def get_user(token: str = Depends(oauth2_scheme)) -> User:
+    """Get the details for authenticated user."""
 
     response: Response = await who_am_i(token)
 
-    if response.status_code == 401 or not (
-        "gfw" in response.json()["extraUserData"]["apps"]
-    ):
+    if response.status_code == 401:
         logger.info("Unauthorized user")
         raise HTTPException(status_code=401, detail="Unauthorized")
     else:
-        return response.json()["id"], response.json()["role"]
+        return User(**response.json())
+
+
+async def get_admin(user: User = Depends(get_user)) -> User:
+    """Get the details for authenticated ADMIN user."""
+
+    if user.role != "ADMIN":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    return user
+
+
+async def get_manager(user: User = Depends(get_user)) -> User:
+    """Get the details for authenticated MANAGER for data-api application or
+    ADMIN user."""
+
+    if user.role != "ADMIN" or user.role != "MANAGER":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    return user

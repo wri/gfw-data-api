@@ -1,6 +1,5 @@
 """Datasets are just a bucket, for datasets which share the same core
 metadata."""
-
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -8,11 +7,12 @@ from fastapi.responses import ORJSONResponse
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 from ...application import db
-from ...authentication.token import is_admin, rw_user_id
+from ...authentication.token import get_manager
 from ...crud import datasets, versions
 from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.orm.datasets import Dataset as ORMDataset
 from ...models.orm.versions import Version as ORMVersion
+from ...models.pydantic.authentication import User
 from ...models.pydantic.datasets import (
     Dataset,
     DatasetCreateIn,
@@ -21,8 +21,23 @@ from ...models.pydantic.datasets import (
 )
 from ...routes import dataset_dependency
 from ...settings.globals import READER_USERNAME
+from ...utils.rw_api import get_rw_user
 
 router = APIRouter()
+
+
+async def get_owner(
+    dataset: str = Depends(dataset_dependency), user: User = Depends(get_manager)
+) -> User:
+    """Retrieves the user object that owns the dataset, or ADMIN user, if that
+    user is the one making the request, otherwise raises a 401."""
+
+    dataset_row: ORMDataset = await datasets.get_dataset(dataset)
+    owner: str = dataset_row.owner_id
+
+    if owner != user.id and owner.role != "ADMIN":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return user
 
 
 @router.get(
@@ -52,8 +67,7 @@ async def create_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
     request: DatasetCreateIn,
-    is_authorized: bool = Depends(is_admin),
-    owner_id: str = Depends(rw_user_id),
+    user: User = Depends(get_manager),
     response: Response,
 ) -> DatasetResponse:
     """Create a dataset. A “dataset” is largely a metadata concept: it
@@ -67,7 +81,7 @@ async def create_dataset(
     """
 
     input_data: Dict = request.dict(exclude_none=True, by_alias=True)
-    input_data["owner_id"] = owner_id
+    input_data["owner_id"] = user.id
 
     try:
         new_dataset: ORMDataset = await datasets.create_dataset(dataset, **input_data)
@@ -94,24 +108,24 @@ async def update_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
     request: DatasetUpdateIn,
-    is_authorized: bool = Depends(is_admin),
-    is_authorized_admin: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
 ) -> DatasetResponse:
     """Partially update a dataset.
 
     Only metadata field can be updated. All other fields will be
     ignored.
 
-    Only the dataset owner or a user with `ADMIN` user role can do this operation. Only
-    a user with `ADMIN` role can change the dataset owner.
+    Only the dataset owner or a user with `ADMIN` user role can do this operation.
     """
     input_data: Dict = request.dict(exclude_none=True, by_alias=True)
 
-    if request.owner_id is not None and not is_authorized_admin:
-        raise HTTPException(
-            status_code=401,
-            detail="Only ADMIN users can change owner_id. Please contact an ADMIN if you would like change dataset ownership.",
-        )
+    if request.owner_id is not None:
+        new_owner = get_rw_user(request.owner_id)
+        if new_owner.role != "ADMIN" or new_owner.role != "MANAGER":
+            raise HTTPException(
+                status_code=401,
+                detail="New owner must be a valid ADMIN or MANAGER.",
+            )
 
     row: ORMDataset = await datasets.update_dataset(dataset, **input_data)
 
@@ -127,7 +141,7 @@ async def update_dataset(
 async def delete_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
-    is_authorized: bool = Depends(is_admin),
+    is_authorized: User = Depends(get_owner),
 ) -> DatasetResponse:
     """Delete a dataset.
 

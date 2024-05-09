@@ -6,8 +6,10 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import httpx
 from _pytest.monkeypatch import MonkeyPatch
+from fastapi.exceptions import HTTPException
 
 from app.application import ContextEngine
+from app.models.pydantic.authentication import User
 from app.models.pydantic.extent import Extent
 from app.routes.datasets import versions
 from app.tasks import batch, delete_assets
@@ -31,16 +33,40 @@ class BatchJobMock:
         return job_id
 
 
-async def get_user_mocked() -> Tuple[str, str]:
-    return "userid_123", "USER"
+async def get_user_mocked() -> User:
+    return User(
+        id="userid_123",
+        name="Ms. User",
+        email="ms_user@user.com",
+        createdAt="2021-06-13T03:18:23.000Z",
+        role="USER",
+        applications=[],
+        extraUserData={},
+    )
 
 
-async def get_admin_mocked() -> Tuple[str, str]:
-    return "adminid_123", "ADMIN"
+async def get_admin_mocked() -> User:
+    return User(
+        id="adminid_123",
+        name="Sir Admin",
+        email="sir_admin@admin.com",
+        createdAt="2021-06-13T03:18:23.000Z",
+        role="ADMIN",
+        applications=[],
+        extraUserData={},
+    )
 
 
-async def get_rw_user_id_mocked() -> str:
-    return "userid_123"
+async def get_manager_mocked() -> User:
+    return User(
+        id="mr_manager123",
+        name="Mr. Manager",
+        email="mr_manager@management.com",
+        createdAt="2021-06-13T03:18:23.000Z",
+        role="MANAGER",
+        applications=[],
+        extraUserData={},
+    )
 
 
 async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
@@ -148,3 +174,7 @@ async def custom_raster_version(
         yield version_name
     finally:
         pass
+
+
+async def raises_401() -> None:
+    raise HTTPException(status_code=401, detail="Unauthorized")
