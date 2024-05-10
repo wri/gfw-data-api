@@ -37,7 +37,7 @@ async def get_owner(
     dataset_row: ORMDataset = await datasets.get_dataset(dataset)
     owner: str = dataset_row.owner_id
     if owner != user.id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail=f"Unauthorized write access to dataset {dataset} (or its versions/assets) by a user who is not an admin or owner of the dataset")
     return user
 
 
