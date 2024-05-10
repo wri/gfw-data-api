@@ -112,7 +112,7 @@ async def get_rw_user(user_id: str) -> User:
             status_code=500, detail="Call to user service server failed"
         )
 
-    return User(**response)
+    return User(**response.json())
 
 
 async def login(user_name: str, password: str) -> str:

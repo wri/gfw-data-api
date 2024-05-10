@@ -325,9 +325,26 @@ async def get_manager_mocked() -> User:
         email="mr_manager@management.com",
         createdAt="2021-06-13T03:18:23.000Z",
         role="MANAGER",
-        applications=[],
+        provider="local",
+        providerId="123",
         extraUserData={},
     )
+
+
+NEW_OWNER = User(
+    id="new_owner_id123",
+    name="New Owner",
+    email="new_owner@owner.com",
+    createdAt="2021-06-13T03:18:23.000Z",
+    role="MANAGER",
+    provider="local",
+    providerId="1234",
+    extraUserData={},
+)
+
+
+async def get_new_owner_mocked() -> User:
+    return NEW_OWNER
 
 
 def setup_clients(ec2_client, iam_client):

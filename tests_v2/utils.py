@@ -40,7 +40,8 @@ async def get_user_mocked() -> User:
         email="ms_user@user.com",
         createdAt="2021-06-13T03:18:23.000Z",
         role="USER",
-        applications=[],
+        provider="local",
+        providerId="1234",
         extraUserData={},
     )
 
@@ -52,7 +53,8 @@ async def get_admin_mocked() -> User:
         email="sir_admin@admin.com",
         createdAt="2021-06-13T03:18:23.000Z",
         role="ADMIN",
-        applications=[],
+        provider="google",
+        providerId="1234",
         extraUserData={},
     )
 
@@ -64,7 +66,8 @@ async def get_manager_mocked() -> User:
         email="mr_manager@management.com",
         createdAt="2021-06-13T03:18:23.000Z",
         role="MANAGER",
-        applications=[],
+        provider="local",
+        providerId="1234",
         extraUserData={},
     )
 

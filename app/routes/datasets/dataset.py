@@ -32,10 +32,13 @@ async def get_owner(
     """Retrieves the user object that owns the dataset, or ADMIN user, if that
     user is the one making the request, otherwise raises a 401."""
 
+    if user.role == "ADMIN":
+        return user
+
     dataset_row: ORMDataset = await datasets.get_dataset(dataset)
     owner: str = dataset_row.owner_id
 
-    if owner != user.id and owner.role != "ADMIN":
+    if owner != user.id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     return user
 
@@ -120,10 +123,10 @@ async def update_dataset(
     input_data: Dict = request.dict(exclude_none=True, by_alias=True)
 
     if request.owner_id is not None:
-        new_owner = get_rw_user(request.owner_id)
-        if new_owner.role != "ADMIN" or new_owner.role != "MANAGER":
+        new_owner = await get_rw_user(request.owner_id)
+        if new_owner.role != "ADMIN" and new_owner.role != "MANAGER":
             raise HTTPException(
-                status_code=401,
+                status_code=400,
                 detail="New owner must be a valid ADMIN or MANAGER.",
             )
 
