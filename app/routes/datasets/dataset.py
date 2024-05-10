@@ -33,6 +33,7 @@ async def get_owner(
 
     if user.role == "ADMIN":
         return user
+
     dataset_row: ORMDataset = await datasets.get_dataset(dataset)
     owner: str = dataset_row.owner_id
     if owner != user.id:

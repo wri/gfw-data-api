@@ -11,7 +11,7 @@ Available assets and endpoints to choose from depend on the source type.
 
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
 from urllib.parse import urlparse
 
 from fastapi import (
@@ -26,7 +26,6 @@ from fastapi import (
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
-from ...authentication.token import is_admin
 from ...crud import assets
 from ...crud import metadata as metadata_crud
 from ...crud import versions
@@ -35,12 +34,11 @@ from ...models.enum.assets import AssetStatus, AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.asset_metadata import (
-    FieldMetadata,
-    FieldMetadataOut,
     FieldsMetadataResponse,
     RasterBandMetadata,
     RasterBandsMetadataResponse,
 )
+from ...models.pydantic.authentication import User
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
     CreationOptions,
@@ -70,8 +68,8 @@ from ...tasks.default_assets import append_default_asset, create_default_asset
 from ...tasks.delete_assets import delete_all_assets
 from ...utils.aws import get_aws_files
 from ...utils.google import get_gs_files
+from .dataset import get_owner
 from .queries import _get_data_environment
-from typing import cast
 
 router = APIRouter()
 
@@ -122,12 +120,14 @@ async def add_new_version(
     version: str = Depends(version_dependency),
     request: VersionCreateIn,
     background_tasks: BackgroundTasks,
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
     response: Response,
 ):
-    """Create a version for a given dataset by uploading the geospatial/tabular asset.
+    """Create a version for a given dataset by uploading the geospatial/tabular
+    asset.
 
-    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
     """
 
     input_data = request.dict(exclude_none=True, by_alias=True)
@@ -171,7 +171,7 @@ async def update_version(
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
     request: VersionUpdateIn,
     background_tasks: BackgroundTasks,
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
 ):
     """Partially update a version of a given dataset.
 
@@ -219,7 +219,7 @@ async def append_to_version(
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
     request: VersionAppendIn,
     background_tasks: BackgroundTasks,
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
 ):
     """Append new data to an existing (geo)database table.
 
@@ -262,7 +262,7 @@ async def append_to_version(
 async def delete_version(
     *,
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
     background_tasks: BackgroundTasks,
 ):
     """Delete a version.
@@ -413,12 +413,13 @@ async def get_metadata(
 async def create_metadata(
     *,
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
     request: VersionMetadataIn,
 ):
     """Create a metadata record for a dataset version.
 
-    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
     """
     dataset, version = dv
     input_data = request.dict(exclude_none=True, by_alias=True)
@@ -441,11 +442,12 @@ async def create_metadata(
 async def delete_metadata(
     *,
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
 ):
     """Delete metadata record for a dataset version.
 
-    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
     """
     dataset, version = dv
 
@@ -468,12 +470,13 @@ async def delete_metadata(
 async def update_metadata(
     *,
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
     request: VersionMetadataUpdate,
 ):
     """Update metadata record for a dataset version.
 
-    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
     """
     dataset, version = dv
     input_data = request.dict(exclude_none=True, by_alias=True)

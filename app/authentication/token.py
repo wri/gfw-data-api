@@ -113,7 +113,7 @@ async def get_manager(user: User = Depends(get_user)) -> User:
     """Get the details for authenticated MANAGER for data-api application or
     ADMIN user."""
 
-    if user.role != "ADMIN" or user.role != "MANAGER":
+    if user.role != "ADMIN" and user.role != "MANAGER":
         raise HTTPException(status_code=401, detail="Unauthorized write access to a dataset/version/asset by a user who is not an admin or data manager")
 
     return user

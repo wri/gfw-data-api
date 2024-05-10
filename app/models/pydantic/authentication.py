@@ -20,7 +20,8 @@ class User(StrictBaseModel):
     email: EmailStr
     createdAt: datetime
     role: str
-    applications: List[str]
+    provider: str
+    providerId: Optional[str]
     extraUserData: Dict[str, Any]
 
 
