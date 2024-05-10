@@ -21,7 +21,7 @@ class User(StrictBaseModel):
     createdAt: datetime
     role: str
     provider: str
-    providerId: str
+    providerId: Optional[str]
     extraUserData: Dict[str, Any]
 
 
