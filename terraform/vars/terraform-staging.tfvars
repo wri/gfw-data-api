@@ -1,7 +1,7 @@
 environment               = "staging"
 log_level                 = "info"
 service_url               = "https://staging-data-api.globalforestwatch.org"
-rw_api_url                = "https://staging-api.resourcewatch.org"
+rw_api_url                = "https://api.resourcewatch.org"
 desired_count             = 1
 auto_scaling_min_capacity = 1
 auto_scaling_max_capacity = 15
