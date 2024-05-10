@@ -45,9 +45,10 @@ async def test_get_owner_fail(db, init_db, monkeypatch) -> None:
         _ = await get_owner(dataset_name, some_user)
     except HTTPException as e:
         assert e.status_code == 401
-        assert e.detail == "Unauthorized"
+        assert e.detail == "Unauthorized write access to dataset my_first_dataset (or its versions/assets) by a user who is not an admin or owner of the dataset"
 
 
+@pytest.mark.asyncio
 async def test_get_owner_manager_success(db, init_db, monkeypatch) -> None:
     dataset_name: str = "my_first_dataset"
 
@@ -74,6 +75,7 @@ async def test_get_owner_manager_success(db, init_db, monkeypatch) -> None:
     _ = await get_owner(dataset_name, some_manager)
 
 
+@pytest.mark.asyncio
 async def test_get_owner_different_manager_fail(db, init_db, monkeypatch) -> None:
     dataset_name: str = "my_first_dataset"
 
@@ -102,16 +104,17 @@ async def test_get_owner_different_manager_fail(db, init_db, monkeypatch) -> Non
         _ = await get_owner(dataset_name, some_manager)
     except HTTPException as e:
         assert e.status_code == 401
-        assert e.detail == "Unauthorized"
+        assert e.detail == "Unauthorized write access to dataset my_first_dataset (or its versions/assets) by a user who is not an admin or owner of the dataset"
 
 
+@pytest.mark.asyncio
 async def test_get_owner_admin_success(db, init_db, monkeypatch) -> None:
     dataset_name: str = "my_first_dataset"
 
     from app.main import app
 
-    # Create a dataset
-    app.dependency_overrides[get_manager] = get_admin_mocked
+    # Create a dataset with a manager, then make sure get_owner succeeds with an admin.
+    app.dependency_overrides[get_manager] = get_manager_mocked
 
     async with AsyncClient(
         app=app,
