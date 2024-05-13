@@ -39,10 +39,20 @@ async def get_owner(
     owner_id: str = dataset_row.owner_id
 
     if owner_id != user.id:
-        owner = await get_rw_user(owner_id)
+        error_msg = f"Unauthorized write access to dataset {dataset} (or its versions/assets) by a user who is not an admin or owner of the dataset."
+
+        # if possible return owner email"
+        try:
+            owner = await get_rw_user(owner_id)
+            error_msg += f" Please contact the dataset owner ({owner.email}) or an admin to modify the dataset."
+        except HTTPException:
+            error_msg += (
+                " Please contact the dataset owner or an admin to modify the dataset."
+            )
+
         raise HTTPException(
             status_code=401,
-            detail=f"Unauthorized write access to dataset {dataset} (or its versions/assets) by a user who is not an admin or owner of the dataset. Please contact the dataset owner ({owner.email}) or an admin to modify the dataset.",
+            detail=error_msg,
         )
 
     return user
