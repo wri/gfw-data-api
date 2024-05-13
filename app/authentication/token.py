@@ -95,7 +95,7 @@ async def get_user(token: str = Depends(oauth2_scheme)) -> User:
 
     if response.status_code == 401:
         logger.info("Unauthorized user")
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Unauthorized access - this operation requires user authentication via a token")
     else:
         return User(**response.json())
 
@@ -104,7 +104,7 @@ async def get_admin(user: User = Depends(get_user)) -> User:
     """Get the details for authenticated ADMIN user."""
 
     if user.role != "ADMIN":
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Unauthorized access - this operation requires authentication as a user that is an admin")
 
     return user
 
@@ -114,6 +114,6 @@ async def get_manager(user: User = Depends(get_user)) -> User:
     ADMIN user."""
 
     if user.role != "ADMIN" and user.role != "MANAGER":
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Unauthorized write access to a dataset/version/asset by a user who is not an admin or data manager")
 
     return user

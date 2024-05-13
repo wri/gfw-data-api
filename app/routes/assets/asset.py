@@ -71,6 +71,10 @@ from ...utils.path import infer_srid_from_grid
 from ..assets import asset_response
 from ..tasks import paginated_tasks_response, tasks_response
 
+from ...authentication.token import get_manager
+from ...models.pydantic.authentication import User
+from ..datasets.dataset import get_owner
+
 router = APIRouter()
 
 
@@ -103,12 +107,20 @@ async def update_asset(
     *,
     asset_id: UUID = Path(...),
     request: AssetUpdateIn,
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_manager),
 ) -> AssetResponse:
     """Update Asset metadata.
 
     Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
+
+    try:
+        asset_row: ORMAsset = await assets.get_asset(asset_id)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # This is the actual check that the user is either the dataset owner or an admin
+    _ = await get_owner(asset_row.dataset, user)
 
     input_data = request.dict(exclude_none=True, by_alias=True)
 
@@ -133,7 +145,7 @@ async def update_asset(
 async def delete_asset(
     *,
     asset_id: UUID = Path(...),
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_manager),
     background_tasks: BackgroundTasks,
 ) -> AssetResponse:
     """Delete selected asset.
@@ -148,6 +160,9 @@ async def delete_asset(
         row: ORMAsset = await assets.get_asset(asset_id)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+    # This is the actual check that the user is either the dataset owner or an admin
+    _ = await get_owner(row.dataset, user)
 
     if row.is_default:
         raise HTTPException(
@@ -346,12 +361,22 @@ async def get_field_metadata(*, asset_id: UUID = Path(...), field_name: str):
     response_model=FieldMetadataResponse,
 )
 async def update_field_metadata(
-    *, asset_id: UUID = Path(...), field_name: str, request: FieldMetadataUpdate
+    *, asset_id: UUID = Path(...), field_name: str, request: FieldMetadataUpdate,
+    user: User = Depends(get_manager),
 ):
     """Update the field metadata for an asset.
 
     Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
+
+    try:
+        asset_row: ORMAsset = await assets.get_asset(asset_id)
+    except RecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # This is the actual check that the user is either the dataset owner or an admin
+    _ = await get_owner(asset_row.dataset, user)
+
     input_data = request.dict(exclude_none=True, by_alias=True)
     metadata = await metadata_crud.get_asset_metadata(asset_id)
     field_metadata: ORMFieldMetadata = await metadata_crud.update_field_metadata(
@@ -410,7 +435,8 @@ async def create_metadata(*, asset_id: UUID = Path(...), request: AssetMetadata)
     tags=["Assets"],
     response_model=AssetMetadataResponse,
 )
-async def update_metadata(*, asset_id: UUID = Path(...), request: AssetMetadataUpdate):
+async def update_metadata(*, asset_id: UUID = Path(...), request: AssetMetadataUpdate,
+                          user: User = Depends(get_manager)):
     """Update metadata record for an asset.
 
     Only the dataset's owner or a user with `ADMIN` user role can do this operation.
@@ -426,6 +452,9 @@ async def update_metadata(*, asset_id: UUID = Path(...), request: AssetMetadataU
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+    # This is the actual check that the user is either the dataset owner or an admin
+    _ = await get_owner(asset.dataset, user)
+
     validated_metadata = asset_metadata_factory(asset)
 
     return Response(data=validated_metadata)
@@ -437,7 +466,8 @@ async def update_metadata(*, asset_id: UUID = Path(...), request: AssetMetadataU
     tags=["Assets"],
     response_model=AssetMetadataResponse,
 )
-async def delete_metadata(asset_id: UUID = Path(...)):
+async def delete_metadata(asset_id: UUID = Path(...),
+                          user: User = Depends(get_manager)):
     """Delete an asset's metadata record.
 
     Only the dataset's owner or a user with `ADMIN` user role can do this operation.
@@ -447,6 +477,9 @@ async def delete_metadata(asset_id: UUID = Path(...)):
         asset.metadata = await metadata_crud.delete_asset_metadata(asset_id)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+    # This is the actual check that the user is either the dataset owner or an admin
+    _ = await get_owner(asset.dataset, user)
 
     validated_metadata = asset_metadata_factory(asset)
 

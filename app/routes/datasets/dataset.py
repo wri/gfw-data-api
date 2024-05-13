@@ -44,6 +44,7 @@ async def get_owner(
             status_code=401,
             detail=f"Unauthorized write access to dataset {dataset} (or its versions/assets) by a user who is not an admin or owner of the dataset. Please contact the dataset owner ({owner.email}) or an admin to modify the dataset.",
         )
+
     return user
 
 
