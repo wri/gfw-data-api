@@ -5,7 +5,7 @@ import pytest
 from app.application import ContextEngine, db
 from app.authentication.token import get_manager
 from app.models.pydantic.authentication import User
-from tests import NEW_OWNER, get_manager_mocked, get_new_owner_mocked
+from tests import MANAGER, NEW_OWNER, get_manager_mocked, get_new_owner_mocked
 from tests.utils import create_default_asset, dataset_metadata
 
 payload = {"metadata": dataset_metadata}
@@ -95,7 +95,8 @@ async def test_datasets(async_client):
         assert len(rows) == 1
         assert rows[0][0] == "new_owner_id123"
 
-        # assign original owner back
+    # assign original owner back
+    with patch("app.routes.datasets.dataset.get_rw_user", return_value=MANAGER):
         from app.main import app
 
         app.dependency_overrides[get_manager] = get_new_owner_mocked

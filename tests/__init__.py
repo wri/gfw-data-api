@@ -318,17 +318,16 @@ async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
     return str(uuid.uuid4()), "localhost"
 
 
-async def get_manager_mocked() -> User:
-    return User(
-        id="mr_manager123",
-        name="Mr. Manager",
-        email="mr_manager@management.com",
-        createdAt="2021-06-13T03:18:23.000Z",
-        role="MANAGER",
-        provider="local",
-        providerId="123",
-        extraUserData={},
-    )
+MANAGER = User(
+    id="mr_manager123",
+    name="Mr. Manager",
+    email="mr_manager@management.com",
+    createdAt="2021-06-13T03:18:23.000Z",
+    role="MANAGER",
+    provider="local",
+    providerId="123",
+    extraUserData={},
+)
 
 
 NEW_OWNER = User(
@@ -341,6 +340,10 @@ NEW_OWNER = User(
     providerId="1234",
     extraUserData={},
 )
+
+
+async def get_manager_mocked() -> User:
+    return MANAGER
 
 
 async def get_new_owner_mocked() -> User:

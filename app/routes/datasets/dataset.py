@@ -29,17 +29,21 @@ router = APIRouter()
 async def get_owner(
     dataset: str = Depends(dataset_dependency), user: User = Depends(get_manager)
 ) -> User:
-    """Retrieves the user object that owns the dataset, or ADMIN user, if that
-    user is the one making the request, otherwise raises a 401."""
+    """Retrieves the user object of the one making the request if that user
+    either owns the dataset or is an ADMIN, otherwise raises a 401."""
 
     if user.role == "ADMIN":
         return user
 
     dataset_row: ORMDataset = await datasets.get_dataset(dataset)
-    owner: str = dataset_row.owner_id
+    owner_id: str = dataset_row.owner_id
 
-    if owner != user.id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    if owner_id != user.id:
+        owner = await get_rw_user(owner_id)
+        raise HTTPException(
+            status_code=401,
+            detail=f"Unauthorized write access to dataset {dataset} (or its versions/assets) by a user who is not an admin or owner of the dataset. Please contact the dataset owner ({owner.email}) or an admin to modify the dataset.",
+        )
     return user
 
 

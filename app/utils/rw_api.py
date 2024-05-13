@@ -104,7 +104,7 @@ async def get_rw_user(user_id: str) -> User:
     if response.status_code == 404:
         raise HTTPException(status_code=401, detail=f"User ID invalid: {user_id}")
 
-    if response.status_code != 200 and response.status_code != 401:
+    if response.status_code != 200:
         logger.warning(
             f"Failed to authorize user. Server responded with response code: {response.status_code} and message: {response.text}"
         )
