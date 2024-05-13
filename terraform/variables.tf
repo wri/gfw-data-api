@@ -73,40 +73,86 @@ variable "data_lake_max_vcpus" {
   default = 576
 }
 
-variable "api_gateway_usage_plans" {
-  type        = map(any)
-  description = "Throttling limits for API Gateway"
-  default = {
-    internal_apps = {
-      quota_limit = 10000 # per day
-      burst_limit = 100   # per second
-      rate_limit  = 200
-    }
-    external_apps = {
-      quota_limit = 500
-      burst_limit = 10
-      rate_limit  = 20
-    }
-  }
-}
-
 variable "internal_domains" {
   type        = string
   description = "Comma separated list of client domains for which we set first tier rate limiting."
   default     = "*.globalforestwatch.org,globalforestwatch.org,api.resourcewatch.org,my.gfw-mapbuilder.org,resourcewatch.org"
 }
 
-variable "download_endpoints" {
-  type        = list(string)
-  description = "path parts to download endpoints"
-
-  # listing spatial endpoints as gateway needs them explicitly created
-  # in order to apply endpoint-level throttling to them
-  default = ["geotiff", "gpkg", "shp"]
-}
 
 #TODO import from core-infrastructure when operational
 variable "new_relic_license_key_arn" {
   type        = string
   description = "New Relic license key ARN"
+}
+
+variable "load_balancer_arn" {
+  type        = string
+  default     = ""
+  description = "Optional Load Balancer to use for fargate cluster. When left blank, a new LB will be created"
+}
+
+variable "load_balancer_security_group" {
+  type        = string
+  default     = ""
+  description = "Optional secuirty group of load balancer with which the task can communicate. Required if load_blancer_arn is not empty"
+}
+
+variable "listener_port" {
+  type        = number
+  description = "The default port the Load Balancer should listen to. Will be ignored when acm_certificate is set."
+  default     = 80
+}
+
+variable "lb_dns_name" {
+  type        = string
+  default     = ""
+  description = "DNS name of load balancer for API Gateway to forward requests to. API Gateway will first look for one from fargate autoscaling module output before using this."
+}
+
+variable "create_cloudfront_distribution" {
+  type    = bool
+  default = true
+}
+
+variable "api_gateway_id" {
+  type        = string
+  description = "ID of API Gateway instance"
+  default     = ""
+}
+
+variable "api_gw_internal_up_id" {
+  type        = string
+  description = "ID of API Gateway usage plan for internal domains"
+  default     = ""
+}
+
+variable "api_gw_external_up_id" {
+  type        = string
+  description = "ID of API Gateway usage plan for external domains"
+  default     = ""
+}
+
+variable "api_gateway_name" {
+  type        = string
+  description = "Name of API Gateway instance"
+  default     = "GFWDataAPIGateway"
+}
+
+variable "api_gateway_description" {
+  type        = string
+  description = "Description of API Gateway Instance"
+  default     = "GFW Data API Gateway"
+}
+
+variable "api_gateway_stage_name" {
+  type        = string
+  description = "Deployment stage name of API Gateway instance"
+  default     = "deploy"
+}
+
+variable "api_gateway_url" {
+  type        = string
+  description = "The invoke url of the API Gateway stage"
+  default     = ""
 }

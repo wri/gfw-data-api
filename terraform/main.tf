@@ -27,7 +27,7 @@ locals {
   aurora_max_vcpus      = local.aurora_instance_class == "db.t3.medium" ? 2 : local.aurora_instance_class == "db.r6g.large" ? 2 : local.aurora_instance_class == "db.r6g.xlarge" ? 4 : local.aurora_instance_class == "db.r6g.2xlarge" ? 8 : local.aurora_instance_class == "db.r6g.4xlarge" ? 16 : local.aurora_instance_class == "db.r6g.8xlarge" ? 32 : local.aurora_instance_class == "db.r6g.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.large" ? 2 : local.aurora_instance_class == "db.r5.xlarge" ? 4 : local.aurora_instance_class == "db.r5.2xlarge" ? 8 : local.aurora_instance_class == "db.r5.4xlarge" ? 16 : local.aurora_instance_class == "db.r5.8xlarge" ? 32 : local.aurora_instance_class == "db.r5.12xlarge" ? 48 : local.aurora_instance_class == "db.r5.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.24xlarge" ? 96 : ""
   service_url           = var.environment == "dev" ? "http://${module.fargate_autoscaling.lb_dns_name}" : var.service_url
   container_tag         = substr(var.git_sha, 0, 7)
-  api_gw_stage_name     = substr("deploy${replace(local.name_suffix, "-", "_")}", 0, 64)
+  lb_dns_name           = coalesce(module.fargate_autoscaling.lb_dns_name, var.lb_dns_name)
 }
 
 # Docker image for FastAPI app
@@ -76,22 +76,25 @@ module "batch_tile_cache_image" {
 
 
 module "fargate_autoscaling" {
-  source                    = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.3"
-  project                   = local.project
-  name_suffix               = local.name_suffix
-  tags                      = local.fargate_tags
-  vpc_id                    = data.terraform_remote_state.core.outputs.vpc_id
-  private_subnet_ids        = data.terraform_remote_state.core.outputs.private_subnet_ids
-  public_subnet_ids         = data.terraform_remote_state.core.outputs.public_subnet_ids
-  container_name            = var.container_name
-  container_port            = var.container_port
-  desired_count             = var.desired_count
-  fargate_cpu               = var.fargate_cpu
-  fargate_memory            = var.fargate_memory
-  auto_scaling_cooldown     = var.auto_scaling_cooldown
-  auto_scaling_max_capacity = var.auto_scaling_max_capacity
-  auto_scaling_max_cpu_util = var.auto_scaling_max_cpu_util
-  auto_scaling_min_capacity = var.auto_scaling_min_capacity
+  source                       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.5"
+  project                      = local.project
+  name_suffix                  = local.name_suffix
+  tags                         = local.fargate_tags
+  vpc_id                       = data.terraform_remote_state.core.outputs.vpc_id
+  private_subnet_ids           = data.terraform_remote_state.core.outputs.private_subnet_ids
+  public_subnet_ids            = data.terraform_remote_state.core.outputs.public_subnet_ids
+  container_name               = var.container_name
+  container_port               = var.container_port
+  desired_count                = var.desired_count
+  fargate_cpu                  = var.fargate_cpu
+  fargate_memory               = var.fargate_memory
+  load_balancer_arn            = var.load_balancer_arn
+  load_balancer_security_group = var.load_balancer_security_group
+  listener_port                = var.environment == "dev" ? data.external.generate_port[0].result.port : var.listener_port
+  auto_scaling_cooldown        = var.auto_scaling_cooldown
+  auto_scaling_max_capacity    = var.auto_scaling_max_capacity
+  auto_scaling_max_cpu_util    = var.auto_scaling_max_cpu_util
+  auto_scaling_min_capacity    = var.auto_scaling_min_capacity
   //  acm_certificate_arn       = var.environment == "dev" ? null : data.terraform_remote_state.core.outputs.acm_certificate
   security_group_ids = [data.terraform_remote_state.core.outputs.postgresql_security_group_id]
   task_role_policies = [
@@ -102,7 +105,7 @@ module "fargate_autoscaling" {
     aws_iam_policy.iam_api_gateway_policy.arn,
     aws_iam_policy.read_gcs_secret.arn,
     data.terraform_remote_state.tile_cache.outputs.ecs_update_service_policy_arn,
-    data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_full_access_policy_arn,
+    aws_iam_policy.tile_cache_bucket_policy.arn,
     data.terraform_remote_state.tile_cache.outputs.cloudfront_invalidation_policy_arn
   ]
   task_execution_role_policies = [
@@ -203,4 +206,14 @@ module "batch_job_queues" {
   ]
   aurora_max_vcpus = local.aurora_max_vcpus
   gcs_secret       = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
+}
+
+module "api_gateway" {
+  count                   = var.api_gateway_id == "" ? 1 : 0
+  source                  = "./modules/api_gateway/gateway"
+  lb_dns_name             = local.lb_dns_name
+  api_gateway_role_policy = data.template_file.api_gateway_role_policy.rendered
+  lambda_role_policy      = data.template_file.lambda_role_policy.rendered
+  cloudwatch_policy       = data.local_file.cloudwatch_log_policy.content
+  lambda_invoke_policy    = data.local_file.iam_lambda_invoke.content
 }

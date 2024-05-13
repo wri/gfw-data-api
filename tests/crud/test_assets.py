@@ -10,18 +10,22 @@ from app.crud.assets import (
     create_asset,
     delete_asset,
     get_asset,
-    get_assets,
     get_assets_by_filter,
     update_asset,
 )
 from app.crud.datasets import create_dataset
 from app.crud.versions import create_version
 from app.errors import RecordAlreadyExistsError, RecordNotFoundError
-from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.asset_metadata import DatabaseTableMetadata
-from app.models.pydantic.metadata import VersionMetadata, DatasetMetadata
+from app.models.pydantic.change_log import ChangeLog
+from app.models.pydantic.metadata import DatasetMetadata, VersionMetadata
 
-from ..utils import dataset_metadata, version_metadata, asset_metadata
+from ..utils import (
+    asset_metadata,
+    dataset_metadata,
+    raster_asset_metadata,
+    version_metadata,
+)
 
 
 @pytest.mark.asyncio
@@ -242,4 +246,59 @@ async def test_assets_metadata():
     assert asset.metadata.fields[0].name == asset_metadata["fields"][0]["name"]
     assert (
         asset.metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_band_metadata():
+    """Testing band metadata."""
+
+    dataset = "test"
+    version = "v1.1.1"
+
+    # Add a dataset
+    async with ContextEngine("WRITE"):
+        await create_dataset(
+            dataset, metadata=DatasetMetadata(**dataset_metadata).dict(by_alias=False)
+        )
+        await create_version(
+            dataset,
+            version,
+            metadata=VersionMetadata(**version_metadata).dict(by_alias=True),
+        )
+        new_asset = await create_asset(
+            dataset,
+            version,
+            asset_type="Raster tile set",
+            asset_uri="s3://path/to/file",
+            metadata=raster_asset_metadata,
+        )
+
+    asset_id = new_asset.asset_id
+    assert (
+        new_asset.metadata.bands[0].values_table
+        == raster_asset_metadata["bands"][0]["values_table"]
+    )
+
+    updated_band_metadata = {
+        "bands": [
+            {
+                "pixel_meaning": "year",
+                "values_table": {
+                    "rows": [
+                        {"value": 1, "meaning": 2001},
+                        {"value": 2, "meaning": 2002},
+                        {"value": 3, "meaning": 2003},
+                    ],
+                },
+            }
+        ]
+    }
+
+    async with ContextEngine("WRITE"):
+        asset = await update_asset(asset_id, metadata=updated_band_metadata)
+
+    assert (
+        asset.metadata.bands[0].values_table
+        == updated_band_metadata["bands"][0]["values_table"]
     )
