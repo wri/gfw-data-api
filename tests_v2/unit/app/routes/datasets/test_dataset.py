@@ -45,7 +45,10 @@ async def test_get_owner_fail(db, init_db, monkeypatch) -> None:
         _ = await get_owner(dataset_name, some_user)
     except HTTPException as e:
         assert e.status_code == 401
-        assert e.detail == "Unauthorized write access to dataset my_first_dataset (or its versions/assets) by a user who is not an admin or owner of the dataset"
+        assert (
+            e.detail
+            == "Unauthorized write access to dataset my_first_dataset (or its versions/assets) by a user who is not an admin or owner of the dataset. Please contact the dataset owner or an admin to modify the dataset."
+        )
 
 
 @pytest.mark.asyncio
@@ -104,7 +107,10 @@ async def test_get_owner_different_manager_fail(db, init_db, monkeypatch) -> Non
         _ = await get_owner(dataset_name, some_manager)
     except HTTPException as e:
         assert e.status_code == 401
-        assert e.detail == "Unauthorized write access to dataset my_first_dataset (or its versions/assets) by a user who is not an admin or owner of the dataset"
+        assert (
+            e.detail
+            == "Unauthorized write access to dataset my_first_dataset (or its versions/assets) by a user who is not an admin or owner of the dataset. Please contact the dataset owner or an admin to modify the dataset."
+        )
 
 
 @pytest.mark.asyncio
