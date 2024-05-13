@@ -21,6 +21,7 @@ from ...models.pydantic.datasets import (
 )
 from ...routes import dataset_dependency
 from ...settings.globals import READER_USERNAME
+from ...utils.rw_api import get_rw_user
 
 router = APIRouter()
 
@@ -28,16 +29,22 @@ router = APIRouter()
 async def get_owner(
     dataset: str = Depends(dataset_dependency), user: User = Depends(get_manager)
 ) -> User:
-    """Returns the User making the request as long as that user is an admin or
-    the owner of the dataset, otherwise raises a 401."""
+    """Retrieves the user object of the one making the request if that user
+    either owns the dataset or is an ADMIN, otherwise raises a 401."""
 
     if user.role == "ADMIN":
         return user
 
     dataset_row: ORMDataset = await datasets.get_dataset(dataset)
-    owner: str = dataset_row.owner_id
-    if owner != user.id:
-        raise HTTPException(status_code=401, detail=f"Unauthorized write access to dataset {dataset} (or its versions/assets) by a user who is not an admin or owner of the dataset")
+    owner_id: str = dataset_row.owner_id
+
+    if owner_id != user.id:
+        owner = await get_rw_user(owner_id)
+        raise HTTPException(
+            status_code=401,
+            detail=f"Unauthorized write access to dataset {dataset} (or its versions/assets) by a user who is not an admin or owner of the dataset. Please contact the dataset owner ({owner.email}) or an admin to modify the dataset.",
+        )
+
     return user
 
 
@@ -109,16 +116,19 @@ async def update_dataset(
     *,
     dataset: str = Depends(dataset_dependency),
     request: DatasetUpdateIn,
-    is_authorized: User = Depends(get_owner),
+    user: User = Depends(get_owner),
 ) -> DatasetResponse:
-    """Partially update a dataset.
-
-    Only metadata field can be updated. All other fields will be
-    ignored.
-
-    Only the dataset owner or a user with `ADMIN` user role can do this operation.
-    """
+    """Update metadata, accessibility or ownership of a dataset."""
     input_data: Dict = request.dict(exclude_none=True, by_alias=True)
+
+    if request.owner_id is not None:
+        new_owner = await get_rw_user(request.owner_id)
+        if new_owner.role != "ADMIN" and new_owner.role != "MANAGER":
+            raise HTTPException(
+                status_code=400,
+                detail="New owner must be a valid ADMIN or MANAGER.",
+            )
+
     row: ORMDataset = await datasets.update_dataset(dataset, **input_data)
 
     return await _dataset_response(dataset, row)

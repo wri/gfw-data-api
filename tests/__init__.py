@@ -306,6 +306,10 @@ async def is_admin_mocked():
     return True
 
 
+async def not_admin_mocked():
+    return False
+
+
 async def is_service_account_mocked():
     return True
 
@@ -314,17 +318,36 @@ async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
     return str(uuid.uuid4()), "localhost"
 
 
+MANAGER = User(
+    id="mr_manager123",
+    name="Mr. Manager",
+    email="mr_manager@management.com",
+    createdAt="2021-06-13T03:18:23.000Z",
+    role="MANAGER",
+    provider="local",
+    providerId="123",
+    extraUserData={},
+)
+
+
+NEW_OWNER = User(
+    id="new_owner_id123",
+    name="New Owner",
+    email="new_owner@owner.com",
+    createdAt="2021-06-13T03:18:23.000Z",
+    role="MANAGER",
+    provider="local",
+    providerId="1234",
+    extraUserData={},
+)
+
+
 async def get_manager_mocked() -> User:
-    return User(
-        id="mr_manager123",
-        name="Mr. Manager",
-        email="mr_manager@management.com",
-        createdAt="2021-06-13T03:18:23.000Z",
-        role="MANAGER",
-        provider="local",
-        providerId="123",
-        extraUserData={},
-    )
+    return MANAGER
+
+
+async def get_new_owner_mocked() -> User:
+    return NEW_OWNER
 
 
 def setup_clients(ec2_client, iam_client):
