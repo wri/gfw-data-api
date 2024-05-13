@@ -117,13 +117,7 @@ async def update_dataset(
     request: DatasetUpdateIn,
     user: User = Depends(get_owner),
 ) -> DatasetResponse:
-    """Partially update a dataset.
-
-    Only metadata field can be updated. All other fields will be
-    ignored.
-
-    Only the dataset owner or a user with `ADMIN` user role can do this operation.
-    """
+    """Update metadata, accessibility or ownership of a dataset."""
     input_data: Dict = request.dict(exclude_none=True, by_alias=True)
 
     if request.owner_id is not None:
