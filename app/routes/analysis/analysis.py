@@ -101,6 +101,12 @@ async def _zonal_statistics(
     start_date: Optional[str],
     end_date: Optional[str],
 ):
+    if geometry.type != "Polygon" and geometry.type != "MultiPolygon":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Geometry must be a Polygon or MultiPolygon for raster analysis"
+        )
+
     # OTF will just not apply a base filter
     base = "data"
 

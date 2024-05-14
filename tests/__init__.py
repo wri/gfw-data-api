@@ -211,17 +211,17 @@ class AWSMock(object):
             "environment": [
                 {"name": "AWS_ACCESS_KEY_ID", "value": "testing"},
                 {"name": "AWS_SECRET_ACCESS_KEY", "value": "testing"},
-                {"name": "ENDPOINT_URL", "value": "http://motoserver-s3:5000"},
+                {"name": "ENDPOINT_URL", "value": "http://motoserver:50000"},
                 {"name": "DEBUG", "value": "1"},
                 {"name": "TILE_CACHE", "value": TILE_CACHE_BUCKET},
                 {"name": "DATA_LAKE", "value": DATA_LAKE_BUCKET},
                 {"name": "AWS_HTTPS", "value": "NO"},
-                {"name": "AWS_S3_ENDPOINT", "value": "motoserver-s3:5000"},
+                {"name": "AWS_S3_ENDPOINT", "value": "motoserver:50000"},
                 {"name": "AWS_VIRTUAL_HOSTING", "value": "FALSE"},
                 {"name": "GDAL_DISABLE_READDIR_ON_OPEN", "value": "YES"},
                 {
                     "name": "AWS_SECRETSMANAGER_URL",
-                    "value": "http://motoserver-secretsmanager:5001",
+                    "value": "http://motoserver:50000",
                 },
             ],
             "volumes": [
