@@ -1,6 +1,6 @@
 from typing import List, Optional, Union
 
-from pydantic import Field, BaseModel
+from pydantic import BaseModel, Field
 
 from .base import BaseRecord, StrictBaseModel
 from .metadata import DatasetMetadata, DatasetMetadataOut, DatasetMetadataUpdate
@@ -27,6 +27,7 @@ class DatasetCreateIn(StrictBaseModel):
 class DatasetUpdateIn(StrictBaseModel):
     is_downloadable: Optional[bool]
     metadata: Optional[DatasetMetadataUpdate]
+    owner_id: Optional[str]
 
 
 class DatasetResponse(Response):
