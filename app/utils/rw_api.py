@@ -12,9 +12,9 @@ from ..errors import (
     RecordNotFoundError,
     UnauthorizedError,
 )
-from ..models.pydantic.authentication import SignUp
+from ..models.pydantic.authentication import User
 from ..models.pydantic.geostore import Geometry, GeostoreCommon
-from ..settings.globals import RW_API_URL
+from ..settings.globals import RW_API_URL, SERVICE_ACCOUNT_TOKEN
 
 
 @alru_cache(maxsize=128)
@@ -84,6 +84,37 @@ async def who_am_i(token) -> Response:
     return response
 
 
+async def get_rw_user(user_id: str) -> User:
+    """Call RW API to get a user from RW API."""
+
+    headers = {"Authorization": f"Bearer {SERVICE_ACCOUNT_TOKEN}"}
+    url = f"{RW_API_URL}/auth/user/{user_id}"
+
+    try:
+        async with AsyncClient() as client:
+            response: HTTPXResponse = await client.get(
+                url, headers=headers, timeout=10.0
+            )
+    except ReadTimeout:
+        raise HTTPException(
+            status_code=500,
+            detail="Call to user service timed-out. Please try again.",
+        )
+
+    if response.status_code == 404:
+        raise HTTPException(status_code=401, detail=f"User ID invalid: {user_id}")
+
+    if response.status_code != 200:
+        logger.warning(
+            f"Failed to authorize user. Server responded with response code: {response.status_code} and message: {response.text}"
+        )
+        raise HTTPException(
+            status_code=500, detail="Call to user service server failed"
+        )
+
+    return User(**response.json())
+
+
 async def login(user_name: str, password: str) -> str:
     """Obtain a token form RW API using given user name and password."""
 
@@ -116,7 +147,7 @@ async def login(user_name: str, password: str) -> str:
     return response.json()["data"]["token"]
 
 
-async def signup(name: str, email: str) -> SignUp:
+async def signup(name: str, email: str) -> User:
     """Obtain a token form RW API using given user name and password."""
 
     headers = {"Content-Type": "application/json"}
@@ -153,4 +184,4 @@ async def signup(name: str, email: str) -> SignUp:
             detail="An error occurred while trying to create a new user account. Please try again.",
         )
 
-    return SignUp(**response.json()["data"])
+    return User(**response.json()["data"])

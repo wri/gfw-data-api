@@ -8,9 +8,10 @@ uploaded file. Based on the source file(s), users can create additional
 assets and activate additional endpoints to view and query the dataset.
 Available assets and endpoints to choose from depend on the source type.
 """
+
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
 from urllib.parse import urlparse
 
 from fastapi import (
@@ -25,7 +26,6 @@ from fastapi import (
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
-from ...authentication.token import is_admin
 from ...crud import assets
 from ...crud import metadata as metadata_crud
 from ...crud import versions
@@ -34,12 +34,11 @@ from ...models.enum.assets import AssetStatus, AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
 from ...models.pydantic.asset_metadata import (
-    FieldMetadata,
-    FieldMetadataOut,
     FieldsMetadataResponse,
     RasterBandMetadata,
     RasterBandsMetadataResponse,
 )
+from ...models.pydantic.authentication import User
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
     CreationOptions,
@@ -69,8 +68,8 @@ from ...tasks.default_assets import append_default_asset, create_default_asset
 from ...tasks.delete_assets import delete_all_assets
 from ...utils.aws import get_aws_files
 from ...utils.google import get_gs_files
+from .dataset import get_owner
 from .queries import _get_data_environment
-from typing import cast
 
 router = APIRouter()
 
@@ -121,10 +120,15 @@ async def add_new_version(
     version: str = Depends(version_dependency),
     request: VersionCreateIn,
     background_tasks: BackgroundTasks,
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
     response: Response,
 ):
-    """Create or update a version for a given dataset."""
+    """Create a version for a given dataset by uploading the geospatial/tabular
+    asset.
+
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
+    """
 
     input_data = request.dict(exclude_none=True, by_alias=True)
     creation_options = input_data.pop("creation_options")
@@ -167,11 +171,13 @@ async def update_version(
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
     request: VersionUpdateIn,
     background_tasks: BackgroundTasks,
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
 ):
     """Partially update a version of a given dataset.
 
-    Update metadata or change latest tag
+    Update metadata or change latest tag.
+
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
     dataset, version = dv
     input_data = request.dict(exclude_none=True, by_alias=True)
@@ -213,12 +219,14 @@ async def append_to_version(
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
     request: VersionAppendIn,
     background_tasks: BackgroundTasks,
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
 ):
     """Append new data to an existing (geo)database table.
 
     Schema of input file must match or be a subset of previous input
     files.
+
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
     dataset, version = dv
     _verify_source_file_access(request.dict()["source_uri"])
@@ -254,15 +262,16 @@ async def append_to_version(
 async def delete_version(
     *,
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
     background_tasks: BackgroundTasks,
 ):
-
     """Delete a version.
 
     Only delete version if it is not tagged as `latest` or if it is the
     only version associated with dataset. All associated, managed assets
     will be deleted in consequence.
+
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
     dataset, version = dv
     row: Optional[ORMVersion] = None
@@ -381,6 +390,7 @@ async def get_metadata(
         False, description="Whether to include dataset metadata."
     ),
 ):
+    """Get metadata record for a dataset version."""
     dataset, version = dv
 
     try:
@@ -403,9 +413,14 @@ async def get_metadata(
 async def create_metadata(
     *,
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
     request: VersionMetadataIn,
 ):
+    """Create a metadata record for a dataset version.
+
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
+    """
     dataset, version = dv
     input_data = request.dict(exclude_none=True, by_alias=True)
     try:
@@ -427,8 +442,13 @@ async def create_metadata(
 async def delete_metadata(
     *,
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
 ):
+    """Delete metadata record for a dataset version.
+
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
+    """
     dataset, version = dv
 
     try:
@@ -450,9 +470,14 @@ async def delete_metadata(
 async def update_metadata(
     *,
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
-    is_authorized: bool = Depends(is_admin),
+    user: User = Depends(get_owner),
     request: VersionMetadataUpdate,
 ):
+    """Update metadata record for a dataset version.
+
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
+    """
     dataset, version = dv
     input_data = request.dict(exclude_none=True, by_alias=True)
 
@@ -477,16 +502,16 @@ async def _get_raster_fields(asset: ORMAsset) -> List[RasterBandMetadata]:
 
     logger.debug(f"Processing data environment f{raster_data_environment}")
     for layer in raster_data_environment.layers:
-        field_kwargs: Dict[str, Any] = {
-            "pixel_meaning": layer.name
-        }
+        field_kwargs: Dict[str, Any] = {"pixel_meaning": layer.name}
         if layer.raster_table:
             field_kwargs["values_table"] = cast(Dict[str, Any], {})
             field_kwargs["values_table"]["rows"] = [
-                 row for row in layer.raster_table.rows
+                row for row in layer.raster_table.rows
             ]
             if layer.raster_table.default_meaning:
-                field_kwargs["values_table"]["default_meaning"] = layer.raster_table.default_meaning
+                field_kwargs["values_table"][
+                    "default_meaning"
+                ] = layer.raster_table.default_meaning
 
         fields.append(RasterBandMetadata(**field_kwargs))
 

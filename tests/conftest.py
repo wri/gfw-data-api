@@ -5,6 +5,7 @@ import shutil
 import threading
 from http.server import HTTPServer
 
+import boto3
 import httpx
 import numpy
 import pytest
@@ -16,10 +17,13 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from app.authentication.api_keys import get_api_key
-from app.authentication.token import is_admin, is_service_account
+from app.authentication.token import get_manager, is_admin, is_service_account
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
     AURORA_JOB_QUEUE_FAST,
+    AWS_GCS_KEY_SECRET_ARN,
+    AWS_REGION,
+    AWS_SECRETSMANAGER_URL,
     DATA_LAKE_BUCKET,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
@@ -52,6 +56,7 @@ from . import (
     AWSMock,
     MemoryServer,
     get_api_key_mocked,
+    get_manager_mocked,
     is_admin_mocked,
     is_service_account_mocked,
     setup_clients,
@@ -251,6 +256,7 @@ async def async_client():
     app.dependency_overrides[is_admin] = is_admin_mocked
     app.dependency_overrides[is_service_account] = is_service_account_mocked
     app.dependency_overrides[get_api_key] = get_api_key_mocked
+    app.dependency_overrides[get_manager] = get_manager_mocked
 
     async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
         yield client
@@ -369,16 +375,16 @@ async def tmp_folder():
 #     aws_mock.stop_services()
 
 
-# @pytest.fixture(scope="session", autouse=True)
-# def secrets():
-#
-#     secret_client = boto3.client(
-#         "secretsmanager", region_name=AWS_REGION, endpoint_url=AWS_SECRETSMANAGER_URL
-#     )
-#     secret_client.create_secret(
-#         Name=AWS_GCS_KEY_SECRET_ARN,
-#         SecretString="foosecret",  # pragma: allowlist secret
-#     )
-#     yield
+@pytest.fixture(scope="session", autouse=True)
+def secrets():
 
-# secret_client.delete_secret(SecretId=AWS_GCS_KEY_SECRET_ARN)
+    secret_client = boto3.client(
+        "secretsmanager", region_name=AWS_REGION, endpoint_url=AWS_SECRETSMANAGER_URL
+    )
+    secret_client.create_secret(
+        Name=AWS_GCS_KEY_SECRET_ARN,
+        SecretString="foosecret",  # pragma: allowlist secret
+    )
+    yield
+
+    secret_client.delete_secret(SecretId=AWS_GCS_KEY_SECRET_ARN)

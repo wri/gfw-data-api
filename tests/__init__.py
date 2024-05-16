@@ -12,6 +12,7 @@ from moto import mock_batch, mock_ec2, mock_ecs, mock_iam, mock_lambda, mock_log
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.models.pydantic.authentication import User
 from app.settings.globals import (
     AWS_REGION,
     DATA_LAKE_BUCKET,
@@ -210,17 +211,17 @@ class AWSMock(object):
             "environment": [
                 {"name": "AWS_ACCESS_KEY_ID", "value": "testing"},
                 {"name": "AWS_SECRET_ACCESS_KEY", "value": "testing"},
-                {"name": "ENDPOINT_URL", "value": "http://motoserver-s3:5000"},
+                {"name": "ENDPOINT_URL", "value": "http://motoserver:50000"},
                 {"name": "DEBUG", "value": "1"},
                 {"name": "TILE_CACHE", "value": TILE_CACHE_BUCKET},
                 {"name": "DATA_LAKE", "value": DATA_LAKE_BUCKET},
                 {"name": "AWS_HTTPS", "value": "NO"},
-                {"name": "AWS_S3_ENDPOINT", "value": "motoserver-s3:5000"},
+                {"name": "AWS_S3_ENDPOINT", "value": "motoserver:50000"},
                 {"name": "AWS_VIRTUAL_HOSTING", "value": "FALSE"},
                 {"name": "GDAL_DISABLE_READDIR_ON_OPEN", "value": "YES"},
                 {
                     "name": "AWS_SECRETSMANAGER_URL",
-                    "value": "http://motoserver-secretsmanager:5001",
+                    "value": "http://motoserver:50000",
                 },
             ],
             "volumes": [
@@ -305,12 +306,48 @@ async def is_admin_mocked():
     return True
 
 
+async def not_admin_mocked():
+    return False
+
+
 async def is_service_account_mocked():
     return True
 
 
 async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
     return str(uuid.uuid4()), "localhost"
+
+
+MANAGER = User(
+    id="mr_manager123",
+    name="Mr. Manager",
+    email="mr_manager@management.com",
+    createdAt="2021-06-13T03:18:23.000Z",
+    role="MANAGER",
+    provider="local",
+    providerId="123",
+    extraUserData={},
+)
+
+
+NEW_OWNER = User(
+    id="new_owner_id123",
+    name="New Owner",
+    email="new_owner@owner.com",
+    createdAt="2021-06-13T03:18:23.000Z",
+    role="MANAGER",
+    provider="local",
+    providerId="1234",
+    extraUserData={},
+)
+
+
+async def get_manager_mocked() -> User:
+    return MANAGER
+
+
+async def get_new_owner_mocked() -> User:
+    return NEW_OWNER
 
 
 def setup_clients(ec2_client, iam_client):
