@@ -16,7 +16,7 @@ class SignUpRequestIn(StrictBaseModel):
 
 class User(BaseModel):
     id: str
-    name: str
+    name: Optional[str]
     email: EmailStr
     createdAt: datetime
     role: str
