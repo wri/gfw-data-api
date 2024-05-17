@@ -20,6 +20,7 @@ from ...authentication.token import is_admin
 from ...crud import assets
 from ...errors import RecordAlreadyExistsError
 from ...models.orm.assets import Asset as ORMAsset
+from ...models.pydantic.authentication import User
 from ...models.pydantic.assets import (
     AssetCreateIn,
     AssetResponse,
@@ -32,6 +33,7 @@ from ...tasks.assets import put_asset
 from ...utils.paginate import paginate_collection
 from ...utils.path import get_asset_uri
 from ..assets import asset_response, assets_response, paginated_assets_response
+from .dataset import get_owner
 from . import (
     validate_creation_options,
     verify_asset_dependencies,
@@ -118,7 +120,7 @@ async def add_new_asset(
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
     request: AssetCreateIn,
     background_tasks: BackgroundTasks,
-    is_authorized: bool = Depends(is_admin),
+    is_authorized: User = Depends(get_owner),
     response: ORJSONResponse,
 ) -> AssetResponse:
     """Add a new asset to a dataset version. Managed assets will be generated
@@ -127,6 +129,8 @@ async def add_new_asset(
 
     If the asset is not managed, you need to specify an Asset URI to
     link to.
+
+    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
     """
 
     dataset, version = dv

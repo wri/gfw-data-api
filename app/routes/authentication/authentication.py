@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
@@ -18,6 +18,7 @@ from ...models.pydantic.authentication import (
     ApiKeyValidationResponse,
     SignUpRequestIn,
     SignUpResponse,
+    User,
 )
 from ...models.pydantic.responses import Response
 from ...settings.globals import (
@@ -58,19 +59,17 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends()):
 async def create_api_key(
     api_key_data: APIKeyRequestIn,
     request: Request,
-    user: Tuple[str, str] = Depends(get_user),
+    user: User = Depends(get_user),
 ):
     """Request a new API key.
 
     Default keys are valid for one year
     """
 
-    user_id, user_role = user
-
-    if api_key_data.never_expires and user_role != "ADMIN":
+    if api_key_data.never_expires and user.role != "ADMIN":
         raise HTTPException(
             status_code=400,
-            detail=f"Users with role {user_role} cannot set `never_expires` to True.",
+            detail=f"Users with role {user.role} cannot set `never_expires` to True.",
         )
 
     input_data = api_key_data.dict(by_alias=True)
@@ -85,15 +84,15 @@ async def create_api_key(
 
     # Give a good error code/message if user is specifying an alias that exists for
     # another one of his API keys.
-    prev_keys: List[ORMApiKey] = await api_keys.get_api_keys_from_user(user_id=user_id)
+    prev_keys: List[ORMApiKey] = await api_keys.get_api_keys_from_user(user_id=user.id)
     for key in prev_keys:
         if key.alias == api_key_data.alias:
             raise HTTPException(
                 status_code=409,
-                detail="Key with specified alias already exists; use a different alias"
+                detail="Key with specified alias already exists; use a different alias",
             )
 
-    row: ORMApiKey = await api_keys.create_api_key(user_id=user_id, **input_data)
+    row: ORMApiKey = await api_keys.create_api_key(user_id=user.id, **input_data)
 
     is_internal = api_key_is_internal(
         api_key_data.domains, user_id=None, origin=origin, referrer=referrer
@@ -117,19 +116,19 @@ async def create_api_key(
 @router.get("/apikey/{api_key}", tags=["Authentication"])
 async def get_api_key(
     api_key: UUID = Path(..., description="API Key"),
-    user: Tuple[str, str] = Depends(get_user),
+    user: User = Depends(get_user),
 ):
     """Get details for a specific API Key.
 
     User must own API Key or must be Admin to see details.
     """
-    user_id, role = user
+
     try:
         row: ORMApiKey = await api_keys.get_api_key(api_key)
     except RecordNotFoundError:
         raise HTTPException(status_code=404, detail="The API Key does not exist.")
 
-    if role != "ADMIN" and row.user_id != user_id:
+    if user.role != "ADMIN" and row.user_id != user.id:
         raise HTTPException(
             status_code=403, detail="API Key is not associated with current user."
         )
@@ -141,14 +140,13 @@ async def get_api_key(
 
 @router.get("/apikeys", tags=["Authentication"])
 async def get_api_keys(
-    user: Tuple[str, str] = Depends(get_user),
+    user: User = Depends(get_user),
 ):
     """Request a new API key.
 
     Default keys are valid for one year
     """
-    user_id, _ = user
-    rows: List[ORMApiKey] = await api_keys.get_api_keys_from_user(user_id)
+    rows: List[ORMApiKey] = await api_keys.get_api_keys_from_user(user.id)
     data = [ApiKey.from_orm(row) for row in rows]
 
     return ApiKeysResponse(data=data)
@@ -184,13 +182,12 @@ async def delete_api_key(
     api_key: UUID = Path(
         ..., description="Api Key to delete. Must be owned by authenticated user."
     ),
-    user: Tuple[str, str] = Depends(get_user),
+    user: User = Depends(get_user),
 ):
     """Delete existing API key.
 
     API Key must belong to user.
     """
-    user_id, _ = user
     try:
         row: ORMApiKey = await api_keys.get_api_key(api_key)
     except RecordNotFoundError:
@@ -199,7 +196,7 @@ async def delete_api_key(
         )
 
     # TODO: we might want to allow admins to delete api keys of other users?
-    if not row.user_id == user_id:
+    if not row.user_id == user.id:
         raise HTTPException(
             status_code=403,
             detail="The requested API key does not belong to the current user.",

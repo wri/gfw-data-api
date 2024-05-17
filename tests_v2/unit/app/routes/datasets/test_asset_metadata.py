@@ -2,6 +2,15 @@ import pytest
 from httpx import AsyncClient
 
 from app.crud import assets as assets_crud
+from app.authentication import token
+from app.authentication.token import get_manager, get_user
+from tests_v2.utils import (
+    get_admin_mocked,
+    get_manager_mocked,
+    get_user_mocked,
+    raises_401,
+)
+from app.main import app as appmain
 
 
 @pytest.mark.asyncio
@@ -29,7 +38,6 @@ async def test_get_asset_metadata(
 @pytest.mark.asyncio
 async def test_update_asset_metadata(
     generic_vector_source_version,
-    async_client: AsyncClient,
 ):
     max_zoom_before_update = 14
     max_zoom = 12
@@ -42,12 +50,41 @@ async def test_update_asset_metadata(
     (tile_cache_asset,) = assets
     assert tile_cache_asset.metadata.max_zoom == max_zoom_before_update
 
-    resp = await async_client.patch(
-        f"asset/{tile_cache_asset.asset_id}/metadata", json={"max_zoom": max_zoom}
-    )
+    # generic_vector_source_version creates with owner of manager_mocked, so
+    # update by manager_mocked should succeed
+    appmain.dependency_overrides[get_user] = get_manager_mocked
 
-    assert resp.json()["status"] == "success"
-    assert resp.json()["data"]["max_zoom"] == max_zoom
+    async with AsyncClient(
+        app=appmain,
+        base_url="http://test",
+        trust_env=False,
+        headers={"Origin": "https://www.globalforestwatch.org"},
+    ) as async_client:
+        resp = await async_client.patch(
+            f"asset/{tile_cache_asset.asset_id}/metadata", json={"max_zoom": max_zoom}
+        )
+    
+        assert resp.json()["status"] == "success"
+        assert resp.json()["data"]["max_zoom"] == max_zoom
+
+    # update by user_mocked should fail
+    appmain.dependency_overrides = {}
+    appmain.dependency_overrides[get_user] = get_user_mocked
+
+    async with AsyncClient(
+        app=appmain,
+        base_url="http://test",
+        trust_env=False,
+        headers={"Origin": "https://www.globalforestwatch.org"},
+    ) as async_client:
+        resp = await async_client.patch(
+            f"asset/{tile_cache_asset.asset_id}/metadata", json={"max_zoom": max_zoom}
+        )
+    
+        assert resp.json()["status"] == "failed"
+        assert resp.status_code == 401
+
+    appmain.dependency_overrides = {}
 
 
 @pytest.mark.asyncio
@@ -94,7 +131,7 @@ async def test_get_field_metadata(
 
 @pytest.mark.asyncio
 async def test_update_field_metadata(
-    generic_vector_source_version, async_client: AsyncClient
+    generic_vector_source_version
 ):
     field_description = "geometry field"
     dataset, version, _ = generic_vector_source_version
@@ -107,10 +144,37 @@ async def test_update_field_metadata(
     assert tile_cache_asset.metadata.fields[1].description is None
     assert tile_cache_asset.metadata.fields[1].name == "geom"
 
-    resp = await async_client.patch(
-        f"asset/{tile_cache_asset.asset_id}/fields/geom",
-        json={"description": field_description},
-    )
+    appmain.dependency_overrides[get_user] = get_manager_mocked
 
-    assert resp.json()["status"] == "success"
-    assert resp.json()["data"]["description"] == field_description
+    async with AsyncClient(
+        app=appmain,
+        base_url="http://test",
+        trust_env=False,
+        headers={"Origin": "https://www.globalforestwatch.org"},
+    ) as async_client:
+        resp = await async_client.patch(
+            f"asset/{tile_cache_asset.asset_id}/fields/geom",
+            json={"description": field_description},
+        )
+
+        assert resp.json()["status"] == "success"
+        assert resp.json()["data"]["description"] == field_description
+
+    appmain.dependency_overrides = {}
+    appmain.dependency_overrides[get_user] = get_user_mocked
+
+    async with AsyncClient(
+        app=appmain,
+        base_url="http://test",
+        trust_env=False,
+        headers={"Origin": "https://www.globalforestwatch.org"},
+    ) as async_client:
+        resp = await async_client.patch(
+            f"asset/{tile_cache_asset.asset_id}/fields/geom",
+            json={"description": field_description},
+        )
+
+        assert resp.json()["status"] == "failed"
+        assert resp.status_code == 401
+
+    appmain.dependency_overrides = {}
