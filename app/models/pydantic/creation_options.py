@@ -339,6 +339,27 @@ class RasterTileCacheCreationOptions(TileCacheBaseModel):
     )
 
 
+class COGCreationOptions(StrictBaseModel):
+    native_zoom_level: int = Field(
+        ..., description="Maximum zoom level to generate overviews for", ge=0, le=22
+    )
+    implementation: str = Field(
+        "default",
+        description="Name space to use for COG. "
+        "This will be part of the URI and will "
+        "allow to create multiple COGs per version,",
+    )
+    source_asset_id: str = Field(
+        ...,
+        description="Raster tile set asset ID to use as source. "
+        "Must be an asset of the same version",
+    )
+    resampling: ResamplingMethod = Field(
+        ResamplingMethod.average,
+        description="Resampling method used to downsample overviews",
+    )
+
+
 class DynamicVectorTileCacheCreationOptions(TileCacheBaseModel):
     field_attributes: Optional[List[Dict[str, Any]]] = Field(
         None,
@@ -395,6 +416,7 @@ SourceCreationOptions = Union[
 
 OtherCreationOptions = Union[
     TableAssetCreationOptions,
+    COGCreationOptions,
     RasterTileCacheCreationOptions,
     StaticVectorTileCacheCreationOptions,
     StaticVectorFileCreationOptions,
@@ -424,6 +446,7 @@ AssetCreationOptionsLookup: Dict[str, Type[OtherCreationOptions]] = {
     AssetType.shapefile: StaticVectorFileCreationOptions,
     AssetType.geopackage: StaticVectorFileCreationOptions,
     AssetType.raster_tile_set: RasterTileSetAssetCreationOptions,
+    AssetType.cog: COGCreationOptions,
     AssetType.raster_tile_cache: RasterTileCacheCreationOptions,
     AssetType.database_table: TableAssetCreationOptions,
 }
