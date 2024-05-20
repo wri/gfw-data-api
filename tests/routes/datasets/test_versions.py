@@ -7,7 +7,7 @@ from httpx import AsyncClient
 
 from app.settings.globals import S3_ENTRYPOINT_URL
 from app.utils.aws import get_s3_client
-from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
+from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME, GPKG_NAME
 from tests.conftest import FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import (
@@ -314,7 +314,8 @@ async def test_invalid_source_uri(async_client: AsyncClient):
     )
 
     # Create a version with a valid source_uri so we have something to append to
-    version_payload["creation_options"]["source_uri"] = [f"s3://{BUCKET}/{SHP_NAME}"]
+    version_payload["creation_options"]["source_uri"] = [f"s3://{BUCKET}/{GPKG_NAME}"]
+    version_payload["creation_options"]["layers"] = ["layer1"]
     await create_default_asset(
         dataset,
         version,
@@ -347,6 +348,15 @@ async def test_invalid_source_uri(async_client: AsyncClient):
         response.json()["message"]
         == f"Version with name {dataset}.{bad_version} does not exist"
     )
+
+    # Test appending to a version with missing layers
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/append", json={"source_uri": f"s3://{BUCKET}/{GPKG_NAME}", "layers": ["layer3"]}
+    )
+    assert response.status_code == 400
+    assert response.json()["status"] == "failed"
+
+
 
 
 @pytest.mark.asyncio
