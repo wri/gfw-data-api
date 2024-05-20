@@ -99,7 +99,7 @@ async def test_assets():
 
         assert result == (
             "Cannot create asset of type Database table. "
-            "Asset uri must be unique. An asset with uri s3://path/to/file already exists"
+            "Asset URI must be unique. An asset with URI s3://path/to/file already exists"
         )
 
     # There should be an entry now
