@@ -11,6 +11,11 @@ based on the same version and do not know the processing history.
 from typing import List, Optional, Union
 from uuid import UUID
 
+# from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, status
+from fastapi.responses import ORJSONResponse
+from starlette.responses import JSONResponse
+
+from app.models.pydantic.responses import Response
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -22,18 +27,13 @@ from fastapi import (
     status,
 )
 
-# from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, status
-from fastapi.responses import ORJSONResponse
-from starlette.responses import JSONResponse
-
-from app.models.pydantic.responses import Response
 from app.settings.globals import API_URL
 
 from ...authentication.token import is_admin
 from ...crud import assets
 from ...crud import metadata as metadata_crud
 from ...crud import tasks
-from ...errors import BadRequestError, RecordAlreadyExistsError, RecordNotFoundError
+from ...errors import RecordAlreadyExistsError, RecordNotFoundError
 from ...models.enum.assets import is_database_asset, is_single_file_asset
 from ...models.orm.asset_metadata import FieldMetadata as ORMFieldMetadata
 from ...models.orm.assets import Asset as ORMAsset
@@ -112,8 +112,6 @@ async def update_asset(
         row: ORMAsset = await assets.update_asset(asset_id, **input_data)
     except RecordNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except BadRequestError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except NotImplementedError as e:
         raise HTTPException(status_code=501, detail=str(e))
 

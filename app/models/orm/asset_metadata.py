@@ -52,8 +52,8 @@ class RasterBandMetadata(db.Model):
             name="asset_metadata_id_fk",
             onupdate="CASCADE",
             ondelete="CASCADE",
+            primary_key=True,
         ),
-        primary_key=True,
     )
     pixel_meaning = db.Column(db.String, primary_key=True)
     description = db.Column(db.String)

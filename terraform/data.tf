@@ -74,10 +74,10 @@ data "template_file" "container_definition" {
     api_token_secret_arn        = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
     aws_gcs_key_secret_arn      = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
 
-    api_gateway_id                  = var.api_gateway_id == "" ? module.api_gateway[0].api_gateway_id : var.api_gateway_id
-    api_gateway_external_usage_plan = var.api_gw_external_up_id == "" ? module.api_gateway[0].external_usage_plan_id : var.api_gw_external_up_id
-    api_gateway_internal_usage_plan = var.api_gw_internal_up_id == "" ? module.api_gateway[0].internal_usage_plan_id : var.api_gw_internal_up_id
-    api_gateway_stage_name          = var.api_gateway_stage_name
+    api_gateway_id                  = aws_api_gateway_rest_api.api_gw_api.id
+    api_gateway_internal_usage_plan = aws_api_gateway_usage_plan.internal.id
+    api_gateway_external_usage_plan = aws_api_gateway_usage_plan.external.id
+    api_gateway_stage_name          = aws_api_gateway_stage.api_gw_stage.stage_name
     internal_domains                = var.internal_domains
 
     # TODO move to core-infrastructure when operational
@@ -169,9 +169,4 @@ data "aws_iam_policy_document" "read_new_relic_lic" {
     resources = [var.new_relic_license_key_arn]
     effect    = "Allow"
   }
-}
-
-data "external" "generate_port" {
-  count   = var.environment == "dev" ? 1 : 0
-  program = ["python3", "${path.module}/generate_port.py", local.name_suffix, "30000", "31000"]
 }

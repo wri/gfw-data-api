@@ -11,11 +11,7 @@ from .aws_tasks import delete_s3_objects, expire_s3_objects, flush_cloudfront_ca
 async def delete_all_assets(dataset: str, version: str) -> None:
     await delete_database_table_asset(dataset, version)
     delete_s3_objects(DATA_LAKE_BUCKET, f"{dataset}/{version}/")
-
-    # We don't yet have the correct PutBucketLifecycleConfiguration permission for
-    # this expire_s3_objects call. The failure of this background task somehow causes
-    # the main delete request to return a network error (504)
-    #expire_s3_objects(TILE_CACHE_BUCKET, f"{dataset}/{version}/")
+    # expire_s3_objects(TILE_CACHE_BUCKET, f"{dataset}/{version}/")
     flush_cloudfront_cache(TILE_CACHE_CLOUDFRONT_ID, [f"/{dataset}/{version}/*"])
 
 

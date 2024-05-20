@@ -189,7 +189,6 @@ async def create_vector_source_version(
     monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
     monkeypatch.setattr(vector_source_assets, "is_zipped", bool_function_closure(False))
     monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
-    monkeypatch.setattr(delete_assets, "expire_s3_objects", dict_function_closure({}))
     monkeypatch.setattr(versions, "flush_cloudfront_cache", dict_function_closure({}))
     monkeypatch.setattr(
         delete_assets, "flush_cloudfront_cache", dict_function_closure({})
@@ -249,7 +248,6 @@ async def generic_raster_version(
     monkeypatch.setattr(versions, "_verify_source_file_access", void_coroutine)
     monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
     monkeypatch.setattr(delete_assets, "delete_s3_objects", int_function_closure(1))
-    monkeypatch.setattr(delete_assets, "expire_s3_objects", dict_function_closure({}))
     monkeypatch.setattr(raster_tile_set_assets, "get_extent", get_extent_mocked)
     monkeypatch.setattr(
         delete_assets, "flush_cloudfront_cache", dict_function_closure({})

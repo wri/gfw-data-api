@@ -1,17 +1,14 @@
 from typing import Tuple, cast
-from typing import Tuple, cast
 
 from fastapi import Depends, HTTPException
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
 from httpx import Response
 from ..routes import dataset_dependency
-from ..routes import dataset_dependency
 
 from ..utils.rw_api import who_am_i
 from ..settings.globals import PROTECTED_QUERY_DATASETS
 
-# token dependency where we immediately cause an exception if there is no auth token
 # token dependency where we immediately cause an exception if there is no auth token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 # token dependency where we don't cause exception if there is no auth token

@@ -4,7 +4,6 @@ from uuid import UUID
 import numpy as np
 from fastapi import HTTPException
 from fastapi.logger import logger
-from asyncpg import DataError
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
@@ -30,7 +29,6 @@ from app.tasks.raster_tile_cache_assets.utils import (
 )
 from app.utils.path import get_asset_uri, tile_uri_to_tiles_geojson
 
-from ...errors import RecordNotFoundError
 
 async def raster_tile_cache_asset(
     dataset: str,
@@ -206,15 +204,9 @@ async def raster_tile_cache_validator(
     Used in asset route. If validation fails, it will raise an
     HTTPException visible to user.
     """
-    try:
-        source_asset: ORMAsset = await get_asset(
-            input_data["creation_options"]["source_asset_id"]
-        )
-    except RecordNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except DataError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
+    source_asset: ORMAsset = await get_asset(
+        input_data["creation_options"]["source_asset_id"]
+    )
     if (source_asset.dataset != dataset) or (source_asset.version != version):
         message: str = (
             "Dataset and version of source asset must match dataset and "

@@ -7,13 +7,13 @@ from urllib.parse import unquote
 from uuid import UUID, uuid4
 
 import httpx
-from async_lru import alru_cache
 from asyncpg import DataError, InsufficientPrivilegeError, SyntaxOrAccessError
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
+
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
@@ -21,10 +21,11 @@ from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
 from pydantic.tools import parse_obj_as
+from sqlalchemy.sql import and_
 
 from ...authentication.token import is_gfwpro_admin_for_query
-from ...authentication.token import is_gfwpro_admin_for_query
 from ...application import db
+
 # from ...authentication.api_keys import get_api_key
 from ...crud import assets
 from ...models.enum.assets import AssetType
@@ -61,6 +62,7 @@ from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
 from ...models.orm.queries.raster_assets import latest_raster_tile_sets
+from ...models.orm.versions import Version as VersionORM
 from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
 from ...models.pydantic.creation_options import NoDataType
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
@@ -657,13 +659,12 @@ async def _query_raster_lambda(
 
 
 def _get_area_density_name(nm):
-    """Return empty string if nm doesn't have an area-density suffix, else
+    """Return empty string if nm doesn't not have an area-density suffix, else
     return nm with the area-density suffix removed."""
     for suffix in AREA_DENSITY_RASTER_SUFFIXES:
         if nm.endswith(suffix):
             return nm[:-len(suffix)]
     return ""
-
 
 def _get_default_layer(dataset, pixel_meaning):
     default_type = pixel_meaning
@@ -682,7 +683,6 @@ def _get_default_layer(dataset, pixel_meaning):
         return f"{dataset}__{default_type}"
 
 
-@alru_cache(maxsize=16, ttl=300.0)
 async def _get_data_environment(grid: Grid) -> DataEnvironment:
     # get all raster tile set assets with the same grid.
     latest_tile_sets = await db.all(latest_raster_tile_sets, {"grid": grid})

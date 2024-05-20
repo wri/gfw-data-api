@@ -513,14 +513,14 @@ async def _version_response(
     associated assets."""
 
     assets: List[ORMAsset] = (
-        await ORMAsset.select("asset_type", "asset_uri", "asset_id")
+        await ORMAsset.select("asset_type", "asset_uri")
         .where(ORMAsset.dataset == dataset)
         .where(ORMAsset.version == version)
         .where(ORMAsset.status == AssetStatus.saved)
         .gino.all()
     )
     data = Version.from_orm(data).dict(by_alias=True)
-    data["assets"] = [(asset[0], asset[1], str(asset[2])) for asset in assets]
+    data["assets"] = [(asset[0], asset[1]) for asset in assets]
 
     return VersionResponse(data=Version(**data))
 
@@ -573,7 +573,7 @@ def _verify_source_file_access(sources: List[str]) -> None:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Cannot access all of the source files (non-existent or access denied). "
+                "Cannot access all of the source files. "
                 f"Invalid sources: {invalid_sources}"
             ),
         )

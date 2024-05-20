@@ -21,14 +21,7 @@ tests/cobertura.xml
 tests_v2/cobertura.xml
 
 # Terraform stuff
-**/.terraform/*
-
-# .tfstate files
-*.tfstate
-*.tfstate.*
-
-# .tfplan files
-*.tfplan
+terraform/*
 
 # Virtual Environments
 .venv*

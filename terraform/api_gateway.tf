@@ -1,6 +1,6 @@
 resource "aws_api_gateway_rest_api" "api_gw_api" {
-  name           = var.name
-  description    = var.description
+  name           = substr("GFWDataAPIGateway${local.name_suffix}", 0, 64)
+  description    = "GFW Data API Gateway"
   api_key_source = "AUTHORIZER" # pragma: allowlist secret
 
   endpoint_configuration {
@@ -33,14 +33,14 @@ resource "aws_api_gateway_resource" "query_parent" {
 }
 
 module "query_resource" {
-  source      = "../resource"
+  source      = "./modules/api_gateway/resource"
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   parent_id   = aws_api_gateway_resource.query_parent.id
   path_part   = "{proxy+}"
 }
 
 module "query_get" {
-  source = "../endpoint"
+  source = "./modules/api_gateway/endpoint"
 
   rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
   authorizer_id = aws_api_gateway_authorizer.api_key.id
@@ -63,11 +63,11 @@ module "query_get" {
 
   }
 
-  integration_uri = "http://${var.lb_dns_name}/dataset/{dataset}/{version}/query/{proxy}"
+  integration_uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/query/{proxy}"
 }
 
 module "query_post" {
-  source = "../endpoint"
+  source = "./modules/api_gateway/endpoint"
 
   rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
   authorizer_id = aws_api_gateway_authorizer.api_key.id
@@ -90,7 +90,7 @@ module "query_post" {
 
   }
 
-  integration_uri = "http://${var.lb_dns_name}/dataset/{dataset}/{version}/query/{proxy}"
+  integration_uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/query/{proxy}"
 }
 
 resource "aws_api_gateway_resource" "download_parent" {
@@ -100,7 +100,7 @@ resource "aws_api_gateway_resource" "download_parent" {
 }
 
 module "download_shapes_resources" {
-  source = "../resource"
+  source = "./modules/api_gateway/resource"
 
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   parent_id   = aws_api_gateway_resource.download_parent.id
@@ -110,7 +110,7 @@ module "download_shapes_resources" {
 }
 
 module "download_shapes_endpoint" {
-  source = "../endpoint"
+  source = "./modules/api_gateway/endpoint"
 
   rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
   authorizer_id = aws_api_gateway_authorizer.api_key.id
@@ -132,11 +132,11 @@ module "download_shapes_endpoint" {
     "method.request.path.version" = true
   }
 
-  integration_uri = "http://${var.lb_dns_name}/dataset/{dataset}/{version}/download/${each.key}"
+  integration_uri = "http://${module.fargate_autoscaling.lb_dns_name}/dataset/{dataset}/{version}/download/${each.key}"
 }
 
-module "unprotected_resource" {
-  source = "../resource"
+module unprotected_resource {
+  source = "./modules/api_gateway/resource"
 
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   parent_id   = aws_api_gateway_rest_api.api_gw_api.root_resource_id
@@ -145,7 +145,7 @@ module "unprotected_resource" {
 }
 
 module "unprotected_endpoints" {
-  source = "../endpoint"
+  source = "./modules/api_gateway/endpoint"
 
   rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
   authorizer_id = aws_api_gateway_authorizer.api_key.id
@@ -159,12 +159,12 @@ module "unprotected_endpoints" {
   method_parameters      = { "method.request.path.proxy" = true }
   integration_parameters = { "integration.request.path.proxy" = "method.request.path.proxy" }
 
-  integration_uri = "http://${var.lb_dns_name}/{proxy}"
+  integration_uri = "http://${module.fargate_autoscaling.lb_dns_name}/{proxy}"
 }
 
 
 resource "aws_api_gateway_usage_plan" "internal" {
-  name = substr("internal_apps", 0, 64)
+  name = substr("internal_apps${local.name_suffix}", 0, 64)
 
   api_stages {
     api_id = aws_api_gateway_rest_api.api_gw_api.id
@@ -190,7 +190,7 @@ resource "aws_api_gateway_usage_plan" "internal" {
 }
 
 resource "aws_api_gateway_usage_plan" "external" {
-  name = substr("external_apps", 0, 64)
+  name = substr("external_apps${local.name_suffix}", 0, 64)
 
   api_stages {
     api_id = aws_api_gateway_rest_api.api_gw_api.id
@@ -220,7 +220,7 @@ resource "aws_api_gateway_deployment" "api_gw_dep" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
 
   triggers = {
-    redeployment = "${md5(file("main.tf"))}-${md5(file("${path.module}/../endpoint/main.tf"))}-${md5(file("${path.module}/../resource/main.tf"))}"
+    redeployment = "${md5(file("api_gateway.tf"))}-${md5(file("./modules/api_gateway/endpoint/main.tf"))}-${md5(file("./modules/api_gateway/resource/main.tf"))}"
   }
 
   depends_on = [
@@ -241,7 +241,7 @@ resource "aws_api_gateway_deployment" "api_gw_dep" {
 resource "aws_api_gateway_stage" "api_gw_stage" {
   deployment_id = aws_api_gateway_deployment.api_gw_dep.id
   rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
-  stage_name    = var.stage_name
+  stage_name    = local.api_gw_stage_name
 }
 
 # Lambda Authorizer
@@ -260,28 +260,28 @@ resource "aws_api_gateway_authorizer" "api_key" {
 
 
 resource "aws_iam_role" "invocation_role" {
-  name = substr("api_gateway_auth_invocation", 0, 64)
+  name = substr("api_gateway_auth_invocation${local.name_suffix}", 0, 64)
   path = "/"
 
-  assume_role_policy = var.api_gateway_role_policy
+  assume_role_policy = data.template_file.api_gateway_role_policy.rendered
 }
 
 resource "aws_iam_role_policy" "invocation_policy" {
   name = "default"
   role = aws_iam_role.invocation_role.id
 
-  policy = var.lambda_invoke_policy
+  policy = data.local_file.iam_lambda_invoke.content
 }
 
 resource "aws_iam_role" "lambda" {
-  name = substr("api_gw_authorizer_lambda", 0, 64)
+  name = substr("api_gw_authorizer_lambda${local.name_suffix}", 0, 64)
 
-  assume_role_policy = var.lambda_role_policy
+  assume_role_policy = data.template_file.lambda_role_policy.rendered
 }
 
 resource "aws_lambda_function" "authorizer" {
   filename      = "api_gateway/api_key_authorizer_lambda.zip"
-  function_name = substr("api_gateway_authorizer", 0, 64)
+  function_name = substr("api_gateway_authorizer${local.name_suffix}", 0, 64)
   runtime       = "python3.8"
   role          = aws_iam_role.lambda.arn
   handler       = "lambda_function.handler"
@@ -300,23 +300,23 @@ resource "aws_api_gateway_account" "main" {
 }
 
 resource "aws_iam_role" "cloudwatch" {
-  name = substr("api_gateway_cloudwatch_global", 0, 64)
+  name = substr("api_gateway_cloudwatch_global${local.name_suffix}", 0, 64)
 
-  assume_role_policy = var.api_gateway_role_policy
+  assume_role_policy = data.template_file.api_gateway_role_policy.rendered
 }
 
 resource "aws_iam_role_policy" "api_gw_cloudwatch" {
   name = "default"
   role = aws_iam_role.cloudwatch.id
 
-  policy = var.cloudwatch_policy
+  policy = data.local_file.cloudwatch_log_policy.content
 }
 
 resource "aws_iam_role_policy" "lambda_cloudwatch" {
   name = "default"
   role = aws_iam_role.lambda.id
 
-  policy = var.cloudwatch_policy
+  policy = data.local_file.cloudwatch_log_policy.content
 }
 
 resource "aws_api_gateway_method_settings" "general_settings" {
