@@ -1,6 +1,7 @@
 import decimal
 import io
 from typing import Any
+import asyncpg
 
 import orjson
 from fastapi.responses import Response, StreamingResponse
@@ -74,7 +75,7 @@ def jsonencoder_lite(obj):
     encoding large lists. This encoder only encodes the bare necessities
     needed to work with serializers like ORJSON.
     """
-    if isinstance(obj, decimal.Decimal) or isinstance(obj, UUID):
+    if isinstance(obj, decimal.Decimal) or isinstance(obj, asyncpg.pgproto.pgproto.UUID):
         return str(obj)
     raise TypeError(
         f"Unknown type for value {obj} with class type {type(obj).__name__}"
