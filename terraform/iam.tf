@@ -33,3 +33,8 @@ resource "aws_iam_policy" "read_new_relic_secret" {
   name = substr("${local.project}-read_new-relic_secret${local.name_suffix}", 0, 64)
   policy = data.aws_iam_policy_document.read_new_relic_lic.json
 }
+
+resource "aws_iam_policy" "tile_cache_bucket_policy" {
+  name   = substr("${local.project}-tile_cache_bucket_policy${local.name_suffix}", 0, 64)
+  policy = data.template_file.tile_cache_bucket_policy.rendered
+}

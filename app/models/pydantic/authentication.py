@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import Query
-from pydantic import EmailStr
+from pydantic import BaseModel, EmailStr
 
 from app.models.pydantic.base import BaseRecord, StrictBaseModel
 from app.models.pydantic.responses import Response
@@ -14,17 +14,19 @@ class SignUpRequestIn(StrictBaseModel):
     email: EmailStr = Query(..., description="User's email address")
 
 
-class SignUp(StrictBaseModel):
+class User(BaseModel):
     id: str
     name: str
     email: EmailStr
     createdAt: datetime
     role: str
+    provider: str
+    providerId: Optional[str]
     extraUserData: Dict[str, Any]
 
 
 class SignUpResponse(Response):
-    data: SignUp
+    data: User
 
 
 class APIKeyRequestIn(StrictBaseModel):

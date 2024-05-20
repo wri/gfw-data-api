@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from app.authentication.api_keys import get_api_key
-from app.authentication.token import is_admin, is_service_account
+from app.authentication.token import get_manager, is_admin, is_service_account
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
     AURORA_JOB_QUEUE_FAST,
@@ -56,6 +56,7 @@ from . import (
     AWSMock,
     MemoryServer,
     get_api_key_mocked,
+    get_manager_mocked,
     is_admin_mocked,
     is_service_account_mocked,
     setup_clients,
@@ -255,6 +256,7 @@ async def async_client():
     app.dependency_overrides[is_admin] = is_admin_mocked
     app.dependency_overrides[is_service_account] = is_service_account_mocked
     app.dependency_overrides[get_api_key] = get_api_key_mocked
+    app.dependency_overrides[get_manager] = get_manager_mocked
 
     async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
         yield client
