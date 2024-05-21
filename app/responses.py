@@ -1,7 +1,6 @@
 import decimal
 import io
 from typing import Any
-from uuid import UUID
 
 import orjson
 from fastapi.responses import Response, StreamingResponse
