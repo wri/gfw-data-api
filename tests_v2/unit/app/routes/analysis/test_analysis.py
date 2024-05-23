@@ -79,7 +79,7 @@ async def test_analysis_with_huge_geostore(
 
 @pytest.mark.asyncio
 async def test_raster_analysis_payload_shape(
-    generic_dataset, async_client: AsyncClient, monkeypatch: MonkeyPatch
+    generic_dataset, apikey, async_client: AsyncClient, monkeypatch: MonkeyPatch
 ):
     """Note that this test depends on the output of _get_data_environment
     which will likely have cached values from other tests, so we clear it."""
@@ -87,6 +87,10 @@ async def test_raster_analysis_payload_shape(
     dataset_name, _ = generic_dataset
     pixel_meaning: str = "date_conf"
     no_data_value = 0
+
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+    headers = {"origin": origin, "x-api-key": api_key}
 
     async with custom_raster_version(
         async_client,
@@ -110,7 +114,8 @@ async def test_raster_analysis_payload_shape(
         queries._get_data_environment.cache_clear()
 
         _ = await async_client.get(
-            f"/analysis/zonal/17076d5ea9f214a5bdb68cc40433addb?geostore_origin=rw&group_by=umd_tree_cover_loss__year&filters=is__umd_regional_primary_forest_2001&filters=umd_tree_cover_density_2000__30&sum=area__ha&start_date=2001"
+            "/analysis/zonal/17076d5ea9f214a5bdb68cc40433addb?geostore_origin=rw&group_by=umd_tree_cover_loss__year&filters=is__umd_regional_primary_forest_2001&filters=umd_tree_cover_density_2000__30&sum=area__ha&start_date=2001",
+            headers=headers
         )
         payload = mock_invoke_lambda.call_args.args[1]
         assert payload["query"] == sql

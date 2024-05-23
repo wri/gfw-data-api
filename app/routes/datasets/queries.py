@@ -14,7 +14,7 @@ from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
-# from fastapi.openapi.models import APIKey
+from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
@@ -24,7 +24,7 @@ from pydantic.tools import parse_obj_as
 
 from ...authentication.token import is_gfwpro_admin_for_query
 from ...application import db
-# from ...authentication.api_keys import get_api_key
+from ...authentication.api_keys import get_api_key
 from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
@@ -128,7 +128,7 @@ async def query_dataset_json(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
     is_authorized: bool = Depends(is_gfwpro_admin_for_query),
-    # api_key: APIKey = Depends(get_api_key),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in JSON format.
@@ -190,7 +190,7 @@ async def query_dataset_csv(
         Delimiters.comma, description="Delimiter to use for CSV file."
     ),
     is_authorized: bool = Depends(is_gfwpro_admin_for_query),
-    # api_key: APIKey = Depends(get_api_key),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in CSV format.
@@ -253,7 +253,7 @@ async def query_dataset_json_post(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
     is_authorized: bool = Depends(is_gfwpro_admin_for_query),
-    # api_key: APIKey = Depends(get_api_key),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -284,7 +284,7 @@ async def query_dataset_csv_post(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: CsvQueryRequestIn,
     is_authorized: bool = Depends(is_gfwpro_admin_for_query),
-    # api_key: APIKey = Depends(get_api_key),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -595,7 +595,7 @@ async def _query_raster(
     if geostore.geojson.type != "Polygon" and geostore.geojson.type != "MultiPolygon":
         raise HTTPException(
             status_code=400,
-            detail=f"Geostore must be a Polygon or MultiPolygon for raster analysis"
+            detail="Geostore must be a Polygon or MultiPolygon for raster analysis",
         )
 
     # use default data type to get default raster layer for dataset
