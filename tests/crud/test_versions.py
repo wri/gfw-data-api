@@ -134,10 +134,12 @@ async def test_versions():
 
 @pytest.mark.asyncio
 async def test_latest_versions():
-    """Test if trigger function on versions table work It is suppose to reset
-    is_latest field to False for all versions of a dataset Once a version's
-    is_latest field is set to True Get Latest Version function should always
-    return the latest version number."""
+    """Test if trigger function on versions table work.
+
+    The is_latest field should be set to False for all other versions of a
+    dataset when a version's is_latest field is set to True.
+    The get_latest_version function should always return the latest version
+    number."""
 
     dataset_name = "test"
 

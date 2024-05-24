@@ -1,8 +1,10 @@
 from typing import Any, Dict, List, Optional
 
+from async_lru import alru_cache
 from asyncpg import UniqueViolationError
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
+from ..main import logger
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
@@ -11,7 +13,6 @@ from ..utils.generators import list_to_async_generator
 from . import datasets, update_data
 from .metadata import (
     create_version_metadata,
-    update_all_metadata,
     update_version_metadata,
 )
 
@@ -52,6 +53,7 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
     return row
 
 
+@alru_cache(maxsize=64, ttl=3600.0)
 async def get_latest_version(dataset) -> str:
     """Fetch latest version number."""
 
@@ -119,6 +121,11 @@ async def update_version(dataset: str, version: str, **data) -> ORMVersion:
     await _update_is_downloadable(dataset, version, data)
 
     if data.get("is_latest"):
+        logger.info(
+            f"Setting version {version} to latest for dataset {dataset}. "
+            f"Cache info: {get_latest_version.cache_info()}"
+        )
+        get_latest_version.cache_invalidate(dataset)
         await _reset_is_latest(dataset, version)
 
     return row
@@ -155,6 +162,12 @@ async def _update_is_downloadable(
 
 
 async def _reset_is_latest(dataset: str, version: str) -> None:
+    """Set is_latest to False for all other versions of a dataset."""
+    # TODO: Should we make sure the version is valid to avoid setting nothing
+    # to latest? Or is being able to do that a desired feature?
+    # FIXME: This will get slower and more DB-intensive the more versions
+    # there are for a dataset. Could be re-written to use a single DB call,
+    # no?
     versions = await get_versions(dataset)
     version_gen = list_to_async_generator(versions)
     async for version_orm in version_gen:
