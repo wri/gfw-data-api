@@ -104,12 +104,12 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
     # requests to temporarily go to a perhaps incompletely-imported
     # asset...
     if data.get("is_latest"):
+        await _reset_is_latest(dataset, version)
         logger.info(
             f"Setting version {version} to latest for dataset {dataset}. "
             f"Cache info: {get_latest_version.cache_info()}"
         )
-        get_latest_version.cache_invalidate(dataset)
-        await _reset_is_latest(dataset, version)
+        _: bool = get_latest_version.cache_invalidate(dataset)
 
     return new_version
 
@@ -130,12 +130,12 @@ async def update_version(dataset: str, version: str, **data) -> ORMVersion:
     await _update_is_downloadable(dataset, version, data)
 
     if data.get("is_latest"):
+        await _reset_is_latest(dataset, version)
         logger.info(
             f"Setting version {version} to latest for dataset {dataset}. "
             f"Cache info: {get_latest_version.cache_info()}"
         )
-        get_latest_version.cache_invalidate(dataset)
-        await _reset_is_latest(dataset, version)
+        _: bool = get_latest_version.cache_invalidate(dataset)
 
     return row
 
