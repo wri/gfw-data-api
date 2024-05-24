@@ -4,7 +4,7 @@ from async_lru import alru_cache
 from asyncpg import UniqueViolationError
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
-from ..main import logger
+# from ..main import logger
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
@@ -105,10 +105,10 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
     # asset...
     if data.get("is_latest"):
         await _reset_is_latest(dataset, version)
-        logger.info(
-            f"Setting version {version} to latest for dataset {dataset}. "
-            f"Cache info: {get_latest_version.cache_info()}"
-        )
+        # logger.info(
+        #     f"Setting version {version} to latest for dataset {dataset}. "
+        #     f"Cache info: {get_latest_version.cache_info()}"
+        # )
         _: bool = get_latest_version.cache_invalidate(dataset)
 
     return new_version
@@ -131,10 +131,10 @@ async def update_version(dataset: str, version: str, **data) -> ORMVersion:
 
     if data.get("is_latest"):
         await _reset_is_latest(dataset, version)
-        logger.info(
-            f"Setting version {version} to latest for dataset {dataset}. "
-            f"Cache info: {get_latest_version.cache_info()}"
-        )
+        # logger.info(
+        #     f"Setting version {version} to latest for dataset {dataset}. "
+        #     f"Cache info: {get_latest_version.cache_info()}"
+        # )
         _: bool = get_latest_version.cache_invalidate(dataset)
 
     return row
