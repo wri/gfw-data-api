@@ -82,9 +82,6 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
     if data.get("is_downloadable") is None:
         data["is_downloadable"] = d.is_downloadable
 
-    if data.get("is_latest"):
-        await _reset_is_latest(dataset, version)
-
     metadata_data = data.pop("metadata", None)
     try:
         new_version: ORMVersion = await ORMVersion.create(
@@ -101,6 +98,18 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
             dataset, version, **metadata_data
         )
         new_version.metadata = metadata
+
+    # FIXME: Should we really allow one to specify a new version as
+    # latest on creation? I thought we didn't. Seems like it will cause
+    # requests to temporarily go to a perhaps incompletely-imported
+    # asset...
+    if data.get("is_latest"):
+        logger.info(
+            f"Setting version {version} to latest for dataset {dataset}. "
+            f"Cache info: {get_latest_version.cache_info()}"
+        )
+        get_latest_version.cache_invalidate(dataset)
+        await _reset_is_latest(dataset, version)
 
     return new_version
 
