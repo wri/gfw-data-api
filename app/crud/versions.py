@@ -4,7 +4,6 @@ from async_lru import alru_cache
 from asyncpg import UniqueViolationError
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
-# from ..main import logger
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.datasets import Dataset as ORMDataset
 from ..models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
@@ -99,17 +98,12 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
         )
         new_version.metadata = metadata
 
-    # FIXME: Should we really allow one to specify a new version as
-    # latest on creation? I thought we didn't. Seems like it will cause
-    # requests to temporarily go to a perhaps incompletely-imported
-    # asset...
+    # NOTE: We disallow specifying a new version as latest on creation via
+    # the VersionCreateIn model in order to prevent requests temporarily going
+    # to an incompletely-imported asset, however it's technically allowed in
+    # this function to facilitate testing.
     if data.get("is_latest"):
         await _reset_is_latest(dataset, version)
-        # logger.info(
-        #     f"Setting version {version} to latest for dataset {dataset}. "
-        #     f"Cache info: {get_latest_version.cache_info()}"
-        # )
-        _: bool = get_latest_version.cache_invalidate(dataset)
 
     return new_version
 
@@ -131,11 +125,6 @@ async def update_version(dataset: str, version: str, **data) -> ORMVersion:
 
     if data.get("is_latest"):
         await _reset_is_latest(dataset, version)
-        # logger.info(
-        #     f"Setting version {version} to latest for dataset {dataset}. "
-        #     f"Cache info: {get_latest_version.cache_info()}"
-        # )
-        _: bool = get_latest_version.cache_invalidate(dataset)
 
     return row
 
@@ -172,8 +161,8 @@ async def _update_is_downloadable(
 
 async def _reset_is_latest(dataset: str, version: str) -> None:
     """Set is_latest to False for all other versions of a dataset."""
-    # TODO: Should we make sure the version is valid to avoid setting nothing
-    # to latest? Or is being able to do that a desired feature?
+    # NOTE: Please remember to only call after setting the provided version to
+    # latest to avoid setting nothing to latest
     # FIXME: This will get slower and more DB-intensive the more versions
     # there are for a dataset. Could be re-written to use a single DB call,
     # no?
@@ -182,3 +171,4 @@ async def _reset_is_latest(dataset: str, version: str) -> None:
     async for version_orm in version_gen:
         if version_orm.version != version:
             await update_version(dataset, version_orm.version, is_latest=False)
+    _: bool = get_latest_version.cache_invalidate(dataset)
