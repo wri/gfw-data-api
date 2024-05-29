@@ -23,7 +23,7 @@ async def cog_asset(
     asset_id: UUID,
     input_data: Dict[str, Any],
 ) -> ChangeLog:
-    """Create a COG Assets from a raster tile set asset."""
+    """Create a COG asset from a raster tile set asset."""
 
     # Create the Batch job to generate the COG
     creation_options: COGCreationOptions = COGCreationOptions(**input_data)
@@ -94,6 +94,8 @@ async def create_cogify_job(
         source_uri,
         "-r",
         f"{resample_method}",
+        "--block_size",
+        creation_options.block_size,
         "-T",
         target_prefix,
     ]

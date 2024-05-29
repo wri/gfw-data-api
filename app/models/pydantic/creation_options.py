@@ -15,7 +15,7 @@ from ..enum.creation_options import (
     RasterDrivers,
     TableDrivers,
     TileStrategy,
-    VectorDrivers,
+    VectorDrivers, TileBlockSize,
 )
 from ..enum.pg_types import PGType
 from ..enum.pixetl import (
@@ -358,6 +358,8 @@ class COGCreationOptions(StrictBaseModel):
         ResamplingMethod.average,
         description="Resampling method used to downsample overviews",
     )
+    block_size: TileBlockSize = 512
+    compute_stats: bool = False
 
 
 class DynamicVectorTileCacheCreationOptions(TileCacheBaseModel):
