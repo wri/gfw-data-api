@@ -89,3 +89,9 @@ class ColorMapType(str, Enum):
     date_conf_intensity_multi_16 = "date_conf_intensity_multi_16"
     year_intensity = "year_intensity"
     value_intensity = "value_intensity"
+
+
+class TileBlockSize(int, Enum):
+    two_fifty_six = 256
+    five_twelve = 512
+    ten_twenty_four = 1024
