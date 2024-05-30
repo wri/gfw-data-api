@@ -60,6 +60,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      --block_size)
+      BLOCK_SIZE="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -c|--column_name)
       COLUMN_NAME="$2"
       shift # past argument
@@ -171,6 +176,11 @@ do
       --skip)
       SKIP="TRUE"
       shift # past argument
+      ;;
+      --srid)
+      SRID="$2"
+      shift # past argument
+      shift # past value
       ;;
       --subset)
       SUBSET="$2"

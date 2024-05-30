@@ -1,5 +1,5 @@
 import posixpath
-from typing import Any, Dict, Callable, Coroutine
+from typing import Any, Callable, Coroutine, Dict
 from uuid import UUID
 
 from app.crud.assets import get_asset
@@ -14,7 +14,7 @@ from app.tasks import callback_constructor
 from app.tasks.batch import execute
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV
 from app.tasks.utils import sanitize_batch_job_name
-from app.utils.path import get_asset_uri, tile_uri_to_tiles_geojson, split_s3_path
+from app.utils.path import get_asset_uri, infer_srid_from_grid, split_s3_path
 
 
 async def cog_asset(
@@ -26,7 +26,9 @@ async def cog_asset(
     """Create a COG asset from a raster tile set asset."""
 
     # Create the Batch job to generate the COG
-    creation_options: COGCreationOptions = COGCreationOptions(**input_data)
+    creation_options: COGCreationOptions = COGCreationOptions(
+        **input_data["creation_options"]
+    )
 
     cog_job: Job = await create_cogify_job(
         dataset,
@@ -49,30 +51,25 @@ async def create_cogify_job(
 
     For the moment only suitable for EPSG:3857 raster tile sets.
     """
-    source_asset: ORMAsset = await get_asset(
-        UUID(creation_options.source_asset_id)
+    source_asset: ORMAsset = await get_asset(UUID(creation_options.source_asset_id))
+
+    srid = infer_srid_from_grid(source_asset.creation_options["grid"])
+    asset_uri = get_asset_uri(
+        dataset, version, AssetType.raster_tile_set, source_asset.creation_options, srid
     )
-    source_uri = [
-        tile_uri_to_tiles_geojson(
-            get_asset_uri(
-                dataset,
-                version,
-                AssetType.raster_tile_set,
-                source_asset.creation_options,
-            )
-        )
-    ]
+
+    # get folder of tiles
+    source_uri = "/".join(asset_uri.split("/")[:-1]) + "/"
 
     # We want to wind up with "{dataset}/{version}/raster/{projection}/cog/{implementation}.tif"
-    target_asset_uri = tile_uri_to_tiles_geojson(
-        get_asset_uri(
-            dataset,
-            version,
-            AssetType.cog,
-            creation_options.dict(by_alias=True),
-            "epsg:3857",
-        )
+    target_asset_uri = get_asset_uri(
+        dataset,
+        version,
+        AssetType.cog,
+        creation_options.dict(by_alias=True),
+        creation_options.srid,
     )
+
     target_prefix = posixpath.dirname(
         posixpath.dirname(split_s3_path(target_asset_uri)[1])
     )
@@ -96,6 +93,8 @@ async def create_cogify_job(
         f"{resample_method}",
         "--block_size",
         creation_options.block_size,
+        "--srid",
+        creation_options.srid,
         "-T",
         target_prefix,
     ]

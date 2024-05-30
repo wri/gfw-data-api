@@ -13,9 +13,11 @@ from ..enum.creation_options import (
     IndexType,
     PartitionType,
     RasterDrivers,
+    Srid,
     TableDrivers,
+    TileBlockSize,
     TileStrategy,
-    VectorDrivers, TileBlockSize,
+    VectorDrivers,
 )
 from ..enum.pg_types import PGType
 from ..enum.pixetl import (
@@ -340,9 +342,6 @@ class RasterTileCacheCreationOptions(TileCacheBaseModel):
 
 
 class COGCreationOptions(StrictBaseModel):
-    native_zoom_level: int = Field(
-        ..., description="Maximum zoom level to generate overviews for", ge=0, le=22
-    )
     implementation: str = Field(
         "default",
         description="Name space to use for COG. "
@@ -358,7 +357,8 @@ class COGCreationOptions(StrictBaseModel):
         ResamplingMethod.average,
         description="Resampling method used to downsample overviews",
     )
-    block_size: TileBlockSize = 512
+    block_size: Optional[TileBlockSize] = TileBlockSize.five_twelve
+    srid: Optional[Srid] = Srid.wgs84
     compute_stats: bool = False
 
 
@@ -405,8 +405,7 @@ class StaticVectorFileCreationOptions(StrictBaseModel):
 
 class StaticVector1x1CreationOptions(StaticVectorFileCreationOptions):
     include_tile_id: Optional[bool] = Field(
-        False,
-        description="Whether or not to include the tile_id of each feature"
+        False, description="Whether or not to include the tile_id of each feature"
     )
 
 

@@ -95,3 +95,8 @@ class TileBlockSize(int, Enum):
     two_fifty_six = 256
     five_twelve = 512
     ten_twenty_four = 1024
+
+
+class Srid(str, Enum):
+    wgs84 = "epsg:4326"
+    web_mercator = "epsg:3857"

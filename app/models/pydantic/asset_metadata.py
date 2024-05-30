@@ -75,6 +75,12 @@ class RasterTileSetMetadata(AssetBase):
     resolution: Optional[int]
 
 
+class COGMetadata(AssetBase):
+    block_size: int
+    srid: int
+    resampling: int
+
+
 class RasterTileSetMetadataUpdate(AssetBase):
     resolution: int
 
@@ -186,6 +192,7 @@ def asset_metadata_factory(asset: ORMAsset) -> AssetMetadata:
         AssetType.grid_1x1: VectorFileMetadata,
         AssetType.shapefile: VectorFileMetadata,
         AssetType.geopackage: VectorFileMetadata,
+        AssetType.cog: COGMetadata,
     }
 
     if asset.asset_type in metadata_factory.keys():
@@ -234,6 +241,7 @@ class FieldsMetadataResponse(Response):
 
 class FieldMetadataResponse(Response):
     data: FieldMetadataOut
+
 
 class RasterBandsMetadataResponse(Response):
     data: List[RasterBandMetadata]

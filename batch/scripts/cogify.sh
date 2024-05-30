@@ -21,8 +21,8 @@ for source in *.tif; do
 done
 
 # combine to one big COG
-gdalwarp "${sources[@]}" "${DATASET}_${VERSION}.tif" -of COG -co NUM_THREADS=ALL_CPUS
+gdalwarp "${sources[@]}" "${DATASET}_${VERSION}.tif" -r "${RESAMPLE}" -t_srs "${EPSG}" -of COG -co BLOCKSIZE="${BLOCKSIZE}" -co NUM_THREADS=ALL_CPUS
 
 # upload to data lake
-aws s3 cp "${DATASET}_${VERSION}.tif" "s3://${TARGET_BUCKET}/${DATASET}/${VERSION}/epsg-4326/cog/${DATASET}_${VERSION}.tif"
+aws s3 cp "${DATASET}_${VERSION}.tif" "s3://${TARGET_BUCKET}/${DATASET}/${VERSION}/epsg-${EPSG}/cog/${DATASET}_${VERSION}.tif"
 
