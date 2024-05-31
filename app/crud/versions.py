@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional
 
+from async_lru import alru_cache
 from asyncpg import UniqueViolationError
 
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
@@ -11,7 +12,6 @@ from ..utils.generators import list_to_async_generator
 from . import datasets, update_data
 from .metadata import (
     create_version_metadata,
-    update_all_metadata,
     update_version_metadata,
 )
 
@@ -52,6 +52,7 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
     return row
 
 
+@alru_cache(maxsize=64, ttl=3600.0)
 async def get_latest_version(dataset) -> str:
     """Fetch latest version number."""
 
@@ -80,9 +81,6 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
     if data.get("is_downloadable") is None:
         data["is_downloadable"] = d.is_downloadable
 
-    if data.get("is_latest"):
-        await _reset_is_latest(dataset, version)
-
     metadata_data = data.pop("metadata", None)
     try:
         new_version: ORMVersion = await ORMVersion.create(
@@ -99,6 +97,13 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
             dataset, version, **metadata_data
         )
         new_version.metadata = metadata
+
+    # NOTE: We disallow specifying a new version as latest on creation via
+    # the VersionCreateIn model in order to prevent requests temporarily going
+    # to an incompletely-imported asset, however it's technically allowed in
+    # this function to facilitate testing.
+    if data.get("is_latest"):
+        await _reset_is_latest(dataset, version)
 
     return new_version
 
@@ -155,8 +160,15 @@ async def _update_is_downloadable(
 
 
 async def _reset_is_latest(dataset: str, version: str) -> None:
+    """Set is_latest to False for all other versions of a dataset."""
+    # NOTE: Please remember to only call after setting the provided version to
+    # latest to avoid setting nothing to latest
+    # FIXME: This will get slower and more DB-intensive the more versions
+    # there are for a dataset. Could be re-written to use a single DB call,
+    # no?
     versions = await get_versions(dataset)
     version_gen = list_to_async_generator(versions)
     async for version_orm in version_gen:
         if version_orm.version != version:
             await update_version(dataset, version_orm.version, is_latest=False)
+    _: bool = get_latest_version.cache_invalidate(dataset)
