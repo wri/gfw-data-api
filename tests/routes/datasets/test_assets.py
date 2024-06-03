@@ -284,14 +284,14 @@ async def test_cog_asset(async_client, httpd, logs):
     # Add a dataset, version, and default asset
     dataset = "test_cog_raster_asset"
     version = "v1.8"
-    primary_grid = "10/40000"
+    primary_grid = "90/27008"
 
     default_asset_id = await create_test_default_asset(
         dataset,
         version,
         primary_grid,
         "percent",
-        {"subset": "90N_000E"},
+        {},
         async_client,
         logs,
         httpd,

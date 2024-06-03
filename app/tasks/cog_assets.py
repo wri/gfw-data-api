@@ -9,7 +9,8 @@ from app.models.orm.assets import Asset as ORMAsset
 from app.models.orm.tasks import Task
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import COGCreationOptions
-from app.models.pydantic.jobs import Job, PixETLJob
+from app.models.pydantic.jobs import GDALPythonLargeJob, Job
+from app.settings.globals import DATA_LAKE_BUCKET
 from app.tasks import callback_constructor
 from app.tasks.batch import execute
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV
@@ -78,7 +79,7 @@ async def create_cogify_job(
     resample_method = (
         "near"
         if creation_options.resampling == ResamplingMethod.nearest
-        else creation_options.resampling
+        else creation_options.resampling.value
     )
 
     command = [
@@ -89,12 +90,14 @@ async def create_cogify_job(
         version,
         "-s",
         source_uri,
+        "--target_bucket",
+        DATA_LAKE_BUCKET,
         "-r",
-        f"{resample_method}",
+        resample_method,
         "--block_size",
-        creation_options.block_size,
+        creation_options.block_size.value,
         "--srid",
-        creation_options.srid,
+        creation_options.srid.value,
         "-T",
         target_prefix,
     ]
@@ -105,7 +108,7 @@ async def create_cogify_job(
 
     kwargs = dict()
 
-    return PixETLJob(
+    return GDALPythonLargeJob(
         dataset=dataset,
         job_name=job_name,
         command=command,

@@ -357,8 +357,8 @@ class COGCreationOptions(StrictBaseModel):
         ResamplingMethod.average,
         description="Resampling method used to downsample overviews",
     )
-    block_size: Optional[TileBlockSize] = TileBlockSize.five_twelve
-    srid: Optional[Srid] = Srid.wgs84
+    block_size: Optional[TileBlockSize] = 512
+    srid: Optional[Srid] = "epsg:4326"
     compute_stats: bool = False
 
 
