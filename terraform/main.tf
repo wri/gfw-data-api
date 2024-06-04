@@ -173,7 +173,7 @@ module "batch_data_lake_writer" {
   tags                  = local.batch_tags
   use_ephemeral_storage = true
   # SPOT is actually the default, this is just a placeholder until GTC-1791 is done
-  launch_type = "SPOT"
+  launch_type = "EC2"
   instance_types = [
     "r6id.large", "r6id.xlarge", "r6id.2xlarge", "r6id.4xlarge", "r6id.8xlarge", "r6id.12xlarge", "r6id.16xlarge", "r6id.24xlarge",
     "r5ad.large", "r5ad.xlarge", "r5ad.2xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge",
