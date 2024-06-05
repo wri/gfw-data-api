@@ -13,7 +13,6 @@ from ..enum.creation_options import (
     IndexType,
     PartitionType,
     RasterDrivers,
-    Srid,
     TableDrivers,
     TileBlockSize,
     TileStrategy,
@@ -358,7 +357,6 @@ class COGCreationOptions(StrictBaseModel):
         description="Resampling method used to downsample overviews",
     )
     block_size: Optional[TileBlockSize] = 512
-    srid: Optional[Srid] = "epsg:4326"
     compute_stats: bool = False
 
 

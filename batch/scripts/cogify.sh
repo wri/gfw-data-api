@@ -3,11 +3,11 @@
 set -e
 
 # requires arguments
-# -d | --dataset
-# -v | --version
 # -s | --source
 # --target_bucket
 # --target_prefix
+# --block_size
+# -r | --resample
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"
@@ -34,11 +34,11 @@ if ! gdalinfo "merged.tif" | grep -q "Overviews"; then
 fi
 
 # convert to COG using existing overviews, this adds some additional layout optimizations
-if [ ! -f "${DATASET}_${VERSION}.tif" ]; then
-  gdal_translate merged.tif "${DATASET}_${VERSION}.tif" -of COG -co BLOCKSIZE="${BLOCKSIZE}" -co NUM_THREADS=ALL_CPUS
+if [ ! -f "cog.tif" ]; then
+  gdal_translate merged.tif cog.tif -of COG -co BLOCKSIZE="${BLOCK_SIZE}" -co NUM_THREADS=ALL_CPUS
 fi
 
 # upload to data lake
-aws s3 cp "${DATASET}_${VERSION}.tif" "s3://${TARGET_BUCKET}/${TARGET_PREFIX}"
+aws s3 cp cog.tif "s3://${TARGET_BUCKET}/${TARGET_PREFIX}"
 set +x
 

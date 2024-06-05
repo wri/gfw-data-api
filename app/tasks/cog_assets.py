@@ -68,7 +68,7 @@ async def create_cogify_job(
         version,
         AssetType.cog,
         creation_options.dict(by_alias=True),
-        creation_options.srid,
+        srid,
     )
 
     target_prefix = posixpath.dirname(
@@ -84,10 +84,6 @@ async def create_cogify_job(
 
     command = [
         "cogify.sh",
-        "-d",
-        dataset,
-        "-v",
-        version,
         "-s",
         source_uri,
         "--target_bucket",
@@ -96,8 +92,6 @@ async def create_cogify_job(
         resample_method,
         "--block_size",
         creation_options.block_size.value,
-        "--srid",
-        creation_options.srid.value,
         "-T",
         target_prefix,
     ]
