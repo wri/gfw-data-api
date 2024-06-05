@@ -46,9 +46,9 @@ module "query_get" {
   authorizer_id = aws_api_gateway_authorizer.api_key.id
   api_resource  = module.query_resource.aws_api_gateway_resource
 
-  require_api_key = false
+  require_api_key = true
   http_method     = "GET"
-  authorization   = "NONE"
+  authorization   = "CUSTOM"
 
   integration_parameters = {
     "integration.request.path.version" = "method.request.path.version"
@@ -73,9 +73,9 @@ module "query_post" {
   authorizer_id = aws_api_gateway_authorizer.api_key.id
   api_resource  = module.query_resource.aws_api_gateway_resource
 
-  require_api_key = false
+  require_api_key = true
   http_method     = "POST"
-  authorization   = "NONE"
+  authorization   = "CUSTOM"
 
   integration_parameters = {
     "integration.request.path.version" = "method.request.path.version"
@@ -180,13 +180,6 @@ resource "aws_api_gateway_usage_plan" "internal" {
     burst_limit = var.api_gateway_usage_plans.internal_apps.burst_limit
     rate_limit  = var.api_gateway_usage_plans.internal_apps.rate_limit
   }
-
-  # terraform doesn't expose API Gateway's method level throttling so will do that
-  # manually and this will stop terraform from destroying the manual changes
-  # Open PR to add the feature to terraform: https://github.com/hashicorp/terraform-provider-aws/pull/20672
-  lifecycle {
-    ignore_changes = all
-  }
 }
 
 resource "aws_api_gateway_usage_plan" "external" {
@@ -206,14 +199,6 @@ resource "aws_api_gateway_usage_plan" "external" {
     burst_limit = var.api_gateway_usage_plans.external_apps.burst_limit
     rate_limit  = var.api_gateway_usage_plans.external_apps.rate_limit
   }
-
-  # terraform doesn't expose API Gateway's method level throttling so will do that
-  # manually and this will stop terraform from destroying the manual changes
-  # Open PR to add the feature to terraform: https://github.com/hashicorp/terraform-provider-aws/pull/20672
-  lifecycle {
-    ignore_changes = all
-  }
-
 }
 
 resource "aws_api_gateway_deployment" "api_gw_dep" {
