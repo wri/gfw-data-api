@@ -25,7 +25,7 @@ fi
 
 # merge all rasters into one huge raster using COG block size
 if [ ! -f "merged.tif" ]; then
-  gdal_translate -of GTiff -co BLOCKSIZE="${BLOCKSIZE}" -co COMPRESS=LZW -co NUM_THREADS=ALL_CPUS merged.vrt merged.tif
+  gdal_translate -of GTiff -co TILED=YES -co BLOCKXSIZE="${BLOCK_SIZE}" -co BLOCKYSIZE="${BLOCK_SIZE}" -co COMPRESS=LZW -co NUM_THREADS=ALL_CPUS merged.vrt merged.tif
 fi
 
 # create overviews in raster
