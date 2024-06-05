@@ -6,7 +6,9 @@ from pydantic import StrictInt, create_model
 
 from ...models.orm.assets import Asset as ORMAsset
 from ..enum.assets import AssetType
+from ..enum.creation_options import TileBlockSize
 from ..enum.pg_types import PGType
+from ..enum.pixetl import ResamplingMethod
 from .base import BaseORMRecord, StrictBaseModel
 from .responses import Response
 
@@ -76,9 +78,8 @@ class RasterTileSetMetadata(AssetBase):
 
 
 class COGMetadata(AssetBase):
-    block_size: int
-    srid: int
-    resampling: int
+    block_size: TileBlockSize
+    resampling: ResamplingMethod
 
 
 class RasterTileSetMetadataUpdate(AssetBase):
