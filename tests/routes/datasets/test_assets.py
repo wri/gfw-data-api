@@ -304,7 +304,6 @@ async def test_cog_asset(async_client, httpd, logs):
         "creation_options": {
             "resampling": "nearest",
             "block_size": 512,
-            "srid": "epsg:4326",
             "source_asset_id": default_asset_id,
         },
     }
