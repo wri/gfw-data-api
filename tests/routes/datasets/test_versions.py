@@ -338,6 +338,7 @@ async def test_invalid_source_uri(async_client: AsyncClient):
 
     # Test appending to a version that DOESN'T exist
     # Really this tests dataset_version_dependency, but that isn't done elsewhere yet
+    source_uri = f"s3://{BUCKET}/{GPKG_NAME}"
     bad_version = "v1.42"
     response = await async_client.post(
         f"/dataset/{dataset}/{bad_version}/append", json={"source_uri": source_uri}
