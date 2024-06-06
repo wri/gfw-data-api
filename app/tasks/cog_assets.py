@@ -88,6 +88,8 @@ async def create_cogify_job(
         source_uri,
         "--target_bucket",
         DATA_LAKE_BUCKET,
+        "--target_prefix",
+        target_prefix,
         "-r",
         resample_method,
         "--block_size",
