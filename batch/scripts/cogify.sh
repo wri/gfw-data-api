@@ -14,31 +14,31 @@ ME=$(basename "$0")
 
 set -x
 # download all GeoTiff files
-aws s3 cp --recursive --exclude "*" --include "*.tif" "${SRC}" .
+aws s3 cp --recursive --exclude "*" --include "*.tif" "${SRC}" /tmp
 
 set GDAL_NUM_THREADS=ALL_CPUS
 
 # create VRT of input files so we can use gdal_translate
-if [ ! -f "merged.vrt" ]; then
-  gdalbuildvrt merged.vrt *.tif
+if [ ! -f "/tmp/merged.vrt" ]; then
+  gdalbuildvrt /tmp/merged.vrt /tmp/*.tif
 fi
 
 # merge all rasters into one huge raster using COG block size
-if [ ! -f "merged.tif" ]; then
-  gdal_translate -of GTiff -co TILED=YES -co BLOCKXSIZE="${BLOCK_SIZE}" -co BLOCKYSIZE="${BLOCK_SIZE}" -co COMPRESS=LZW -co NUM_THREADS=ALL_CPUS merged.vrt merged.tif
+if [ ! -f "/tmp/merged.tif" ]; then
+  gdal_translate -of GTiff -co TILED=YES -co BLOCKXSIZE="${BLOCK_SIZE}" -co BLOCKYSIZE="${BLOCK_SIZE}" -co COMPRESS=LZW -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS /tmp/merged.vrt /tmp/merged.tif
 fi
 
 # create overviews in raster
-if ! gdalinfo "merged.tif" | grep -q "Overviews"; then
-  gdaladdo merged.tif -r "${RESAMPLE}"
+if ! gdalinfo "/tmp/merged.tif" | grep -q "Overviews"; then
+  gdaladdo /tmp/merged.tif -r "${RESAMPLE}"
 fi
 
 # convert to COG using existing overviews, this adds some additional layout optimizations
-if [ ! -f "cog.tif" ]; then
-  gdal_translate merged.tif cog.tif -of COG -co BLOCKSIZE="${BLOCK_SIZE}" -co NUM_THREADS=ALL_CPUS
+if [ ! -f "/tmp/cog.tif" ]; then
+  gdal_translate /tmp/merged.tif /tmp/cog.tif -of COG -co BLOCKSIZE="${BLOCK_SIZE}" -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS
 fi
 
 # upload to data lake
-aws s3 cp cog.tif "s3://${TARGET_BUCKET}/${TARGET_PREFIX}"
+aws s3 cp /tmp/cog.tif "s3://${TARGET_BUCKET}/${TARGET_PREFIX}"
 set +x
 
