@@ -14,7 +14,7 @@ ME=$(basename "$0")
 
 set -x
 # download all GeoTiff files
-aws s3 cp --recursive --exclude "*" --include "*.tif" "${SRC}" /tmp
+aws s3 cp --recursive --exclude "*" --include "*.tif" "${SRC}" .
 
 # create VRT of input files so we can use gdal_translate
 if [ ! -f "merged.vrt" ]; then
