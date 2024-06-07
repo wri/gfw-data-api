@@ -23,7 +23,7 @@ fi
 
 # merge all rasters into one huge raster using COG block size
 if [ ! -f "merged.tif" ]; then
-  gdal_translate -of GTiff -co TILED=YES -co BLOCKXSIZE="${BLOCK_SIZE}" -co BLOCKYSIZE="${BLOCK_SIZE}" -co COMPRESS=DEFLATE -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS --config GDAL_CACHEMAX=70% merged.vrt merged.tif
+  gdal_translate -of GTiff -co TILED=YES -co BLOCKXSIZE="${BLOCK_SIZE}" -co BLOCKYSIZE="${BLOCK_SIZE}" -co COMPRESS=DEFLATE -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS merged.vrt merged.tif
 fi
 
 # create overviews in raster
@@ -33,7 +33,7 @@ fi
 
 # convert to COG using existing overviews, this adds some additional layout optimizations
 if [ ! -f "cog.tif" ]; then
-  gdal_translate merged.tif cog.tif -of COG -co COMPRESS=DEFLATE -co BLOCKSIZE="${BLOCK_SIZE}" -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS --config GDAL_CACHEMAX=70%
+  gdal_translate merged.tif cog.tif -of COG -co COMPRESS=DEFLATE -co BLOCKSIZE="${BLOCK_SIZE}" -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS
 fi
 
 # upload to data lake
