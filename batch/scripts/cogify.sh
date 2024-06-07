@@ -28,7 +28,7 @@ fi
 
 # create overviews in raster
 if ! gdalinfo "merged.tif" | grep -q "Overviews"; then
-  gdaladdo merged.tif -r "${RESAMPLE}" --config GDAL_NUM_THREADS=ALL_CPUS --config GDAL_CACHEMAX=70%
+  gdaladdo merged.tif -r "${RESAMPLE}" --config GDAL_NUM_THREADS ALL_CPUS --config GDAL_CACHEMAX 70%
 fi
 
 # convert to COG using existing overviews, this adds some additional layout optimizations
