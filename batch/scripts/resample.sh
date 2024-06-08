@@ -27,4 +27,4 @@ ARG_ARRAY+=("--target-zoom" "${ZOOM_LEVEL}")
 ARG_ARRAY+=("--target-prefix" "${TARGET}")
 
 # Run resample.py with the array of arguments
-resample.py "${ARG_ARRAY[@]}"
+. /usr/local/app/.venv/bin/activate && pipenv run resample.py "${ARG_ARRAY[@]}"
