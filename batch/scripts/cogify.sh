@@ -4,8 +4,7 @@ set -e
 
 # requires arguments
 # -s | --source
-# --target_bucket
-# --prefix
+# -T | --target
 # --block_size
 # -r | --resample
 
@@ -37,6 +36,6 @@ if [ ! -f "cog.tif" ]; then
 fi
 
 # upload to data lake
-aws s3 cp cog.tif "s3://${TARGET_BUCKET}/${PREFIX}"
+aws s3 cp cog.tif "${TARGET}"
 set +x
 

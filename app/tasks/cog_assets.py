@@ -1,4 +1,3 @@
-import posixpath
 from typing import Any, Callable, Coroutine, Dict
 from uuid import UUID
 
@@ -9,13 +8,12 @@ from app.models.orm.assets import Asset as ORMAsset
 from app.models.orm.tasks import Task
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import COGCreationOptions
-from app.models.pydantic.jobs import GDALPythonLargeJob, Job
-from app.settings.globals import DATA_LAKE_BUCKET
+from app.models.pydantic.jobs import GDALCOGJob, Job
 from app.tasks import callback_constructor
 from app.tasks.batch import execute
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV
 from app.tasks.utils import sanitize_batch_job_name
-from app.utils.path import get_asset_uri, infer_srid_from_grid, split_s3_path
+from app.utils.path import get_asset_uri, infer_srid_from_grid
 
 
 async def cog_asset(
@@ -71,10 +69,6 @@ async def create_cogify_job(
         srid,
     )
 
-    target_prefix = posixpath.dirname(
-        posixpath.dirname(split_s3_path(target_asset_uri)[1])
-    )
-
     # The GDAL utilities use "near" whereas rasterio/pixetl use "nearest"
     resample_method = (
         "near"
@@ -86,16 +80,12 @@ async def create_cogify_job(
         "cogify.sh",
         "-s",
         source_uri,
-        "--target_bucket",
-        DATA_LAKE_BUCKET,
-        "--prefix",
-        target_prefix,
+        "-T",
+        target_asset_uri,
         "-r",
         resample_method,
         "--block_size",
         creation_options.block_size.value,
-        "-T",
-        target_prefix,
     ]
 
     job_name: str = sanitize_batch_job_name(
@@ -104,7 +94,7 @@ async def create_cogify_job(
 
     kwargs = dict()
 
-    return GDALPythonLargeJob(
+    return GDALCOGJob(
         dataset=dataset,
         job_name=job_name,
         command=command,

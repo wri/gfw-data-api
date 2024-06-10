@@ -137,15 +137,15 @@ class PixETLJob(Job):
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 
 
-class GDALPythonLargeJob(Job):
+class GDALCOGJob(Job):
     """Use for raster transformations using GDAL Python docker in PixETL
     queue."""
 
     job_queue = PIXETL_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
-    vcpus = MAX_CORES
-    memory = MAX_MEM
-    num_processes = max(int(MAX_CORES * 2 / 3), 1)
+    vcpus = 8
+    memory = 64000
+    num_processes = 8
     attempts = 10
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 
