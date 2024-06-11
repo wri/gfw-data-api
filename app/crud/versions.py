@@ -52,9 +52,12 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
     return row
 
 
-@alru_cache(maxsize=64, ttl=3600.0)
+@alru_cache(maxsize=64, ttl=15.0)
 async def get_latest_version(dataset) -> str:
     """Fetch latest version number."""
+    # NOTE: Even though we invalidate cache entries in the known mutator
+    # functions, set cache TTL to a low value to reduce incoherency between
+    # ECS instances.
 
     latest: Optional[str] = (
         await ORMVersion.select("version")
