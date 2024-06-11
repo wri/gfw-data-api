@@ -315,8 +315,8 @@ async def test_invalid_source_uri(async_client: AsyncClient):
 
     # Create a version with a valid source_uri so we have something to append to
     version_payload["creation_options"]["source_uri"] = [f"s3://{BUCKET}/{GPKG_NAME}"]
-    version_payload["creation_options"]["source_driver"] = ["GPKG"]
-    version_payload["creation_options"]["layers"] = [["layer1"]]
+    version_payload["creation_options"]["source_driver"] = "GPKG"
+    version_payload["creation_options"]["layers"] = ["layer1"]
     await create_default_asset(
         dataset,
         version,

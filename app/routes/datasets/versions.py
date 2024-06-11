@@ -211,8 +211,7 @@ async def update_version(
     "/{dataset}/{version}/append",
     response_class=ORJSONResponse,
     tags=["Versions"],
-    response_model=VersionResponse,
-    deprecated=True,
+    response_model=VersionResponse
 )
 async def append_to_version(
     *,
