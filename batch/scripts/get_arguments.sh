@@ -177,11 +177,6 @@ do
       SKIP="TRUE"
       shift # past argument
       ;;
-      --srid)
-      SRID="$2"
-      shift # past argument
-      shift # past value
-      ;;
       --subset)
       SUBSET="$2"
       shift # past argument

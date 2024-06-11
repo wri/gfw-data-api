@@ -138,8 +138,7 @@ class PixETLJob(Job):
 
 
 class GDALCOGJob(Job):
-    """Use for raster transformations using GDAL Python docker in PixETL
-    queue."""
+    """Use for creating COG files using GDAL Python docker in PixETL queue."""
 
     job_queue = PIXETL_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION

@@ -345,7 +345,7 @@ class COGCreationOptions(StrictBaseModel):
         "default",
         description="Name space to use for COG. "
         "This will be part of the URI and will "
-        "allow to create multiple COGs per version,",
+        "allow creation of multiple COGs per version.",
     )
     source_asset_id: str = Field(
         ...,
