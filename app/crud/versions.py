@@ -52,7 +52,7 @@ async def get_version(dataset: str, version: str) -> ORMVersion:
     return row
 
 
-@alru_cache(maxsize=64, ttl=3600.0)
+@alru_cache(maxsize=64, ttl=15.0)
 async def get_latest_version(dataset) -> str:
     """Fetch latest version number."""
 
