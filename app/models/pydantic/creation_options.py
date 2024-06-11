@@ -14,6 +14,7 @@ from ..enum.creation_options import (
     PartitionType,
     RasterDrivers,
     TableDrivers,
+    TileBlockSize,
     TileStrategy,
     VectorDrivers,
 )
@@ -339,6 +340,26 @@ class RasterTileCacheCreationOptions(TileCacheBaseModel):
     )
 
 
+class COGCreationOptions(StrictBaseModel):
+    implementation: str = Field(
+        "default",
+        description="Name space to use for COG. "
+        "This will be part of the URI and will "
+        "allow creation of multiple COGs per version.",
+    )
+    source_asset_id: str = Field(
+        ...,
+        description="Raster tile set asset ID to use as source. "
+        "Must be an asset of the same version",
+    )
+    resampling: ResamplingMethod = Field(
+        ResamplingMethod.average,
+        description="Resampling method used to downsample overviews",
+    )
+    block_size: Optional[TileBlockSize] = 512
+    compute_stats: bool = False
+
+
 class DynamicVectorTileCacheCreationOptions(TileCacheBaseModel):
     field_attributes: Optional[List[Dict[str, Any]]] = Field(
         None,
@@ -382,8 +403,7 @@ class StaticVectorFileCreationOptions(StrictBaseModel):
 
 class StaticVector1x1CreationOptions(StaticVectorFileCreationOptions):
     include_tile_id: Optional[bool] = Field(
-        False,
-        description="Whether or not to include the tile_id of each feature"
+        False, description="Whether or not to include the tile_id of each feature"
     )
 
 
@@ -395,6 +415,7 @@ SourceCreationOptions = Union[
 
 OtherCreationOptions = Union[
     TableAssetCreationOptions,
+    COGCreationOptions,
     RasterTileCacheCreationOptions,
     StaticVectorTileCacheCreationOptions,
     StaticVectorFileCreationOptions,
@@ -424,6 +445,7 @@ AssetCreationOptionsLookup: Dict[str, Type[OtherCreationOptions]] = {
     AssetType.shapefile: StaticVectorFileCreationOptions,
     AssetType.geopackage: StaticVectorFileCreationOptions,
     AssetType.raster_tile_set: RasterTileSetAssetCreationOptions,
+    AssetType.cog: COGCreationOptions,
     AssetType.raster_tile_cache: RasterTileCacheCreationOptions,
     AssetType.database_table: TableAssetCreationOptions,
 }
