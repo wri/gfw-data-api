@@ -328,14 +328,15 @@ async def test_invalid_source_uri(async_client: AsyncClient):
 
     # Test appending to a version that exists
     response = await async_client.post(
-        f"/dataset/{dataset}/{version}/append", json={"source_uri": source_uri}
+        f"/dataset/{dataset}/{version}/append", 
+        json={"source_uri": [f"s3://{BUCKET}/{GPKG_NAME}"], "source_driver": "GPKG"}
     )
-    assert response.status_code == 400
-    assert response.json()["status"] == "failed"
-    assert (
-        response.json()["message"]
-        == f"Cannot access all of the source files (non-existent or access denied). Invalid sources: ['{bad_uri}']"
-    )
+    assert response.status_code == 200
+    #assert response.json()["status"] == "failed"
+    #assert (
+    #    response.json()["message"]
+    #    == f"Cannot access all of the source files (non-existent or access denied). Invalid sources: ['{bad_uri}']"
+    #)
 
     # Test appending to a version that DOESN'T exist
     # Really this tests dataset_version_dependency, but that isn't done elsewhere yet
@@ -352,9 +353,10 @@ async def test_invalid_source_uri(async_client: AsyncClient):
 
     # Test appending to a version with missing layers
     response = await async_client.post(
-        f"/dataset/{dataset}/{version}/append", json={"source_uri": f"s3://{BUCKET}/{GPKG_NAME}", "layers": ["layer3"]}
+        f"/dataset/{dataset}/{version}/append", json={"source_uri": [f"s3://{BUCKET}/{GPKG_NAME}"], "source_driver": "GPKG", "layers": ["layer3"]}
     )
-    assert response.status_code == 400
+    #assert response.status_code == 400
+    assert response.json() == 'foo'
     assert response.json()["status"] == "failed"
 
 

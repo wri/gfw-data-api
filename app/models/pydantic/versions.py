@@ -59,20 +59,15 @@ class VersionUpdateIn(StrictBaseModel):
 
 
 class VersionAppendIn(StrictBaseModel):
-    source_driver: VectorDrivers = Field(
-        ..., description="Driver of source file. Must be an OGR driver"
+    source_uri: List[str]
+    source_driver: Optional[VectorDrivers] = Field(
+        None, description="Driver of source file. Must be an OGR driver"
     )
     layers: Optional[List[str]] = Field(
         None,
         description="List of layer names to append to version. "
         "If not set, all layers in source_uri will be appended.",
     )
-
-    @validator("source_driver")
-    def validate_source_driver(cls, v, values, **kwargs):
-        assert values.get("source_driver") in [VectorDrivers.csv, VectorDrivers.gpkg, VectorDrivers.file_gdb], "Appends for {} are not supported".format(values.get("source_driver"))
-        return v
-
 
 class VersionResponse(Response):
     data: Version

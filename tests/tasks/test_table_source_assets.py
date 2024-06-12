@@ -585,6 +585,7 @@ async def test_table_source_asset_append(batch_client, async_client: AsyncClient
         json={"source_uri": [f"s3://{BUCKET}/{APPEND_TSV_NAME}"]},
     )
     assert response.status_code == 200
+    #assert response.json() == "foo"
 
     response = await async_client.get(f"/dataset/{dataset}/{version}/change_log")
     assert response.status_code == 200
