@@ -100,6 +100,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      -G|--export_to_gee)
+      EXPORT_TO_GEE="$2"
+      shift # past argument
+      shift # past value
+      ;;
       -i|--fid_name)
       FID_NAME="$2"
       shift # past argument
