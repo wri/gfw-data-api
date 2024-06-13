@@ -39,8 +39,26 @@ def upload_cog_to_gcs(dataset, implementation):
 
 def create_cog_backed_asset(dataset, implementation, gcs_path, service_account):
     credentials = ee.ServiceAccountCredentials(service_account, GCS_CREDENTIALS_FILE)
-    session = AuthorizedSession(credentials.with_quota_project(EE_PROJECT))
+    ee.Initialize(credentials)
 
+    # delete any existing asset with the same dataset/implementatio
+    try:
+        ee.data.deleteAsset(f"projects/{EE_PROJECT}/assets/{dataset}/{implementation}")
+    except ee.EEException:
+        # asset doesn't exist
+        pass
+
+    # create dataset folder if it doesn't exist
+    try:
+        ee.data.createAsset(
+            {"type": "Folder"}, f"projects/{EE_PROJECT}/assets/{dataset}"
+        )
+    except ee.EEException:
+        # folder already exists
+        pass
+
+    # link GCS COG to the GEE asset
+    session = AuthorizedSession(credentials.with_quota_project(EE_PROJECT))
     request = {"type": "IMAGE", "gcs_location": {"uris": [gcs_path]}}
 
     asset_id = f"{dataset}/{implementation}"
@@ -62,7 +80,7 @@ def export_to_gee(
 ):
     service_account = set_google_application_credentials()
     gcs_path = upload_cog_to_gcs(dataset, implementation)
-    create_cog_backed_asset(gcs_path, dataset, implementation, service_account)
+    create_cog_backed_asset(dataset, implementation, gcs_path, service_account)
 
 
 if __name__ == "__main__":
