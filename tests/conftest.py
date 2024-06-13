@@ -1,3 +1,4 @@
+import contextlib
 import csv
 import io
 import os
@@ -11,13 +12,12 @@ import numpy
 import pytest
 import pytest_asyncio
 import rasterio
-from alembic.config import main
+from alembic.config import main as migrate
+from asgi_lifespan import LifespanManager
 from docker.models.containers import ContainerCollection
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from app.authentication.api_keys import get_api_key
-from app.authentication.token import get_manager, is_admin, is_service_account
+from app.routes.datasets.dataset import get_owner
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
     AURORA_JOB_QUEUE_FAST,
@@ -35,6 +35,7 @@ from app.settings.globals import (
     TILE_CACHE_JOB_QUEUE,
 )
 from app.utils.aws import get_s3_client
+from tests_v2.utils import get_admin_mocked
 
 from . import (
     APPEND_TSV_NAME,
@@ -55,10 +56,7 @@ from . import (
     TSV_PATH,
     AWSMock,
     MemoryServer,
-    get_api_key_mocked,
-    get_manager_mocked,
-    is_admin_mocked,
-    is_service_account_mocked,
+    session,
     setup_clients,
 )
 from .utils import delete_logs, print_logs, upload_fake_data
@@ -191,80 +189,6 @@ def logs(batch_client):
     delete_logs(logs)
 
 
-# @pytest.fixture(scope="session", autouse=True)
-# def db():
-#     """Acquire a database session for a test and make sure the connection gets
-#     properly closed, even if test fails.
-#
-#     This is a synchronous connection using psycopg2.
-#     """
-#     with contextlib.ExitStack() as stack:
-#         yield stack.enter_context(session())
-
-
-@pytest.fixture(autouse=True)
-def client():
-    """Set up a clean database before running a test.
-
-    Run all migrations before test and downgrade afterwards.
-    """
-    from app.main import app
-
-    main(["--raiseerr", "upgrade", "head"])
-    app.dependency_overrides[is_admin] = is_admin_mocked
-    app.dependency_overrides[is_service_account] = is_service_account_mocked
-    app.dependency_overrides[get_api_key] = get_api_key_mocked
-
-    with TestClient(app) as client:
-        yield client
-
-        # Clean up created assets/versions/datasets so teardown doesn't break
-        datasets_resp = client.get("/datasets")
-        for ds in datasets_resp.json()["data"]:
-            ds_id = ds["dataset"]
-            if ds.get("versions") is not None:
-                for version in ds["versions"]:
-                    assets_resp = client.get(f"/dataset/{ds_id}/{version}/assets")
-                    for asset in assets_resp.json()["data"]:
-                        print(f"DELETING ASSET {asset['asset_id']}")
-                        try:
-                            _ = client.delete(
-                                f"/dataset/{ds_id}/{version}/{asset['asset_id']}"
-                            )
-                        except Exception as ex:
-                            print(f"Exception deleting asset {asset['asset_id']}: {ex}")
-                    try:
-                        # FIXME: Mock-out cache invalidation function
-                        _ = client.delete(f"/dataset/{ds_id}/{version}")
-                    except Exception as ex:
-                        print(f"Exception deleting version {version}: {ex}")
-            try:
-                _ = client.delete(f"/dataset/{ds_id}")
-            except Exception as ex:
-                print(f"Exception deleting dataset {ds_id}: {ex}")
-
-    app.dependency_overrides = {}
-    main(["--raiseerr", "downgrade", "base"])
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def async_client():
-    """Async Test Client."""
-    from app.main import app
-
-    # main(["--raiseerr", "upgrade", "head"])
-    app.dependency_overrides[is_admin] = is_admin_mocked
-    app.dependency_overrides[is_service_account] = is_service_account_mocked
-    app.dependency_overrides[get_api_key] = get_api_key_mocked
-    app.dependency_overrides[get_manager] = get_manager_mocked
-
-    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
-        yield client
-
-    # app.dependency_overrides = {}
-    # main(["--raiseerr", "downgrade", "base"])
-
-
 @pytest.fixture(scope="session")
 def httpd():
 
@@ -287,7 +211,7 @@ def httpd():
 @pytest.fixture(autouse=True)
 def flush_request_list(httpd):
     """Delete request cache before every test."""
-    httpx.delete(f"http://localhost:{httpd.server_port}")
+    _ = httpx.delete(f"http://localhost:{httpd.server_port}")
 
 
 @pytest.fixture(autouse=True)
@@ -388,3 +312,85 @@ def secrets():
     yield
 
     secret_client.delete_secret(SecretId=AWS_GCS_KEY_SECRET_ARN)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def db_session():
+    """Acquire a database session for a test and make sure the connection gets
+    properly closed, even if test fails.
+
+    This is a synchronous connection using psycopg2.
+    """
+    with contextlib.ExitStack() as stack:
+        yield stack.enter_context(session())
+
+
+@pytest_asyncio.fixture(scope="module", autouse=True)
+async def db_ready():
+    """make sure that the db is only initialized and torn down once per
+    module."""
+    migrate(["--raiseerr", "upgrade", "head"])
+    yield
+
+    migrate(["--raiseerr", "downgrade", "base"])
+
+
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def db_clean():
+    yield
+
+    from app.main import app
+
+    app.dependency_overrides[get_owner] = get_admin_mocked
+
+    async with LifespanManager(app) as manager:
+        async with AsyncClient(
+            app=manager.app, base_url="http://test", trust_env=False
+        ) as http_client:
+            # Clean up created assets/versions/datasets so teardown doesn't break
+            datasets_resp = await http_client.get("/datasets")
+            for ds in datasets_resp.json()["data"]:
+                ds_id = ds["dataset"]
+                if ds.get("versions") is not None:
+                    for version in ds["versions"]:
+                        assets_resp = await http_client.get(
+                            f"/dataset/{ds_id}/{version}/assets"
+                        )
+                        for asset in assets_resp.json()["data"]:
+                            print(f"DELETING ASSET {asset['asset_id']}")
+                            try:
+                                resp = await http_client.delete(
+                                    f"/asset/{asset['asset_id']}"
+                                )
+                                assert resp.status_code == 204
+                            except Exception as ex:
+                                print(
+                                    f"Exception deleting asset {asset['asset_id']}: {ex}"
+                                )
+                        try:
+                            # FIXME: Mock-out cache invalidation function
+                            _ = await http_client.delete(f"/dataset/{ds_id}/{version}")
+                        except Exception as ex:
+                            print(f"Exception deleting version {version}: {ex}")
+                try:
+                    _ = await http_client.delete(f"/dataset/{ds_id}")
+                except Exception as ex:
+                    print(f"Exception deleting dataset {ds_id}: {ex}")
+
+    app.dependency_overrides = {}
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def app():
+    from app.main import app
+
+    async with LifespanManager(app) as manager:
+        print("We're in!")
+        yield manager.app
+
+
+@pytest_asyncio.fixture
+async def async_client(app):
+    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
+        print("Client is ready")
+        yield client
