@@ -13,6 +13,7 @@ from collections import defaultdict
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
 from urllib.parse import urlparse
+import fiona
 
 from fastapi import (
     APIRouter,
@@ -241,28 +242,25 @@ async def append_to_version(
     input_data["creation_options"]["source_uri"] = request.source_uri
 
     # If source_driver is "text", this is a datapump request
-    if input_data["creation_options"]["source_driver"] == "text":
-        background_tasks.add_task(
-            append_default_asset, dataset, version, input_data, default_asset.asset_id
-        )
-    else:
+    if input_data["creation_options"]["source_driver"] != "text":
         # Verify that source_driver is not None
         if input_data["creation_options"]["source_driver"] is None:
             raise HTTPException(
                 status_code=400,
                 detail="Source driver must be specified for non-datapump requests."
             )
-        # If there are no existing layers, we can just use the new layers
-        if input_data["creation_options"].get("layers") is None: 
+
+        # Append the new layers to the existing ones
+        if input_data["creation_options"].get("layers") is None: # ERROR: layers is not defined
             input_data["creation_options"]["layers"] = request.layers
-        # Otherwise we append the new layers to the existing ones
         elif request.layers is not None:
             input_data["creation_options"]["layers"] += request.layers
         else:
-            input_data["creation_options"]["layers"] = None
-        background_tasks.add_task(
-            append_default_asset, dataset, version, input_data, default_asset.asset_id
-        )
+            input_data["creation_options"]["layers"] = request.layers
+            
+    background_tasks.add_task(
+        append_default_asset, dataset, version, input_data, default_asset.asset_id
+    )
 
     # We now want to append the new uris to the existing ones and update the asset
     update_data = {"creation_options": deepcopy(default_asset.creation_options)}
@@ -561,6 +559,17 @@ async def _version_response(
 
     return VersionResponse(data=Version(**data))
 
+#def _verify_layer_exists(source_uri: List[str], layes: List[str]) -> None:
+#    with fiona.open(source_uri[0].replace("s3://", "/vsizip//vsis3/"), "r") as src:
+#        layers = src.layer_names
+#        for layer in layers:
+#            if layer in layers:
+#                return
+#            else:
+#                raise HTTPException(
+#                    status_code=400,
+#                    detail=f"Layer {layer} not found in source file."
+#                )
 
 def _verify_source_file_access(sources: List[str]) -> None:
 

@@ -314,9 +314,7 @@ async def test_invalid_source_uri(async_client: AsyncClient):
     )
 
     # Create a version with a valid source_uri so we have something to append to
-    version_payload["creation_options"]["source_uri"] = [f"s3://{BUCKET}/{GPKG_NAME}"]
-    version_payload["creation_options"]["source_driver"] = "GPKG"
-    version_payload["creation_options"]["layers"] = ["layer1"]
+    version_payload["creation_options"]["source_uri"] = [f"s3://{BUCKET}/{SHP_NAME}"]
     await create_default_asset(
         dataset,
         version,
@@ -329,14 +327,14 @@ async def test_invalid_source_uri(async_client: AsyncClient):
     # Test appending to a version that exists
     response = await async_client.post(
         f"/dataset/{dataset}/{version}/append", 
-        json={"source_uri": [f"s3://{BUCKET}/{GPKG_NAME}"], "source_driver": "GPKG"}
+        json={"source_uri": source_uri, "source_driver": "ESRI Shapefile"}
     )
-    assert response.status_code == 200
-    #assert response.json()["status"] == "failed"
-    #assert (
-    #    response.json()["message"]
-    #    == f"Cannot access all of the source files (non-existent or access denied). Invalid sources: ['{bad_uri}']"
-    #)
+    assert response.status_code == 400
+    assert response.json()["status"] == "failed"
+    assert (
+        response.json()["message"]
+        == f"Cannot access all of the source files (non-existent or access denied). Invalid sources: ['{bad_uri}']"
+    )
 
     # Test appending to a version that DOESN'T exist
     # Really this tests dataset_version_dependency, but that isn't done elsewhere yet
@@ -350,16 +348,6 @@ async def test_invalid_source_uri(async_client: AsyncClient):
         response.json()["message"]
         == f"Version with name {dataset}.{bad_version} does not exist"
     )
-
-    # Test appending to a version with missing layers
-    response = await async_client.post(
-        f"/dataset/{dataset}/{version}/append", json={"source_uri": [f"s3://{BUCKET}/{GPKG_NAME}"], "source_driver": "GPKG", "layers": ["layer3"]}
-    )
-    #assert response.status_code == 400
-    assert response.json() == 'foo'
-    assert response.json()["status"] == "failed"
-
-
 
 
 @pytest.mark.asyncio
