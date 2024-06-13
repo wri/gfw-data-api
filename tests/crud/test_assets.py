@@ -43,10 +43,11 @@ async def test_assets():
     assert new_version.dataset == dataset_name
     assert new_version.version == version_name
 
-    # There should be no assert for current version
+    # There should be no asset for current version
     # This will throw an error b/c when initialized correctly,
     # there will be always a default asset
-    assets = await get_assets_by_filter(dataset=dataset_name, version=version_name)
+    async with ContextEngine("READ"):
+        assets = await get_assets_by_filter(dataset=dataset_name, version=version_name)
 
     assert len(assets) == 0
 
@@ -81,7 +82,7 @@ async def test_assets():
     assert new_row.status == "pending"
     assert new_row.is_managed is True
     assert new_row.creation_options == {}
-    assert new_row.metadata == None
+    assert new_row.metadata is None
     assert new_row.change_log == []
 
     # This shouldn't work a second time
@@ -103,7 +104,8 @@ async def test_assets():
         )
 
     # There should be an entry now
-    rows = await get_assets_by_filter(dataset=dataset_name, version=version_name)
+    async with ContextEngine("READ"):
+        rows = await get_assets_by_filter(dataset=dataset_name, version=version_name)
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
@@ -112,26 +114,30 @@ async def test_assets():
     asset_id = rows[0].asset_id
 
     # There should be an entry now
-    rows = await get_assets_by_filter()
+    async with ContextEngine("READ"):
+        rows = await get_assets_by_filter()
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
     assert rows[0].version == version_name
 
     # There should be an entry now
-    rows = await get_assets_by_filter(asset_types=["Database table"])
+    async with ContextEngine("READ"):
+        rows = await get_assets_by_filter(asset_types=["Database table"])
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
     assert rows[0].version == version_name
 
     # There should be no such entry
-    rows = await get_assets_by_filter(asset_types=["Vector tile cache"])
+    async with ContextEngine("READ"):
+        rows = await get_assets_by_filter(asset_types=["Vector tile cache"])
     assert isinstance(rows, list)
     assert len(rows) == 0
 
     # It should be possible to access the asset by asset id
-    row = await get_asset(asset_id)
+    async with ContextEngine("READ"):
+        row = await get_asset(asset_id)
     assert row.dataset == dataset_name
     assert row.version == version_name
 
@@ -139,7 +145,8 @@ async def test_assets():
     result = ""
     _asset_id = uuid4()
     try:
-        await get_asset(_asset_id)
+        async with ContextEngine("READ"):
+            await get_asset(_asset_id)
     except RecordNotFoundError as e:
         result = str(e)
 
@@ -162,14 +169,15 @@ async def test_assets():
     assert row.change_log[0]["status"] == logs.dict(by_alias=True)["status"]
     assert row.change_log[0]["message"] == logs.dict(by_alias=True)["message"]
 
-    # When deleting a dataset, method should return the deleted object
+    # When deleting asset, method should return the deleted object
     async with ContextEngine("WRITE"):
         row = await delete_asset(asset_id)
     assert row.dataset == dataset_name
     assert row.version == version_name
 
-    # After deleting the dataset, there should be an empty DB
-    rows = await get_assets_by_filter()
+    # After deleting the asset, there should be an empty DB
+    async with ContextEngine("READ"):
+        rows = await get_assets_by_filter()
     assert isinstance(rows, list)
     assert len(rows) == 0
 
