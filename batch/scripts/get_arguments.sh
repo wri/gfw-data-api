@@ -101,9 +101,8 @@ do
       shift # past value
       ;;
       -G|--export_to_gee)
-      EXPORT_TO_GEE="$2"
+      EXPORT_TO_GEE="TRUE"
       shift # past argument
-      shift # past value
       ;;
       -i|--fid_name)
       FID_NAME="$2"
