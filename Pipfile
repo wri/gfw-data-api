@@ -21,7 +21,7 @@ pytest-asyncio = "*"
 pytest-cov = "*"
 pytest-timeout = "*"
 rasterio = "*"
-responses = "<0.16"
+responses = "*"
 retrying = "*"  # Needed by pixetl in batch script test
 
 [packages]
