@@ -35,8 +35,10 @@ class ContextualGino(Gino):
             return bind
         except LookupError:
             # not in a request
-            logger.debug("Not in a request, using default bind")
-            return self._bind
+            # logger.debug("Not in a request, using default bind")
+            # return self._bind
+            logger.debug("Not in a request, using READ engine")
+            return READ_ENGINE
 
     @bind.setter
     def bind(self, val):
@@ -114,6 +116,7 @@ async def lifespan(app: FastAPI):
         logger.info(
             f"Closed database connection for read operations {READ_ENGINE.repr(color=True)}"
         )
+
 
 app: FastAPI = FastAPI(title="GFW Data API", redoc_url="/", lifespan=lifespan)
 

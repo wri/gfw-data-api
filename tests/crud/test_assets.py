@@ -19,8 +19,7 @@ from app.errors import RecordAlreadyExistsError, RecordNotFoundError
 from app.models.pydantic.asset_metadata import DatabaseTableMetadata
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.metadata import DatasetMetadata, VersionMetadata
-
-from ..utils import (
+from tests.utils import (
     asset_metadata,
     dataset_metadata,
     raster_asset_metadata,
@@ -29,7 +28,7 @@ from ..utils import (
 
 
 @pytest.mark.asyncio
-async def test_assets():
+async def test_assets(db_session, db_ready, db_clean, app):
     """Testing all CRUD operations on assets in one go."""
 
     dataset_name = "test"
@@ -46,25 +45,23 @@ async def test_assets():
     # There should be no asset for current version
     # This will throw an error b/c when initialized correctly,
     # there will be always a default asset
-    async with ContextEngine("READ"):
-        assets = await get_assets_by_filter(dataset=dataset_name, version=version_name)
+    assets = await get_assets_by_filter(dataset=dataset_name, version=version_name)
 
     assert len(assets) == 0
 
     # Writing to DB using context engine with "READ" shouldn't work
-    async with ContextEngine("READ"):
-        result = ""
-        try:
-            await create_asset(
-                dataset_name,
-                version_name,
-                asset_type="Database table",
-                asset_uri="s3://path/to/file",
-            )
-        except asyncpg.exceptions.InsufficientPrivilegeError as e:
-            result = str(e)
+    result = ""
+    try:
+        await create_asset(
+            dataset_name,
+            version_name,
+            asset_type="Database table",
+            asset_uri="s3://path/to/file",
+        )
+    except asyncpg.exceptions.InsufficientPrivilegeError as e:
+        result = str(e)
 
-        assert result == "permission denied for table assets"
+    assert result == "permission denied for table assets"
 
     # Using context engine with "WRITE" should work
     async with ContextEngine("WRITE"):
@@ -114,30 +111,26 @@ async def test_assets():
     asset_id = rows[0].asset_id
 
     # There should be an entry now
-    async with ContextEngine("READ"):
-        rows = await get_assets_by_filter()
+    rows = await get_assets_by_filter()
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
     assert rows[0].version == version_name
 
     # There should be an entry now
-    async with ContextEngine("READ"):
-        rows = await get_assets_by_filter(asset_types=["Database table"])
+    rows = await get_assets_by_filter(asset_types=["Database table"])
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
     assert rows[0].version == version_name
 
     # There should be no such entry
-    async with ContextEngine("READ"):
-        rows = await get_assets_by_filter(asset_types=["Vector tile cache"])
+    rows = await get_assets_by_filter(asset_types=["Vector tile cache"])
     assert isinstance(rows, list)
     assert len(rows) == 0
 
     # It should be possible to access the asset by asset id
-    async with ContextEngine("READ"):
-        row = await get_asset(asset_id)
+    row = await get_asset(asset_id)
     assert row.dataset == dataset_name
     assert row.version == version_name
 
@@ -176,14 +169,13 @@ async def test_assets():
     assert row.version == version_name
 
     # After deleting the asset, there should be an empty DB
-    async with ContextEngine("READ"):
-        rows = await get_assets_by_filter()
+    rows = await get_assets_by_filter()
     assert isinstance(rows, list)
     assert len(rows) == 0
 
 
 @pytest.mark.asyncio
-async def test_assets_metadata():
+async def test_assets_metadata(db_session, db_ready, db_clean, app):
     """Testing all CRUD operations on dataset in one go."""
 
     dataset = "test"
@@ -258,7 +250,7 @@ async def test_assets_metadata():
 
 
 @pytest.mark.asyncio
-async def test_band_metadata():
+async def test_band_metadata(db_session, db_ready, db_clean, app):
     """Testing band metadata."""
 
     dataset = "test"

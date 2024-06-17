@@ -17,6 +17,7 @@ from asgi_lifespan import LifespanManager
 from docker.models.containers import ContainerCollection
 from httpx import AsyncClient
 
+from app.models.pydantic.authentication import User
 from app.routes.datasets.dataset import get_owner
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
@@ -35,7 +36,6 @@ from app.settings.globals import (
     TILE_CACHE_JOB_QUEUE,
 )
 from app.utils.aws import get_s3_client
-from tests_v2.utils import get_admin_mocked
 
 from . import (
     APPEND_TSV_NAME,
@@ -85,6 +85,19 @@ FAKE_FLOAT_DATA_PARAMS = {
         )
     ),
 }
+
+
+async def get_admin_mocked() -> User:
+    return User(
+        id="adminid_123",
+        name="Sir Admin",
+        email="sir_admin@admin.com",
+        createdAt="2021-06-13T03:18:23.000Z",
+        role="ADMIN",
+        provider="google",
+        providerId="1234",
+        extraUserData={},
+    )
 
 
 def pytest_addoption(parser):
@@ -314,7 +327,7 @@ def secrets():
     secret_client.delete_secret(SecretId=AWS_GCS_KEY_SECRET_ARN)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture
 def db_session():
     """Acquire a database session for a test and make sure the connection gets
     properly closed, even if test fails.
@@ -325,7 +338,7 @@ def db_session():
         yield stack.enter_context(session())
 
 
-@pytest_asyncio.fixture(scope="module", autouse=True)
+@pytest_asyncio.fixture
 async def db_ready():
     """make sure that the db is only initialized and torn down once per
     module."""
@@ -335,7 +348,7 @@ async def db_ready():
     migrate(["--raiseerr", "downgrade", "base"])
 
 
-@pytest_asyncio.fixture(scope="function", autouse=True)
+@pytest_asyncio.fixture
 async def db_clean():
     yield
 
@@ -380,7 +393,7 @@ async def db_clean():
     app.dependency_overrides = {}
 
 
-@pytest_asyncio.fixture(autouse=True)
+@pytest_asyncio.fixture
 async def app():
     from app.main import app
 

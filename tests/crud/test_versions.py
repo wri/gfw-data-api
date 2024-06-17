@@ -19,11 +19,11 @@ from app.errors import RecordAlreadyExistsError, RecordNotFoundError
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.metadata import VersionMetadata
 
-from ..utils import version_metadata, dataset_metadata
+from ..utils import dataset_metadata, version_metadata
 
 
 @pytest.mark.asyncio
-async def test_versions():
+async def test_versions(db_session, db_ready, db_clean, app):
     """Testing all CRUD operations on dataset in one go."""
 
     dataset_name = "test"
@@ -99,7 +99,7 @@ async def test_versions():
     # But only if the dataset exists
     result = ""
     try:
-        await get_version("test2", version_name)
+        _ = await get_version("test2", version_name)
     except RecordNotFoundError as e:
         result = str(e)
 
@@ -133,11 +133,13 @@ async def test_versions():
 
 
 @pytest.mark.asyncio
-async def test_latest_versions():
-    """Test if trigger function on versions table work It is suppose to reset
-    is_latest field to False for all versions of a dataset Once a version's
-    is_latest field is set to True Get Latest Version function should always
-    return the latest version number."""
+async def test_latest_versions(db_session, db_ready, db_clean, app):
+    """Test if trigger function on versions table work.
+
+    It is supposed to reset is_latest field to False for all versions of
+    a dataset Once a version's is_latest field is set to True Get Latest
+    Version function should always return the latest version number.
+    """
 
     dataset_name = "test"
 
