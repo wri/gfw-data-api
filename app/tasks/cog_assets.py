@@ -86,7 +86,14 @@ async def create_cogify_job(
         resample_method,
         "--block_size",
         creation_options.block_size.value,
+        "-d",
+        dataset,
+        "-I",
+        creation_options.implementation,
     ]
+
+    if creation_options.export_to_gee:
+        command += ["--export_to_gee"]
 
     job_name: str = sanitize_batch_job_name(
         f"COGify_{dataset}_{version}_{creation_options.implementation}"
