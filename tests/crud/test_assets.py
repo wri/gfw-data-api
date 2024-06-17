@@ -50,18 +50,19 @@ async def test_assets(db_session, db_ready, db_clean, app):
     assert len(assets) == 0
 
     # Writing to DB using context engine with "READ" shouldn't work
-    result = ""
-    try:
-        await create_asset(
-            dataset_name,
-            version_name,
-            asset_type="Database table",
-            asset_uri="s3://path/to/file",
-        )
-    except asyncpg.exceptions.InsufficientPrivilegeError as e:
-        result = str(e)
+    async with ContextEngine("READ"):
+        result = ""
+        try:
+            await create_asset(
+                dataset_name,
+                version_name,
+                asset_type="Database table",
+                asset_uri="s3://path/to/file",
+            )
+        except asyncpg.exceptions.InsufficientPrivilegeError as e:
+            result = str(e)
 
-    assert result == "permission denied for table assets"
+        assert result == "permission denied for table assets"
 
     # Using context engine with "WRITE" should work
     async with ContextEngine("WRITE"):
@@ -101,8 +102,7 @@ async def test_assets(db_session, db_ready, db_clean, app):
         )
 
     # There should be an entry now
-    async with ContextEngine("READ"):
-        rows = await get_assets_by_filter(dataset=dataset_name, version=version_name)
+    rows = await get_assets_by_filter(dataset=dataset_name, version=version_name)
     assert isinstance(rows, list)
     assert len(rows) == 1
     assert rows[0].dataset == dataset_name
@@ -138,8 +138,7 @@ async def test_assets(db_session, db_ready, db_clean, app):
     result = ""
     _asset_id = uuid4()
     try:
-        async with ContextEngine("READ"):
-            await get_asset(_asset_id)
+        _ = await get_asset(_asset_id)
     except RecordNotFoundError as e:
         result = str(e)
 
@@ -206,31 +205,27 @@ async def test_assets_metadata(db_session, db_ready, db_clean, app):
         == asset_metadata["fields"][0]["data_type"]
     )
 
-    async with ContextEngine("READ"):
-        asset = await get_asset(asset_id)
+    asset = await get_asset(asset_id)
     assert asset.metadata.fields[0].name == asset_metadata["fields"][0]["name"]
     assert (
         asset.metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
     )
 
-    async with ContextEngine("READ"):
-        assets = await get_assets_by_filter(dataset=dataset, version=version)
+    assets = await get_assets_by_filter(dataset=dataset, version=version)
     assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
     assert (
         assets[0].metadata.fields[0].data_type
         == asset_metadata["fields"][0]["data_type"]
     )
 
-    async with ContextEngine("READ"):
-        assets = await get_assets_by_filter(asset_types=["Database table"])
+    assets = await get_assets_by_filter(asset_types=["Database table"])
     assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
     assert (
         assets[0].metadata.fields[0].data_type
         == asset_metadata["fields"][0]["data_type"]
     )
 
-    async with ContextEngine("READ"):
-        assets = await get_assets_by_filter()
+    assets = await get_assets_by_filter()
     assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
     assert (
         assets[0].metadata.fields[0].data_type
