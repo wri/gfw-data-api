@@ -88,7 +88,7 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
             rows: List[Geostore] = await Geostore.query.gino.all()
 
         assert len(rows) == 1 + i
-        assert rows[0].gfw_geostore_id == UUID("1b368160-caf8-2bd7-819a-ad4949361f02")
+        assert rows[0].gfw_geostore_id == UUID("23866dd0-9b1a-d742-a7e3-21dd255481dd")
 
         await check_dynamic_vector_tile_cache_status(dataset, version)
 
