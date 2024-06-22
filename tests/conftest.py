@@ -17,6 +17,7 @@ from asgi_lifespan import LifespanManager
 from docker.models.containers import ContainerCollection
 from httpx import AsyncClient
 
+from app.authentication.token import get_manager, is_service_account
 from app.models.pydantic.authentication import User
 from app.routes.datasets.dataset import get_owner
 from app.settings.globals import (
@@ -59,7 +60,7 @@ from . import (
     session,
     setup_clients,
 )
-from .utils import delete_logs, print_logs, upload_fake_data
+from .utils import delete_logs, print_logs, upload_fake_data, bool_function_closure
 
 FAKE_INT_DATA_PARAMS = {
     "dtype": rasterio.uint16,
@@ -85,6 +86,32 @@ FAKE_FLOAT_DATA_PARAMS = {
         )
     ),
 }
+
+
+async def get_user_mocked() -> User:
+    return User(
+        id="userid_123",
+        name="Ms. User",
+        email="ms_user@user.com",
+        createdAt="2021-06-13T03:18:23.000Z",
+        role="USER",
+        provider="local",
+        providerId="1234",
+        extraUserData={},
+    )
+
+
+async def get_manager_mocked() -> User:
+    return User(
+        id="mr_manager123",
+        name="Mr. Manager",
+        email="mr_manager@management.com",
+        createdAt="2021-06-13T03:18:23.000Z",
+        role="MANAGER",
+        provider="local",
+        providerId="1234",
+        extraUserData={},
+    )
 
 
 async def get_admin_mocked() -> User:
@@ -339,7 +366,7 @@ def db_session():
 
 
 @pytest_asyncio.fixture
-async def db_ready():
+async def db_ready(db_session):
     """make sure that the db is only initialized and torn down once per
     module."""
     migrate(["--raiseerr", "upgrade", "head"])
@@ -349,7 +376,7 @@ async def db_ready():
 
 
 @pytest_asyncio.fixture
-async def db_clean():
+async def db_clean(db_ready):
     yield
 
     from app.main import app
@@ -394,7 +421,7 @@ async def db_clean():
 
 
 @pytest_asyncio.fixture
-async def app():
+async def app(db_clean):
     from app.main import app
 
     async with LifespanManager(app) as manager:
@@ -403,7 +430,22 @@ async def app():
 
 
 @pytest_asyncio.fixture
-async def async_client(app):
+async def async_client_unpriveleged(app):
     async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
         print("Client is ready")
         yield client
+
+
+@pytest_asyncio.fixture
+async def async_client(db_clean):
+    from app.main import app
+
+    app.dependency_overrides[get_manager] = get_admin_mocked
+    app.dependency_overrides[get_owner] = get_manager_mocked
+    app.dependency_overrides[is_service_account] = bool_function_closure(True, with_args=True)
+
+    async with LifespanManager(app) as manager:
+        async with AsyncClient(
+            app=manager.app, base_url="http://test", trust_env=False
+        ) as http_client:
+            yield http_client

@@ -28,7 +28,7 @@ from tests.utils import (
 
 
 @pytest.mark.asyncio
-async def test_assets(db_session, db_ready, db_clean, app):
+async def test_assets(app):
     """Testing all CRUD operations on assets in one go."""
 
     dataset_name = "test"
@@ -174,7 +174,7 @@ async def test_assets(db_session, db_ready, db_clean, app):
 
 
 @pytest.mark.asyncio
-async def test_assets_metadata(db_session, db_ready, db_clean, app):
+async def test_assets_metadata(app):
     """Testing all CRUD operations on dataset in one go."""
 
     dataset = "test"
@@ -245,7 +245,7 @@ async def test_assets_metadata(db_session, db_ready, db_clean, app):
 
 
 @pytest.mark.asyncio
-async def test_band_metadata(db_session, db_ready, db_clean, app):
+async def test_band_metadata(app):
     """Testing band metadata."""
 
     dataset = "test"

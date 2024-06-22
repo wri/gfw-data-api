@@ -23,7 +23,7 @@ from ..utils import dataset_metadata, version_metadata
 
 
 @pytest.mark.asyncio
-async def test_versions(db_session, db_ready, db_clean, app):
+async def test_versions(app):
     """Testing all CRUD operations on dataset in one go."""
 
     dataset_name = "test"
@@ -133,7 +133,7 @@ async def test_versions(db_session, db_ready, db_clean, app):
 
 
 @pytest.mark.asyncio
-async def test_latest_versions(db_session, db_ready, db_clean, app):
+async def test_latest_versions(app):
     """Test if trigger function on versions table work.
 
     It is supposed to reset is_latest field to False for all versions of

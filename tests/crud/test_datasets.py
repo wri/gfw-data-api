@@ -16,7 +16,7 @@ from tests.utils import dataset_metadata
 
 
 @pytest.mark.asyncio
-async def test_dataset(db_session, db_ready, db_clean, app):
+async def test_dataset(app):
     """Testing all CRUD operations on dataset in one go."""
 
     # There should be an empty DB
