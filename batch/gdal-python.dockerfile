@@ -11,6 +11,8 @@ RUN chmod +x -R /opt/python/
 ENV PATH="/opt/scripts:${PATH}"
 ENV PATH="/opt/python:${PATH}"
 
+RUN pip install earthengine-api
+
 ENV WORKDIR="/tmp"
 
 ENTRYPOINT ["/opt/scripts/report_status.sh"]

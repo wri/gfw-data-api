@@ -6,7 +6,9 @@ from pydantic import StrictInt, create_model
 
 from ...models.orm.assets import Asset as ORMAsset
 from ..enum.assets import AssetType
+from ..enum.creation_options import TileBlockSize
 from ..enum.pg_types import PGType
+from ..enum.pixetl import ResamplingMethod
 from .base import BaseORMRecord, StrictBaseModel
 from .responses import Response
 
@@ -73,6 +75,11 @@ class RasterBandMetadataOut(RasterBandMetadata):
 class RasterTileSetMetadata(AssetBase):
     bands: List[RasterBandMetadata]
     resolution: Optional[int]
+
+
+class COGMetadata(AssetBase):
+    block_size: TileBlockSize
+    resampling: ResamplingMethod
 
 
 class RasterTileSetMetadataUpdate(AssetBase):
@@ -186,6 +193,7 @@ def asset_metadata_factory(asset: ORMAsset) -> AssetMetadata:
         AssetType.grid_1x1: VectorFileMetadata,
         AssetType.shapefile: VectorFileMetadata,
         AssetType.geopackage: VectorFileMetadata,
+        AssetType.cog: COGMetadata,
     }
 
     if asset.asset_type in metadata_factory.keys():
@@ -234,6 +242,7 @@ class FieldsMetadataResponse(Response):
 
 class FieldMetadataResponse(Response):
     data: FieldMetadataOut
+
 
 class RasterBandsMetadataResponse(Response):
     data: List[RasterBandMetadata]

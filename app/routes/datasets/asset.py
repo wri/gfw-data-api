@@ -16,7 +16,6 @@ from fastapi.responses import ORJSONResponse
 
 from app.settings.globals import API_URL
 
-from ...authentication.token import is_admin
 from ...crud import assets
 from ...errors import RecordAlreadyExistsError
 from ...models.orm.assets import Asset as ORMAsset
