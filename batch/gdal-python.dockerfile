@@ -11,7 +11,7 @@ RUN chmod +x -R /opt/python/
 ENV PATH="/opt/scripts:${PATH}"
 ENV PATH="/opt/python:${PATH}"
 
-RUN pip install earthengine-api
+RUN pip install --break-system-packages earthengine-api
 
 ENV WORKDIR="/tmp"
 
