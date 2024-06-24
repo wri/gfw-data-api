@@ -11,7 +11,7 @@ from typer import Option, run
 
 EE_PROJECT = "forma-250"
 GCS_BUCKET = "data-api-gee-assets"
-GCS_SECRET_KEY_ARN = os.environ["GCS_SECRET_KEY_ARN"]
+GCS_SECRET_KEY_ARN = os.environ["AWS_GCS_KEY_SECRET_ARN"]
 GCS_CREDENTIALS_FILE = "gcs_credentials.json"
 
 
