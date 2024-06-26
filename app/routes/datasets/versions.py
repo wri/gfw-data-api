@@ -242,12 +242,14 @@ async def append_to_version(
     input_data["creation_options"]["source_uri"] = request.source_uri
 
     # If source_driver is "text", this is a datapump request
-    if input_data["creation_options"]["source_driver"] != TableDrivers.text:
-        # Verify that source_driver is not None
-        if input_data["creation_options"]["source_driver"] is None:
+    if input_data["creation_options"]["source_driver"] != TableDrivers.text:        
+        # Verify that source_driver matches the original source_driver
+        # TODO: Ideally append source_driver should not need to match the original source_driver,
+        #  but this would break other operations that expect only one source_driver
+        if input_data["creation_options"]["source_driver"] != request.source_driver:
             raise HTTPException(
                 status_code=400,
-                detail="Source driver must be specified for non-datapump requests."
+                detail="source_driver must match the original source_driver"
             )
 
         # Use layers from request if provided, otherwise leave empty

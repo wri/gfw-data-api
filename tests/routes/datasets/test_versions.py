@@ -445,6 +445,91 @@ async def test_version_put_raster(async_client: AsyncClient):
     )
     assert response.status_code == 404
 
+@pytest.mark.asyncio
+async def test_version_post_append(async_client: AsyncClient):
+    """Test version append operations."""
+
+    dataset = "test_version_post_append"
+    version = "v1.0.0"
+
+    version_payload = {
+        "creation_options": {
+            "source_type": "vector",
+            "source_uri": [f"s3://{BUCKET}/{GPKG_NAME}"],
+            "source_driver": "GPKG",
+            "layers": ["layer1"]
+        },
+    }
+
+    await create_default_asset(
+        dataset,
+        version,
+        dataset_payload=dataset_payload,
+        version_payload=version_payload,
+        async_client=async_client,
+        execute_batch_jobs=False,
+    )
+
+    response = await async_client.get(f"/dataset/{dataset}/{version}")
+    assert response.status_code == 200
+
+    # Test appending with same source uri
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/append",
+        json = {
+            "source_driver": "GPKG",
+            "source_uri": [f"s3://{BUCKET}/{GPKG_NAME}"],
+            "layers": ["layer2"]
+        }
+    )
+    assert response.status_code == 200
+
+    # Test appending with new source uri
+
+    # Test appending with unspecified layers
+    # Test appending with invalid source uri
+    bad_uri = "s3://doesnotexist"
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/append",
+        json = {
+            "source_driver": "GPKG",
+            "source_uri": [bad_uri],
+        }
+    )
+    assert response.status_code == 400
+    assert response.json()["status"] == "failed"
+    assert (
+        response.json()["message"]
+        == f"Cannot access all of the source files (non-existent or access denied). Invalid sources: ['{bad_uri}']"
+    )
+
+    # Test appending with invalid source driver
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/append",
+        json = {
+            "source_driver": "ESRI Shapefile",
+            "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
+        }
+    )
+    assert response.status_code == 400
+    assert response.json()["status"] == "failed"
+    assert (response.json()["message"] == "source_driver must match the original source_driver")
+
+    # Test appending with missing source driver
+    response = await async_client.post(
+        f"/dataset/{dataset}/{version}/append",
+        json = {
+            "source_uri": [f"s3://{BUCKET}/{GPKG_NAME}"],
+        }
+    )
+    assert response.status_code == 400
+    assert response.json() == {"status": "failed"}
+    assert response.json()["status"] == "failed"
+    assert (
+        response.json()["message"]
+        == "source_driver must be specified for non-datapump requests"
+    )
+
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
