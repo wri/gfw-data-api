@@ -66,7 +66,7 @@ class VersionAppendIn(StrictBaseModel):
     layers: Optional[List[str]] = Field(
         None,
         description="List of layer names to append to version. "
-        "If not set, all layers in source_uri will be appended.",
+        "Only required for .gdb and .gpkg.",
     )
 
 class VersionResponse(Response):

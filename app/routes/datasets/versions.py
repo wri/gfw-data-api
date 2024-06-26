@@ -237,6 +237,7 @@ async def append_to_version(
     #  file(s) with ogrinfo
     #  See https://gfw.atlassian.net/browse/GTC-2234
 
+    # Construct creation_options for the append request
     # For the background task, we only need the new source uri from the request
     input_data = {"creation_options": deepcopy(default_asset.creation_options)}
     input_data["creation_options"]["source_uri"] = request.source_uri
@@ -252,20 +253,22 @@ async def append_to_version(
                 detail="source_driver must match the original source_driver"
             )
 
-        # Use layers from request if provided, otherwise leave empty
+        # Use layers from request if provided, else set to None if layers are in version creation_options
         if request.layers is not None:
             input_data["creation_options"]["layers"] = request.layers
         else:
-            input_data["creation_options"]["layers"] = None
-            
+            if input_data["creation_options"].get("layers") is not None:
+                input_data["creation_options"]["layers"] = None
+
+    # Use the modified input_data to append the new data
     background_tasks.add_task(
         append_default_asset, dataset, version, input_data, default_asset.asset_id
     )
 
-    # We now want to append the new uris to the existing ones and update the asset
+    # Now update the version's creation_options to reflect the changes from the append request
     update_data = {"creation_options": deepcopy(default_asset.creation_options)}
     update_data["creation_options"]["source_uri"] += request.source_uri 
-    if input_data["creation_options"].get("layers") is not None:
+    if request.layers is not None:
         if update_data["creation_options"]["layers"] is not None:
             update_data["creation_options"]["layers"] += request.layers
         else:

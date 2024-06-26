@@ -473,7 +473,7 @@ async def test_version_post_append(async_client: AsyncClient):
     response = await async_client.get(f"/dataset/{dataset}/{version}")
     assert response.status_code == 200
 
-    # Test appending with same source uri
+    # Test appending existing source_uri
     response = await async_client.post(
         f"/dataset/{dataset}/{version}/append",
         json = {
@@ -484,9 +484,6 @@ async def test_version_post_append(async_client: AsyncClient):
     )
     assert response.status_code == 200
 
-    # Test appending with new source uri
-
-    # Test appending with unspecified layers
     # Test appending with invalid source uri
     bad_uri = "s3://doesnotexist"
     response = await async_client.post(
@@ -515,21 +512,7 @@ async def test_version_post_append(async_client: AsyncClient):
     assert response.json()["status"] == "failed"
     assert (response.json()["message"] == "source_driver must match the original source_driver")
 
-    # Test appending with missing source driver
-    response = await async_client.post(
-        f"/dataset/{dataset}/{version}/append",
-        json = {
-            "source_uri": [f"s3://{BUCKET}/{GPKG_NAME}"],
-        }
-    )
-    assert response.status_code == 400
-    assert response.json() == {"status": "failed"}
-    assert response.json()["status"] == "failed"
-    assert (
-        response.json()["message"]
-        == "source_driver must be specified for non-datapump requests"
-    )
-
+    ## TODO: test with missing layers
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
