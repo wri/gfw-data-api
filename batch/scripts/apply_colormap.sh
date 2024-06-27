@@ -26,5 +26,4 @@ ARG_ARRAY+=("--source-uri" "${SRC}")
 
 ARG_ARRAY+=("--target-prefix" "${TARGET}")
 
-# Run apply_symbology.py with the array of arguments
-. /usr/local/app/.venv/bin/activate && pipenv run apply_colormap.py "${ARG_ARRAY[@]}"
+apply_colormap.py "${ARG_ARRAY[@]}"

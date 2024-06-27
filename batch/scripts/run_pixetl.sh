@@ -35,4 +35,4 @@ fi
 ARG_ARRAY+=("${JSON}")
 
 # Run pixetl with the array of arguments
-. /usr/local/app/.venv/bin/activate && pipenv run pixetl "${ARG_ARRAY[@]}"
+pixetl "${ARG_ARRAY[@]}"
