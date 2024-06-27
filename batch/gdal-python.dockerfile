@@ -1,4 +1,4 @@
-FROM globalforestwatch/data-api-gdal:v1.2.0
+FROM globalforestwatch/data-api-gdal:v1.2.0b
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/
@@ -10,8 +10,6 @@ RUN chmod +x -R /opt/python/
 
 ENV PATH="/opt/scripts:${PATH}"
 ENV PATH="/opt/python:${PATH}"
-
-RUN pip install --break-system-packages earthengine-api
 
 ENV WORKDIR="/tmp"
 
