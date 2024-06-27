@@ -1,4 +1,4 @@
-FROM globalforestwatch/data-api-gdal:v1.2.0b
+FROM globalforestwatch/data-api-gdal:v1.2.0
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/
