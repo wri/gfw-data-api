@@ -22,8 +22,6 @@ NUM_PROCESSES = int(
         "NUM_PROCESSES", os.environ.get("CORES", multiprocessing.cpu_count())
     )
 )
-VENV_DIR = os.environ.get("VENV_DIR", "/.venv")
-
 LOGGER = get_logger(__name__)
 
 
@@ -77,8 +75,7 @@ def create_tiles(args: Tuple[Tuple[str, str], str, str, str, str, int, bool, int
             gdal2tiles = "16bpp_gdal2tiles.py"
 
         cmd: List[str] = [
-            f"{VENV_DIR}/bin/python",
-            os.path.join("/opt/python", gdal2tiles),
+            gdal2tiles,
             f"--zoom={zoom_level}",
             "--s_srs",
             "EPSG:3857",

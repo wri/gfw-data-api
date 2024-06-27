@@ -12,9 +12,6 @@ URL=${STATUS_URL}/${AWS_BATCH_JOB_ID}
 
 OUTPUT_FILE="/tmp/${AWS_BATCH_JOB_ID}_output.txt"
 
-# Source the virtualenv with all our Python packages
-. "${VENV_DIR}"/bin/activate
-
 # If this is not the first attempt, and previous attempts failed due to OOM,
 # reduce the NUM_PROCESSES value (thus increasing memory per process)
 if [[ -n $AWS_BATCH_JOB_ATTEMPT ]] && [[ $AWS_BATCH_JOB_ATTEMPT -gt 1 ]]; then

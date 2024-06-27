@@ -30,4 +30,4 @@ if [ -z "${OVERWRITE}" ]; then
 fi
 
 # Run pixetl_prep with the array of arguments
-pixetl_prep "${ARG_ARRAY[@]}"
+. /usr/local/app/.venv/bin/activate && pipenv run pixetl_prep "${ARG_ARRAY[@]}"
