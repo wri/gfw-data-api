@@ -354,8 +354,18 @@ class COGCreationOptions(StrictBaseModel):
         ResamplingMethod.average,
         description="Resampling method used to downsample overviews",
     )
-    block_size: Optional[TileBlockSize] = 512
+    block_size: Optional[TileBlockSize] = Field(
+        512,
+        description="Block size to tile COG with.",
+    )
     compute_stats: bool = False
+    export_to_gee: bool = Field(
+        False,
+        description="Option to export COG to a Google Cloud Storage and create"
+        " a COG-backed asset on Google Earth Engine (GEE). The asset will be created"
+        " under the project `forma-250` with the asset ID `{dataset}/{implementation}. "
+        "Versioning is currently not supported due to GEE storage constraints.",
+    )
 
 
 class DynamicVectorTileCacheCreationOptions(TileCacheBaseModel):

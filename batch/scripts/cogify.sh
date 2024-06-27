@@ -7,6 +7,9 @@ set -e
 # -T | --target
 # --block_size
 # -r | --resample
+# -G | --export_to_gee
+# -d | --dataset
+# -I | --implementation
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"
@@ -37,5 +40,10 @@ fi
 
 # upload to data lake
 aws s3 cp cog.tif "${TARGET}"
+
+if [ -n "$EXPORT_TO_GEE" ]; then
+  export_to_gee.py --dataset "${DATASET}" --implementation "${IMPLEMENTATION}"
+fi
+
 set +x
 
