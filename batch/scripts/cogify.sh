@@ -42,8 +42,7 @@ fi
 aws s3 cp cog.tif "${TARGET}"
 
 if [ -n "$EXPORT_TO_GEE" ]; then
-  python export_to_gee.py --dataset "${DATASET}" --implementation "${IMPLEMENTATION}"
+  export_to_gee.py --dataset "${DATASET}" --implementation "${IMPLEMENTATION}"
 fi
 
 set +x
-
