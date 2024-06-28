@@ -45,6 +45,12 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
+# If no tests specified, do whole tests_v2 directory
+args=$*
+if [ $# -eq 0 ]; then
+   args=tests_v2
+fi
+
 if [ "${BUILD}" = true ]; then
   docker build -t batch_gdal-python_test . -f batch/gdal-python.dockerfile
   docker build -t batch_postgresql-client_test . -f batch/postgresql-client.dockerfile
@@ -56,7 +62,7 @@ fi
 set +e
 
 # Everything from "--cov-report on" become the arguments to the pytest run inside the docker.
-docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test run --rm --name app_test app_test --cov-report xml:/app/tests_v2/cobertura.xml $DO_COV $DISABLE_WARNINGS $SHOW_STDOUT tests_v2/"$*"
+docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test run --rm --name app_test app_test --cov-report xml:/app/tests_v2/cobertura.xml $DO_COV $DISABLE_WARNINGS $SHOW_STDOUT $args
 exit_code=$?
 docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test down --remove-orphans
 exit $exit_code
