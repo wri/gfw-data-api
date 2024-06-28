@@ -55,7 +55,7 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 
 # If no tests specified, do whole tests directory
 args=$*
-if [ $# -eq 0 ];
+if [ $# -eq 0 ]; then
    args=tests
 fi
 
