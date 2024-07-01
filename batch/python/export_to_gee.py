@@ -11,12 +11,13 @@ from typer import Option, run
 
 EE_PROJECT = "forma-250"
 GCS_BUCKET = "data-api-gee-assets"
-GCS_SECRET_KEY_ARN = os.environ["GCS_SECRET_KEY_ARN"]
+GCS_SECRET_KEY_ARN = os.environ["AWS_GCS_KEY_SECRET_ARN"]
 GCS_CREDENTIALS_FILE = "gcs_credentials.json"
+AWS_REGION = os.environ["AWS_REGION"]
 
 
 def set_google_application_credentials():
-    client = boto3.client("secretsmanager")
+    client = boto3.client("secretsmanager", region_name=AWS_REGION)
     response = client.get_secret_value(SecretId=GCS_SECRET_KEY_ARN)
 
     with open(GCS_CREDENTIALS_FILE, "w") as f:
