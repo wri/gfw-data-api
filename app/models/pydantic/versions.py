@@ -1,7 +1,8 @@
 from typing import List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
+from ..enum.creation_options import VectorDrivers
 from ..enum.versions import VersionStatus
 from .base import BaseRecord, StrictBaseModel
 from .creation_options import SourceCreationOptions
@@ -59,7 +60,14 @@ class VersionUpdateIn(StrictBaseModel):
 
 class VersionAppendIn(StrictBaseModel):
     source_uri: List[str]
-
+    source_driver: Optional[VectorDrivers] = Field(
+        None, description="Driver of source file. Must be an OGR driver"
+    )
+    layers: Optional[List[str]] = Field(
+        None,
+        description="List of layer names to append to version. "
+        "Only required for .gdb and .gpkg.",
+    )
 
 class VersionResponse(Response):
     data: Version
