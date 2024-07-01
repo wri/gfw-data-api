@@ -88,10 +88,7 @@ class PostgresqlClientJob(Job):
 
 class GdalPythonImportJob(Job):
     """Use for write operations to PostgreSQL which require GDAL/Ogr2Ogr
-    drivers.
-
-    NOTE: JOB MUST BE SAFE TO RETRY!
-    """
+    drivers. NOTE: JOB MUST BE SAFE TO RETRY!"""
 
     job_queue = AURORA_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
@@ -133,18 +130,6 @@ class PixETLJob(Job):
     vcpus = MAX_CORES
     memory = MAX_MEM
     num_processes = max(int(MAX_CORES * 2 / 3), 1)
-    attempts = 10
-    attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
-
-
-class GDALCOGJob(Job):
-    """Use for creating COG files using GDAL Python docker in PixETL queue."""
-
-    job_queue = PIXETL_JOB_QUEUE
-    job_definition = GDAL_PYTHON_JOB_DEFINITION
-    vcpus = 8
-    memory = 64000
-    num_processes = 8
     attempts = 10
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 

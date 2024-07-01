@@ -113,10 +113,7 @@ async def test_append_version_bare_minimum(
     monkeypatch.setattr(batch, "submit_batch_job", batch_job_mock.submit_batch_job)
     monkeypatch.setattr(versions, "_verify_source_file_access", void_function)
 
-    payload = {
-        "source_driver": "ESRI Shapefile",
-        "source_uri": ["s3://some_bucket/test.shp.zip"]
-    }
+    payload = {"source_uri": ["s3://some_bucket/test.shp.zip"]}
 
     resp = await async_client.post(
         f"/dataset/{dataset_name}/{version_name}/append", json=payload

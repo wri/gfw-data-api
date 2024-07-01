@@ -268,17 +268,12 @@ async def test_query_dataset_raster_geostore_huge(
 
 @pytest.mark.asyncio()
 async def test_query_vector_asset_disallowed_1(
-    generic_vector_source_version, apikey, async_client: AsyncClient
+    generic_vector_source_version, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select current_catalog from mytable;",
-        headers=headers,
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -287,17 +282,12 @@ async def test_query_vector_asset_disallowed_1(
 
 @pytest.mark.asyncio()
 async def test_query_vector_asset_disallowed_2(
-    generic_vector_source_version, apikey, async_client: AsyncClient
+    generic_vector_source_version, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select version() from mytable;",
-        headers=headers,
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -309,17 +299,12 @@ async def test_query_vector_asset_disallowed_2(
 
 @pytest.mark.asyncio()
 async def test_query_vector_asset_disallowed_3(
-    generic_vector_source_version, apikey, async_client: AsyncClient
+    generic_vector_source_version, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select has_any_column_privilege() from mytable;",
-        headers=headers,
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -331,17 +316,12 @@ async def test_query_vector_asset_disallowed_3(
 
 @pytest.mark.asyncio()
 async def test_query_vector_asset_disallowed_4(
-    generic_vector_source_version, apikey, async_client: AsyncClient
+    generic_vector_source_version, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select format_type() from mytable;",
-        headers=headers,
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -353,17 +333,12 @@ async def test_query_vector_asset_disallowed_4(
 
 @pytest.mark.asyncio()
 async def test_query_vector_asset_disallowed_5(
-    generic_vector_source_version, apikey, async_client: AsyncClient
+    generic_vector_source_version, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select col_description() from mytable;",
-        headers=headers,
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -375,17 +350,12 @@ async def test_query_vector_asset_disallowed_5(
 
 @pytest.mark.asyncio()
 async def test_query_vector_asset_disallowed_6(
-    generic_vector_source_version, apikey, async_client: AsyncClient
+    generic_vector_source_version, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select txid_current() from mytable;",
-        headers=headers,
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -397,17 +367,12 @@ async def test_query_vector_asset_disallowed_6(
 
 @pytest.mark.asyncio()
 async def test_query_vector_asset_disallowed_7(
-    generic_vector_source_version, apikey, async_client: AsyncClient
+    generic_vector_source_version, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select current_setting() from mytable;",
-        headers=headers,
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -419,17 +384,12 @@ async def test_query_vector_asset_disallowed_7(
 
 @pytest.mark.asyncio()
 async def test_query_vector_asset_disallowed_8(
-    generic_vector_source_version, apikey, async_client: AsyncClient
+    generic_vector_source_version, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select pg_cancel_backend() from mytable;",
-        headers=headers,
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -441,17 +401,12 @@ async def test_query_vector_asset_disallowed_8(
 
 @pytest.mark.asyncio()
 async def test_query_vector_asset_disallowed_9(
-    generic_vector_source_version, apikey, async_client: AsyncClient
+    generic_vector_source_version, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select brin_summarize_new_values() from mytable;",
-        headers=headers,
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -463,17 +418,12 @@ async def test_query_vector_asset_disallowed_9(
 
 @pytest.mark.asyncio()
 async def test_query_vector_asset_disallowed_10(
-    generic_vector_source_version, apikey, async_client: AsyncClient
+    generic_vector_source_version, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select doesnotexist() from mytable;",
-        headers=headers,
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -485,17 +435,12 @@ async def test_query_vector_asset_disallowed_10(
 
 @pytest.mark.asyncio()
 async def test_query_licensed_disallowed_11(
-        licensed_version, apikey, async_client: AsyncClient
+        licensed_version, async_client: AsyncClient
 ):
     dataset, version, _ = licensed_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select(*) from mytable;",
-        headers=headers,
         follow_redirects=True,
     )
     assert response.status_code == 401

@@ -60,11 +60,6 @@ do
       shift # past argument
       shift # past value
       ;;
-      --block_size)
-      BLOCK_SIZE="$2"
-      shift # past argument
-      shift # past value
-      ;;
       -c|--column_name)
       COLUMN_NAME="$2"
       shift # past argument
@@ -99,10 +94,6 @@ do
       GEOMETRY_NAME="$2"
       shift # past argument
       shift # past value
-      ;;
-      -G|--export_to_gee)
-      EXPORT_TO_GEE="TRUE"
-      shift # past argument
       ;;
       -i|--fid_name)
       FID_NAME="$2"

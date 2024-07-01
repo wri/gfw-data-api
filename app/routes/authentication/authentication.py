@@ -74,8 +74,16 @@ async def create_api_key(
 
     input_data = api_key_data.dict(by_alias=True)
 
+    origin = request.headers.get("origin")
+    referrer = request.headers.get("referer")
+    if not api_key_is_valid(input_data["domains"], origin=origin, referrer=referrer):
+        raise HTTPException(
+            status_code=400,
+            detail="Domain name did not match the request origin or referrer.",
+        )
+
     # Give a good error code/message if user is specifying an alias that exists for
-    # another one of their API keys.
+    # another one of his API keys.
     prev_keys: List[ORMApiKey] = await api_keys.get_api_keys_from_user(user_id=user.id)
     for key in prev_keys:
         if key.alias == api_key_data.alias:
@@ -86,7 +94,9 @@ async def create_api_key(
 
     row: ORMApiKey = await api_keys.create_api_key(user_id=user.id, **input_data)
 
-    is_internal = api_key_is_internal(api_key_data.domains)
+    is_internal = api_key_is_internal(
+        api_key_data.domains, user_id=None, origin=origin, referrer=referrer
+    )
     usage_plan_id = (
         API_GATEWAY_INTERNAL_USAGE_PLAN
         if is_internal is True

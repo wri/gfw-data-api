@@ -17,8 +17,8 @@ resource "aws_api_gateway_integration" "get_endpoint_integration" {
   http_method = aws_api_gateway_method.get_endpoint_method.http_method
   type        = "MOCK"
 
-  passthrough_behavior = "WHEN_NO_MATCH"
-  request_templates = {
+  passthrough_behavior    = "WHEN_NO_MATCH"
+  request_templates       = {
     "application/json" : <<EOT
     {'statusCode': 200}
     #set($context.responseOverride.header.Access-Control-Allow-Origin = $input.params('origin'))
@@ -71,7 +71,7 @@ resource "aws_api_gateway_gateway_response" "exceeded_quota" {
   response_type = "QUOTA_EXCEEDED"
 
   response_templates = {
-    "application/json" = "{\"status\":\"failed\",\"message\":\"Exceeded the daily quota for this resource. Please email us at gfw@wri.org to see if your use case may qualify for higher quota.\"}"
+    "application/json" = "{\"status\":\"failed\",\"message\":\"Exceeded the daily quota for this resource.\"}"
   }
 }
 
@@ -81,13 +81,13 @@ resource "aws_api_gateway_gateway_response" "throttled" {
   response_type = "THROTTLED"
 
   response_templates = {
-    "application/json" = "{\"status\":\"failed\",\"message\":\"Exceeded the rate limit for this resource. Please try again later. Also email us at gfw@wri.org to see if your use case may qualify for higher rate limit.\"}"
+    "application/json" = "{\"status\":\"failed\",\"message\":\"Exceeded the rate limit for this resource. Please try again later.\"}"
   }
 }
 
 resource "aws_api_gateway_gateway_response" "integration_timeout" {
-  rest_api_id   = var.rest_api_id
-  status_code   = "504"
+  rest_api_id = var.rest_api_id
+  status_code = "504"
   response_type = "INTEGRATION_TIMEOUT"
 
   response_templates = {

@@ -414,10 +414,7 @@ async def test_vector_source_asset_csv_append(batch_client, async_client: AsyncC
     # Now test appending
     resp = await async_client.post(
         f"/dataset/{dataset}/{version}/append",
-        json={
-            "source_driver": "CSV",
-            "source_uri": [f"s3://{BUCKET}/{CSV2_NAME}"]
-        },
+        json={"source_uri": [f"s3://{BUCKET}/{CSV2_NAME}"]},
     )
     assert resp.status_code == 200
 
@@ -469,10 +466,7 @@ async def test_vector_source_asset_geojson_append(
     # Now test appending
     resp = await async_client.post(
         f"/dataset/{dataset}/{version}/append",
-        json={
-            "source_driver": "GeoJSON",
-            "source_uri": [f"s3://{BUCKET}/{GEOJSON_NAME2}"]
-        },
+        json={"source_uri": [f"s3://{BUCKET}/{GEOJSON_NAME2}"]},
     )
     assert resp.status_code == 200, resp.text
 

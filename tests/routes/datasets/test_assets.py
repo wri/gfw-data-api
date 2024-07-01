@@ -33,12 +33,9 @@ from tests.utils import (
 
 s3_client = get_s3_client()
 
-
 # Create a first asset of a new version with a raster tile set and specified grid and
 # pixel meaning. extra_opts specifies any extra options for the creation_options.
-async def create_test_default_asset(
-    dataset, version, primary_grid, pixel_meaning, extra_opts, async_client, logs, httpd
-):
+async def create_test_default_asset(dataset, version, primary_grid, pixel_meaning, extra_opts, async_client, logs, httpd):
     raster_version_payload = {
         "creation_options": {
             "source_type": "raster",
@@ -54,8 +51,7 @@ async def create_test_default_asset(
             "overwrite": True,
         },
     }
-
-    if extra_opts is not None:
+    if extra_opts != None:
         raster_version_payload["creation_options"] |= extra_opts
 
     asset = await create_default_asset(
@@ -228,16 +224,8 @@ async def test_auxiliary_raster_asset(async_client, httpd, logs):
     for key in pixetl_output_files:
         s3_client.delete_object(Bucket=DATA_LAKE_BUCKET, Key=key)
 
-    await create_test_default_asset(
-        dataset,
-        version,
-        primary_grid,
-        "percent",
-        {"subset": "90N_000E"},
-        async_client,
-        logs,
-        httpd,
-    )
+    await create_test_default_asset(dataset, version, primary_grid, "percent",
+                              { "subset": "90N_000E" }, async_client, logs, httpd)
 
     # Try adding a non-default raster tile asset based on the default
     asset_payload = {
@@ -276,55 +264,6 @@ async def test_auxiliary_raster_asset(async_client, httpd, logs):
             s3_client.head_object(Bucket=DATA_LAKE_BUCKET, Key=key)
         except ClientError:
             raise AssertionError(f"Key {key} doesn't exist!")
-
-
-@pytest.mark.asyncio
-async def test_cog_asset(async_client, httpd, logs):
-    """"""
-    # Add a dataset, version, and default asset
-    dataset = "test_cog_raster_asset"
-    version = "v1.8"
-    primary_grid = "90/27008"
-
-    default_asset_id = await create_test_default_asset(
-        dataset,
-        version,
-        primary_grid,
-        "percent",
-        {},
-        async_client,
-        logs,
-        httpd,
-    )
-
-    # Try adding a non-default raster tile asset based on the default
-    asset_payload = {
-        "asset_type": "COG",
-        "is_managed": True,
-        "creation_options": {
-            "resampling": "nearest",
-            "block_size": 512,
-            "source_asset_id": default_asset_id,
-        },
-    }
-
-    create_asset_resp = await async_client.post(
-        f"/dataset/{dataset}/{version}/assets", json=asset_payload
-    )
-
-    resp_json = create_asset_resp.json()
-    assert resp_json["status"] == "success"
-    assert resp_json["data"]["status"] == "pending"
-    asset_id = resp_json["data"]["asset_id"]
-
-    # wait until batch jobs are done.
-    tasks_rows = await tasks.get_tasks(asset_id)
-    task_ids = [str(task.task_id) for task in tasks_rows]
-    status = await poll_jobs(task_ids, logs=logs, async_client=async_client)
-    assert status == "saved"
-
-    asset_resp = await async_client.get(f"/asset/{asset_id}")
-    assert asset_resp.json()["data"]["status"] == "saved"
 
 
 @pytest.mark.asyncio
@@ -536,9 +475,7 @@ async def test_raster_tile_cache_asset(checks, async_client, batch_client, httpd
     primary_grid = "90/27008"
     pixel_meaning = "date_conf"
 
-    default_asset_id = await create_test_default_asset(
-        dataset, version, primary_grid, pixel_meaning, None, async_client, logs, httpd
-    )
+    default_asset_id = await create_test_default_asset(dataset, version, primary_grid, pixel_meaning, None, async_client, logs, httpd)
 
     await _test_raster_tile_cache(
         dataset,
@@ -680,16 +617,9 @@ async def test_asset_stats(async_client, logs, httpd):
     )
     delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
-    await create_test_default_asset(
-        dataset,
-        version,
-        "90/27008",
-        "percent",
-        {"compute_histogram": True, "compute_stats": True},
-        async_client,
-        logs,
-        httpd,
-    )
+    await create_test_default_asset(dataset, version, "90/27008", "percent",
+                                    { "compute_histogram": True, "compute_stats": True },
+                                    async_client, logs, httpd)
 
     resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
     asset_id = resp.json()["data"][0]["asset_id"]
@@ -716,16 +646,9 @@ async def test_asset_stats_no_histo(async_client, logs, httpd):
     )
     delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
-    await create_test_default_asset(
-        dataset,
-        version,
-        "90/27008",
-        "percent",
-        {"compute_histogram": False, "compute_stats": True},
-        async_client,
-        logs,
-        httpd,
-    )
+    await create_test_default_asset(dataset, version, "90/27008", "percent",
+                                    { "compute_histogram": False, "compute_stats": True },
+                                    async_client, logs, httpd)
 
     resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
     asset_id = resp.json()["data"][0]["asset_id"]
@@ -748,16 +671,9 @@ async def test_asset_extent(async_client, logs, httpd):
     )
     delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
-    await create_test_default_asset(
-        dataset,
-        version,
-        "90/27008",
-        "percent",
-        {"compute_histogram": False, "compute_stats": False},
-        async_client,
-        logs,
-        httpd,
-    )
+    await create_test_default_asset(dataset, version, "90/27008", "percent",
+                                    { "compute_histogram": False, "compute_stats": False },
+                                    async_client, logs, httpd)
     expected_coords = [
         [[0.0, 90.0], [90.0, 90.0], [90.0, 0.0], [0.0, 0.0], [0.0, 90.0]]
     ]
@@ -787,16 +703,9 @@ async def test_asset_extent_stats_empty(async_client, logs, httpd):
     )
     delete_s3_files(DATA_LAKE_BUCKET, pixetl_output_files_prefix)
 
-    await create_test_default_asset(
-        dataset,
-        version,
-        "90/27008",
-        "percent",
-        {"compute_histogram": False, "compute_stats": False},
-        async_client,
-        logs,
-        httpd,
-    )
+    await create_test_default_asset(dataset, version, "90/27008", "percent",
+                                    { "compute_histogram": False, "compute_stats": False },
+                                    async_client, logs, httpd)
 
     resp = await async_client.get(f"/dataset/{dataset}/{version}/assets")
     asset_id = resp.json()["data"][0]["asset_id"]
@@ -1069,15 +978,15 @@ async def test_raster_asset_payloads_vector_source(async_client):
         assert resp_json["status"] == "success"
 
 
-asset_errors = [("999", 400), ("12345678-1234-1234-1234-123456789abc", 404)]
-
+asset_errors = [
+    ( "999", 400 ),
+    ( "12345678-1234-1234-1234-123456789abc", 404 )
+]
 
 @pytest.mark.parametrize("asset_error", asset_errors)
 @pytest.mark.asyncio
-async def test_raster_tile_cache_nonexistent_asset(
-    asset_error, async_client, batch_client, httpd
-):
-    """Test error cases where the source_asset_id doesn't exist."""
+async def test_raster_tile_cache_nonexistent_asset(asset_error, async_client, batch_client, httpd):
+    """Test error cases where the source_asset_id doesn't exist"""
     _, logs = batch_client
 
     # Add a dataset, version, and default (raster tile set) asset
@@ -1086,9 +995,7 @@ async def test_raster_tile_cache_nonexistent_asset(
     primary_grid = "90/27008"
     pixel_meaning = "date_conf"
 
-    await create_test_default_asset(
-        dataset, version, primary_grid, pixel_meaning, None, async_client, logs, httpd
-    )
+    await create_test_default_asset(dataset, version, primary_grid, pixel_meaning, None, async_client, logs, httpd)
 
     default_asset_id = asset_error[0]
     symbology = symbology_checks[0]["symbology"]
@@ -1110,7 +1017,8 @@ async def test_raster_tile_cache_nonexistent_asset(
         f"/dataset/{dataset}/{version}/assets", json=asset_payload
     )
     resp_json = create_asset_resp.json()
-    #
+    # 
     print(f"CREATE TILE CACHE ASSET RESPONSE: {resp_json}")
     assert resp_json["status"] == "failed"
     assert create_asset_resp.status_code == asset_error[1]
+

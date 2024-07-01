@@ -37,7 +37,7 @@ args=(-f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbname=
      "$LOCAL_FILE" "$SRC_LAYER" \
      -nlt PROMOTE_TO_MULTI -nln "$DATASET.$VERSION" \
      -lco GEOMETRY_NAME="$GEOMETRY_NAME" -lco SPATIAL_INDEX=NONE -lco FID="$FID_NAME" \
-     -t_srs EPSG:4326 -limit 0 -dim xy)
+     -t_srs EPSG:4326 -limit 0)
 
 # If source is CSV, there's no SRS information so add it manually
 if [[ "$SRC" == *".csv" ]]; then

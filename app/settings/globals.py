@@ -178,7 +178,6 @@ default_domains = ",".join(
         "api.resourcewatch.org",
         "my.gfw-mapbuilder.org",
         "resourcewatch.org",
-        "*.wri.org",
     ]
 )
 

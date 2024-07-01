@@ -93,14 +93,32 @@ def api_key_is_valid(
     return is_valid
 
 
-def api_key_is_internal(domains: List[str]) -> bool:
-    return any(
-        [
-            re.search(_to_regex(internal_domain.strip()), domain)
-            for domain in domains
-            for internal_domain in INTERNAL_DOMAINS.split(",")
-        ]
-    )
+def api_key_is_internal(
+    domains: List[str],
+    user_id: Optional[str] = None,
+    origin: Optional[str] = None,
+    referrer: Optional[str] = None,
+) -> bool:
+
+    is_internal: bool = False
+    if origin and domains:
+        is_internal = any(
+            [
+                re.search(_to_regex(internal_domain.strip()), domain)
+                for domain in domains
+                for internal_domain in INTERNAL_DOMAINS.split(",")
+            ]
+        )
+    elif referrer and domains:
+        is_internal = any(
+            [
+                re.search(_to_regex(domain), internal_domain)
+                for domain in domains
+                for internal_domain in INTERNAL_DOMAINS.split(",")
+            ]
+        )
+
+    return is_internal
 
 
 def _api_key_origin_auto_error(
@@ -121,7 +139,7 @@ def _api_key_origin_auto_error(
 
 def _to_regex(domain):
     result = domain.replace(".", r"\.").replace("*", ".*")
-    return rf"^{result}$"
+    return fr"^{result}$"
 
 
 def _extract_domain(url: str) -> str:

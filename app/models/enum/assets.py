@@ -23,7 +23,6 @@ class AssetType(str, Enum):
     csv = "csv"
     tsv = "tsv"
     grid_1x1 = "1x1 grid"
-    cog = "COG"
     # esri_map_service = "ESRI Map Service"
     # esri_feature_service = "ESRI Feature Service"
     # esri_image_service = "ESRI Image Service"
@@ -64,7 +63,6 @@ def is_single_file_asset(asset_type: str) -> bool:
         AssetType.csv,
         AssetType.tsv,
         AssetType.grid_1x1,
-        AssetType.cog,
     ]
 
 

@@ -3,18 +3,23 @@ from uuid import UUID
 
 from asyncpg import UniqueViolationError
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import func
+from sqlalchemy.sql import and_
 
 from app.crud.metadata import (
     create_asset_metadata,
     get_asset_metadata,
     update_asset_metadata,
 )
+from sqlalchemy import func
+from async_lru import alru_cache
+
 from ..errors import RecordAlreadyExistsError, RecordNotFoundError
+from ..models.enum.assets import AssetType
 from ..models.orm.asset_metadata import AssetMetadata as ORMAssetMetadata
 from ..models.orm.assets import Asset as ORMAsset
 from ..models.orm.versions import Version as ORMVersion
 from ..models.pydantic.creation_options import CreationOptions, creation_option_factory
+from ..models.pydantic.asset_metadata import RasterTileSetMetadataOut
 from . import update_data, versions
 
 
@@ -206,7 +211,7 @@ async def create_asset(dataset, version, **data) -> ORMAsset:
     except UniqueViolationError:
         raise RecordAlreadyExistsError(
             f"Cannot create asset of type {data['asset_type']}. "
-            f"Asset URI must be unique. An asset with URI {data['asset_uri']} already exists"
+            f"Asset uri must be unique. An asset with uri {data['asset_uri']} already exists"
         )
 
     if metadata_data:
