@@ -94,4 +94,5 @@ ogr2ogr -f "PostgreSQL" PG:"password=$PGPASSWORD host=$PGHOST port=$PGPORT dbnam
   -nln $TEMP_TABLE \
   -t_srs EPSG:4326 \
   --config PG_USE_COPY YES \
+  -dim xy \
   -makevalid -update

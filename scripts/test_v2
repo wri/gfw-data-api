@@ -6,6 +6,9 @@ set -e
 # Default values
 POSITIONAL=()
 BUILD=true
+DO_COV=
+DISABLE_WARNINGS="--disable-warnings"
+SHOW_STDOUT=
 # extracting cmd line arguments
 while [[ $# -gt 0 ]]
 do
@@ -16,12 +19,16 @@ do
       BUILD=false
       shift # past argument
       ;;
-      --without-hanging-tests)
-      HANGING=--without-hanging-tests
+      --do-cov)
+      DO_COV=--cov=app
       shift # past argument
       ;;
-      --with-slow-tests)
-      SLOW=--with-slow-tests
+      --show-warnings)
+      DISABLE_WARNINGS=
+      shift # past argument
+      ;;
+      --show-stdout)
+      SHOW_STDOUT=--capture=no
       shift # past argument
       ;;
       --moto-port=*)
@@ -38,6 +45,11 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
+# If no tests specified, do whole tests_v2 directory
+args=$*
+if [ $# -eq 0 ]; then
+   args=tests_v2
+fi
 
 if [ "${BUILD}" = true ]; then
   docker build -t batch_gdal-python_test . -f batch/gdal-python.dockerfile
@@ -48,7 +60,9 @@ if [ "${BUILD}" = true ]; then
 fi
 
 set +e
-docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test run --rm --name app_test app_test --cov-report xml:/app/tests_v2/cobertura.xml tests_v2/"$*"
+
+# Everything from "--cov-report on" become the arguments to the pytest run inside the docker.
+docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test run --rm --name app_test app_test --cov-report xml:/app/tests_v2/cobertura.xml $DO_COV $DISABLE_WARNINGS $SHOW_STDOUT $args
 exit_code=$?
 docker-compose -f docker-compose.test.yml --project-name gfw-data-api_test down --remove-orphans
 exit $exit_code

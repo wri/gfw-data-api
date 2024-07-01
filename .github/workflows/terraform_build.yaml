@@ -12,8 +12,8 @@ jobs:
 
     - name: Test with pytest
       run: |
-        ./scripts/test
-        ./scripts/test_v2 --no_build
+        ./scripts/test --do-cov --show-warnings
+        ./scripts/test_v2 --no_build --do-cov --show-warnings
 
     - name: Run codacy-coverage-reporter
       uses: codacy/codacy-coverage-reporter-action@master

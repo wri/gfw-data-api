@@ -44,6 +44,7 @@ from ...models.pydantic.creation_options import (
     CreationOptions,
     CreationOptionsResponse,
     creation_option_factory,
+    TableDrivers
 )
 from ...models.pydantic.extent import Extent, ExtentResponse
 from ...models.pydantic.metadata import (
@@ -211,8 +212,7 @@ async def update_version(
     "/{dataset}/{version}/append",
     response_class=ORJSONResponse,
     tags=["Versions"],
-    response_model=VersionResponse,
-    deprecated=True,
+    response_model=VersionResponse
 )
 async def append_to_version(
     *,
@@ -237,16 +237,42 @@ async def append_to_version(
     #  file(s) with ogrinfo
     #  See https://gfw.atlassian.net/browse/GTC-2234
 
+    # Construct creation_options for the append request
     # For the background task, we only need the new source uri from the request
     input_data = {"creation_options": deepcopy(default_asset.creation_options)}
     input_data["creation_options"]["source_uri"] = request.source_uri
+
+    # If source_driver is "text", this is a datapump request
+    if input_data["creation_options"]["source_driver"] != TableDrivers.text:        
+        # Verify that source_driver matches the original source_driver
+        # TODO: Ideally append source_driver should not need to match the original source_driver,
+        #  but this would break other operations that expect only one source_driver
+        if input_data["creation_options"]["source_driver"] != request.source_driver:
+            raise HTTPException(
+                status_code=400,
+                detail="source_driver must match the original source_driver"
+            )
+
+        # Use layers from request if provided, else set to None if layers are in version creation_options
+        if request.layers is not None:
+            input_data["creation_options"]["layers"] = request.layers
+        else:
+            if input_data["creation_options"].get("layers") is not None:
+                input_data["creation_options"]["layers"] = None
+
+    # Use the modified input_data to append the new data
     background_tasks.add_task(
         append_default_asset, dataset, version, input_data, default_asset.asset_id
     )
 
-    # We now want to append the new uris to the existing ones and update the asset
+    # Now update the version's creation_options to reflect the changes from the append request
     update_data = {"creation_options": deepcopy(default_asset.creation_options)}
-    update_data["creation_options"]["source_uri"] += request.source_uri
+    update_data["creation_options"]["source_uri"] += request.source_uri 
+    if request.layers is not None:
+        if update_data["creation_options"]["layers"] is not None:
+            update_data["creation_options"]["layers"] += request.layers
+        else:
+            update_data["creation_options"]["layers"] = request.layers
     await assets.update_asset(default_asset.asset_id, **update_data)
 
     version_orm: ORMVersion = await versions.get_version(dataset, version)
@@ -535,7 +561,6 @@ async def _version_response(
     data["assets"] = [(asset[0], asset[1], str(asset[2])) for asset in assets]
 
     return VersionResponse(data=Version(**data))
-
 
 def _verify_source_file_access(sources: List[str]) -> None:
 
