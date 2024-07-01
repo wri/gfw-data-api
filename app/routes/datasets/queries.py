@@ -1,4 +1,5 @@
 """Explore data entries for a given dataset version using standard SQL."""
+
 import csv
 import re
 from io import StringIO
@@ -14,7 +15,8 @@ from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
-from fastapi.openapi.models import APIKey
+
+# from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
@@ -24,7 +26,8 @@ from pydantic.tools import parse_obj_as
 
 from ...authentication.token import is_gfwpro_admin_for_query
 from ...application import db
-from ...authentication.api_keys import get_api_key
+
+# from ...authentication.api_keys import get_api_key
 from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
@@ -83,6 +86,7 @@ router = APIRouter()
 # Special suffixes to do an extra area density calculation on the raster data set.
 AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "_ha_yr-1"]
 
+
 @router.get(
     "/{dataset}/{version}/query",
     response_class=RedirectResponse,
@@ -123,12 +127,15 @@ async def query_dataset_json(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
+    geostore_id: Optional[UUID] = Query(
+        None,
+        description="Geostore ID. The geostore must represent a Polygon or MultiPolygon.",
+    ),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
     is_authorized: bool = Depends(is_gfwpro_admin_for_query),
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in JSON format.
@@ -182,7 +189,10 @@ async def query_dataset_csv(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
+    geostore_id: Optional[UUID] = Query(
+        None,
+        description="Geostore ID. The geostore must represent a Polygon or MultiPolygon.",
+    ),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
@@ -190,7 +200,7 @@ async def query_dataset_csv(
         Delimiters.comma, description="Delimiter to use for CSV file."
     ),
     is_authorized: bool = Depends(is_gfwpro_admin_for_query),
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented) and return response in CSV format.
@@ -253,7 +263,7 @@ async def query_dataset_json_post(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
     is_authorized: bool = Depends(is_gfwpro_admin_for_query),
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -284,7 +294,7 @@ async def query_dataset_csv_post(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: CsvQueryRequestIn,
     is_authorized: bool = Depends(is_gfwpro_admin_for_query),
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -660,7 +670,7 @@ def _get_area_density_name(nm):
     return nm with the area-density suffix removed."""
     for suffix in AREA_DENSITY_RASTER_SUFFIXES:
         if nm.endswith(suffix):
-            return nm[:-len(suffix)]
+            return nm[: -len(suffix)]
     return ""
 
 
