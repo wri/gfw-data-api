@@ -12,7 +12,6 @@ services:
       - ./batch:/app/batch:ro
       - ./tests:/app/tests
       - ./tests_v2:/app/tests_v2
-      - ./tests_v3:/app/tests_v3
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - PYTHONPATH=batch/python
@@ -65,14 +64,14 @@ services:
       - API_GATEWAY_STAGE_NAME=test
       - AWS_GCS_KEY_SECRET_ARN=testing
       - AWS_SECRETSMANAGER_URL=http://motoserver:50000
-    entrypoint: wait_for_postgres.sh pytest --timeout 480 -vv --cov-report term  --cov=app
+    entrypoint: wait_for_postgres.sh pytest --timeout 480 -vv --cov-report term
     depends_on:
       - test_database_12
       - motoserver
 
   test_database_12:
     container_name: gfw-data-api-test-database-12
-    image: postgis/postgis:12-2.5-alpine
+    image: postgis/postgis:12-3.3-alpine
     ports:
       - 54321:5432
     environment:

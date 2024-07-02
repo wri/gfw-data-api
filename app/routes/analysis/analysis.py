@@ -1,10 +1,12 @@
 """Run analysis on registered datasets."""
+
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Path, Query
 from fastapi.exceptions import HTTPException
 from fastapi.logger import logger
+
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
@@ -104,7 +106,7 @@ async def _zonal_statistics(
     if geometry.type != "Polygon" and geometry.type != "MultiPolygon":
         raise HTTPException(
             status_code=400,
-            detail=f"Geometry must be a Polygon or MultiPolygon for raster analysis"
+            detail="Geometry must be a Polygon or MultiPolygon for raster analysis",
         )
 
     # OTF will just not apply a base filter

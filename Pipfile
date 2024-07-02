@@ -15,6 +15,7 @@ geopandas = "*"  # Needed by pixetl in batch script test
 gfw_pixetl = {git = "https://github.com/wri/gfw_pixetl.git", ref = "develop"}
 moto = {version = "<5", extras = ["awslambda", "batch", "ec2", "s3", "secretsmanager"]}
 openapi_spec_validator = "*"
+pandas = "<2.2"  # Needed by pixetl in batch script test
 pre-commit = "*"
 pytest = "*"
 pytest-asyncio = "*"
@@ -44,7 +45,7 @@ google-cloud-storage = "*"
 httpcore = "*"
 httpx = "*"
 httpx-auth = "*"
-numpy = "*"
+numpy = "<2.0"
 orjson = "*"
 packaging = "*"
 pendulum = "<3"

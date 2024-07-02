@@ -44,6 +44,7 @@ async def verify_asset_dependencies(dataset, version, asset_type):
             AssetType.raster_tile_set,
             AssetType.geo_database_table,
         ],
+        AssetType.cog: AssetType.raster_tile_set,
     }
     try:
         parent_type = asset_dependencies[asset_type]

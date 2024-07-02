@@ -4,12 +4,12 @@ FROM tiangolo/uvicorn-gunicorn-fastapi:python3.10-slim
 ARG ENV
 
 RUN apt-get update -y \
-    && apt-get install --no-install-recommends -y gcc libc-dev musl-dev \
-        postgresql-client libpq-dev make git jq \
+    && apt-get install --no-install-recommends -y gcc g++ libc-dev \
+        postgresql-client libpq-dev make git jq libgdal-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip && pip install pipenv==v2024.0.1
+RUN pip install --upgrade pip && pip install pipenv==2024.0.1
 #TODO move to pipfile when operational
 RUN pip install newrelic
 

@@ -9,6 +9,7 @@ from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
 from ..models.pydantic.assets import AssetType
 from ..models.pydantic.change_log import ChangeLog
+from .cog_assets import cog_asset
 from .dynamic_vector_tile_cache_assets import dynamic_vector_tile_cache_asset
 from .raster_tile_cache_assets import raster_tile_cache_asset
 from .raster_tile_set_assets import raster_tile_set_asset
@@ -30,6 +31,7 @@ ASSET_PIPELINES: FrozenSet[AssetType] = frozenset(
         AssetType.grid_1x1: static_vector_1x1_asset,
         # AssetType.vector_tile_cache: vector_tile_cache_asset,
         AssetType.raster_tile_cache: raster_tile_cache_asset,
+        AssetType.cog: cog_asset,
         # AssetType.dynamic_raster_tile_cache: dynamic_raster_tile_cache_asset,
         AssetType.raster_tile_set: raster_tile_set_asset,
     }.items()

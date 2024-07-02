@@ -50,6 +50,8 @@ from . import (
     GEOJSON_NAME2,
     GEOJSON_PATH,
     GEOJSON_PATH2,
+    GPKG_NAME,
+    GPKG_PATH,
     PORT,
     SHP_NAME,
     SHP_PATH,
@@ -60,7 +62,7 @@ from . import (
     session,
     setup_clients,
 )
-from .utils import delete_logs, print_logs, upload_fake_data, bool_function_closure
+from .utils import bool_function_closure, delete_logs, print_logs, upload_fake_data
 
 FAKE_INT_DATA_PARAMS = {
     "dtype": rasterio.uint16,
@@ -272,6 +274,7 @@ def copy_fixtures():
     s3_client.upload_file(CSV2_PATH, BUCKET, CSV2_NAME)
     s3_client.upload_file(TSV_PATH, BUCKET, TSV_NAME)
     s3_client.upload_file(SHP_PATH, BUCKET, SHP_NAME)
+    s3_client.upload_file(GPKG_PATH, BUCKET, GPKG_NAME)
     s3_client.upload_file(APPEND_TSV_PATH, BUCKET, APPEND_TSV_NAME)
 
     # upload a separate for each row so we can test running large numbers of sources in parallel
@@ -442,7 +445,9 @@ async def async_client(db_clean):
 
     app.dependency_overrides[get_manager] = get_admin_mocked
     app.dependency_overrides[get_owner] = get_manager_mocked
-    app.dependency_overrides[is_service_account] = bool_function_closure(True, with_args=True)
+    app.dependency_overrides[is_service_account] = bool_function_closure(
+        True, with_args=True
+    )
 
     async with LifespanManager(app) as manager:
         async with AsyncClient(

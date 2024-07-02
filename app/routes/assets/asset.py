@@ -25,12 +25,12 @@ from fastapi import (
 
 # from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, status
 from fastapi.responses import ORJSONResponse
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, RedirectResponse
 
 from app.models.pydantic.responses import Response
 from app.settings.globals import API_URL
+from ..datasets.downloads import _get_presigned_url
 
-from ...authentication.token import is_admin
 from ...crud import assets
 from ...crud import metadata as metadata_crud
 from ...crud import tasks
@@ -67,7 +67,7 @@ from ...tasks.delete_assets import (
     delete_static_vector_tile_cache_assets,
 )
 from ...utils.paginate import paginate_collection
-from ...utils.path import infer_srid_from_grid
+from ...utils.path import infer_srid_from_grid, split_s3_path
 from ..assets import asset_response
 from ..tasks import paginated_tasks_response, tasks_response
 
@@ -308,6 +308,28 @@ async def get_extent(asset_id: UUID = Path(...)):
     asset: ORMAsset = await assets.get_asset(asset_id)
     extent: Optional[Extent] = asset.extent
     return ExtentResponse(data=extent)
+
+
+@router.get(
+    "/{asset_id}/tiles_info",
+    response_class=RedirectResponse,
+    tags=["Assets"],
+    status_code=307,
+)
+async def get_tiles_info(asset_id: UUID = Path(...)):
+    asset: ORMAsset = await assets.get_asset(asset_id)
+
+    if asset.asset_type != AssetType.raster_tile_set:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tiles information only available for raster tile sets"
+        )
+
+    bucket, asset_key = split_s3_path(asset.asset_uri)
+    tiles_geojson_key = asset_key.replace("{tile_id}.tif", "tiles.geojson")
+    presigned_url = await _get_presigned_url(bucket, tiles_geojson_key)
+
+    return RedirectResponse(url=presigned_url)
 
 
 @router.get(
