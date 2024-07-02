@@ -73,6 +73,8 @@ generate_payload()
 EOF
 }
 
+set -x
+
 echo "$(generate_payload)"
 
 CTYPE_HEADER="Content-Type:application/json"
