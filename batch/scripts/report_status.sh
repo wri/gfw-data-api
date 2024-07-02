@@ -78,7 +78,9 @@ set -x
 echo "$(generate_payload)"
 
 CTYPE_HEADER="Content-Type:application/json"
-curl -s -X PATCH -H "${AUTH_HEADER}" -H "${CTYPE_HEADER}" -d "$(generate_payload)" "${URL}"
+RESPONSE=$(curl -s -X PATCH -H "${AUTH_HEADER}" -H "${CTYPE_HEADER}" -d "$(generate_payload)" "${URL}")
+
+echo $RESPONSE
 
 # Try to clean up free space for potential other batch jobs on the same node
 set +e
