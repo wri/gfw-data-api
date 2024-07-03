@@ -76,6 +76,12 @@ def create_cog_backed_asset(dataset, implementation, gcs_path, service_account):
             f"GEE returned unexpected status code {response.status_code} with payload {response.content}"
         )
 
+    # update ACL to be public
+    full_asset_id = f"projects/{EE_PROJECT}/assets/{asset_id}"
+    acl = ee.data.getAssetAcl(full_asset_id)
+    acl["all_users_can_read"] = True
+    ee.data.setAssetAcl(full_asset_id, acl)
+
 
 def export_to_gee(
     dataset: str = Option(..., help="Dataset name."),
