@@ -72,11 +72,12 @@ async def httpexception_error_handler(
 
 @app.exception_handler(RequestValidationError)
 async def rve_error_handler(
-    request: Request, exc: RequestValidationError
+    request: Request,
+    exc: RequestValidationError
 ) -> ORJSONResponse:
     """Use JSEND protocol for validation errors."""
     return ORJSONResponse(
-        status_code=422, content={"status": "failed", "message": json.loads(exc.json())}
+        status_code=422, content={"status": "failed", "message": exc.errors()}
     )
 
 
