@@ -37,7 +37,7 @@ async def test_delete_raster_tileset_assets():
 
 
 @pytest.mark.asyncio
-async def test_delete_database_table(db_clean):
+async def test_delete_database_table(app):
     dataset = "test"
     version = "table"
 
