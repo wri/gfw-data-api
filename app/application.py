@@ -11,7 +11,7 @@ from gino_starlette import Gino, GinoEngine
 from .settings.globals import (
     DATABASE_CONFIG,
     SQL_REQUEST_TIMEOUT,
-    WRITE_DATABASE_CONFIG,
+    WRITE_DATABASE_CONFIG, WRITER_MIN_POOL_SIZE, WRITER_MAX_POOL_SIZE, READER_MIN_POOL_SIZE, READER_MAX_POOL_SIZE,
 )
 
 # Set the current engine using a ContextVar to assure
@@ -83,15 +83,15 @@ async def lifespan(app: FastAPI):
     global READ_ENGINE
 
     WRITE_ENGINE = await create_engine(
-        WRITE_DATABASE_CONFIG.url, max_size=5, min_size=1
+        WRITE_DATABASE_CONFIG.url, max_size=WRITER_MAX_POOL_SIZE, min_size=WRITER_MIN_POOL_SIZE
     )
     logger.info(
         f"Database connection pool for write operation created: {WRITE_ENGINE.repr(color=True)}"
     )
     READ_ENGINE = await create_engine(
         DATABASE_CONFIG.url,
-        max_size=10,
-        min_size=5,
+        max_size=READER_MAX_POOL_SIZE,
+        min_size=READER_MIN_POOL_SIZE,
         command_timeout=SQL_REQUEST_TIMEOUT,
     )
     logger.info(

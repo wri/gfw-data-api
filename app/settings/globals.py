@@ -70,6 +70,8 @@ READER_PASSWORD: Optional[Secret] = config(
 READER_HOST: str = config("DB_HOST_RO", cast=str, default=DB_READER_SECRET["host"])
 READER_PORT: int = config("DB_PORT_RO", cast=int, default=DB_READER_SECRET["port"])
 READER_DBNAME = config("DATABASE_RO", cast=str, default=DB_READER_SECRET["dbname"])
+READER_MIN_POOL_SIZE: int = config("READER_MIN_POOL_SIZE", cast=int, default=5)
+READER_MAX_POOL_SIZE: int = config("READER_MAX_POOL_SIZE", cast=int, default=10)
 
 WRITER_USERNAME: Optional[str] = config(
     "DB_USER", cast=str, default=DB_WRITER_SECRET["username"]
@@ -80,6 +82,8 @@ WRITER_PASSWORD: Optional[Secret] = config(
 WRITER_HOST: str = config("DB_HOST", cast=str, default=DB_WRITER_SECRET["host"])
 WRITER_PORT: int = config("DB_PORT", cast=int, default=DB_WRITER_SECRET["port"])
 WRITER_DBNAME = config("DATABASE", cast=str, default=DB_WRITER_SECRET["dbname"])
+WRITER_MIN_POOL_SIZE: int = config("WRITER_MIN_POOL_SIZE", cast=int, default=1)
+WRITER_MAX_POOL_SIZE: int = config("WRITER_MAX_POOL_SIZE", cast=int, default=5)
 
 if ENV == "dev":
     NAME_SUFFIX = config("NAME_SUFFIX", cast=str)
