@@ -1,4 +1,3 @@
-import json
 import logging
 import sys
 from asyncio.exceptions import TimeoutError as AsyncTimeoutError
@@ -72,8 +71,7 @@ async def httpexception_error_handler(
 
 @app.exception_handler(RequestValidationError)
 async def rve_error_handler(
-    request: Request,
-    exc: RequestValidationError
+    request: Request, exc: RequestValidationError
 ) -> ORJSONResponse:
     """Use JSEND protocol for validation errors."""
     return ORJSONResponse(

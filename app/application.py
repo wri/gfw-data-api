@@ -11,7 +11,11 @@ from gino_starlette import Gino, GinoEngine
 from .settings.globals import (
     DATABASE_CONFIG,
     SQL_REQUEST_TIMEOUT,
-    WRITE_DATABASE_CONFIG, WRITER_MIN_POOL_SIZE, WRITER_MAX_POOL_SIZE, READER_MIN_POOL_SIZE, READER_MAX_POOL_SIZE,
+    WRITE_DATABASE_CONFIG,
+    WRITER_MIN_POOL_SIZE,
+    WRITER_MAX_POOL_SIZE,
+    READER_MIN_POOL_SIZE,
+    READER_MAX_POOL_SIZE,
 )
 
 # Set the current engine using a ContextVar to assure
@@ -34,9 +38,6 @@ class ContextualGino(Gino):
             logger.debug(f"Set bind to {bind.repr(color=True)}")
             return bind
         except LookupError:
-            # not in a request
-            # logger.debug("Not in a request, using default bind")
-            # return self._bind
             logger.debug("Not in a request, using READ engine")
             return READ_ENGINE
 
@@ -83,7 +84,9 @@ async def lifespan(app: FastAPI):
     global READ_ENGINE
 
     WRITE_ENGINE = await create_engine(
-        WRITE_DATABASE_CONFIG.url, max_size=WRITER_MAX_POOL_SIZE, min_size=WRITER_MIN_POOL_SIZE
+        WRITE_DATABASE_CONFIG.url,
+        max_size=WRITER_MAX_POOL_SIZE,
+        min_size=WRITER_MIN_POOL_SIZE,
     )
     logger.info(
         f"Database connection pool for write operation created: {WRITE_ENGINE.repr(color=True)}"
