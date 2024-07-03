@@ -46,4 +46,3 @@ if [ -n "$EXPORT_TO_GEE" ]; then
 fi
 
 set +x
-
