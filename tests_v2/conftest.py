@@ -8,7 +8,6 @@ import pytest
 import pytest_asyncio
 from _pytest.monkeypatch import MonkeyPatch
 from alembic.config import main
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from asgi_lifespan import LifespanManager
 
@@ -58,16 +57,11 @@ async def init_db(db):
 
     # It is easiest to do this using the standard test client
     async with LifespanManager(app) as manager:
-        async with AsyncClient(
-            app=manager.app,
-            base_url="http://test",
-            trust_env=False,
-        ) as client:
-            yield client
+        yield
 
 
 @pytest_asyncio.fixture
-async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
+async def async_client(init_db) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
 
@@ -94,7 +88,7 @@ async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest_asyncio.fixture
 async def async_client_unauthenticated(
-    db, init_db
+    init_db
 ) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
@@ -113,7 +107,7 @@ async def async_client_unauthenticated(
 
 
 @pytest_asyncio.fixture
-async def async_client_no_admin(db, init_db) -> AsyncGenerator[AsyncClient, None]:
+async def async_client_no_admin(init_db) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
 
