@@ -4,6 +4,7 @@ import io
 import os
 import shutil
 import threading
+import uuid
 from http.server import HTTPServer
 
 import boto3
@@ -17,7 +18,8 @@ from asgi_lifespan import LifespanManager
 from docker.models.containers import ContainerCollection
 from httpx import AsyncClient
 
-from app.authentication.token import get_manager, is_service_account
+from app.authentication.api_keys import get_api_key, api_key_is_valid
+from app.authentication.token import get_manager, is_service_account, get_admin
 from app.models.pydantic.authentication import User
 from app.routes.datasets.dataset import get_owner
 from app.settings.globals import (
@@ -38,7 +40,9 @@ from app.settings.globals import (
 )
 from app.utils.aws import get_s3_client
 
-from . import (
+pytest.register_assert_rewrite("tests.utils")
+
+from tests import (
     APPEND_TSV_NAME,
     APPEND_TSV_PATH,
     BUCKET,
@@ -58,9 +62,9 @@ from . import (
     AWSMock,
     MemoryServer,
     session,
-    setup_clients,
+    setup_clients, MANAGER_1, ADMIN_1, USER_1,
 )
-from .utils import delete_logs, print_logs, upload_fake_data, bool_function_closure
+from tests.utils import delete_logs, print_logs, upload_fake_data
 
 FAKE_INT_DATA_PARAMS = {
     "dtype": rasterio.uint16,
@@ -86,45 +90,6 @@ FAKE_FLOAT_DATA_PARAMS = {
         )
     ),
 }
-
-
-async def get_user_mocked() -> User:
-    return User(
-        id="userid_123",
-        name="Ms. User",
-        email="ms_user@user.com",
-        createdAt="2021-06-13T03:18:23.000Z",
-        role="USER",
-        provider="local",
-        providerId="1234",
-        extraUserData={},
-    )
-
-
-async def get_manager_mocked() -> User:
-    return User(
-        id="mr_manager123",
-        name="Mr. Manager",
-        email="mr_manager@management.com",
-        createdAt="2021-06-13T03:18:23.000Z",
-        role="MANAGER",
-        provider="local",
-        providerId="1234",
-        extraUserData={},
-    )
-
-
-async def get_admin_mocked() -> User:
-    return User(
-        id="adminid_123",
-        name="Sir Admin",
-        email="sir_admin@admin.com",
-        createdAt="2021-06-13T03:18:23.000Z",
-        role="ADMIN",
-        provider="google",
-        providerId="1234",
-        extraUserData={},
-    )
 
 
 def pytest_addoption(parser):
@@ -381,7 +346,7 @@ async def db_clean(db_ready):
 
     from app.main import app
 
-    app.dependency_overrides[get_owner] = get_admin_mocked
+    app.dependency_overrides[get_owner] = lambda: ADMIN_1
 
     async with LifespanManager(app) as manager:
         async with AsyncClient(
@@ -429,23 +394,60 @@ async def app(db_clean):
         yield manager.app
 
 
-@pytest_asyncio.fixture
-async def async_client_unpriveleged(app):
-    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
-        print("Client is ready")
-        yield client
-
-
-@pytest_asyncio.fixture
-async def async_client(db_clean):
+@contextlib.asynccontextmanager
+async def client_with_mocks(
+    mock_get_admin: User | bool,
+    mock_get_manager: User | bool,
+    mock_get_user: User | bool,
+    mock_get_owner: User | bool = False,
+    mock_is_service_account: bool = True,
+    mock_api_key: str | bool = True
+):
     from app.main import app
 
-    app.dependency_overrides[get_manager] = get_admin_mocked
-    app.dependency_overrides[get_owner] = get_manager_mocked
-    app.dependency_overrides[is_service_account] = bool_function_closure(True, with_args=True)
+    if isinstance(mock_get_admin, User):
+        app.dependency_overrides[get_admin] = lambda: mock_get_admin
+    elif mock_get_admin is True:
+        app.dependency_overrides[get_admin] = lambda: ADMIN_1
+
+    if isinstance(mock_get_manager, User):
+        app.dependency_overrides[get_manager] = lambda: mock_get_manager
+    elif mock_get_manager is True:
+        app.dependency_overrides[get_manager] = lambda: MANAGER_1
+
+    if isinstance(mock_get_user, User):
+        app.dependency_overrides[get_owner] = lambda: mock_get_user
+    elif mock_get_user is True:
+        app.dependency_overrides[get_owner] = lambda: USER_1
+
+    if isinstance(mock_get_owner, User):
+        app.dependency_overrides[get_owner] = lambda: mock_get_owner
+    elif mock_get_owner is True:
+        app.dependency_overrides[get_owner] = lambda: MANAGER_1
+
+    if mock_is_service_account:
+        app.dependency_overrides[is_service_account] = lambda: True
+
+    if isinstance(mock_api_key, str):
+        app.dependency_overrides[api_key_is_valid] = lambda: True
+        app.dependency_overrides[get_api_key] = lambda: lambda: (str(uuid.uuid4()), "localhost")
+    elif mock_api_key is True:
+        app.dependency_overrides[api_key_is_valid] = lambda: True
+        app.dependency_overrides[get_api_key] = lambda: lambda: (mock_api_key, "localhost")
 
     async with LifespanManager(app) as manager:
         async with AsyncClient(
             app=manager.app, base_url="http://test", trust_env=False
         ) as http_client:
             yield http_client
+
+    app.dependency_overrides = {}
+
+
+@pytest_asyncio.fixture
+async def async_client(db_clean):
+    """Async test client suitable for most use cases
+    (mocks get_admin, get_manager, is_service_account, and API key code)
+    """
+    async with client_with_mocks(True, True, False) as test_client:
+        yield test_client

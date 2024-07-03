@@ -318,7 +318,18 @@ async def get_api_key_mocked() -> Tuple[Optional[str], Optional[str]]:
     return str(uuid.uuid4()), "localhost"
 
 
-MANAGER = User(
+ADMIN_1 = User(
+    id="adminid_123",
+    name="Sir Admin",
+    email="sir_admin@admin.com",
+    createdAt="2021-06-13T03:18:23.000Z",
+    role="ADMIN",
+    provider="google",
+    providerId="1234",
+    extraUserData={},
+)
+
+MANAGER_1 = User(
     id="mr_manager123",
     name="Mr. Manager",
     email="mr_manager@management.com",
@@ -329,8 +340,7 @@ MANAGER = User(
     extraUserData={},
 )
 
-
-NEW_OWNER = User(
+MANAGER_2 = User(
     id="new_owner_id123",
     name="New Owner",
     email="new_owner@owner.com",
@@ -341,13 +351,16 @@ NEW_OWNER = User(
     extraUserData={},
 )
 
-
-async def get_manager_mocked() -> User:
-    return MANAGER
-
-
-async def get_new_owner_mocked() -> User:
-    return NEW_OWNER
+USER_1 = User(
+    id="userid_123",
+    name="Ms. User",
+    email="ms_user@user.com",
+    createdAt="2021-06-13T03:18:23.000Z",
+    role="USER",
+    provider="local",
+    providerId="1234",
+    extraUserData={},
+)
 
 
 def setup_clients(ec2_client, iam_client):
