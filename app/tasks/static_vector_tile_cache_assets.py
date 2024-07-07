@@ -55,7 +55,7 @@ async def static_vector_tile_cache_asset(
     # Create NDJSON asset as side effect
     ############################
 
-    ndjson_uri = get_asset_uri(dataset, version, AssetType.ndjson)
+    ndjson_uri = get_asset_uri(dataset, version, AssetType.ndjson, creation_options.dict())
 
     ndjson_asset: ORMAsset = await assets.create_asset(
         dataset,
@@ -77,7 +77,7 @@ async def static_vector_tile_cache_asset(
         "-v",
         version,
         "-f",
-        f"{dataset}_{version}.ndjson",
+        f"{creation_options.implementation}.ndjson",
         "-F",
         "GeoJSONSeq",
         "-T",
@@ -95,38 +95,71 @@ async def static_vector_tile_cache_asset(
         callback=callback_constructor(ndjson_asset.asset_id),
     )
 
-    command = [
-        "create_vector_tile_cache.sh",
-        "-d",
-        dataset,
-        "-v",
-        version,
-        "-s",
-        ndjson_uri,
-        "-Z",
-        str(creation_options.min_zoom),
-        "-z",
-        str(creation_options.max_zoom),
-        "-t",
-        creation_options.tile_strategy,
-        "-I",
-        creation_options.implementation,
-    ]
+    tile_cache_jobs: List[TileCacheJob] = []
+    if creation_options.where_filters:
+        for where_filter in creation_options.where_filters:
+            command = [
+                "create_vector_tile_cache.sh",
+                "-d",
+                dataset,
+                "-v",
+                version,
+                "-s",
+                ndjson_uri,
+                "-Z",
+                str(where_filter.min_zoom),
+                "-z",
+                str(where_filter.max_zoom),
+                "-t",
+                creation_options.tile_strategy,
+                "-I",
+                creation_options.implementation,
+            ]
+            tile_cache_jobs.append(
+                TileCacheJob(
+                    dataset=dataset,
+                    job_name="create_vector_tile_cache",
+                    command=command,
+                    parents=[export_ndjson.job_name],
+                    environment=report_vars,
+                    callback=callback_constructor(asset_id),
+                )
+            )
+    else:
+        command = [
+            "create_vector_tile_cache.sh",
+            "-d",
+            dataset,
+            "-v",
+            version,
+            "-s",
+            ndjson_uri,
+            "-Z",
+            str(creation_options.min_zoom),
+            "-z",
+            str(creation_options.max_zoom),
+            "-t",
+            creation_options.tile_strategy,
+            "-I",
+            creation_options.implementation,
+        ]
 
-    create_vector_tile_cache = TileCacheJob(
-        dataset=dataset,
-        job_name="create_vector_tile_cache",
-        command=command,
-        parents=[export_ndjson.job_name],
-        environment=report_vars,
-        callback=callback_constructor(asset_id),
-    )
+        tile_cache_jobs.append(
+            TileCacheJob(
+                dataset=dataset,
+                job_name="create_vector_tile_cache",
+                command=command,
+                parents=[export_ndjson.job_name],
+                environment=report_vars,
+                callback=callback_constructor(asset_id),
+            )
+        )
 
     #######################
     # execute jobs
     #######################
 
-    log: ChangeLog = await execute([export_ndjson, create_vector_tile_cache])
+    log: ChangeLog = await execute([export_ndjson, *tile_cache_jobs])
 
     ######################
     # Generate ESRI Vector Tile Cache Server and root.json
