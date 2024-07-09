@@ -10,7 +10,6 @@ import botocore
 from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 
-from ...models.pydantic.responses import Response
 from ...models.pydantic.user_job import UserJob, UserJobResponse
 from ...settings.globals import STATE_MACHINE_ARN
 from ...utils.aws import get_sfn_client
@@ -24,7 +23,7 @@ router = APIRouter()
     tags=["Jobs"],
     response_model=UserJobResponse,
 )
-async def get_job(*, job_id: UUID = Path(...)) -> Response:
+async def get_job(*, job_id: UUID = Path(...)) -> UserJobResponse:
     """Get single tasks by task ID."""
     try:
         job = await _get_user_job(job_id)

@@ -1,11 +1,12 @@
 from typing import Optional
 from uuid import UUID
 
-from .base import BaseRecord
+from pydantic import BaseModel
+
 from .responses import Response
 
 
-class UserJob(BaseRecord):
+class UserJob(BaseModel):
     job_id: UUID
     status: str
     download_link: Optional[str]
