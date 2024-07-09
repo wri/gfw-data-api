@@ -41,7 +41,7 @@ async def _get_user_job(job_id: UUID):
 
         return UserJob(
             job_id=job_id,
-            status=output["status"],
+            status="saved",
             download_link=output["download_link"],
             progress="100%",
         )

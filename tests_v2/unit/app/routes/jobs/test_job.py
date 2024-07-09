@@ -29,7 +29,6 @@ def _get_sfn_execution_mocked_success(job_id):
         "output": json.dumps(
             {
                 "job_id": TEST_JOB_ID,
-                "status": "saved",
                 "download_link": "s3://test/results.csv",
             }
         ),
