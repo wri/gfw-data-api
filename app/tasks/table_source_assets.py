@@ -38,6 +38,8 @@ async def table_source_asset(
         dataset,
         "-v",
         version,
+        "-D",
+        creation_options.delimiter,
         "-s",
         source_uris[0],
     ]
