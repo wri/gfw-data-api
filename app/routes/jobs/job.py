@@ -3,6 +3,7 @@
 You can view a single tasks or all tasks associated with as specific
 asset. Only _service accounts_ can create or update tasks.
 """
+import json
 from typing import Any, Dict
 from uuid import UUID
 
@@ -36,13 +37,15 @@ async def _get_user_job(job_id: UUID):
     execution = _get_sfn_execution(job_id)
 
     if execution["status"] == "SUCCEEDED":
+        output = json.loads(execution["output"])
+
         return UserJob(
             job_id=job_id,
-            status=execution["output"]["status"],
-            download_link=execution["output"]["download_link"],
+            status=output["status"],
+            download_link=output["download_link"],
             progress="100%",
         )
-    elif execution["status"] == "PENDING":
+    elif execution["status"] == "RUNNING":
         return UserJob(
             job_id=job_id,
             status="pending",
