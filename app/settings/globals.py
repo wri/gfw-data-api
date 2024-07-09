@@ -190,3 +190,6 @@ GOOGLE_APPLICATION_CREDENTIALS = config(
 # Datasets that require admin privileges to do a query. (Extra protection on
 # commercial datasets which shouldn't be downloaded in any way.)
 PROTECTED_QUERY_DATASETS = ["wdpa_licensed_protected_areas"]
+
+# TODO mocking util we can grab this from terraform output
+STATE_MACHINE_ARN = ""
