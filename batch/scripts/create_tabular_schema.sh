@@ -27,7 +27,7 @@ fi
 # expected and can be ignored, so temporarily use set +e here. HOWEVER we
 # still want to know if csvsql had a problem, so check its exit status
 set +e
-aws s3 cp "${SRC}" - | head -100 | csvsql -d "$(echo \'$DELIMITER\')" -i postgresql --no-constraints $UNIQUE_CONSTRAINT --tables "$VERSION" -q \" > create_table.sql
+aws s3 cp "${SRC}" - | head -100 | csvsql -d "$(echo -e $DELIMITER)" -i postgresql --no-constraints $UNIQUE_CONSTRAINT --tables "$VERSION" -q \" > create_table.sql
 CSVSQL_EXIT_CODE="${PIPESTATUS[2]}"  # Grab the exit code of the csvsql command
 set -e
 
