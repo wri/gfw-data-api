@@ -8,9 +8,9 @@ from .responses import Response
 
 class UserJob(BaseModel):
     job_id: UUID
-    status: str
-    download_link: Optional[str]
-    progress: Optional[str]
+    status: str = "pending"
+    download_link: Optional[str] = None
+    progress: Optional[str] = "0%"
 
 
 class UserJobResponse(Response):
