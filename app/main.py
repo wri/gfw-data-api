@@ -1,4 +1,3 @@
-import json
 import logging
 import sys
 from asyncio.exceptions import TimeoutError as AsyncTimeoutError
@@ -76,7 +75,7 @@ async def rve_error_handler(
 ) -> ORJSONResponse:
     """Use JSEND protocol for validation errors."""
     return ORJSONResponse(
-        status_code=422, content={"status": "failed", "message": json.loads(exc.json())}
+        status_code=422, content={"status": "failed", "message": exc.errors()}
     )
 
 

@@ -1,8 +1,10 @@
+import contextlib
 import csv
 import io
 import os
 import shutil
 import threading
+import uuid
 from http.server import HTTPServer
 
 import boto3
@@ -11,13 +13,15 @@ import numpy
 import pytest
 import pytest_asyncio
 import rasterio
-from alembic.config import main
+from alembic.config import main as migrate
+from asgi_lifespan import LifespanManager
 from docker.models.containers import ContainerCollection
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from app.authentication.api_keys import get_api_key
-from app.authentication.token import get_manager, is_admin, is_service_account
+from app.authentication.api_keys import api_key_is_valid, get_api_key
+from app.authentication.token import get_admin, get_manager, is_service_account
+from app.models.pydantic.authentication import User
+from app.routes.datasets.dataset import get_owner
 from app.settings.globals import (
     AURORA_JOB_QUEUE,
     AURORA_JOB_QUEUE_FAST,
@@ -36,7 +40,10 @@ from app.settings.globals import (
 )
 from app.utils.aws import get_s3_client
 
-from . import (
+pytest.register_assert_rewrite("tests.utils")
+
+from tests import (
+    ADMIN_1,
     APPEND_TSV_NAME,
     APPEND_TSV_PATH,
     BUCKET,
@@ -50,20 +57,19 @@ from . import (
     GEOJSON_PATH2,
     GPKG_NAME,
     GPKG_PATH,
+    MANAGER_1,
     PORT,
     SHP_NAME,
     SHP_PATH,
     TSV_NAME,
     TSV_PATH,
+    USER_1,
     AWSMock,
     MemoryServer,
-    get_api_key_mocked,
-    get_manager_mocked,
-    is_admin_mocked,
-    is_service_account_mocked,
+    session,
     setup_clients,
 )
-from .utils import delete_logs, print_logs, upload_fake_data
+from tests.utils import delete_logs, print_logs, upload_fake_data
 
 FAKE_INT_DATA_PARAMS = {
     "dtype": rasterio.uint16,
@@ -193,80 +199,6 @@ def logs(batch_client):
     delete_logs(logs)
 
 
-# @pytest.fixture(scope="session", autouse=True)
-# def db():
-#     """Acquire a database session for a test and make sure the connection gets
-#     properly closed, even if test fails.
-#
-#     This is a synchronous connection using psycopg2.
-#     """
-#     with contextlib.ExitStack() as stack:
-#         yield stack.enter_context(session())
-
-
-@pytest.fixture(autouse=True)
-def client():
-    """Set up a clean database before running a test.
-
-    Run all migrations before test and downgrade afterwards.
-    """
-    from app.main import app
-
-    main(["--raiseerr", "upgrade", "head"])
-    app.dependency_overrides[is_admin] = is_admin_mocked
-    app.dependency_overrides[is_service_account] = is_service_account_mocked
-    app.dependency_overrides[get_api_key] = get_api_key_mocked
-
-    with TestClient(app) as client:
-        yield client
-
-        # Clean up created assets/versions/datasets so teardown doesn't break
-        datasets_resp = client.get("/datasets")
-        for ds in datasets_resp.json()["data"]:
-            ds_id = ds["dataset"]
-            if ds.get("versions") is not None:
-                for version in ds["versions"]:
-                    assets_resp = client.get(f"/dataset/{ds_id}/{version}/assets")
-                    for asset in assets_resp.json()["data"]:
-                        print(f"DELETING ASSET {asset['asset_id']}")
-                        try:
-                            _ = client.delete(
-                                f"/dataset/{ds_id}/{version}/{asset['asset_id']}"
-                            )
-                        except Exception as ex:
-                            print(f"Exception deleting asset {asset['asset_id']}: {ex}")
-                    try:
-                        # FIXME: Mock-out cache invalidation function
-                        _ = client.delete(f"/dataset/{ds_id}/{version}")
-                    except Exception as ex:
-                        print(f"Exception deleting version {version}: {ex}")
-            try:
-                _ = client.delete(f"/dataset/{ds_id}")
-            except Exception as ex:
-                print(f"Exception deleting dataset {ds_id}: {ex}")
-
-    app.dependency_overrides = {}
-    main(["--raiseerr", "downgrade", "base"])
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def async_client():
-    """Async Test Client."""
-    from app.main import app
-
-    # main(["--raiseerr", "upgrade", "head"])
-    app.dependency_overrides[is_admin] = is_admin_mocked
-    app.dependency_overrides[is_service_account] = is_service_account_mocked
-    app.dependency_overrides[get_api_key] = get_api_key_mocked
-    app.dependency_overrides[get_manager] = get_manager_mocked
-
-    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
-        yield client
-
-    # app.dependency_overrides = {}
-    # main(["--raiseerr", "downgrade", "base"])
-
-
 @pytest.fixture(scope="session")
 def httpd():
 
@@ -289,7 +221,7 @@ def httpd():
 @pytest.fixture(autouse=True)
 def flush_request_list(httpd):
     """Delete request cache before every test."""
-    httpx.delete(f"http://localhost:{httpd.server_port}")
+    _ = httpx.delete(f"http://localhost:{httpd.server_port}")
 
 
 @pytest.fixture(autouse=True)
@@ -391,3 +323,142 @@ def secrets():
     yield
 
     secret_client.delete_secret(SecretId=AWS_GCS_KEY_SECRET_ARN)
+
+
+@pytest.fixture
+def db_session():
+    """Acquire a database session for a test and make sure the connection gets
+    properly closed, even if test fails.
+
+    This is a synchronous connection using psycopg2.
+    """
+    with contextlib.ExitStack() as stack:
+        yield stack.enter_context(session())
+
+
+@pytest_asyncio.fixture
+async def db_ready(db_session):
+    """make sure that the db is only initialized and torn down once per
+    module."""
+    migrate(["--raiseerr", "upgrade", "head"])
+    yield
+
+    migrate(["--raiseerr", "downgrade", "base"])
+
+
+@pytest_asyncio.fixture
+async def db_clean(db_ready):
+    yield
+
+    from app.main import app
+
+    app.dependency_overrides[get_owner] = lambda: ADMIN_1
+
+    async with LifespanManager(app) as manager:
+        async with AsyncClient(
+            app=manager.app, base_url="http://test", trust_env=False
+        ) as http_client:
+            # Clean up created assets/versions/datasets so teardown doesn't break
+            datasets_resp = await http_client.get("/datasets")
+            for ds in datasets_resp.json()["data"]:
+                ds_id = ds["dataset"]
+                if ds.get("versions") is not None:
+                    for version in ds["versions"]:
+                        assets_resp = await http_client.get(
+                            f"/dataset/{ds_id}/{version}/assets"
+                        )
+                        for asset in assets_resp.json()["data"]:
+                            print(f"DELETING ASSET {asset['asset_id']}")
+                            try:
+                                resp = await http_client.delete(
+                                    f"/asset/{asset['asset_id']}"
+                                )
+                                assert resp.status_code == 204
+                            except Exception as ex:
+                                print(
+                                    f"Exception deleting asset {asset['asset_id']}: {ex}"
+                                )
+                        try:
+                            # FIXME: Mock-out cache invalidation function
+                            _ = await http_client.delete(f"/dataset/{ds_id}/{version}")
+                        except Exception as ex:
+                            print(f"Exception deleting version {version}: {ex}")
+                try:
+                    _ = await http_client.delete(f"/dataset/{ds_id}")
+                except Exception as ex:
+                    print(f"Exception deleting dataset {ds_id}: {ex}")
+
+    app.dependency_overrides = {}
+
+
+@pytest_asyncio.fixture
+async def app(db_clean):
+    from app.main import app
+
+    async with LifespanManager(app) as manager:
+        print("We're in!")
+        yield manager.app
+
+
+@contextlib.asynccontextmanager
+async def client_with_mocks(
+    mock_get_admin: User | bool,
+    mock_get_manager: User | bool,
+    mock_get_user: User | bool,
+    mock_get_owner: User | bool = False,
+    mock_is_service_account: bool = True,
+    mock_api_key: str | bool = True,
+):
+    from app.main import app
+
+    if isinstance(mock_get_admin, User):
+        app.dependency_overrides[get_admin] = lambda: mock_get_admin
+    elif mock_get_admin is True:
+        app.dependency_overrides[get_admin] = lambda: ADMIN_1
+
+    if isinstance(mock_get_manager, User):
+        app.dependency_overrides[get_manager] = lambda: mock_get_manager
+    elif mock_get_manager is True:
+        app.dependency_overrides[get_manager] = lambda: MANAGER_1
+
+    if isinstance(mock_get_user, User):
+        app.dependency_overrides[get_owner] = lambda: mock_get_user
+    elif mock_get_user is True:
+        app.dependency_overrides[get_owner] = lambda: USER_1
+
+    if isinstance(mock_get_owner, User):
+        app.dependency_overrides[get_owner] = lambda: mock_get_owner
+    elif mock_get_owner is True:
+        app.dependency_overrides[get_owner] = lambda: MANAGER_1
+
+    if mock_is_service_account:
+        app.dependency_overrides[is_service_account] = lambda: True
+
+    if isinstance(mock_api_key, str):
+        app.dependency_overrides[api_key_is_valid] = lambda: True
+        app.dependency_overrides[get_api_key] = lambda: lambda: (
+            str(uuid.uuid4()),
+            "localhost",
+        )
+    elif mock_api_key is True:
+        app.dependency_overrides[api_key_is_valid] = lambda: True
+        app.dependency_overrides[get_api_key] = lambda: lambda: (
+            mock_api_key,
+            "localhost",
+        )
+
+    async with LifespanManager(app) as manager:
+        async with AsyncClient(
+            app=manager.app, base_url="http://test", trust_env=False
+        ) as http_client:
+            yield http_client
+
+    app.dependency_overrides = {}
+
+
+@pytest_asyncio.fixture
+async def async_client(db_clean):
+    """Async test client suitable for most use cases (mocks get_admin,
+    get_manager, is_service_account, and API key code)"""
+    async with client_with_mocks(True, True, False) as test_client:
+        yield test_client

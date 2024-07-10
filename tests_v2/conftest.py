@@ -8,8 +8,8 @@ import pytest
 import pytest_asyncio
 from _pytest.monkeypatch import MonkeyPatch
 from alembic.config import main
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
+from asgi_lifespan import LifespanManager
 
 from app.authentication.token import get_manager, get_user, is_admin, is_service_account
 from app.crud import api_keys
@@ -46,18 +46,8 @@ async def db():
     main(["--raiseerr", "downgrade", "base"])
 
 
-@pytest.fixture(scope="module")
-def module_db():
-    """make sure that the db is only initialized and torn down once per
-    module."""
-    main(["--raiseerr", "upgrade", "head"])
-    yield
-
-    main(["--raiseerr", "downgrade", "base"])
-
-
-@pytest.fixture()
-def init_db():
+@pytest_asyncio.fixture
+async def init_db(db):
     """Initialize database.
 
     This fixture is necessary when testing database connections outside
@@ -66,12 +56,12 @@ def init_db():
     from app.main import app
 
     # It is easiest to do this using the standard test client
-    with TestClient(app):
+    async with LifespanManager(app) as manager:
         yield
 
 
 @pytest_asyncio.fixture
-async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
+async def async_client(init_db) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
 
@@ -83,13 +73,14 @@ async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides[get_user] = get_admin_mocked
     app.dependency_overrides[get_manager] = get_manager_mocked
 
-    async with AsyncClient(
-        app=app,
-        base_url="http://test",
-        trust_env=False,
-        headers={"Origin": "https://www.globalforestwatch.org"},
-    ) as client:
-        yield client
+    async with LifespanManager(app) as manager:
+        async with AsyncClient(
+            app=manager.app,
+            base_url="http://test",
+            trust_env=False,
+            headers={"Origin": "https://www.globalforestwatch.org"},
+        ) as client:
+            yield client
 
     # Clean up
     app.dependency_overrides = {}
@@ -97,20 +88,26 @@ async def async_client(db, init_db) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest_asyncio.fixture
 async def async_client_unauthenticated(
-    db, init_db
+    init_db
 ) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
 
-    async with AsyncClient(app=app, base_url="http://test", trust_env=False) as client:
-        yield client
+    async with LifespanManager(app) as manager:
+        async with AsyncClient(
+            app=manager.app,
+            base_url="http://test",
+            trust_env=False,
+            headers={"Origin": "https://www.globalforestwatch.org"},
+        ) as client:
+            yield client
 
     # Clean up
     app.dependency_overrides = {}
 
 
 @pytest_asyncio.fixture
-async def async_client_no_admin(db, init_db) -> AsyncGenerator[AsyncClient, None]:
+async def async_client_no_admin(init_db) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
 
@@ -121,13 +118,14 @@ async def async_client_no_admin(db, init_db) -> AsyncGenerator[AsyncClient, None
     )
     app.dependency_overrides[get_user] = get_user_mocked
 
-    async with AsyncClient(
-        app=app,
-        base_url="http://test",
-        trust_env=False,
-        headers={"Origin": "https://www.globalforestwatch.org"},
-    ) as client:
-        yield client
+    async with LifespanManager(app) as manager:
+        async with AsyncClient(
+            app=manager.app,
+            base_url="http://test",
+            trust_env=False,
+            headers={"Origin": "https://www.globalforestwatch.org"},
+        ) as client:
+            yield client
 
     # Clean up
     app.dependency_overrides = {}
