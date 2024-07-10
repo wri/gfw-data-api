@@ -1,7 +1,8 @@
-"""Jobs represent the steps performed during asset creation.
+"""Jobs represent long running analysis tasks. Certain APIs, like querying like
+a list, will return immediately with a job_id. You can poll the job until it's
+complete, and a download like will be provided.
 
-You can view a single tasks or all tasks associated with as specific
-asset. Only _service accounts_ can create or update tasks.
+Jobs are only saved for 90 days.
 """
 import json
 from typing import Any, Dict
@@ -37,7 +38,7 @@ async def get_job(*, job_id: UUID = Path(...)) -> UserJobResponse:
 
 
 async def _get_user_job(job_id: UUID) -> UserJob:
-    execution = _get_sfn_execution(job_id)
+    execution = await _get_sfn_execution(job_id)
 
     if execution["status"] == "SUCCEEDED":
         output = json.loads(execution["output"])
@@ -56,7 +57,9 @@ async def _get_user_job(job_id: UUID) -> UserJob:
             progress=await _get_progress(execution),
         )
     else:
-        return UserJob(job_id=job_id, status="failed", download_link=None, progres=None)
+        return UserJob(
+            job_id=job_id, status="failed", download_link=None, progress=None
+        )
 
 
 async def _get_sfn_execution(job_id: UUID) -> Dict[str, Any]:
@@ -68,9 +71,9 @@ async def _get_sfn_execution(job_id: UUID) -> Dict[str, Any]:
 
 
 async def _get_progress(execution: Dict[str, Any]) -> str:
-    map_run = _get_map_run(execution)
-    sucess_ratio = map_run["itemCounts"]["succeeded"] / map_run["itemCounts"]["total"]
-    return f"{round(sucess_ratio * 100)}%"
+    map_run = await _get_map_run(execution)
+    success_ratio = map_run["itemCounts"]["succeeded"] / map_run["itemCounts"]["total"]
+    return f"{round(success_ratio * 100)}%"
 
 
 async def _get_map_run(execution: Dict[str, Any]) -> Dict[str, Any]:
