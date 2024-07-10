@@ -25,7 +25,10 @@ router = APIRouter()
     response_model=UserJobResponse,
 )
 async def get_job(*, job_id: UUID = Path(...)) -> UserJobResponse:
-    """Get single tasks by task ID."""
+    """Get job status.
+
+    Jobs expire after 90 days.
+    """
     try:
         job = await _get_user_job(job_id)
         return UserJobResponse(data=job)
@@ -33,7 +36,7 @@ async def get_job(*, job_id: UUID = Path(...)) -> UserJobResponse:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-async def _get_user_job(job_id: UUID):
+async def _get_user_job(job_id: UUID) -> UserJob:
     execution = _get_sfn_execution(job_id)
 
     if execution["status"] == "SUCCEEDED":
@@ -56,7 +59,7 @@ async def _get_user_job(job_id: UUID):
         return UserJob(job_id=job_id, status="failed", download_link=None, progres=None)
 
 
-async def _get_sfn_execution(job_id):
+async def _get_sfn_execution(job_id: UUID) -> Dict[str, Any]:
     execution_arn = (
         f"{STATE_MACHINE_ARN.replace('stateMachines', 'execution')}:{job_id}"
     )
