@@ -6,6 +6,7 @@ set -e
 # -d | --dataset
 # -v | --version
 # -s | --source
+# -D | --delimiter
 
 # optional arguments
 # -p | --partition_type
@@ -21,12 +22,17 @@ if [[ -n "${UNIQUE_CONSTRAINT_COLUMN_NAMES}" ]]; then
   UNIQUE_CONSTRAINT="--unique-constraint ${UNIQUE_CONSTRAINT_COLUMN_NAMES}"
 fi
 
+# Unescape TAB character
+if [ "$DELIMITER" == "\t" ]; then
+  DELIMITER=$(echo -e "\t")
+fi
+
 # Fetch first 100 lines from CSV, analyze and create table create statement
 # The `head` command will cause a broken pipe error for `aws s3 cp`: This is
 # expected and can be ignored, so temporarily use set +e here. HOWEVER we
 # still want to know if csvsql had a problem, so check its exit status
 set +e
-aws s3 cp "${SRC}" - | head -100 | csvsql -i postgresql --no-constraints $UNIQUE_CONSTRAINT --tables "$VERSION" -q \" > create_table.sql
+aws s3 cp "${SRC}" - | head -100 | csvsql -d "$DELIMITER" -i postgresql --no-constraints $UNIQUE_CONSTRAINT --tables "$VERSION" -q \" > create_table.sql
 CSVSQL_EXIT_CODE="${PIPESTATUS[2]}"  # Grab the exit code of the csvsql command
 set -e
 
