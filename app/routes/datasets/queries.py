@@ -21,7 +21,7 @@ from fastapi.logger import logger
 
 # from fastapi.openapi.models import APIKey
 from fastapi.openapi.models import APIKey
-from fastapi.responses import RedirectResponse
+from fastapi.responses import ORJSONResponse, RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
@@ -73,7 +73,7 @@ from ...models.pydantic.creation_options import NoDataType
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
 from ...models.pydantic.query import (
     CsvQueryRequestIn,
-    QueryListRequestIn,
+    QueryBatchRequestIn,
     QueryRequestIn,
 )
 from ...models.pydantic.raster_analysis import (
@@ -328,15 +328,16 @@ async def query_dataset_csv_post(
 
 
 @router.post(
-    "/{dataset}/{version}/query/list",
-    response_class=ORJSONLiteResponse,
+    "/{dataset}/{version}/query/batch",
+    response_class=ORJSONResponse,
     response_model=UserJobResponse,
     tags=["Query"],
+    status_code=202,
 )
 async def query_dataset_list_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
-    request: QueryListRequestIn,
+    request: QueryBatchRequestIn,
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -347,18 +348,20 @@ async def query_dataset_list_post(
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
     if default_asset.asset_type != AssetType.raster_tile_set:
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail="Querying on lists is only available for raster tile sets.",
         )
 
-    if (
-        request.feature_collection.type != "Polygon"
-        and request.feature_collection.type != "MultiPolygon"
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail="Feature collection must be a Polygon or MultiPolygon for raster analysis",
-        )
+    if request.feature_collection:
+        for feature in request.feature_collection.features:
+            if (
+                feature.geometry.type != "Polygon"
+                and feature.geometry.type != "MultiPolygon"
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Feature collection must only contain Polygons or MultiPolygons for raster analysis",
+                )
 
     job_id = uuid.uuid4()
 
@@ -367,28 +370,30 @@ async def query_dataset_list_post(
         dataset, default_asset.creation_options["pixel_meaning"]
     )
     grid = default_asset.creation_options["grid"]
-    sql = re.sub(
-        "from \w+", f"from {default_layer}", request.query, flags=re.IGNORECASE
-    )
+    sql = re.sub("from \w+", f"from {default_layer}", request.sql, flags=re.IGNORECASE)
     data_environment = await _get_data_environment(grid)
 
-    payload = {
+    input = {
         "feature_collection": jsonable_encoder(request.feature_collection),
         "query": sql,
         "environment": data_environment.dict()["layers"],
     }
 
     try:
-        get_sfn_client().start_execution(
-            stateMachineArn=STATE_MACHINE_ARN,
-            name=job_id,
-            input=json.dumps(payload),
-        )
+        await _start_batch_execution(job_id, input)
     except botocore.exceptions.ClientError as error:
         logger.error(error)
         return HTTPException(500, "There was an error starting your job.")
 
     return UserJobResponse(data=UserJob(job_id=job_id))
+
+
+async def _start_batch_execution(job_id: UUID, input: Dict[str, Any]) -> None:
+    get_sfn_client().start_execution(
+        stateMachineArn=STATE_MACHINE_ARN,
+        name=job_id,
+        input=json.dumps(input),
+    )
 
 
 async def _query_dataset_json(

@@ -10,7 +10,7 @@ class QueryRequestIn(StrictBaseModel):
     sql: str
 
 
-class QueryListRequestIn(StrictBaseModel):
+class QueryBatchRequestIn(StrictBaseModel):
     feature_collection: Optional[FeatureCollection]
     uri: Optional[str]
     sql: str
