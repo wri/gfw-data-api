@@ -93,6 +93,7 @@ from ...settings.globals import (
 from ...utils.aws import get_sfn_client, invoke_lambda
 from ...utils.geostore import get_geostore
 from .. import dataset_version_dependency
+from . import _verify_source_file_access
 
 router = APIRouter()
 
@@ -374,10 +375,20 @@ async def query_dataset_list_post(
     data_environment = await _get_data_environment(grid)
 
     input = {
-        "feature_collection": jsonable_encoder(request.feature_collection),
         "query": sql,
         "environment": data_environment.dict()["layers"],
     }
+
+    if request.feature_collection:
+        input["feature_collection"] = jsonable_encoder(request.feature_collection)
+    elif request.uri:
+        _verify_source_file_access([request.uri])
+        input["uri"] = request.uri
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Must provide valid feature collection or URI.",
+        )
 
     try:
         await _start_batch_execution(job_id, input)

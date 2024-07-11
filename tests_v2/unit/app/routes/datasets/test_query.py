@@ -666,7 +666,7 @@ async def test__get_data_environment_helper_called(
 
 
 @pytest.mark.asyncio
-async def test_query_batch(
+async def test_query_batch_feature_collection(
     generic_raster_version,
     apikey,
     monkeypatch: MonkeyPatch,
@@ -682,6 +682,51 @@ async def test_query_batch(
     payload = {
         "sql": "select count(*) from data",
         "feature_collection": FEATURE_COLLECTION,
+    }
+
+    response = await async_client.post(
+        f"/dataset/{dataset_name}/{version_name}/query/batch",
+        json=payload,
+        headers=headers,
+    )
+
+    print(response.json())
+    assert response.status_code == 202
+
+    data = response.json()["data"]
+
+    # assert valid UUID
+    try:
+        uuid = UUID(data["job_id"])
+    except ValueError:
+        assert False
+
+    assert str(uuid) == data["job_id"]
+
+    assert data["status"] == "pending"
+
+    assert response.json()["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_query_batch_uri(
+    generic_raster_version,
+    apikey,
+    monkeypatch: MonkeyPatch,
+    async_client: AsyncClient,
+):
+    dataset_name, version_name, _ = generic_raster_version
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+
+    headers = {"origin": origin, "x-api-key": api_key}
+
+    monkeypatch.setattr(queries, "_start_batch_execution", start_batch_execution_mocked)
+    monkeypatch.setattr(queries, "_verify_source_file_access", lambda source_uris: True)
+
+    payload = {
+        "sql": "select count(*) from data",
+        "uri": "s3://path/to/files",
     }
 
     response = await async_client.post(
