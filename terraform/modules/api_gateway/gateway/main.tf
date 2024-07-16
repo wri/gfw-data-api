@@ -48,7 +48,7 @@ module "query_get" {
 
   require_api_key = false
   http_method     = "GET"
-  authorization   = "CUSTOM"
+  authorization   = "NONE"
 
   integration_parameters = {
     "integration.request.path.version" = "method.request.path.version"
@@ -75,7 +75,7 @@ module "query_post" {
 
   require_api_key = false
   http_method     = "POST"
-  authorization   = "CUSTOM"
+  authorization   = "NONE"
 
   integration_parameters = {
     "integration.request.path.version" = "method.request.path.version"
