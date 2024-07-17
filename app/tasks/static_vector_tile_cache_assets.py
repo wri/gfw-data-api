@@ -55,7 +55,9 @@ async def static_vector_tile_cache_asset(
     # Create NDJSON asset as side effect
     ############################
 
-    ndjson_uri = get_asset_uri(dataset, version, AssetType.ndjson, creation_options.dict())
+    ndjson_uri = get_asset_uri(
+        dataset, version, AssetType.ndjson, creation_options.dict()
+    )
 
     ndjson_asset: ORMAsset = await assets.create_asset(
         dataset,
@@ -114,6 +116,10 @@ async def static_vector_tile_cache_asset(
                 creation_options.tile_strategy,
                 "-I",
                 creation_options.implementation,
+                "--where_field",
+                where_filter.field,
+                "--where_values",
+                ",".join(where_filter.values_in),
             ]
             tile_cache_jobs.append(
                 TileCacheJob(

@@ -241,6 +241,16 @@ do
       shift # past argument
       shift # past value
       ;;
+      --where_field)
+      WHERE_FIELD="$2"
+      shift
+      shift
+      ;;
+      --where_values)
+      WHERE_VALUES="$2"
+      shift
+      shift
+      ;;
 
       *)    # unknown option
       POSITIONAL+=("$1") # save it in an array for later
