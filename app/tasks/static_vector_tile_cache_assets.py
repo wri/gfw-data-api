@@ -124,7 +124,7 @@ async def static_vector_tile_cache_asset(
             tile_cache_jobs.append(
                 TileCacheJob(
                     dataset=dataset,
-                    job_name="create_vector_tile_cache",
+                    job_name=f"vector_tile_cache_zoom_{str(where_filter.min_zoom)}-{where_filter.max_zoom}",
                     command=command,
                     parents=[export_ndjson.job_name],
                     environment=report_vars,
