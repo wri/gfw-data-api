@@ -119,7 +119,7 @@ async def static_vector_tile_cache_asset(
                 "--where_field",
                 where_filter.field,
                 "--where_values",
-                ",".join(where_filter.values_in),
+                ",".join(str(value) for value in where_filter.values_in),
             ]
             tile_cache_jobs.append(
                 TileCacheJob(
