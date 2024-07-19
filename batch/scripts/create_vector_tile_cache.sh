@@ -38,7 +38,7 @@ FINAL_DATA='data.ndjson'
 if [ -n "$WHERE_FIELD" ]; then
   FINAL_DATA='filtered_data.ndjson'
   echo "Perform Filtering"
-  ogr2ogr "${FINAL_DATA}" 'data.ndjson' -where "${WHERE_FIELD} IN (${WHERE_VALUES})"
+  ogr2ogr -if GeoJSONSeq "${FINAL_DATA}" 'data.ndjson' -where "${WHERE_FIELD} IN (${WHERE_VALUES})"
 fi
 
 echo "Build Tile Cache"
