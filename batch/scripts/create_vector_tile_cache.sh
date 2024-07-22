@@ -10,19 +10,39 @@ set -e
 # -z | --max_zoom
 # -t | --tile_strategy
 # -I | --implementation
+
+# optional arguments
+# --filter
+
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
-# Set TILE_STRATEGY
+
+NDJSON_FILE="data.json"
+
+echo "Fetching NDJSON data from the Data Lake: ${SRC} -> ${NDJSON_FILE}..."
+aws s3 cp "${SRC}" "${NDJSON_FILE}" --no-progress
+
+
+# Build an array of arguments to pass to tippecanoe
+TIPPE_ARG_ARRAY=(
+  "-e tilecache"
+  "-Z${MIN_ZOOM}"
+  "-z${MAX_ZOOM}"
+  "--preserve-input-order"
+  "-P"
+  "-n ${DATASET}"
+)
+
 case ${TILE_STRATEGY} in
 discontinuous) # Discontinuous polygon features
-  STRATEGY=("--drop-densest-as-needed" "--extend-zooms-if-still-dropping")
+  TIPPE_ARG_ARRAY+=("--drop-densest-as-needed" "--extend-zooms-if-still-dropping")
   ;;
 continuous) # Continuous polygon features
-  STRATEGY=("--coalesce-densest-as-needed" "--extend-zooms-if-still-dropping")
+  TIPPE_ARG_ARRAY+=("--coalesce-densest-as-needed" "--extend-zooms-if-still-dropping")
   ;;
 keep_all) # never drop or coalesce feature, ignore size and feature count
-  STRATEGY=("-r1")
+  TIPPE_ARG_ARRAY+=("-r1")
   ;;
 *)
   echo "Invalid Tile Cache option -${TILE_STRATEGY}"
@@ -30,19 +50,14 @@ keep_all) # never drop or coalesce feature, ignore size and feature count
   ;;
 esac
 
-echo "Fetch NDJSON data from Data Lake ${SRC} -> 'data.ndjson'"
-aws s3 cp "${SRC}" 'data.ndjson' --no-progress
-
-FINAL_DATA='data.ndjson'
-
-if [ -n "$WHERE_FIELD" ]; then
-  FINAL_DATA='filtered_data.ndjson'
-  echo "Perform Filtering"
-  ogr2ogr -if GeoJSONSeq "${FINAL_DATA}" 'data.ndjson' -where "${WHERE_FIELD} IN (${WHERE_VALUES})"
+if [ -n "FILTER" ]; then
+  TIPPE_ARG_ARRAY+=(" -j ${FILTER}")
 fi
 
-echo "Build Tile Cache"
-tippecanoe -Z"${MIN_ZOOM}" -z"${MAX_ZOOM}" -e tilecache "${STRATEGY[@]}" -P -n "${DATASET}" "${FINAL_DATA}" --preserve-input-order
+TIPPE_ARG_ARRAY+=("${NDJSON_FILE}")
 
-echo "Upload tiles to S3"
+echo "Building Tile Cache with Tippecanoe..."
+tippecanoe "${TIPPE_ARG_ARRAY[@]}"
+
+echo "Uploading tiles to S3 with TilePutty..."
 tileputty tilecache --bucket "${TILE_CACHE}" --dataset "${DATASET}" --version "${VERSION}" --implementation "${IMPLEMENTATION}" --cores "${NUM_PROCESSES}"

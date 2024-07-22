@@ -90,6 +90,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      --filter)
+      filter="$2"
+      shift
+      shift
+      ;;
       -F|--format)
       FORMAT="$2"
       shift # past argument
@@ -243,11 +248,6 @@ do
       ;;
       --where_field)
       WHERE_FIELD="$2"
-      shift
-      shift
-      ;;
-      --where_values)
-      WHERE_VALUES="$2"
       shift
       shift
       ;;

@@ -3,6 +3,8 @@ import json
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from fastapi.encoders import jsonable_encoder
+
 from ..crud import assets, metadata
 from ..errors import RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
@@ -98,68 +100,39 @@ async def static_vector_tile_cache_asset(
     )
 
     tile_cache_jobs: List[TileCacheJob] = []
-    if creation_options.where_filters:
-        for where_filter in creation_options.where_filters:
-            command = [
-                "create_vector_tile_cache.sh",
-                "-d",
-                dataset,
-                "-v",
-                version,
-                "-s",
-                ndjson_uri,
-                "-Z",
-                str(where_filter.min_zoom),
-                "-z",
-                str(where_filter.max_zoom),
-                "-t",
-                creation_options.tile_strategy,
-                "-I",
-                creation_options.implementation,
-                "--where_field",
-                where_filter.field,
-                "--where_values",
-                ",".join(str(value) for value in where_filter.values_in),
-            ]
-            tile_cache_jobs.append(
-                TileCacheJob(
-                    dataset=dataset,
-                    job_name=f"vector_tile_cache_zoom_{str(where_filter.min_zoom)}-{where_filter.max_zoom}",
-                    command=command,
-                    parents=[export_ndjson.job_name],
-                    environment=report_vars,
-                    callback=callback_constructor(asset_id),
-                )
-            )
-    else:
-        command = [
-            "create_vector_tile_cache.sh",
-            "-d",
-            dataset,
-            "-v",
-            version,
-            "-s",
-            ndjson_uri,
-            "-Z",
-            str(creation_options.min_zoom),
-            "-z",
-            str(creation_options.max_zoom),
-            "-t",
-            creation_options.tile_strategy,
-            "-I",
-            creation_options.implementation,
-        ]
-
-        tile_cache_jobs.append(
-            TileCacheJob(
-                dataset=dataset,
-                job_name="create_vector_tile_cache",
-                command=command,
-                parents=[export_ndjson.job_name],
-                environment=report_vars,
-                callback=callback_constructor(asset_id),
-            )
+    command = [
+        "create_vector_tile_cache.sh",
+        "-d",
+        dataset,
+        "-v",
+        version,
+        "-s",
+        ndjson_uri,
+        "-Z",
+        str(creation_options.min_zoom),
+        "-z",
+        str(creation_options.max_zoom),
+        "-t",
+        creation_options.tile_strategy,
+        "-I",
+        creation_options.implementation,
+    ]
+    if creation_options.feature_filter:
+        command += (
+            "--filter",
+            f"'{json.dumps(jsonable_encoder(creation_options.feature_filter))}'"
         )
+
+    tile_cache_jobs.append(
+        TileCacheJob(
+            dataset=dataset,
+            job_name="create_vector_tile_cache",
+            command=command,
+            parents=[export_ndjson.job_name],
+            environment=report_vars,
+            callback=callback_constructor(asset_id),
+        )
+    )
 
     #######################
     # execute jobs
