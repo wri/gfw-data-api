@@ -120,7 +120,7 @@ async def static_vector_tile_cache_asset(
     if creation_options.feature_filter:
         command += (
             "--filter",
-            f"'{json.dumps(jsonable_encoder(creation_options.feature_filter))}'"
+            json.dumps(jsonable_encoder(creation_options.feature_filter))
         )
 
     tile_cache_jobs.append(

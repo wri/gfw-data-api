@@ -91,7 +91,7 @@ do
       shift # past value
       ;;
       --filter)
-      filter="$2"
+      FILTER="$2"
       shift
       shift
       ;;

@@ -50,7 +50,7 @@ keep_all) # never drop or coalesce feature, ignore size and feature count
   ;;
 esac
 
-if [ -n "FILTER" ]; then
+if [ -n "${FILTER}" ]; then
   TIPPE_ARG_ARRAY+=("-j" "${FILTER}")
 fi
 
