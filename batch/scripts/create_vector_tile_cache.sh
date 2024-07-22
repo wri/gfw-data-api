@@ -26,12 +26,12 @@ aws s3 cp "${SRC}" "${NDJSON_FILE}" --no-progress
 
 # Build an array of arguments to pass to tippecanoe
 TIPPE_ARG_ARRAY=(
-  "-e tilecache"
+  "-e" "tilecache"
   "-Z${MIN_ZOOM}"
   "-z${MAX_ZOOM}"
   "--preserve-input-order"
   "-P"
-  "-n ${DATASET}"
+  "-n" "${DATASET}"
 )
 
 case ${TILE_STRATEGY} in
@@ -51,7 +51,7 @@ keep_all) # never drop or coalesce feature, ignore size and feature count
 esac
 
 if [ -n "FILTER" ]; then
-  TIPPE_ARG_ARRAY+=(" -j ${FILTER}")
+  TIPPE_ARG_ARRAY+=("-j" "${FILTER}")
 fi
 
 TIPPE_ARG_ARRAY+=("${NDJSON_FILE}")
