@@ -170,11 +170,11 @@ def batch_client():
     aws_mock.add_job_queue(TILE_CACHE_JOB_QUEUE, s3_writer_env["computeEnvironmentArn"])
     aws_mock.add_job_queue(PIXETL_JOB_QUEUE, pixetl_env["computeEnvironmentArn"])
 
-    aws_mock.add_job_definition(GDAL_PYTHON_JOB_DEFINITION, "universal_batch_test")
+    aws_mock.add_job_definition(GDAL_PYTHON_JOB_DEFINITION, "batch_gdal-python_test")
     aws_mock.add_job_definition(
-        POSTGRESQL_CLIENT_JOB_DEFINITION, "universal_batch_test"
+        POSTGRESQL_CLIENT_JOB_DEFINITION, "batch_postgresql-client_test"
     )
-    aws_mock.add_job_definition(TILE_CACHE_JOB_DEFINITION, "universal_batch_test")
+    aws_mock.add_job_definition(TILE_CACHE_JOB_DEFINITION, "batch_tile_cache_test")
     aws_mock.add_job_definition(PIXETL_JOB_DEFINITION, "pixetl_test", mount_tmp=True)
 
     yield aws_mock.mocked_services["batch"]["client"], aws_mock.mocked_services["logs"][

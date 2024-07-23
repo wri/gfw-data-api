@@ -39,22 +39,13 @@ module "app_docker_image" {
 }
 
 # Docker image for GDAL Python Batch jobs
-module "universal_batch_image" {
+module "batch_gdal_python_image" {
   source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
-  image_name      = substr(lower("${local.project}-universal_batch${local.name_suffix}"), 0, 64)
+  image_name      = substr(lower("${local.project}-gdal_python${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
-  docker_filename = "universal_batch.dockerfile"
+  docker_filename = "gdal-python.dockerfile"
 }
-
-## Docker image for GDAL Python Batch jobs
-#module "batch_gdal_python_image" {
-#  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
-#  image_name      = substr(lower("${local.project}-gdal_python${local.name_suffix}"), 0, 64)
-#  root_dir        = "${path.root}/../"
-#  docker_path     = "batch"
-#  docker_filename = "gdal-python.dockerfile"
-#}
 
 # Docker image for PixETL Batch jobs
 module "batch_pixetl_image" {
@@ -65,23 +56,23 @@ module "batch_pixetl_image" {
   docker_filename = "pixetl.dockerfile"
 }
 
-## Docker image for PostgreSQL Client Batch jobs
-#module "batch_postgresql_client_image" {
-#  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
-#  image_name      = substr(lower("${local.project}-postgresql_client${local.name_suffix}"), 0, 64)
-#  root_dir        = "${path.root}/../"
-#  docker_path     = "batch"
-#  docker_filename = "postgresql-client.dockerfile"
-#}
-#
-## Docker image for Tile Cache Batch jobs
-#module "batch_tile_cache_image" {
-#  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
-#  image_name      = substr(lower("${local.project}-tile_cache${local.name_suffix}"), 0, 64)
-#  root_dir        = "${path.root}/../"
-#  docker_path     = "batch"
-#  docker_filename = "tile_cache.dockerfile"
-#}
+# Docker image for PostgreSQL Client Batch jobs
+module "batch_postgresql_client_image" {
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
+  image_name      = substr(lower("${local.project}-postgresql_client${local.name_suffix}"), 0, 64)
+  root_dir        = "${path.root}/../"
+  docker_path     = "batch"
+  docker_filename = "postgresql-client.dockerfile"
+}
+
+# Docker image for Tile Cache Batch jobs
+module "batch_tile_cache_image" {
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
+  image_name      = substr(lower("${local.project}-tile_cache${local.name_suffix}"), 0, 64)
+  root_dir        = "${path.root}/../"
+  docker_path     = "batch"
+  docker_filename = "tile_cache.dockerfile"
+}
 
 
 module "fargate_autoscaling" {
@@ -200,10 +191,10 @@ module "batch_job_queues" {
   environment                        = var.environment
   name_suffix                        = local.name_suffix
   project                            = local.project
-  gdal_repository_url                = "${module.universal_batch_image.repository_url}:latest"
+  gdal_repository_url                = "${module.batch_gdal_python_image.repository_url}:latest"
   pixetl_repository_url              = "${module.batch_pixetl_image.repository_url}:latest"
-  postgres_repository_url            = "${module.universal_batch_image.repository_url}:latest"
-  tile_cache_repository_url          = "${module.universal_batch_image.repository_url}:latest"
+  postgres_repository_url            = "${module.batch_postgresql_client_image.repository_url}:latest"
+  tile_cache_repository_url          = "${module.batch_tile_cache_image.repository_url}:latest"
   iam_policy_arn = [
     "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
     aws_iam_policy.query_batch_jobs.arn,
