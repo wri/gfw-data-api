@@ -99,7 +99,6 @@ async def static_vector_tile_cache_asset(
         callback=callback_constructor(ndjson_asset.asset_id),
     )
 
-    tile_cache_jobs: List[TileCacheJob] = []
     command = [
         "create_vector_tile_cache.sh",
         "-d",
@@ -123,22 +122,20 @@ async def static_vector_tile_cache_asset(
             json.dumps(jsonable_encoder(creation_options.feature_filter))
         )
 
-    tile_cache_jobs.append(
-        TileCacheJob(
-            dataset=dataset,
-            job_name="create_vector_tile_cache",
-            command=command,
-            parents=[export_ndjson.job_name],
-            environment=report_vars,
-            callback=callback_constructor(asset_id),
-        )
+    create_vector_tile_cache = TileCacheJob(
+        dataset=dataset,
+        job_name="create_vector_tile_cache",
+        command=command,
+        parents=[export_ndjson.job_name],
+        environment=report_vars,
+        callback=callback_constructor(asset_id),
     )
 
     #######################
     # execute jobs
     #######################
 
-    log: ChangeLog = await execute([export_ndjson, *tile_cache_jobs])
+    log: ChangeLog = await execute([export_ndjson, create_vector_tile_cache])
 
     ######################
     # Generate ESRI Vector Tile Cache Server and root.json
