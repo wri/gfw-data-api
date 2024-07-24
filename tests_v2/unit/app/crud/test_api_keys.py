@@ -32,9 +32,8 @@ GOOD_PAYLOAD = (
 )
 
 
-@pytest_asyncio.fixture(autouse=True)
-@pytest.mark.asyncio
-async def delete_api_keys():
+@pytest_asyncio.fixture
+async def delete_api_keys(init_db):
     yield
     async with ContextEngine("WRITE"):
         await ORMApiKey.delete.gino.status()
@@ -42,7 +41,9 @@ async def delete_api_keys():
 
 @pytest.mark.parametrize("user_id, alias, organization, email, domains", [GOOD_PAYLOAD])
 @pytest.mark.asyncio
-async def test_create_api_key(user_id, alias, organization, email, domains):
+async def test_create_api_key(
+    delete_api_keys, user_id, alias, organization, email, domains
+):
     async with ContextEngine("WRITE"):
         row: ORMApiKey = await create_api_key(
             user_id, alias, organization, email, domains, never_expires=False
@@ -64,7 +65,7 @@ async def test_create_api_key(user_id, alias, organization, email, domains):
 @pytest.mark.parametrize("user_id, alias, organization, email, domains", [GOOD_PAYLOAD])
 @pytest.mark.asyncio
 async def test_create_api_key_never_expires(
-    user_id, alias, organization, email, domains
+    delete_api_keys, user_id, alias, organization, email, domains
 ):
     async with ContextEngine("WRITE"):
         row: ORMApiKey = await create_api_key(
@@ -85,7 +86,7 @@ async def test_create_api_key_never_expires(
 @pytest.mark.parametrize("user_id, alias, organization, email, domains", [GOOD_PAYLOAD])
 @pytest.mark.asyncio
 async def test_create_api_key_empty_domains(
-    user_id, alias, organization, email, domains
+    delete_api_keys, user_id, alias, organization, email, domains
 ):
     async with ContextEngine("WRITE"):
         row: ORMApiKey = await create_api_key(
@@ -106,7 +107,7 @@ async def test_create_api_key_empty_domains(
 @pytest.mark.parametrize("user_id, alias, organization, email, domains", [GOOD_PAYLOAD])
 @pytest.mark.asyncio
 async def test_create_api_key_unique_constraint(
-    user_id, alias, organization, email, domains
+    delete_api_keys, user_id, alias, organization, email, domains
 ):
     """We should be able to submit the same payload twice."""
     async with ContextEngine("WRITE"):
@@ -130,7 +131,7 @@ async def test_create_api_key_unique_constraint(
 )
 @pytest.mark.asyncio
 async def test_create_api_key_missing_value(
-    user_id, alias, organization, email, domains
+    delete_api_keys, user_id, alias, organization, email, domains
 ):
     async with ContextEngine("WRITE"):
         with pytest.raises(asyncpg.exceptions.NotNullViolationError):
@@ -153,7 +154,9 @@ async def test_create_api_key_missing_value(
     ],
 )
 @pytest.mark.asyncio
-async def test_create_api_key_wrong_type(user_id, alias, organization, email, domains):
+async def test_create_api_key_wrong_type(
+    delete_api_keys, user_id, alias, organization, email, domains
+):
     async with ContextEngine("WRITE"):
         with pytest.raises(asyncpg.exceptions.DataError):
             await create_api_key(
@@ -171,7 +174,7 @@ async def test_create_api_key_wrong_type(user_id, alias, organization, email, do
 )
 @pytest.mark.asyncio
 async def test_create_api_key_domains_not_list(
-    user_id, alias, organization, email, domains
+    delete_api_keys, user_id, alias, organization, email, domains
 ):
     async with ContextEngine("WRITE"):
         with pytest.raises(AssertionError):
@@ -182,7 +185,9 @@ async def test_create_api_key_domains_not_list(
 
 @pytest.mark.parametrize("user_id, alias, organization, email, domains", [GOOD_PAYLOAD])
 @pytest.mark.asyncio
-async def test_get_api_key(user_id, alias, organization, email, domains):
+async def test_get_api_key(
+    delete_api_keys, user_id, alias, organization, email, domains
+):
     async with ContextEngine("WRITE"):
         create_row: ORMApiKey = await create_api_key(
             user_id, alias, organization, email, domains, never_expires=False
@@ -200,7 +205,7 @@ async def test_get_api_key(user_id, alias, organization, email, domains):
 
 @pytest.mark.parametrize("api_key", [uuid.uuid4(), uuid.uuid4(), None])
 @pytest.mark.asyncio
-async def test_get_api_key_bad_key(api_key):
+async def test_get_api_key_bad_key(delete_api_keys, api_key):
     async with ContextEngine("READ"):
         with pytest.raises(RecordNotFoundError):
             await get_api_key(api_key)
@@ -208,7 +213,7 @@ async def test_get_api_key_bad_key(api_key):
 
 @pytest.mark.parametrize("api_key", ["random_string", 1])
 @pytest.mark.asyncio
-async def test_get_api_key_bad_type(api_key):
+async def test_get_api_key_bad_type(delete_api_keys, api_key):
     async with ContextEngine("READ"):
         with pytest.raises(asyncpg.exceptions.DataError):
             await get_api_key(api_key)
@@ -216,7 +221,9 @@ async def test_get_api_key_bad_type(api_key):
 
 @pytest.mark.parametrize("user_id, alias, organization, email, domains", [GOOD_PAYLOAD])
 @pytest.mark.asyncio
-async def test_get_api_key_from_user(user_id, alias, organization, email, domains):
+async def test_get_api_key_from_user(
+    delete_api_keys, user_id, alias, organization, email, domains
+):
 
     api_keys1 = list()
     api_keys2 = list()
@@ -256,7 +263,9 @@ async def test_get_api_key_from_user(user_id, alias, organization, email, domain
 
 @pytest.mark.parametrize("user_id, alias, organization, email, domains", [GOOD_PAYLOAD])
 @pytest.mark.asyncio
-async def test_delete_api_key(user_id, alias, organization, email, domains):
+async def test_delete_api_key(
+    delete_api_keys, user_id, alias, organization, email, domains
+):
     async with ContextEngine("WRITE"):
         create_row: ORMApiKey = await create_api_key(
             user_id, alias, organization, email, domains, never_expires=False

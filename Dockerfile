@@ -19,11 +19,11 @@ COPY Pipfile Pipfile
 COPY Pipfile.lock Pipfile.lock
 
 RUN if [ "$ENV" = "dev" ] || [ "$ENV" = "test" ]; then \
-    echo "Install all dependencies" \
-    && pipenv install --system --deploy --ignore-pipfile --dev; \
+        echo "Install all dependencies" \
+        && pipenv install --system --deploy --ignore-pipfile --dev; \
     else \
-    echo "Install production dependencies only" \
-    && pipenv install --system --deploy; \
+        echo "Install production dependencies only" \
+        && pipenv install --system --deploy; \
     fi
 
 COPY ./app /app/app
