@@ -401,7 +401,8 @@ class StaticVectorTileCacheCreationOptions(TileCacheBaseModel):
     )
     feature_filter: Optional[Dict[str, Any]] = Field(
         None,
-        description="Optional filter to apply to features."
+        description="Optional tippecanoe feature filter(s). Uses the syntax of "
+        "[Mapbox legacy filters](https://docs.mapbox.com/style-spec/reference/other/#other-filters)"
     )
 
 
