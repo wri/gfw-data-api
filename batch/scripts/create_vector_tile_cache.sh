@@ -20,10 +20,6 @@ ME=$(basename "$0")
 
 NDJSON_FILE="data.json"
 
-echo "Fetching NDJSON data from the Data Lake: ${SRC} -> ${NDJSON_FILE}..."
-aws s3 cp "${SRC}" "${NDJSON_FILE}" --no-progress
-
-
 # Build an array of arguments to pass to tippecanoe
 TIPPE_ARG_ARRAY=(
   "-e" "tilecache"
@@ -55,6 +51,9 @@ if [ -n "${FILTER}" ]; then
 fi
 
 TIPPE_ARG_ARRAY+=("${NDJSON_FILE}")
+
+echo "Fetching NDJSON file from the Data Lake: ${SRC} -> ${NDJSON_FILE}..."
+aws s3 cp "${SRC}" "${NDJSON_FILE}" --no-progress
 
 echo "Building Tile Cache with Tippecanoe..."
 tippecanoe "${TIPPE_ARG_ARRAY[@]}"
