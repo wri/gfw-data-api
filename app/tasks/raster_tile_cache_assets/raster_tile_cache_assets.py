@@ -32,6 +32,7 @@ from app.utils.path import get_asset_uri, tile_uri_to_tiles_geojson
 
 from ...errors import RecordNotFoundError
 
+
 async def raster_tile_cache_asset(
     dataset: str,
     version: str,

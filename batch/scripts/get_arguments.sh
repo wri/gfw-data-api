@@ -90,6 +90,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      --filter)
+      FILTER="$2"
+      shift
+      shift
+      ;;
       -F|--format)
       FORMAT="$2"
       shift # past argument

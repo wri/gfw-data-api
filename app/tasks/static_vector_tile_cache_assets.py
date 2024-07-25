@@ -3,6 +3,8 @@ import json
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from fastapi.encoders import jsonable_encoder
+
 from ..crud import assets, metadata
 from ..errors import RecordNotFoundError
 from ..models.orm.assets import Asset as ORMAsset
@@ -55,7 +57,9 @@ async def static_vector_tile_cache_asset(
     # Create NDJSON asset as side effect
     ############################
 
-    ndjson_uri = get_asset_uri(dataset, version, AssetType.ndjson)
+    ndjson_uri = get_asset_uri(
+        dataset, version, AssetType.ndjson, creation_options.dict()
+    )
 
     ndjson_asset: ORMAsset = await assets.create_asset(
         dataset,
@@ -77,7 +81,7 @@ async def static_vector_tile_cache_asset(
         "-v",
         version,
         "-f",
-        f"{dataset}_{version}.ndjson",
+        f"{creation_options.implementation}.ndjson",
         "-F",
         "GeoJSONSeq",
         "-T",
@@ -112,6 +116,11 @@ async def static_vector_tile_cache_asset(
         "-I",
         creation_options.implementation,
     ]
+    if creation_options.feature_filter:
+        command += (
+            "--filter",
+            json.dumps(jsonable_encoder(creation_options.feature_filter))
+        )
 
     create_vector_tile_cache = TileCacheJob(
         dataset=dataset,
