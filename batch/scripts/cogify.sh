@@ -11,7 +11,7 @@ set -e
 # --prefix
 
 ME=$(basename "$0")
-#. get_arguments.sh "$@"
+. get_arguments.sh "$@"
 
 set -x
 # download all GeoTiff files
