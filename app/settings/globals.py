@@ -191,5 +191,6 @@ GOOGLE_APPLICATION_CREDENTIALS = config(
 # commercial datasets which shouldn't be downloaded in any way.)
 PROTECTED_QUERY_DATASETS = ["wdpa_licensed_protected_areas"]
 
-# TODO mocking util we can grab this from terraform output
-STATE_MACHINE_ARN = ""
+RASTER_ANALYSIS_STATE_MACHINE_ARN = config(
+    "RASTER_ANALYSIS_STATE_MACHINE_ARN", cast=str, default=None
+)

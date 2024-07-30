@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 
 from ...models.pydantic.user_job import UserJob, UserJobResponse
-from ...settings.globals import STATE_MACHINE_ARN
+from ...settings.globals import RASTER_ANALYSIS_STATE_MACHINE_ARN
 from ...utils.aws import get_sfn_client
 
 router = APIRouter()
@@ -63,9 +63,7 @@ async def _get_user_job(job_id: UUID) -> UserJob:
 
 
 async def _get_sfn_execution(job_id: UUID) -> Dict[str, Any]:
-    execution_arn = (
-        f"{STATE_MACHINE_ARN.replace('stateMachines', 'execution')}:{job_id}"
-    )
+    execution_arn = f"{RASTER_ANALYSIS_STATE_MACHINE_ARN.replace('stateMachines', 'execution')}:{str(job_id)}"
     execution = get_sfn_client().describe_execution(execution_arn)
     return execution
 

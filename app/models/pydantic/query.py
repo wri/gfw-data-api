@@ -13,6 +13,7 @@ class QueryRequestIn(StrictBaseModel):
 class QueryBatchRequestIn(StrictBaseModel):
     feature_collection: Optional[FeatureCollection]
     uri: Optional[str]
+    id_field: str
     sql: str
 
 

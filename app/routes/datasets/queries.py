@@ -20,7 +20,6 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 
 # from fastapi.openapi.models import APIKey
-from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse, RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
@@ -29,7 +28,6 @@ from pglast.printer import RawStream
 from pydantic.tools import parse_obj_as
 
 from ...application import db
-from ...authentication.api_keys import get_api_key
 from ...authentication.token import is_gfwpro_admin_for_query
 
 # from ...authentication.api_keys import get_api_key
@@ -88,7 +86,7 @@ from ...responses import CSVStreamingResponse, ORJSONLiteResponse
 from ...settings.globals import (
     GEOSTORE_SIZE_LIMIT_OTF,
     RASTER_ANALYSIS_LAMBDA_NAME,
-    STATE_MACHINE_ARN,
+    RASTER_ANALYSIS_STATE_MACHINE_ARN,
 )
 from ...utils.aws import get_sfn_client, invoke_lambda
 from ...utils.geostore import get_geostore
@@ -339,7 +337,7 @@ async def query_dataset_list_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryBatchRequestIn,
-    api_key: APIKey = Depends(get_api_key),
+    # api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
@@ -376,6 +374,7 @@ async def query_dataset_list_post(
 
     input = {
         "query": sql,
+        "id_field": request.id_field,
         "environment": data_environment.dict()["layers"],
     }
 
@@ -401,8 +400,8 @@ async def query_dataset_list_post(
 
 async def _start_batch_execution(job_id: UUID, input: Dict[str, Any]) -> None:
     get_sfn_client().start_execution(
-        stateMachineArn=STATE_MACHINE_ARN,
-        name=job_id,
+        stateMachineArn=RASTER_ANALYSIS_STATE_MACHINE_ARN,
+        name=str(job_id),
         input=json.dumps(input),
     )
 
