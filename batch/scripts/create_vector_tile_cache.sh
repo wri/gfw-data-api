@@ -47,7 +47,8 @@ keep_all) # never drop or coalesce feature, ignore size and feature count
 esac
 
 if [ -n "${FILTER}" ]; then
-  TIPPE_ARG_ARRAY+=("-j" "${FILTER}")
+  echo "${FILTER}" > feature_filter.txt
+  TIPPE_ARG_ARRAY+=("-J" "feature_filter.txt")
 fi
 
 TIPPE_ARG_ARRAY+=("${NDJSON_FILE}")
