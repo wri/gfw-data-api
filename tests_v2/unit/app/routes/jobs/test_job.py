@@ -9,7 +9,7 @@ from app.routes.jobs import job
 TEST_JOB_ID = "f3caa6c8-09d7-43a8-823f-e7528344a169"
 
 
-def _get_sfn_execution_mocked_pending(job_id):
+async def _get_sfn_execution_mocked_pending(job_id):
     return {
         "executionArn": "arn::fake_execution_arn",
         "stateMachineArn": "arn::fake_state_machine_arn",
@@ -20,7 +20,7 @@ def _get_sfn_execution_mocked_pending(job_id):
     }
 
 
-def _get_sfn_execution_mocked_success(job_id):
+async def _get_sfn_execution_mocked_success(job_id):
     return {
         "executionArn": "arn::fake_execution_arn",
         "stateMachineArn": "arn::fake_state_machine_arn",
@@ -36,7 +36,7 @@ def _get_sfn_execution_mocked_success(job_id):
     }
 
 
-def _get_sfn_execution_mocked_failed(job_id):
+async def _get_sfn_execution_mocked_failed(job_id):
     return {
         "executionArn": "arn::fake_execution_arn",
         "stateMachineArn": "arn::fake_state_machine_arn",
@@ -47,7 +47,7 @@ def _get_sfn_execution_mocked_failed(job_id):
     }
 
 
-def _get_map_run_mocked(job_id):
+async def _get_map_run_mocked(job_id):
     return {
         "executionArn": "arn::fake_execution_arn",
         "mapRunArn": "arn::fake_map_run_arn",

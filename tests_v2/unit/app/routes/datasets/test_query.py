@@ -682,6 +682,7 @@ async def test_query_batch_feature_collection(
     payload = {
         "sql": "select count(*) from data",
         "feature_collection": FEATURE_COLLECTION,
+        "id_field": "id",
     }
 
     response = await async_client.post(
@@ -727,6 +728,7 @@ async def test_query_batch_uri(
     payload = {
         "sql": "select count(*) from data",
         "uri": "s3://path/to/files",
+        "id_field": "id",
     }
 
     response = await async_client.post(
