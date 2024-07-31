@@ -26,7 +26,7 @@ else
 
   # merge all rasters into one huge raster using COG block size
   gdal_translate -of GTiff -co TILED=YES -co BLOCKXSIZE="${BLOCK_SIZE}" -co BLOCKYSIZE="${BLOCK_SIZE}" -co COMPRESS=DEFLATE -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS "${IMPLEMENTATION}_merged.vrt" "${IMPLEMENTATION}_merged.tif"
-  aws s3 cp merged.tif "${PREFIX}/${IMPLEMENTATION}_merged.tif"
+  aws s3 cp "${IMPLEMENTATION}_merged.tif" "${PREFIX}/${IMPLEMENTATION}_merged.tif"
 fi
 
 if [[ $(aws s3 ls "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr") ]]; then
@@ -34,7 +34,7 @@ if [[ $(aws s3 ls "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr") ]]; then
 else
   # generate overviews externally
   gdaladdo "${IMPLEMENTATION}_merged.tif" -r "${RESAMPLE}" -ro --config GDAL_NUM_THREADS ALL_CPUS --config GDAL_CACHEMAX 70% --config COMPRESS_OVERVIEW DEFLATE
-  aws s3 cp merged.tif.ovr "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr"
+  aws s3 cp "${IMPLEMENTATION}_merged.tif.ovr" "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr"
 fi
 
 # convert to COG using existing overviews, this adds some additional layout optimizations
@@ -44,8 +44,8 @@ gdal_translate "${IMPLEMENTATION}_merged.tif" "${IMPLEMENTATION}.tif" -of COG -c
 aws s3 cp "${IMPLEMENTATION}.tif" "${TARGET}"
 
 # delete intermediate file
-aws s3 rm "${PREFIX}/merged.tif"
-aws s3 rm "${PREFIX}/merged.tif.ovr"
+aws s3 rm "${PREFIX}/${IMPLEMENTATION}_merged.tif"
+aws s3 rm "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr"
 
 if [ -n "$EXPORT_TO_GEE" ]; then
   export_to_gee.py --dataset "${DATASET}" --implementation "${IMPLEMENTATION}"
