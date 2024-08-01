@@ -46,7 +46,7 @@ module "query_get" {
   authorizer_id = aws_api_gateway_authorizer.api_key.id
   api_resource  = module.query_resource.aws_api_gateway_resource
 
-  require_api_key = false
+  require_api_key = true
   http_method     = "GET"
   authorization   = "CUSTOM"
 
@@ -73,7 +73,7 @@ module "query_post" {
   authorizer_id = aws_api_gateway_authorizer.api_key.id
   api_resource  = module.query_resource.aws_api_gateway_resource
 
-  require_api_key = false
+  require_api_key = true
   http_method     = "POST"
   authorization   = "CUSTOM"
 
