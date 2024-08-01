@@ -184,3 +184,10 @@ data "template_file" "tile_cache_bucket_policy" {
     bucket_arn = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_arn
   }
 }
+
+data "template_file" "step_function_policy" {
+  template = file("${path.root}/templates/step_function_policy.json.tmpl")
+  vars = {
+    raster_analysis_state_machine_arn = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_state_machine_arn
+  }
+}
