@@ -39,14 +39,16 @@ async def get_job(*, job_id: UUID = Path(...)) -> UserJobResponse:
 
 async def _get_user_job(job_id: UUID) -> UserJob:
     execution = await _get_sfn_execution(job_id)
+    output = (
+        json.loads(execution["output"]) if execution["output"] is not None else None
+    )
 
-    if execution["status"] == "SUCCEEDED":
-        output = json.loads(execution["output"])
-
+    if execution["status"] == "SUCCEEDED" and output["status"] == "success":
         return UserJob(
             job_id=job_id,
             status="saved",
-            download_link=output["download_link"],
+            download_link=output["data"]["download_link"],
+            failed_geometries_link=output["data"]["failed_geometries_link"],
             progress="100%",
         )
     elif execution["status"] == "RUNNING":
@@ -54,11 +56,16 @@ async def _get_user_job(job_id: UUID) -> UserJob:
             job_id=job_id,
             status="pending",
             download_link=None,
+            failed_geometries_link=None,
             progress=await _get_progress(execution),
         )
     else:
         return UserJob(
-            job_id=job_id, status="failed", download_link=None, progress=None
+            job_id=job_id,
+            status="failed",
+            download_link=None,
+            failed_geometries_link=None,
+            progress=None,
         )
 
 

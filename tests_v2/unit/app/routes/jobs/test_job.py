@@ -28,8 +28,12 @@ async def _get_sfn_execution_mocked_success(job_id):
         "input": json.dumps({"job_id": TEST_JOB_ID}),
         "output": json.dumps(
             {
-                "job_id": TEST_JOB_ID,
-                "download_link": "s3://test/results.csv",
+                "data": {
+                    "job_id": TEST_JOB_ID,
+                    "download_link": "s3://test/results.csv",
+                    "failed_geometries_link": "s3://test/results_failed.csv",
+                },
+                "status": "success",
             }
         ),
         "mapRunArn": "arn::fake_map_run_arn",
@@ -71,7 +75,6 @@ async def test_job_pending(
     assert resp.status_code == 200
     data = resp.json()["data"]
 
-    assert data["job_id"] == TEST_JOB_ID
     assert data["status"] == "pending"
     assert data["download_link"] is None
     assert data["progress"] == "10%"

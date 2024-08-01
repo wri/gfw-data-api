@@ -10,6 +10,7 @@ class UserJob(BaseModel):
     job_id: UUID
     status: str = "pending"
     download_link: Optional[str] = None
+    failed_geometries_link: Optional[str] = None
     progress: Optional[str] = "0%"
 
 
