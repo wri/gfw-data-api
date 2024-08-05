@@ -4,5 +4,5 @@ set -e
 
 GIT_SHA=$(git rev-parse HEAD)
 
-docker-compose -f terraform/docker/docker-compose.yml build
-docker-compose -f terraform/docker/docker-compose.yml run --rm terraform "$@" -var="git_sha=${GIT_SHA}"
+docker compose -f terraform/docker/docker-compose.yml build
+docker compose -f terraform/docker/docker-compose.yml run --rm terraform "$@" -var="git_sha=${GIT_SHA}"
