@@ -2,7 +2,7 @@
 
 set -e
 
-docker-compose -f docker-compose.dev.yml build app
-docker-compose -f docker-compose.dev.yml --project-name gfw-data-api_dev run --rm --entrypoint alembic app revision --autogenerate
+docker compose -f docker-compose.dev.yml build app
+docker compose -f docker-compose.dev.yml --project-name gfw-data-api_dev run --rm --entrypoint alembic app revision --autogenerate
 
 git add app/models/orm/migrations/versions
