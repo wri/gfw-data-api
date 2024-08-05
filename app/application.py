@@ -1,4 +1,5 @@
 from asyncio import Future
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Optional
 
@@ -11,6 +12,10 @@ from .settings.globals import (
     DATABASE_CONFIG,
     SQL_REQUEST_TIMEOUT,
     WRITE_DATABASE_CONFIG,
+    WRITER_MIN_POOL_SIZE,
+    WRITER_MAX_POOL_SIZE,
+    READER_MIN_POOL_SIZE,
+    READER_MAX_POOL_SIZE,
 )
 
 # Set the current engine using a ContextVar to assure
@@ -33,30 +38,12 @@ class ContextualGino(Gino):
             logger.debug(f"Set bind to {bind.repr(color=True)}")
             return bind
         except LookupError:
-            # not in a request
-            logger.debug("Not in a request, using default bind")
-            return self._bind
+            logger.debug("Not in a request, using READ engine")
+            return READ_ENGINE
 
     @bind.setter
     def bind(self, val):
         self._bind = val
-
-
-app = FastAPI(title="GFW Data API", redoc_url="/")
-
-# Create Contextual Database, using default connection and pool size = 0
-# We will bind actual connection pools based on path operation using middleware
-# This allows us to query load-balanced Aurora read replicas for read-only operations
-# and Aurora Write Node for write operations
-db = ContextualGino(
-    app=app,
-    host=DATABASE_CONFIG.host,
-    port=DATABASE_CONFIG.port,
-    user=DATABASE_CONFIG.username,
-    password=DATABASE_CONFIG.password,
-    database=DATABASE_CONFIG.database,
-    pool_min_size=0,
-)
 
 
 class ContextEngine(object):
@@ -91,35 +78,30 @@ class ContextEngine(object):
         return engine
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initializing the database connections on startup."""
-
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     global WRITE_ENGINE
     global READ_ENGINE
 
     WRITE_ENGINE = await create_engine(
-        WRITE_DATABASE_CONFIG.url, max_size=5, min_size=1
+        WRITE_DATABASE_CONFIG.url,
+        max_size=WRITER_MAX_POOL_SIZE,
+        min_size=WRITER_MIN_POOL_SIZE,
     )
     logger.info(
         f"Database connection pool for write operation created: {WRITE_ENGINE.repr(color=True)}"
     )
     READ_ENGINE = await create_engine(
         DATABASE_CONFIG.url,
-        max_size=10,
-        min_size=5,
+        max_size=READER_MAX_POOL_SIZE,
+        min_size=READER_MIN_POOL_SIZE,
         command_timeout=SQL_REQUEST_TIMEOUT,
     )
     logger.info(
         f"Database connection pool for read operation created: {READ_ENGINE.repr(color=True)}"
     )
 
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Closing the database connections on shutdown."""
-    global WRITE_ENGINE
-    global READ_ENGINE
+    yield
 
     if WRITE_ENGINE:
         logger.info(
@@ -137,3 +119,20 @@ async def shutdown_event():
         logger.info(
             f"Closed database connection for read operations {READ_ENGINE.repr(color=True)}"
         )
+
+
+app: FastAPI = FastAPI(title="GFW Data API", redoc_url="/", lifespan=lifespan)
+
+# Create Contextual Database, using default connection and pool size = 0
+# We will bind actual connection pools based on path operation using middleware
+# This allows us to query load-balanced Aurora read replicas for read-only operations
+# and Aurora Write Node for write operations
+db = ContextualGino(
+    app=app,
+    host=DATABASE_CONFIG.host,
+    port=DATABASE_CONFIG.port,
+    user=DATABASE_CONFIG.username,
+    password=DATABASE_CONFIG.password,
+    database=DATABASE_CONFIG.database,
+    pool_min_size=0,
+)

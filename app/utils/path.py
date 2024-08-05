@@ -69,7 +69,7 @@ def get_asset_uri(
         AssetType.cog: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/{srid}/cog/{implementation}.tif",
         AssetType.raster_tile_cache: f"{TILE_CACHE_URL}/{dataset}/{version}/{implementation}/{{z}}/{{x}}/{{y}}.png",
         AssetType.shapefile: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{srid}/{dataset}_{version}.shp.zip",
-        AssetType.ndjson: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{srid}/{dataset}_{version}.ndjson",
+        AssetType.ndjson: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{srid}/{implementation}.ndjson",
         AssetType.grid_1x1: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{srid}/{dataset}_{version}_1x1.tsv",
         AssetType.geopackage: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/vector/{srid}/{dataset}_{version}.gpkg",
         AssetType.csv: f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/text/{dataset}_{version}.csv",

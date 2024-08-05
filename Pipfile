@@ -4,6 +4,7 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+asgi_lifespan = "*"
 black = "*"
 detect-secrets = "*"
 docker = "*"
@@ -14,13 +15,14 @@ geopandas = "*"  # Needed by pixetl in batch script test
 gfw_pixetl = {git = "https://github.com/wri/gfw_pixetl.git", ref = "develop"}
 moto = {version = "<5", extras = ["awslambda", "batch", "ec2", "s3", "secretsmanager"]}
 openapi_spec_validator = "*"
+pandas = "<2.2"  # Needed by pixetl in batch script test
 pre-commit = "*"
 pytest = "*"
-pytest-asyncio = "<0.19"
+pytest-asyncio = "*"
 pytest-cov = "*"
 pytest-timeout = "*"
 rasterio = "*"
-responses = "<0.16"
+responses = "*"
 retrying = "*"  # Needed by pixetl in batch script test
 
 [packages]
@@ -34,16 +36,16 @@ asyncpg = "*"
 boto3 = "*"
 botocore = "*"
 email-validator = "*"
-fastapi = "<0.68"
+fastapi = "*"
 geoalchemy2 = "<0.12"
 geojson = "*"
 gino = "*"
-gino_starlette = "==0.1.2"
+gino_starlette = "*"
 google-cloud-storage = "*"
 httpcore = "*"
 httpx = "*"
 httpx-auth = "*"
-numpy = "*"
+numpy = "<2.0"
 orjson = "*"
 packaging = "*"
 pendulum = "<3"
@@ -56,7 +58,7 @@ python-multipart = "*"
 shapely = "*"
 sqlalchemy = "<1.4"
 sqlalchemy-utils = "*"
-starlette = "<0.15"
+starlette = "*"
 typer = "*"
 uvicorn = {version = "*", extras = ["standard"]}
 
