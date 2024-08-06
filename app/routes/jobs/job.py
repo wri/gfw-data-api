@@ -15,6 +15,7 @@ from fastapi.responses import ORJSONResponse
 from ...models.pydantic.user_job import UserJob, UserJobResponse
 from ...settings.globals import RASTER_ANALYSIS_STATE_MACHINE_ARN
 from ...utils.aws import get_sfn_client
+from ..datasets import _get_presigned_url
 
 router = APIRouter()
 
@@ -39,18 +40,32 @@ async def get_job(*, job_id: UUID = Path(...)) -> UserJobResponse:
 
 async def _get_user_job(job_id: UUID) -> UserJob:
     execution = await _get_sfn_execution(job_id)
-    output = (
-        json.loads(execution["output"]) if execution["output"] is not None else None
-    )
 
-    if execution["status"] == "SUCCEEDED" and output["status"] == "success":
+    if execution["status"] == "SUCCEEDED":
+        output = (
+            json.loads(execution["output"]) if execution["output"] is not None else None
+        )
+
+        if output["status"] == "success":
+            download_link = await _get_presigned_url(output["data"]["download_link"])
+            failed_geometries_link = None
+        elif output["status"] == "partial_success":
+            download_link = await _get_presigned_url(output["data"]["download_link"])
+            failed_geometries_link = await _get_presigned_url(
+                output["data"]["failed_geometries_link"]
+            )
+        else:
+            download_link = None
+            failed_geometries_link = None
+
         return UserJob(
             job_id=job_id,
-            status="saved",
-            download_link=output["data"]["download_link"],
-            failed_geometries_link=output["data"]["failed_geometries_link"],
-            progress="100%",
+            status=output["status"],
+            download_link=download_link,
+            failed_geometries_link=failed_geometries_link,
+            progress=await _get_progress(execution),
         )
+
     elif execution["status"] == "RUNNING":
         return UserJob(
             job_id=job_id,

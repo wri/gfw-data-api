@@ -2,10 +2,12 @@ from collections import defaultdict
 from typing import Any, Dict, List, Sequence
 from urllib.parse import urlparse
 
+from botocore.exceptions import ClientError
 from fastapi import HTTPException
 
 from ...crud import assets
 from ...crud import versions as _versions
+from ...main import logger
 from ...models.enum.assets import AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
@@ -13,7 +15,7 @@ from ...tasks.raster_tile_cache_assets import raster_tile_cache_validator
 from ...tasks.raster_tile_set_assets.raster_tile_set_assets import (
     raster_tile_set_validator,
 )
-from ...utils.aws import get_aws_files
+from ...utils.aws import get_aws_files, get_s3_client
 from ...utils.google import get_gs_files
 
 SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
@@ -157,3 +159,17 @@ def _verify_source_file_access(sources: List[str]) -> None:
                 f"Invalid sources: {invalid_sources}"
             ),
         )
+
+
+async def _get_presigned_url(bucket, key):
+    s3_client = get_s3_client()
+    try:
+        presigned_url = s3_client.generate_presigned_url(
+            "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=900
+        )
+    except ClientError as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=404, detail="Requested resources does not exist."
+        )
+    return presigned_url
