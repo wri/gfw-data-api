@@ -375,9 +375,15 @@ async def query_dataset_list_post(
         "environment": data_environment.dict()["layers"],
     }
 
-    if request.feature_collection:
+    if request.feature_collection is not None:
+        if request.uri is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="Must provide only one of valid feature collection or URI.",
+            )
+
         input["feature_collection"] = jsonable_encoder(request.feature_collection)
-    elif request.uri:
+    elif request.uri is not None:
         _verify_source_file_access([request.uri])
         input["uri"] = request.uri
     else:
