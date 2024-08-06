@@ -336,8 +336,19 @@ async def query_dataset_list_post(
     request: QueryBatchRequestIn,
     # api_key: APIKey = Depends(get_api_key),
 ):
-    """Execute a READ-ONLY SQL query on the given dataset version (if
-    implemented)."""
+    """Execute a READ-ONLY SQL query on the specified raster-based dataset version
+    for a potentially large list of features. The features may be specified by an
+    inline GeoJson feature collection or the URI of a file in CSV or GeoJson format.
+    For CSV files, the geometry column should be named "WKT" and the geometry values
+    should be in WKB format.
+
+    The specified sql query will be run on each individual feature, and so may take a
+    while. Therefore, the results of this query include a job_id. The user should
+    then periodically query the specified job via the /job/{job_id} api. When the
+    "data.status" indicates "saved", then the results will be available at the specified
+    "data.download_link" and "data.failed_geometries_link".
+
+    """
 
     dataset, version = dataset_version
 
