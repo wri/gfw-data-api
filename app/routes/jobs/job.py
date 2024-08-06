@@ -15,7 +15,7 @@ from fastapi.responses import ORJSONResponse
 from ...models.pydantic.user_job import UserJob, UserJobResponse
 from ...settings.globals import RASTER_ANALYSIS_STATE_MACHINE_ARN
 from ...utils.aws import get_sfn_client
-from ..datasets import _get_presigned_url
+from ..datasets import _get_presigned_url_from_path
 
 router = APIRouter()
 
@@ -47,11 +47,15 @@ async def _get_user_job(job_id: UUID) -> UserJob:
         )
 
         if output["status"] == "success":
-            download_link = await _get_presigned_url(output["data"]["download_link"])
+            download_link = await _get_presigned_url_from_path(
+                output["data"]["download_link"]
+            )
             failed_geometries_link = None
         elif output["status"] == "partial_success":
-            download_link = await _get_presigned_url(output["data"]["download_link"])
-            failed_geometries_link = await _get_presigned_url(
+            download_link = await _get_presigned_url_from_path(
+                output["data"]["download_link"]
+            )
+            failed_geometries_link = await _get_presigned_url_from_path(
                 output["data"]["failed_geometries_link"]
             )
         else:

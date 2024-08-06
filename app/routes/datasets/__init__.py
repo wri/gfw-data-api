@@ -7,7 +7,6 @@ from fastapi import HTTPException
 
 from ...crud import assets
 from ...crud import versions as _versions
-from ...main import logger
 from ...models.enum.assets import AssetType
 from ...models.orm.assets import Asset as ORMAsset
 from ...models.orm.versions import Version as ORMVersion
@@ -17,6 +16,7 @@ from ...tasks.raster_tile_set_assets.raster_tile_set_assets import (
 )
 from ...utils.aws import get_aws_files, get_s3_client
 from ...utils.google import get_gs_files
+from ...utils.path import split_s3_path
 
 SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
     ".csv",
@@ -161,14 +161,18 @@ def _verify_source_file_access(sources: List[str]) -> None:
         )
 
 
+async def _get_presigned_url_from_path(path):
+    bucket, key = split_s3_path(path)
+    return await _get_presigned_url(bucket, key)
+
+
 async def _get_presigned_url(bucket, key):
     s3_client = get_s3_client()
     try:
         presigned_url = s3_client.generate_presigned_url(
             "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=900
         )
-    except ClientError as e:
-        logger.error(e)
+    except ClientError:
         raise HTTPException(
             status_code=404, detail="Requested resources does not exist."
         )
