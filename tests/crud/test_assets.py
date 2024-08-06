@@ -19,8 +19,7 @@ from app.errors import RecordAlreadyExistsError, RecordNotFoundError
 from app.models.pydantic.asset_metadata import DatabaseTableMetadata
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.metadata import DatasetMetadata, VersionMetadata
-
-from ..utils import (
+from tests.utils import (
     asset_metadata,
     dataset_metadata,
     raster_asset_metadata,
@@ -29,7 +28,7 @@ from ..utils import (
 
 
 @pytest.mark.asyncio
-async def test_assets():
+async def test_assets(app):
     """Testing all CRUD operations on assets in one go."""
 
     dataset_name = "test"
@@ -43,7 +42,7 @@ async def test_assets():
     assert new_version.dataset == dataset_name
     assert new_version.version == version_name
 
-    # There should be no assert for current version
+    # There should be no asset for current version
     # This will throw an error b/c when initialized correctly,
     # there will be always a default asset
     assets = await get_assets_by_filter(dataset=dataset_name, version=version_name)
@@ -81,7 +80,7 @@ async def test_assets():
     assert new_row.status == "pending"
     assert new_row.is_managed is True
     assert new_row.creation_options == {}
-    assert new_row.metadata == None
+    assert new_row.metadata is None
     assert new_row.change_log == []
 
     # This shouldn't work a second time
@@ -139,7 +138,7 @@ async def test_assets():
     result = ""
     _asset_id = uuid4()
     try:
-        await get_asset(_asset_id)
+        _ = await get_asset(_asset_id)
     except RecordNotFoundError as e:
         result = str(e)
 
@@ -162,20 +161,20 @@ async def test_assets():
     assert row.change_log[0]["status"] == logs.dict(by_alias=True)["status"]
     assert row.change_log[0]["message"] == logs.dict(by_alias=True)["message"]
 
-    # When deleting a dataset, method should return the deleted object
+    # When deleting asset, method should return the deleted object
     async with ContextEngine("WRITE"):
         row = await delete_asset(asset_id)
     assert row.dataset == dataset_name
     assert row.version == version_name
 
-    # After deleting the dataset, there should be an empty DB
+    # After deleting the asset, there should be an empty DB
     rows = await get_assets_by_filter()
     assert isinstance(rows, list)
     assert len(rows) == 0
 
 
 @pytest.mark.asyncio
-async def test_assets_metadata():
+async def test_assets_metadata(app):
     """Testing all CRUD operations on dataset in one go."""
 
     dataset = "test"
@@ -206,31 +205,27 @@ async def test_assets_metadata():
         == asset_metadata["fields"][0]["data_type"]
     )
 
-    async with ContextEngine("READ"):
-        asset = await get_asset(asset_id)
+    asset = await get_asset(asset_id)
     assert asset.metadata.fields[0].name == asset_metadata["fields"][0]["name"]
     assert (
         asset.metadata.fields[0].data_type == asset_metadata["fields"][0]["data_type"]
     )
 
-    async with ContextEngine("READ"):
-        assets = await get_assets_by_filter(dataset=dataset, version=version)
+    assets = await get_assets_by_filter(dataset=dataset, version=version)
     assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
     assert (
         assets[0].metadata.fields[0].data_type
         == asset_metadata["fields"][0]["data_type"]
     )
 
-    async with ContextEngine("READ"):
-        assets = await get_assets_by_filter(asset_types=["Database table"])
+    assets = await get_assets_by_filter(asset_types=["Database table"])
     assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
     assert (
         assets[0].metadata.fields[0].data_type
         == asset_metadata["fields"][0]["data_type"]
     )
 
-    async with ContextEngine("READ"):
-        assets = await get_assets_by_filter()
+    assets = await get_assets_by_filter()
     assert assets[0].metadata.fields[0].name == asset_metadata["fields"][0]["name"]
     assert (
         assets[0].metadata.fields[0].data_type
@@ -250,7 +245,7 @@ async def test_assets_metadata():
 
 
 @pytest.mark.asyncio
-async def test_band_metadata():
+async def test_band_metadata(app):
     """Testing band metadata."""
 
     dataset = "test"
