@@ -8,20 +8,6 @@ from starlette.datastructures import Secret
 from ..models.enum.pixetl import ResamplingMethod
 from ..models.pydantic.database import DatabaseURL
 
-#
-# def _remove_revision(arn: str) -> str:
-#     """Remove revision number from batch job description arn."""
-#     arn_items = arn.split(":")
-#     revision = arn_items.pop()
-#     try:
-#         # Check if revision is a number
-#         int(revision)
-#         return ":".join(arn_items)
-#     except (ValueError, TypeError):
-#         # if not, this means that there was no revision number in first place and we can use the input
-#         return arn
-
-
 # Read .env file, if exists
 p: Path = Path(__file__).parents[2] / ".env"
 config: Config = Config(p if p.exists() else None)
@@ -70,6 +56,8 @@ READER_PASSWORD: Optional[Secret] = config(
 READER_HOST: str = config("DB_HOST_RO", cast=str, default=DB_READER_SECRET["host"])
 READER_PORT: int = config("DB_PORT_RO", cast=int, default=DB_READER_SECRET["port"])
 READER_DBNAME = config("DATABASE_RO", cast=str, default=DB_READER_SECRET["dbname"])
+READER_MIN_POOL_SIZE: int = config("READER_MIN_POOL_SIZE", cast=int, default=5)
+READER_MAX_POOL_SIZE: int = config("READER_MAX_POOL_SIZE", cast=int, default=10)
 
 WRITER_USERNAME: Optional[str] = config(
     "DB_USER", cast=str, default=DB_WRITER_SECRET["username"]
@@ -80,6 +68,8 @@ WRITER_PASSWORD: Optional[Secret] = config(
 WRITER_HOST: str = config("DB_HOST", cast=str, default=DB_WRITER_SECRET["host"])
 WRITER_PORT: int = config("DB_PORT", cast=int, default=DB_WRITER_SECRET["port"])
 WRITER_DBNAME = config("DATABASE", cast=str, default=DB_WRITER_SECRET["dbname"])
+WRITER_MIN_POOL_SIZE: int = config("WRITER_MIN_POOL_SIZE", cast=int, default=1)
+WRITER_MAX_POOL_SIZE: int = config("WRITER_MAX_POOL_SIZE", cast=int, default=5)
 
 if ENV == "dev":
     NAME_SUFFIX = config("NAME_SUFFIX", cast=str)

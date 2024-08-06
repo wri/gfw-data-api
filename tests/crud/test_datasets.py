@@ -12,12 +12,11 @@ from app.crud.datasets import (
 from app.errors import RecordAlreadyExistsError, RecordNotFoundError
 from app.models.pydantic.datasets import DatasetUpdateIn
 from app.models.pydantic.metadata import DatasetMetadata
-
-from ..utils import dataset_metadata
+from tests.utils import dataset_metadata
 
 
 @pytest.mark.asyncio
-async def test_dataset():
+async def test_dataset(app):
     """Testing all CRUD operations on dataset in one go."""
 
     # There should be an empty DB
@@ -73,7 +72,7 @@ async def test_dataset():
     # But only if the dataset exists
     result = ""
     try:
-        await get_dataset("test2")
+        _ = await get_dataset("test2")
     except RecordNotFoundError as e:
         result = str(e)
 
