@@ -29,8 +29,8 @@ from starlette.responses import JSONResponse, RedirectResponse
 
 from app.models.pydantic.responses import Response
 from app.settings.globals import API_URL
-from ..datasets.downloads import _get_presigned_url
 
+from ...authentication.token import get_manager
 from ...crud import assets
 from ...crud import metadata as metadata_crud
 from ...crud import tasks
@@ -49,6 +49,7 @@ from ...models.pydantic.asset_metadata import (
     asset_metadata_factory,
 )
 from ...models.pydantic.assets import AssetResponse, AssetType, AssetUpdateIn
+from ...models.pydantic.authentication import User
 from ...models.pydantic.change_log import ChangeLog, ChangeLogResponse
 from ...models.pydantic.creation_options import (
     CreationOptions,
@@ -69,11 +70,9 @@ from ...tasks.delete_assets import (
 from ...utils.paginate import paginate_collection
 from ...utils.path import infer_srid_from_grid, split_s3_path
 from ..assets import asset_response
-from ..tasks import paginated_tasks_response, tasks_response
-
-from ...authentication.token import get_manager
-from ...models.pydantic.authentication import User
+from ..datasets import _get_presigned_url
 from ..datasets.dataset import get_owner
+from ..tasks import paginated_tasks_response, tasks_response
 
 router = APIRouter()
 
@@ -111,7 +110,8 @@ async def update_asset(
 ) -> AssetResponse:
     """Update Asset metadata.
 
-    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
     """
 
     try:
@@ -322,7 +322,7 @@ async def get_tiles_info(asset_id: UUID = Path(...)):
     if asset.asset_type != AssetType.raster_tile_set:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Tiles information only available for raster tile sets"
+            detail="Tiles information only available for raster tile sets",
         )
 
     bucket, asset_key = split_s3_path(asset.asset_uri)
@@ -383,12 +383,16 @@ async def get_field_metadata(*, asset_id: UUID = Path(...), field_name: str):
     response_model=FieldMetadataResponse,
 )
 async def update_field_metadata(
-    *, asset_id: UUID = Path(...), field_name: str, request: FieldMetadataUpdate,
+    *,
+    asset_id: UUID = Path(...),
+    field_name: str,
+    request: FieldMetadataUpdate,
     user: User = Depends(get_manager),
 ):
     """Update the field metadata for an asset.
 
-    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
     """
 
     try:
@@ -434,7 +438,8 @@ async def get_metadata(asset_id: UUID = Path(...)):
 async def create_metadata(*, asset_id: UUID = Path(...), request: AssetMetadata):
     """Create metadata record for an asset.
 
-    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
     """
     input_data = request.dict(exclude_none=True, by_alias=True)
     asset = await assets.get_asset(asset_id)
@@ -457,11 +462,16 @@ async def create_metadata(*, asset_id: UUID = Path(...), request: AssetMetadata)
     tags=["Assets"],
     response_model=AssetMetadataResponse,
 )
-async def update_metadata(*, asset_id: UUID = Path(...), request: AssetMetadataUpdate,
-                          user: User = Depends(get_manager)):
+async def update_metadata(
+    *,
+    asset_id: UUID = Path(...),
+    request: AssetMetadataUpdate,
+    user: User = Depends(get_manager),
+):
     """Update metadata record for an asset.
 
-    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
     """
 
     input_data = request.dict(exclude_none=True, by_alias=True)
@@ -488,11 +498,13 @@ async def update_metadata(*, asset_id: UUID = Path(...), request: AssetMetadataU
     tags=["Assets"],
     response_model=AssetMetadataResponse,
 )
-async def delete_metadata(asset_id: UUID = Path(...),
-                          user: User = Depends(get_manager)):
+async def delete_metadata(
+    asset_id: UUID = Path(...), user: User = Depends(get_manager)
+):
     """Delete an asset's metadata record.
 
-    Only the dataset's owner or a user with `ADMIN` user role can do this operation.
+    Only the dataset's owner or a user with `ADMIN` user role can do
+    this operation.
     """
     try:
         asset = await assets.get_asset(asset_id)

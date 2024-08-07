@@ -86,6 +86,10 @@ async def invoke_lambda_mocked(
     return httpx.Response(200, json={"status": "success", "data": []})
 
 
+async def start_batch_execution_mocked(job_id: uuid.UUID, input: Dict[str, Any]):
+    pass
+
+
 def void_function(*args, **kwargs) -> None:
     return
 

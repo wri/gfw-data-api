@@ -38,3 +38,8 @@ resource "aws_iam_policy" "tile_cache_bucket_policy" {
   name   = substr("${local.project}-tile_cache_bucket_policy${local.name_suffix}", 0, 64)
   policy = data.template_file.tile_cache_bucket_policy.rendered
 }
+
+resource "aws_iam_policy" "step_function_policy" {
+  name   = substr("${local.project}-step_function_policy${local.name_suffix}", 0, 64)
+  policy = data.template_file.step_function_policy.rendered
+}

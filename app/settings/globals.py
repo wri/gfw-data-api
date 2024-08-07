@@ -8,7 +8,6 @@ from starlette.datastructures import Secret
 from ..models.enum.pixetl import ResamplingMethod
 from ..models.pydantic.database import DatabaseURL
 
-
 # Read .env file, if exists
 p: Path = Path(__file__).parents[2] / ".env"
 config: Config = Config(p if p.exists() else None)
@@ -181,3 +180,7 @@ GOOGLE_APPLICATION_CREDENTIALS = config(
 # Datasets that require admin privileges to do a query. (Extra protection on
 # commercial datasets which shouldn't be downloaded in any way.)
 PROTECTED_QUERY_DATASETS = ["wdpa_licensed_protected_areas"]
+
+RASTER_ANALYSIS_STATE_MACHINE_ARN = config(
+    "RASTER_ANALYSIS_STATE_MACHINE_ARN", cast=str, default=None
+)

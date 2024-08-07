@@ -1,11 +1,14 @@
 """Explore data entries for a given dataset version using standard SQL."""
 import csv
+import json
 import re
+import uuid
 from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
+import botocore
 import httpx
 from async_lru import alru_cache
 from asyncpg import DataError, InsufficientPrivilegeError, SyntaxOrAccessError
@@ -15,16 +18,16 @@ from fastapi import Response as FastApiResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
-from fastapi.responses import RedirectResponse
+from fastapi.responses import ORJSONResponse, RedirectResponse
 from pglast import printers  # noqa
 from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
 from pydantic.tools import parse_obj_as
 
-from ...authentication.token import is_gfwpro_admin_for_query
 from ...application import db
 from ...authentication.api_keys import get_api_key
+from ...authentication.token import is_gfwpro_admin_for_query
 from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
@@ -63,7 +66,11 @@ from ...models.orm.queries.raster_assets import latest_raster_tile_sets
 from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
 from ...models.pydantic.creation_options import NoDataType
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
-from ...models.pydantic.query import CsvQueryRequestIn, QueryRequestIn
+from ...models.pydantic.query import (
+    CsvQueryRequestIn,
+    QueryBatchRequestIn,
+    QueryRequestIn,
+)
 from ...models.pydantic.raster_analysis import (
     DataEnvironment,
     DerivedLayer,
@@ -71,17 +78,24 @@ from ...models.pydantic.raster_analysis import (
     SourceLayer,
 )
 from ...models.pydantic.responses import Response
+from ...models.pydantic.user_job import UserJob, UserJobResponse
 from ...responses import CSVStreamingResponse, ORJSONLiteResponse
-from ...settings.globals import GEOSTORE_SIZE_LIMIT_OTF, RASTER_ANALYSIS_LAMBDA_NAME
-from ...utils.aws import invoke_lambda
+from ...settings.globals import (
+    GEOSTORE_SIZE_LIMIT_OTF,
+    RASTER_ANALYSIS_LAMBDA_NAME,
+    RASTER_ANALYSIS_STATE_MACHINE_ARN,
+)
+from ...utils.aws import get_sfn_client, invoke_lambda
 from ...utils.geostore import get_geostore
 from .. import dataset_version_dependency
+from . import _verify_source_file_access
 
 router = APIRouter()
 
 
 # Special suffixes to do an extra area density calculation on the raster data set.
 AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "_ha_yr-1"]
+
 
 @router.get(
     "/{dataset}/{version}/query",
@@ -123,7 +137,10 @@ async def query_dataset_json(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
+    geostore_id: Optional[UUID] = Query(
+        None,
+        description="Geostore ID. The geostore must represent a Polygon or MultiPolygon.",
+    ),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
@@ -150,7 +167,6 @@ async def query_dataset_json(
     referenced. There are also several reserved fields with special
     meaning that can be used, including "area__ha", "latitude", and
     "longitude".
-
     """
 
     dataset, version = dataset_version
@@ -182,7 +198,10 @@ async def query_dataset_csv(
     response: FastApiResponse,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
+    geostore_id: Optional[UUID] = Query(
+        None,
+        description="Geostore ID. The geostore must represent a Polygon or MultiPolygon.",
+    ),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
@@ -260,7 +279,6 @@ async def query_dataset_json_post(
 
     dataset, version = dataset_version
 
-    # create geostore with unknowns as blank
     if request.geometry:
         geostore: Optional[GeostoreCommon] = GeostoreCommon(
             geojson=request.geometry, geostore_id=uuid4(), area__ha=0, bbox=[0, 0, 0, 0]
@@ -303,6 +321,92 @@ async def query_dataset_csv_post(
         dataset, version, request.sql, geostore, delimiter=request.delimiter
     )
     return CSVStreamingResponse(iter([csv_data.getvalue()]), download=False)
+
+
+@router.post(
+    "/{dataset}/{version}/query/batch",
+    response_class=ORJSONResponse,
+    response_model=UserJobResponse,
+    tags=["Query"],
+    status_code=202,
+)
+async def query_dataset_list_post(
+    *,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    request: QueryBatchRequestIn,
+    # api_key: APIKey = Depends(get_api_key),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented)."""
+
+    dataset, version = dataset_version
+
+    default_asset: AssetORM = await assets.get_default_asset(dataset, version)
+    if default_asset.asset_type != AssetType.raster_tile_set:
+        raise HTTPException(
+            status_code=400,
+            detail="Querying on lists is only available for raster tile sets.",
+        )
+
+    if request.feature_collection:
+        for feature in request.feature_collection.features:
+            if (
+                feature.geometry.type != "Polygon"
+                and feature.geometry.type != "MultiPolygon"
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Feature collection must only contain Polygons or MultiPolygons for raster analysis",
+                )
+
+    job_id = uuid.uuid4()
+
+    # get grid, query and data environment based on default asset
+    default_layer = _get_default_layer(
+        dataset, default_asset.creation_options["pixel_meaning"]
+    )
+    grid = default_asset.creation_options["grid"]
+    sql = re.sub("from \w+", f"from {default_layer}", request.sql, flags=re.IGNORECASE)
+    data_environment = await _get_data_environment(grid)
+
+    input = {
+        "query": sql,
+        "id_field": request.id_field,
+        "environment": data_environment.dict()["layers"],
+    }
+
+    if request.feature_collection is not None:
+        if request.uri is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="Must provide only one of valid feature collection or URI.",
+            )
+
+        input["feature_collection"] = jsonable_encoder(request.feature_collection)
+    elif request.uri is not None:
+        _verify_source_file_access([request.uri])
+        input["uri"] = request.uri
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Must provide valid feature collection or URI.",
+        )
+
+    try:
+        await _start_batch_execution(job_id, input)
+    except botocore.exceptions.ClientError as error:
+        logger.error(error)
+        return HTTPException(500, "There was an error starting your job.")
+
+    return UserJobResponse(data=UserJob(job_id=job_id))
+
+
+async def _start_batch_execution(job_id: UUID, input: Dict[str, Any]) -> None:
+    get_sfn_client().start_execution(
+        stateMachineArn=RASTER_ANALYSIS_STATE_MACHINE_ARN,
+        name=str(job_id),
+        input=json.dumps(input),
+    )
 
 
 async def _query_dataset_json(
@@ -660,7 +764,7 @@ def _get_area_density_name(nm):
     return nm with the area-density suffix removed."""
     for suffix in AREA_DENSITY_RASTER_SUFFIXES:
         if nm.endswith(suffix):
-            return nm[:-len(suffix)]
+            return nm[: -len(suffix)]
     return ""
 
 

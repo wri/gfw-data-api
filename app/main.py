@@ -31,6 +31,7 @@ from .routes.datasets import (
     versions,
 )
 from .routes.geostore import geostore as geostore_top
+from .routes.jobs import job
 from .routes.tasks import task
 
 ################
@@ -161,6 +162,16 @@ analysis_routers = (analysis.router,)
 for r in analysis_routers:
     app.include_router(r, prefix="/analysis")
 
+
+###############
+# JOB API
+###############
+
+job_routes = (job.router,)
+for r in job_routes:
+    app.include_router(r, prefix="/job")
+
+
 ###############
 # HEALTH API
 ###############
@@ -185,6 +196,7 @@ tags_metadata = [
     {"name": "Geostore", "description": geostore.__doc__},
     {"name": "Tasks", "description": task.__doc__},
     {"name": "Analysis", "description": analysis.__doc__},
+    {"name": "Job", "description": job.__doc__},
     {"name": "Health", "description": health.__doc__},
 ]
 
