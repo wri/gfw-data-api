@@ -102,5 +102,6 @@ async def _get_progress(execution: Dict[str, Any]) -> str:
 
 async def _get_map_run(execution: Dict[str, Any]) -> Dict[str, Any]:
     map_runs = get_sfn_client().list_map_runs(executionArn=execution["executionArn"])
-    map_run = get_sfn_client().describe_map_run(mapRunArn=map_runs[0]["mapRunArn"])
+    map_run_arn = map_runs["mapRuns"][0]["mapRunArn"]
+    map_run = get_sfn_client().describe_map_run(mapRunArn=map_run_arn)
     return map_run
