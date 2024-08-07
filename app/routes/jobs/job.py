@@ -13,7 +13,6 @@ from fastapi import APIRouter, HTTPException, Path
 from fastapi.logger import logger
 from fastapi.responses import ORJSONResponse
 
-from ...errors import BadResponseError
 from ...models.pydantic.user_job import UserJob, UserJobResponse
 from ...settings.globals import RASTER_ANALYSIS_STATE_MACHINE_ARN
 from ...utils.aws import get_sfn_client
@@ -67,7 +66,13 @@ async def _get_user_job(job_id: UUID) -> UserJob:
             )
         else:
             logger.error(f"Analysis service returned an unexpected response: {output}")
-            raise BadResponseError("Analysis service returned an unexpected response.")
+            return UserJob(
+                job_id=job_id,
+                status="failed",
+                download_link=None,
+                failed_geometries_link=None,
+                progress="0%",
+            )
 
         return UserJob(
             job_id=job_id,
