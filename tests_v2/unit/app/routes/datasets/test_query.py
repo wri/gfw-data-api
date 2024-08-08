@@ -1,6 +1,7 @@
 from typing import Tuple
 from unittest.mock import Mock
 from urllib.parse import parse_qsl, urlparse
+from uuid import UUID
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -11,7 +12,11 @@ from app.models.pydantic.raster_analysis import DerivedLayer, SourceLayer
 from app.routes.datasets import queries
 from app.routes.datasets.queries import _get_data_environment
 from tests_v2.fixtures.creation_options.versions import RASTER_CREATION_OPTIONS
-from tests_v2.utils import custom_raster_version, invoke_lambda_mocked
+from tests_v2.utils import (
+    custom_raster_version,
+    invoke_lambda_mocked,
+    start_batch_execution_mocked,
+)
 
 
 @pytest.mark.skip("Temporarily skip until we require API keys")
@@ -75,23 +80,22 @@ async def test_query_dataset_with_unrestricted_api_key(
 
 
 @pytest.mark.asyncio
-async def test_fields_dataset_raster(
-    generic_raster_version, async_client: AsyncClient
-):
+async def test_fields_dataset_raster(generic_raster_version, async_client: AsyncClient):
     dataset_name, version_name, _ = generic_raster_version
     response = await async_client.get(f"/dataset/{dataset_name}/{version_name}/fields")
 
     assert response.status_code == 200
     data = response.json()["data"]
     assert len(data) == 4
-    assert data[0]["pixel_meaning"] == 'area__ha'
-    assert data[0]["values_table"] == None
-    assert data[1]["pixel_meaning"] == 'latitude'
-    assert data[1]["values_table"] == None
-    assert data[2]["pixel_meaning"] == 'longitude'
-    assert data[2]["values_table"] == None
-    assert data[3]["pixel_meaning"] == 'my_first_dataset__year'
-    assert data[3]["values_table"] == None
+    assert data[0]["pixel_meaning"] == "area__ha"
+    assert data[0]["values_table"] is None
+    assert data[1]["pixel_meaning"] == "latitude"
+    assert data[1]["values_table"] is None
+    assert data[2]["pixel_meaning"] == "longitude"
+    assert data[2]["values_table"] is None
+    assert data[3]["pixel_meaning"] == "my_first_dataset__year"
+    assert data[3]["values_table"] is None
+
 
 @pytest.mark.asyncio
 async def test_query_dataset_raster_bad_get(
@@ -237,9 +241,13 @@ async def test_redirect_get_query(
         follow_redirects=False,
     )
     assert response.status_code == 308
-    assert (
-        parse_qsl(urlparse(response.headers["location"]).query, strict_parsing=True)
-        == parse_qsl(urlparse(f"/dataset/{dataset_name}/{version_name}/query/json?{response.request.url.query.decode('utf-8')}").query, strict_parsing=True)
+    assert parse_qsl(
+        urlparse(response.headers["location"]).query, strict_parsing=True
+    ) == parse_qsl(
+        urlparse(
+            f"/dataset/{dataset_name}/{version_name}/query/json?{response.request.url.query.decode('utf-8')}"
+        ).query,
+        strict_parsing=True,
     )
 
 
@@ -483,9 +491,10 @@ async def test_query_vector_asset_disallowed_10(
         "You might need to add explicit type casts."
     )
 
+
 @pytest.mark.asyncio()
 async def test_query_licensed_disallowed_11(
-        licensed_version, apikey, async_client: AsyncClient
+    licensed_version, apikey, async_client: AsyncClient
 ):
     dataset, version, _ = licensed_version
 
@@ -499,9 +508,8 @@ async def test_query_licensed_disallowed_11(
         follow_redirects=True,
     )
     assert response.status_code == 401
-    assert response.json()["message"] == (
-        "Unauthorized query on a restricted dataset"
-    )
+    assert response.json()["message"] == ("Unauthorized query on a restricted dataset")
+
 
 @pytest.mark.asyncio
 @pytest.mark.skip("Temporarily skip while _get_data_environment is being cached")
@@ -655,3 +663,154 @@ async def test__get_data_environment_helper_called(
             no_data_value,
             None,
         )
+
+
+@pytest.mark.asyncio
+async def test_query_batch_feature_collection(
+    generic_raster_version,
+    apikey,
+    monkeypatch: MonkeyPatch,
+    async_client: AsyncClient,
+):
+    dataset_name, version_name, _ = generic_raster_version
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+
+    headers = {"origin": origin, "x-api-key": api_key}
+
+    monkeypatch.setattr(queries, "_start_batch_execution", start_batch_execution_mocked)
+    payload = {
+        "sql": "select count(*) from data",
+        "feature_collection": FEATURE_COLLECTION,
+        "id_field": "id",
+    }
+
+    response = await async_client.post(
+        f"/dataset/{dataset_name}/{version_name}/query/batch",
+        json=payload,
+        headers=headers,
+    )
+
+    print(response.json())
+    assert response.status_code == 202
+
+    data = response.json()["data"]
+
+    # assert valid UUID
+    try:
+        uuid = UUID(data["job_id"])
+    except ValueError:
+        assert False
+
+    assert str(uuid) == data["job_id"]
+
+    assert data["status"] == "pending"
+
+    assert response.json()["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_query_batch_uri(
+    generic_raster_version,
+    apikey,
+    monkeypatch: MonkeyPatch,
+    async_client: AsyncClient,
+):
+    dataset_name, version_name, _ = generic_raster_version
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+
+    headers = {"origin": origin, "x-api-key": api_key}
+
+    monkeypatch.setattr(queries, "_start_batch_execution", start_batch_execution_mocked)
+    monkeypatch.setattr(queries, "_verify_source_file_access", lambda source_uris: True)
+
+    payload = {
+        "sql": "select count(*) from data",
+        "uri": "s3://path/to/files",
+        "id_field": "id",
+    }
+
+    response = await async_client.post(
+        f"/dataset/{dataset_name}/{version_name}/query/batch",
+        json=payload,
+        headers=headers,
+    )
+
+    print(response.json())
+    assert response.status_code == 202
+
+    data = response.json()["data"]
+
+    # assert valid UUID
+    try:
+        uuid = UUID(data["job_id"])
+    except ValueError:
+        assert False
+
+    assert str(uuid) == data["job_id"]
+
+    assert data["status"] == "pending"
+
+    assert response.json()["status"] == "success"
+
+
+FEATURE_COLLECTION = {
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 1,
+            },
+            "geometry": {
+                "coordinates": [
+                    [
+                        [-57.43488539218248, -11.378524299779286],
+                        [-57.43488539218248, -11.871111619666053],
+                        [-56.950732779425806, -11.871111619666053],
+                        [-56.950732779425806, -11.378524299779286],
+                        [-57.43488539218248, -11.378524299779286],
+                    ]
+                ],
+                "type": "Polygon",
+            },
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 2,
+            },
+            "geometry": {
+                "coordinates": [
+                    [
+                        [-55.84751191303597, -11.845408946893727],
+                        [-55.84751191303597, -12.293066281588139],
+                        [-55.32975635387763, -12.293066281588139],
+                        [-55.32975635387763, -11.845408946893727],
+                        [-55.84751191303597, -11.845408946893727],
+                    ]
+                ],
+                "type": "Polygon",
+            },
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 3,
+            },
+            "geometry": {
+                "coordinates": [
+                    [
+                        [-58.36172075077614, -12.835185539172727],
+                        [-58.36172075077614, -13.153322454532116],
+                        [-57.98648069126074, -13.153322454532116],
+                        [-57.98648069126074, -12.835185539172727],
+                        [-58.36172075077614, -12.835185539172727],
+                    ]
+                ],
+                "type": "Polygon",
+            },
+        },
+    ],
+}

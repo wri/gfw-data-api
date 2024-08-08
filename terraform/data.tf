@@ -69,6 +69,7 @@ data "template_file" "container_definition" {
     pixetl_job_definition       = module.batch_job_queues.pixetl_job_definition_arn
     pixetl_job_queue            = module.batch_job_queues.pixetl_job_queue_arn
     raster_analysis_lambda_name = "raster-analysis-tiled_raster_analysis-default"
+    raster_analysis_sfn_arn     = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_state_machine_arn
     service_url                 = local.service_url
     rw_api_url                  = var.rw_api_url
     api_token_secret_arn        = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
@@ -181,5 +182,12 @@ data "template_file" "tile_cache_bucket_policy" {
 
   vars = {
     bucket_arn = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_arn
+  }
+}
+
+data "template_file" "step_function_policy" {
+  template = file("${path.root}/templates/step_function_policy.json.tmpl")
+  vars = {
+    raster_analysis_state_machine_arn = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_state_machine_arn
   }
 }

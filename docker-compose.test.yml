@@ -26,6 +26,7 @@ services:
       - DB_USER_RO=gfw_readonly
       - DB_PASSWORD_RO=readonly        # pragma: allowlist secret
       - DB_PORT_RO=5432
+      - READER_MIN_POOL_SIZE=1
       - LOG_LEVEL=debug
       - AWS_ACCESS_KEY_ID=testing      # pragma: allowlist secret
       - AWS_SECRET_ACCESS_KEY=testing  # pragma: allowlist secret
@@ -71,7 +72,7 @@ services:
 
   test_database_12:
     container_name: gfw-data-api-test-database-12
-    image: postgis/postgis:12-2.5-alpine
+    image: postgis/postgis:12-3.3-alpine
     ports:
       - 54321:5432
     environment:

@@ -1,0 +1,23 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "states:StartExecution"
+            ],
+            "Resource": [
+                "${raster_analysis_state_machine_arn}"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "states:DescribeExecution",
+                "states:DescribeMapRun",
+                "states:ListMapRuns"
+            ],
+            "Resource": "*"
+        }
+    ]
+}

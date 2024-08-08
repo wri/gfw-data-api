@@ -9,6 +9,7 @@ from app.models.orm.tasks import Task
 from app.models.pydantic.change_log import ChangeLog
 from app.models.pydantic.creation_options import COGCreationOptions
 from app.models.pydantic.jobs import GDALCOGJob, Job
+from app.settings.globals import DATA_LAKE_BUCKET
 from app.tasks import callback_constructor
 from app.tasks.batch import execute
 from app.tasks.raster_tile_set_assets.utils import JOB_ENV
@@ -90,6 +91,8 @@ async def create_cogify_job(
         dataset,
         "-I",
         creation_options.implementation,
+        "--prefix",
+        f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/{srid}/cog",
     ]
 
     if creation_options.export_to_gee:

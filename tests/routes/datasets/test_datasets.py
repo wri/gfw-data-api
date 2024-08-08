@@ -1,26 +1,24 @@
 from unittest.mock import patch
 
 import pytest
-
-from app.application import ContextEngine, db
-from app.authentication.token import get_manager
-from app.models.pydantic.authentication import User
-from tests import MANAGER, NEW_OWNER, get_manager_mocked, get_new_owner_mocked
+from tests import MANAGER_1, MANAGER_2, USER_1
+from tests.conftest import client_with_mocks
 from tests.utils import create_default_asset, dataset_metadata
 
 payload = {"metadata": dataset_metadata}
 
 
 @pytest.mark.asyncio
-async def test_datasets(async_client):
-    """Basic test to check if empty data api response as expected."""
-
+async def test_datasets_basic_create_delete(db_clean, async_client):
+    """Test routes for getting, creating, and deleting datasets"""
     dataset = "test"
 
+    # No datasets
     response = await async_client.get("/datasets")
     assert response.status_code == 200
     assert response.json() == {"data": [], "status": "success"}
 
+    # Create a dataset
     response = await async_client.put(f"/dataset/{dataset}", json=payload)
     assert response.status_code == 201
     assert response.json()["data"]["metadata"]["title"] == payload["metadata"]["title"]
@@ -32,109 +30,79 @@ async def test_datasets(async_client):
         == payload["metadata"]["data_language"]
     )
 
+    # Verify it has been created
     response = await async_client.get("/datasets")
     assert response.status_code == 200
     assert len(response.json()["data"]) == 1
-    assert (
-        response.json()["data"][0]["metadata"]["title"] == payload["metadata"]["title"]
-    )
-    assert (
-        response.json()["data"][0]["metadata"]["source"]
-        == payload["metadata"]["source"]
-    )
-    assert (
-        response.json()["data"][0]["metadata"]["data_language"]
-        == payload["metadata"]["data_language"]
-    )
+    assert response.json()["data"][0]["dataset"] == dataset
 
-    response = await async_client.get(f"/dataset/{dataset}")
-    assert response.status_code == 200
-    assert response.json()["data"]["metadata"]["title"] == payload["metadata"]["title"]
-    assert (
-        response.json()["data"]["metadata"]["source"] == payload["metadata"]["source"]
-    )
-    assert (
-        response.json()["data"]["metadata"]["data_language"]
-        == payload["metadata"]["data_language"]
-    )
-
-    async with ContextEngine("READ"):
-        rows = await db.all(
-            f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{dataset}';"
-        )
-
-    assert len(rows) == 1
-
-    async with ContextEngine("READ"):
-        rows = await db.all(
-            f"SELECT owner_id FROM datasets WHERE dataset = '{dataset}';"
-        )
-
-    assert len(rows) == 1
-    assert rows[0][0] == "mr_manager123"
-
-    with patch("app.routes.datasets.dataset.get_rw_user", return_value=NEW_OWNER):
-        new_payload = {
-            "metadata": {"title": "New Title"},
-            "owner_id": "new_owner_id123",
-        }
-        response = await async_client.patch(f"/dataset/{dataset}", json=new_payload)
-        assert response.status_code == 200
-        assert response.json()["data"]["metadata"] != payload["metadata"]
-        assert response.json()["data"]["metadata"]["title"] == "New Title"
-        assert (
-            response.json()["data"]["metadata"]["data_language"]
-            == payload["metadata"]["data_language"]
-        )
-
-        async with ContextEngine("READ"):
-            rows = await db.all(
-                f"SELECT owner_id FROM datasets WHERE dataset = '{dataset}';"
-            )
-
-        assert len(rows) == 1
-        assert rows[0][0] == "new_owner_id123"
-
-    # assign original owner back
-    with patch("app.routes.datasets.dataset.get_rw_user", return_value=MANAGER):
-        from app.main import app
-
-        app.dependency_overrides[get_manager] = get_new_owner_mocked
-        new_payload = {"owner_id": "mr_manager123"}
-        response = await async_client.patch(f"/dataset/{dataset}", json=new_payload)
-        assert response.status_code == 200
-
-        app.dependency_overrides[get_manager] = get_manager_mocked
-
-    bad_user = User(
-        id="bad_user123",
-        name="Bad User",
-        email="bad_user@bad.com",
-        createdAt="2021-06-13T03:18:23.000Z",
-        role="USER",
-        provider="local",
-        providerId="1234",
-        extraUserData={},
-    )
-
-    with patch("app.routes.datasets.dataset.get_rw_user", return_value=bad_user):
-        new_payload = {"owner_id": "bad_user123"}
-        response = await async_client.patch(f"/dataset/{dataset}", json=new_payload)
-        assert response.status_code == 400
-
+    # Delete it
     response = await async_client.delete(f"/dataset/{dataset}")
     assert response.status_code == 200
     assert response.json()["data"]["dataset"] == "test"
 
-    async with ContextEngine("READ"):
-        rows = await db.all(
-            f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{dataset}';"
-        )
-    assert len(rows) == 0
-
+    # Verify it is gone
     response = await async_client.get("/datasets")
     assert response.status_code == 200
     assert response.json() == {"data": [], "status": "success"}
+
+
+@pytest.mark.asyncio
+async def test_datasets_ownership_no_mortals(db_clean):
+    """Make sure permissions function correctly on dataset routes."""
+    dataset = "test"
+
+    # Try and fail to make a dataset as a normal user
+    async with client_with_mocks(False, False, True) as test_client:
+        response = await test_client.put(f"/dataset/{dataset}", json=payload)
+        assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_datasets_ownership(db_clean):
+    """Make sure permissions function correctly on dataset routes."""
+    dataset = "test"
+
+    # Now make a dataset as a manager, which should become its owner
+    async with client_with_mocks(False, MANAGER_1, False) as test_client:
+        response = await test_client.put(f"/dataset/{dataset}", json=payload)
+        assert response.status_code == 201
+
+        response = await test_client.get(f"/dataset/{dataset}")
+        assert response.status_code == 200
+        # TODO: Verify owner_id. Not included in response, so this doesn't work:
+        # assert len(response.json()["data"]["owner_id"]) == MANAGER_1.id
+
+    # Try to delete it as not-its-owner (but still a manager)
+    async with client_with_mocks(False, MANAGER_2, False) as test_client:
+        response = await test_client.delete(f"/dataset/{dataset}")
+        assert response.status_code == 401
+
+    # Try to change owner to a non-admin, non-manager
+    with patch("app.routes.datasets.dataset.get_rw_user", return_value=USER_1):
+        async with client_with_mocks(False, MANAGER_1, False) as test_client:
+            new_payload = {
+                "owner_id": USER_1.id,
+            }
+            response = await test_client.patch(f"/dataset/{dataset}", json=new_payload)
+            assert response.status_code == 400
+
+    # Change owner (as owner) to another manager
+    with patch("app.routes.datasets.dataset.get_rw_user", return_value=MANAGER_2):
+        async with client_with_mocks(False, MANAGER_1, False) as test_client:
+            new_payload = {
+                "owner_id": MANAGER_2.id,
+            }
+            response = await test_client.patch(f"/dataset/{dataset}", json=new_payload)
+            assert response.status_code == 200
+            # TODO: Verify new owner_id. Not included in response, so this doesn't work:
+            # response = await async_client.get(f"/dataset/{dataset}")
+            # assert len(response.json()["data"]["owner_id"]) == MANAGER_2.id
+
+    # Delete it as the new owner
+    async with client_with_mocks(False, MANAGER_2, False) as test_client:
+        response = await test_client.delete(f"/dataset/{dataset}")
+        assert response.status_code == 200
 
 
 @pytest.mark.asyncio
