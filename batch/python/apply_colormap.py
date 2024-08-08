@@ -249,6 +249,9 @@ def apply_symbology(
                 colormap_file.write(row)
                 colormap_file.write("\n")
 
+        with open(colormap_path, "r") as colormap_file:
+            logger.log(logging.INFO, f"Colormap file contents: \n{colormap_file.read()}")
+
         process_args = (
             (
                 tile_uri,
@@ -273,7 +276,7 @@ def apply_symbology(
     create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1].replace(
         "/geotiff", ""
     )
-    logger.log(logging.INFO, "Uploading tiles.geojson to {create_geojsons_prefix}")
+    logger.log(logging.INFO, f"Uploading tiles.geojson to {create_geojsons_prefix}")
     from gfw_pixetl.pixetl_prep import create_geojsons
 
     create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
