@@ -334,7 +334,7 @@ async def query_dataset_list_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryBatchRequestIn,
-    # api_key: APIKey = Depends(get_api_key),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
     implemented)."""
