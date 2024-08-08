@@ -345,8 +345,17 @@ async def query_dataset_list_post(
     The specified sql query will be run on each individual feature, and so may take a
     while. Therefore, the results of this query include a job_id. The user should
     then periodically query the specified job via the /job/{job_id} api. When the
-    "data.status" indicates "saved", then the results will be available at the specified
-    "data.download_link" and "data.failed_geometries_link".
+    "data.status" indicates "success" or "partial_success", then the successful
+    results will be available at the specified "data.download_link". When the
+    "data.status" indicates "partial_success" or "failed", then failed results
+    (likely because of improper geometries) will be available at
+    "data.failed_geometries_link". If the "data.status" indicates "error", then there
+    will be no results available (nothing was able to complete, possible because of
+    an infrastructure problem).
+
+    There is currently a five-minute time limit on the entire list query, but up to
+    100 individual feature queries proceed in parallel, so lists with several
+    thousands of features can potentially be processed within that time limit.
 
     """
 
