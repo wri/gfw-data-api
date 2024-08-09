@@ -145,7 +145,7 @@ class GDALCOGJob(Job):
     vcpus = 8
     memory = 64000
     num_processes = 8
-    attempts = 2
+    attempts = 5
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 
 
