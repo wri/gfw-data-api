@@ -16,7 +16,7 @@ class QueryBatchRequestIn(StrictBaseModel):
         None, description="An inline collection of GeoJson features on which to do the same query"
     )
     uri: Optional[str] = Field(
-        None, description="URI to a CSV or GeoJson file giving a list of features on which to do the same query. For a CSV, the column with the geometry in WKB format should be named 'WKT' (not 'WKB')"
+        None, description="URI to a vector file in a variety of formats supported by Geopandas, including GeoJson and CSV format, giving a list of features on which to do the same query. For a CSV file, the column with the geometry in WKB format should be named 'WKT' (not 'WKB')"
     )
     id_field: str = Field(
         "fid", description="Name of field with the feature id, for use in labeling the results for each feature. This field must contain a unique value for each feature."

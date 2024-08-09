@@ -338,9 +338,10 @@ async def query_dataset_list_post(
 ):
     """Execute a READ-ONLY SQL query on the specified raster-based dataset version
     for a potentially large list of features. The features may be specified by an
-    inline GeoJson feature collection or the URI of a file in CSV or GeoJson format.
-    For CSV files, the geometry column should be named "WKT" (not "WKB") and the
-    geometry values should be in WKB format.
+    inline GeoJson feature collection or the URI of vector file that is in any of a
+    variety of formats supported by GeoPandas, include GeoJson and CSV format. For
+    CSV files, the geometry column should be named "WKT" (not "WKB") and the geometry
+    values should be in WKB format.
 
     The specified sql query will be run on each individual feature, and so may take a
     while. Therefore, the results of this query include a job_id. The user should
