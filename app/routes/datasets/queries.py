@@ -334,7 +334,7 @@ async def query_dataset_list_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryBatchRequestIn,
-    # api_key: APIKey = Depends(get_api_key),
+    api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the specified raster-based dataset version
     for a potentially large list of features. The features may be specified by an
