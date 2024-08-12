@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+# Required options:
+# --dataset {dataset}
+# --implementation {implementation}
+#
+# Assumes that the cog file to be uploaded is available at {implementation}.tif
+# Uploads the cog file to GCS at {GCS_BUCKET}/{dataset}/{implementation}.tif and
+# creates a GEE asset that links to that GCS URI.
+
 import json
 import os
 
@@ -35,7 +43,7 @@ def upload_cog_to_gcs(dataset, implementation):
     bucket = storage_client.bucket(GCS_BUCKET)
     blob = bucket.blob(f"{dataset}/{implementation}.tif")
 
-    blob.upload_from_filename("cog.tif")
+    blob.upload_from_filename(f"{implementation}.tif")
 
     return f"gs://{GCS_BUCKET}/{dataset}/{implementation}.tif"
 
@@ -44,7 +52,7 @@ def create_cog_backed_asset(dataset, implementation, gcs_path, service_account):
     credentials = ee.ServiceAccountCredentials(service_account, GCS_CREDENTIALS_FILE)
     ee.Initialize(credentials)
 
-    # delete any existing asset with the same dataset/implementatio
+    # delete any existing asset with the same dataset/implementation
     try:
         ee.data.deleteAsset(f"projects/{EE_PROJECT}/assets/{dataset}/{implementation}")
     except ee.EEException:
