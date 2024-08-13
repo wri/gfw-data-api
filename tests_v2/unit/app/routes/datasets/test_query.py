@@ -703,6 +703,7 @@ async def test_query_batch_feature_collection(
         assert False
 
     assert str(uuid) == data["job_id"]
+    assert data["job_link"].endswith(f"/job/{data['job_id']}")
 
     assert data["status"] == "pending"
 
