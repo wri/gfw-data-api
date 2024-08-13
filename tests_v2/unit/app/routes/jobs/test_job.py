@@ -145,6 +145,7 @@ async def test_job_success(
     data = resp.json()["data"]
 
     assert data["job_id"] == TEST_JOB_ID
+    assert data["job_link"].endswith(f"/job/{TEST_JOB_ID}")
     assert data["status"] == "success"
     assert "test/results.csv" in data["download_link"]
     assert data["failed_geometries_link"] is None

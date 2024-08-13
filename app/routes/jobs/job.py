@@ -17,6 +17,7 @@ from ...models.pydantic.user_job import UserJob, UserJobResponse
 from ...settings.globals import RASTER_ANALYSIS_STATE_MACHINE_ARN
 from ...utils.aws import get_sfn_client
 from ..datasets import _get_presigned_url_from_path
+from app.settings.globals import API_URL
 
 router = APIRouter()
 
@@ -41,6 +42,7 @@ async def get_job(*, job_id: UUID = Path(...)) -> UserJobResponse:
 
 async def _get_user_job(job_id: UUID) -> UserJob:
     execution = await _get_sfn_execution(job_id)
+    job_link = f"{API_URL}/job/{job_id}"
 
     if execution["status"] == "SUCCEEDED":
         output = (
@@ -68,6 +70,7 @@ async def _get_user_job(job_id: UUID) -> UserJob:
             logger.error(f"Analysis service returned an unexpected response: {output}")
             return UserJob(
                 job_id=job_id,
+                job_link=job_link,
                 status="failed",
                 download_link=None,
                 failed_geometries_link=None,
@@ -76,6 +79,7 @@ async def _get_user_job(job_id: UUID) -> UserJob:
 
         return UserJob(
             job_id=job_id,
+            job_link=job_link,
             status=output["status"],
             download_link=download_link,
             failed_geometries_link=failed_geometries_link,
@@ -85,6 +89,7 @@ async def _get_user_job(job_id: UUID) -> UserJob:
     elif execution["status"] == "RUNNING":
         return UserJob(
             job_id=job_id,
+            job_link=job_link,
             status="pending",
             download_link=None,
             failed_geometries_link=None,
@@ -93,6 +98,7 @@ async def _get_user_job(job_id: UUID) -> UserJob:
     else:
         return UserJob(
             job_id=job_id,
+            job_link=job_link,
             status="failed",
             download_link=None,
             failed_geometries_link=None,
