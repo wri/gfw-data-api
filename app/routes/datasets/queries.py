@@ -24,6 +24,7 @@ from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
 from pydantic.tools import parse_obj_as
+from app.settings.globals import API_URL
 
 from ...application import db
 from ...authentication.api_keys import get_api_key
@@ -419,7 +420,8 @@ async def query_dataset_list_post(
         logger.error(error)
         return HTTPException(500, "There was an error starting your job.")
 
-    return UserJobResponse(data=UserJob(job_id=job_id))
+    job_link = f"{API_URL}/job/{job_id}"
+    return UserJobResponse(data=UserJob(job_id=job_id, job_link=job_link))
 
 
 async def _start_batch_execution(job_id: UUID, input: Dict[str, Any]) -> None:

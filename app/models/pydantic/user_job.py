@@ -8,7 +8,7 @@ from .responses import Response
 
 class UserJob(BaseModel):
     job_id: UUID
-    job_link: str = ""
+    job_link: Optional[str]
     status: str = "pending"
     download_link: Optional[str] = None
     failed_geometries_link: Optional[str] = None
