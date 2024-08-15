@@ -68,7 +68,8 @@ async def _get_user_job(job_id: UUID) -> UserJob:
             logger.error(f"Analysis service returned an unexpected response: {output}")
             return UserJob(
                 job_id=job_id,
-                status="failed",
+                status="error",
+                message=output["message"],
                 download_link=None,
                 failed_geometries_link=None,
                 progress="0%",
