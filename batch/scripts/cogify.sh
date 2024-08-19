@@ -38,7 +38,7 @@ else
 fi
 
 # convert to COG using existing overviews, this adds some additional layout optimizations
-gdal_translate "${IMPLEMENTATION}_merged.tif" "${IMPLEMENTATION}.tif" -of COG -co COMPRESS=DEFLATE -co BLOCKSIZE="${BLOCK_SIZE}" -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS -co OVERVIEWS=FORCE_USE_EXISTING --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS
+gdal_translate "${IMPLEMENTATION}_merged.tif" "${IMPLEMENTATION}.tif" -of COG -co COMPRESS=DEFLATE -co BLOCKSIZE="${BLOCK_SIZE}" -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS -co OVERVIEWS=FORCE_USE_EXISTING -co SPARSE_OK=TRUE --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS
 
 # upload to data lake
 aws s3 cp "${IMPLEMENTATION}.tif" "${TARGET}"
