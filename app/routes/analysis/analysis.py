@@ -17,7 +17,7 @@ from ...models.pydantic.responses import Response
 from ...settings.globals import GEOSTORE_SIZE_LIMIT_OTF
 from ...utils.geostore import get_geostore
 from .. import DATE_REGEX
-from ..datasets.queries import _query_raster_lambda
+from ..datasets.queries import _query_raster_lambda, _query_dataset_json
 
 router = APIRouter()
 
@@ -90,6 +90,42 @@ async def zonal_statistics_post(
         request.start_date,
         request.end_date,
     )
+
+
+
+@router.get(
+    "/datamart/net_tree_cover_change",
+    response_class=ORJSONResponse,
+    response_model=Response,
+    tags=["Analysis"],
+    deprecated=True,
+)
+async def zonal_statistics_get(
+    *,
+    iso: str = Query(..., title="ISO code"),
+    adm1: Optional[int] = Query(None, title="Admin level 1 ID"),
+    adm2: Optional[int] = Query(None, title="Admin level 2 ID"),
+):
+    select_fields = "iso, adm1, adm2, stable, loss, gain, disturb, net, change, gfw_area__ha"
+    where_filter = f"iso = '${iso}'"
+    level = "iso"
+
+    if adm1 is not None:
+        where_filter += f"AND adm1 = '${adm1}'"
+        level = "adm1"
+
+        if adm2 is not None:
+            where_filter += f"AND adm1 = '${adm2}'"
+            level = "adm2"
+
+
+    results = await _query_dataset_json(
+        dataset=f"umd_{level}_net_tree_cover_change_from_height",
+        version="v202209",
+        sql=f"SELECT ${select_fields} FROM data WHERE ${where_filter}",
+    )
+
+    return ORJSONResponse(data=results)
 
 
 async def _zonal_statistics(
