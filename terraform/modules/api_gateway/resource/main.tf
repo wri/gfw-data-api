@@ -71,7 +71,7 @@ resource "aws_api_gateway_gateway_response" "exceeded_quota" {
   response_type = "QUOTA_EXCEEDED"
 
   response_templates = {
-    "application/json" = "{\"status\":\"failed\",\"message\":\"Exceeded the daily quota for this resource. Please email us at gfw@wri.org to see if your use case may qualify for higher quota.\"}"
+    "application/json" = "{\"status\":\"failed\",\"message\":\"Exceeded the daily quota for this resource.  If you're running analysis on a list of areas of interest, please use the batch analysis endpoint to avoid this error: https://staging-data-api.globalforestwatch.org/#tag/Query/operation/query_dataset_list_post_dataset__dataset___version__query_batch_post. Otherwise, email us at gfw@wri.org to see if your use case may qualify for higher quota.\"}"
   }
 }
 
@@ -81,7 +81,7 @@ resource "aws_api_gateway_gateway_response" "throttled" {
   response_type = "THROTTLED"
 
   response_templates = {
-    "application/json" = "{\"status\":\"failed\",\"message\":\"Exceeded the rate limit for this resource. Please try again later. Also email us at gfw@wri.org to see if your use case may qualify for higher rate limit.\"}"
+    "application/json" = "{\"status\":\"failed\",\"message\":\"Exceeded the rate limit for this resource. If you're running analysis on a list of areas of interest, please use the batch analysis endpoint to avoid this error: https://staging-data-api.globalforestwatch.org/#tag/Query/operation/query_dataset_list_post_dataset__dataset___version__query_batch_post. Otherwise, email us at gfw@wri.org to see if your use case may qualify for higher rate limit.\"}"
   }
 }
 

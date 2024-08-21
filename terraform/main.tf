@@ -106,7 +106,8 @@ module "fargate_autoscaling" {
     aws_iam_policy.read_gcs_secret.arn,
     data.terraform_remote_state.tile_cache.outputs.ecs_update_service_policy_arn,
     aws_iam_policy.tile_cache_bucket_policy.arn,
-    data.terraform_remote_state.tile_cache.outputs.cloudfront_invalidation_policy_arn
+    data.terraform_remote_state.tile_cache.outputs.cloudfront_invalidation_policy_arn,
+    aws_iam_policy.step_function_policy.arn,
   ]
   task_execution_role_policies = [
     aws_iam_policy.query_batch_jobs.arn,

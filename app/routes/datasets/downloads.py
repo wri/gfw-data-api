@@ -3,16 +3,13 @@ from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 
-from aiohttp import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 
-# from ...authentication.api_keys import get_api_key
 from ...crud.assets import get_assets_by_filter
 from ...crud.versions import get_version
-from ...main import logger
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
@@ -20,10 +17,12 @@ from ...models.enum.pixetl import Grid
 from ...models.pydantic.downloads import DownloadCSVIn, DownloadJSONIn
 from ...models.pydantic.geostore import GeostoreCommon
 from ...responses import CSVStreamingResponse, ORJSONStreamingResponse
-from ...utils.aws import get_s3_client
 from ...utils.geostore import get_geostore
 from ...utils.path import split_s3_path
 from .. import dataset_version_dependency
+
+# from ...authentication.api_keys import get_api_key
+from . import _get_presigned_url
 from .queries import _query_dataset_csv, _query_dataset_json
 
 router: APIRouter = APIRouter()
@@ -37,7 +36,10 @@ router: APIRouter = APIRouter()
 async def download_json(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
+    geostore_id: Optional[UUID] = Query(
+        None,
+        description="Geostore ID. The geostore must represent a Polygon or MultiPolygon.",
+    ),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
@@ -118,7 +120,10 @@ async def download_json_post(
 async def download_csv(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    geostore_id: Optional[UUID] = Query(None, description="Geostore ID. The geostore must represent a Polygon or MultiPolygon."),
+    geostore_id: Optional[UUID] = Query(
+        None,
+        description="Geostore ID. The geostore must represent a Polygon or MultiPolygon.",
+    ),
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
@@ -314,20 +319,6 @@ async def _get_asset_url(dataset: str, version: str, asset_type: str) -> str:
         )
 
     return assets[0].asset_uri
-
-
-async def _get_presigned_url(bucket, key):
-    s3_client = get_s3_client()
-    try:
-        presigned_url = s3_client.generate_presigned_url(
-            "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=900
-        )
-    except ClientError as e:
-        logger.error(e)
-        raise HTTPException(
-            status_code=404, detail="Requested resources does not exist."
-        )
-    return presigned_url
 
 
 async def _check_downloadability(dataset, version):

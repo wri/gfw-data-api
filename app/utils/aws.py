@@ -3,8 +3,8 @@ from typing import Any, Dict, List, Optional, Sequence
 import boto3
 import botocore
 import httpx
-from httpx_auth import AWS4Auth
 from fastapi.logger import logger
+from httpx_auth import AWS4Auth
 
 from ..settings.globals import (
     AWS_REGION,
@@ -38,6 +38,7 @@ get_lambda_client = client_constructor("lambda")
 get_api_gateway_client = client_constructor("apigateway")
 get_s3_client = client_constructor("s3", S3_ENTRYPOINT_URL)
 get_secret_client = client_constructor("secretsmanager", AWS_SECRETSMANAGER_URL)
+get_sfn_client = client_constructor("stepfunctions")
 
 
 async def invoke_lambda(
