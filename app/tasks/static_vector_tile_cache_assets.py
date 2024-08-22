@@ -88,6 +88,7 @@ async def static_vector_tile_cache_asset(
         ndjson_uri,
         "-C",
         ",".join([field["name"] for field in field_attributes]),
+        "--simplify"
     ]
 
     export_ndjson = GdalPythonExportJob(

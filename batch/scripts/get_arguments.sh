@@ -182,6 +182,10 @@ do
       shift # past argument
       shift # past value
       ;;
+      --simplify)
+      SIMPLIFY_GEOMETRY="TRUE"
+      shift # past argument
+      ;;
       --skip)
       SKIP="TRUE"
       shift # past argument
