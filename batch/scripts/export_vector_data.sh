@@ -22,7 +22,7 @@ ME=$(basename "$0")
 
 GEOMETRY_EXPRESSION="${GEOMETRY_NAME}"
 if [ "${SIMPLIFY_GEOMETRY}" == "TRUE" ]; then
-  GEOMETRY_EXPRESSION="ST_RemoveRepeatedPoints(${GEOMETRY_NAME}, 1)"
+  GEOMETRY_EXPRESSION="ST_RemoveRepeatedPoints(${GEOMETRY_NAME}, 0.025)"
 fi
 
 
@@ -39,6 +39,6 @@ if [ "${ZIPPED}" == "True" ]; then
 fi
 
 echo "AWSCLI: COPY DATA FROM $LOCAL_FILE TO $TARGET"
-aws s3 cp "$LOCAL_FILE" "$TARGET"
+aws s3 cp "$LOCAL_FILE" "$TARGET" --no-progress
 
 echo "Done"
