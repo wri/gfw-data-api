@@ -92,42 +92,6 @@ async def zonal_statistics_post(
     )
 
 
-
-@router.get(
-    "/datamart/net_tree_cover_change",
-    response_class=ORJSONResponse,
-    response_model=Response,
-    tags=["Analysis"],
-    deprecated=True,
-)
-async def zonal_statistics_get(
-    *,
-    iso: str = Query(..., title="ISO code"),
-    adm1: Optional[int] = Query(None, title="Admin level 1 ID"),
-    adm2: Optional[int] = Query(None, title="Admin level 2 ID"),
-):
-    select_fields = "iso, adm1, adm2, stable, loss, gain, disturb, net, change, gfw_area__ha"
-    where_filter = f"iso = '${iso}'"
-    level = "iso"
-
-    if adm1 is not None:
-        where_filter += f"AND adm1 = '${adm1}'"
-        level = "adm1"
-
-        if adm2 is not None:
-            where_filter += f"AND adm1 = '${adm2}'"
-            level = "adm2"
-
-
-    results = await _query_dataset_json(
-        dataset=f"umd_{level}_net_tree_cover_change_from_height",
-        version="v202209",
-        sql=f"SELECT ${select_fields} FROM data WHERE ${where_filter}",
-    )
-
-    return ORJSONResponse(data=results)
-
-
 async def _zonal_statistics(
     geometry: Geometry,
     sum_layers: List[RasterLayer],

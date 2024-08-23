@@ -33,6 +33,7 @@ from .routes.datasets import (
 from .routes.geostore import geostore as geostore_top
 from .routes.jobs import job
 from .routes.tasks import task
+from .routes.datamart import globalforestwatch
 
 ################
 # LOGGING
@@ -164,6 +165,12 @@ for r in analysis_routers:
 
 
 ###############
+# Data Mart API
+###############
+
+app.include_router(globalforestwatch.router, prefix="/datamart/globalforestwatch")
+
+###############
 # JOB API
 ###############
 
@@ -198,6 +205,7 @@ tags_metadata = [
     {"name": "Analysis", "description": analysis.__doc__},
     {"name": "Job", "description": job.__doc__},
     {"name": "Health", "description": health.__doc__},
+    {"name": "Data Mart", "description": globalforestwatch.__doc__},
 ]
 
 
@@ -223,6 +231,7 @@ def custom_openapi():
         {"name": "Task API", "tags": ["Tasks"]},
         {"name": "Analysis API", "tags": ["Analysis"]},
         {"name": "Health API", "tags": ["Health"]},
+        {"name": "Data Mart API", "tags": ["Data Mart"]},
     ]
 
     app.openapi_schema = openapi_schema
