@@ -20,6 +20,7 @@ from .routes import health
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.authentication import authentication
+from .routes.datamart import globalforestwatch
 from .routes.datasets import asset as version_asset
 from .routes.datasets import (
     dataset,
@@ -33,7 +34,6 @@ from .routes.datasets import (
 from .routes.geostore import geostore as geostore_top
 from .routes.jobs import job
 from .routes.tasks import task
-from .routes.datamart import globalforestwatch
 
 ################
 # LOGGING
@@ -202,7 +202,7 @@ tags_metadata = [
     {"name": "Download", "description": downloads.__doc__},
     {"name": "Geostore", "description": geostore.__doc__},
     {"name": "Tasks", "description": task.__doc__},
-    {"name": "Analysis", "description": analysis.__doc__},
+    {"name": "Analysis2", "description": analysis.__doc__},
     {"name": "Job", "description": job.__doc__},
     {"name": "Health", "description": health.__doc__},
     {"name": "Data Mart", "description": globalforestwatch.__doc__},
