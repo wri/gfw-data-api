@@ -177,7 +177,7 @@ class VersionMetadataWithParentResponse(Response):
 
 
 def _date_validator(date_str):
-    if isinstance(date_str, date):
+    if isinstance(date_str, date) or date_str is None:
         return date_str
 
     try:
