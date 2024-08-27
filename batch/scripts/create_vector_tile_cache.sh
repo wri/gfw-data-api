@@ -18,7 +18,7 @@ ME=$(basename "$0")
 . get_arguments.sh "$@"
 
 
-NDJSON_FILE="data.json"
+NDJSON_FILE="${DATASET}.json"
 
 # Build an array of arguments to pass to tippecanoe
 TIPPE_ARG_ARRAY=(
@@ -28,6 +28,7 @@ TIPPE_ARG_ARRAY=(
   "--preserve-input-order"
   "-P"
   "-n" "${DATASET}"
+  "-l" "${DATASET}"
 )
 
 case ${TILE_STRATEGY} in
