@@ -98,7 +98,6 @@ module "fargate_autoscaling" {
   //  acm_certificate_arn       = var.environment == "dev" ? null : data.terraform_remote_state.core.outputs.acm_certificate
   security_group_ids = [
     data.terraform_remote_state.core.outputs.postgresql_security_group_id,
-    data.terraform_remote_state.core.outputs.batch_security_group_id
   ]
   task_role_policies = [
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
