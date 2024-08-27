@@ -52,7 +52,6 @@ resource "aws_batch_job_queue" "pixetl" {
   depends_on           = [var.pixetl_compute_environment_arn]
 }
 
-
 resource "aws_batch_job_definition" "tile_cache" {
   name                 = substr("${var.project}-tile_cache${var.name_suffix}", 0, 64)
   type                 = "container"
