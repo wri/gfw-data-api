@@ -870,7 +870,7 @@ def _get_source_layer(
         name=source_layer_name,
         no_data=no_data_val,
         raster_table=raster_table,
-        id=asset_id,
+        id=str(asset_id) if asset_id is not None else None,
     )
 
 

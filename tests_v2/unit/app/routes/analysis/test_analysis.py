@@ -1,16 +1,14 @@
+from unittest.mock import AsyncMock, Mock
+
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient, Response
-from unittest.mock import AsyncMock, Mock
 
-from app.models.enum.pixetl import Grid
 from app.routes.datasets import queries
 from app.utils import geostore
-from tests_v2.utils import invoke_lambda_mocked
-from tests_v2.fixtures.creation_options.versions import RASTER_CREATION_OPTIONS
+from tests_v2.fixtures.otf_payload.otf_payload import environment, sql
 from tests_v2.fixtures.sample_rw_geostore_response import geostore_common
-from tests_v2.fixtures.otf_payload.otf_payload import sql, environment
-from tests_v2.utils import custom_raster_version
+from tests_v2.utils import custom_raster_version, invoke_lambda_mocked
 
 
 @pytest.mark.skip("Temporarily skip until we require API keys")
@@ -81,8 +79,8 @@ async def test_analysis_with_huge_geostore(
 async def test_raster_analysis_payload_shape(
     generic_dataset, apikey, async_client: AsyncClient, monkeypatch: MonkeyPatch
 ):
-    """Note that this test depends on the output of _get_data_environment
-    which will likely have cached values from other tests, so we clear it."""
+    """Note that this test depends on the output of _get_data_environment which
+    will likely have cached values from other tests, so we clear it."""
 
     dataset_name, _ = generic_dataset
     pixel_meaning: str = "date_conf"
@@ -113,9 +111,14 @@ async def test_raster_analysis_payload_shape(
         # The other tests will have polluted the data env cache. Clear it.
         queries._get_data_environment.cache_clear()
 
+        # set mock asset ID
+        resp = await async_client.get(f"/dataset/{dataset_name}/{version_name}/assets")
+        asset_id = resp.json()["data"][0]["asset_id"]
+        environment[0]["id"] = str(asset_id)
+
         _ = await async_client.get(
             "/analysis/zonal/17076d5ea9f214a5bdb68cc40433addb?geostore_origin=rw&group_by=umd_tree_cover_loss__year&filters=is__umd_regional_primary_forest_2001&filters=umd_tree_cover_density_2000__30&sum=area__ha&start_date=2001",
-            headers=headers
+            headers=headers,
         )
         payload = mock_invoke_lambda.call_args.args[1]
         assert payload["query"] == sql
