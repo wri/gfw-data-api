@@ -24,6 +24,7 @@ from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
 from pydantic.tools import parse_obj_as
+
 from app.settings.globals import API_URL
 
 from ...application import db
@@ -337,12 +338,12 @@ async def query_dataset_list_post(
     request: QueryBatchRequestIn,
     api_key: APIKey = Depends(get_api_key),
 ):
-    """Execute a READ-ONLY SQL query on the specified raster-based dataset version
-    for a potentially large list of features. The features may be specified by an
-    inline GeoJson feature collection or the URI of vector file that is in any of a
-    variety of formats supported by GeoPandas, include GeoJson and CSV format. For
-    CSV files, the geometry column should be named "WKT" (not "WKB") and the geometry
-    values should be in WKB format.
+    """Execute a READ-ONLY SQL query on the specified raster-based dataset
+    version for a potentially large list of features. The features may be
+    specified by an inline GeoJson feature collection or the URI of vector file
+    that is in any of a variety of formats supported by GeoPandas, include
+    GeoJson and CSV format. For CSV files, the geometry column should be named
+    "WKT" (not "WKB") and the geometry values should be in WKB format.
 
     The specified sql query will be run on each individual feature, and so may take a
     while. Therefore, the results of this query include a job_id. The user should
@@ -358,7 +359,6 @@ async def query_dataset_list_post(
     There is currently a five-minute time limit on the entire list query, but up to
     100 individual feature queries proceed in parallel, so lists with several
     thousands of features can potentially be processed within that time limit.
-
     """
 
     dataset, version = dataset_version
@@ -842,6 +842,7 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
                 grid,
                 no_data_val,
                 raster_table,
+                row["asset_id"],
             )
         )
 
@@ -860,6 +861,7 @@ def _get_source_layer(
     grid: Grid,
     no_data_val: Optional[NoDataType],
     raster_table: Optional[RasterTable],
+    asset_id: Optional[UUID],
 ) -> SourceLayer:
     return SourceLayer(
         source_uri=asset_uri,
@@ -868,6 +870,7 @@ def _get_source_layer(
         name=source_layer_name,
         no_data=no_data_val,
         raster_table=raster_table,
+        id=asset_id,
     )
 
 

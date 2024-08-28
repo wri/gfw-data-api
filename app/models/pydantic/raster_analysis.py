@@ -1,4 +1,5 @@
 from typing import List, Optional, Union
+from uuid import UUID
 
 from ..enum.pixetl import Grid
 from .asset_metadata import RasterTable
@@ -21,6 +22,7 @@ class SourceLayer(EncodedLayer):
     source_uri: str
     grid: Grid
     tile_scheme: str = "nw"
+    id: Optional[UUID]
 
 
 class DerivedLayer(EncodedLayer):
