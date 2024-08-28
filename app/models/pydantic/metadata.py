@@ -2,6 +2,7 @@ from datetime import date, datetime
 from typing import Any, List, Optional, Union
 from uuid import UUID
 
+from fastapi import HTTPException
 from pydantic import Field, validator, BaseModel
 from pydantic.utils import GetterDict
 
@@ -176,10 +177,12 @@ class VersionMetadataWithParentResponse(Response):
 
 
 def _date_validator(date_str):
-    if isinstance(date_str, date):
+    if isinstance(date_str, date) or date_str is None:
         return date_str
 
     try:
         return datetime.strptime(date_str, "%Y-%m-%d").date()
     except (ValueError, TypeError):
-        return None
+        raise HTTPException(
+            status_code=422, detail="Date needs to be of the format YYYY-MM-DD"
+        )
