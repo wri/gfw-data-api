@@ -28,7 +28,6 @@ TIPPE_ARG_ARRAY=(
   "--preserve-input-order"
   "-P"
   "-n" "${DATASET}"
-  "-l" "${DATASET}"
 )
 
 case ${TILE_STRATEGY} in
