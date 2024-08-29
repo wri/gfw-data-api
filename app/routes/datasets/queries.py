@@ -822,6 +822,7 @@ async def _get_data_environment(grid: Grid) -> DataEnvironment:
         if creation_options.get("band_count", 1) > 1:
             continue
 
+        # boolean has special naming as prefix, all other pixel meanings should be suffix
         if creation_options["pixel_meaning"] == "is":
             source_layer_name = f"{creation_options['pixel_meaning']}__{row['dataset']}"
         else:
