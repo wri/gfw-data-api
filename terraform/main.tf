@@ -1,4 +1,3 @@
-# Require TF version to be same as or greater than 0.12.24
 terraform {
   backend "s3" {
     region  = "us-east-1"
@@ -32,7 +31,7 @@ locals {
 
 # Docker image for FastAPI app
 module "app_docker_image" {
-  source     = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.6-alpha9"
+  source     = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.7"
   image_name = substr(lower("${local.project}${local.name_suffix}"), 0, 64)
   root_dir   = "${path.root}/../"
   tag        = local.container_tag
@@ -40,7 +39,7 @@ module "app_docker_image" {
 
 # Docker image for GDAL Python Batch jobs
 module "batch_gdal_python_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.6-alpha9"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.7"
   image_name      = substr(lower("${local.project}-gdal_python${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
@@ -49,7 +48,7 @@ module "batch_gdal_python_image" {
 
 # Docker image for PixETL Batch jobs
 module "batch_pixetl_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.6-alpha9"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.7"
   image_name      = substr(lower("${local.project}-pixetl${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
@@ -58,7 +57,7 @@ module "batch_pixetl_image" {
 
 # Docker image for PostgreSQL Client Batch jobs
 module "batch_postgresql_client_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.6-alpha9"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.7"
   image_name      = substr(lower("${local.project}-postgresql_client${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
@@ -67,7 +66,7 @@ module "batch_postgresql_client_image" {
 
 # Docker image for Tile Cache Batch jobs
 module "batch_tile_cache_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.6-alpha9"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.7"
   image_name      = substr(lower("${local.project}-tile_cache${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
@@ -76,7 +75,7 @@ module "batch_tile_cache_image" {
 
 
 module "fargate_autoscaling" {
-  source                       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.6-alpha9"
+  source                       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.7"
   project                      = local.project
   name_suffix                  = local.name_suffix
   tags                         = local.fargate_tags
@@ -124,7 +123,7 @@ module "fargate_autoscaling" {
 
 # Using instance types with 1 core only
 module "batch_aurora_writer" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.6-alpha9"
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.7"
   ecs_role_policy_arns = [
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
@@ -156,7 +155,7 @@ module "batch_aurora_writer" {
 
 
 module "batch_data_lake_writer" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.6-alpha9"
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.7"
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
