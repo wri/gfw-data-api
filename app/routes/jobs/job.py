@@ -68,7 +68,8 @@ async def _get_user_job(job_id: UUID) -> UserJob:
             logger.error(f"Analysis service returned an unexpected response: {output}")
             return UserJob(
                 job_id=job_id,
-                status="failed",
+                status="error",
+                message=output["message"],
                 download_link=None,
                 failed_geometries_link=None,
                 progress="0%",
@@ -108,12 +109,18 @@ async def _get_sfn_execution(job_id: UUID) -> Dict[str, Any]:
 
 async def _get_progress(execution: Dict[str, Any]) -> str:
     map_run = await _get_map_run(execution)
+    if len(map_run) == 0:
+        # No map runs have started yet
+        return "0%"
     success_ratio = map_run["itemCounts"]["succeeded"] / map_run["itemCounts"]["total"]
     return f"{round(success_ratio * 100)}%"
 
 
 async def _get_map_run(execution: Dict[str, Any]) -> Dict[str, Any]:
-    map_runs = get_sfn_client().list_map_runs(executionArn=execution["executionArn"])
-    map_run_arn = map_runs["mapRuns"][0]["mapRunArn"]
+    map_runs = get_sfn_client().list_map_runs(executionArn=execution["executionArn"])["mapRuns"]
+    if len(map_runs) == 0:
+        # No map runs have started yet, return empty dict
+        return {}
+    map_run_arn = map_runs[0]["mapRunArn"]
     map_run = get_sfn_client().describe_map_run(mapRunArn=map_run_arn)
     return map_run

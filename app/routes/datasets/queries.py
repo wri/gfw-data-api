@@ -24,6 +24,7 @@ from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
 from pydantic.tools import parse_obj_as
+from app.settings.globals import API_URL
 
 from ...application import db
 from ...authentication.api_keys import get_api_key
@@ -334,10 +335,31 @@ async def query_dataset_list_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryBatchRequestIn,
-    # api_key: APIKey = Depends(get_api_key),
+    api_key: APIKey = Depends(get_api_key),
 ):
-    """Execute a READ-ONLY SQL query on the given dataset version (if
-    implemented)."""
+    """Execute a READ-ONLY SQL query on the specified raster-based dataset version
+    for a potentially large list of features. The features may be specified by an
+    inline GeoJson feature collection or the URI of vector file that is in any of a
+    variety of formats supported by GeoPandas, include GeoJson and CSV format. For
+    CSV files, the geometry column should be named "WKT" (not "WKB") and the geometry
+    values should be in WKB format.
+
+    The specified sql query will be run on each individual feature, and so may take a
+    while. Therefore, the results of this query include a job_id. The user should
+    then periodically query the specified job via the /job/{job_id} api. When the
+    "data.status" indicates "success" or "partial_success", then the successful
+    results will be available at the specified "data.download_link". When the
+    "data.status" indicates "partial_success" or "failed", then failed results
+    (likely because of improper geometries) will be available at
+    "data.failed_geometries_link". If the "data.status" indicates "error", then there
+    will be no results available (nothing was able to complete, possible because of
+    an infrastructure problem).
+
+    There is currently a five-minute time limit on the entire list query, but up to
+    100 individual feature queries proceed in parallel, so lists with several
+    thousands of features can potentially be processed within that time limit.
+
+    """
 
     dataset, version = dataset_version
 
@@ -398,7 +420,8 @@ async def query_dataset_list_post(
         logger.error(error)
         return HTTPException(500, "There was an error starting your job.")
 
-    return UserJobResponse(data=UserJob(job_id=job_id))
+    job_link = f"{API_URL}/job/{job_id}"
+    return UserJobResponse(data=UserJob(job_id=job_id, job_link=job_link))
 
 
 async def _start_batch_execution(job_id: UUID, input: Dict[str, Any]) -> None:
