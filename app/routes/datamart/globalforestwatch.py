@@ -1,18 +1,20 @@
 """APIs for Global Forest Watch data."""
-
 from typing import Optional
 
-from fastapi import Query, APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.logger import logger
+from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 from httpx import AsyncClient
 
+from app.authentication.api_keys import get_api_key
 from app.models.pydantic.responses import Response
 
 router = APIRouter()
 
 PRODUCTION_SERVICE_URI = "https://data-api.globalforestwatch.org"
 NET_CHANGE_VERSION = "v202209"
+
 
 @router.get(
     "/v1/net_tree_cover_change",
@@ -25,6 +27,7 @@ async def net_tree_cover_change(
     iso: str = Query(..., title="ISO code"),
     adm1: Optional[int] = Query(None, title="Admin level 1 ID"),
     adm2: Optional[int] = Query(None, title="Admin level 2 ID"),
+    api_key: APIKey = Depends(get_api_key),
 ):
     select_fields = "iso"
     where_filter = f"iso = '{iso}'"
@@ -40,7 +43,9 @@ async def net_tree_cover_change(
             select_fields += ", adm2"
             level = "adm2"
     elif adm2 is not None:
-        raise HTTPException(400, "If query for adm2, you must also include an adm1 parameter.")
+        raise HTTPException(
+            400, "If query for adm2, you must also include an adm1 parameter."
+        )
 
     select_fields += ", stable, loss, gain, disturb, net, change, gfw_area__ha"
 
@@ -48,9 +53,11 @@ async def net_tree_cover_change(
         sql = f"SELECT {select_fields} FROM data WHERE {where_filter}"
         url = f"{PRODUCTION_SERVICE_URI}/dataset/umd_{level}_net_tree_cover_change_from_height/{NET_CHANGE_VERSION}/query/json?sql={sql}"
 
-        response = await client.get(url)
+        response = await client.get(url, headers={"x-api-key": api_key})
         if response.status_code != 200:
-            logger.error(f"API responded with status code {response.status_code}: {response.content}")
+            logger.error(
+                f"API responded with status code {response.status_code}: {response.content}"
+            )
             raise HTTPException(500, "Internal Server Error")
 
         results = response.json()["data"]
