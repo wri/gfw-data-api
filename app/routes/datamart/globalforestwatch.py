@@ -88,7 +88,7 @@ class TreeCoverData(StrictBaseModel):
 
 
 class NetTreeCoverChangeResponse(StrictBaseModel):
-    data: TreeCoverData = Field(..., description="A list of tree cover change data records.")
+    data: TreeCoverData = Field(..., description="A tree cover change data record.")
     status: str = Field(..., description="Status of the request (e.g., 'success').")
 
     class Config:
