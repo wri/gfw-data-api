@@ -1,7 +1,7 @@
 """
 Data Mart APIs for Global Forest Watch (GFW) backend consumption.
 
-These APIs provide granular, tailored data services specifically designed to meet the needs of the **Global Forest Watch (GFW)** backend infrastructure.
+These APIs provide coarse-grained, tailored data services specifically designed to meet the needs of the **Global Forest Watch (GFW)** backend infrastructure.
 The endpoints abstract away the complexities of querying datasets related to net tree cover change, allowing the GFW backend to integrate and consume
 data efficiently and reliably.
 
