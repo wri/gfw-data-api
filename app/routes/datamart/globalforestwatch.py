@@ -22,7 +22,7 @@ class Gadm(str, Enum):
     ADM2 = "adm2"
 
 
-class NetTreeCoverChangeRequest(StrictBaseModel):
+class GadmSpecification(StrictBaseModel):
     iso: str = Field(..., description="ISO code of the country or region (e.g., 'BRA' for Brazil).")
     adm1: Optional[int] = Field(None, description="Admin level 1 ID (e.g., a state or province).")
     adm2: Optional[int] = Field(None, description="Admin level 2 ID (e.g., a municipality). ⚠️ **Must be provided with adm1.**")
@@ -33,13 +33,12 @@ class NetTreeCoverChangeRequest(StrictBaseModel):
         Validates that adm2 is only provided if adm1 is also present.
         Raises a validation error if adm2 is given without adm1.
         """
-        print(values.keys())
         adm1, adm2 = values.get('adm1'), values.get('adm2')
         if adm2 is not None and adm1 is None:
             raise ValueError("If 'adm2' is provided, 'adm1' must also be present.")
         return values
 
-    def get_admin_level(self):
+    def get_specified_admin_level(self):
         """
         Determines the appropriate level ('adm0', 'adm1', or 'adm2') based on the presence of adm1 and adm2.
         """
@@ -91,12 +90,12 @@ class NetTreeCoverChangeResponse(StrictBaseModel):
         }
 
 
-def build_sql_query(request):
+def _build_sql_query(request):
     select_fields = [Gadm.ISO.value]
     where_conditions = [f"{Gadm.ISO.value} = '{request.iso}'"]
 
-    append_field_and_condition(select_fields, where_conditions, Gadm.ADM1.value, request.adm1)
-    append_field_and_condition(select_fields, where_conditions, Gadm.ADM2.value, request.adm2)
+    _append_field_and_condition(select_fields, where_conditions, Gadm.ADM1.value, request.adm1)
+    _append_field_and_condition(select_fields, where_conditions, Gadm.ADM2.value, request.adm2)
 
     select_fields += ["stable", "loss", "gain", "disturb", "net", "change", "gfw_area__ha"]
 
@@ -107,23 +106,33 @@ def build_sql_query(request):
 
     return sql
 
-def append_field_and_condition(select_fields, where_conditions, field_name, field_value):
+def _append_field_and_condition(select_fields, where_conditions, field_name, field_value):
     if field_value is not None:
         select_fields.append(field_name)
         where_conditions.append(f"{field_name} = '{field_value}'")
 
 
-async def fetch_tree_cover_data(sql_query: str, level: str, api_key: str) -> TreeCoverData:
+async def _fetch_tree_cover_data(sql_query: str, level: str, api_key: str) -> TreeCoverData:
     """
     Fetches tree cover data from the external API using the SQL query and level.
     Handles the HTTP request, response status check, and data extraction.
+    Adds a custom header for tracking the service name for NewRelic/AWS monitoring.
     """
     production_service_uri = "https://data-api.globalforestwatch.org"
     net_change_version = "v202209"
     url = f"{production_service_uri}/dataset/umd_{level}_net_tree_cover_change_from_height/{net_change_version}/query/json?sql={sql_query}"
 
+    # Custom header for identifying the service for monitoring
+    service_name = "globalforestwatch-datamart"
+
     async with AsyncClient() as client:
-        response = await client.get(url, headers={"x-api-key": api_key})
+        # Add the 'x-api-key' and custom 'X-Service-Name' headers
+        headers = {
+            "x-api-key": api_key,
+            "x-service-name": service_name
+        }
+        response = await client.get(url, headers=headers)
+
         if response.status_code != 200:
             logger.error(f"API responded with status code {response.status_code}: {response.content}")
             raise Exception("Failed to fetch tree cover data.")
@@ -151,10 +160,10 @@ async def net_tree_cover_change(
     Retrieves net tree cover change data.
     """
     try:
-        request = NetTreeCoverChangeRequest(iso=iso, adm1=adm1, adm2=adm2)
-        sql_query: str = build_sql_query(request)
-        admin_level: str = request.get_admin_level()
-        tree_cover_data: TreeCoverData = await fetch_tree_cover_data(sql_query, admin_level, api_key)
+        gadm_specifier = GadmSpecification(iso=iso, adm1=adm1, adm2=adm2)
+        sql_query: str = _build_sql_query(gadm_specifier)
+        admin_level: str = gadm_specifier.get_specified_admin_level()
+        tree_cover_data: TreeCoverData = await _fetch_tree_cover_data(sql_query, admin_level, api_key)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
