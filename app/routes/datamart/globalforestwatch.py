@@ -31,6 +31,7 @@ from httpx import AsyncClient
 from pydantic import Field, root_validator, ValidationError
 
 from app.authentication.api_keys import get_api_key
+from app.models.orm.api_keys import ApiKey
 from app.models.pydantic.base import StrictBaseModel
 
 router = APIRouter()
@@ -111,12 +112,12 @@ class NetTreeCoverChangeResponse(StrictBaseModel):
         }
 
 
-def _build_sql_query(request):
+def _build_sql_query(gadm_specification: GadmSpecification):
     select_fields = [Gadm.ISO.value]
-    where_conditions = [f"{Gadm.ISO.value} = '{request.iso}'"]
+    where_conditions = [f"{Gadm.ISO.value} = '{gadm_specification.iso}'"]
 
-    _append_field_and_condition(select_fields, where_conditions, Gadm.ADM1.value, request.adm1)
-    _append_field_and_condition(select_fields, where_conditions, Gadm.ADM2.value, request.adm2)
+    _append_field_and_condition(select_fields, where_conditions, Gadm.ADM1.value, gadm_specification.adm1)
+    _append_field_and_condition(select_fields, where_conditions, Gadm.ADM2.value, gadm_specification.adm2)
 
     select_fields += ["stable", "loss", "gain", "disturb", "net", "change", "gfw_area__ha"]
 
@@ -163,6 +164,12 @@ async def _fetch_tree_cover_data(sql_query: str, level: str, api_key: str) -> Tr
         return TreeCoverData(**response_data)
 
 
+async def _get_tree_cover_data(gadm_specification: GadmSpecification, api_key: ApiKey) -> TreeCoverData:
+    sql_query = _build_sql_query(gadm_specification)
+    admin_level = gadm_specification.get_specified_admin_level()
+    return await _fetch_tree_cover_data(sql_query, admin_level, api_key)
+
+
 @router.get(
     "/v1/net_tree_cover_change",
     response_class=ORJSONResponse,
@@ -182,9 +189,7 @@ async def net_tree_cover_change(
     """
     try:
         gadm_specifier = GadmSpecification(iso=iso, adm1=adm1, adm2=adm2)
-        sql_query: str = _build_sql_query(gadm_specifier)
-        admin_level: str = gadm_specifier.get_specified_admin_level()
-        tree_cover_data: TreeCoverData = await _fetch_tree_cover_data(sql_query, admin_level, api_key)
+        tree_cover_data: TreeCoverData = await _get_tree_cover_data(gadm_specifier, api_key)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
