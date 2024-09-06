@@ -1,4 +1,25 @@
-"""APIs for Global Forest Watch data."""
+"""
+Data Mart APIs for Global Forest Watch (GFW) backend consumption.
+
+These APIs provide granular, tailored data services specifically designed to meet the needs of the **Global Forest Watch (GFW)** backend infrastructure.
+The endpoints abstract away the complexities of querying datasets related to net tree cover change, allowing the GFW backend to integrate and consume
+data efficiently and reliably.
+
+### Intended Audience:
+This API is not designed for general public use. It is purpose-built for internal use by the GFW backend services and systems. The consumers of this
+API are expected to have an in-depth understanding of GFW's data models and query requirements.
+
+### Key Features:
+- Tailored queries for retrieving net tree cover change data from the GFW database.
+- Efficient data retrieval for ISO country codes and administrative regions.
+- Abstracts the SQL query generation process to simplify integration with the backend.
+
+### Usage:
+These endpoints are intended to be consumed programmatically by the GFW backend and are not optimized for external client-facing use. The data
+retrieved is intended to support GFW's internal applications and services.
+
+Specifically, it supports the [Net change in tree cover](https://www.globalforestwatch.org/map/country/BRA/14/?mainMap=eyJzaG93QW5hbHlzaXMiOnRydWV9&map=eyJjZW50ZXIiOnsibGF0IjotMy42MjgwNjcwOTUyMDc3NDc2LCJsbmciOi01Mi40NzQ4OTk5OTk5OTczMzR9LCJ6b29tIjo2LjA1NTQ1ODQ3NjM4NDE1LCJjYW5Cb3VuZCI6ZmFsc2UsImRhdGFzZXRzIjpbeyJkYXRhc2V0IjoiTmV0LUNoYW5nZS1TVEFHSU5HIiwib3BhY2l0eSI6MSwidmlzaWJpbGl0eSI6dHJ1ZSwibGF5ZXJzIjpbImZvcmVzdC1uZXQtY2hhbmdlIl19LHsiZGF0YXNldCI6InBvbGl0aWNhbC1ib3VuZGFyaWVzIiwibGF5ZXJzIjpbImRpc3B1dGVkLXBvbGl0aWNhbC1ib3VuZGFyaWVzIiwicG9saXRpY2FsLWJvdW5kYXJpZXMiXSwib3BhY2l0eSI6MSwidmlzaWJpbGl0eSI6dHJ1ZX1dfQ%3D%3D&mapMenu=eyJtZW51U2VjdGlvbiI6ImRhdGFzZXRzIiwiZGF0YXNldENhdGVnb3J5IjoiZm9yZXN0Q2hhbmdlIn0%3D) widget
+"""
 from enum import Enum
 from typing import Optional
 
