@@ -56,8 +56,11 @@ async def test_versions(async_client: AsyncClient):
     assert version_data["data"]["dataset"] == dataset
     assert version_data["data"]["version"] == version
     assert (
-        version_data["data"]["metadata"]["resolution"] == version_metadata["resolution"]
+        version_data["data"]["metadata"]["spatial_resolution"] == version_metadata["spatial_resolution"]
     )
+    assert (
+        version_data["data"]["metadata"]["resolution_description"] == version_metadata["resolution_description"]
+    )    
     assert (
         version_data["data"]["metadata"]["content_date_range"]["start_date"]
         == version_metadata["content_date_range"]["start_date"]
@@ -180,8 +183,8 @@ async def test_version_metadata(async_client: AsyncClient):
     assert response.status_code == 201
 
     assert (
-        response.json()["data"]["metadata"]["resolution"]
-        == version_metadata["resolution"]
+        response.json()["data"]["metadata"]["spatial_resolution"]
+        == version_metadata["spatial_resolution"]
     )
     assert (
         response.json()["data"]["metadata"]["content_date_range"]
