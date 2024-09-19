@@ -1,4 +1,4 @@
-FROM tiangolo/uvicorn-gunicorn-fastapi:python3.10-slim
+FROM --platform=linux/amd64 tiangolo/uvicorn-gunicorn-fastapi:python3.10-slim
 
 # Comment to trigger an image rebuild
 
