@@ -52,6 +52,13 @@ resource "aws_batch_job_queue" "pixetl" {
   depends_on           = [var.pixetl_compute_environment_arn]
 }
 
+resource "aws_batch_job_queue" "cog" {
+  name                 = substr("${var.project}-cog-job-queue${var.name_suffix}", 0, 64)
+  state                = "ENABLED"
+  priority             = 1
+  compute_environments = [var.cog_compute_environment_arn]
+  depends_on           = [var.pixetl_compute_environment_arn]
+}
 
 resource "aws_batch_job_definition" "tile_cache" {
   name                 = substr("${var.project}-tile_cache${var.name_suffix}", 0, 64)

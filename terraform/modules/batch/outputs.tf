@@ -38,6 +38,10 @@ output "pixetl_job_queue_arn" {
   value = aws_batch_job_queue.pixetl.arn
 }
 
+output "cog_job_queue_arn" {
+  value = aws_batch_job_queue.cog.arn
+}
+
 output "tile_cache_job_definition_arn" {
   value = aws_batch_job_definition.tile_cache.arn
 }

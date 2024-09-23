@@ -68,6 +68,7 @@ data "template_file" "container_definition" {
     tile_cache_job_queue        = module.batch_job_queues.tile_cache_job_queue_arn
     pixetl_job_definition       = module.batch_job_queues.pixetl_job_definition_arn
     pixetl_job_queue            = module.batch_job_queues.pixetl_job_queue_arn
+    cog_job_queue               = module.batch_job_queues.cog_job_queue_arn
     raster_analysis_lambda_name = "raster-analysis-tiled_raster_analysis-default"
     raster_analysis_sfn_arn     = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_state_machine_arn
     service_url                 = local.service_url

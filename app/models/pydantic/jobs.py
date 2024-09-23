@@ -4,6 +4,7 @@ from pydantic import validator
 
 from ...settings.globals import (
     AURORA_JOB_QUEUE,
+    COG_JOB_QUEUE,
     DATA_LAKE_JOB_QUEUE,
     DEFAULT_JOB_DURATION,
     GDAL_PYTHON_JOB_DEFINITION,
@@ -138,9 +139,9 @@ class PixETLJob(Job):
 
 
 class GDALCOGJob(Job):
-    """Use for creating COG files using GDAL Python docker in PixETL queue."""
+    """Use for creating COG files using GDAL Python docker in COG queue."""
 
-    job_queue = PIXETL_JOB_QUEUE
+    job_queue = COG_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
     vcpus = 8
     memory = 64000
