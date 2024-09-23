@@ -38,7 +38,7 @@ output "pixetl_job_queue_arn" {
   value = aws_batch_job_queue.pixetl.arn
 }
 
-output "cog_job_queue_arn" {
+output "cogify_job_queue_arn" {
   value = aws_batch_job_queue.cog.arn
 }
 
