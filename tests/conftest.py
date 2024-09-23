@@ -33,6 +33,7 @@ from app.settings.globals import (
     GDAL_PYTHON_JOB_DEFINITION,
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
+    COGIFY_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
     TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
@@ -167,6 +168,7 @@ def batch_client():
         "s3_writer", subnet_id, sg_id, iam_arn
     )
     pixetl_env = aws_mock.add_compute_environment("pixetl", subnet_id, sg_id, iam_arn)
+    cogify_env = aws_mock.add_compute_environment("cogify", subnet_id, sg_id, iam_arn)
 
     aws_mock.add_job_queue(AURORA_JOB_QUEUE, aurora_writer_env["computeEnvironmentArn"])
     aws_mock.add_job_queue(
@@ -175,6 +177,7 @@ def batch_client():
     aws_mock.add_job_queue(DATA_LAKE_JOB_QUEUE, s3_writer_env["computeEnvironmentArn"])
     aws_mock.add_job_queue(TILE_CACHE_JOB_QUEUE, s3_writer_env["computeEnvironmentArn"])
     aws_mock.add_job_queue(PIXETL_JOB_QUEUE, pixetl_env["computeEnvironmentArn"])
+    aws_mock.add_job_queue(COGIFY_JOB_QUEUE, cogify_env["computeEnvironmentArn"])
 
     aws_mock.add_job_definition(GDAL_PYTHON_JOB_DEFINITION, "batch_gdal-python_test")
     aws_mock.add_job_definition(
