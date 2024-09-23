@@ -174,12 +174,8 @@ module "batch_data_lake_writer" {
   tags                  = local.batch_tags
   use_ephemeral_storage = true
   # SPOT is actually the default, this is just a placeholder until GTC-1791 is done
-  launch_type = "SPOT"
-  instance_types = [
-    "r6id.large", "r6id.xlarge", "r6id.2xlarge", "r6id.4xlarge", "r6id.8xlarge", "r6id.12xlarge", "r6id.16xlarge", "r6id.24xlarge",
-    "r5ad.large", "r5ad.xlarge", "r5ad.2xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge",
-    "r5d.large", "r5d.xlarge", "r5d.2xlarge", "r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge"
-  ]
+  launch_type              = "SPOT"
+  instance_types           = var.data_lake_writer_instance_types
   compute_environment_name = "data_lake_writer"
 }
 
@@ -200,16 +196,12 @@ module "batch_cog_creator" {
     data.terraform_remote_state.core.outputs.default_security_group_id,
     data.terraform_remote_state.core.outputs.postgresql_security_group_id
   ]
-  subnets               = data.terraform_remote_state.core.outputs.private_subnet_ids
-  suffix                = local.name_suffix
-  tags                  = local.batch_tags
-  use_ephemeral_storage = true
-  launch_type           = "EC2"
-  instance_types = [
-    "r6id.large", "r6id.xlarge", "r6id.2xlarge", "r6id.4xlarge", "r6id.8xlarge", "r6id.12xlarge", "r6id.16xlarge", "r6id.24xlarge",
-    "r5ad.large", "r5ad.xlarge", "r5ad.2xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge",
-    "r5d.large", "r5d.xlarge", "r5d.2xlarge", "r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge"
-  ]
+  subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
+  suffix                   = local.name_suffix
+  tags                     = local.batch_tags
+  use_ephemeral_storage    = true
+  launch_type              = "EC2"
+  instance_types           = var.data_lake_writer_instance_types
   compute_environment_name = "cog_creator"
 }
 
