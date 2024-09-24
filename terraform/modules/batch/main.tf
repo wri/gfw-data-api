@@ -53,7 +53,7 @@ resource "aws_batch_job_queue" "pixetl" {
 }
 
 resource "aws_batch_job_queue" "on_demand" {
-  name                 = substr("${var.project}-cog-job-queue${var.name_suffix}", 0, 64)
+  name                 = substr("${var.project}-on-demand-job-queue${var.name_suffix}", 0, 64)
   state                = "ENABLED"
   priority             = 1
   compute_environments = [var.cogify_compute_environment_arn]
