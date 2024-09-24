@@ -39,7 +39,7 @@ services:
       - TILE_CACHE_CLUSTER=tile_cache_cluster
       - TILE_CACHE_SERVICE=tile_cache_service
       - PIXETL_JOB_QUEUE=pixetl_jq
-      - COGIFY_JOB_QUEUE=cogify_jq
+      - ON_DEMAND_COMPUTE_JOB_QUEUE=cogify_jq
       - API_URL=http://app_dev:80
       - RASTER_ANALYSIS_LAMBDA_NAME=raster-analysis-tiled_raster_analysis-default
       - RW_API_URL=https://staging-api.resourcewatch.org

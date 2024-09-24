@@ -179,7 +179,7 @@ module "batch_data_lake_writer" {
   compute_environment_name = "data_lake_writer"
 }
 
-module "batch_cog_creator" {
+module "batch_cogify" {
   source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.3"
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
@@ -202,7 +202,7 @@ module "batch_cog_creator" {
   use_ephemeral_storage    = true
   launch_type              = "EC2"
   instance_types           = var.data_lake_writer_instance_types
-  compute_environment_name = "batch_cog_creator"
+  compute_environment_name = "batch_cogify"
 }
 
 module "batch_job_queues" {
@@ -211,7 +211,7 @@ module "batch_job_queues" {
   data_lake_compute_environment_arn  = module.batch_data_lake_writer.arn
   pixetl_compute_environment_arn     = module.batch_data_lake_writer.arn
   tile_cache_compute_environment_arn = module.batch_data_lake_writer.arn
-  cog_compute_environment_arn        = module.batch_cog_creator.arn
+  cogify_compute_environment_arn     = module.batch_cogify.arn
   environment                        = var.environment
   name_suffix                        = local.name_suffix
   project                            = local.project
