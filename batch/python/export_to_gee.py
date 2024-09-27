@@ -86,6 +86,22 @@ def create_cog_backed_asset(dataset, implementation, gcs_path, credentials):
 
 def ingest_in_gee(dataset, implementation, gcs_path):
     """Ingest directly into GEE as a best effort task."""
+    # delete any existing asset with the same dataset/implementation
+    try:
+        ee.data.deleteAsset(f"projects/{EE_PROJECT}/assets/{dataset}/{implementation}")
+    except ee.EEException:
+        # asset doesn't exist
+        pass
+
+    # create dataset folder if it doesn't exist
+    try:
+        ee.data.createAsset(
+            {"type": "Folder"}, f"projects/{EE_PROJECT}/assets/{dataset}"
+        )
+    except ee.EEException:
+        # folder already exists
+        pass
+
     asset_id = f"{dataset}/{implementation}"
     request_id = ee.data.newTaskId()[0]
     params = {
@@ -115,8 +131,7 @@ def export_to_gee(
     ee.Initialize(credentials)
 
     gcs_path = upload_cog_to_gcs(dataset, implementation)
-    asset_id = (dataset, implementation, gcs_path, service_account)
-    set_acl_to_anyone_read(asset_id)
+    ingest_in_gee(dataset, implementation, gcs_path)
 
 
 if __name__ == "__main__":
