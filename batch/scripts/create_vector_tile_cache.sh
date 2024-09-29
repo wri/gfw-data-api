@@ -36,7 +36,7 @@ discontinuous) # Discontinuous polygon features
   TIPPE_ARG_ARRAY+=("--drop-densest-as-needed" "--extend-zooms-if-still-dropping")
   ;;
 continuous) # Continuous polygon features
-  TIPPE_ARG_ARRAY+=("--coalesce-densest-as-needed" "--extend-zooms-if-still-dropping")
+  TIPPE_ARG_ARRAY+=("--coalesce-densest-as-needed" "--extend-zooms-if-still-dropping" "--no-simplification-of-shared-nodes")
   ;;
 keep_all) # never drop or coalesce feature, ignore size and feature count
   TIPPE_ARG_ARRAY+=("-r1")
