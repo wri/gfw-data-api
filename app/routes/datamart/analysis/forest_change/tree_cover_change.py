@@ -1,23 +1,16 @@
 """
 Data Mart APIs for Global Forest Watch (GFW) backend consumption.
 
-These APIs provide coarse-grained, tailored data services specifically designed to meet the needs of the **Global Forest Watch (GFW)** backend infrastructure.
-The endpoints abstract away the complexities of querying datasets related to net tree cover change, allowing the GFW backend to integrate and consume
+These APIs provide coarse-grained, tailored data services specifically designed to meet the needs of WRI frontend applications.
+The endpoints abstract away the complexities of querying datasets related to tree cover change, allowing applications to integrate and consume
 data efficiently and reliably.
-
-### Intended Audience:
-This API is not designed for general public use. It is purpose-built for internal use by the GFW backend services and systems. The consumers of this
-API are expected to have an in-depth understanding of GFW's data models and query requirements.
 
 ### Key Features:
 - Tailored queries for retrieving net tree cover change data from the GFW database.
 - Efficient data retrieval for ISO country codes and administrative regions.
-- Abstracts the SQL query generation process to simplify integration with the backend.
+- Abstracts the SQL query generation process to simplify integration with applications.
 
 ### Usage:
-These endpoints are intended to be consumed programmatically by the GFW backend and are not optimized for external client-facing use. The data
-retrieved is intended to support GFW's internal applications and services.
-
 Specifically, it supports the [Net change in tree cover](https://www.globalforestwatch.org/map/country/BRA/14/?mainMap=eyJzaG93QW5hbHlzaXMiOnRydWV9&map=eyJjZW50ZXIiOnsibGF0IjotMy42MjgwNjcwOTUyMDc3NDc2LCJsbmciOi01Mi40NzQ4OTk5OTk5OTczMzR9LCJ6b29tIjo2LjA1NTQ1ODQ3NjM4NDE1LCJjYW5Cb3VuZCI6ZmFsc2UsImRhdGFzZXRzIjpbeyJkYXRhc2V0IjoiTmV0LUNoYW5nZS1TVEFHSU5HIiwib3BhY2l0eSI6MSwidmlzaWJpbGl0eSI6dHJ1ZSwibGF5ZXJzIjpbImZvcmVzdC1uZXQtY2hhbmdlIl19LHsiZGF0YXNldCI6InBvbGl0aWNhbC1ib3VuZGFyaWVzIiwibGF5ZXJzIjpbImRpc3B1dGVkLXBvbGl0aWNhbC1ib3VuZGFyaWVzIiwicG9saXRpY2FsLWJvdW5kYXJpZXMiXSwib3BhY2l0eSI6MSwidmlzaWJpbGl0eSI6dHJ1ZX1dfQ%3D%3D&mapMenu=eyJtZW51U2VjdGlvbiI6ImRhdGFzZXRzIiwiZGF0YXNldENhdGVnb3J5IjoiZm9yZXN0Q2hhbmdlIn0%3D) widget
 """
 from enum import Enum
@@ -159,7 +152,7 @@ async def _fetch_tree_cover_data(sql_query: str, level: str, api_key: str) -> Tr
             logger.error(f"API responded with status code {response.status_code}: {response.content}")
             raise Exception("Failed to fetch tree cover data.")
 
-        # Parse and validate the response data into TreeCoverData models
+        # Parse and validate the response data into a TreeCoverData model
         response_data = response.json().get("data", [])[0]
         return TreeCoverData(**response_data)
 
@@ -174,7 +167,7 @@ async def _get_tree_cover_data(gadm_specification: GadmSpecification, api_key: A
     "/v1/net_tree_cover_change",
     response_class=ORJSONResponse,
     response_model=NetTreeCoverChangeResponse,
-    tags=["Data Mart"],
+    tags=["Forest Change"],
     summary="Retrieve net tree cover change data",
     description="This endpoint provides data on net tree cover change by querying the Global Forest Watch (GFW) database.",
 )

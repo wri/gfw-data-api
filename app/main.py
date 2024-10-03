@@ -20,7 +20,7 @@ from .routes import health
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.authentication import authentication
-from .routes.datamart import globalforestwatch
+from app.routes.datamart.analysis.forest_change import tree_cover_change
 from .routes.datasets import asset as version_asset
 from .routes.datasets import (
     dataset,
@@ -168,7 +168,7 @@ for r in analysis_routers:
 # Data Mart API
 ###############
 
-app.include_router(globalforestwatch.router, prefix="/datamart/globalforestwatch")
+app.include_router(tree_cover_change.router, prefix="/datamart/analysis/forest_change/tree_cover_change")
 
 ###############
 # JOB API
@@ -205,7 +205,7 @@ tags_metadata = [
     {"name": "Analysis2", "description": analysis.__doc__},
     {"name": "Job", "description": job.__doc__},
     {"name": "Health", "description": health.__doc__},
-    {"name": "Data Mart", "description": globalforestwatch.__doc__},
+    {"name": "Forest Change", "description": tree_cover_change.__doc__},
 ]
 
 
@@ -231,7 +231,7 @@ def custom_openapi():
         {"name": "Task API", "tags": ["Tasks"]},
         {"name": "Analysis API", "tags": ["Analysis"]},
         {"name": "Health API", "tags": ["Health"]},
-        {"name": "Data Mart API", "tags": ["Data Mart"]},
+        {"name": "Data Mart API", "tags": ["Forest Change"]},
     ]
 
     app.openapi_schema = openapi_schema
