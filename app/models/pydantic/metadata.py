@@ -11,7 +11,8 @@ from .responses import Response
 
 
 class CommonMetadata(BaseModel):
-    resolution: Optional[Union[int, float]]
+    spatial_resolution: Optional[Union[int, float]]
+    resolution_description: Optional[str]
     geographic_coverage: Optional[str]
     update_frequency: Optional[str]
     scale: Optional[str]
@@ -21,7 +22,8 @@ class CommonMetadata(BaseModel):
         schema_extra = {
             "examples": [
                 {
-                    "resolution": 10,
+                    "spatial_resolution": 10,
+                    "resolution_description": "10 meters",
                     "geographic_coverage": "Amazon Basin",
                     "update_frequency": "Updated daily, image revisit time every 5 days",
                     "scale": "regional",
