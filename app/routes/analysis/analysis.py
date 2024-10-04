@@ -17,7 +17,7 @@ from ...models.pydantic.responses import Response
 from ...settings.globals import GEOSTORE_SIZE_LIMIT_OTF
 from ...utils.geostore import get_geostore
 from .. import DATE_REGEX
-from ..datasets.queries import _query_raster_lambda, _query_dataset_json
+from ..datasets.queries import _query_raster_lambda
 
 router = APIRouter()
 
