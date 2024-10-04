@@ -156,3 +156,13 @@ variable "api_gateway_url" {
   description = "The invoke url of the API Gateway stage"
   default     = ""
 }
+
+variable "data_lake_writer_instance_types" {
+  type        = list(string)
+  description = "memory optimized EC2 instances with local NVMe SSDs for data lake writer batche queues"
+  default = [
+    "r6id.large", "r6id.xlarge", "r6id.2xlarge", "r6id.4xlarge", "r6id.8xlarge", "r6id.12xlarge", "r6id.16xlarge", "r6id.24xlarge",
+    "r5ad.large", "r5ad.xlarge", "r5ad.2xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge",
+    "r5d.large", "r5d.xlarge", "r5d.2xlarge", "r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge"
+  ]
+}
