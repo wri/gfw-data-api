@@ -1,18 +1,3 @@
-"""
-Data Mart APIs for Global Forest Watch (GFW) backend consumption.
-
-These APIs provide coarse-grained, tailored data services specifically designed to meet the needs of WRI frontend applications.
-The endpoints abstract away the complexities of querying datasets related to tree cover change, allowing applications to integrate and consume
-data efficiently and reliably.
-
-### Key Features:
-- Tailored queries for retrieving net tree cover change data from the GFW database.
-- Efficient data retrieval for ISO country codes and administrative regions.
-- Abstracts the SQL query generation process to simplify integration with applications.
-
-### Usage:
-Specifically, it supports the [Net change in tree cover](https://www.globalforestwatch.org/map/country/BRA/14/?mainMap=eyJzaG93QW5hbHlzaXMiOnRydWV9&map=eyJjZW50ZXIiOnsibGF0IjotMy42MjgwNjcwOTUyMDc3NDc2LCJsbmciOi01Mi40NzQ4OTk5OTk5OTczMzR9LCJ6b29tIjo2LjA1NTQ1ODQ3NjM4NDE1LCJjYW5Cb3VuZCI6ZmFsc2UsImRhdGFzZXRzIjpbeyJkYXRhc2V0IjoiTmV0LUNoYW5nZS1TVEFHSU5HIiwib3BhY2l0eSI6MSwidmlzaWJpbGl0eSI6dHJ1ZSwibGF5ZXJzIjpbImZvcmVzdC1uZXQtY2hhbmdlIl19LHsiZGF0YXNldCI6InBvbGl0aWNhbC1ib3VuZGFyaWVzIiwibGF5ZXJzIjpbImRpc3B1dGVkLXBvbGl0aWNhbC1ib3VuZGFyaWVzIiwicG9saXRpY2FsLWJvdW5kYXJpZXMiXSwib3BhY2l0eSI6MSwidmlzaWJpbGl0eSI6dHJ1ZX1dfQ%3D%3D&mapMenu=eyJtZW51U2VjdGlvbiI6ImRhdGFzZXRzIiwiZGF0YXNldENhdGVnb3J5IjoiZm9yZXN0Q2hhbmdlIn0%3D) widget
-"""
 from enum import Enum
 from typing import Optional
 
@@ -27,7 +12,10 @@ from app.authentication.api_keys import get_api_key
 from app.models.orm.api_keys import ApiKey
 from app.models.pydantic.base import StrictBaseModel
 
-router = APIRouter()
+
+tree_cover_change_router = APIRouter(
+    prefix="/tree_cover_change"
+)
 
 
 class Gadm(str, Enum):
@@ -163,13 +151,16 @@ async def _get_tree_cover_data(gadm_specification: GadmSpecification, api_key: A
     return await _fetch_tree_cover_data(sql_query, admin_level, api_key)
 
 
-@router.get(
-    "/v1/net_tree_cover_change",
+@tree_cover_change_router.get(
+    "/net_tree_cover_change",
     response_class=ORJSONResponse,
     response_model=NetTreeCoverChangeResponse,
-    tags=["Forest Change"],
-    summary="Retrieve net tree cover change data",
-    description="This endpoint provides data on net tree cover change by querying the Global Forest Watch (GFW) database.",
+    summary="🌳 Net Tree Cover Change",
+    description="""
+    Retrieve net tree cover change data.
+    This endpoint provides data on net tree cover change by querying the Global Forest Watch (GFW) database. 
+    Specifically, it supports the [Net change in tree cover](https://www.globalforestwatch.org/map/country/BRA/14/?mainMap=eyJzaG93QW5hbHlzaXMiOnRydWV9&map=eyJjZW50ZXIiOnsibGF0IjotMy42MjgwNjcwOTUyMDc3NDc2LCJsbmciOi01Mi40NzQ4OTk5OTk5OTczMzR9LCJ6b29tIjo2LjA1NTQ1ODQ3NjM4NDE1LCJjYW5Cb3VuZCI6ZmFsc2UsImRhdGFzZXRzIjpbeyJkYXRhc2V0IjoiTmV0LUNoYW5nZS1TVEFHSU5HIiwib3BhY2l0eSI6MSwidmlzaWJpbGl0eSI6dHJ1ZSwibGF5ZXJzIjpbImZvcmVzdC1uZXQtY2hhbmdlIl19LHsiZGF0YXNldCI6InBvbGl0aWNhbC1ib3VuZGFyaWVzIiwibGF5ZXJzIjpbImRpc3B1dGVkLXBvbGl0aWNhbC1ib3VuZGFyaWVzIiwicG9saXRpY2FsLWJvdW5kYXJpZXMiXSwib3BhY2l0eSI6MSwidmlzaWJpbGl0eSI6dHJ1ZX1dfQ%3D%3D&mapMenu=eyJtZW51U2VjdGlvbiI6ImRhdGFzZXRzIiwiZGF0YXNldENhdGVnb3J5IjoiZm9yZXN0Q2hhbmdlIn0%3D) widget.
+    """,
 )
 async def net_tree_cover_change(
         iso: str = Query(..., description="ISO code of the country or region (e.g., 'BRA' for Brazil).", example="BRA"),

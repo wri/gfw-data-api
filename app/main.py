@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.errors import http_error_handler
+from app.routes.datamart import data_mart_router, datamart_metadata_tags
 
 from .application import app
 from .middleware import no_cache_response_header, redirect_latest, set_db_mode
@@ -20,7 +21,6 @@ from .routes import health
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.authentication import authentication
-from app.routes.datamart.analysis.forest_change import tree_cover_change
 from .routes.datasets import asset as version_asset
 from .routes.datasets import (
     dataset,
@@ -168,7 +168,7 @@ for r in analysis_routers:
 # Data Mart API
 ###############
 
-app.include_router(tree_cover_change.router, prefix="/datamart/analysis/forest_change/tree_cover_change")
+app.include_router(data_mart_router)
 
 ###############
 # JOB API
@@ -202,11 +202,12 @@ tags_metadata = [
     {"name": "Download", "description": downloads.__doc__},
     {"name": "Geostore", "description": geostore.__doc__},
     {"name": "Tasks", "description": task.__doc__},
-    {"name": "Analysis2", "description": analysis.__doc__},
+    {"name": "Analysis", "description": analysis.__doc__},
     {"name": "Job", "description": job.__doc__},
     {"name": "Health", "description": health.__doc__},
-    {"name": "Forest Change", "description": tree_cover_change.__doc__},
 ]
+
+tags_metadata.extend(datamart_metadata_tags)
 
 
 def custom_openapi():
@@ -231,7 +232,7 @@ def custom_openapi():
         {"name": "Task API", "tags": ["Tasks"]},
         {"name": "Analysis API", "tags": ["Analysis"]},
         {"name": "Health API", "tags": ["Health"]},
-        {"name": "Data Mart API", "tags": ["Forest Change"]},
+        {"name": "Data Mart API", "tags": ["Forest Change Analysis 📊"]},
     ]
 
     app.openapi_schema = openapi_schema
