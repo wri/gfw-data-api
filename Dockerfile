@@ -1,43 +1,98 @@
-FROM tiangolo/uvicorn-gunicorn-fastapi:python3.10-slim
+# Use a multi-stage build to first get uv
+FROM ghcr.io/astral-sh/uv:0.4.18 as uv
 
-# Comment to trigger an image rebuild
+FROM ubuntu:noble as build
 
-# Optional build argument for different environments
-ARG ENV
+RUN apt-get update -qy && \
+    apt-get install -qyy \
+        -o APT::Install-Recommends=false \
+        -o APT::Install-Suggests=false \
+        ca-certificates \
+        git \
+        make \
+        clang \
+        libpq-dev
 
-RUN apt-get update -y \
-    && apt-get install --no-install-recommends -y gcc g++ libc-dev \
-        postgresql-client libpq-dev make git jq libgdal-dev \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# We need to set this environment variable so that uv knows where
+# the virtual environment is to install packages
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    VIRTUAL_ENV=/app/.venv
 
-RUN pip install --upgrade pip && pip install pipenv==2024.0.1
-#TODO move to pipfile when operational
-RUN pip install newrelic
+#RUN mkdir -p /app
 
-# Install python dependencies
-# Install everything for dev and test otherwise just core dependencies
-COPY Pipfile Pipfile
-COPY Pipfile.lock Pipfile.lock
+# Create a user and group for the application
+#RUN groupadd -r app && \
+#    useradd -r -d /app -g app -N app
+#
+#RUN chown -R app:app /app
+#
+#USER app
 
-RUN if [ "$ENV" = "dev" ] || [ "$ENV" = "test" ]; then \
-        echo "Install all dependencies" \
-        && pipenv install --system --deploy --ignore-pipfile --dev; \
-    else \
-        echo "Install production dependencies only" \
-        && pipenv install --system --deploy; \
-    fi
+# Create a virtual environment with uv inside the container
+RUN --mount=type=cache,target=/app/.cache \
+    --mount=from=uv,source=/uv,target=./uv \
+    /uv python install 3.10 && \
+    /uv venv $VIRTUAL_ENV
 
-COPY ./app /app/app
+# Make sure that the virtual environment is in the PATH so
+# we can use the binaries of packages that we install such as pip
+# without needing to activate the virtual environment explicitly
+ENV PATH=$VIRTUAL_ENV/bin:/usr/local/bin:$PATH
 
+RUN --mount=type=cache,target=/app/.cache \
+    --mount=from=uv,source=/uv,target=./uv \
+    /uv pip install setuptools wheel
+
+# Copy pyproject.toml and uv.lock to a temporary directory
+COPY pyproject.toml /_lock/
+COPY uv.lock /_lock/
+
+# Install the packages with uv using --mount=type=cache to cache the downloaded packages
+RUN --mount=type=cache,target=/app/.cache \
+    --mount=from=uv,source=/uv,target=./uv \
+    cd /_lock && \
+    /uv sync --locked --no-install-project
+
+# Start the runtime stage
+FROM ubuntu:noble
+SHELL ["sh", "-exc"]
+
+ENV PATH=$VIRTUAL_ENV/bin:/usr/local/bin:$PATH
+
+RUN apt-get update -qy && \
+    apt-get install -qyy \
+        -o APT::Install-Recommends=false \
+        -o APT::Install-Suggests=false \
+        postgresql-client \
+        expat
+
+# Create a user and group for the application
+#RUN groupadd -r app && \
+#    useradd -r -d /app -g app -N app
+
+COPY --chmod=777 wait_for_postgres.sh /usr/local/bin/wait_for_postgres.sh
+
+# Set the entry point and signal handling
+ENTRYPOINT [ "/app/start.sh" ]
+#ENTRYPOINT [ "/bin/bash" ]
+STOPSIGNAL SIGINT
+
+# Copy the pre-built `/app` directory from the build stage
+COPY --from=build --chmod=777 /app /app
+COPY --from=build --chmod=777 /root /root
+
+COPY newrelic.ini /app/newrelic.ini
 COPY alembic.ini /app/alembic.ini
 
-COPY app/settings/prestart.sh /app/prestart.sh
-COPY app/settings/start.sh /app/start.sh
-COPY newrelic.ini /app/newrelic.ini
+COPY --chmod=777 app/settings/prestart.sh /app/prestart.sh
+COPY --chmod=777 app/settings/start.sh /app/start.sh
 
-COPY wait_for_postgres.sh /usr/local/bin/wait_for_postgres.sh
-RUN chmod +x /usr/local/bin/wait_for_postgres.sh
-RUN chmod +x /app/start.sh
+# If your application is NOT a proper Python package that got
+# pip-installed above, you need to copy your application into
+# the container HERE:
+COPY ./app /app/app
 
-ENTRYPOINT [ "/app/start.sh" ]
+#USER app
+WORKDIR /app

@@ -1,0 +1,69 @@
+[project]
+name = "gfw-data-api"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = "~= 3.10"
+dependencies = [
+    "aenum",
+    "aiofiles",
+    "aiohttp",
+    "alembic",
+    "arq",
+    "asgi_lifespan",
+    "async-lru",
+    "asyncpg",
+    "boto3",
+    "botocore",
+    "email-validator",
+    "fastapi",
+    "geoalchemy2<0.12",
+    "geojson",
+    "gino",
+    "gino_starlette",
+    "google-cloud-storage",
+    "httpcore",
+    "httpx",
+    "httpx-auth",
+    "newrelic",
+    "numpy<2",
+    "orjson",
+    "packaging",
+    "pendulum",
+    "pglast<2",
+    "psutil",
+    "psycopg2",
+    "pydantic<2",
+    "pyproj",
+    "python-multipart",
+    "retrying",
+    "shapely",
+    "sqlalchemy<1.4",
+    "sqlalchemy-utils",
+    "starlette",
+    "typer",
+    "uvicorn[standard]",
+]
+
+[tool.setuptools]
+packages = ["app", "batch"]
+
+[tool.uv]
+dev-dependencies = [
+    "docker",
+    "pytest",
+    "pytest-asyncio",
+    "rasterio==1.3.11",
+    "gfw-pixetl",
+    "moto<5",
+    "pandas<2.2",
+    "geopandas",
+    "pytest",
+    "pytest-timeout",
+    "pre-commit",
+    "pytest-cov",
+    "retrying",
+]
+
+[tool.uv.sources]
+gfw-pixetl = { git = "https://github.com/wri/gfw_pixetl.git", branch = "develop" }
