@@ -33,7 +33,7 @@ async def send_tree_cover_change_request(api_key, async_client: AsyncClient, par
 
 
 @pytest.mark.asyncio
-async def test_net_tree_cover_change_builds_succeeds(
+async def test_net_tree_cover_change_succeeds(
         apikey, async_client: AsyncClient
 ):
     with patch(
