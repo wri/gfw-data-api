@@ -68,6 +68,7 @@ data "template_file" "container_definition" {
     tile_cache_job_queue        = module.batch_job_queues.tile_cache_job_queue_arn
     pixetl_job_definition       = module.batch_job_queues.pixetl_job_definition_arn
     pixetl_job_queue            = module.batch_job_queues.pixetl_job_queue_arn
+    on_demand_compute_job_queue = module.batch_job_queues.on_demand_compute_job_queue_arn
     raster_analysis_lambda_name = "raster-analysis-tiled_raster_analysis-default"
     raster_analysis_sfn_arn     = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_state_machine_arn
     service_url                 = local.service_url
@@ -95,15 +96,16 @@ data "template_file" "container_definition" {
 data "template_file" "task_batch_policy" {
   template = file("${path.root}/templates/run_batch_policy.json.tmpl")
   vars = {
-    aurora_job_definition_arn     = module.batch_job_queues.aurora_job_definition_arn
-    aurora_job_queue_arn          = module.batch_job_queues.aurora_job_queue_arn
-    aurora_job_queue_fast_arn     = module.batch_job_queues.aurora_job_queue_fast_arn
-    data_lake_job_definition_arn  = module.batch_job_queues.data_lake_job_definition_arn
-    data_lake_job_queue_arn       = module.batch_job_queues.data_lake_job_queue_arn
-    tile_cache_job_definition_arn = module.batch_job_queues.tile_cache_job_definition_arn
-    tile_cache_job_queue_arn      = module.batch_job_queues.tile_cache_job_queue_arn
-    pixetl_job_definition_arn     = module.batch_job_queues.pixetl_job_definition_arn
-    pixetl_job_queue_arn          = module.batch_job_queues.pixetl_job_queue_arn
+    aurora_job_definition_arn       = module.batch_job_queues.aurora_job_definition_arn
+    aurora_job_queue_arn            = module.batch_job_queues.aurora_job_queue_arn
+    aurora_job_queue_fast_arn       = module.batch_job_queues.aurora_job_queue_fast_arn
+    data_lake_job_definition_arn    = module.batch_job_queues.data_lake_job_definition_arn
+    data_lake_job_queue_arn         = module.batch_job_queues.data_lake_job_queue_arn
+    tile_cache_job_definition_arn   = module.batch_job_queues.tile_cache_job_definition_arn
+    tile_cache_job_queue_arn        = module.batch_job_queues.tile_cache_job_queue_arn
+    pixetl_job_definition_arn       = module.batch_job_queues.pixetl_job_definition_arn
+    pixetl_job_queue_arn            = module.batch_job_queues.pixetl_job_queue_arn
+    on_demand_compute_job_queue_arn = module.batch_job_queues.on_demand_compute_job_queue_arn
   }
   depends_on = [
     module.batch_job_queues.aurora_job_definition,
