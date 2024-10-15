@@ -193,3 +193,10 @@ data "template_file" "step_function_policy" {
     raster_analysis_state_machine_arn = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_state_machine_arn
   }
 }
+
+# Hash of the contents of the FastAPI app docker. The docker commands run in the main
+# directory (parent directory of terraform directory), and the Docker file is in the
+# same directory.
+data "external" "hash" {
+  program = ["${path.root}/scripts/hash.sh", "${path.root}/../", "."]
+}
