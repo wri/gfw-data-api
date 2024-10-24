@@ -81,7 +81,8 @@ router = APIRouter()
 async def get_version(
     *, dv: Tuple[str, str] = Depends(dataset_version_dependency)
 ) -> VersionResponse:
-    """Get basic metadata for a given version."""
+    """Get basic metadata for a given version. The list of assets is sorted by
+    the creation time of each asset."""
 
     dataset, version = dv
     row: ORMVersion = await versions.get_version(dataset, version)
@@ -536,6 +537,7 @@ async def _version_response(
         .where(ORMAsset.dataset == dataset)
         .where(ORMAsset.version == version)
         .where(ORMAsset.status == AssetStatus.saved)
+        .order_by(ORMAsset.created_on)
         .gino.all()
     )
     data = Version.from_orm(data).dict(by_alias=True)
