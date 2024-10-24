@@ -536,6 +536,7 @@ async def _version_response(
         .where(ORMAsset.dataset == dataset)
         .where(ORMAsset.version == version)
         .where(ORMAsset.status == AssetStatus.saved)
+        .order_by(ORMAsset.created_on)
         .gino.all()
     )
     data = Version.from_orm(data).dict(by_alias=True)
