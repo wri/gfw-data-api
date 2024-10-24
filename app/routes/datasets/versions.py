@@ -81,7 +81,8 @@ router = APIRouter()
 async def get_version(
     *, dv: Tuple[str, str] = Depends(dataset_version_dependency)
 ) -> VersionResponse:
-    """Get basic metadata for a given version."""
+    """Get basic metadata for a given version. The list of assets is sorted by
+    the creation time of each asset."""
 
     dataset, version = dv
     row: ORMVersion = await versions.get_version(dataset, version)
