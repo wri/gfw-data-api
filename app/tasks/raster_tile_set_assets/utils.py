@@ -225,3 +225,33 @@ async def create_resample_job(
         parents=[parent.job_name for parent in parents] if parents else None,
         **kwargs,
     )
+
+async def create_unify_projection_job(
+    dataset: str,
+    old_source_uris: List[str],
+    target_prefix: str,
+    target_crs: str,
+    job_name: str,
+    callback: Callback
+):
+    """
+    """
+
+    command = [
+        "unify_projection.sh",
+        "--target_crs",
+        target_crs,
+    ]
+
+    for s in old_source_uris:
+        command.extend(["--source", s])
+
+    command.extend(["--target", target_prefix])
+
+    return PixETLJob(
+        dataset=dataset,
+        job_name=job_name,
+        command=command,
+        environment=JOB_ENV,
+        callback=callback,
+    )
