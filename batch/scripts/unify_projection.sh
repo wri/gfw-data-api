@@ -21,7 +21,6 @@ src_count=0
 
 CMD_ARGS=()
 
-cd /tmp
 for s in ${SRC}; do
   for f in ${files}; do
     remote_src_file=${s}/${f}
@@ -29,9 +28,9 @@ for s in ${SRC}; do
     local_warped_file=REPROJECTED_${src_count}/${f}
     remote_target_file=${TARGET}/SRC_${src_count}/${f}
 
-    CMD_ARGS+=("${remote_src_file}" "$local_src_file" "$local_warped_file" "$TARGET_CRS" "$remote_target_file")
+    CMD_ARGS+=("${remote_src_file}" "${local_src_file}" "${local_warped_file}" "${TARGET_CRS}" "${remote_target_file}")
   done
-  ((count++))
+  ((src_count++))
 done
 
 echo "${CMD_ARGS[@]}" | xargs -n 5 -P 32 _warp_and_upload.sh
