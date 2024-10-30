@@ -34,4 +34,4 @@ for s in ${SRC}; do
   ((count++))
 done
 
-echo $CMD_ARGS | xargs -n 5 -P 32 _warp_and_upload.sh
+echo "${CMD_ARGS[@]}" | xargs -n 5 -P 32 _warp_and_upload.sh
