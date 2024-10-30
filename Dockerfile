@@ -1,7 +1,7 @@
 # Use a multi-stage build to first get uv
-FROM ghcr.io/astral-sh/uv:0.4.28 as uv
+FROM ghcr.io/astral-sh/uv:0.4.28 AS uv
 
-FROM ubuntu:noble as build
+FROM ubuntu:noble AS build
 
 RUN apt-get update -qy && \
     apt-get install -qyy \
