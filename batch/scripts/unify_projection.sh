@@ -19,32 +19,19 @@ files="02.tif 03.tif 04.tif 05.tif 06.tif 07.tif 08.tif 09.tif 10.tif 11.tif 12.
 
 src_count=0
 
+CMD_ARGS=()
+
 cd /tmp
 for s in ${SRC}; do
   for f in ${files}; do
-    remote_target_file=${TARGET}/SRC_${src_count}/${f}
-    if aws s3 ls ${remote_target_file}; then
-      echo "Remote target file ${remote_target_file} already exists, skipping..."
-      continue
-    fi
-
     remote_src_file=${s}/${f}
     local_src_file=SRC_${src_count}/${f}
-    echo "Now downloading ${remote_src_file} to ${local_src_file}"
-    time gsutil cp ${s}/${f} ${local_src_file}
-    echo "Done"
-
     local_warped_file=REPROJECTED_${src_count}/${f}
-    echo "Now warping ${local_src_file} to ${local_warped_file}"
-    time gdalwarp ${local_src_file} ${local_warped_file} -t_srs "${TARGET_CRS}" -co COMPRESS=DEFLATE -co TILED=yes
-    echo "Done warping ${local_src_file} to ${local_warped_file}"
+    remote_target_file=${TARGET}/SRC_${src_count}/${f}
 
-    echo "Now uploading ${local_warped_file} to ${remote_target_file}"
-    time aws s3 cp ${local_warped_file} ${remote_target_file}
-    echo "Done uploading ${local_warped_file} to ${remote_target_file}"
-
-    echo "Finally, deleting local files ${local_src_file} and ${local_warped_file}"
-    rm ${local_src_file} ${local_warped_file}
+    CMD_ARGS+=("${remote_src_file}" "$local_src_file" "$local_warped_file" "$TARGET_CRS" "$remote_target_file")
   done
   ((count++))
 done
+
+echo $CMD_ARGS | xargs -n 5 -P 32 _warp_and_upload.sh
