@@ -47,6 +47,7 @@ services:
       - TILE_CACHE_CLUSTER=tile_cache_cluster
       - TILE_CACHE_SERVICE=tile_cache_service
       - PIXETL_JOB_QUEUE=pixetl_jq
+      - ON_DEMAND_COMPUTE_JOB_QUEUE=cogify_jq
       - PIXETL_CORES=1
       - MAX_CORES=1
       - NUM_PROCESSES=1

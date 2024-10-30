@@ -2,6 +2,7 @@ variable "project" { type = string }
 variable "name_suffix" { type = string }
 variable "aurora_compute_environment_arn" { type = string }
 variable "data_lake_compute_environment_arn" { type = string }
+variable "cogify_compute_environment_arn" { type = string }
 variable "tile_cache_compute_environment_arn" { type = string }
 variable "pixetl_compute_environment_arn" { type = string }
 variable "gdal_repository_url" { type = string }

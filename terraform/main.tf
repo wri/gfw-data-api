@@ -26,7 +26,13 @@ locals {
   aurora_instance_class = data.terraform_remote_state.core.outputs.aurora_cluster_instance_class
   aurora_max_vcpus      = local.aurora_instance_class == "db.t3.medium" ? 2 : local.aurora_instance_class == "db.r6g.large" ? 2 : local.aurora_instance_class == "db.r6g.xlarge" ? 4 : local.aurora_instance_class == "db.r6g.2xlarge" ? 8 : local.aurora_instance_class == "db.r6g.4xlarge" ? 16 : local.aurora_instance_class == "db.r6g.8xlarge" ? 32 : local.aurora_instance_class == "db.r6g.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.large" ? 2 : local.aurora_instance_class == "db.r5.xlarge" ? 4 : local.aurora_instance_class == "db.r5.2xlarge" ? 8 : local.aurora_instance_class == "db.r5.4xlarge" ? 16 : local.aurora_instance_class == "db.r5.8xlarge" ? 32 : local.aurora_instance_class == "db.r5.12xlarge" ? 48 : local.aurora_instance_class == "db.r5.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.24xlarge" ? 96 : ""
   service_url           = var.environment == "dev" ? "http://${module.fargate_autoscaling.lb_dns_name}" : var.service_url
-  container_tag         = substr(var.git_sha, 0, 7)
+  # The container_registry module only pushes a new Docker image if the docker hash
+  # computed by its hash.sh script has changed. So, we make the container tag exactly
+  # be that hash. Therefore, we will know that either the previous docker with the
+  # same contents and tag will already exist, if nothing has changed in the docker
+  # image, or the container registry module will push a new docker with the tag we
+  # want.
+  container_tag         = lookup(data.external.hash.result, "hash")
   lb_dns_name           = coalesce(module.fargate_autoscaling.lb_dns_name, var.lb_dns_name)
 }
 
@@ -174,13 +180,35 @@ module "batch_data_lake_writer" {
   tags                  = local.batch_tags
   use_ephemeral_storage = true
   # SPOT is actually the default, this is just a placeholder until GTC-1791 is done
-  launch_type = "SPOT"
-  instance_types = [
-    "r6id.large", "r6id.xlarge", "r6id.2xlarge", "r6id.4xlarge", "r6id.8xlarge", "r6id.12xlarge", "r6id.16xlarge", "r6id.24xlarge",
-    "r5ad.large", "r5ad.xlarge", "r5ad.2xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge",
-    "r5d.large", "r5d.xlarge", "r5d.2xlarge", "r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge"
-  ]
+  launch_type              = "SPOT"
+  instance_types           = var.data_lake_writer_instance_types
   compute_environment_name = "data_lake_writer"
+}
+
+module "batch_cogify" {
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.3"
+  ecs_role_policy_arns = [
+    aws_iam_policy.query_batch_jobs.arn,
+    aws_iam_policy.s3_read_only.arn,
+    data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
+    data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
+    data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
+    data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_policy_arn
+  ]
+  key_pair  = var.key_pair
+  max_vcpus = var.data_lake_max_vcpus
+  project   = local.project
+  security_group_ids = [
+    data.terraform_remote_state.core.outputs.default_security_group_id,
+    data.terraform_remote_state.core.outputs.postgresql_security_group_id
+  ]
+  subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
+  suffix                   = local.name_suffix
+  tags                     = local.batch_tags
+  use_ephemeral_storage    = true
+  launch_type              = "EC2"
+  instance_types           = var.data_lake_writer_instance_types
+  compute_environment_name = "batch_cogify"
 }
 
 module "batch_job_queues" {
@@ -189,6 +217,7 @@ module "batch_job_queues" {
   data_lake_compute_environment_arn  = module.batch_data_lake_writer.arn
   pixetl_compute_environment_arn     = module.batch_data_lake_writer.arn
   tile_cache_compute_environment_arn = module.batch_data_lake_writer.arn
+  cogify_compute_environment_arn     = module.batch_cogify.arn
   environment                        = var.environment
   name_suffix                        = local.name_suffix
   project                            = local.project
