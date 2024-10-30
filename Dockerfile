@@ -1,5 +1,5 @@
 # Use a multi-stage build to first get uv
-FROM ghcr.io/astral-sh/uv:0.4.18 as uv
+FROM ghcr.io/astral-sh/uv:0.4.28 as uv
 
 FROM ubuntu:noble as build
 
@@ -8,10 +8,12 @@ RUN apt-get update -qy && \
         -o APT::Install-Recommends=false \
         -o APT::Install-Suggests=false \
         ca-certificates \
-        git \
-        make \
         clang \
-        libpq-dev
+        gcc \
+        git \
+        libgdal-dev \
+        libpq-dev \
+        make
 
 # We need to set this environment variable so that uv knows where
 # the virtual environment is to install packages
@@ -65,6 +67,7 @@ RUN apt-get update -qy && \
     apt-get install -qyy \
         -o APT::Install-Recommends=false \
         -o APT::Install-Suggests=false \
+        libgdal-dev \
         postgresql-client \
         expat
 
