@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # arguments:
 # $0 - The name of this script
 # $1 - remote_src_file

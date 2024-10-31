@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-set -x
 
 # requires arguments
 # -s | --source
@@ -23,6 +22,9 @@ src_count=0
 CMD_ARGS=()
 
 for s in ${SRC}; do
+  mkdir -p "SRC_${src_count}"
+  mkdir -p "REPROJECTED_${src_count}"
+
   for f in ${files}; do
     remote_src_file=${s}/${f}
     local_src_file=SRC_${src_count}/${f}
