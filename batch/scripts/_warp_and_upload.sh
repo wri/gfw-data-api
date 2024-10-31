@@ -16,7 +16,11 @@ if aws s3 ls "$5"; then
 fi
 
 echo "Now downloading $1 to $2"
-time gsutil cp "$1" "$2"
+if [[ $1 == gs://* ]]; then
+  time gsutil cp "$1" "$2"
+elif [[ $1 == s3://* ]]; then
+  time aws s3 cp --no-progress "$1" "$2"
+fi
 echo "Done downloading $1 to $2"
 
 echo "Now warping $2 to $3"
@@ -24,7 +28,7 @@ time gdalwarp "$2" "$3" -t_srs "$4" -co COMPRESS=DEFLATE -co TILED=yes
 echo "Done warping $2 to $3"
 
 echo "Now uploading $3 to $5"
-time aws s3 cp "$3" "$5"
+time aws s3 cp --no-progress "$3" "$5"
 echo "Done uploading $3 to $5"
 
 echo "Finally, deleting local files $2 and $3"
