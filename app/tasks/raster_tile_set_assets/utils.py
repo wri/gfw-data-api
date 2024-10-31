@@ -7,7 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from app.models.enum.assets import AssetType
 from app.models.enum.pixetl import ResamplingMethod
 from app.models.pydantic.creation_options import PixETLCreationOptions
-from app.models.pydantic.jobs import GDALDEMJob, Job, PixETLJob
+from app.models.pydantic.jobs import GDALDEMJob, Job, PixETLJob, GDAL2TilesJob
 from app.settings.globals import (
     AWS_GCS_KEY_SECRET_ARN,
     DEFAULT_JOB_DURATION,
@@ -248,7 +248,7 @@ async def create_unify_projection_job(
 
     command.extend(["--target", target_prefix])
 
-    return PixETLJob(
+    return GDAL2TilesJob(
         dataset=dataset,
         job_name=job_name,
         command=command,
