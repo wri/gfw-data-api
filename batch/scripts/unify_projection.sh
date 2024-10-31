@@ -21,7 +21,7 @@ src_count=0
 
 CMD_ARGS=()
 
-for s in ${SRC}; do
+for s in ${SRC[@]}; do
   mkdir -p "SRC_${src_count}"
   mkdir -p "REPROJECTED_${src_count}"
 
