@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -x
 
 # requires arguments
 # -s | --source

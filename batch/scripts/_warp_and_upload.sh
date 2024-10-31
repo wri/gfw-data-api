@@ -8,8 +8,8 @@
 # $4 - target_crs
 # $5 - remote target file
 
-if aws s3 ls "$1"; then
-  echo "Remote target file $1 already exists, skipping..."
+if aws s3 ls "$5"; then
+  echo "Remote target file $5 already exists, skipping..."
   exit 0
 fi
 
