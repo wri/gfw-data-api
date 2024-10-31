@@ -31,7 +31,7 @@ for s in ${SRC}; do
 
     CMD_ARGS+=("${remote_src_file}" "${local_src_file}" "${local_warped_file}" "${TARGET_CRS}" "${remote_target_file}")
   done
-  ((src_count++))
+  src_count=$(($src_count+1))
 done
 
 echo "${CMD_ARGS[@]}" | xargs -n 5 -P 32 _warp_and_upload.sh
