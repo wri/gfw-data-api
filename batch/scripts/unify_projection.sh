@@ -35,7 +35,7 @@ for s in ${SRC[@]}; do
     mkdir -p "../${reprojected_dir}/${d}"
   done
 
-  for f in $(find . -iname "*.tif"); do
+  for f in $(find . -iname "*.tif"| sed 's/.\///'); do
     local_src_file="${source_dir}/${f}"
     local_warped_file="${reprojected_dir}/${f}"
     remote_target_file="${TARGET}/SRC_${src_count}/${f}"
