@@ -21,9 +21,9 @@ for s in ${SRC[@]}; do
 
   echo "Now recursively downloading $s to $source_dir"
   if [[ $s == gs://* ]]; then
-    gsutil cp -m -r "$s" "$source_dir"
+    gsutil -m cp -r "$s" "$source_dir"
   elif [[ $s == s3://* ]]; then
-    aws s3 cp --no-progress "$s" "$source_dir"
+    aws s3 cp --recursive --no-progress "$s" "$source_dir"
   fi
   echo "Done downloading $s to $source_dir"
 
