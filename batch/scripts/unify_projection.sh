@@ -31,7 +31,7 @@ for s in ${SRC[@]}; do
   mkdir -p "$reprojected_dir"
 
   cd $source_dir
-  for d in $(tree -dfi); do
+  for d in $(find . -type d | sed 's/.\///'); do
     mkdir -p "../${reprojected_dir}/${d}"
   done
 
