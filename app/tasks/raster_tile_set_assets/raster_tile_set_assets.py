@@ -71,6 +71,7 @@ async def raster_tile_set_asset(
     jobs: List[Job] = list()
     callback: Callback = callback_constructor(asset_id)
 
+    unify_job: Job | None = None
     if creation_options.unify_projection:
         target_crs = "epsg:4326"
         new_src_uris = list()
@@ -79,18 +80,25 @@ async def raster_tile_set_asset(
                 f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/{target_crs}/reprojected/SRC_{i}"
             )
         target_prefix = new_src_uris[0].rsplit("/", 1)[0]
-        jobs.append(
-            await create_unify_projection_job(
-                dataset, creation_options.source_uri, target_prefix, target_crs, "unify_projection", callback
-            )
+        unify_job = await create_unify_projection_job(
+            dataset,
+            creation_options.source_uri,
+            target_prefix,
+            target_crs,
+            "unify_projection",
+            callback
         )
-
+        jobs.append(unify_job)
         creation_options.source_uri = new_src_uris
-
 
     jobs.append(
         await create_pixetl_job(
-            dataset, version, creation_options, "create_raster_tile_set", callback
+            dataset,
+            version,
+            creation_options,
+            "create_raster_tile_set",
+            callback,
+            [unify_job] if unify_job is not None else None,
         )
     )
 
