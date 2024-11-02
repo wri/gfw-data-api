@@ -15,7 +15,7 @@ echo "Reproject to a common CRS"
 src_count=0
 CMD_ARGS=()
 
-for s in ${SRC[@]}; do
+for s in "${SRC[@]}"; do
   source_dir="SRC_${src_count}"
   mkdir -p "$source_dir"
 
@@ -30,7 +30,7 @@ for s in ${SRC[@]}; do
   reprojected_dir="REPROJECTED_${src_count}"
   mkdir -p "$reprojected_dir"
 
-  cd $source_dir
+  cd "${source_dir}"
   for d in $(find . -type d | sed 's/.\///'); do
     mkdir -p "../${reprojected_dir}/${d}"
   done
@@ -47,4 +47,4 @@ for s in ${SRC[@]}; do
   src_count=$(($src_count+1))
 done
 
-echo "${CMD_ARGS[@]}" | xargs -n 5 -P 32 _warp_and_upload.sh
+echo "${CMD_ARGS[@]}" | xargs -n 4 -P 32 _warp_and_upload.sh
