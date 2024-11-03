@@ -14,8 +14,19 @@ if aws s3 ls "$4"; then
   exit 0
 fi
 
+warp_options=("-co COMPRESS=DEFLATE" "-co TILED=yes")
+
+echo "Seeing if TIFF crosses the dateline"
+crosses="$(./_tiff_crosses_dateline.sh $1)"
+if [ "${crosses}" = "true" ]; then
+  echo "$1 crosses the dateline"
+  warp_options+=("--config CENTER_LONG 180")
+else
+  echo "$1 does not cross the dateline"
+fi
+
 echo "Now warping $1 to $2"
-gdalwarp "$1" "$2" -t_srs "$3" -co COMPRESS=DEFLATE -co TILED=yes
+gdalwarp "$1" "$2" -t_srs "$3" "${warp_options[@]}"
 echo "Done warping $1 to $2"
 
 echo "Now uploading $2 to $4"
