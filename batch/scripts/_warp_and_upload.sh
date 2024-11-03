@@ -17,7 +17,7 @@ fi
 warp_options=("-co COMPRESS=DEFLATE" "-co TILED=yes")
 
 echo "Seeing if TIFF crosses the dateline"
-crosses="$(./_tiff_crosses_dateline.sh $1)"
+crosses="$(_tiff_crosses_dateline.sh $1)"
 if [ "${crosses}" = "true" ]; then
   echo "$1 crosses the dateline"
   warp_options+=("--config CENTER_LONG 180")
