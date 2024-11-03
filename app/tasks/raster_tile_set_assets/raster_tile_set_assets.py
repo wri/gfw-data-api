@@ -77,7 +77,8 @@ async def raster_tile_set_asset(
         new_src_uris = list()
         for i,_ in enumerate(creation_options.source_uri):
             new_src_uris.append(
-                f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/{target_crs}/reprojected/SRC_{i}"
+                f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/"
+                f"{target_crs.replace(':', '-')}/reprojected/SRC_{i}"
             )
         target_prefix = new_src_uris[0].rsplit("/", 1)[0]
         unify_job = await create_unify_projection_job(
