@@ -112,7 +112,10 @@ class VersionMetadata(CommonMetadata):
         None,
         description="Date range covered by the content",
     )
-
+    content_date_description: Optional[str] = Field(
+        None,
+        description="Date of content to display",
+    )
     last_update: Optional[date] = Field(
         None,
         description="Date the data were last updated",
@@ -130,6 +133,7 @@ class VersionMetadata(CommonMetadata):
                         "start_date": "2000-01-01",  # TODO fix date
                         "end_date": "2021-04-06",
                     },
+                    "content_date_description": "2000 - present",
                 }
             ]
         }
@@ -158,6 +162,10 @@ class VersionMetadataUpdate(VersionMetadataIn):
     content_date_range: Optional[ContentDateRange] = Field(
         None,
         description="Date range covered by the content",
+    )
+    content_date_description: Optional[str] = Field(
+        None,
+        description="Date of content to display",
     )
 
     last_update: Optional[date] = Field(
