@@ -66,7 +66,8 @@ async def get_version_assets(
         description="The number of assets per page. Default is `10`.",
     ),
 ) -> Union[PaginatedAssetsResponse, AssetsResponse]:
-    """Get all assets for a given dataset version.
+    """Get all assets for a given dataset version. The list of assets
+    is sorted by the creation time of each asset.
 
     Will attempt to paginate if `page[size]` or `page[number]` is
     provided. Otherwise, it will attempt to return the entire list of
