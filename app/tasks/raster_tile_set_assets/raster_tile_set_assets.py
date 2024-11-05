@@ -71,7 +71,7 @@ async def raster_tile_set_asset(
     jobs: List[Job] = list()
     callback: Callback = callback_constructor(asset_id)
 
-    unify_job: Job | None = None
+    unify_job: Optional[Job] = None
     if creation_options.unify_projection:
         target_crs = "epsg:4326"
         new_src_uris = list()

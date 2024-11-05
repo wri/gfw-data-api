@@ -233,8 +233,13 @@ async def create_unify_projection_job(
     target_crs: str,
     job_name: str,
     callback: Callback
-):
-    """
+) -> GDAL2TilesJob:
+    """Creates a Batch job that takes all files indicated in old_source_uris
+    and re-projects each to a common CRS, then places them in a mirror of the
+    original directory structure under the target_prefix, divided by source
+    number. More specifically, the files from the first source URI will be
+    put at <target_prefix>/SRC_0, the files from the second under
+    <target_prefix>/SRC_1, and so on.
     """
 
     command = [

@@ -1,26 +1,24 @@
 #!/bin/bash
 #
-# Small Script to check if input raster will
-# cross dateline when converting to EPSG:4326
+# USAGE: _tiff_crosses_dateline.sh raster_file
 #
-# USAGE: ./crosses_dateline.sh infile [outfile]
+# Prints the string "true" if the input raster will cross the dateline
+# when converting to EPSG:4326, "false" otherwise
 #
-# if no outfile is given, the script returns "true" or "false"
-#
-# Needs gdal 2.0+ and Python
+# Needs GDAL 2.0+ and Python
 #
 # Credit: Slightly modified from https://gis.stackexchange.com/a/222341
 
 
 if [ -z "${1}" ]; then
-    echo -e "Error: No input rasterfile given.\n> USAGE: ./crosses_dateline.sh infile"
+    echo -e "Error: No input raster file given.\n> USAGE: _tiff_crosses_dateline.sh raster_file"
     exit 1
 fi
 
-# Get information, save it to variable as we need it several times
+# Get raster info, save it to a variable as we need it several times
 gdalinfo=$(gdalinfo "${1}" -json)
 
-# If -json switch is not available exit!
+# Exit if -json switch is not available
 if [ ! -z $(echo $gdalinfo | grep "^Usage:") ]; then
     echo -e "Error: GDAL command failed, Version 2.0+ is needed"
     exit 1
