@@ -115,6 +115,13 @@ class FieldType(StrictBaseModel):
 
 
 class RasterTileSetAssetCreationOptions(StrictBaseModel):
+    unify_projection: bool = Field(
+        False,
+        description=(
+            "First re-project to a common projection (EPSG:4326). Necessary "
+            "when input files are in different projections from each other."
+        )
+    )
     pixel_meaning: str
     data_type: DataType
     nbits: Optional[int]

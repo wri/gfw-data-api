@@ -201,6 +201,11 @@ do
       shift # past argument
       shift # past value
       ;;
+      --target_crs)
+      TARGET_CRS="$2"
+      shift # past argument
+      shift # past value
+      ;;
       --target_bucket)
       TARGET_BUCKET="$2"
       shift # past argument
