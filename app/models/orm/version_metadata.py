@@ -10,6 +10,7 @@ class VersionMetadata(Base, MetadataMixin):
     version = db.Column(db.String, nullable=False)
     content_date = db.Column(db.Date)
     content_start_date = db.Column(db.Date)
+    content_date_description = db.Column(db.String)
     content_end_date = db.Column(db.Date)
     last_update = db.Column(db.Date)
     description = db.Column(db.String)
