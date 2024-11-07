@@ -35,7 +35,7 @@ ENV UV_LINK_MODE=copy \
 # Create a virtual environment with uv inside the container
 RUN --mount=type=cache,target=/app/.cache \
     --mount=from=uv,source=/uv,target=./uv \
-    /uv python install 3.10 && \
+    /uv python install 3.12 && \
     /uv venv $VIRTUAL_ENV
 
 # Make sure that the virtual environment is in the PATH so
