@@ -27,6 +27,7 @@ dependencies = [
     "httpx-auth",
     "newrelic",
     "numpy<2",
+    "openapi_spec_validator",
     "orjson",
     "packaging",
     "pendulum",
