@@ -35,6 +35,6 @@ urx=$(jsonq "$gdalinfo" "['wgs84Extent']['coordinates'][0][2][0]")
 
 crossing_dateline=false
 test $(python -c "print(${ulx}>${lrx})") = True && crossing_dateline=true
-test $(python -c "print(${ulx}>${lrx})") = True && crossing_dateline=true
+test $(python -c "print(${llx}>${urx})") = True && crossing_dateline=true
 
 echo -n "${crossing_dateline}"
