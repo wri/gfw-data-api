@@ -52,17 +52,16 @@ packages = ["app", "batch"]
 [tool.uv]
 dev-dependencies = [
     "docker",
-    "pytest",
-    "pytest-asyncio",
-    "rasterio==1.3.11",
+    "geopandas",
     "gfw-pixetl",
     "moto<5",
     "pandas<2.2",
-    "geopandas",
-    "pytest",
-    "pytest-timeout",
     "pre-commit",
+    "pytest",
+    "pytest-asyncio",
     "pytest-cov",
+    "pytest-timeout",
+    "rasterio==1.3.11",
     "retrying",
 ]
 
