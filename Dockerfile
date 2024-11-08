@@ -67,9 +67,9 @@ RUN apt-get update -qy && \
     apt-get install -qyy \
         -o APT::Install-Recommends=false \
         -o APT::Install-Suggests=false \
+        expat \
         libgdal-dev \
-        postgresql-client \
-        expat
+        postgresql-client
 
 # Create a user and group for the application
 #RUN groupadd -r app && \
