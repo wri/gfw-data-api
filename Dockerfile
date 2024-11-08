@@ -1,5 +1,5 @@
 # Use a multi-stage build to first get uv
-FROM ghcr.io/astral-sh/uv:0.4.28 AS uv
+FROM ghcr.io/astral-sh/uv:0.4.30 AS uv
 
 FROM ubuntu:noble AS build
 
@@ -67,9 +67,9 @@ RUN apt-get update -qy && \
     apt-get install -qyy \
         -o APT::Install-Recommends=false \
         -o APT::Install-Suggests=false \
+        expat \
         libgdal-dev \
-        postgresql-client \
-        expat
+        postgresql-client
 
 # Create a user and group for the application
 #RUN groupadd -r app && \
