@@ -129,7 +129,7 @@ class TileCacheJob(Job):
 class PixETLJob(Job):
     """Use for raster transformations using PixETL."""
 
-    job_queue = PIXETL_JOB_QUEUE
+    job_queue = ON_DEMAND_COMPUTE_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION
     vcpus = MAX_CORES
     memory = MAX_MEM
