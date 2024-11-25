@@ -6,7 +6,7 @@ set -e
 # -d | --dataset
 # -v | --version
 # -s | --source
-# -r | --resampling_method)
+# -r | --resampling_method
 # --zoom_level
 # -T | --target
 
