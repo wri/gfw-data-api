@@ -112,8 +112,11 @@ def generate_geojson_parallel(geo_tiffs: List[str], tiles_output: str, extent_ou
 
     # Write tiles.geojson
     tiles_fc = FeatureCollection(features)
+    tiles_txt = json.dumps(tiles_fc, indent=2)
+    print(f"tiles.geojson:\n", tiles_txt)
+
     with open(tiles_output, "w") as f:
-        json.dump(tiles_fc, f, indent=2)
+        print(tiles_txt, file=f)
     print(f"GeoJSON written to {tiles_output}")
 
     # Create and write extent.geojson
@@ -121,6 +124,9 @@ def generate_geojson_parallel(geo_tiffs: List[str], tiles_output: str, extent_ou
     extent_fc = FeatureCollection([
         Feature(geometry=union_geometry.__geo_interface__, properties={})
     ])
+    extent_txt = json.dumps(extent_fc, indent=2)
+    print(f"extent.geojson:\n", extent_txt)
+
     with open(extent_output, "w") as f:
-        json.dump(extent_fc, f, indent=2)
+        print(extent_txt, file=f)
     print(f"GeoJSON written to {extent_output}")
