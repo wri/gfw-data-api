@@ -19,11 +19,13 @@ import rasterio
 
 # Use relative imports because these modules get copied into container
 from aws_utils import exists_in_s3, get_s3_client, get_s3_path_parts
+from batch.python.aws_utils import get_aws_files, upload_s3
 from errors import SubprocessKilledError
-from gdal_utils import from_vsi_path
+from gdal_utils import from_vsi_path, to_vsi_path
 from gfw_pixetl.grids import grid_factory
-from gfw_pixetl.pixetl_prep import create_geojsons
 from logging_utils import listener_configurer, log_client_configurer, log_listener
+from tiles_geojson import generate_geojson_parallel
+
 from pyproj import CRS, Transformer
 from shapely.geometry import MultiPolygon, Polygon, shape
 from shapely.ops import unary_union
@@ -656,12 +658,21 @@ def resample(
         for tile_id in executor.map(process_tile, process_tile_args):
             logger.log(logging.INFO, f"Finished processing tile {tile_id}")
 
-    # Now run pixetl_prep.create_geojsons to generate a tiles.geojson and
-    # extent.geojson in the target prefix.
-    create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1]
-    logger.log(logging.INFO, f"Uploading tiles.geojson to {create_geojsons_prefix}")
+    # Now generate a tiles.geojson and extent.geojson and upload to the target prefix.
+    # tile_paths = [to_vsi_path(f) for f in get_aws_files(bucket, target_prefix)]
+    tile_paths = get_aws_files(bucket, target_prefix)
 
-    create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
+    tiles_output_file = "tiles.geojson"
+    extent_output_file = "extent.geojson"
+
+    logger.log(logging.INFO, f"Generating geojsons")
+    generate_geojson_parallel(tile_paths, tiles_output_file, extent_output_file, NUM_PROCESSES)
+    logger.log(logging.INFO, f"Finished generating geojsons")
+
+    logger.log(logging.INFO, f"Uploading geojsons to {target_prefix}")
+    upload_s3(tiles_output_file, bucket, target_prefix)
+    upload_s3(extent_output_file, bucket, target_prefix)
+    logger.log(logging.INFO, f"Finished uploading geojsons to {target_prefix}")
 
     log_queue.put_nowait(None)
     listener.join()
