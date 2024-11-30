@@ -671,8 +671,8 @@ def resample(
     logger.log(logging.INFO, f"Finished generating geojsons")
 
     logger.log(logging.INFO, f"Uploading geojsons to {target_prefix}")
-    upload_s3(tiles_output_file, bucket, target_prefix)
-    upload_s3(extent_output_file, bucket, target_prefix)
+    upload_s3(tiles_output_file, bucket, os.path.join(target_prefix, tiles_output_file))
+    upload_s3(extent_output_file, bucket, os.path.join(target_prefix, extent_output_file))
     logger.log(logging.INFO, f"Finished uploading geojsons to {target_prefix}")
 
     log_queue.put_nowait(None)
