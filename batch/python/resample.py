@@ -18,10 +18,11 @@ import psutil
 import rasterio
 
 # Use relative imports because these modules get copied into container
-from aws_utils import exists_in_s3, get_s3_client, get_s3_path_parts
-from batch.python.aws_utils import get_aws_files, upload_s3
+from aws_utils import (
+    exists_in_s3, get_s3_client, get_s3_path_parts, get_aws_files, upload_s3
+)
 from errors import SubprocessKilledError
-from gdal_utils import from_vsi_path, to_vsi_path
+from gdal_utils import from_vsi_path
 from gfw_pixetl.grids import grid_factory
 from logging_utils import listener_configurer, log_client_configurer, log_listener
 from tiles_geojson import generate_geojson_parallel
