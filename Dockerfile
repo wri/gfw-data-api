@@ -1,5 +1,5 @@
 # Use a multi-stage build to first get uv
-FROM ghcr.io/astral-sh/uv:0.4.30 AS uv
+FROM ghcr.io/astral-sh/uv:0.5.5 AS uv
 
 FROM ubuntu:noble AS build
 
@@ -21,16 +21,6 @@ ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/app/.venv \
     VIRTUAL_ENV=/app/.venv
-
-#RUN mkdir -p /app
-
-# Create a user and group for the application
-#RUN groupadd -r app && \
-#    useradd -r -d /app -g app -N app
-#
-#RUN chown -R app:app /app
-#
-#USER app
 
 # Create a virtual environment with uv inside the container
 RUN --mount=type=cache,target=/app/.cache \
@@ -63,6 +53,9 @@ SHELL ["sh", "-exc"]
 
 ENV PATH=$VIRTUAL_ENV/bin:/usr/local/bin:$PATH
 
+ENV TZ UTC
+RUN echo $TZ > /etc/timezone
+
 RUN apt-get update -qy && \
     apt-get install -qyy \
         -o APT::Install-Recommends=false \
@@ -71,15 +64,10 @@ RUN apt-get update -qy && \
         libgdal-dev \
         postgresql-client
 
-# Create a user and group for the application
-#RUN groupadd -r app && \
-#    useradd -r -d /app -g app -N app
-
 COPY --chmod=777 wait_for_postgres.sh /usr/local/bin/wait_for_postgres.sh
 
 # Set the entry point and signal handling
 ENTRYPOINT [ "/app/start.sh" ]
-#ENTRYPOINT [ "/bin/bash" ]
 STOPSIGNAL SIGINT
 
 # Copy the pre-built `/app` directory from the build stage
@@ -92,10 +80,6 @@ COPY alembic.ini /app/alembic.ini
 COPY --chmod=777 app/settings/prestart.sh /app/prestart.sh
 COPY --chmod=777 app/settings/start.sh /app/start.sh
 
-# If your application is NOT a proper Python package that got
-# pip-installed above, you need to copy your application into
-# the container HERE:
 COPY ./app /app/app
 
-#USER app
 WORKDIR /app
