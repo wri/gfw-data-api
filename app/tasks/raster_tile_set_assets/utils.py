@@ -7,7 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from app.models.enum.assets import AssetType
 from app.models.enum.pixetl import ResamplingMethod
 from app.models.pydantic.creation_options import PixETLCreationOptions
-from app.models.pydantic.jobs import GDALDEMJob, Job, PixETLJob
+from app.models.pydantic.jobs import GDALDEMJob, Job, PixETLJob, GDAL2TilesJob
 from app.settings.globals import (
     AWS_GCS_KEY_SECRET_ARN,
     DEFAULT_JOB_DURATION,
@@ -224,4 +224,39 @@ async def create_resample_job(
         callback=callback,
         parents=[parent.job_name for parent in parents] if parents else None,
         **kwargs,
+    )
+
+async def create_unify_projection_job(
+    dataset: str,
+    old_source_uris: List[str],
+    target_prefix: str,
+    target_crs: str,
+    job_name: str,
+    callback: Callback
+) -> GDAL2TilesJob:
+    """Creates a Batch job that takes all files indicated in old_source_uris
+    and re-projects each to a common CRS, then places them in a mirror of the
+    original directory structure under the target_prefix, divided by source
+    number. More specifically, the files from the first source URI will be
+    put at <target_prefix>/SRC_0, the files from the second under
+    <target_prefix>/SRC_1, and so on.
+    """
+
+    command = [
+        "unify_projection.sh",
+        "--target_crs",
+        target_crs,
+    ]
+
+    for s in old_source_uris:
+        command.extend(["--source", s])
+
+    command.extend(["--target", target_prefix])
+
+    return GDAL2TilesJob(
+        dataset=dataset,
+        job_name=job_name,
+        command=command,
+        environment=JOB_ENV,
+        callback=callback,
     )
