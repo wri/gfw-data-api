@@ -1,7 +1,8 @@
 import json
+import math
 import subprocess
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from geojson import Feature, FeatureCollection
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
@@ -30,7 +31,13 @@ def extract_metadata_from_gdalinfo(gdalinfo_json: Dict[str, Any]) -> Dict[str, A
     bands = [
         {
             "data_type": band.get("type", None),
-            "no_data": band.get("noDataValue", None),
+            "no_data": (
+                "nan" if (
+                    band.get("noDataValue", None) is not None
+                    and math.isnan(band.get("noDataValue"))
+                )
+                else band.get("noDataValue", None)
+            ),
             "nbits": band.get("metadata", {}).get("IMAGE_STRUCTURE", {}).get("NBITS", None),
             "blockxsize": band.get("block", [None])[0],
             "blockysize": band.get("block", [None])[1],
