@@ -667,7 +667,12 @@ def resample(
     extent_output_file = "extent.geojson"
 
     logger.log(logging.INFO, f"Generating geojsons")
-    generate_geojson_parallel(tile_paths, tiles_output_file, extent_output_file, NUM_PROCESSES)
+    generate_geojson_parallel(
+        tile_paths,
+        tiles_output_file,
+        extent_output_file,
+        min(16, NUM_PROCESSES)
+    )
     logger.log(logging.INFO, f"Finished generating geojsons")
 
     logger.log(logging.INFO, f"Uploading geojsons to {target_prefix}")
