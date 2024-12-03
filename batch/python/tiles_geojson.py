@@ -4,14 +4,13 @@ import subprocess
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import List, Dict, Any, Tuple
 
-import pyproj
 from geojson import Feature, FeatureCollection
 from pyproj import CRS, Transformer
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
 
-def to_wgs84(crs: CRS, x: float, y: float) -> Tuple[float, float]:
+def to_4326(crs: CRS, x: float, y: float) -> Tuple[float, float]:
     transformer = Transformer.from_crs(
         crs, CRS.from_epsg(4326), always_xy=True
     )
@@ -62,12 +61,15 @@ def extract_metadata_from_gdalinfo(gdalinfo_json: Dict[str, Any]) -> Dict[str, A
         for band in gdalinfo_json.get("bands", [])
     ]
 
+    crs: CRS = CRS.from_string(gdalinfo_json["coordinateSystem"]["wkt"])
     metadata = {
+        # NOTE: pixetl seems to always write features in tiles.geojson in
+        # epsg:4326 coordinates (even when the tiles themselves are
+        # epsg:3857). Reproduce that behavior for compatibility. If that
+        # ever changes, remove the call to to_4326 here.
         "extent": [
-            corner_coordinates["lowerLeft"][0],
-            corner_coordinates["lowerLeft"][1],
-            corner_coordinates["upperRight"][0],
-            corner_coordinates["upperRight"][1],
+            *to_4326(crs, *corner_coordinates["lowerLeft"]),
+            *to_4326(crs, *corner_coordinates["upperRight"]),
         ],
         "width": gdalinfo_json["size"][0],
         "height": gdalinfo_json["size"][1],
@@ -103,14 +105,13 @@ def generate_geojson_parallel(geo_tiffs: List[str], tiles_output: str, extent_ou
             try:
                 metadata = future.result()
                 extent = metadata["extent"]
-                crs = CRS.from_string(metadata["crs"])
                 # Create a Polygon from the extent
                 polygon_coords = [
-                    [*to_wgs84(crs, extent[0], extent[1])],
-                    [*to_wgs84(crs, extent[0], extent[3])],
-                    [*to_wgs84(crs, extent[2], extent[3])],
-                    [*to_wgs84(crs, extent[2], extent[1])],
-                    [*to_wgs84(crs, extent[0], extent[1])],
+                    [extent[0], extent[1]],
+                    [extent[0], extent[3]],
+                    [extent[2], extent[3]],
+                    [extent[2], extent[1]],
+                    [extent[0], extent[1]],
                 ]
                 polygon = Polygon(polygon_coords)
 
