@@ -2,10 +2,20 @@ import json
 import math
 import subprocess
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Tuple
+
+import pyproj
 from geojson import Feature, FeatureCollection
+from pyproj import CRS, Transformer
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
+
+
+def to_wgs84(crs: CRS, x: float, y: float) -> Tuple[float, float]:
+    transformer = Transformer.from_crs(
+        crs, CRS.from_epsg(4326), always_xy=True
+    )
+    return transformer.transform(x, y)
 
 
 def run_gdalinfo(file_path: str) -> Dict[str, Any]:
@@ -93,14 +103,14 @@ def generate_geojson_parallel(geo_tiffs: List[str], tiles_output: str, extent_ou
             try:
                 metadata = future.result()
                 extent = metadata["extent"]
-
+                crs = CRS.from_string(metadata["crs"])
                 # Create a Polygon from the extent
                 polygon_coords = [
-                    [extent[0], extent[1]],
-                    [extent[0], extent[3]],
-                    [extent[2], extent[3]],
-                    [extent[2], extent[1]],
-                    [extent[0], extent[1]],
+                    [*to_wgs84(crs, extent[0], extent[1])],
+                    [*to_wgs84(crs, extent[0], extent[3])],
+                    [*to_wgs84(crs, extent[2], extent[3])],
+                    [*to_wgs84(crs, extent[2], extent[1])],
+                    [*to_wgs84(crs, extent[0], extent[1])],
                 ]
                 polygon = Polygon(polygon_coords)
 
