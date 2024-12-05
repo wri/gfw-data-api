@@ -507,7 +507,7 @@ async def _query_table(
     sql: str,
     geometry: Optional[Geometry],
 ) -> List[Dict[str, Any]]:
-    # parse and validate SQL statement
+    # Parse and validate SQL statement
     try:
         parsed: Tuple[RawStmt] = parse_sql(unquote(sql))
     except ParseError as e:

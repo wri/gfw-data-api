@@ -177,6 +177,7 @@ async def update_version(
                 AssetType.dynamic_vector_tile_cache,
                 AssetType.static_vector_tile_cache,
                 AssetType.raster_tile_cache,
+                AssetType.cog,
             ],
         )
 
