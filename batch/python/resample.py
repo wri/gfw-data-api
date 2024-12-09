@@ -25,7 +25,7 @@ from errors import SubprocessKilledError
 from gdal_utils import from_vsi_path
 from gfw_pixetl.grids import grid_factory
 from logging_utils import listener_configurer, log_client_configurer, log_listener
-from tiles_geojson import generate_geojson_parallel
+from tiles_geojson import generate_geojson
 
 from pyproj import CRS, Transformer
 from shapely.geometry import MultiPolygon, Polygon, shape
@@ -667,7 +667,7 @@ def resample(
     extent_output_file = "extent.geojson"
 
     logger.log(logging.INFO, f"Generating geojsons")
-    generate_geojson_parallel(
+    generate_geojson(
         tile_paths,
         tiles_output_file,
         extent_output_file,

@@ -1,7 +1,7 @@
 import json
 import subprocess
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import List, Dict, Any, Tuple
+from typing import Any, Dict, List, Tuple
 
 from geojson import Feature, FeatureCollection
 from pyproj import CRS, Transformer
@@ -58,14 +58,14 @@ def process_file(file_path: str) -> Dict[str, Any]:
     return extract_metadata_from_gdalinfo(gdalinfo_json)
 
 
-def generate_geojson_parallel(geo_tiffs: List[str], tiles_output: str, extent_output: str, max_workers: int = None):
+def generate_geojson(geotiffs: List[str], tiles_fn: str, extent_fn: str, max_workers: int = None):
     """Generate tiles.geojson and extent.geojson files."""
     features = []
     polygons = []
     errors = []
 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        future_to_file = {executor.submit(process_file, file): file for file in geo_tiffs}
+        future_to_file = {executor.submit(process_file, file): file for file in geotiffs}
         for future in as_completed(future_to_file):
             file = future_to_file[future]
             try:
@@ -97,11 +97,9 @@ def generate_geojson_parallel(geo_tiffs: List[str], tiles_output: str, extent_ou
     # Write tiles.geojson
     tiles_fc = FeatureCollection(features)
     tiles_txt = json.dumps(tiles_fc, indent=2)
-    print(f"tiles.geojson:\n", tiles_txt)
 
-    with open(tiles_output, "w") as f:
+    with open(tiles_fn, "w") as f:
         print(tiles_txt, file=f)
-    print(f"GeoJSON written to {tiles_output}")
 
     # Create and write extent.geojson
     union_geometry = unary_union(polygons)
@@ -111,6 +109,6 @@ def generate_geojson_parallel(geo_tiffs: List[str], tiles_output: str, extent_ou
     extent_txt = json.dumps(extent_fc, indent=2)
     print(f"extent.geojson:\n", extent_txt)
 
-    with open(extent_output, "w") as f:
+    with open(extent_fn, "w") as f:
         print(extent_txt, file=f)
-    print(f"GeoJSON written to {extent_output}")
+    print(f"GeoJSON written to {extent_fn}")
