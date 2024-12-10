@@ -669,8 +669,6 @@ def resample(
     logger.log(logging.INFO, f"Generating geojsons")
     tiles_fc, extent_fc = generate_geojsons(
         tile_paths,
-        tiles_output_file,
-        extent_output_file,
         min(16, NUM_PROCESSES)
     )
     logger.log(logging.INFO, f"Finished generating geojsons")

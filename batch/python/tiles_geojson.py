@@ -55,8 +55,6 @@ def process_file(file_path: str) -> Dict[str, Any]:
 
 def generate_geojsons(
     geotiffs: List[str],
-    tiles_fn: str,
-    extent_fn: str,
     max_workers: int = None
 ) -> Tuple[FeatureCollection, FeatureCollection]:
     """Generate tiles.geojson and extent.geojson files."""
