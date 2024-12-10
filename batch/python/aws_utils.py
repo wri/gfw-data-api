@@ -50,7 +50,7 @@ def get_aws_files(
         for obj in contents:
             key = str(obj["Key"])
             if any(key.endswith(ext) for ext in extensions):
-                files.append(f"/vsis3/{bucket}/{key}")
+                files.append(f"s3://{bucket}/{key}")
 
     print("done get_aws_files")
     return files
