@@ -1,5 +1,4 @@
 import json
-import subprocess
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Any, Dict, List, Tuple
 
@@ -8,7 +7,7 @@ from pyproj import CRS, Transformer
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
-from batch.python.errors import GDALError
+from errors import GDALError
 from gdal_utils import run_gdal_subcommand
 
 

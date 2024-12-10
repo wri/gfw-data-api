@@ -16,6 +16,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import psutil
 import rasterio
+from pyproj import CRS, Transformer
+from shapely.geometry import MultiPolygon, Polygon, shape
+from shapely.ops import unary_union
+from typer import Option, run
 
 # Use relative imports because these modules get copied into container
 from aws_utils import (
@@ -27,10 +31,6 @@ from gfw_pixetl.grids import grid_factory
 from logging_utils import listener_configurer, log_client_configurer, log_listener
 from tiles_geojson import generate_geojsons
 
-from pyproj import CRS, Transformer
-from shapely.geometry import MultiPolygon, Polygon, shape
-from shapely.ops import unary_union
-from typer import Option, run
 
 # Use at least 1 process
 # Try to get NUM_PROCESSES, if that fails get # CPUs divided by 1.5
