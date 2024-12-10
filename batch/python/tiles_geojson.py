@@ -8,27 +8,15 @@ from pyproj import CRS, Transformer
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
+from batch.python.errors import GDALError
+from gdal_utils import run_gdal_subcommand
+
 
 def to_4326(crs: CRS, x: float, y: float) -> Tuple[float, float]:
     transformer = Transformer.from_crs(
         crs, CRS.from_epsg(4326), always_xy=True
     )
     return transformer.transform(x, y)
-
-
-def run_gdalinfo(file_path: str) -> Dict[str, Any]:
-    """Run gdalinfo and parse the output as JSON."""
-    try:
-        result = subprocess.run(
-            ["gdalinfo", "-json", file_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True,
-            text=True,
-        )
-        return json.loads(result.stdout)
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to run gdalinfo on {file_path}: {e.stderr}")
 
 
 def extract_metadata_from_gdalinfo(gdalinfo_json: Dict[str, Any]) -> Dict[str, Any]:
@@ -54,15 +42,26 @@ def extract_metadata_from_gdalinfo(gdalinfo_json: Dict[str, Any]) -> Dict[str, A
 def process_file(file_path: str) -> Dict[str, Any]:
     """Run gdalinfo and extract metadata for a single file."""
     print(f"Running gdalinfo on {file_path}")
-    gdalinfo_json = run_gdalinfo(file_path)
+    try:
+        stdout,stderr = run_gdal_subcommand(
+            ["gdalinfo", "-json", file_path],
+        )
+    except GDALError as e:
+        raise RuntimeError(f"Failed to run gdalinfo on {file_path}: {e}")
+
+    gdalinfo_json: Dict = json.loads(stdout)
     return extract_metadata_from_gdalinfo(gdalinfo_json)
 
 
-def generate_geojson(geotiffs: List[str], tiles_fn: str, extent_fn: str, max_workers: int = None):
+def generate_geojsons(
+    geotiffs: List[str],
+    tiles_fn: str,
+    extent_fn: str,
+    max_workers: int = None
+) -> Tuple[FeatureCollection, FeatureCollection]:
     """Generate tiles.geojson and extent.geojson files."""
     features = []
     polygons = []
-    errors = []
 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         future_to_file = {executor.submit(process_file, file): file for file in geotiffs}
@@ -88,27 +87,13 @@ def generate_geojson(geotiffs: List[str], tiles_fn: str, extent_fn: str, max_wor
                 # Collect for union
                 polygons.append(polygon)
             except Exception as e:
-                print(f"Error processing file {file}: {e}")
-                errors.append(f"File {file}: {e}")
+                raise RuntimeError(f"Error processing file {file}: {e}")
 
-    if errors:
-        raise RuntimeError(f"Failed to process the following files:\n" + "\n".join(errors))
-
-    # Write tiles.geojson
     tiles_fc = FeatureCollection(features)
-    tiles_txt = json.dumps(tiles_fc, indent=2)
 
-    with open(tiles_fn, "w") as f:
-        print(tiles_txt, file=f)
-
-    # Create and write extent.geojson
     union_geometry = unary_union(polygons)
     extent_fc = FeatureCollection([
         Feature(geometry=union_geometry.__geo_interface__, properties={})
     ])
-    extent_txt = json.dumps(extent_fc, indent=2)
-    print(f"extent.geojson:\n", extent_txt)
 
-    with open(extent_fn, "w") as f:
-        print(extent_txt, file=f)
-    print(f"GeoJSON written to {extent_fn}")
+    return tiles_fc, extent_fc
