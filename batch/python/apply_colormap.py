@@ -287,18 +287,20 @@ def apply_symbology(
     with open(extent_output_file, "w") as f:
         print(extent_txt, file=f)
 
-    logger.log(logging.INFO, f"Uploading geojsons to {target_prefix}")
+    geojsons_prefix = os.path.join(target_prefix, "geotiff")
+
+    logger.log(logging.INFO, f"Uploading geojsons to {geojsons_prefix}")
     upload_s3(
         tiles_output_file,
         bucket,
-        os.path.join(target_prefix, "geotiff", tiles_output_file),
+        os.path.join(geojsons_prefix, tiles_output_file),
     )
     upload_s3(
         extent_output_file,
         bucket,
-        os.path.join(target_prefix, "geotiff", extent_output_file),
+        os.path.join(geojsons_prefix, extent_output_file),
     )
-    logger.log(logging.INFO, f"Finished uploading geojsons to {target_prefix}")
+    logger.log(logging.INFO, f"Finished uploading geojsons to {geojsons_prefix}")
 
     log_queue.put_nowait(None)
     listener.join()
