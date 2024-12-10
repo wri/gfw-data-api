@@ -15,11 +15,12 @@ from typing import Any, Dict, Optional, Tuple, Union
 import rasterio
 
 # Use relative imports because these modules get copied into container
-from aws_utils import get_s3_client, get_s3_path_parts
+from aws_utils import get_aws_files, get_s3_client, get_s3_path_parts, upload_s3
 from errors import GDALError, SubprocessKilledError
-from gdal_utils import from_vsi_path, run_gdal_subcommand
+from gdal_utils import from_vsi_path, run_gdal_subcommand, to_vsi_path
 from logging_utils import listener_configurer, log_client_configurer, log_listener
 from pydantic import BaseModel, Extra, Field, StrictInt
+from tiles_geojson import generate_geojsons
 from typer import Option, run
 
 NUM_PROCESSES = int(
@@ -267,16 +268,37 @@ def apply_symbology(
             for tile_id in executor.map(create_rgb_tile, process_args):
                 logger.log(logging.INFO, f"Finished processing tile {tile_id}")
 
-    # Now run pixetl_prep.create_geojsons to generate a tiles.geojson and
-    # extent.geojson in the target prefix. But that code appends /geotiff
-    # to the prefix so remove it first
-    create_geojsons_prefix = target_prefix.split(f"{dataset}/{version}/")[1].replace(
-        "/geotiff", ""
-    )
-    logger.log(logging.INFO, "Uploading tiles.geojson to {create_geojsons_prefix}")
-    from gfw_pixetl.pixetl_prep import create_geojsons
+    # Now generate a tiles.geojson and extent.geojson and upload to the target prefix.
+    bucket, _ = get_s3_path_parts(source_uri)
+    tile_paths = [to_vsi_path(uri) for uri in get_aws_files(bucket, target_prefix)]
 
-    create_geojsons(list(), dataset, version, create_geojsons_prefix, True)
+    tiles_output_file = "tiles.geojson"
+    extent_output_file = "extent.geojson"
+
+    logger.log(logging.INFO, "Generating geojsons")
+    tiles_fc, extent_fc = generate_geojsons(tile_paths, min(16, NUM_PROCESSES))
+    logger.log(logging.INFO, "Finished generating geojsons")
+
+    tiles_txt = json.dumps(tiles_fc, indent=2)
+    with open(tiles_output_file, "w") as f:
+        print(tiles_txt, file=f)
+
+    extent_txt = json.dumps(extent_fc, indent=2)
+    with open(extent_output_file, "w") as f:
+        print(extent_txt, file=f)
+
+    logger.log(logging.INFO, f"Uploading geojsons to {target_prefix}")
+    upload_s3(
+        tiles_output_file,
+        bucket,
+        os.path.join(target_prefix, "geotiff", tiles_output_file),
+    )
+    upload_s3(
+        extent_output_file,
+        bucket,
+        os.path.join(target_prefix, "geotiff", extent_output_file),
+    )
+    logger.log(logging.INFO, f"Finished uploading geojsons to {target_prefix}")
 
     log_queue.put_nowait(None)
     listener.join()

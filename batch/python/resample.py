@@ -16,21 +16,24 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import psutil
 import rasterio
-from pyproj import CRS, Transformer
-from shapely.geometry import MultiPolygon, Polygon, shape
-from shapely.ops import unary_union
-from typer import Option, run
 
 # Use relative imports because these modules get copied into container
 from aws_utils import (
-    exists_in_s3, get_s3_client, get_s3_path_parts, get_aws_files, upload_s3
+    exists_in_s3,
+    get_aws_files,
+    get_s3_client,
+    get_s3_path_parts,
+    upload_s3,
 )
 from errors import SubprocessKilledError
 from gdal_utils import from_vsi_path, to_vsi_path
 from gfw_pixetl.grids import grid_factory
 from logging_utils import listener_configurer, log_client_configurer, log_listener
+from pyproj import CRS, Transformer
+from shapely.geometry import MultiPolygon, Polygon, shape
+from shapely.ops import unary_union
 from tiles_geojson import generate_geojsons
-
+from typer import Option, run
 
 # Use at least 1 process
 # Try to get NUM_PROCESSES, if that fails get # CPUs divided by 1.5
@@ -660,21 +663,14 @@ def resample(
             logger.log(logging.INFO, f"Finished processing tile {tile_id}")
 
     # Now generate a tiles.geojson and extent.geojson and upload to the target prefix.
-    # tile_paths = [to_vsi_path(f) for f in get_aws_files(bucket, target_prefix)]
-    tile_paths = [
-        to_vsi_path(uri) for uri in
-        get_aws_files(bucket, target_prefix)
-    ]
+    tile_paths = [to_vsi_path(uri) for uri in get_aws_files(bucket, target_prefix)]
 
     tiles_output_file = "tiles.geojson"
     extent_output_file = "extent.geojson"
 
-    logger.log(logging.INFO, f"Generating geojsons")
-    tiles_fc, extent_fc = generate_geojsons(
-        tile_paths,
-        min(16, NUM_PROCESSES)
-    )
-    logger.log(logging.INFO, f"Finished generating geojsons")
+    logger.log(logging.INFO, "Generating geojsons")
+    tiles_fc, extent_fc = generate_geojsons(tile_paths, min(16, NUM_PROCESSES))
+    logger.log(logging.INFO, "Finished generating geojsons")
 
     tiles_txt = json.dumps(tiles_fc, indent=2)
     with open(tiles_output_file, "w") as f:
@@ -685,8 +681,16 @@ def resample(
         print(extent_txt, file=f)
 
     logger.log(logging.INFO, f"Uploading geojsons to {target_prefix}")
-    upload_s3(tiles_output_file, bucket, os.path.join(target_prefix, "geotiff", tiles_output_file))
-    upload_s3(extent_output_file, bucket, os.path.join(target_prefix, "geotiff", extent_output_file))
+    upload_s3(
+        tiles_output_file,
+        bucket,
+        os.path.join(target_prefix, "geotiff", tiles_output_file),
+    )
+    upload_s3(
+        extent_output_file,
+        bucket,
+        os.path.join(target_prefix, "geotiff", extent_output_file),
+    )
     logger.log(logging.INFO, f"Finished uploading geojsons to {target_prefix}")
 
     log_queue.put_nowait(None)
