@@ -1,5 +1,5 @@
 # Use a multi-stage build to first get uv
-FROM ghcr.io/astral-sh/uv:0.5.5 AS uv
+FROM ghcr.io/astral-sh/uv:0.5.7 AS uv
 
 FROM ubuntu:noble AS build
 
