@@ -50,7 +50,7 @@ module "batch_gdal_python_image" {
   image_name      = substr(lower("${local.project}-gdal_python${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
-  docker_filename = "gdal-python.dockerfile"
+  docker_filename = "universal_batch.dockerfile"
 }
 
 # Docker image for PixETL Batch jobs
@@ -68,7 +68,7 @@ module "batch_postgresql_client_image" {
   image_name      = substr(lower("${local.project}-postgresql_client${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
-  docker_filename = "postgresql-client.dockerfile"
+  docker_filename = "universal_batch.dockerfile"
 }
 
 # Docker image for Tile Cache Batch jobs
@@ -77,7 +77,7 @@ module "batch_tile_cache_image" {
   image_name      = substr(lower("${local.project}-tile_cache${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
-  docker_filename = "tile_cache.dockerfile"
+  docker_filename = "universal_batch.dockerfile"
 }
 
 
