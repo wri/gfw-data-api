@@ -279,11 +279,11 @@ def apply_symbology(
     tiles_fc, extent_fc = generate_geojsons(tile_paths, min(16, NUM_PROCESSES))
     logger.log(logging.INFO, "Finished generating geojsons")
 
-    tiles_txt = json.dumps(tiles_fc, indent=2)
+    tiles_txt = json.dumps(tiles_fc)
     with open(tiles_output_file, "w") as f:
         print(tiles_txt, file=f)
 
-    extent_txt = json.dumps(extent_fc, indent=2)
+    extent_txt = json.dumps(extent_fc)
     with open(extent_output_file, "w") as f:
         print(extent_txt, file=f)
 
