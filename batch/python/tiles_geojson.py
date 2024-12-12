@@ -1,4 +1,5 @@
 import json
+import math
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Any, Dict, List, Tuple
 
@@ -21,6 +22,31 @@ def to_4326(crs: CRS, x: float, y: float) -> Tuple[float, float]:
 def extract_metadata_from_gdalinfo(gdalinfo_json: Dict[str, Any]) -> Dict[str, Any]:
     """Extract necessary metadata from the gdalinfo JSON output."""
     corner_coordinates = gdalinfo_json["cornerCoordinates"]
+    geo_transform = gdalinfo_json["geoTransform"]
+
+    bands = [
+        {
+            "data_type": band.get("type", None),
+            "no_data": (
+                "nan" if (
+                    band.get("noDataValue", None) is not None
+                    and math.isnan(band.get("noDataValue"))
+                )
+                else band.get("noDataValue", None)
+            ),
+            "nbits": band.get("metadata", {}).get("IMAGE_STRUCTURE", {}).get("NBITS", None),
+            "blockxsize": band.get("block", [None])[0],
+            "blockysize": band.get("block", [None])[1],
+            "stats": {
+                "min": band.get("minimum"),
+                "max": band.get("maximum"),
+                "mean": band.get("mean"),
+                "std_dev": band.get("stdDev"),
+            } if "minimum" in band and "maximum" in band else None,
+            "histogram": band.get("histogram", None),
+        }
+        for band in gdalinfo_json.get("bands", [])
+    ]
 
     crs: CRS = CRS.from_string(gdalinfo_json["coordinateSystem"]["wkt"])
     metadata = {
@@ -32,6 +58,14 @@ def extract_metadata_from_gdalinfo(gdalinfo_json: Dict[str, Any]) -> Dict[str, A
             *to_4326(crs, *corner_coordinates["lowerLeft"]),
             *to_4326(crs, *corner_coordinates["upperRight"]),
         ],
+        "width": gdalinfo_json["size"][0],
+        "height": gdalinfo_json["size"][1],
+        "pixelxsize": geo_transform[1],
+        "pixelysize": abs(geo_transform[5]),
+        "crs": gdalinfo_json["coordinateSystem"]["wkt"],
+        "driver": gdalinfo_json.get("driverShortName", None),
+        "compression": gdalinfo_json.get("metadata", {}).get("IMAGE_STRUCTURE", {}).get("COMPRESSION", None),
+        "bands": bands,
         "name": gdalinfo_json["description"],
     }
 
