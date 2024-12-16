@@ -12,8 +12,6 @@ RUN apt-get update -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN ln -s /usr/include /usr/include/gdal
-
 # --system-site-packages is needed to copy the GDAL Python libs into the venv
 RUN python -m venv ${VENV_DIR} --system-site-packages \
     && . ${VENV_DIR}/bin/activate \
@@ -37,8 +35,6 @@ RUN python -m venv ${VENV_DIR} --system-site-packages \
         shapely~=2.0.4 \
         SQLAlchemy~=1.3.24 \
         tileputty~=0.2.10
-
-RUN ln -s /usr/include /usr/include/gdal
 
 # Install TippeCanoe
 RUN mkdir -p /opt/src
