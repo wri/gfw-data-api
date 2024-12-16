@@ -448,6 +448,7 @@ async def test_version_put_raster(async_client: AsyncClient):
     )
     assert response.status_code == 404
 
+
 @pytest.mark.asyncio
 async def test_version_post_append(async_client: AsyncClient):
     """Test version append operations."""
@@ -470,7 +471,7 @@ async def test_version_post_append(async_client: AsyncClient):
         dataset_payload=dataset_payload,
         version_payload=version_payload,
         async_client=async_client,
-        execute_batch_jobs=False,
+        execute_batch_jobs=True,
     )
 
     response = await async_client.get(f"/dataset/{dataset}/{version}")
@@ -517,9 +518,10 @@ async def test_version_post_append(async_client: AsyncClient):
 
     ## TODO: test with missing layers
 
+
 @pytest.mark.hanging
 @pytest.mark.asyncio
-async def test_version_put_raster_bug_fixes(async_client: AsyncClient, httpd):
+async def test_version_put_raster_bug_fixes(async_client: AsyncClient):
     """Test bug fixes for raster source version operations."""
 
     dataset = "test_version_put_raster_minimal_args"
