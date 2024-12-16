@@ -519,7 +519,7 @@ async def test_version_post_append(async_client: AsyncClient):
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
-async def test_version_put_raster_bug_fixes(async_client: AsyncClient):
+async def test_version_put_raster_bug_fixes(async_client: AsyncClient, httpd):
     """Test bug fixes for raster source version operations."""
 
     dataset = "test_version_put_raster_minimal_args"

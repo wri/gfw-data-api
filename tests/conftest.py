@@ -223,7 +223,7 @@ def httpd():
     t.join()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="function")
 def flush_request_list(httpd):
     """Delete request cache before every test."""
     _ = httpx.delete(f"http://localhost:{httpd.server_port}")
