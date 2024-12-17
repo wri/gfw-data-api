@@ -55,9 +55,10 @@ def extract_metadata_from_gdalinfo(gdalinfo_json: Dict[str, Any]) -> Dict[str, A
     crs: CRS = CRS.from_string(gdalinfo_json["coordinateSystem"]["wkt"])
     metadata = {
         # NOTE: pixetl seems to always write features in tiles.geojson in
-        # epsg:4326 coordinates (even when the tiles themselves are
-        # epsg:3857). Reproduce that behavior for compatibility. If that
-        # ever changes, remove the call to to_4326 here.
+        # degrees (when the tiles themselves are epsg:3857 I think
+        # the units should be meters). Reproduce that behavior for
+        # backwards compatibility. If it ever changes, remove the call to
+        # to_4326 here.
         "extent": [
             *to_4326(crs, *corner_coordinates["lowerLeft"]),
             *to_4326(crs, *corner_coordinates["upperRight"]),
