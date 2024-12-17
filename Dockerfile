@@ -1,5 +1,5 @@
 # Use a multi-stage build to first get uv
-FROM ghcr.io/astral-sh/uv:0.5.7 AS uv
+FROM ghcr.io/astral-sh/uv:0.5.9 AS uv
 
 FROM ubuntu:noble AS build
 
@@ -41,7 +41,8 @@ RUN --mount=type=cache,target=/app/.cache \
 COPY pyproject.toml /_lock/
 COPY uv.lock /_lock/
 
-# Install the packages with uv using --mount=type=cache to cache the downloaded packages
+# Install the packages with uv using --mount=type=cache to cache the
+# downloaded packages
 RUN --mount=type=cache,target=/app/.cache \
     --mount=from=uv,source=/uv,target=./uv \
     cd /_lock && \
