@@ -9,7 +9,7 @@ from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
 from errors import GDALError
-from gdal_utils import run_gdal_subcommand
+from gdal_utils import from_gdal_data_type, run_gdal_subcommand
 
 
 def to_4326(crs: CRS, x: float, y: float) -> Tuple[float, float]:
@@ -26,7 +26,11 @@ def extract_metadata_from_gdalinfo(gdalinfo_json: Dict[str, Any]) -> Dict[str, A
 
     bands = [
         {
-            "data_type": band.get("type", None),
+            "data_type": (
+                from_gdal_data_type(band.get("type"))
+                if band.get("type") is not None
+                else None
+            ),
             "no_data": (
                 "nan" if (
                     band.get("noDataValue", None) is not None

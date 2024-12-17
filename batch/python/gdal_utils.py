@@ -66,3 +66,10 @@ def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str
             raise GDALError(e)
 
     return o, e
+
+
+def from_gdal_data_type(data_type: str) -> str:
+    if data_type == "Byte":
+        return "uint8"
+    else:
+        return data_type.lower()
