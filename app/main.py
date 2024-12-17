@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.errors import http_error_handler
+from app.routes.datamart import data_mart_router, datamart_metadata_tags
 
 from .application import app
 from .middleware import no_cache_response_header, redirect_latest, set_db_mode
@@ -164,6 +165,12 @@ for r in analysis_routers:
 
 
 ###############
+# Data Mart API
+###############
+
+app.include_router(data_mart_router)
+
+###############
 # JOB API
 ###############
 
@@ -200,6 +207,8 @@ tags_metadata = [
     {"name": "Health", "description": health.__doc__},
 ]
 
+tags_metadata.extend(datamart_metadata_tags)
+
 
 def custom_openapi():
     if app.openapi_schema:
@@ -223,6 +232,7 @@ def custom_openapi():
         {"name": "Task API", "tags": ["Tasks"]},
         {"name": "Analysis API", "tags": ["Analysis"]},
         {"name": "Health API", "tags": ["Health"]},
+        {"name": "Data Mart API", "tags": ["Forest Change Analysis 📊"]},
     ]
 
     app.openapi_schema = openapi_schema
