@@ -3,7 +3,7 @@ from typing import Any, List, Optional, Union
 from uuid import UUID
 
 from fastapi import HTTPException
-from pydantic import Field, validator, BaseModel
+from pydantic import BaseModel, Field, validator
 from pydantic.utils import GetterDict
 
 from .base import BaseRecord, StrictBaseModel
@@ -34,6 +34,7 @@ class CommonMetadata(BaseModel):
 
 class DatasetMetadata(CommonMetadata):
     title: Optional[str]
+    subtitle: Optional[str]
     source: Optional[str]
     license: Optional[str]
     data_language: Optional[str]
@@ -51,6 +52,7 @@ class DatasetMetadata(CommonMetadata):
             "examples": [
                 {
                     "title": "Deforestation alerts (GLAD-S2)",
+                    "subtitle": "Sentinel-2 based deforestation alerts",
                     "source": "Global Land Analysis and Discovery (GLAD), University of Maryland",
                     "license": "[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)",
                     "data_language": "en",
