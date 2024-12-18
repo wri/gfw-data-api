@@ -1,5 +1,5 @@
 import os
-from typing import Tuple
+from typing import List, Sequence, Tuple, Dict, Any
 
 import boto3
 
@@ -29,3 +29,33 @@ def exists_in_s3(target_bucket, target_key):
     for obj in response.get("Contents", []):
         if obj["Key"] == target_key:
             return obj["Size"] > 0
+
+
+def get_aws_files(
+    bucket: str, prefix: str, extensions: Sequence[str] = (".tif",)
+) -> List[str]:
+    """Get all matching files in S3."""
+    files: List[str] = list()
+
+    s3_client = get_s3_client()
+    paginator = s3_client.get_paginator("list_objects_v2")
+
+    print("get_aws_files")
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        try:
+            contents = page["Contents"]
+        except KeyError:
+            break
+
+        for obj in contents:
+            key = str(obj["Key"])
+            if any(key.endswith(ext) for ext in extensions):
+                files.append(f"s3://{bucket}/{key}")
+
+    print("done get_aws_files")
+    return files
+
+
+def upload_s3(path: str, bucket: str, dst: str) -> Dict[str, Any]:
+    s3_client = get_s3_client()
+    return s3_client.upload_file(path, bucket, dst)
