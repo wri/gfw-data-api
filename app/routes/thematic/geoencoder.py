@@ -1,6 +1,6 @@
 from typing import Optional, Any, Dict, List
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from app.routes.datasets.queries import _query_dataset_json
 
@@ -35,39 +35,32 @@ async def geoencode(
         description="Name of the subregion to match.",
     ),
 ):
-    """ Look-up administrative boundary IDs matching a specified country name
+    """ Look up administrative boundary IDs matching a specified country name
     (and region name and subregion names, if specified).
     """
-
-    return await lookup_admin_boundary_ids(
-        admin_source, admin_version, country, region, subregion
-
-    )
-
-
-async def lookup_admin_boundary_ids(
-    admin_source: str,
-    admin_version: str,
-    country_name: str,
-    region_name: Optional[str],
-    subregion_name: Optional[str]
-) -> Dict[str, Any]:
-    source_to_datasets = {
-        "gadm": "gadm_administrative_boundaries"
+    admin_source_to_dataset = {
+        "GADM": "gadm_administrative_boundaries"
     }
 
-    dataset = source_to_datasets[admin_source.lower()]
-    version = f"v{admin_version}"
+    try:
+        dataset = admin_source_to_dataset[admin_source.upper()]
+    except KeyError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Invalid admin boundary source. Valid sources: {admin_source_to_dataset.keys()}"
+        )
 
-    base_sql = f"SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM {dataset}"
-    where_filter:str = f" AND WHERE country='{country_name}'"
-    if region_name is not None:
-        where_filter += f" AND WHERE region='{region_name}'"
-    if subregion_name is not None:
-        where_filter += f" AND WHERE subregion='{subregion_name}'"
+    version_str = "v" + str(admin_version).lstrip("v")
+
+    sql: str = await admin_boundary_lookup_sql(
+        admin_source,
+        country,
+        region,
+        subregion
+    )
 
     json_data: List[Dict[str, Any]] = await _query_dataset_json(
-        dataset, version, base_sql + where_filter, None
+        dataset, version_str, sql, None
     )
 
     return {
@@ -75,3 +68,24 @@ async def lookup_admin_boundary_ids(
         "adminVersion": admin_version,
         "matches": json_data
     }
+
+
+async def admin_boundary_lookup_sql(
+    dataset: str,
+    country_name: str,
+    region_name: Optional[str],
+    subregion_name: Optional[str]
+):
+    """Generate the SQL required to look up administrative boundary
+    IDs by name.
+    """
+    sql = (
+        f"SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM {dataset}"
+        f" AND WHERE country='{country_name}'"
+    )
+    if region_name is not None:
+        sql += f" AND WHERE region='{region_name}'"
+    if subregion_name is not None:
+        sql += f" AND WHERE subregion='{subregion_name}'"
+
+    return sql
