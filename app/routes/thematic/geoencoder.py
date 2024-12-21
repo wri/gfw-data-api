@@ -93,9 +93,9 @@ def _admin_boundary_lookup_sql(
         f" WHERE country='{country_name}'"
     )
     if region_name is not None:
-        sql += f" AND WHERE region='{region_name}'"
+        sql += f" AND WHERE name_1='{region_name}'"
     if subregion_name is not None:
-        sql += f" AND WHERE subregion='{subregion_name}'"
+        sql += f" AND WHERE name_2='{subregion_name}'"
 
     return sql
 

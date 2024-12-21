@@ -9,15 +9,38 @@ from app.routes.thematic.geoencoder import _admin_boundary_lookup_sql
 
 
 @pytest.mark.asyncio
-async def test__admin_boundary_lookup_sql() -> None:
+async def test__admin_boundary_lookup_sql_country() -> None:
+    sql = _admin_boundary_lookup_sql(
+        "some_dataset", "some_country", None, None
+    )
+    assert sql == (
+        "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
+        " WHERE country='some_country'"
+    )
+
+
+@pytest.mark.asyncio
+async def test__admin_boundary_lookup_sql_country_region() -> None:
+    sql = _admin_boundary_lookup_sql(
+        "some_dataset", "some_country", "some_region", None
+    )
+    assert sql == (
+        "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
+        " WHERE country='some_country'"
+        " AND WHERE name_1='some_region'"
+    )
+
+
+@pytest.mark.asyncio
+async def test__admin_boundary_lookup_sql_all() -> None:
     sql = _admin_boundary_lookup_sql(
         "some_dataset", "some_country", "some_region", "some_subregion"
     )
     assert sql == (
-        "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset "
-        "WHERE country='some_country' "
-        "AND WHERE region='some_region' "
-        "AND WHERE subregion='some_subregion'"
+        "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
+        " WHERE country='some_country'"
+        " AND WHERE name_1='some_region'"
+        " AND WHERE name_2='some_subregion'"
     )
 
 
