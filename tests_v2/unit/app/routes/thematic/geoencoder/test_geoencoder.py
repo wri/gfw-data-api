@@ -27,7 +27,7 @@ async def test__admin_boundary_lookup_sql_country_region() -> None:
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
         " WHERE country='some_country'"
-        " AND WHERE name_1='some_region'"
+        " AND name_1='some_region'"
     )
 
 
@@ -39,8 +39,8 @@ async def test__admin_boundary_lookup_sql_all() -> None:
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
         " WHERE country='some_country'"
-        " AND WHERE name_1='some_region'"
-        " AND WHERE name_2='some_subregion'"
+        " AND name_1='some_region'"
+        " AND name_2='some_subregion'"
     )
 
 
