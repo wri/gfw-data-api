@@ -20,6 +20,7 @@ from .routes import health
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.authentication import authentication
+from .routes.thematic import geoencoder
 from .routes.datasets import asset as version_asset
 from .routes.datasets import (
     dataset,
@@ -126,6 +127,13 @@ dataset_routers = (
 
 for r in dataset_routers:
     app.include_router(r, prefix="/dataset")
+
+
+################
+# THEMATIC API #
+################
+
+app.include_router(geoencoder.router, prefix="/thematic")
 
 
 ###############
