@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -20,7 +20,7 @@ router = APIRouter()
 )
 async def geoencode(
     *,
-    admin_source: Optional[str] = Query(
+    admin_source: str = Query(
         "GADM",
         description="The source of administrative boundaries to use."
     ),
@@ -43,7 +43,7 @@ async def geoencode(
     """ Look up administrative boundary IDs matching a specified country name
     (and region name and subregion names, if specified).
     """
-    admin_source_to_dataset = {
+    admin_source_to_dataset: Dict[str, str] = {
         "GADM": "gadm_administrative_boundaries"
     }
 
@@ -52,12 +52,17 @@ async def geoencode(
     except KeyError:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid admin boundary source. Valid sources: {admin_source_to_dataset.keys()}"
+            detail=(
+                "Invalid admin boundary source. Valid sources:"
+                f" {[source for source in admin_source_to_dataset.keys()]}"
+            )
         )
 
     version_str = "v" + str(admin_version).lstrip("v")
 
     await version_is_valid(dataset, version_str)
+
+    ensure_admin_hierarchy(region, subregion)
 
     sql: str = _admin_boundary_lookup_sql(
         admin_source,
@@ -79,11 +84,33 @@ async def geoencode(
     )
 
 
+def ensure_admin_hierarchy(region: str | None, subregion: str | None) -> None:
+    if subregion and not region:
+        raise HTTPException(
+            status_code=400,
+            detail= "If subregion is specified, region must be specified as well."
+        )
+
+
+def determine_admin_level(country: str | None, region: str | None, subregion: str | None) -> str:
+    if subregion:
+        return "2"
+    elif region:
+        return "1"
+    elif country:
+        return "0"
+    else:  # Shouldn't get here if FastAPI route definition worked
+        raise HTTPException(
+            status_code=400,
+            detail= "Country MUST be specified."
+        )
+
+
 def _admin_boundary_lookup_sql(
     dataset: str,
     country_name: str,
-    region_name: Optional[str],
-    subregion_name: Optional[str]
+    region_name: str | None,
+    subregion_name: str | None
 ):
     """Generate the SQL required to look up administrative boundary
     IDs by name.
@@ -96,6 +123,9 @@ def _admin_boundary_lookup_sql(
         sql += f" AND name_1='{region_name}'"
     if subregion_name is not None:
         sql += f" AND name_2='{subregion_name}'"
+
+    adm_level = determine_admin_level(country_name, region_name, subregion_name)
+    sql += f" AND adm_level='{adm_level}'"
 
     return sql
 
