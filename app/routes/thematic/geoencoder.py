@@ -67,7 +67,12 @@ async def geoencode(
 
     names: List[str | None] = [country, region, subregion]
     if unaccent_request:
-        names = [unidecode(name) for name in (country, region, subregion)]
+        names = []
+        for name in (country, region, subregion):
+            if name:
+                names.append(unidecode(name))
+            else:
+                names.append(None)
 
     sql: str = _admin_boundary_lookup_sql(admin_source, *names)
 
