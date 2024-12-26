@@ -2,13 +2,13 @@ import re
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
+from unidecode import unidecode
 
 from app.crud.versions import get_version, get_version_names
 from app.errors import RecordNotFoundError
 from app.models.pydantic.responses import Response
 from app.routes import VERSION_REGEX
 from app.routes.datasets.queries import _query_dataset_json
-
 
 router = APIRouter()
 
@@ -21,8 +21,7 @@ router = APIRouter()
 async def geoencode(
     *,
     admin_source: str = Query(
-        "GADM",
-        description="The source of administrative boundaries to use."
+        "GADM", description="The source of administrative boundaries to use."
     ),
     admin_version: str = Query(
         ...,
@@ -39,13 +38,15 @@ async def geoencode(
         None,
         description="Name of the subregion to match.",
     ),
+    unaccent_request: bool = Query(
+        True,
+        description="Whether or not to unaccent names in request.",
+    ),
 ):
-    """ Look up administrative boundary IDs matching a specified country name
+    """Look up administrative boundary IDs matching a specified country name
     (and region name and subregion names, if specified).
     """
-    admin_source_to_dataset: Dict[str, str] = {
-        "GADM": "gadm_administrative_boundaries"
-    }
+    admin_source_to_dataset: Dict[str, str] = {"GADM": "gadm_administrative_boundaries"}
 
     try:
         dataset = admin_source_to_dataset[admin_source.upper()]
@@ -55,7 +56,7 @@ async def geoencode(
             detail=(
                 "Invalid admin boundary source. Valid sources:"
                 f" {[source for source in admin_source_to_dataset.keys()]}"
-            )
+            ),
         )
 
     version_str = "v" + str(admin_version).lstrip("v")
@@ -64,12 +65,11 @@ async def geoencode(
 
     ensure_admin_hierarchy(region, subregion)
 
-    sql: str = _admin_boundary_lookup_sql(
-        admin_source,
-        country,
-        region,
-        subregion
-    )
+    names: List[str | None] = [country, region, subregion]
+    if unaccent_request:
+        names = [unidecode(name) for name in (country, region, subregion)]
+
+    sql: str = _admin_boundary_lookup_sql(admin_source, *names)
 
     json_data: List[Dict[str, Any]] = await _query_dataset_json(
         dataset, version_str, sql, None
@@ -79,7 +79,7 @@ async def geoencode(
         data={
             "adminSource": admin_source,
             "adminVersion": admin_version,
-            "matches": json_data
+            "matches": json_data,
         }
     )
 
@@ -88,11 +88,13 @@ def ensure_admin_hierarchy(region: str | None, subregion: str | None) -> None:
     if subregion and not region:
         raise HTTPException(
             status_code=400,
-            detail= "If subregion is specified, region must be specified as well."
+            detail="If subregion is specified, region must be specified as well.",
         )
 
 
-def determine_admin_level(country: str | None, region: str | None, subregion: str | None) -> str:
+def determine_admin_level(
+    country: str | None, region: str | None, subregion: str | None
+) -> str:
     if subregion:
         return "2"
     elif region:
@@ -100,18 +102,12 @@ def determine_admin_level(country: str | None, region: str | None, subregion: st
     elif country:
         return "0"
     else:  # Shouldn't get here if FastAPI route definition worked
-        raise HTTPException(
-            status_code=400,
-            detail= "Country MUST be specified."
-        )
+        raise HTTPException(status_code=400, detail="Country MUST be specified.")
 
 
 def _admin_boundary_lookup_sql(
-    dataset: str,
-    country_name: str,
-    region_name: str | None,
-    subregion_name: str | None
-):
+    dataset: str, country_name: str, region_name: str | None, subregion_name: str | None
+) -> str:
     """Generate the SQL required to look up administrative boundary
     IDs by name.
     """
@@ -134,9 +130,7 @@ async def version_is_valid(
     dataset: str,
     version: str,
 ) -> None:
-    """
-
-    """
+    """ """
     if re.match(VERSION_REGEX, version) is None:
         raise HTTPException(
             status_code=400,
@@ -144,7 +138,7 @@ async def version_is_valid(
                 "Invalid version name. Version names begin with a 'v' and "
                 "consist of one to three integers separated by periods. "
                 "eg. 'v1', 'v7.1', 'v4.1.0',  'v20240801'"
-            )
+            ),
         )
 
     try:
@@ -155,5 +149,5 @@ async def version_is_valid(
             detail=(
                 "Version not found. Existing versions for this dataset "
                 f"include {await get_version_names(dataset)}"
-            )
+            ),
         )
