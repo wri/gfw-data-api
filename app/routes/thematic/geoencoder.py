@@ -147,16 +147,18 @@ def _admin_boundary_lookup_sql(
     """
     name_fields: List[str] = ["country", "name_1", "name_2"]
     if search_unaccented:
-        name_fields = [name_field + "_unaccented" for name_field in name_fields]
+        match_name_fields = [name_field + "_unaccented" for name_field in name_fields]
+    else:
+        match_name_fields = name_fields
 
     sql = (
-        f"SELECT gid_0, gid_1, gid_2, {country_name}, {region_name}, {subregion_name}"
-        f" FROM {dataset} WHERE country='{country_name}'"
+        f"SELECT gid_0, gid_1, gid_2, {name_fields[0]}, {name_fields[1]}, {name_fields[2]}"
+        f" FROM {dataset} WHERE {match_name_fields[0]}='{country_name}'"
     )
     if region_name is not None:
-        sql += f" AND {name_fields[1]}='{region_name}'"
+        sql += f" AND {match_name_fields[1]}='{region_name}'"
     if subregion_name is not None:
-        sql += f" AND {name_fields[2]}='{subregion_name}'"
+        sql += f" AND {match_name_fields[2]}='{subregion_name}'"
 
     adm_level = determine_admin_level(country_name, region_name, subregion_name)
     sql += f" AND adm_level='{adm_level}'"
