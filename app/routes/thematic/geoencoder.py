@@ -150,7 +150,7 @@ def _admin_boundary_lookup_sql(
         name_fields = [name_field + "_unaccented" for name_field in name_fields]
 
     sql = (
-        f"SELECT gid_0, gid_1, gid_2, {name_fields[0]}, {name_fields[1]}, {name_fields[2]}"
+        f"SELECT gid_0, gid_1, gid_2, {country_name}, {region_name}, {subregion_name}"
         f" FROM {dataset} WHERE country='{country_name}'"
     )
     if region_name is not None:
