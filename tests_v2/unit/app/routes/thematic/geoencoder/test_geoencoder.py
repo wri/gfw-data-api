@@ -105,7 +105,7 @@ async def test_geoencoder_no_matches(
 
     monkeypatch.setattr(geoencoder, "version_is_valid", mock_version_is_valid)
     monkeypatch.setattr(
-        geoencoder, "_query_dataset_json", _query_dataset_json_mocked_results
+        geoencoder, "_query_dataset_json", _query_dataset_json_mocked_no_results
     )
 
     resp = await async_client.get("/thematic/geoencode", params=params)
@@ -121,10 +121,68 @@ async def test_geoencoder_no_matches(
     assert resp.status_code == 200
 
 
-async def _query_dataset_json_mocked_results(
+@pytest.mark.asyncio
+async def test_geoencoder_matches(
+    async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    admin_source = "gadm"
+    admin_version = "v4.1"
+
+    params = {
+        "admin_source": admin_source,
+        "admin_version": admin_version,
+        "country": "Taiwan",
+    }
+
+    async def mock_version_is_valid(dataset: str, version: str):
+        return None
+
+    monkeypatch.setattr(geoencoder, "version_is_valid", mock_version_is_valid)
+    monkeypatch.setattr(
+        geoencoder, "_query_dataset_json", _query_dataset_json_mocked_results
+    )
+
+    resp = await async_client.get("/thematic/geoencode", params=params)
+
+    assert resp.json() == {
+        "status": "success",
+        "data": {
+            "adminSource": admin_source,
+            "adminVersion": admin_version,
+            "matches": [
+                {
+                    "country": {"id": "TWN", "name": "Taiwan"},
+                    "region": {"id": "TWN.1", "name": "Fujian"},
+                    "subregion": {"id": "TWN.1.1", "name": "Kinmen"},
+                }
+            ],
+        },
+    }
+    assert resp.status_code == 200
+
+
+async def _query_dataset_json_mocked_no_results(
     dataset: str,
     version: str,
     sql: str,
     geostore: Optional[GeostoreCommon],
 ) -> List[Dict[str, Any]]:
     return []
+
+
+async def _query_dataset_json_mocked_results(
+    dataset: str,
+    version: str,
+    sql: str,
+    geostore: Optional[GeostoreCommon],
+) -> List[Dict[str, Any]]:
+    return [
+        {
+            "gid_0": "TWN",
+            "gid_1": "TWN.1_1",
+            "gid_2": "TWN.1.1_1",
+            "country": "Taiwan",
+            "name_1": "Fujian",
+            "name_2": "Kinmen",
+        }
+    ]

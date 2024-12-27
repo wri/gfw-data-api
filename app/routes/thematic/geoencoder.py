@@ -77,7 +77,23 @@ async def geoencode(
         data={
             "adminSource": admin_source,
             "adminVersion": admin_version,
-            "matches": json_data,
+            "matches": [
+                {
+                    "country": {
+                        "id": match["gid_0"].rsplit("_")[0],
+                        "name": match["country"],
+                    },
+                    "region": {
+                        "id": match["gid_1"].rsplit("_")[0],
+                        "name": match["name_1"],
+                    },
+                    "subregion": {
+                        "id": match["gid_2"].rsplit("_")[0],
+                        "name": match["name_2"],
+                    },
+                }
+                for match in json_data
+            ],
         }
     )
 
