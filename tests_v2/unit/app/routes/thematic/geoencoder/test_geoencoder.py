@@ -4,6 +4,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.models.pydantic.geostore import GeostoreCommon
+from app.routes.datasets.versions import get_version
 from app.routes.thematic import geoencoder
 from app.routes.thematic.geoencoder import _admin_boundary_lookup_sql
 
@@ -75,7 +76,7 @@ async def test_geoencoder_invalid_version_pattern(async_client: AsyncClient) -> 
 
     resp = await async_client.get("/thematic/geoencode", params=params)
 
-    assert resp.json().get("message", {}).startswith("Invalid version")
+    assert resp.json().get("message", {}).startswith("Invalid version name")
     assert resp.status_code == 400
 
 
@@ -86,6 +87,22 @@ async def test_geoencoder_nonexistant_version(async_client: AsyncClient) -> None
     resp = await async_client.get("/thematic/geoencode", params=params)
 
     assert resp.json().get("message", {}).startswith("Version not found")
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_geoencoder_nonexistant_version_lists_existing(
+    async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def mock_get_version_names(dataset: str):
+        return [("fdkj",), ("dslj",), ("kfj",)]
+
+    monkeypatch.setattr(geoencoder, "get_version_names", mock_get_version_names)
+
+    params = {"country": "Canada", "admin_version": "v4.0"}
+    resp = await async_client.get("/thematic/geoencode", params=params)
+
+    assert resp.json().get("message", {}).endswith("['fdkj', 'dslj', 'kfj']")
     assert resp.status_code == 400
 
 

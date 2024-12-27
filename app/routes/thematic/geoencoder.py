@@ -116,6 +116,9 @@ def sanitize_names(
     region: str | None,
     subregion: str | None,
 ) -> List[str | None]:
+    """Turn any empty strings into Nones, enforce the admin level hierarchy,
+    and optionally unaccent names.
+    """
     names = []
 
     if subregion and not region:
@@ -137,6 +140,9 @@ def sanitize_names(
 def determine_admin_level(
     country: str | None, region: str | None, subregion: str | None
 ) -> str:
+    """Infer the native admin level of a request based on the presence of
+    non-empty fields
+    """
     if subregion:
         return "2"
     elif region:
@@ -182,7 +188,11 @@ async def version_is_valid(
     dataset: str,
     version: str,
 ) -> None:
-    """ """
+    """Validate a version string for a given dataset."""
+    # Note: At some point I intend to change the version validator to
+    # use messaging like this. However, that is out of scope for the
+    # current ticket, and I want to see what people think, so I'll
+    # keep it here for now.
     if re.match(VERSION_REGEX, version) is None:
         raise HTTPException(
             status_code=400,
@@ -200,6 +210,7 @@ async def version_is_valid(
             status_code=400,
             detail=(
                 "Version not found. Existing versions for this dataset "
-                f"include {await get_version_names(dataset)}"
+                f"include {[v[0] for v in await get_version_names(dataset)]}"
+                # FIXME: Maybe change get_version_names to do unpacking? ^
             ),
         )
