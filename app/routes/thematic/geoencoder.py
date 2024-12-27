@@ -38,9 +38,9 @@ async def geoencode(
         None,
         description="Name of the subregion to match.",
     ),
-    search_unaccented: bool = Query(
+    normalize_search: bool = Query(
         True,
-        description="Whether or not to unaccent names in request.",
+        description="Whether or not to perform a case- and accent-insensitive search.",
     ),
 ):
     """Look up administrative boundary IDs matching a specified country name
@@ -64,13 +64,13 @@ async def geoencode(
     await version_is_valid(dataset, version_str)
 
     names: List[str | None] = sanitize_names(
-        search_unaccented, country, region, subregion
+        normalize_search, country, region, subregion
     )
 
     adm_level: str = determine_admin_level(*names)
 
     sql: str = _admin_boundary_lookup_sql(
-        adm_level, search_unaccented, admin_source, *names
+        adm_level, normalize_search, admin_source, *names
     )
 
     json_data: List[Dict[str, Any]] = await _query_dataset_json(
@@ -111,13 +111,13 @@ async def geoencode(
 
 
 def sanitize_names(
-    search_unaccented: bool,
+    normalize_search: bool,
     country: str | None,
     region: str | None,
     subregion: str | None,
 ) -> List[str | None]:
-    """Turn any empty strings into Nones, enforce the admin level hierarchy,
-    and optionally unaccent names.
+    """Turn any empty strings into Nones, enforces the admin level hierarchy,
+    and optionally unaccents and decapitalizes names.
     """
     names = []
 
@@ -128,8 +128,8 @@ def sanitize_names(
         )
 
     for name in (country, region, subregion):
-        if name and search_unaccented:
-            names.append(unidecode(name))
+        if name and normalize_search:
+            names.append(unidecode(name).lower())
         elif name:
             names.append(name)
         else:
@@ -155,7 +155,7 @@ def determine_admin_level(
 
 def _admin_boundary_lookup_sql(
     adm_level: str,
-    search_unaccented: bool,
+    normalize_search: bool,
     dataset: str,
     country_name: str,
     region_name: str | None,
@@ -165,8 +165,8 @@ def _admin_boundary_lookup_sql(
     IDs by name.
     """
     name_fields: List[str] = ["country", "name_1", "name_2"]
-    if search_unaccented:
-        match_name_fields = [name_field + "_unaccented" for name_field in name_fields]
+    if normalize_search:
+        match_name_fields = [name_field + "_normalized" for name_field in name_fields]
     else:
         match_name_fields = name_fields
 

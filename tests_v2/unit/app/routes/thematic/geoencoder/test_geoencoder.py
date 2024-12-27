@@ -1,12 +1,63 @@
 from typing import Any, Dict, List, Optional
 
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient
 
 from app.models.pydantic.geostore import GeostoreCommon
-from app.routes.datasets.versions import get_version
 from app.routes.thematic import geoencoder
-from app.routes.thematic.geoencoder import _admin_boundary_lookup_sql
+from app.routes.thematic.geoencoder import _admin_boundary_lookup_sql, sanitize_names
+
+
+@pytest.mark.asyncio
+async def test_sanitize_names_pass_through() -> None:
+    country = "A Country"
+    region = "Some region"
+    subregion = "SUBREGION"
+    normalize = False
+
+    names = sanitize_names(normalize, country, region, subregion)
+
+    assert names == [country, region, subregion]
+
+
+@pytest.mark.asyncio
+async def test_sanitize_names_normalize() -> None:
+    country = "Fictîcious de San México"
+    region = "Söme Reğion"
+    subregion = "SÜBREGION"
+    normalize = True
+
+    names = sanitize_names(normalize, country, region, subregion)
+
+    assert names == ["ficticious de san mexico", "some region", "subregion"]
+
+
+@pytest.mark.asyncio
+async def test_sanitize_names_tolerate_empty() -> None:
+    country = "México"
+    region = "Tijuana"
+    subregion = ""
+    normalize = False
+
+    names = sanitize_names(normalize, country, region, subregion)
+
+    assert names == [country, region, None]
+
+
+@pytest.mark.asyncio
+async def test_sanitize_names_tolerate_enforce_hierarchy() -> None:
+    country = "México"
+    region = None
+    subregion = "some subregion"
+    normalize = False
+
+    try:
+        _ = sanitize_names(normalize, country, region, subregion)
+    except HTTPException as e:
+        assert (
+            e.detail == "If subregion is specified, region must be specified as well."
+        )
 
 
 @pytest.mark.asyncio
@@ -48,15 +99,15 @@ async def test__admin_boundary_lookup_sql_all() -> None:
 
 
 @pytest.mark.asyncio
-async def test__admin_boundary_lookup_sql_all_unaccented() -> None:
+async def test__admin_boundary_lookup_sql_all_normalized() -> None:
     sql = _admin_boundary_lookup_sql(
         "2", True, "some_dataset", "some_country", "some_region", "some_subregion"
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
-        " WHERE country_unaccented='some_country'"
-        " AND name_1_unaccented='some_region'"
-        " AND name_2_unaccented='some_subregion'"
+        " WHERE country_normalized='some_country'"
+        " AND name_1_normalized='some_region'"
+        " AND name_2_normalized='some_subregion'"
         " AND adm_level='2'"
     )
 
