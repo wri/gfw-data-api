@@ -49,7 +49,7 @@ async def geoencode(
     admin_source_to_dataset: Dict[str, str] = {"GADM": "gadm_administrative_boundaries"}
 
     try:
-        dataset = admin_source_to_dataset[admin_source.upper()]
+        dataset: str = admin_source_to_dataset[admin_source.upper()]
     except KeyError:
         raise HTTPException(
             status_code=400,
@@ -59,7 +59,7 @@ async def geoencode(
             ),
         )
 
-    version_str = "v" + str(admin_version).lstrip("v")
+    version_str: str = "v" + str(admin_version).lstrip("v")
 
     await version_is_valid(dataset, version_str)
 
@@ -67,7 +67,11 @@ async def geoencode(
         search_unaccented, country, region, subregion
     )
 
-    sql: str = _admin_boundary_lookup_sql(search_unaccented, admin_source, *names)
+    adm_level: str = determine_admin_level(*names)
+
+    sql: str = _admin_boundary_lookup_sql(
+        adm_level, search_unaccented, admin_source, *names
+    )
 
     json_data: List[Dict[str, Any]] = await _query_dataset_json(
         dataset, version_str, sql, None
@@ -84,12 +88,20 @@ async def geoencode(
                         "name": match["country"],
                     },
                     "region": {
-                        "id": match["gid_1"].rsplit("_")[0],
-                        "name": match["name_1"],
+                        "id": (
+                            match["gid_1"].rsplit("_")[0]
+                            if int(adm_level) >= 1
+                            else None
+                        ),
+                        "name": match["name_1"] if int(adm_level) >= 1 else None,
                     },
                     "subregion": {
-                        "id": match["gid_2"].rsplit("_")[0],
-                        "name": match["name_2"],
+                        "id": (
+                            match["gid_2"].rsplit("_")[0]
+                            if int(adm_level) >= 2
+                            else None
+                        ),
+                        "name": match["name_2"] if int(adm_level) >= 2 else None,
                     },
                 }
                 for match in json_data
@@ -136,6 +148,7 @@ def determine_admin_level(
 
 
 def _admin_boundary_lookup_sql(
+    adm_level: str,
     search_unaccented: bool,
     dataset: str,
     country_name: str,
@@ -160,7 +173,6 @@ def _admin_boundary_lookup_sql(
     if subregion_name is not None:
         sql += f" AND {match_name_fields[2]}='{subregion_name}'"
 
-    adm_level = determine_admin_level(country_name, region_name, subregion_name)
     sql += f" AND adm_level='{adm_level}'"
 
     return sql

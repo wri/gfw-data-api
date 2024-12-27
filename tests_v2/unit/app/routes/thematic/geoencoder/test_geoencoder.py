@@ -10,7 +10,9 @@ from app.routes.thematic.geoencoder import _admin_boundary_lookup_sql
 
 @pytest.mark.asyncio
 async def test__admin_boundary_lookup_sql_country() -> None:
-    sql = _admin_boundary_lookup_sql(False, "some_dataset", "some_country", None, None)
+    sql = _admin_boundary_lookup_sql(
+        "0", False, "some_dataset", "some_country", None, None
+    )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
         " WHERE country='some_country' AND adm_level='0'"
@@ -20,7 +22,7 @@ async def test__admin_boundary_lookup_sql_country() -> None:
 @pytest.mark.asyncio
 async def test__admin_boundary_lookup_sql_country_region() -> None:
     sql = _admin_boundary_lookup_sql(
-        False, "some_dataset", "some_country", "some_region", None
+        "1", False, "some_dataset", "some_country", "some_region", None
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
@@ -33,7 +35,7 @@ async def test__admin_boundary_lookup_sql_country_region() -> None:
 @pytest.mark.asyncio
 async def test__admin_boundary_lookup_sql_all() -> None:
     sql = _admin_boundary_lookup_sql(
-        False, "some_dataset", "some_country", "some_region", "some_subregion"
+        "2", False, "some_dataset", "some_country", "some_region", "some_subregion"
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
@@ -47,7 +49,7 @@ async def test__admin_boundary_lookup_sql_all() -> None:
 @pytest.mark.asyncio
 async def test__admin_boundary_lookup_sql_all_unaccented() -> None:
     sql = _admin_boundary_lookup_sql(
-        True, "some_dataset", "some_country", "some_region", "some_subregion"
+        "2", True, "some_dataset", "some_country", "some_region", "some_subregion"
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
@@ -136,7 +138,49 @@ async def test_geoencoder_no_matches(
 
 
 @pytest.mark.asyncio
-async def test_geoencoder_matches(
+async def test_geoencoder_matches_full(
+    async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    admin_source = "gadm"
+    admin_version = "v4.1"
+
+    params = {
+        "admin_source": admin_source,
+        "admin_version": admin_version,
+        "country": "Taiwan",
+        "region": "Fujian",
+        "subregion": "Kinmen",
+    }
+
+    async def mock_version_is_valid(dataset: str, version: str):
+        return None
+
+    monkeypatch.setattr(geoencoder, "version_is_valid", mock_version_is_valid)
+    monkeypatch.setattr(
+        geoencoder, "_query_dataset_json", _query_dataset_json_mocked_results
+    )
+
+    resp = await async_client.get("/thematic/geoencode", params=params)
+
+    assert resp.json() == {
+        "status": "success",
+        "data": {
+            "adminSource": admin_source,
+            "adminVersion": admin_version,
+            "matches": [
+                {
+                    "country": {"id": "TWN", "name": "Taiwan"},
+                    "region": {"id": "TWN.1", "name": "Fujian"},
+                    "subregion": {"id": "TWN.1.1", "name": "Kinmen"},
+                }
+            ],
+        },
+    }
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_geoencoder_matches_hide_extraneous(
     async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     admin_source = "gadm"
@@ -166,8 +210,8 @@ async def test_geoencoder_matches(
             "matches": [
                 {
                     "country": {"id": "TWN", "name": "Taiwan"},
-                    "region": {"id": "TWN.1", "name": "Fujian"},
-                    "subregion": {"id": "TWN.1.1", "name": "Kinmen"},
+                    "region": {"id": None, "name": None},
+                    "subregion": {"id": None, "name": None},
                 }
             ],
         },
