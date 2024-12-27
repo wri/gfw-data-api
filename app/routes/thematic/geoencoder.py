@@ -38,7 +38,7 @@ async def geoencode(
         None,
         description="Name of the subregion to match.",
     ),
-    unaccent_request: bool = Query(
+    search_unaccented: bool = Query(
         True,
         description="Whether or not to unaccent names in request.",
     ),
@@ -63,18 +63,11 @@ async def geoencode(
 
     await version_is_valid(dataset, version_str)
 
-    ensure_admin_hierarchy(region, subregion)
+    names: List[str | None] = sanitize_names(
+        search_unaccented, country, region, subregion
+    )
 
-    names: List[str | None] = [country, region, subregion]
-    if unaccent_request:
-        names = []
-        for name in (country, region, subregion):
-            if name:
-                names.append(unidecode(name))
-            else:
-                names.append(None)
-
-    sql: str = _admin_boundary_lookup_sql(admin_source, *names)
+    sql: str = _admin_boundary_lookup_sql(search_unaccented, admin_source, *names)
 
     json_data: List[Dict[str, Any]] = await _query_dataset_json(
         dataset, version_str, sql, None
@@ -89,12 +82,28 @@ async def geoencode(
     )
 
 
-def ensure_admin_hierarchy(region: str | None, subregion: str | None) -> None:
+def sanitize_names(
+    search_unaccented: bool,
+    country: str | None,
+    region: str | None,
+    subregion: str | None,
+) -> List[str | None]:
+    names = []
+
     if subregion and not region:
         raise HTTPException(
             status_code=400,
             detail="If subregion is specified, region must be specified as well.",
         )
+
+    for name in (country, region, subregion):
+        if name and search_unaccented:
+            names.append(unidecode(name))
+        elif name:
+            names.append(name)
+        else:
+            names.append(None)
+    return names
 
 
 def determine_admin_level(
@@ -111,19 +120,27 @@ def determine_admin_level(
 
 
 def _admin_boundary_lookup_sql(
-    dataset: str, country_name: str, region_name: str | None, subregion_name: str | None
+    search_unaccented: bool,
+    dataset: str,
+    country_name: str,
+    region_name: str | None,
+    subregion_name: str | None,
 ) -> str:
     """Generate the SQL required to look up administrative boundary
     IDs by name.
     """
+    name_fields: List[str] = ["country", "name_1", "name_2"]
+    if search_unaccented:
+        name_fields = [name_field + "_unaccented" for name_field in name_fields]
+
     sql = (
-        f"SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM {dataset}"
-        f" WHERE country='{country_name}'"
+        f"SELECT gid_0, gid_1, gid_2, {name_fields[0]}, {name_fields[1]}, {name_fields[2]}"
+        f" FROM {dataset} WHERE country='{country_name}'"
     )
     if region_name is not None:
-        sql += f" AND name_1='{region_name}'"
+        sql += f" AND {name_fields[1]}='{region_name}'"
     if subregion_name is not None:
-        sql += f" AND name_2='{subregion_name}'"
+        sql += f" AND {name_fields[2]}='{subregion_name}'"
 
     adm_level = determine_admin_level(country_name, region_name, subregion_name)
     sql += f" AND adm_level='{adm_level}'"

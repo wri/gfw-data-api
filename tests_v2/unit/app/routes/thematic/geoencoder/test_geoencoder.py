@@ -1,4 +1,4 @@
-from typing import Optional, Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pytest
 from httpx import AsyncClient
@@ -10,9 +10,7 @@ from app.routes.thematic.geoencoder import _admin_boundary_lookup_sql
 
 @pytest.mark.asyncio
 async def test__admin_boundary_lookup_sql_country() -> None:
-    sql = _admin_boundary_lookup_sql(
-        "some_dataset", "some_country", None, None
-    )
+    sql = _admin_boundary_lookup_sql(False, "some_dataset", "some_country", None, None)
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
         " WHERE country='some_country' AND adm_level='0'"
@@ -22,7 +20,7 @@ async def test__admin_boundary_lookup_sql_country() -> None:
 @pytest.mark.asyncio
 async def test__admin_boundary_lookup_sql_country_region() -> None:
     sql = _admin_boundary_lookup_sql(
-        "some_dataset", "some_country", "some_region", None
+        False, "some_dataset", "some_country", "some_region", None
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
@@ -35,7 +33,7 @@ async def test__admin_boundary_lookup_sql_country_region() -> None:
 @pytest.mark.asyncio
 async def test__admin_boundary_lookup_sql_all() -> None:
     sql = _admin_boundary_lookup_sql(
-        "some_dataset", "some_country", "some_region", "some_subregion"
+        False, "some_dataset", "some_country", "some_region", "some_subregion"
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
@@ -80,7 +78,7 @@ async def test_geoencoder_bad_boundary_source(async_client: AsyncClient) -> None
     params = {
         "admin_source": "bobs_boundaries",
         "admin_version": "4.1",
-        "country": "Canadiastan"
+        "country": "Canadiastan",
     }
 
     resp = await async_client.get("/thematic/geoencode", params=params)
@@ -91,8 +89,7 @@ async def test_geoencoder_bad_boundary_source(async_client: AsyncClient) -> None
 
 @pytest.mark.asyncio
 async def test_geoencoder_no_matches(
-    async_client: AsyncClient,
-    monkeypatch: pytest.MonkeyPatch
+    async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     admin_source = "gadm"
     admin_version = "v4.1"
@@ -100,12 +97,16 @@ async def test_geoencoder_no_matches(
     params = {
         "admin_source": admin_source,
         "admin_version": admin_version,
-        "country": "Canadiastan"
+        "country": "Canadiastan",
     }
 
-    async def mock_version_is_valid(dataset: str, version: str): return None
+    async def mock_version_is_valid(dataset: str, version: str):
+        return None
+
     monkeypatch.setattr(geoencoder, "version_is_valid", mock_version_is_valid)
-    monkeypatch.setattr(geoencoder, "_query_dataset_json", _query_dataset_json_mocked_results)
+    monkeypatch.setattr(
+        geoencoder, "_query_dataset_json", _query_dataset_json_mocked_results
+    )
 
     resp = await async_client.get("/thematic/geoencode", params=params)
 
@@ -114,8 +115,8 @@ async def test_geoencoder_no_matches(
         "data": {
             "adminSource": admin_source,
             "adminVersion": admin_version,
-            "matches": []
-        }
+            "matches": [],
+        },
     }
     assert resp.status_code == 200
 
