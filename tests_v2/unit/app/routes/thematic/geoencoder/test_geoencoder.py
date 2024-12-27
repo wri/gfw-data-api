@@ -45,6 +45,20 @@ async def test__admin_boundary_lookup_sql_all() -> None:
 
 
 @pytest.mark.asyncio
+async def test__admin_boundary_lookup_sql_all_unaccented() -> None:
+    sql = _admin_boundary_lookup_sql(
+        True, "some_dataset", "some_country", "some_region", "some_subregion"
+    )
+    assert sql == (
+        "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
+        " WHERE country_unaccented='some_country'"
+        " AND name_1_unaccented='some_region'"
+        " AND name_2_unaccented='some_subregion'"
+        " AND adm_level='2'"
+    )
+
+
+@pytest.mark.asyncio
 async def test_geoencoder_no_admin_version(async_client: AsyncClient) -> None:
     params = {"country": "Canada"}
 
