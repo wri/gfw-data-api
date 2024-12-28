@@ -1,6 +1,7 @@
 import os
 import subprocess
 from typing import Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 
 from errors import GDALError, SubprocessKilledError
 
@@ -19,6 +20,18 @@ def from_vsi_path(file_name: str) -> str:
     except KeyError:
         raise ValueError(f"Unknown protocol: {parts[1]}")
     return vsi
+
+
+def to_vsi_path(file_name: str) -> str:
+    prefix = {"s3": "vsis3", "gs": "vsigs"}
+
+    parts = urlparse(file_name)
+    try:
+        path = f"/{prefix[parts.scheme]}/{parts.netloc}{parts.path}"
+    except KeyError:
+        raise ValueError(f"Unknown protocol: {parts.scheme}")
+
+    return path
 
 
 def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str, str]:
@@ -53,3 +66,10 @@ def run_gdal_subcommand(cmd: List[str], env: Optional[Dict] = None) -> Tuple[str
             raise GDALError(e)
 
     return o, e
+
+
+def from_gdal_data_type(data_type: str) -> str:
+    if data_type == "Byte":
+        return "uint8"
+    else:
+        return data_type.lower()
