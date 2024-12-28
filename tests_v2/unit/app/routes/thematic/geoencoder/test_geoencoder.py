@@ -63,7 +63,7 @@ async def test_sanitize_names_tolerate_enforce_hierarchy() -> None:
 @pytest.mark.asyncio
 async def test__admin_boundary_lookup_sql_country() -> None:
     sql = _admin_boundary_lookup_sql(
-        "0", False, "some_dataset", "some_country", None, None
+        0, False, "some_dataset", "some_country", None, None
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
@@ -74,7 +74,7 @@ async def test__admin_boundary_lookup_sql_country() -> None:
 @pytest.mark.asyncio
 async def test__admin_boundary_lookup_sql_country_region() -> None:
     sql = _admin_boundary_lookup_sql(
-        "1", False, "some_dataset", "some_country", "some_region", None
+        1, False, "some_dataset", "some_country", "some_region", None
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
@@ -87,7 +87,7 @@ async def test__admin_boundary_lookup_sql_country_region() -> None:
 @pytest.mark.asyncio
 async def test__admin_boundary_lookup_sql_all() -> None:
     sql = _admin_boundary_lookup_sql(
-        "2", False, "some_dataset", "some_country", "some_region", "some_subregion"
+        2, False, "some_dataset", "some_country", "some_region", "some_subregion"
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
@@ -101,7 +101,7 @@ async def test__admin_boundary_lookup_sql_all() -> None:
 @pytest.mark.asyncio
 async def test__admin_boundary_lookup_sql_all_normalized() -> None:
     sql = _admin_boundary_lookup_sql(
-        "2", True, "some_dataset", "some_country", "some_region", "some_subregion"
+        2, True, "some_dataset", "some_country", "some_region", "some_subregion"
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
@@ -238,8 +238,8 @@ async def test_geoencoder_matches_full(
             "matches": [
                 {
                     "country": {"id": "TWN", "name": "Taiwan"},
-                    "region": {"id": "TWN.1", "name": "Fujian"},
-                    "subregion": {"id": "TWN.1.1", "name": "Kinmen"},
+                    "region": {"id": "1", "name": "Fujian"},
+                    "subregion": {"id": "1", "name": "Kinmen"},
                 }
             ],
         },

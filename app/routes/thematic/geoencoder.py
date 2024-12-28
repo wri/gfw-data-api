@@ -67,7 +67,7 @@ async def geoencode(
         normalize_search, country, region, subregion
     )
 
-    adm_level: str = determine_admin_level(*names)
+    adm_level: int = determine_admin_level(*names)
 
     sql: str = _admin_boundary_lookup_sql(
         adm_level, normalize_search, admin_source, *names
@@ -89,19 +89,19 @@ async def geoencode(
                     },
                     "region": {
                         "id": (
-                            match["gid_1"].rsplit("_")[0]
-                            if int(adm_level) >= 1
+                            (match["gid_1"].rsplit("_")[0]).split(".")[1]
+                            if adm_level >= 1
                             else None
                         ),
-                        "name": match["name_1"] if int(adm_level) >= 1 else None,
+                        "name": match["name_1"] if adm_level >= 1 else None,
                     },
                     "subregion": {
                         "id": (
-                            match["gid_2"].rsplit("_")[0]
-                            if int(adm_level) >= 2
+                            (match["gid_2"].rsplit("_")[0]).split(".")[2]
+                            if adm_level >= 2
                             else None
                         ),
-                        "name": match["name_2"] if int(adm_level) >= 2 else None,
+                        "name": match["name_2"] if adm_level >= 2 else None,
                     },
                 }
                 for match in json_data
@@ -139,22 +139,22 @@ def sanitize_names(
 
 def determine_admin_level(
     country: str | None, region: str | None, subregion: str | None
-) -> str:
+) -> int:
     """Infer the native admin level of a request based on the presence of
     non-empty fields
     """
     if subregion:
-        return "2"
+        return 2
     elif region:
-        return "1"
+        return 1
     elif country:
-        return "0"
+        return 0
     else:  # Shouldn't get here if FastAPI route definition worked
         raise HTTPException(status_code=400, detail="Country MUST be specified.")
 
 
 def _admin_boundary_lookup_sql(
-    adm_level: str,
+    adm_level: int,
     normalize_search: bool,
     dataset: str,
     country_name: str,
