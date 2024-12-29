@@ -23,7 +23,7 @@ ENV UV_LINK_MODE=copy \
     VIRTUAL_ENV=/app/.venv
 
 # Create a virtual environment with uv inside the container
-RUN --mount=type=cache,target=/app/.cache \
+RUN --mount=type=cache,target=/root/.cache \
     --mount=from=uv,source=/uv,target=./uv \
     /uv python install 3.10 && \
     /uv venv $VIRTUAL_ENV
@@ -33,7 +33,7 @@ RUN --mount=type=cache,target=/app/.cache \
 # without needing to activate the virtual environment explicitly
 ENV PATH=$VIRTUAL_ENV/bin:/usr/local/bin:$PATH
 
-RUN --mount=type=cache,target=/app/.cache \
+RUN --mount=type=cache,target=/root/.cache \
     --mount=from=uv,source=/uv,target=./uv \
     /uv pip install setuptools wheel
 
@@ -43,7 +43,7 @@ COPY uv.lock /_lock/
 
 # Install the packages with uv using --mount=type=cache to cache the
 # downloaded packages
-RUN --mount=type=cache,target=/app/.cache \
+RUN --mount=type=cache,target=/root/.cache \
     --mount=from=uv,source=/uv,target=./uv \
     cd /_lock && \
     /uv sync --locked --no-install-project
