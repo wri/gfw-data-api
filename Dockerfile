@@ -13,8 +13,7 @@ RUN apt-get update -qy && \
         libpq-dev \
         make
 
-# We need to set this environment variable so that uv knows where
-# the virtual environment is to install packages
+# Set uv env variables for behavior and venv directory
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
     UV_INSTALL_DIR="/usr/local/bin" \
@@ -30,12 +29,10 @@ ENV PATH=$VIRTUAL_ENV/bin:/usr/local/bin:$PATH
 RUN curl -LsSf https://astral.sh/uv/0.5.13/install.sh | sh && \
     uv venv $VIRTUAL_ENV --python 3.10 --seed
 
-RUN uv pip install setuptools wheel
-
-# Copy pyproject.toml and uv.lock to a temporary directory
+# Copy pyproject.toml and uv.lock to a temporary directory and install
+# dependencies into the venv
 COPY pyproject.toml /_lock/
 COPY uv.lock /_lock/
-
 RUN cd /_lock && \
     uv sync --locked --no-install-project
 
@@ -52,7 +49,10 @@ RUN apt-get update -qy && \
         -o APT::Install-Suggests=false \
         expat \
         libgdal-dev \
-        postgresql-client
+        postgresql-client && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists && \
+    rm -rf /var/cache/apt
 
 COPY --chmod=777 wait_for_postgres.sh /usr/local/bin/wait_for_postgres.sh
 
