@@ -1,6 +1,3 @@
-# Use a multi-stage build to first get uv
-FROM ghcr.io/astral-sh/uv:0.5.10 AS uv
-
 FROM ubuntu:noble AS build
 
 RUN apt-get update -qy && \
@@ -9,6 +6,7 @@ RUN apt-get update -qy && \
         -o APT::Install-Suggests=false \
         ca-certificates \
         clang \
+        curl \
         gcc \
         git \
         libgdal-dev \
@@ -19,34 +17,27 @@ RUN apt-get update -qy && \
 # the virtual environment is to install packages
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
+    UV_INSTALL_DIR="/usr/local/bin" \
     UV_PROJECT_ENVIRONMENT=/app/.venv \
     VIRTUAL_ENV=/app/.venv
-
-# Create a virtual environment with uv inside the container
-RUN --mount=type=cache,target=/root/.cache \
-    --mount=from=uv,source=/uv,target=./uv \
-    /uv python install 3.10 && \
-    /uv venv $VIRTUAL_ENV
 
 # Make sure that the virtual environment is in the PATH so
 # we can use the binaries of packages that we install such as pip
 # without needing to activate the virtual environment explicitly
 ENV PATH=$VIRTUAL_ENV/bin:/usr/local/bin:$PATH
 
-RUN --mount=type=cache,target=/root/.cache \
-    --mount=from=uv,source=/uv,target=./uv \
-    /uv pip install setuptools wheel
+# Create a virtual environment with uv inside the container
+RUN curl -LsSf https://astral.sh/uv/0.5.13/install.sh | sh && \
+    uv venv $VIRTUAL_ENV --python 3.10 --seed
+
+RUN uv pip install setuptools wheel
 
 # Copy pyproject.toml and uv.lock to a temporary directory
 COPY pyproject.toml /_lock/
 COPY uv.lock /_lock/
 
-# Install the packages with uv using --mount=type=cache to cache the
-# downloaded packages
-RUN --mount=type=cache,target=/root/.cache \
-    --mount=from=uv,source=/uv,target=./uv \
-    cd /_lock && \
-    /uv sync --locked --no-install-project
+RUN cd /_lock && \
+    uv sync --locked --no-install-project
 
 # Start the runtime stage
 FROM ubuntu:noble
