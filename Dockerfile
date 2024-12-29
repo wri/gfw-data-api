@@ -52,9 +52,7 @@ RUN --mount=type=cache,target=/app/.cache \
 FROM ubuntu:noble
 SHELL ["sh", "-exc"]
 
-ENV PATH=$VIRTUAL_ENV/bin:/usr/local/bin:$PATH
-
-ENV TZ UTC
+ENV TZ=UTC
 RUN echo $TZ > /etc/timezone
 
 RUN apt-get update -qy && \
