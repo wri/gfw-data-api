@@ -122,16 +122,48 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
             "when input files are in different projections from each other."
         )
     )
-    pixel_meaning: str
+    pixel_meaning: str = Field(
+        ..., description="Short description of what the pixel value in the "
+        "raster represents. This is used to clarify the meaning of the raster "
+        "and distinguish multiple raster tile sets based on the same dataset "
+        "version."
+    )
     data_type: DataType
-    nbits: Optional[int]
-    calc: Optional[str]
+    nbits: Optional[int] = Field(
+        None,
+        description="Advanced option that lets GDAL compress the data even "
+        "more based on the number of bits you need."
+    )
+    calc: Optional[str] = Field(
+        None,
+        description="For raster sources or default assets, a raster algebra "
+        "expression, similar to gdal_calc, to "
+        "combine multiple raster layers into a new layer. Each source is "
+        "treated as a separate band, and is assigned a letter variable A-Z "
+        "based on the order in the sources. This expression can technically be "
+        "any valid NumPy expression.\n\nFor vector default assets, an SQL "
+        "expression specifying a calculation that yields the desired raster "
+        "value based on the fields of your vector dataset."
+    )
     band_count: int = 1
     union_bands: bool = False
     no_data: Optional[Union[List[NoDataType], NoDataType]]
-    rasterize_method: Optional[RasterizeMethod]
+    rasterize_method: Optional[RasterizeMethod] = Field(
+        RasterizeMethod.value,
+        description="For raster sources or default assets, 'value' (the "
+        "default) means use the value from the last or only band processed, "
+        "and 'count' means count the number of bands with data values."
+    )
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
-    order: Optional[Order]
+    order: Optional[Order] = Field(
+        None,
+        description="For vector default assets, order the features by the "
+        "calculated raster value. For 'asc', the features are ordered by "
+        "ascending calculated value so that the largest calculated value is "
+        "used in the raster when there are overlapping features. For 'desc', "
+        "the ordering is descending, so that the smallest calculated value "
+        "is used when there are overlaps."
+    )
     overwrite: bool = False
     subset: Optional[str]
     grid: Grid
@@ -139,7 +171,11 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     compute_stats: bool = True
     compute_histogram: bool = False
     process_locally: bool = True
-    auxiliary_assets: Optional[List[UUID]] = None
+    auxiliary_assets: Optional[List[UUID]] = Field(
+        None,
+        description="Asset IDs of additional rasters you might want to include "
+        "in your calc expression."
+    )
     photometric: Optional[PhotometricType] = None
     num_processes: Optional[StrictInt] = None
     timeout_sec: Optional[StrictInt] = Field(
@@ -331,7 +367,7 @@ class RasterTileCacheCreationOptions(TileCacheBaseModel):
         "default",
         description="Name space to use for raster tile cache. "
         "This will be part of the URI and will "
-        "allow to create multiple raster tile caches per version,",
+        "allow creation of multiple raster tile caches per version,",
     )
     symbology: Symbology = Field(..., description="Symbology to use for output tiles")
     source_asset_id: str = Field(
