@@ -123,10 +123,11 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
         )
     )
     pixel_meaning: str = Field(
-        ..., description="Short description of what the pixel value in the "
+        ..., description="Description of what the pixel value in the "
         "raster represents. This is used to clarify the meaning of the raster "
         "and distinguish multiple raster tile sets based on the same dataset "
-        "version."
+        "version. The pixel_meaning string should be fairly short, use all "
+        "lower-case letters, and use underscores instead of spaces."
     )
     data_type: DataType
     nbits: Optional[int] = Field(
@@ -136,14 +137,22 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     )
     calc: Optional[str] = Field(
         None,
-        description="For raster sources or default assets, a raster algebra "
-        "expression, similar to gdal_calc, to "
-        "combine multiple raster layers into a new layer. Each source is "
-        "treated as a separate band, and is assigned a letter variable A-Z "
-        "based on the order in the sources. This expression can technically be "
-        "any valid NumPy expression.\n\nFor vector default assets, an SQL "
-        "expression specifying a calculation that yields the desired raster "
-        "value based on the fields of your vector dataset."
+        description="There are two modes for this field, one for rasterizing vector "
+        "sources and one for transforming and/or combining one or more "
+        "sources that are already raster. For rasterizing vector sources, "
+        "this field should be an SQL expression that yields the desired "
+        "raster value based on the fields of your vector dataset.\n\nFor raster "
+        "sources, this should be a raster algebra expression, similar to that "
+        "provided to gdal_calc (see "
+        "https://gdal.org/en/stable/programs/gdal_calc.html), "
+        "that transforms one or more input bands into one or more output "
+        "bands. For use in this expression, each band in "
+        "the sources is assigned an alphabetic variable (A-Z, then AA-AZ, "
+        "etc.) in the order it exists in those sources, with those of the "
+        "first source first, continuing with those of the second, and so on. "
+        "So with two input sources of two bands each, they would be assigned "
+        "to variables A and B (for the first source) and C and D (for the "
+        "second source). The NumPy module is in scope, accessible as np"
     )
     band_count: int = 1
     union_bands: bool = False
@@ -245,7 +254,15 @@ class VectorSourceCreationOptions(StrictBaseModel):
             Index(index_type=IndexType.gist.value, column_names=["geom_wm"]),
             Index(index_type=IndexType.hash.value, column_names=["gfw_geostore_id"]),
         ],
-        description="List of indices to add to table",
+        description="List of indices to add to the database table representing "
+        "the vector dataset.  Each element of the indices field contains an "
+        "index_type field (which is a string) and a column_names field (which "
+        "is a list of field names included in this index). The possibilities "
+        "for the index_type field are hash, btree, or gist. hash is efficient "
+        "for standard exact-value lookups, while btree is efficient for range "
+        "lookups. gist is used for geometry fields and can do "
+        "intersection-type lookups. See "
+        "https://www.postgresql.org/docs/current/indexes-types.html"
     )
     cluster: Optional[Index] = Field(None, description="Index to use for clustering.")
     table_schema: Optional[List[FieldType]] = Field(
