@@ -185,3 +185,19 @@ async def signup(name: str, email: str) -> User:
         )
 
     return User(**response.json()["data"])
+
+
+async def get_admin_list() -> HTTPXResponse:
+    url = f"{RW_API_URL}/v2/geostore/admin/list"
+
+    async with AsyncClient() as client:
+        response: HTTPXResponse = await client.get(url)
+    return response
+
+
+async def get_boundary_by_country_code(country_code: str) -> HTTPXResponse:
+    url = f"{RW_API_URL}/v2/geostore/admin/{country_code}"
+
+    async with AsyncClient() as client:
+        response: HTTPXResponse = await client.get(url)
+    return response
