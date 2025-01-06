@@ -63,7 +63,7 @@ async def get_any_geostore(*, geostore_id: UUID = Path(..., title="geostore_id")
     # status_code=200,
     # tags=["Geostore"],
 )
-async def rw_get_admin_list() -> HTTPXResponse:
+async def rw_get_admin_list():
     """Get all Geostore IDs, names and country codes
     (proxies request to the RW API)"""
     # FIXME: Should we be passing on things like the API key?
@@ -82,7 +82,7 @@ async def rw_get_admin_list() -> HTTPXResponse:
 async def rw_get_boundary_by_country_code(
     *,
     country_code: str = Path(..., title="country_code")
-) -> HTTPXResponse:
+):
     """Get a GADM boundary by country code
     (proxies request to the RW API)"""
     # FIXME: Should we be passing on things like the API key?
