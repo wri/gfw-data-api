@@ -54,5 +54,11 @@ class GeostoreResponse(Response):
     data: Geostore
 
 
+class RWCalcAreaForGeostoreIn(StrictBaseModel):
+    type: str
+    geometry: Geometry
+    properties: Dict
+
+
 class RWFindByIDsIn(StrictBaseModel):
     geostores: List[str]

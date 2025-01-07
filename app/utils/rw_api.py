@@ -188,6 +188,14 @@ async def signup(name: str, email: str) -> User:
     return User(**response.json()["data"])
 
 
+async def calc_area(payload: Dict) -> HTTPXResponse:
+    url = f"{RW_API_URL}/v1/geostore/area"
+
+    async with AsyncClient() as client:
+        response: HTTPXResponse = await client.post(url, json=payload)
+    return response
+
+
 async def find_by_ids(payload: Dict) -> HTTPXResponse:
     url = f"{RW_API_URL}/v2/geostore/find_by_ids"
 
