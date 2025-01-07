@@ -233,3 +233,11 @@ async def get_geostore_by_wdpa_id(wdpa_id: str) -> HTTPXResponse:
     async with AsyncClient() as client:
         response: HTTPXResponse = await client.get(url)
     return response
+
+
+async def get_view_geostore_by_id(rw_geostore_id: str) -> HTTPXResponse:
+    url = f"{RW_API_URL}/v2/geostore/{rw_geostore_id}/view"
+
+    async with AsyncClient() as client:
+        response: HTTPXResponse = await client.get(url)
+    return response

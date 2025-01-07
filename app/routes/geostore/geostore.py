@@ -16,7 +16,8 @@ from ...utils.rw_api import (
     get_boundary_by_region_id,
     get_boundary_by_subregion_id,
     get_geostore_by_land_use_and_index,
-    get_geostore_by_wdpa_id
+    get_geostore_by_wdpa_id,
+    get_view_geostore_by_id
 )
 
 router = APIRouter()
@@ -42,6 +43,22 @@ async def add_new_geostore(
         raise HTTPException(status_code=400, detail=str(e))
 
     return GeostoreResponse(data=new_user_area)
+
+
+# Endpoint proxied to RW geostore microservice:
+@router.get(
+    "/{rw_geostore_id}/view",
+    response_class=ORJSONResponse,
+    # response_model=GeostoreResponse,
+    # tags=["Geostore"],
+)
+async def rw_get_view_geostore_by_id(*, rw_geostore_id: str = Path(..., title="rw_geostore_id")):
+    """Get a geostore object by Geostore id and view at GeoJSON.io
+    (proxies request to the RW API)"""
+    # FIXME: Should we be passing on things like the API key?
+    result: HTTPXResponse = await get_view_geostore_by_id(rw_geostore_id)
+
+    return result
 
 
 @router.get(
