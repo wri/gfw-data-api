@@ -195,8 +195,24 @@ async def get_admin_list() -> HTTPXResponse:
     return response
 
 
-async def get_boundary_by_country_code(country_code: str) -> HTTPXResponse:
-    url = f"{RW_API_URL}/v2/geostore/admin/{country_code}"
+async def get_boundary_by_country_id(country_id: str) -> HTTPXResponse:
+    url = f"{RW_API_URL}/v2/geostore/admin/{country_id}"
+
+    async with AsyncClient() as client:
+        response: HTTPXResponse = await client.get(url)
+    return response
+
+
+async def get_boundary_by_region_id(country_id: str, region_id: str) -> HTTPXResponse:
+    url = f"{RW_API_URL}/v2/geostore/admin/{country_id}/{region_id}"
+
+    async with AsyncClient() as client:
+        response: HTTPXResponse = await client.get(url)
+    return response
+
+
+async def get_boundary_by_subregion_id(country_id: str, region_id: str, subregion_id: str) -> HTTPXResponse:
+    url = f"{RW_API_URL}/v2/geostore/admin/{country_id}/{region_id}/{subregion_id}"
 
     async with AsyncClient() as client:
         response: HTTPXResponse = await client.get(url)

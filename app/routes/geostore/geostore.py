@@ -10,7 +10,12 @@ from httpx import Response as HTTPXResponse
 from ...crud import geostore
 from ...errors import BadRequestError, RecordNotFoundError
 from ...models.pydantic.geostore import Geostore, GeostoreIn, GeostoreResponse
-from ...utils.rw_api import get_admin_list, get_boundary_by_country_code
+from ...utils.rw_api import (
+    get_admin_list,
+    get_boundary_by_country_id,
+    get_boundary_by_region_id,
+    get_boundary_by_subregion_id
+)
 
 router = APIRouter()
 
@@ -73,19 +78,60 @@ async def rw_get_admin_list():
 
 
 @router.get(
-    "/admin/{country_code}",
+    "/admin/{country_id}",
     response_class=ORJSONResponse,
     # response_model=RWAdminListResponse,
     # status_code=200,
     # tags=["Geostore"],
 )
-async def rw_get_boundary_by_country_code(
+async def rw_get_boundary_by_country_id(
     *,
-    country_code: str = Path(..., title="country_code")
+    country_id: str = Path(..., title="country_id")
 ):
-    """Get a GADM boundary by country code
+    """Get a GADM boundary by country ID
     (proxies request to the RW API)"""
     # FIXME: Should we be passing on things like the API key?
-    result: HTTPXResponse = await get_boundary_by_country_code(country_code)
+    result: HTTPXResponse = await get_boundary_by_country_id(country_id)
+
+    return result
+
+
+@router.get(
+    "/admin/{country_id}/{region_id}",
+    response_class=ORJSONResponse,
+    # response_model=RWAdminListResponse,
+    # status_code=200,
+    # tags=["Geostore"],
+)
+async def rw_get_boundary_by_region_id(
+    *,
+    country_id: str = Path(..., title="country_id"),
+    region_id: str = Path(..., title="region_id")
+):
+    """Get a GADM boundary by country and region IDs
+    (proxies request to the RW API)"""
+    # FIXME: Should we be passing on things like the API key?
+    result: HTTPXResponse = await get_boundary_by_region_id(country_id, region_id)
+
+    return result
+
+
+@router.get(
+    "/admin/{country_id}/{region_id}/{subregion_id}",
+    response_class=ORJSONResponse,
+    # response_model=RWAdminListResponse,
+    # status_code=200,
+    # tags=["Geostore"],
+)
+async def rw_get_boundary_by_subregion_id(
+    *,
+    country_id: str = Path(..., title="country_id"),
+    region_id: str = Path(..., title="region_id"),
+    subregion_id: str = Path(..., title="subregion_id")
+):
+    """Get a GADM boundary by country, region, and subregion IDs
+    (proxies request to the RW API)"""
+    # FIXME: Should we be passing on things like the API key?
+    result: HTTPXResponse = await get_boundary_by_subregion_id(country_id, region_id, subregion_id)
 
     return result
