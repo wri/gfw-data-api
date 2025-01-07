@@ -219,8 +219,16 @@ async def get_boundary_by_subregion_id(country_id: str, region_id: str, subregio
     return response
 
 
-async def get_geostore_byt_land_use_and_index(land_use_type: str, index: str) -> HTTPXResponse:
+async def get_geostore_by_land_use_and_index(land_use_type: str, index: str) -> HTTPXResponse:
     url = f"{RW_API_URL}/v2/geostore/use/{land_use_type}/{index}"
+
+    async with AsyncClient() as client:
+        response: HTTPXResponse = await client.get(url)
+    return response
+
+
+async def get_geostore_by_wdpa_id(wdpa_id: str) -> HTTPXResponse:
+    url = f"{RW_API_URL}/v2/geostore/wdpa/{wdpa_id}"
 
     async with AsyncClient() as client:
         response: HTTPXResponse = await client.get(url)

@@ -15,7 +15,8 @@ from ...utils.rw_api import (
     get_boundary_by_country_id,
     get_boundary_by_region_id,
     get_boundary_by_subregion_id,
-    get_geostore_byt_land_use_and_index,
+    get_geostore_by_land_use_and_index,
+    get_geostore_by_wdpa_id
 )
 
 router = APIRouter()
@@ -139,13 +140,13 @@ async def rw_get_boundary_by_subregion_id(
 
 
 @router.get(
-    "/use/{name}/{id}",
+    "/use/{land_use_type}/{index}",
     response_class=ORJSONResponse,
     # response_model=RWAdminListResponse,
     # status_code=200,
     # tags=["Geostore"],
 )
-async def rw_get_geostore_byt_land_use_and_index(
+async def rw_get_geostore_by_land_use_and_index(
     *,
     land_use_type: str = Path(..., title="land_use_type"),
     index: str = Path(..., title="index")
@@ -153,6 +154,25 @@ async def rw_get_geostore_byt_land_use_and_index(
     """Get a geostore object by land use type name and id
     (proxies request to the RW API)"""
     # FIXME: Should we be passing on things like the API key?
-    result: HTTPXResponse = await get_geostore_byt_land_use_and_index(land_use_type, index)
+    result: HTTPXResponse = await get_geostore_by_land_use_and_index(land_use_type, index)
+
+    return result
+
+
+@router.get(
+    "/wdpa/{wdpa_id}",
+    response_class=ORJSONResponse,
+    # response_model=RWAdminListResponse,
+    # status_code=200,
+    # tags=["Geostore"],
+)
+async def rw_get_geostore_by_wdpa_id(
+    *,
+    wdpa_id: str = Path(..., title="wdpa_id")
+):
+    """Get a geostore object by WDPA ID
+    (proxies request to the RW API)"""
+    # FIXME: Should we be passing on things like the API key?
+    result: HTTPXResponse = await get_geostore_by_wdpa_id(wdpa_id)
 
     return result
