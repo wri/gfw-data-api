@@ -1,3 +1,4 @@
+from typing import Dict
 from uuid import UUID
 
 from async_lru import alru_cache
@@ -185,6 +186,14 @@ async def signup(name: str, email: str) -> User:
         )
 
     return User(**response.json()["data"])
+
+
+async def find_by_ids(payload: Dict) -> HTTPXResponse:
+    url = f"{RW_API_URL}/v2/geostore/find_by_ids"
+
+    async with AsyncClient() as client:
+        response: HTTPXResponse = await client.post(url, json=payload)
+    return response
 
 
 async def get_admin_list() -> HTTPXResponse:

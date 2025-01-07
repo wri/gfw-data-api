@@ -1,6 +1,6 @@
 """Retrieve a geometry using its md5 hash for a given dataset, user defined
 geometries in the datastore."""
-
+from typing import Dict
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Path
@@ -9,15 +9,16 @@ from httpx import Response as HTTPXResponse
 
 from ...crud import geostore
 from ...errors import BadRequestError, RecordNotFoundError
-from ...models.pydantic.geostore import Geostore, GeostoreIn, GeostoreResponse
+from ...models.pydantic.geostore import Geostore, GeostoreIn, GeostoreResponse, RWFindByIDsIn
 from ...utils.rw_api import (
+    find_by_ids,
     get_admin_list,
     get_boundary_by_country_id,
     get_boundary_by_region_id,
     get_boundary_by_subregion_id,
     get_geostore_by_land_use_and_index,
     get_geostore_by_wdpa_id,
-    get_view_geostore_by_id
+    get_view_geostore_by_id,
 )
 
 router = APIRouter()
@@ -152,6 +153,26 @@ async def rw_get_boundary_by_subregion_id(
     (proxies request to the RW API)"""
     # FIXME: Should we be passing on things like the API key?
     result: HTTPXResponse = await get_boundary_by_subregion_id(country_id, region_id, subregion_id)
+
+    return result
+
+
+@router.post(
+    "/find_by_ids",
+    response_class=ORJSONResponse,
+    # response_model=RWAdminListResponse,
+    # status_code=200,
+    # tags=["Geostore"],
+)
+async def rw_find_by_ids(
+    request: RWFindByIDsIn,
+):
+    """Get one or more geostore objects by IDs
+    (proxies request to the RW API)"""
+    # FIXME: Should we be passing on things like the API key?
+    payload: Dict = request.dict(exclude_none=True, by_alias=True)
+
+    result: HTTPXResponse = await find_by_ids(payload)
 
     return result
 

@@ -52,3 +52,7 @@ class GeostoreIn(StrictBaseModel):
 
 class GeostoreResponse(Response):
     data: Geostore
+
+
+class RWFindByIDsIn(StrictBaseModel):
+    geostores: List[str]
