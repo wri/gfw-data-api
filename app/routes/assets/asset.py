@@ -1,12 +1,13 @@
-"""Assets are replicas of the original source files.
+"""Assets are usually alternate representations of the base dataset
+version, sometimes combining in extra data from other datasets.
 
 Assets might be served in different formats, attribute values might be
 altered, additional attributes added, and feature resolution might have
 changed. Assets are either managed or unmanaged. Managed assets are
 created by the API and users can rely on data integrity. Unmanaged
 assets are only loosely linked to a dataset version and users must
-cannot rely on full integrity. We can only assume that unmanaged are
-based on the same version and do not know the processing history.
+cannot rely on full integrity. We can only assume that unmanaged assets
+are based on the same version and do not know the processing history.
 """
 
 from typing import List, Optional, Union
@@ -87,7 +88,9 @@ async def get_asset(
     *,
     asset_id: UUID = Path(...),
 ) -> AssetResponse:
-    """Get a specific asset."""
+    """Get a specific asset.  This provides information on the asset, including
+    the asset id, the asset status, the asset URI, and creation & last update
+    times."""
     try:
         row: ORMAsset = await assets.get_asset(asset_id)
     except RecordNotFoundError as e:
