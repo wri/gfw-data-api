@@ -74,6 +74,7 @@ class WDPAInfo(StrictBaseModel):
 
 
 class RWGeostoreAttributes(StrictBaseModel):
+    geojson: FeatureCollection
     hash: str
     provider: Dict
     areaHa: float
