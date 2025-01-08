@@ -254,7 +254,7 @@ async def get_geostore_by_wdpa_id(wdpa_id: str, x_api_key: str | None = None) ->
             response: HTTPXResponse = await client.get(url)
 
     if response.status_code == 200:
-        return RWGeostore.parse_obj(response.json())
+        return RWGeostore.parse_obj(response.json()["data"])
     else:
         raise HTTPException(response.status_code, response.text)
 
