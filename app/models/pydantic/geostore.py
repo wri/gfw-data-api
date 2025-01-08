@@ -77,7 +77,7 @@ class RWGeostoreAttributes(StrictBaseModel):
     hash: str
     provider: Dict
     areaHa: float
-    bbox: List[float, float, float, float]
+    bbox: List[float]
     lock: bool
     info: WDPAInfo
 

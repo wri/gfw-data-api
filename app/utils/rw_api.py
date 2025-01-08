@@ -14,7 +14,7 @@ from ..errors import (
     UnauthorizedError,
 )
 from ..models.pydantic.authentication import User
-from ..models.pydantic.geostore import Geometry, GeostoreCommon, RWViewGeostore, RWWDPAGeostore, RWGeostore
+from ..models.pydantic.geostore import Geometry, GeostoreCommon, RWGeostore
 from ..settings.globals import RW_API_URL, SERVICE_ACCOUNT_TOKEN
 
 
