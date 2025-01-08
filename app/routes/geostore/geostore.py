@@ -1,9 +1,9 @@
 """Retrieve a geometry using its md5 hash for a given dataset, user defined
 geometries in the datastore."""
-from typing import Dict
+from typing import Dict, Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, Header, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 from httpx import Response as HTTPXResponse
 
@@ -14,7 +14,7 @@ from ...models.pydantic.geostore import (
     GeostoreIn,
     GeostoreResponse,
     RWCalcAreaForGeostoreIn,
-    RWFindByIDsIn
+    RWFindByIDsIn, RWGeostore, RWGeostoreResponse
 )
 from ...utils.rw_api import (
     find_by_ids,
@@ -63,7 +63,7 @@ async def rw_get_view_geostore_by_id(*, rw_geostore_id: str = Path(..., title="r
     """Get a geostore object by Geostore id and view at GeoJSON.io
     (proxies request to the RW API)"""
     # FIXME: Should we be passing on things like the API key?
-    result: HTTPXResponse = await get_view_geostore_by_id(rw_geostore_id)
+    result: RWViewGeostore = await get_view_geostore_by_id(rw_geostore_id)
 
     return result
 
@@ -226,17 +226,18 @@ async def rw_get_geostore_by_land_use_and_index(
 @router.get(
     "/wdpa/{wdpa_id}",
     response_class=ORJSONResponse,
-    # response_model=RWAdminListResponse,
+    response_model=RWGeostoreResponse,
     # status_code=200,
     # tags=["Geostore"],
 )
 async def rw_get_geostore_by_wdpa_id(
     *,
+    x_api_key: Annotated[str | None, Header()] = None,
     wdpa_id: str = Path(..., title="wdpa_id")
 ):
     """Get a geostore object by WDPA ID
     (proxies request to the RW API)"""
-    # FIXME: Should we be passing on things like the API key?
-    result: HTTPXResponse = await get_geostore_by_wdpa_id(wdpa_id)
 
-    return result
+    result: RWGeostore = await get_geostore_by_wdpa_id(wdpa_id, x_api_key)
+
+    return RWGeostoreResponse(data=result)

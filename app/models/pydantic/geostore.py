@@ -62,3 +62,31 @@ class RWCalcAreaForGeostoreIn(StrictBaseModel):
 
 class RWFindByIDsIn(StrictBaseModel):
     geostores: List[str]
+
+
+class RWViewGeostore(StrictBaseModel):
+    view_link: str
+
+
+class WDPAInfo(StrictBaseModel):
+    use: Dict
+    wdpaid: int
+
+
+class RWGeostoreAttributes(StrictBaseModel):
+    hash: str
+    provider: Dict
+    areaHa: float
+    bbox: List[float, float, float, float]
+    lock: bool
+    info: WDPAInfo
+
+
+class RWGeostore(StrictBaseModel):
+    type: str
+    id: str
+    attributes: RWGeostoreAttributes
+
+
+class RWGeostoreResponse(StrictBaseModel):
+    data: RWGeostore

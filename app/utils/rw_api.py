@@ -14,7 +14,7 @@ from ..errors import (
     UnauthorizedError,
 )
 from ..models.pydantic.authentication import User
-from ..models.pydantic.geostore import Geometry, GeostoreCommon
+from ..models.pydantic.geostore import Geometry, GeostoreCommon, RWViewGeostore, RWWDPAGeostore, RWGeostore
 from ..settings.globals import RW_API_URL, SERVICE_ACCOUNT_TOKEN
 
 
@@ -244,12 +244,19 @@ async def get_geostore_by_land_use_and_index(land_use_type: str, index: str) -> 
     return response
 
 
-async def get_geostore_by_wdpa_id(wdpa_id: str) -> HTTPXResponse:
+async def get_geostore_by_wdpa_id(wdpa_id: str, x_api_key: str | None = None) -> RWGeostore:
     url = f"{RW_API_URL}/v2/geostore/wdpa/{wdpa_id}"
 
     async with AsyncClient() as client:
-        response: HTTPXResponse = await client.get(url)
-    return response
+        if x_api_key is not None:
+            response: HTTPXResponse = await client.get(url, headers={"x-api-key": x_api_key})
+        else:
+            response: HTTPXResponse = await client.get(url)
+
+    if response.status_code == 200:
+        return RWGeostore.parse_obj(response.json())
+    else:
+        raise HTTPException(response.status_code, response.text)
 
 
 async def get_view_geostore_by_id(rw_geostore_id: str) -> HTTPXResponse:
