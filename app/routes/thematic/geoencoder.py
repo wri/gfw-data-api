@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/geoencoder", tags=["Geoencoder"], status_code=200, include_in_schema=False
+    "/geoencoder", tags=["Geoencoder"], status_code=200, include_in_schema=True
 )
 async def geoencoder(params: GeoencoderQueryParams = Depends()):
     """Look up administrative boundary IDs matching a specified country name
