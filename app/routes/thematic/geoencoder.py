@@ -35,7 +35,7 @@ async def geoencoder(params: GeoencoderQueryParams = Depends()):
             ),
         )
 
-    version_str: str = "v" + str(params.admin_version).lstrip("v")
+    version_str: str = params.admin_version.value
 
     names: List[str | None] = sanitize_names(
         params.normalize_search, params.country, params.region, params.subregion
