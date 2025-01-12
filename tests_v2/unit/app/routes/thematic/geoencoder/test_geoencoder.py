@@ -8,6 +8,8 @@ from app.models.pydantic.geostore import GeostoreCommon
 from app.routes.thematic import geoencoder
 from app.routes.thematic.geoencoder import _admin_boundary_lookup_sql, sanitize_names
 
+ENDPOINT_UNDER_TEST = "/thematic/geoencoder"
+
 
 @pytest.mark.asyncio
 async def test_sanitize_names_pass_through() -> None:
@@ -116,45 +118,32 @@ async def test__admin_boundary_lookup_sql_all_normalized() -> None:
 async def test_geoencoder_no_admin_version(async_client: AsyncClient) -> None:
     params = {"country": "Canada"}
 
-    resp = await async_client.get("/thematic/geoencode", params=params)
+    resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
 
+    assert '["query","admin_version"]' in resp.text
+    assert "field required" in resp.text
     assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_geoencoder_invalid_version_pattern(async_client: AsyncClient) -> None:
-    params = {"country": "Canada", "admin_version": "fails_regex"}
-
-    resp = await async_client.get("/thematic/geoencode", params=params)
-
-    assert resp.json().get("message", {}).startswith("Invalid version name")
-    assert resp.status_code == 400
-
-
-@pytest.mark.asyncio
 async def test_geoencoder_nonexistant_version(async_client: AsyncClient) -> None:
-    params = {"country": "Canada", "admin_version": "v4.0"}
+    params = {"country": "Canada", "admin_version": "4.0"}
 
-    resp = await async_client.get("/thematic/geoencode", params=params)
+    resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
 
-    assert resp.json().get("message", {}).startswith("Version not found")
-    assert resp.status_code == 400
+    assert "value is not a valid enumeration member" in resp.text
+    assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_geoencoder_nonexistant_version_lists_existing(
     async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    async def mock_get_version_names(dataset: str):
-        return [("fdkj",), ("dslj",), ("kfj",)]
+    params = {"country": "Canada", "admin_version": "4.0"}
+    resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
 
-    monkeypatch.setattr(geoencoder, "get_version_names", mock_get_version_names)
-
-    params = {"country": "Canada", "admin_version": "v4.0"}
-    resp = await async_client.get("/thematic/geoencode", params=params)
-
-    assert resp.json().get("message", {}).endswith("['fdkj', 'dslj', 'kfj']")
-    assert resp.status_code == 400
+    assert '["3.6","4.1"]' in resp.text
+    assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -165,18 +154,19 @@ async def test_geoencoder_bad_boundary_source(async_client: AsyncClient) -> None
         "country": "Canadiastan",
     }
 
-    resp = await async_client.get("/thematic/geoencode", params=params)
+    resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
 
-    assert resp.json().get("message", {}).startswith("Invalid admin boundary source")
-    assert resp.status_code == 400
+    assert '["query","admin_source"]' in resp.text
+    assert "value is not a valid enumeration member" in resp.text
+    assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_geoencoder_no_matches(
     async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    admin_source = "gadm"
-    admin_version = "v4.1"
+    admin_source = "GADM"
+    admin_version = "4.1"
 
     params = {
         "admin_source": admin_source,
@@ -184,15 +174,11 @@ async def test_geoencoder_no_matches(
         "country": "Canadiastan",
     }
 
-    async def mock_version_is_valid(dataset: str, version: str):
-        return None
-
-    monkeypatch.setattr(geoencoder, "version_is_valid", mock_version_is_valid)
     monkeypatch.setattr(
         geoencoder, "_query_dataset_json", _query_dataset_json_mocked_no_results
     )
 
-    resp = await async_client.get("/thematic/geoencode", params=params)
+    resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
 
     assert resp.json() == {
         "status": "success",
@@ -209,8 +195,8 @@ async def test_geoencoder_no_matches(
 async def test_geoencoder_matches_full(
     async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    admin_source = "gadm"
-    admin_version = "v4.1"
+    admin_source = "GADM"
+    admin_version = "4.1"
 
     params = {
         "admin_source": admin_source,
@@ -220,15 +206,11 @@ async def test_geoencoder_matches_full(
         "subregion": "Kinmen",
     }
 
-    async def mock_version_is_valid(dataset: str, version: str):
-        return None
-
-    monkeypatch.setattr(geoencoder, "version_is_valid", mock_version_is_valid)
     monkeypatch.setattr(
         geoencoder, "_query_dataset_json", _query_dataset_json_mocked_results
     )
 
-    resp = await async_client.get("/thematic/geoencode", params=params)
+    resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
 
     assert resp.json() == {
         "status": "success",
@@ -251,8 +233,8 @@ async def test_geoencoder_matches_full(
 async def test_geoencoder_matches_hide_extraneous(
     async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    admin_source = "gadm"
-    admin_version = "v4.1"
+    admin_source = "GADM"
+    admin_version = "4.1"
 
     params = {
         "admin_source": admin_source,
@@ -260,15 +242,11 @@ async def test_geoencoder_matches_hide_extraneous(
         "country": "Taiwan",
     }
 
-    async def mock_version_is_valid(dataset: str, version: str):
-        return None
-
-    monkeypatch.setattr(geoencoder, "version_is_valid", mock_version_is_valid)
     monkeypatch.setattr(
         geoencoder, "_query_dataset_json", _query_dataset_json_mocked_results
     )
 
-    resp = await async_client.get("/thematic/geoencode", params=params)
+    resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
 
     assert resp.json() == {
         "status": "success",

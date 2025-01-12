@@ -1,55 +1,31 @@
-import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from unidecode import unidecode
 
-from app.crud.versions import get_version, get_version_names
-from app.errors import RecordNotFoundError
+from app.models.pydantic.geoencoder import (
+    AdministrativeBoundarySource,
+    GeoencoderQueryParams,
+)
 from app.models.pydantic.responses import Response
-from app.routes import VERSION_REGEX
 from app.routes.datasets.queries import _query_dataset_json
 
 router = APIRouter()
 
 
 @router.get(
-    "/geoencode",
-    tags=["Geoencoder"],
-    status_code=200,
+    "/geoencoder", tags=["Geoencoder"], status_code=200, include_in_schema=False
 )
-async def geoencode(
-    *,
-    admin_source: str = Query(
-        "GADM", description="The source of administrative boundaries to use."
-    ),
-    admin_version: str = Query(
-        ...,
-        description="Version of the administrative boundaries dataset to use.",
-    ),
-    country: str = Query(
-        description="Name of the country to match.",
-    ),
-    region: Optional[str] = Query(
-        None,
-        description="Name of the region to match.",
-    ),
-    subregion: Optional[str] = Query(
-        None,
-        description="Name of the subregion to match.",
-    ),
-    normalize_search: bool = Query(
-        True,
-        description="Whether or not to perform a case- and accent-insensitive search.",
-    ),
-):
+async def geoencoder(params: GeoencoderQueryParams = Depends()):
     """Look up administrative boundary IDs matching a specified country name
     (and region name and subregion names, if specified).
     """
-    admin_source_to_dataset: Dict[str, str] = {"GADM": "gadm_administrative_boundaries"}
+    admin_source_to_dataset: Dict[AdministrativeBoundarySource, str] = {
+        AdministrativeBoundarySource.GADM: "gadm_administrative_boundaries"
+    }
 
     try:
-        dataset: str = admin_source_to_dataset[admin_source.upper()]
+        dataset: str = admin_source_to_dataset[params.admin_source]
     except KeyError:
         raise HTTPException(
             status_code=400,
@@ -59,18 +35,16 @@ async def geoencode(
             ),
         )
 
-    version_str: str = "v" + str(admin_version).lstrip("v")
-
-    await version_is_valid(dataset, version_str)
+    version_str: str = "v" + str(params.admin_version).lstrip("v")
 
     names: List[str | None] = sanitize_names(
-        normalize_search, country, region, subregion
+        params.normalize_search, params.country, params.region, params.subregion
     )
 
     adm_level: int = determine_admin_level(*names)
 
     sql: str = _admin_boundary_lookup_sql(
-        adm_level, normalize_search, admin_source, *names
+        adm_level, params.normalize_search, dataset, *names
     )
 
     json_data: List[Dict[str, Any]] = await _query_dataset_json(
@@ -79,8 +53,8 @@ async def geoencode(
 
     return Response(
         data={
-            "adminSource": admin_source,
-            "adminVersion": admin_version,
+            "adminSource": params.admin_source,
+            "adminVersion": params.admin_version,
             "matches": [
                 {
                     "country": {
@@ -182,35 +156,3 @@ def _admin_boundary_lookup_sql(
     sql += f" AND adm_level='{adm_level}'"
 
     return sql
-
-
-async def version_is_valid(
-    dataset: str,
-    version: str,
-) -> None:
-    """Validate a version string for a given dataset."""
-    # Note: At some point I intend to change the version validator to
-    # use messaging like this. However, that is out of scope for the
-    # current ticket, and I want to see what people think, so I'll
-    # keep it here for now.
-    if re.match(VERSION_REGEX, version) is None:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Invalid version name. Version names begin with a 'v' and "
-                "consist of one to three integers separated by periods. "
-                "eg. 'v1', 'v7.1', 'v4.1.0',  'v20240801'"
-            ),
-        )
-
-    try:
-        _ = await get_version(dataset, version)
-    except RecordNotFoundError:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Version not found. Existing versions for this dataset "
-                f"include {[v[0] for v in await get_version_names(dataset)]}"
-                # FIXME: Maybe change get_version_names to do unpacking? ^
-            ),
-        )
