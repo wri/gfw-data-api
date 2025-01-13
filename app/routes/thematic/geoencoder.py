@@ -6,9 +6,11 @@ from unidecode import unidecode
 from app.models.pydantic.geoencoder import (
     AdministrativeBoundarySource,
     GeoencoderQueryParams,
+    per_env_admin_boundary_versions,
 )
 from app.models.pydantic.responses import Response
 from app.routes.datasets.queries import _query_dataset_json
+from app.settings.globals import ENV
 
 router = APIRouter()
 
@@ -33,7 +35,9 @@ async def geoencoder(params: GeoencoderQueryParams = Depends()):
             ),
         )
 
-    version_str: str = "v" + params.admin_version.value
+    version_str: str = lookup_admin_source_version(
+        params.admin_source, params.admin_version.value
+    )
 
     names: List[str | None] = sanitize_names(
         params.normalize_search, params.country, params.region, params.subregion
@@ -154,3 +158,22 @@ def _admin_boundary_lookup_sql(
     sql += f" AND adm_level='{adm_level}'"
 
     return sql
+
+
+def lookup_admin_source_version(source, version) -> str:
+    sources_in_this_env: Dict = per_env_admin_boundary_versions.get(ENV)
+
+    versions_of_source_in_this_env: Dict = sources_in_this_env.get(source)
+    assert versions_of_source_in_this_env is not None, (
+        f"Invalid administrative boundary source {source}. Valid "
+        f"sources in this environment are {[v for v in sources_in_this_env.keys()]}"
+    )
+
+    deployed_version_in_data_api = versions_of_source_in_this_env.get(version)
+    assert deployed_version_in_data_api is not None, (
+        f"Invalid version {version} for administrative boundary source "
+        f"{source}. Valid versions for this source in this environment are "
+        f"{[v.value for v in versions_of_source_in_this_env.keys()]}"
+    )
+
+    return deployed_version_in_data_api

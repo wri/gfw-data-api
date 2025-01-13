@@ -70,7 +70,7 @@ class GeoencoderQueryParams(StrictBaseModel):
     )
 
     @root_validator()
-    def validate_admin_source_version(cls, values):
+    def validate_params(cls, values):
         source = values.get("admin_source")
         assert (
             source is not None
@@ -86,8 +86,8 @@ class GeoencoderQueryParams(StrictBaseModel):
             f"sources in this environment are {[v for v in sources_in_this_env.keys()]}"
         )
 
-        deployed_versions_in_data_api = versions_of_source_in_this_env.get(version)
-        assert deployed_versions_in_data_api is not None, (
+        deployed_version_in_data_api = versions_of_source_in_this_env.get(version)
+        assert deployed_version_in_data_api is not None, (
             f"Invalid version {version} for administrative boundary source "
             f"{source}. Valid versions for this source in this environment are "
             f"{[v.value for v in versions_of_source_in_this_env.keys()]}"
