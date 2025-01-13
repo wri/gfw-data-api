@@ -13,9 +13,7 @@ from app.routes.datasets.queries import _query_dataset_json
 router = APIRouter()
 
 
-@router.get(
-    "/geoencoder", tags=["Geoencoder"], status_code=200, include_in_schema=True
-)
+@router.get("/geoencoder", tags=["Geoencoder"], status_code=200, include_in_schema=True)
 async def geoencoder(params: GeoencoderQueryParams = Depends()):
     """Look up administrative boundary IDs matching a specified country name
     (and region name and subregion names, if specified).
@@ -35,7 +33,7 @@ async def geoencoder(params: GeoencoderQueryParams = Depends()):
             ),
         )
 
-    version_str: str = params.admin_version.value
+    version_str: str = "v" + params.admin_version.value
 
     names: List[str | None] = sanitize_names(
         params.normalize_search, params.country, params.region, params.subregion
