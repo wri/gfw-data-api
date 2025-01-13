@@ -72,25 +72,30 @@ class GeoencoderQueryParams(StrictBaseModel):
     @root_validator()
     def validate_params(cls, values):
         source = values.get("admin_source")
-        assert (
-            source is not None
-        ), "Must provide admin_source or leave unset for default of GADM"
-        version = values.get("admin_version")
-        assert version is not None, "Must provide admin_version"
+        if source is None:
+            raise ValueError(
+                "Must provide admin_source or leave unset for default of GADM"
+            )
 
-        sources_in_this_env = per_env_admin_boundary_versions.get(ENV)
+        version = values.get("admin_version")
+        if version is None:
+            raise ValueError("Must provide an admin_version")
+
+        sources_in_this_env = per_env_admin_boundary_versions[ENV]
 
         versions_of_source_in_this_env = sources_in_this_env.get(source)
-        assert versions_of_source_in_this_env is not None, (
-            f"Invalid administrative boundary source {source}. Valid "
-            f"sources in this environment are {[v for v in sources_in_this_env.keys()]}"
-        )
+        if versions_of_source_in_this_env is None:
+            ValueError(
+                f"Invalid administrative boundary source {source}. Valid "
+                f"sources in this environment are {[v for v in sources_in_this_env.keys()]}"
+            )
 
         deployed_version_in_data_api = versions_of_source_in_this_env.get(version)
-        assert deployed_version_in_data_api is not None, (
-            f"Invalid version {version} for administrative boundary source "
-            f"{source}. Valid versions for this source in this environment are "
-            f"{[v.value for v in versions_of_source_in_this_env.keys()]}"
-        )
+        if deployed_version_in_data_api is None:
+            ValueError(
+                f"Invalid version {version} for administrative boundary source "
+                f"{source}. Valid versions for this source in this environment are "
+                f"{[v.value for v in versions_of_source_in_this_env.keys()]}"
+            )
 
         return values

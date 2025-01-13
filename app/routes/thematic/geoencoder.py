@@ -161,19 +161,6 @@ def _admin_boundary_lookup_sql(
 
 
 def lookup_admin_source_version(source, version) -> str:
-    sources_in_this_env: Dict = per_env_admin_boundary_versions.get(ENV)
-
-    versions_of_source_in_this_env: Dict = sources_in_this_env.get(source)
-    assert versions_of_source_in_this_env is not None, (
-        f"Invalid administrative boundary source {source}. Valid "
-        f"sources in this environment are {[v for v in sources_in_this_env.keys()]}"
-    )
-
-    deployed_version_in_data_api = versions_of_source_in_this_env.get(version)
-    assert deployed_version_in_data_api is not None, (
-        f"Invalid version {version} for administrative boundary source "
-        f"{source}. Valid versions for this source in this environment are "
-        f"{[v.value for v in versions_of_source_in_this_env.keys()]}"
-    )
+    deployed_version_in_data_api = per_env_admin_boundary_versions[ENV][source][version]
 
     return deployed_version_in_data_api
