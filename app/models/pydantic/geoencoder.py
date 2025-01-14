@@ -1,9 +1,10 @@
-from typing import Optional
+from typing import List, Optional
 
 from fastapi.params import Query
 from pydantic import Field, root_validator
 
 from app.models.pydantic.base import StrictBaseModel
+from app.models.pydantic.responses import Response
 from app.settings.globals import ENV, per_env_admin_boundary_versions
 
 
@@ -63,3 +64,24 @@ class GeoencoderQueryParams(StrictBaseModel):
             )
 
         return values
+
+
+class GeoencoderMatchElement(StrictBaseModel):
+    id: str | None
+    name: str | None
+
+
+class GeoencoderMatch(StrictBaseModel):
+    country: GeoencoderMatchElement
+    region: GeoencoderMatchElement
+    subregion: GeoencoderMatchElement
+
+
+class GeoencoderResponseData(StrictBaseModel):
+    adminSource: str
+    adminVersion: str
+    matches: List[GeoencoderMatch]
+
+
+class GeoencoderResponse(Response):
+    data: GeoencoderResponseData

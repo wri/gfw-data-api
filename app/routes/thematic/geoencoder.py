@@ -3,18 +3,19 @@ from typing import Annotated, Any, Dict, List
 from fastapi import APIRouter, HTTPException, Query
 from unidecode import unidecode
 
-from app.models.pydantic.geoencoder import GeoencoderQueryParams
-from app.models.pydantic.responses import Response
+from app.models.pydantic.geoencoder import GeoencoderQueryParams, GeoencoderResponse
 from app.routes.datasets.queries import _query_dataset_json
 from app.settings.globals import ENV, per_env_admin_boundary_versions
 
 router = APIRouter()
 
 
-@router.get("/geoencoder", tags=["Geoencoder"], status_code=200, include_in_schema=True)
+@router.get(
+    "/geoencoder", tags=["Geoencoder"], status_code=200, include_in_schema=False
+)
 async def geoencoder(params: Annotated[GeoencoderQueryParams, Query()]):
     """Look up administrative boundary IDs matching a specified country name
-    (and region name and subregion names, if specified).
+    (and region name and subregion name, if specified).
     """
     admin_source_to_dataset: Dict[str, str] = {"GADM": "gadm_administrative_boundaries"}
 
@@ -47,35 +48,37 @@ async def geoencoder(params: Annotated[GeoencoderQueryParams, Query()]):
         dataset, version_str, sql, None
     )
 
-    return Response(
-        data={
-            "adminSource": params.admin_source,
-            "adminVersion": params.admin_version,
-            "matches": [
-                {
-                    "country": {
-                        "id": match["gid_0"].rsplit("_")[0],
-                        "name": match["country"],
-                    },
-                    "region": {
-                        "id": (
-                            (match["gid_1"].rsplit("_")[0]).split(".")[1]
-                            if adm_level >= 1
-                            else None
-                        ),
-                        "name": match["name_1"] if adm_level >= 1 else None,
-                    },
-                    "subregion": {
-                        "id": (
-                            (match["gid_2"].rsplit("_")[0]).split(".")[2]
-                            if adm_level >= 2
-                            else None
-                        ),
-                        "name": match["name_2"] if adm_level >= 2 else None,
-                    },
-                }
-                for match in json_data
-            ],
+    return GeoencoderResponse(
+        **{
+            "data": {
+                "adminSource": params.admin_source,
+                "adminVersion": params.admin_version,
+                "matches": [
+                    {
+                        "country": {
+                            "id": match["gid_0"].rsplit("_")[0],
+                            "name": match["country"],
+                        },
+                        "region": {
+                            "id": (
+                                (match["gid_1"].rsplit("_")[0]).split(".")[1]
+                                if adm_level >= 1
+                                else None
+                            ),
+                            "name": match["name_1"] if adm_level >= 1 else None,
+                        },
+                        "subregion": {
+                            "id": (
+                                (match["gid_2"].rsplit("_")[0]).split(".")[2]
+                                if adm_level >= 2
+                                else None
+                            ),
+                            "name": match["name_2"] if adm_level >= 2 else None,
+                        },
+                    }
+                    for match in json_data
+                ],
+            }
         }
     )
 
@@ -155,6 +158,8 @@ def _admin_boundary_lookup_sql(
 
 
 def lookup_admin_source_version(source, version) -> str:
+    # The GeoencoderQueryParams validator should have already ensured
+    # that the following is safe
     deployed_version_in_data_api = per_env_admin_boundary_versions[ENV][source][version]
 
     return deployed_version_in_data_api
