@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 from starlette.config import Config
 from starlette.datastructures import Secret
@@ -185,3 +185,29 @@ PROTECTED_QUERY_DATASETS = ["wdpa_licensed_protected_areas"]
 RASTER_ANALYSIS_STATE_MACHINE_ARN = config(
     "RASTER_ANALYSIS_STATE_MACHINE_ARN", cast=str, default=None
 )
+
+# TODO: Find a good home for this:
+per_env_admin_boundary_versions: Dict[str, Dict[str, Dict]] = {
+    "test": {
+        "GADM": {
+            "3.6": "v3.6",
+            "4.1": "v4.1.64",
+        }
+    },
+    "dev": {
+        "GADM": {
+            "4.1": "v4.1.64",
+        }
+    },
+    "staging": {
+        "GADM": {
+            "4.1": "v4.1",
+        }
+    },
+    "production": {
+        "GADM": {
+            "3.6": "v3.6",
+            "4.1": "v4.1.0",
+        }
+    },
+}

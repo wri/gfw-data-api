@@ -120,8 +120,7 @@ async def test_geoencoder_no_admin_version(async_client: AsyncClient) -> None:
 
     resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
 
-    assert '["query","admin_version"]' in resp.text
-    assert "field required" in resp.text
+    assert "Must provide an admin_version" in resp.text
     assert resp.status_code == 422
 
 
@@ -131,7 +130,7 @@ async def test_geoencoder_nonexistant_version(async_client: AsyncClient) -> None
 
     resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
 
-    assert "value is not a valid enumeration member" in resp.text
+    assert "Invalid version 4.0" in resp.text
     assert resp.status_code == 422
 
 
@@ -142,7 +141,8 @@ async def test_geoencoder_nonexistant_version_lists_existing(
     params = {"country": "Canada", "admin_version": "4.0"}
     resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
 
-    assert '["3.6","4.1"]' in resp.text
+    assert "3.6" in resp.text
+    assert "4.1" in resp.text
     assert resp.status_code == 422
 
 
@@ -156,8 +156,8 @@ async def test_geoencoder_bad_boundary_source(async_client: AsyncClient) -> None
 
     resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
 
-    assert '["query","admin_source"]' in resp.text
-    assert "value is not a valid enumeration member" in resp.text
+    assert "Invalid administrative boundary source bobs_boundaries" in resp.text
+    assert "GADM" in resp.text
     assert resp.status_code == 422
 
 

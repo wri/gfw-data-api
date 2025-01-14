@@ -1,28 +1,22 @@
-from typing import Any, Dict, List
+from typing import Annotated, Any, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from unidecode import unidecode
 
-from app.models.pydantic.geoencoder import (
-    AdministrativeBoundarySource,
-    GeoencoderQueryParams,
-    per_env_admin_boundary_versions,
-)
+from app.models.pydantic.geoencoder import GeoencoderQueryParams
 from app.models.pydantic.responses import Response
 from app.routes.datasets.queries import _query_dataset_json
-from app.settings.globals import ENV
+from app.settings.globals import ENV, per_env_admin_boundary_versions
 
 router = APIRouter()
 
 
 @router.get("/geoencoder", tags=["Geoencoder"], status_code=200, include_in_schema=True)
-async def geoencoder(params: GeoencoderQueryParams = Depends()):
+async def geoencoder(params: Annotated[GeoencoderQueryParams, Query()]):
     """Look up administrative boundary IDs matching a specified country name
     (and region name and subregion names, if specified).
     """
-    admin_source_to_dataset: Dict[AdministrativeBoundarySource, str] = {
-        AdministrativeBoundarySource.GADM: "gadm_administrative_boundaries"
-    }
+    admin_source_to_dataset: Dict[str, str] = {"GADM": "gadm_administrative_boundaries"}
 
     try:
         dataset: str = admin_source_to_dataset[params.admin_source]
@@ -36,7 +30,7 @@ async def geoencoder(params: GeoencoderQueryParams = Depends()):
         )
 
     version_str: str = lookup_admin_source_version(
-        params.admin_source, params.admin_version.value
+        params.admin_source, params.admin_version
     )
 
     names: List[str | None] = sanitize_names(

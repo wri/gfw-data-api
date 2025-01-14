@@ -1,54 +1,18 @@
-from enum import Enum
-from typing import Dict, Optional
+from typing import Optional
 
 from fastapi.params import Query
-from pydantic import root_validator
+from pydantic import Field, root_validator
 
 from app.models.pydantic.base import StrictBaseModel
-from app.settings.globals import ENV
-
-
-class AdministrativeBoundarySource(str, Enum):
-    GADM = "GADM"
-
-
-class GADMBoundaryVersion(str, Enum):
-    three_six = "3.6"
-    four_one = "4.1"
-
-
-# TODO: Move this somewhere else
-per_env_admin_boundary_versions: Dict[str, Dict[AdministrativeBoundarySource, Dict]] = {
-    "test": {
-        AdministrativeBoundarySource.GADM: {
-            GADMBoundaryVersion.four_one: "v4.1.64",
-        }
-    },
-    "dev": {
-        AdministrativeBoundarySource.GADM: {
-            GADMBoundaryVersion.four_one: "v4.1.64",
-        }
-    },
-    "staging": {
-        AdministrativeBoundarySource.GADM: {
-            GADMBoundaryVersion.four_one: "v4.1",
-        }
-    },
-    "production": {
-        AdministrativeBoundarySource.GADM: {
-            GADMBoundaryVersion.three_six: "v3.6",
-            GADMBoundaryVersion.four_one: "v4.1.0",
-        }
-    },
-}
+from app.settings.globals import ENV, per_env_admin_boundary_versions
 
 
 class GeoencoderQueryParams(StrictBaseModel):
-    admin_source: AdministrativeBoundarySource = Query(
-        AdministrativeBoundarySource.GADM.value,
+    admin_source: str = Field(
+        "GADM",
         description="The source of administrative boundaries to use.",
     )
-    admin_version: GADMBoundaryVersion = Query(
+    admin_version: str = Query(
         ...,
         description="The version of the administrative boundaries to use.",
     )
@@ -69,7 +33,7 @@ class GeoencoderQueryParams(StrictBaseModel):
         description="Whether or not to perform a case- and accent-insensitive search.",
     )
 
-    @root_validator()
+    @root_validator(pre=True)
     def validate_params(cls, values):
         source = values.get("admin_source")
         if source is None:
@@ -85,17 +49,17 @@ class GeoencoderQueryParams(StrictBaseModel):
 
         versions_of_source_in_this_env = sources_in_this_env.get(source)
         if versions_of_source_in_this_env is None:
-            ValueError(
+            raise ValueError(
                 f"Invalid administrative boundary source {source}. Valid "
                 f"sources in this environment are {[v for v in sources_in_this_env.keys()]}"
             )
 
         deployed_version_in_data_api = versions_of_source_in_this_env.get(version)
         if deployed_version_in_data_api is None:
-            ValueError(
+            raise ValueError(
                 f"Invalid version {version} for administrative boundary source "
                 f"{source}. Valid versions for this source in this environment are "
-                f"{[v.value for v in versions_of_source_in_this_env.keys()]}"
+                f"{[v for v in versions_of_source_in_this_env.keys()]}"
             )
 
         return values
