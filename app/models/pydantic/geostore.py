@@ -69,6 +69,16 @@ class RWViewGeostore(StrictBaseModel):
     view_link: str
 
 
+class AdminBoundaryInfo(StrictBaseModel):
+    use: Dict
+    simplifyThresh: float
+    gadm: str  # TODO: Make an enum?
+    name: str
+    id2: int
+    id1: int
+    iso: str
+
+
 class LandUseUse(StrictBaseModel):
     use: LandUseTypeUseString
     id: int
@@ -91,7 +101,7 @@ class RWGeostoreAttributes(StrictBaseModel):
     areaHa: float
     bbox: List[float]
     lock: bool
-    info: LandUseInfo | WDPAInfo
+    info: AdminBoundaryInfo | LandUseInfo | WDPAInfo
 
 
 class RWGeostore(StrictBaseModel):

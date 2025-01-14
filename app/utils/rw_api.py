@@ -212,28 +212,61 @@ async def get_admin_list() -> HTTPXResponse:
     return response
 
 
-async def get_boundary_by_country_id(country_id: str) -> HTTPXResponse:
+async def get_boundary_by_country_id(
+    country_id: str,
+    x_api_key: str | None = None
+) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/{country_id}"
 
     async with AsyncClient() as client:
-        response: HTTPXResponse = await client.get(url)
-    return response
+        if x_api_key is not None:
+            response: HTTPXResponse = await client.get(url, headers={"x-api-key": x_api_key})
+        else:
+            response: HTTPXResponse = await client.get(url)
+
+    if response.status_code == 200:
+        return RWGeostoreResponse.parse_obj(response.json())
+    else:
+        raise HTTPException(response.status_code, response.text)
 
 
-async def get_boundary_by_region_id(country_id: str, region_id: str) -> HTTPXResponse:
+async def get_boundary_by_region_id(
+    country_id: str,
+    region_id: str,
+    x_api_key: str | None = None
+) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/{country_id}/{region_id}"
 
     async with AsyncClient() as client:
-        response: HTTPXResponse = await client.get(url)
-    return response
+        if x_api_key is not None:
+            response: HTTPXResponse = await client.get(url, headers={"x-api-key": x_api_key})
+        else:
+            response: HTTPXResponse = await client.get(url)
+
+    if response.status_code == 200:
+        return RWGeostoreResponse.parse_obj(response.json())
+    else:
+        raise HTTPException(response.status_code, response.text)
 
 
-async def get_boundary_by_subregion_id(country_id: str, region_id: str, subregion_id: str) -> HTTPXResponse:
+async def get_boundary_by_subregion_id(
+    country_id: str,
+    region_id: str,
+    subregion_id: str,
+    x_api_key: str | None = None
+) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/{country_id}/{region_id}/{subregion_id}"
 
     async with AsyncClient() as client:
-        response: HTTPXResponse = await client.get(url)
-    return response
+        if x_api_key is not None:
+            response: HTTPXResponse = await client.get(url, headers={"x-api-key": x_api_key})
+        else:
+            response: HTTPXResponse = await client.get(url)
+
+    if response.status_code == 200:
+        return RWGeostoreResponse.parse_obj(response.json())
+    else:
+        raise HTTPException(response.status_code, response.text)
 
 
 async def get_geostore_by_land_use_and_index(
