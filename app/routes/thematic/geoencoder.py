@@ -145,12 +145,12 @@ def _admin_boundary_lookup_sql(
 
     sql = (
         f"SELECT gid_0, gid_1, gid_2, {name_fields[0]}, {name_fields[1]}, {name_fields[2]}"
-        f" FROM {dataset} WHERE {match_name_fields[0]}='{country_name}'"
+        f" FROM {dataset} WHERE {match_name_fields[0]}=$country${country_name}$country$"
     )
     if region_name is not None:
-        sql += f" AND {match_name_fields[1]}='{region_name}'"
+        sql += f" AND {match_name_fields[1]}=$region${region_name}$region$"
     if subregion_name is not None:
-        sql += f" AND {match_name_fields[2]}='{subregion_name}'"
+        sql += f" AND {match_name_fields[2]}=$subregion${subregion_name}$subregion$"
 
     sql += f" AND adm_level='{adm_level}'"
 

@@ -69,7 +69,7 @@ async def test__admin_boundary_lookup_sql_country() -> None:
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
-        " WHERE country='some_country' AND adm_level='0'"
+        " WHERE country=$country$some_country$country$ AND adm_level='0'"
     )
 
 
@@ -80,8 +80,8 @@ async def test__admin_boundary_lookup_sql_country_region() -> None:
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
-        " WHERE country='some_country'"
-        " AND name_1='some_region'"
+        " WHERE country=$country$some_country$country$"
+        " AND name_1=$region$some_region$region$"
         " AND adm_level='1'"
     )
 
@@ -93,9 +93,9 @@ async def test__admin_boundary_lookup_sql_all() -> None:
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
-        " WHERE country='some_country'"
-        " AND name_1='some_region'"
-        " AND name_2='some_subregion'"
+        " WHERE country=$country$some_country$country$"
+        " AND name_1=$region$some_region$region$"
+        " AND name_2=$subregion$some_subregion$subregion$"
         " AND adm_level='2'"
     )
 
@@ -107,9 +107,23 @@ async def test__admin_boundary_lookup_sql_all_normalized() -> None:
     )
     assert sql == (
         "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
-        " WHERE country_normalized='some_country'"
-        " AND name_1_normalized='some_region'"
-        " AND name_2_normalized='some_subregion'"
+        " WHERE country_normalized=$country$some_country$country$"
+        " AND name_1_normalized=$region$some_region$region$"
+        " AND name_2_normalized=$subregion$some_subregion$subregion$"
+        " AND adm_level='2'"
+    )
+
+
+@pytest.mark.asyncio
+async def test__admin_boundary_lookup_sql_no_single_quotes() -> None:
+    sql = _admin_boundary_lookup_sql(
+        2, False, "some_dataset", "Côte d'Ivoire", "some_region", "some_subregion"
+    )
+    assert sql == (
+        "SELECT gid_0, gid_1, gid_2, country, name_1, name_2 FROM some_dataset"
+        " WHERE country=$country$Côte d'Ivoire$country$"
+        " AND name_1=$region$some_region$region$"
+        " AND name_2=$subregion$some_subregion$subregion$"
         " AND adm_level='2'"
     )
 
