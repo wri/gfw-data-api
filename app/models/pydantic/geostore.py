@@ -6,6 +6,7 @@ from pydantic import validator
 
 from .base import BaseRecord, StrictBaseModel
 from .responses import Response
+from ..enum.geostore import LandUseTypeUseString
 
 
 class Geometry(StrictBaseModel):
@@ -20,9 +21,9 @@ class Feature(StrictBaseModel):
 
 
 class FeatureCollection(StrictBaseModel):
-    features: List[Feature]
     crs: Optional[Dict[str, Any]]
     type: str
+    features: List[Feature]
 
 
 class Geostore(BaseRecord):
@@ -55,9 +56,9 @@ class GeostoreResponse(Response):
 
 
 class RWCalcAreaForGeostoreIn(StrictBaseModel):
+    properties: Dict
     type: str
     geometry: Geometry
-    properties: Dict
 
 
 class RWFindByIDsIn(StrictBaseModel):
@@ -66,6 +67,16 @@ class RWFindByIDsIn(StrictBaseModel):
 
 class RWViewGeostore(StrictBaseModel):
     view_link: str
+
+
+class LandUseUse(StrictBaseModel):
+    use: LandUseTypeUseString
+    id: int
+
+
+class LandUseInfo(StrictBaseModel):
+    use: LandUseUse
+    simplify: bool
 
 
 class WDPAInfo(StrictBaseModel):
@@ -80,7 +91,7 @@ class RWGeostoreAttributes(StrictBaseModel):
     areaHa: float
     bbox: List[float]
     lock: bool
-    info: WDPAInfo
+    info: LandUseInfo | WDPAInfo
 
 
 class RWGeostore(StrictBaseModel):

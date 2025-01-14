@@ -9,13 +9,13 @@ from httpx import Response as HTTPXResponse
 
 from ...crud import geostore
 from ...errors import BadRequestError, RecordNotFoundError
+from ...models.enum.geostore import LandUseType
 from ...models.pydantic.geostore import (
     Geostore,
     GeostoreIn,
     GeostoreResponse,
     RWCalcAreaForGeostoreIn,
     RWFindByIDsIn,
-    RWGeostore,
     RWGeostoreResponse, RWViewGeostore
 )
 from ...utils.rw_api import (
@@ -214,13 +214,17 @@ async def rw_find_by_ids(
 )
 async def rw_get_geostore_by_land_use_and_index(
     *,
-    land_use_type: str = Path(..., title="land_use_type"),
+    x_api_key: Annotated[str | None, Header()] = None,
+    land_use_type: LandUseType = Path(..., title="land_use_type"),
     index: str = Path(..., title="index")
 ):
     """Get a geostore object by land use type name and id
     (proxies request to the RW API)"""
-    # FIXME: Should we be passing on things like the API key?
-    result: HTTPXResponse = await get_geostore_by_land_use_and_index(land_use_type, index)
+    result: RWGeostoreResponse = await get_geostore_by_land_use_and_index(
+        land_use_type,
+        index,
+        x_api_key
+    )
 
     return result
 
