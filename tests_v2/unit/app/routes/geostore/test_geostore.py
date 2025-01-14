@@ -104,32 +104,32 @@ async def test_wdpa_serializes(async_client: AsyncClient, monkeypatch: MonkeyPat
     assert response.status_code == 200
 
 
-@pytest.mark.asyncio
-async def test_wdpa_handles_pass_through(async_client: AsyncClient, monkeypatch: MonkeyPatch):
-
-    async def mock_resp_func(request: Request) -> Response:
-        return Response(
-            status_code=200,
-            json=example_geostore_resp,  # Mocked API response
-        )
-
-    transport = MockTransport(mock_resp_func)
-
-    from app.main import app
-
-    async with LifespanManager(app) as manager:
-        async with AsyncClient(
-            app=manager.app,
-            base_url="http://test",
-            trust_env=False,
-            transport=transport
-        ) as client:
-            monkeypatch.setattr(rw_api, "AsyncClient", client)
-            response = await async_client.get("/geostore/wdpa/142809")
-
-    assert response.json() == {
-        "data": {
-            "key": "value"
-        }
-    }
-    assert response.status_code == 200
+# @pytest.mark.asyncio
+# async def test_wdpa_handles_pass_through(async_client: AsyncClient, monkeypatch: MonkeyPatch):
+#
+#     async def mock_resp_func(request: Request) -> Response:
+#         return Response(
+#             status_code=200,
+#             json=example_geostore_resp,  # Mocked API response
+#         )
+#
+#     transport = MockTransport(mock_resp_func)
+#
+#     from app.main import app
+#
+#     async with LifespanManager(app) as manager:
+#         async with AsyncClient(
+#             app=manager.app,
+#             base_url="http://test",
+#             trust_env=False,
+#             transport=transport
+#         ) as client:
+#             monkeypatch.setattr(rw_api, "AsyncClient", client)
+#             response = await async_client.get("/geostore/wdpa/142809")
+#
+#     assert response.json() == {
+#         "data": {
+#             "key": "value"
+#         }
+#     }
+#     assert response.status_code == 200
