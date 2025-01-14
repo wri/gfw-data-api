@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Literal
 from uuid import UUID
 
 from pydantic import validator
@@ -14,7 +14,7 @@ class Geometry(StrictBaseModel):
 
 
 class Feature(StrictBaseModel):
-    properties: Dict[str, Any]
+    properties: Optional[Dict[str, Any]]
     type: str
     geometry: Optional[Geometry]
 
@@ -84,7 +84,7 @@ class RWGeostoreAttributes(StrictBaseModel):
 
 
 class RWGeostore(StrictBaseModel):
-    type: str
+    type: Literal["geoStore"]
     id: str
     attributes: RWGeostoreAttributes
 

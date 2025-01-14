@@ -16,7 +16,7 @@ from ...models.pydantic.geostore import (
     RWCalcAreaForGeostoreIn,
     RWFindByIDsIn,
     RWGeostore,
-    RWGeostoreResponse
+    RWGeostoreResponse, RWViewGeostore
 )
 from ...utils.rw_api import (
     find_by_ids,
@@ -240,6 +240,6 @@ async def rw_get_geostore_by_wdpa_id(
     """Get a geostore object by WDPA ID
     (proxies request to the RW API)"""
 
-    result: RWGeostore = await get_geostore_by_wdpa_id(wdpa_id, x_api_key)
+    result: RWGeostoreResponse = await get_geostore_by_wdpa_id(wdpa_id, x_api_key)
 
-    return RWGeostoreResponse(data=result)
+    return RWGeostoreResponse(data=result.data)
