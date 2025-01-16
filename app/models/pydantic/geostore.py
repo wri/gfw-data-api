@@ -117,7 +117,7 @@ class WDPAInfo(StrictBaseModel):
 class RWAdminListItem(StrictBaseModel):
     geostoreId: str
     iso: str
-    name: str
+    name: Optional[str]
 
 
 class RWAdminListResponse(StrictBaseModel):
