@@ -1,6 +1,6 @@
 """Retrieve a geometry using its md5 hash for a given dataset, user defined
 geometries in the datastore."""
-from typing import Dict, Annotated
+from typing import Dict, Annotated, List
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Path
@@ -16,7 +16,7 @@ from ...models.pydantic.geostore import (
     GeostoreResponse,
     RWCalcAreaForGeostoreIn,
     RWFindByIDsIn,
-    RWGeostoreResponse, RWViewGeostore
+    RWGeostoreResponse, RWViewGeostore, RWAdminListResponse, RWAdminListItem
 )
 from ...utils.rw_api import (
     find_by_ids,
@@ -92,15 +92,17 @@ async def get_any_geostore(*, geostore_id: UUID = Path(..., title="geostore_id")
 @router.get(
     "/admin/list",
     response_class=ORJSONResponse,
-    # response_model=RWAdminListResponse,
+    response_model=RWAdminListResponse,
     # status_code=200,
     # tags=["Geostore"],
 )
-async def rw_get_admin_list():
+async def rw_get_admin_list(
+    x_api_key: Annotated[str | None, Header()] = None
+):
     """Get all Geostore IDs, names and country codes
     (proxies request to the RW API)"""
     # FIXME: Should we be passing on things like the API key?
-    result: HTTPXResponse = await get_admin_list()
+    result: RWAdminListResponse = await get_admin_list(x_api_key)
 
     return result
 

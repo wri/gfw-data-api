@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 from uuid import UUID
 
 from async_lru import alru_cache
@@ -14,7 +14,8 @@ from ..errors import (
     UnauthorizedError,
 )
 from ..models.pydantic.authentication import User
-from ..models.pydantic.geostore import Geometry, GeostoreCommon, RWGeostoreResponse
+from ..models.pydantic.geostore import Geometry, GeostoreCommon, RWGeostoreResponse, RWAdminListItem, \
+    RWAdminListResponse
 from ..settings.globals import RW_API_URL, SERVICE_ACCOUNT_TOKEN
 
 
@@ -204,12 +205,21 @@ async def find_by_ids(payload: Dict) -> HTTPXResponse:
     return response
 
 
-async def get_admin_list() -> HTTPXResponse:
+async def get_admin_list(
+    x_api_key: str | None = None
+) -> RWAdminListResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/list"
 
     async with AsyncClient() as client:
-        response: HTTPXResponse = await client.get(url)
-    return response
+        if x_api_key is not None:
+            response: HTTPXResponse = await client.get(url, headers={"x-api-key": x_api_key})
+        else:
+            response: HTTPXResponse = await client.get(url)
+
+    if response.status_code == 200:
+        return RWAdminListResponse.parse_obj(response.json())
+    else:
+        raise HTTPException(response.status_code, response.text)
 
 
 async def get_boundary_by_country_id(

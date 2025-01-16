@@ -94,6 +94,16 @@ class WDPAInfo(StrictBaseModel):
     wdpaid: int
 
 
+class RWAdminListItem(StrictBaseModel):
+    geostoreId: str
+    iso: str
+    name: str
+
+
+class RWAdminListResponse(StrictBaseModel):
+    data: List[RWAdminListItem]
+
+
 class RWGeostoreAttributes(StrictBaseModel):
     geojson: FeatureCollection
     hash: str
