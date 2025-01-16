@@ -5,7 +5,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Path
 from fastapi.responses import ORJSONResponse
-from httpx import Response as HTTPXResponse
 
 from ...crud import geostore
 from ...errors import BadRequestError, RecordNotFoundError
@@ -18,6 +17,7 @@ from ...models.pydantic.geostore import (
     RWCalcAreaForGeostoreIn,
     RWCalcAreaForGeostoreResponse,
     RWFindByIDsIn,
+    RWFindByIDsResponse,
     RWGeostoreResponse,
     RWViewGeostoreResponse,
 )
@@ -72,7 +72,6 @@ async def rw_get_view_geostore_by_id(
 ):
     """Get a geostore object by Geostore id and view at GeoJSON.io
     (proxies request to the RW API)"""
-    # FIXME: Should we be passing on things like the API key?
     result: RWViewGeostoreResponse = await get_view_geostore_by_id(
         rw_geostore_id, x_api_key
     )
@@ -109,7 +108,6 @@ async def get_any_geostore(*, geostore_id: UUID = Path(..., title="geostore_id")
 async def rw_get_admin_list(x_api_key: Annotated[str | None, Header()] = None):
     """Get all Geostore IDs, names and country codes
     (proxies request to the RW API)"""
-    # FIXME: Should we be passing on things like the API key?
     result: RWAdminListResponse = await get_admin_list(x_api_key)
 
     return result
@@ -148,7 +146,6 @@ async def rw_get_boundary_by_region_id(
 ):
     """Get a GADM boundary by country and region IDs
     (proxies request to the RW API)"""
-    # FIXME: Should we be passing on things like the API key?
     result: RWGeostoreResponse = await get_boundary_by_region_id(
         country_id, region_id, x_api_key
     )
@@ -201,18 +198,18 @@ async def rw_calc_area(
 @router.post(
     "/find_by_ids",
     response_class=ORJSONResponse,
-    # response_model=RWAdminListResponse,
+    response_model=RWFindByIDsResponse,
     # tags=["Geostore"],
 )
 async def rw_find_by_ids(
     request: RWFindByIDsIn,
+    x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get one or more geostore objects by IDs
     (proxies request to the RW API)"""
-    # FIXME: Should we be passing on things like the API key?
     payload: Dict = request.dict()
 
-    result: HTTPXResponse = await find_by_ids(payload)
+    result: RWFindByIDsResponse = await find_by_ids(payload, x_api_key)
 
     return result
 
@@ -225,9 +222,9 @@ async def rw_find_by_ids(
 )
 async def rw_get_geostore_by_land_use_and_index(
     *,
-    x_api_key: Annotated[str | None, Header()] = None,
     land_use_type: LandUseType = Path(..., title="land_use_type"),
     index: str = Path(..., title="index"),
+    x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get a geostore object by land use type name and id
     (proxies request to the RW API)"""

@@ -93,6 +93,12 @@ class AdminBoundaryInfo(StrictBaseModel):
     iso: str
 
 
+class FindByIDsInfo(StrictBaseModel):
+    use: Dict
+    iso: str
+    name: str
+
+
 class LandUseUse(StrictBaseModel):
     use: LandUseTypeUseString
     id: int
@@ -125,7 +131,7 @@ class RWGeostoreAttributes(StrictBaseModel):
     areaHa: float
     bbox: List[float]
     lock: bool
-    info: AdminBoundaryInfo | LandUseInfo | WDPAInfo
+    info: AdminBoundaryInfo | FindByIDsInfo | LandUseInfo | WDPAInfo
 
 
 class RWGeostore(StrictBaseModel):
@@ -136,3 +142,30 @@ class RWGeostore(StrictBaseModel):
 
 class RWGeostoreResponse(StrictBaseModel):
     data: RWGeostore
+
+
+class RWFindByIDsGeostoreData(StrictBaseModel):
+    type: Literal["geoStore"]
+    id: str
+    attributes: RWGeostoreAttributes
+
+
+class RWFindByIDsDataGeostore(StrictBaseModel):
+    data: RWFindByIDsGeostoreData
+
+
+class RWFindByIDsData(StrictBaseModel):
+    geostoreId: str
+    geostore: RWFindByIDsGeostoreData
+    returned: int
+
+
+class RWFindByIDsInfo(StrictBaseModel):
+    found: int
+    foundIDs: List[str]
+    returned: int
+
+
+class RWFindByIDsResponse(StrictBaseModel):
+    data: List[RWFindByIDsData]
+    info: RWFindByIDsInfo
