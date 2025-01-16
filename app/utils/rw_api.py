@@ -222,8 +222,8 @@ async def find_by_ids(
 
     async with AsyncClient() as client:
         if x_api_key is not None:
-            response: HTTPXResponse = await client.get(
-                url, headers={"x-api-key": x_api_key}
+            response: HTTPXResponse = await client.post(
+                url, json=payload, headers={"x-api-key": x_api_key}
             )
         else:
             response = await client.get(url)
