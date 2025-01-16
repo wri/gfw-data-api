@@ -1,12 +1,12 @@
 import json
-from typing import Any, Dict, List, Optional, Literal
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
 
 from pydantic import validator
 
+from ..enum.geostore import LandUseTypeUseString
 from .base import BaseRecord, StrictBaseModel
 from .responses import Response
-from ..enum.geostore import LandUseTypeUseString
 
 
 class Geometry(StrictBaseModel):
@@ -65,7 +65,7 @@ class RWFindByIDsIn(StrictBaseModel):
     geostores: List[str]
 
 
-class RWViewGeostore(StrictBaseModel):
+class RWViewGeostoreResponse(StrictBaseModel):
     view_link: str
 
 
