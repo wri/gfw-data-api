@@ -16,6 +16,7 @@ from ...models.pydantic.geostore import (
     GeostoreResponse,
     RWAdminListResponse,
     RWCalcAreaForGeostoreIn,
+    RWCalcAreaForGeostoreResponse,
     RWFindByIDsIn,
     RWGeostoreResponse,
     RWViewGeostoreResponse,
@@ -103,7 +104,6 @@ async def get_any_geostore(*, geostore_id: UUID = Path(..., title="geostore_id")
     "/admin/list",
     response_class=ORJSONResponse,
     response_model=RWAdminListResponse,
-    # status_code=200,
     # tags=["Geostore"],
 )
 async def rw_get_admin_list(x_api_key: Annotated[str | None, Header()] = None):
@@ -119,7 +119,6 @@ async def rw_get_admin_list(x_api_key: Annotated[str | None, Header()] = None):
     "/admin/{country_id}",
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
-    # status_code=200,
     # tags=["Geostore"],
 )
 async def rw_get_boundary_by_country_id(
@@ -139,7 +138,6 @@ async def rw_get_boundary_by_country_id(
     "/admin/{country_id}/{region_id}",
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
-    # status_code=200,
     # tags=["Geostore"],
 )
 async def rw_get_boundary_by_region_id(
@@ -162,7 +160,6 @@ async def rw_get_boundary_by_region_id(
     "/admin/{country_id}/{region_id}/{subregion_id}",
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
-    # status_code=200,
     # tags=["Geostore"],
 )
 async def rw_get_boundary_by_subregion_id(
@@ -185,19 +182,18 @@ async def rw_get_boundary_by_subregion_id(
 @router.post(
     "/area",
     response_class=ORJSONResponse,
-    # response_model=RWAdminListResponse,
-    # status_code=200,
+    response_model=RWCalcAreaForGeostoreResponse,
     # tags=["Geostore"],
 )
 async def rw_calc_area(
     request: RWCalcAreaForGeostoreIn,
+    x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Calculate the area of a provided Geostore object
     (proxies request to the RW API)"""
-    # FIXME: Should we be passing on things like the API key?
     payload: Dict = request.dict()
 
-    result: HTTPXResponse = await calc_area(payload)
+    result: RWCalcAreaForGeostoreResponse = await calc_area(payload, x_api_key)
 
     return result
 
@@ -206,7 +202,6 @@ async def rw_calc_area(
     "/find_by_ids",
     response_class=ORJSONResponse,
     # response_model=RWAdminListResponse,
-    # status_code=200,
     # tags=["Geostore"],
 )
 async def rw_find_by_ids(
@@ -226,7 +221,6 @@ async def rw_find_by_ids(
     "/use/{land_use_type}/{index}",
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
-    # status_code=200,
     # tags=["Geostore"],
 )
 async def rw_get_geostore_by_land_use_and_index(
@@ -248,7 +242,6 @@ async def rw_get_geostore_by_land_use_and_index(
     "/wdpa/{wdpa_id}",
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
-    # status_code=200,
     # tags=["Geostore"],
 )
 async def rw_get_geostore_by_wdpa_id(

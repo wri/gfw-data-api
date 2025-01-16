@@ -61,6 +61,20 @@ class RWCalcAreaForGeostoreIn(StrictBaseModel):
     geometry: Geometry
 
 
+class RWCalcAreaForGeostoreAttributes(StrictBaseModel):
+    bbox: List[float]
+    areaHA: float
+
+
+class RWCalcAreaForGeostoreData(StrictBaseModel):
+    type: Literal["geomArea"]
+    attributes: RWCalcAreaForGeostoreAttributes
+
+
+class RWCalcAreaForGeostoreResponse(StrictBaseModel):
+    data: RWCalcAreaForGeostoreData
+
+
 class RWFindByIDsIn(StrictBaseModel):
     geostores: List[str]
 
