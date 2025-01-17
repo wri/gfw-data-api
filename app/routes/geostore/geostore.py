@@ -1,10 +1,10 @@
 """Retrieve a geometry using its md5 hash for a given dataset, user defined
 geometries in the datastore."""
 from typing import Annotated, Dict
+from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Path
 from fastapi.responses import ORJSONResponse
-from pydantic.types import UUID4
 
 from ...crud import geostore
 from ...errors import BadRequestError, RecordNotFoundError
@@ -94,13 +94,13 @@ async def rw_get_view_geostore_by_id(
 )
 async def get_any_geostore(
     *,
-    geostore_id: UUID4 | str = Path(..., title="geostore_id"),
+    geostore_id: UUID | str = Path(..., title="geostore_id"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Retrieve GeoJSON representation for a given geostore ID of any
     dataset."""
-    # If provided geostore ID follows UUID4 style, it's meant for GFW Data API
-    if isinstance(geostore_id, UUID4):
+    # If provided geostore ID follows UUID style, it's meant for GFW Data API
+    if isinstance(geostore_id, UUID):
         try:
             result = await geostore.get_gfw_geostore_from_any_dataset(geostore_id)
             return GeostoreResponse(data=result)
