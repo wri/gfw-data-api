@@ -49,7 +49,6 @@ router = APIRouter()
 async def add_new_geostore(
     *,
     request: GeostoreIn | RWGeostoreIn,
-    response: ORJSONResponse,  # Is this used?
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Add geostore feature to user area of geostore."""
