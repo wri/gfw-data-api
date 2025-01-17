@@ -18,11 +18,13 @@ from ...models.pydantic.geostore import (
     RWCalcAreaForGeostoreResponse,
     RWFindByIDsIn,
     RWFindByIDsResponse,
+    RWGeostoreIn,
     RWGeostoreResponse,
     RWViewGeostoreResponse,
 )
 from ...utils.rw_api import (
     calc_area,
+    create_rw_geostore,
     find_by_ids,
     get_admin_list,
     get_boundary_by_country_id,
@@ -45,17 +47,21 @@ router = APIRouter()
 )
 async def add_new_geostore(
     *,
-    request: GeostoreIn,
+    request: GeostoreIn | RWGeostoreIn,
     response: ORJSONResponse,  # Is this used?
+    x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Add geostore feature to user area of geostore."""
-
+    # If request follows RW style, forward to RW
+    if isinstance(request, RWGeostoreIn):
+        result: RWGeostoreResponse = await create_rw_geostore(request.dict(), x_api_key)
+        return result
+    # Otherwise, meant for GFW Data API geostore
     try:
         new_user_area: Geostore = await geostore.create_user_area(request.geometry)
+        return GeostoreResponse(data=new_user_area)
     except BadRequestError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-    return GeostoreResponse(data=new_user_area)
 
 
 # Endpoint proxied to RW geostore microservice:

@@ -51,6 +51,10 @@ class GeostoreIn(StrictBaseModel):
     geometry: Geometry
 
 
+class RWGeostoreIn(StrictBaseModel):
+    geojson: Geometry | Feature | FeatureCollection
+
+
 class GeostoreResponse(Response):
     data: Geostore
 
@@ -93,6 +97,10 @@ class AdminBoundaryInfo(StrictBaseModel):
     iso: str
 
 
+class CreateGeostoreResponseInfo(StrictBaseModel):
+    use: Dict
+
+
 class FindByIDsInfo(StrictBaseModel):
     use: Dict
     iso: str
@@ -131,7 +139,7 @@ class RWGeostoreAttributes(StrictBaseModel):
     areaHa: float
     bbox: List[float]
     lock: bool
-    info: AdminBoundaryInfo | FindByIDsInfo | LandUseInfo | WDPAInfo
+    info: AdminBoundaryInfo | CreateGeostoreResponseInfo | FindByIDsInfo | LandUseInfo | WDPAInfo
 
 
 class RWGeostore(StrictBaseModel):
