@@ -125,11 +125,16 @@ class WDPAInfo(StrictBaseModel):
 class RWAdminListItem(StrictBaseModel):
     geostoreId: str
     iso: str
-    name: Optional[str]
+    name: str
+
+
+class RWAdminListItemWithName(StrictBaseModel):
+    geostoreId: str
+    iso: str
 
 
 class RWAdminListResponse(StrictBaseModel):
-    data: List[RWAdminListItem]
+    data: List[RWAdminListItem | RWAdminListItemWithName]
 
 
 class RWGeostoreAttributes(StrictBaseModel):

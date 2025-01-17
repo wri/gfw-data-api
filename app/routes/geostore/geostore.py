@@ -1,7 +1,6 @@
 """Retrieve a geometry using its md5 hash for a given dataset, user defined
 geometries in the datastore."""
 from typing import Annotated, Dict
-from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Path
 from fastapi.responses import ORJSONResponse
@@ -103,14 +102,12 @@ async def get_any_geostore(
     # If provided geostore ID follows UUID4 style, it's meant for GFW Data API
     if isinstance(geostore_id, UUID4):
         try:
-            result: Geostore = await geostore.get_gfw_geostore_from_any_dataset(
-                geostore_id
-            )
+            result = await geostore.get_gfw_geostore_from_any_dataset(geostore_id)
             return GeostoreResponse(data=result)
         except RecordNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e))
     # Otherwise, forward to RW geostore
-    result: RWGeostoreResponse = await proxy_get_geostore(geostore_id, x_api_key)
+    result = await proxy_get_geostore(geostore_id, x_api_key)
     return result
 
 
