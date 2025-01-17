@@ -51,8 +51,9 @@ async def add_new_geostore(
     request: GeostoreIn | RWGeostoreIn,
     x_api_key: Annotated[str | None, Header()] = None,
 ):
-    """Add geostore feature to user area of geostore."""
-    # If request follows RW style, forward to RW
+    """Add geostore feature to user area of geostore.
+    If request follows RW style forward to RW, otherwise create in Data API
+    """
     if isinstance(request, RWGeostoreIn):
         result: RWGeostoreResponse = await create_rw_geostore(request.dict(), x_api_key)
         return result
@@ -64,12 +65,11 @@ async def add_new_geostore(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# Endpoint proxied to RW geostore microservice:
 @router.get(
     "/{rw_geostore_id}/view",
     response_class=ORJSONResponse,
     response_model=RWViewGeostoreResponse,
-    # tags=["Geostore"],
+    tags=["Geostore"],
 )
 async def rw_get_view_geostore_by_id(
     *,
@@ -97,27 +97,24 @@ async def get_any_geostore(
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Retrieve GeoJSON representation for a given geostore ID of any
-    dataset."""
-    # If provided geostore ID follows UUID style, it's meant for GFW Data API
+    dataset. If the provided ID is in UUID style, get from the GFW Data API.
+    Otherwise, forward request to RW API.
+    """
     if isinstance(geostore_id, UUID):
         try:
             result = await geostore.get_gfw_geostore_from_any_dataset(geostore_id)
             return GeostoreResponse(data=result)
         except RecordNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e))
-    # Otherwise, forward to RW geostore
     result = await proxy_get_geostore(geostore_id, x_api_key)
     return result
-
-
-# Endpoints proxied to RW geostore microservice:
 
 
 @router.get(
     "/admin/list",
     response_class=ORJSONResponse,
     response_model=RWAdminListResponse,
-    # tags=["Geostore"],
+    tags=["Geostore"],
 )
 async def rw_get_admin_list(x_api_key: Annotated[str | None, Header()] = None):
     """Get all Geostore IDs, names and country codes
@@ -131,7 +128,7 @@ async def rw_get_admin_list(x_api_key: Annotated[str | None, Header()] = None):
     "/admin/{country_id}",
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
-    # tags=["Geostore"],
+    tags=["Geostore"],
 )
 async def rw_get_boundary_by_country_id(
     *,
@@ -150,7 +147,7 @@ async def rw_get_boundary_by_country_id(
     "/admin/{country_id}/{region_id}",
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
-    # tags=["Geostore"],
+    tags=["Geostore"],
 )
 async def rw_get_boundary_by_region_id(
     *,
@@ -171,7 +168,7 @@ async def rw_get_boundary_by_region_id(
     "/admin/{country_id}/{region_id}/{subregion_id}",
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
-    # tags=["Geostore"],
+    tags=["Geostore"],
 )
 async def rw_get_boundary_by_subregion_id(
     *,
@@ -194,7 +191,7 @@ async def rw_get_boundary_by_subregion_id(
     "/area",
     response_class=ORJSONResponse,
     response_model=RWCalcAreaForGeostoreResponse,
-    # tags=["Geostore"],
+    tags=["Geostore"],
 )
 async def rw_calc_area(
     request: RWCalcAreaForGeostoreIn,
@@ -213,7 +210,7 @@ async def rw_calc_area(
     "/find_by_ids",
     response_class=ORJSONResponse,
     response_model=RWFindByIDsResponse,
-    # tags=["Geostore"],
+    tags=["Geostore"],
 )
 async def rw_find_by_ids(
     request: RWFindByIDsIn,
@@ -232,7 +229,7 @@ async def rw_find_by_ids(
     "/use/{land_use_type}/{index}",
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
-    # tags=["Geostore"],
+    tags=["Geostore"],
 )
 async def rw_get_geostore_by_land_use_and_index(
     *,
@@ -253,16 +250,16 @@ async def rw_get_geostore_by_land_use_and_index(
     "/wdpa/{wdpa_id}",
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
-    # tags=["Geostore"],
+    tags=["Geostore"],
 )
 async def rw_get_geostore_by_wdpa_id(
     *,
-    x_api_key: Annotated[str | None, Header()] = None,
     wdpa_id: str = Path(..., title="wdpa_id"),
+    x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get a geostore object by WDPA ID
     (proxies request to the RW API)"""
 
     result: RWGeostoreResponse = await get_geostore_by_wdpa_id(wdpa_id, x_api_key)
 
-    return RWGeostoreResponse(data=result.data)
+    return result

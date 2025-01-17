@@ -21,9 +21,9 @@ class Feature(StrictBaseModel):
 
 
 class FeatureCollection(StrictBaseModel):
+    features: List[Feature]
     crs: Optional[Dict[str, Any]]
     type: str
-    features: List[Feature]
 
 
 class Geostore(BaseRecord):
