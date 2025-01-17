@@ -199,7 +199,7 @@ async def signup(name: str, email: str) -> User:
 async def create_rw_geostore(
     payload: Dict, x_api_key: str | None = None
 ) -> RWGeostoreResponse:
-    url = f"{RW_API_URL}/v1/geostore/area"
+    url = f"{RW_API_URL}/v1/geostore"
 
     async with AsyncClient() as client:
         if x_api_key is not None:
@@ -208,6 +208,25 @@ async def create_rw_geostore(
             )
         else:
             response = await client.post(url, json=payload)
+
+    if response.status_code == 200:
+        return RWGeostoreResponse.parse_obj(response.json())
+    else:
+        raise HTTPException(response.status_code, response.text)
+
+
+async def proxy_get_geostore(
+    geostore_id: str, x_api_key: str | None = None
+) -> RWGeostoreResponse:
+    url = f"{RW_API_URL}/v2/geostore/{geostore_id}"
+
+    async with AsyncClient() as client:
+        if x_api_key is not None:
+            response: HTTPXResponse = await client.get(
+                url, headers={"x-api-key": x_api_key}
+            )
+        else:
+            response = await client.get(url)
 
     if response.status_code == 200:
         return RWGeostoreResponse.parse_obj(response.json())

@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Path
 from fastapi.responses import ORJSONResponse
+from pydantic.types import UUID4
 
 from ...crud import geostore
 from ...errors import BadRequestError, RecordNotFoundError
@@ -33,6 +34,7 @@ from ...utils.rw_api import (
     get_geostore_by_land_use_and_index,
     get_geostore_by_wdpa_id,
     get_view_geostore_by_id,
+    proxy_get_geostore,
 )
 
 router = APIRouter()
@@ -41,7 +43,7 @@ router = APIRouter()
 @router.post(
     "/",
     response_class=ORJSONResponse,
-    response_model=GeostoreResponse,
+    response_model=GeostoreResponse | RWGeostoreResponse,
     status_code=201,
     tags=["Geostore"],
 )
@@ -88,18 +90,28 @@ async def rw_get_view_geostore_by_id(
 @router.get(
     "/{geostore_id}",
     response_class=ORJSONResponse,
-    response_model=GeostoreResponse,
+    response_model=GeostoreResponse | RWGeostoreResponse,
     tags=["Geostore"],
 )
-async def get_any_geostore(*, geostore_id: UUID = Path(..., title="geostore_id")):
+async def get_any_geostore(
+    *,
+    geostore_id: UUID4 | str = Path(..., title="geostore_id"),
+    x_api_key: Annotated[str | None, Header()] = None,
+):
     """Retrieve GeoJSON representation for a given geostore ID of any
     dataset."""
-    try:
-        result: Geostore = await geostore.get_gfw_geostore_from_any_dataset(geostore_id)
-    except RecordNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-    return GeostoreResponse(data=result)
+    # If provided geostore ID follows UUID4 style, it's meant for GFW Data API
+    if isinstance(geostore_id, UUID4):
+        try:
+            result: Geostore = await geostore.get_gfw_geostore_from_any_dataset(
+                geostore_id
+            )
+            return GeostoreResponse(data=result)
+        except RecordNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+    # Otherwise, forward to RW geostore
+    result: RWGeostoreResponse = await proxy_get_geostore(geostore_id, x_api_key)
+    return result
 
 
 # Endpoints proxied to RW geostore microservice:
