@@ -9,14 +9,13 @@ class GeostoreOrigin(str, Enum):
 class LandUseType(str, Enum):
     fiber = "fiber"
     logging = "logging"
-    mining = "mining"
-    oil_palm = "oil_palm"
+    # mining = "mining"  # Present in the docs, but yields a 404
+    oilpalm = "oilpalm"
     tiger_conservation_landscapes = "tiger_conservation_landscapes"
 
 
 class LandUseTypeUseString(str, Enum):
-    fiber = "fiber"
+    fiber = "gfw_wood_fiber"
     logging = "gfw_logging"
-    mining = "mining"
-    oil_palm = "oil_palm"
-    tiger_conservation_landscapes = "tiger_conservation_landscapes"
+    oilpalm = "gfw_oil_palm"
+    tiger_conservation_landscapes = "tcl"
