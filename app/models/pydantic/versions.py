@@ -18,8 +18,12 @@ class Version(BaseRecord):
     metadata: Union[VersionMetadataOut, BaseModel]
     status: VersionStatus = VersionStatus.pending
 
-    # Each element of assets is a tuple (asset_type, assert_uri, asset_id)
-    assets: List[Tuple[str, str, str]] = list()
+    assets: List[Tuple[str, str, str]] = Field(
+        list(),
+        description="List of saved (non-pending and non-failed) assets, with "
+        " elements in the form: [asset_type, asset_uri, asset_id]. The list "
+        "of assets is sorted by the creation time of each asset."
+    )
 
 
 class VersionCreateIn(StrictBaseModel):
