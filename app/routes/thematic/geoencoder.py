@@ -92,7 +92,7 @@ def sanitize_names(
     """Turn any empty strings into Nones, enforces the admin level hierarchy,
     and optionally unaccents and decapitalizes names.
     """
-    names = []
+    names: List[str | None] = []
 
     if subregion and not region:
         raise HTTPException(
