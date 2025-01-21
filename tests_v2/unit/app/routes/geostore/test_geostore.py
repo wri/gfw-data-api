@@ -277,27 +277,58 @@ async def test_add_geostore_gfw_branch(
     assert mock_create_gfw_geostore.called is True
 
 
-# @pytest.mark.asyncio
-# async def test_get_geostore_rw_branch(
-#     async_client: AsyncClient, monkeypatch: MonkeyPatch
-# ):
-#     url = "/geostore/88db597b6bcd096fb80d1542cdc442be"
-#
-#     mock_proxy_get_geostore = AsyncMock(
-#         return_value=Response(status_code=200),
-#         spec=geostore.proxy_get_geostore
-#     )
-#
-#     monkeypatch.setattr(geostore, "proxy_get_geostore", mock_proxy_get_geostore)
-#
-#     response = await async_client.post(
-#         url,
-#         json=RWGeostoreIn(**create_rw_geostore_payload).dict(),
-#         follow_redirects=True
-#     )
-#
-#     assert response.json() == create_rw_geostore_output
-#     assert response.status_code == 200
-#
-#
-#
+@pytest.mark.asyncio
+async def test_get_geostore_rw_branch(
+    async_client: AsyncClient, monkeypatch: MonkeyPatch
+):
+    url = "/geostore/88db597b6bcd096fb80d1542cdc442be"
+
+    mock_proxy_get_geostore = AsyncMock(
+        return_value=RWGeostoreResponse(**example_geostore_resp),
+        spec=geostore.proxy_get_geostore,
+    )
+    monkeypatch.setattr(geostore, "proxy_get_geostore", mock_proxy_get_geostore)
+
+    mock_geostore_obj = MagicMock(spec=Geostore)
+    mock_get_gfw_geostore_from_any_dataset = AsyncMock(
+        return_value=mock_geostore_obj,
+        spec=crud_geostore.get_gfw_geostore_from_any_dataset,
+    )
+    monkeypatch.setattr(
+        crud_geostore,
+        "get_gfw_geostore_from_any_dataset",
+        mock_get_gfw_geostore_from_any_dataset,
+    )
+
+    _ = await async_client.get(url)
+
+    assert mock_proxy_get_geostore.called is True
+    assert mock_get_gfw_geostore_from_any_dataset.called is False
+
+
+@pytest.mark.asyncio
+async def test_get_geostore_gfw_branch(
+    async_client: AsyncClient, monkeypatch: MonkeyPatch
+):
+    url = "/geostore/db2b4428-bad2-fc94-1ea8-041597dc482c"
+
+    mock_proxy_get_geostore = AsyncMock(
+        return_value=RWGeostoreResponse(**example_geostore_resp),
+        spec=geostore.proxy_get_geostore,
+    )
+    monkeypatch.setattr(geostore, "proxy_get_geostore", mock_proxy_get_geostore)
+
+    mock_get_gfw_geostore_from_any_dataset = AsyncMock(
+        return_value=Geostore(**create_gfw_geostore_data),
+        spec=crud_geostore.get_gfw_geostore_from_any_dataset,
+    )
+    monkeypatch.setattr(
+        crud_geostore,
+        "get_gfw_geostore_from_any_dataset",
+        mock_get_gfw_geostore_from_any_dataset,
+    )
+
+    _ = await async_client.get(url)
+
+    assert mock_proxy_get_geostore.called is False
+    assert mock_get_gfw_geostore_from_any_dataset.called is True

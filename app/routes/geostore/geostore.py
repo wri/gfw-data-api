@@ -93,14 +93,16 @@ async def rw_get_view_geostore_by_id(
 )
 async def get_any_geostore(
     *,
-    geostore_id: UUID | str = Path(..., title="geostore_id"),
+    geostore_id: str | UUID = Path(..., title="geostore_id"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Retrieve GeoJSON representation for a given geostore ID of any
     dataset. If the provided ID is in UUID style, get from the GFW Data API.
     Otherwise, forward request to RW API.
     """
-    if isinstance(geostore_id, UUID):
+    # Checking for hyphens to see if the provided ID is a GUID or a UUID
+    # is a bit iffy. Happy to hear better ideas.
+    if "-" in geostore_id:
         try:
             result = await geostore.get_gfw_geostore_from_any_dataset(geostore_id)
             return GeostoreResponse(data=result)
