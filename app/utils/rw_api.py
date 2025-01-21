@@ -20,6 +20,7 @@ from ..models.pydantic.geostore import (
     RWAdminListResponse,
     RWCalcAreaForGeostoreResponse,
     RWFindByIDsResponse,
+    RWGeostoreIn,
     RWGeostoreResponse,
     RWViewGeostoreResponse,
 )
@@ -197,19 +198,19 @@ async def signup(name: str, email: str) -> User:
 
 
 async def create_rw_geostore(
-    payload: Dict, x_api_key: str | None = None
+    payload: RWGeostoreIn, x_api_key: str | None = None
 ) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v1/geostore"
 
     async with AsyncClient() as client:
         if x_api_key is not None:
             response: HTTPXResponse = await client.post(
-                url, json=payload, headers={"x-api-key": x_api_key}
+                url, json=payload.dict(), headers={"x-api-key": x_api_key}
             )
         else:
-            response = await client.post(url, json=payload)
+            response = await client.post(url, json=payload.dict())
 
-    if response.status_code == 200:
+    if response.status_code == 201:
         return RWGeostoreResponse.parse_obj(response.json())
     else:
         raise HTTPException(response.status_code, response.text)
