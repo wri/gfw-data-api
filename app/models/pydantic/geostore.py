@@ -4,7 +4,6 @@ from uuid import UUID
 
 from pydantic import validator
 
-from ..enum.geostore import LandUseTypeUseString
 from .base import BaseRecord, StrictBaseModel
 from .responses import Response
 
@@ -59,34 +58,6 @@ class GeostoreResponse(Response):
     data: Geostore
 
 
-class RWCalcAreaForGeostoreIn(StrictBaseModel):
-    properties: Dict
-    type: str
-    geometry: Geometry
-
-
-class RWCalcAreaForGeostoreAttributes(StrictBaseModel):
-    bbox: List[float]
-    areaHA: float
-
-
-class RWCalcAreaForGeostoreData(StrictBaseModel):
-    type: Literal["geomArea"]
-    attributes: RWCalcAreaForGeostoreAttributes
-
-
-class RWCalcAreaForGeostoreResponse(StrictBaseModel):
-    data: RWCalcAreaForGeostoreData
-
-
-class RWFindByIDsIn(StrictBaseModel):
-    geostores: List[str]
-
-
-class RWViewGeostoreResponse(StrictBaseModel):
-    view_link: str
-
-
 class AdminBoundaryInfo(StrictBaseModel):
     use: Dict
     simplifyThresh: float
@@ -99,27 +70,6 @@ class AdminBoundaryInfo(StrictBaseModel):
 
 class CreateGeostoreResponseInfo(StrictBaseModel):
     use: Dict
-
-
-class FindByIDsInfo(StrictBaseModel):
-    use: Dict
-    iso: str
-    name: str
-
-
-class LandUseUse(StrictBaseModel):
-    use: LandUseTypeUseString
-    id: int
-
-
-class LandUseInfo(StrictBaseModel):
-    use: LandUseUse
-    simplify: bool
-
-
-class WDPAInfo(StrictBaseModel):
-    use: Dict
-    wdpaid: int
 
 
 class RWAdminListItem(StrictBaseModel):
@@ -144,7 +94,7 @@ class RWGeostoreAttributes(StrictBaseModel):
     areaHa: float
     bbox: List[float]
     lock: bool
-    info: AdminBoundaryInfo | CreateGeostoreResponseInfo | FindByIDsInfo | LandUseInfo | WDPAInfo
+    info: AdminBoundaryInfo | CreateGeostoreResponseInfo
 
 
 class RWGeostore(StrictBaseModel):
@@ -155,30 +105,3 @@ class RWGeostore(StrictBaseModel):
 
 class RWGeostoreResponse(StrictBaseModel):
     data: RWGeostore
-
-
-class RWFindByIDsGeostoreData(StrictBaseModel):
-    type: Literal["geoStore"]
-    id: str
-    attributes: RWGeostoreAttributes
-
-
-class RWFindByIDsDataGeostore(StrictBaseModel):
-    data: RWFindByIDsGeostoreData
-
-
-class RWFindByIDsData(StrictBaseModel):
-    geostoreId: str
-    geostore: RWFindByIDsGeostoreData
-    returned: int
-
-
-class RWFindByIDsInfo(StrictBaseModel):
-    found: int
-    foundIDs: List[str]
-    returned: int
-
-
-class RWFindByIDsResponse(StrictBaseModel):
-    data: List[RWFindByIDsData]
-    info: RWFindByIDsInfo

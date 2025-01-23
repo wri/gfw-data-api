@@ -1,6 +1,6 @@
 """Retrieve a geometry using its md5 hash for a given dataset, user defined
 geometries in the datastore."""
-from typing import Annotated, Dict
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Path
@@ -8,31 +8,20 @@ from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
 from ...errors import BadRequestError, RecordNotFoundError
-from ...models.enum.geostore import LandUseType
 from ...models.pydantic.geostore import (
     Geostore,
     GeostoreIn,
     GeostoreResponse,
     RWAdminListResponse,
-    RWCalcAreaForGeostoreIn,
-    RWCalcAreaForGeostoreResponse,
-    RWFindByIDsIn,
-    RWFindByIDsResponse,
     RWGeostoreIn,
     RWGeostoreResponse,
-    RWViewGeostoreResponse,
 )
 from ...utils.rw_api import (
-    calc_area,
     create_rw_geostore,
-    find_by_ids,
     get_admin_list,
     get_boundary_by_country_id,
     get_boundary_by_region_id,
     get_boundary_by_subregion_id,
-    get_geostore_by_land_use_and_index,
-    get_geostore_by_wdpa_id,
-    get_view_geostore_by_id,
     proxy_get_geostore,
 )
 
@@ -63,26 +52,6 @@ async def add_new_geostore(
         return GeostoreResponse(data=new_user_area)
     except BadRequestError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.get(
-    "/{rw_geostore_id}/view",
-    response_class=ORJSONResponse,
-    response_model=RWViewGeostoreResponse,
-    tags=["Geostore"],
-)
-async def rw_get_view_geostore_by_id(
-    *,
-    rw_geostore_id: str = Path(..., title="rw_geostore_id"),
-    x_api_key: Annotated[str | None, Header()] = None,
-):
-    """Get a geostore object by Geostore id and view at GeoJSON.io
-    (proxies request to the RW API)"""
-    result: RWViewGeostoreResponse = await get_view_geostore_by_id(
-        rw_geostore_id, x_api_key
-    )
-
-    return result
 
 
 @router.get(
@@ -117,6 +86,7 @@ async def get_any_geostore(
     response_class=ORJSONResponse,
     response_model=RWAdminListResponse,
     tags=["Geostore"],
+    include_in_schema=False,
 )
 async def rw_get_admin_list(x_api_key: Annotated[str | None, Header()] = None):
     """Get all Geostore IDs, names and country codes
@@ -131,6 +101,7 @@ async def rw_get_admin_list(x_api_key: Annotated[str | None, Header()] = None):
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
     tags=["Geostore"],
+    include_in_schema=False,
 )
 async def rw_get_boundary_by_country_id(
     *,
@@ -150,6 +121,7 @@ async def rw_get_boundary_by_country_id(
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
     tags=["Geostore"],
+    include_in_schema=False,
 )
 async def rw_get_boundary_by_region_id(
     *,
@@ -171,6 +143,7 @@ async def rw_get_boundary_by_region_id(
     response_class=ORJSONResponse,
     response_model=RWGeostoreResponse,
     tags=["Geostore"],
+    include_in_schema=False,
 )
 async def rw_get_boundary_by_subregion_id(
     *,
@@ -185,83 +158,5 @@ async def rw_get_boundary_by_subregion_id(
     result: RWGeostoreResponse = await get_boundary_by_subregion_id(
         country_id, region_id, subregion_id, x_api_key
     )
-
-    return result
-
-
-@router.post(
-    "/area",
-    response_class=ORJSONResponse,
-    response_model=RWCalcAreaForGeostoreResponse,
-    tags=["Geostore"],
-)
-async def rw_calc_area(
-    request: RWCalcAreaForGeostoreIn,
-    x_api_key: Annotated[str | None, Header()] = None,
-):
-    """Calculate the area of a provided Geostore object
-    (proxies request to the RW API)"""
-    payload: Dict = request.dict()
-
-    result: RWCalcAreaForGeostoreResponse = await calc_area(payload, x_api_key)
-
-    return result
-
-
-@router.post(
-    "/find_by_ids",
-    response_class=ORJSONResponse,
-    response_model=RWFindByIDsResponse,
-    tags=["Geostore"],
-)
-async def rw_find_by_ids(
-    request: RWFindByIDsIn,
-    x_api_key: Annotated[str | None, Header()] = None,
-):
-    """Get one or more geostore objects by IDs
-    (proxies request to the RW API)"""
-    payload: Dict = request.dict()
-
-    result: RWFindByIDsResponse = await find_by_ids(payload, x_api_key)
-
-    return result
-
-
-@router.get(
-    "/use/{land_use_type}/{index}",
-    response_class=ORJSONResponse,
-    response_model=RWGeostoreResponse,
-    tags=["Geostore"],
-)
-async def rw_get_geostore_by_land_use_and_index(
-    *,
-    land_use_type: LandUseType = Path(..., title="land_use_type"),
-    index: str = Path(..., title="index"),
-    x_api_key: Annotated[str | None, Header()] = None,
-):
-    """Get a geostore object by land use type name and id
-    (proxies request to the RW API)"""
-    result: RWGeostoreResponse = await get_geostore_by_land_use_and_index(
-        land_use_type, index, x_api_key
-    )
-
-    return result
-
-
-@router.get(
-    "/wdpa/{wdpa_id}",
-    response_class=ORJSONResponse,
-    response_model=RWGeostoreResponse,
-    tags=["Geostore"],
-)
-async def rw_get_geostore_by_wdpa_id(
-    *,
-    wdpa_id: str = Path(..., title="wdpa_id"),
-    x_api_key: Annotated[str | None, Header()] = None,
-):
-    """Get a geostore object by WDPA ID
-    (proxies request to the RW API)"""
-
-    result: RWGeostoreResponse = await get_geostore_by_wdpa_id(wdpa_id, x_api_key)
 
     return result
