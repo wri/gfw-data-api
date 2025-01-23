@@ -8,6 +8,65 @@ resource "aws_api_gateway_rest_api" "api_gw_api" {
   }
 }
 
+# Proxy requests to look-up geostores by land use type to RW
+resource "aws_api_gateway_resource" "geostore_use" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id   = aws_api_gateway_rest_api.api_gw_api.root_resource_id
+  path_part   = "geostore"
+}
+
+resource "aws_api_gateway_resource" "use" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id   = aws_api_gateway_resource.geostore_use.id
+  path_part   = "use"
+}
+
+resource "aws_api_gateway_resource" "use_type_id" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id   = aws_api_gateway_resource.use.id
+  path_part   = "{use_type}/{id}"
+}
+
+resource "aws_api_gateway_method" "geostore_proxy_get" {
+  rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
+  resource_id   = aws_api_gateway_resource.use_type_id.id
+  http_method   = "GET"
+  authorization = "NONE"
+
+  request_parameters = {
+    "method.request.path.use_type" = true
+    "method.request.path.id"       = true
+  }
+}
+
+resource "aws_api_gateway_integration" "geostore_proxy_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api_gw_api.id
+  resource_id             = aws_api_gateway_resource.use_type_id.id
+  http_method             = aws_api_gateway_method.geostore_proxy_get.http_method
+  type                    = "HTTP_PROXY"
+  uri                     = "https://api.resourcewatch.org/v2/geostore/use/{use_type}/{id}"
+  integration_http_method = "GET"
+  passthrough_behavior    = "WHEN_NO_MATCH"
+
+  request_parameters = {
+    "integration.request.path.use_type"   = "method.request.path.use_type",
+    "integration.request.path.id"         = "method.request.path.id"
+  }
+}
+
+resource "aws_api_gateway_method_settings" "geostore_settings" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  stage_name  = aws_api_gateway_stage.api_gw_stage.stage_name
+  method_path = "GET /geostore/use/{use_type}/{id}"
+
+  settings {
+    metrics_enabled    = true
+    data_trace_enabled = true
+    logging_level      = "INFO"
+  }
+}
+
+
 resource "aws_api_gateway_resource" "dataset_parent" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   parent_id   = aws_api_gateway_rest_api.api_gw_api.root_resource_id
@@ -215,7 +274,8 @@ resource "aws_api_gateway_deployment" "api_gw_dep" {
     module.download_shapes_endpoint["shp"].integration_point,
     module.download_shapes_endpoint["gpkg"].integration_point,
     module.download_shapes_endpoint["geotiff"].integration_point,
-    module.unprotected_endpoints.integration_point
+    module.unprotected_endpoints.integration_point,
+    aws_api_gateway_integration.geostore_proxy_integration
   ]
 
   lifecycle {
