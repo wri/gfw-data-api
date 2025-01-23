@@ -62,21 +62,23 @@ async def add_new_geostore(
 )
 async def get_any_geostore(
     *,
-    geostore_id: str | UUID = Path(..., title="geostore_id"),
+    geostore_id: str = Path(..., title="geostore_id"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Retrieve GeoJSON representation for a given geostore ID of any
     dataset. If the provided ID is in UUID style, get from the GFW Data API.
     Otherwise, forward request to RW API.
     """
-    # Checking for hyphens to see if the provided ID is a GUID or a UUID
-    # is a bit iffy. Happy to hear better ideas.
-    if "-" in geostore_id:
-        try:
-            result = await geostore.get_gfw_geostore_from_any_dataset(geostore_id)
-            return GeostoreResponse(data=result)
-        except RecordNotFoundError as e:
-            raise HTTPException(status_code=404, detail=str(e))
+    try:
+        geostore_uuid = UUID(geostore_id)
+        if str(geostore_uuid) == geostore_id:
+            try:
+                result = await geostore.get_gfw_geostore_from_any_dataset(geostore_uuid)
+                return GeostoreResponse(data=result)
+            except RecordNotFoundError as e:
+                raise HTTPException(status_code=404, detail=str(e))
+    except (AttributeError, ValueError):
+        pass
     result = await proxy_get_geostore(geostore_id, x_api_key)
     return result
 

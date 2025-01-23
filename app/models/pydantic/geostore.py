@@ -87,6 +87,11 @@ class RWAdminListResponse(StrictBaseModel):
     data: List[RWAdminListItem | RWAdminListItemWithName]
 
 
+class WDPAInfo(StrictBaseModel):
+    use: Dict
+    wdpaid: int
+
+
 class RWGeostoreAttributes(StrictBaseModel):
     geojson: FeatureCollection
     hash: str
@@ -94,7 +99,7 @@ class RWGeostoreAttributes(StrictBaseModel):
     areaHa: float
     bbox: List[float]
     lock: bool
-    info: AdminBoundaryInfo | CreateGeostoreResponseInfo
+    info: AdminBoundaryInfo | CreateGeostoreResponseInfo | WDPAInfo
 
 
 class RWGeostore(StrictBaseModel):

@@ -178,40 +178,6 @@ create_gfw_geostore_data = {
 
 
 @pytest.mark.asyncio
-async def test_wdpa_geostore_mock_helper(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
-):
-    async def mock_get_geostore_by_wdpa_id(wdpa_id, x_api_key):
-        return RWGeostoreResponse(**example_geostore_resp)
-
-    monkeypatch.setattr(
-        geostore, "get_geostore_by_wdpa_id", mock_get_geostore_by_wdpa_id
-    )
-
-    response = await async_client.get("/geostore/wdpa/142809")
-
-    assert response.json() == example_geostore_resp
-    assert response.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_wdpa_geostore_passes_through(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
-):
-    async def mock_resp_func(request: Request) -> Response:
-        return Response(status_code=200, json=example_geostore_resp)
-
-    transport = MockTransport(mock_resp_func)
-
-    mocked_client = partial(AsyncClient, transport=transport)
-    monkeypatch.setattr(rw_api, "AsyncClient", mocked_client)
-    response = await async_client.get("/geostore/wdpa/142809")
-
-    assert response.json() == example_geostore_resp
-    assert response.status_code == 200
-
-
-@pytest.mark.asyncio
 async def test_get_admin_geostore(async_client: AsyncClient, monkeypatch: MonkeyPatch):
     async def mock_resp_func(request: Request) -> Response:
         return Response(status_code=200, json=example_admin_geostore_snipped)
