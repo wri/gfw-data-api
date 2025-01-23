@@ -128,7 +128,11 @@ async def update_dataset(
     request: DatasetUpdateIn,
     user: User = Depends(get_owner),
 ) -> DatasetResponse:
-    """Update metadata, accessibility or ownership of a dataset."""
+    """Update metadata, accessibility or ownership of a dataset.
+
+    Individual fields of the metadata can be modified, without affecting other
+    existing fields.
+    """
     input_data: Dict = request.dict(exclude_none=True, by_alias=True)
 
     if request.owner_id is not None:
