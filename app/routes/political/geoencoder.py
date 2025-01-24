@@ -47,38 +47,8 @@ async def geoencoder(params: Annotated[GeoencoderQueryParams, Query()]):
         dataset, version_str, sql, None
     )
 
-    return GeoencoderResponse(
-        **{
-            "data": {
-                "adminSource": params.admin_source,
-                "adminVersion": params.admin_version,
-                "matches": [
-                    {
-                        "country": {
-                            "id": match["gid_0"].rsplit("_")[0],
-                            "name": match["country"],
-                        },
-                        "region": {
-                            "id": (
-                                (match["gid_1"].rsplit("_")[0]).split(".")[1]
-                                if adm_level >= 1
-                                else None
-                            ),
-                            "name": match["name_1"] if adm_level >= 1 else None,
-                        },
-                        "subregion": {
-                            "id": (
-                                (match["gid_2"].rsplit("_")[0]).split(".")[2]
-                                if adm_level >= 2
-                                else None
-                            ),
-                            "name": match["name_2"] if adm_level >= 2 else None,
-                        },
-                    }
-                    for match in json_data
-                ],
-            }
-        }
+    return form_geoencoder_response(
+        params.admin_source, params.admin_version, adm_level, json_data
     )
 
 
@@ -159,3 +129,37 @@ def lookup_admin_source_version(source, version) -> str:
     deployed_version_in_data_api = per_env_admin_boundary_versions[ENV][source][version]
 
     return deployed_version_in_data_api
+
+
+def form_geoencoder_response(
+    admin_source, admin_version, adm_level, match_list
+) -> GeoencoderResponse:
+    matches = []
+
+    for match in match_list:
+        country = {"id": extract_level_gid(0, match), "name": match["country"]}
+
+        if adm_level < 1:
+            region = {"id": None, "name": None}
+        else:
+            region = {"id": extract_level_gid(1, match), "name": match["name_1"]}
+
+        if adm_level < 2:
+            subregion = {"id": None, "name": None}
+        else:
+            subregion = {"id": extract_level_gid(2, match), "name": match["name_2"]}
+
+        matches.append({"country": country, "region": region, "subregion": subregion})
+
+    data = {
+        "adminSource": admin_source,
+        "adminVersion": admin_version,
+        "matches": matches,
+    }
+    resp = GeoencoderResponse(**{"data": data})
+    return resp
+
+
+def extract_level_gid(gid_level, match):
+    gid_level_name = f"gid_{gid_level}"
+    return (match[gid_level_name].rsplit("_")[0]).split(".")[gid_level]
