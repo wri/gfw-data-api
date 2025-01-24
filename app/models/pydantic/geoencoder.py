@@ -11,11 +11,18 @@ from app.settings.globals import ENV, per_env_admin_boundary_versions
 class GeoencoderQueryParams(StrictBaseModel):
     admin_source: str = Field(
         "GADM",
-        description="The source of administrative boundaries to use.",
+        description=(
+            "The source of administrative boundaries to use "
+            "(currently the only valid choice is 'GADM')."
+        ),
     )
     admin_version: str = Query(
         ...,
-        description="The version of the administrative boundaries to use.",
+        description=(
+            "The version of the administrative boundaries to use "
+            "(note that this represents the release of the source dataset, "
+            "not the GFW Data API's idea of the version in the database)."
+        ),
     )
     country: str = Query(
         ...,
@@ -31,7 +38,9 @@ class GeoencoderQueryParams(StrictBaseModel):
     )
     normalize_search: bool = Query(
         True,
-        description="Whether or not to perform a case- and accent-insensitive search.",
+        description=(
+            "Whether or not to perform a case- and " "accent-insensitive search."
+        ),
     )
 
     @root_validator(pre=True)
@@ -39,12 +48,13 @@ class GeoencoderQueryParams(StrictBaseModel):
         source = values.get("admin_source")
         if source is None:
             raise ValueError(
-                "Must provide admin_source or leave unset for default of GADM"
+                "You must provide admin_source or leave unset for the "
+                " default value of 'GADM'."
             )
 
         version = values.get("admin_version")
         if version is None:
-            raise ValueError("Must provide an admin_version")
+            raise ValueError("You must provide an admin_version")
 
         sources_in_this_env = per_env_admin_boundary_versions[ENV]
 
