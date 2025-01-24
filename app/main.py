@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.errors import http_error_handler
+from app.routes.political import geoencoder
 
 from .application import app
 from .middleware import no_cache_response_header, redirect_latest, set_db_mode
@@ -20,7 +21,6 @@ from .routes import health
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.authentication import authentication
-from .routes.thematic import geoencoder
 from .routes.datasets import asset as version_asset
 from .routes.datasets import (
     dataset,
@@ -130,10 +130,10 @@ for r in dataset_routers:
 
 
 ################
-# THEMATIC API #
+# Political API #
 ################
 
-app.include_router(geoencoder.router, prefix="/thematic")
+app.include_router(geoencoder.router, prefix="/political")
 
 
 ###############

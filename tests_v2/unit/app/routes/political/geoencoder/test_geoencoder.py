@@ -5,10 +5,10 @@ from fastapi import HTTPException
 from httpx import AsyncClient
 
 from app.models.pydantic.geostore import GeostoreCommon
-from app.routes.thematic import geoencoder
-from app.routes.thematic.geoencoder import _admin_boundary_lookup_sql, sanitize_names
+from app.routes.political import geoencoder
+from app.routes.political.geoencoder import _admin_boundary_lookup_sql, sanitize_names
 
-ENDPOINT_UNDER_TEST = "/thematic/geoencoder"
+ENDPOINT_UNDER_TEST = "/political/geoencoder"
 
 
 @pytest.mark.asyncio
@@ -134,7 +134,7 @@ async def test_geoencoder_no_admin_version(async_client: AsyncClient) -> None:
 
     resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
 
-    assert "Must provide an admin_version" in resp.text
+    assert "You must provide an admin_version" in resp.text
     assert resp.status_code == 422
 
 

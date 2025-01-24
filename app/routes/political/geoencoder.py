@@ -15,8 +15,7 @@ router = APIRouter()
 )
 async def geoencoder(params: Annotated[GeoencoderQueryParams, Query()]):
     """Look up administrative boundary IDs matching a specified country name
-    (and region name and subregion name, if specified).
-    """
+    (and region name and subregion name, if specified)."""
     admin_source_to_dataset: Dict[str, str] = {"GADM": "gadm_administrative_boundaries"}
 
     try:
@@ -90,8 +89,7 @@ def sanitize_names(
     subregion: str | None,
 ) -> List[str | None]:
     """Turn any empty strings into Nones, enforces the admin level hierarchy,
-    and optionally unaccents and decapitalizes names.
-    """
+    and optionally unaccents and decapitalizes names."""
     names: List[str | None] = []
 
     if subregion and not region:
@@ -113,9 +111,8 @@ def sanitize_names(
 def determine_admin_level(
     country: str | None, region: str | None, subregion: str | None
 ) -> int:
-    """Infer the native admin level of a request based on the presence of
-    non-empty fields
-    """
+    """Infer the native admin level of a request based on the presence of non-
+    empty fields."""
     if subregion:
         return 2
     elif region:
@@ -134,9 +131,8 @@ def _admin_boundary_lookup_sql(
     region_name: str | None,
     subregion_name: str | None,
 ) -> str:
-    """Generate the SQL required to look up administrative boundary
-    IDs by name.
-    """
+    """Generate the SQL required to look up administrative boundary IDs by
+    name."""
     name_fields: List[str] = ["country", "name_1", "name_2"]
     if normalize_search:
         match_name_fields = [name_field + "_normalized" for name_field in name_fields]
