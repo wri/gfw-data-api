@@ -5,10 +5,10 @@ from fastapi import HTTPException
 from httpx import AsyncClient
 
 from app.models.pydantic.geostore import GeostoreCommon
-from app.routes.political import geoencoder
-from app.routes.political.geoencoder import _admin_boundary_lookup_sql, sanitize_names
+from app.routes.political import id_lookup
+from app.routes.political.id_lookup import _admin_boundary_lookup_sql, sanitize_names
 
-ENDPOINT_UNDER_TEST = "/political/geoencoder"
+ENDPOINT_UNDER_TEST = "/political/id-lookup"
 
 
 @pytest.mark.asyncio
@@ -129,7 +129,7 @@ async def test__admin_boundary_lookup_sql_no_single_quotes() -> None:
 
 
 @pytest.mark.asyncio
-async def test_geoencoder_no_admin_version(async_client: AsyncClient) -> None:
+async def test_id_lookup_no_admin_version(async_client: AsyncClient) -> None:
     params = {"country": "Canada"}
 
     resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
@@ -139,7 +139,7 @@ async def test_geoencoder_no_admin_version(async_client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_geoencoder_nonexistant_version(async_client: AsyncClient) -> None:
+async def test_id_lookup_nonexistant_version(async_client: AsyncClient) -> None:
     params = {"country": "Canada", "admin_version": "4.0"}
 
     resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
@@ -149,7 +149,7 @@ async def test_geoencoder_nonexistant_version(async_client: AsyncClient) -> None
 
 
 @pytest.mark.asyncio
-async def test_geoencoder_nonexistant_version_lists_existing(
+async def test_id_lookup_nonexistant_version_lists_existing(
     async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     params = {"country": "Canada", "admin_version": "4.0"}
@@ -161,7 +161,7 @@ async def test_geoencoder_nonexistant_version_lists_existing(
 
 
 @pytest.mark.asyncio
-async def test_geoencoder_bad_boundary_source(async_client: AsyncClient) -> None:
+async def test_id_lookup_bad_boundary_source(async_client: AsyncClient) -> None:
     params = {
         "admin_source": "bobs_boundaries",
         "admin_version": "4.1",
@@ -176,7 +176,7 @@ async def test_geoencoder_bad_boundary_source(async_client: AsyncClient) -> None
 
 
 @pytest.mark.asyncio
-async def test_geoencoder_no_matches(
+async def test_id_lookup_no_matches(
     async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     admin_source = "GADM"
@@ -189,7 +189,7 @@ async def test_geoencoder_no_matches(
     }
 
     monkeypatch.setattr(
-        geoencoder, "_query_dataset_json", _query_dataset_json_mocked_no_results
+        id_lookup, "_query_dataset_json", _query_dataset_json_mocked_no_results
     )
 
     resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
@@ -206,7 +206,7 @@ async def test_geoencoder_no_matches(
 
 
 @pytest.mark.asyncio
-async def test_geoencoder_matches_full(
+async def test_id_lookup_matches_full(
     async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     admin_source = "GADM"
@@ -221,7 +221,7 @@ async def test_geoencoder_matches_full(
     }
 
     monkeypatch.setattr(
-        geoencoder, "_query_dataset_json", _query_dataset_json_mocked_results
+        id_lookup, "_query_dataset_json", _query_dataset_json_mocked_results
     )
 
     resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)
@@ -244,7 +244,7 @@ async def test_geoencoder_matches_full(
 
 
 @pytest.mark.asyncio
-async def test_geoencoder_matches_hide_extraneous(
+async def test_id_lookup_matches_hide_extraneous(
     async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     admin_source = "GADM"
@@ -257,7 +257,7 @@ async def test_geoencoder_matches_hide_extraneous(
     }
 
     monkeypatch.setattr(
-        geoencoder, "_query_dataset_json", _query_dataset_json_mocked_results
+        id_lookup, "_query_dataset_json", _query_dataset_json_mocked_results
     )
 
     resp = await async_client.get(ENDPOINT_UNDER_TEST, params=params)

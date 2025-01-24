@@ -10,10 +10,8 @@ from app.settings.globals import ENV, per_env_admin_boundary_versions
 router = APIRouter()
 
 
-@router.get(
-    "/geoencoder", tags=["Geoencoder"], status_code=200, include_in_schema=False
-)
-async def geoencoder(params: Annotated[GeoencoderQueryParams, Query()]):
+@router.get("/id-lookup", status_code=200, include_in_schema=False)
+async def id_lookup(params: Annotated[GeoencoderQueryParams, Query()]):
     """Look up administrative boundary IDs matching a specified country name
     (and region name and subregion name, if specified)."""
     admin_source_to_dataset: Dict[str, str] = {"GADM": "gadm_administrative_boundaries"}

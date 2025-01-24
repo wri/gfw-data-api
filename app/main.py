@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.errors import http_error_handler
-from app.routes.political import geoencoder
+from app.routes.political import id_lookup
 
 from .application import app
 from .middleware import no_cache_response_header, redirect_latest, set_db_mode
@@ -130,10 +130,10 @@ for r in dataset_routers:
 
 
 ################
-# Political API #
+# POLITICAL API #
 ################
 
-app.include_router(geoencoder.router, prefix="/political")
+app.include_router(id_lookup.router, prefix="/political")
 
 
 ###############
