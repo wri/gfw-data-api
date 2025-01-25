@@ -21,15 +21,22 @@ resource "aws_api_gateway_resource" "use" {
   path_part   = "use"
 }
 
-resource "aws_api_gateway_resource" "use_type_id" {
+resource "aws_api_gateway_resource" "use_type" {
   rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
   parent_id   = aws_api_gateway_resource.use.id
-  path_part   = "{use_type}/{id}"
+  path_part   = "{use_type}"
 }
+
+resource "aws_api_gateway_resource" "id" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id   = aws_api_gateway_resource.use_type.id
+  path_part   = "{id}"
+}
+
 
 resource "aws_api_gateway_method" "geostore_proxy_get" {
   rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id   = aws_api_gateway_resource.use_type_id.id
+  resource_id   = aws_api_gateway_resource.id.id
   http_method   = "GET"
   authorization = "NONE"
 
@@ -41,7 +48,7 @@ resource "aws_api_gateway_method" "geostore_proxy_get" {
 
 resource "aws_api_gateway_integration" "geostore_proxy_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api_gw_api.id
-  resource_id             = aws_api_gateway_resource.use_type_id.id
+  resource_id             = aws_api_gateway_resource.id.id
   http_method             = aws_api_gateway_method.geostore_proxy_get.http_method
   type                    = "HTTP_PROXY"
   uri                     = "https://api.resourcewatch.org/v2/geostore/use/{use_type}/{id}"
@@ -97,6 +104,41 @@ module "query_resource" {
   parent_id   = aws_api_gateway_resource.query_parent.id
   path_part   = "{proxy+}"
 }
+
+
+module "rw_geostore_proxy_resource" {
+  source      = "../resource"
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id   = aws_api_gateway_resource.geostore_use.id
+  path_part   = "{proxy+}"
+}
+
+
+module "rw_geostore_proxy" {
+  source = "../endpoint"
+
+  rest_api_id  = aws_api_gateway_rest_api.api_gw_api.id
+  api_resource = aws_api_gateway_integration.geostore_proxy_integration
+
+  require_api_key = false
+  http_method     = "GET"
+  authorization   = "NONE"
+
+  integration_parameters = {
+    "integration.request.path.use_type" = "method.request.path.use_type"
+    "integration.request.path.id"       = "method.request.path.id",
+    "integration.request.path.proxy"    = "method.request.path.proxy"
+  }
+
+  method_parameters = {
+    "method.request.path.use_type" = true,
+    "method.request.path.id"       = true
+    "method.request.path.proxy"    = true
+  }
+
+  integration_uri = "https://api.resourcewatch.org/v2/geostore/use/{use_type}/{id}"
+}
+
 
 module "query_get" {
   source = "../endpoint"
@@ -275,7 +317,7 @@ resource "aws_api_gateway_deployment" "api_gw_dep" {
     module.download_shapes_endpoint["gpkg"].integration_point,
     module.download_shapes_endpoint["geotiff"].integration_point,
     module.unprotected_endpoints.integration_point,
-    aws_api_gateway_integration.geostore_proxy_integration
+    module.rw_geostore_proxy.integration_point
   ]
 
   lifecycle {
