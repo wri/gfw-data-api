@@ -8,7 +8,7 @@ from app.models.pydantic.responses import Response
 from app.settings.globals import ENV, per_env_admin_boundary_versions
 
 
-class GeoencoderQueryParams(StrictBaseModel):
+class AdminIDLookupQueryParams(StrictBaseModel):
     admin_source: str = Field(
         "GADM",
         description=(
@@ -39,7 +39,7 @@ class GeoencoderQueryParams(StrictBaseModel):
     normalize_search: bool = Query(
         True,
         description=(
-            "Whether or not to perform a case- and " "accent-insensitive search."
+            "Whether or not to perform a case- and accent-insensitive search."
         ),
     )
 
@@ -49,7 +49,7 @@ class GeoencoderQueryParams(StrictBaseModel):
         if source is None:
             raise ValueError(
                 "You must provide admin_source or leave unset for the "
-                " default value of 'GADM'."
+                "default value of 'GADM'."
             )
 
         version = values.get("admin_version")
@@ -76,22 +76,22 @@ class GeoencoderQueryParams(StrictBaseModel):
         return values
 
 
-class GeoencoderMatchElement(StrictBaseModel):
+class AdminIDLookupMatchElement(StrictBaseModel):
     id: str | None
     name: str | None
 
 
-class GeoencoderMatch(StrictBaseModel):
-    country: GeoencoderMatchElement
-    region: GeoencoderMatchElement
-    subregion: GeoencoderMatchElement
+class AdminIDLookupMatch(StrictBaseModel):
+    country: AdminIDLookupMatchElement
+    region: AdminIDLookupMatchElement
+    subregion: AdminIDLookupMatchElement
 
 
-class GeoencoderResponseData(StrictBaseModel):
+class AdminIDLookupResponseData(StrictBaseModel):
     adminSource: str
     adminVersion: str
-    matches: List[GeoencoderMatch]
+    matches: List[AdminIDLookupMatch]
 
 
-class GeoencoderResponse(Response):
-    data: GeoencoderResponseData
+class AdminIDLookupResponse(Response):
+    data: AdminIDLookupResponseData

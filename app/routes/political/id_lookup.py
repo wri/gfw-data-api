@@ -3,7 +3,10 @@ from typing import Annotated, Any, Dict, List
 from fastapi import APIRouter, HTTPException, Query
 from unidecode import unidecode
 
-from app.models.pydantic.geoencoder import GeoencoderQueryParams, GeoencoderResponse
+from app.models.pydantic.political import (
+    AdminIDLookupQueryParams,
+    AdminIDLookupResponse,
+)
 from app.routes.datasets.queries import _query_dataset_json
 from app.settings.globals import ENV, per_env_admin_boundary_versions
 
@@ -11,7 +14,7 @@ router = APIRouter()
 
 
 @router.get("/id-lookup", status_code=200, include_in_schema=False)
-async def id_lookup(params: Annotated[GeoencoderQueryParams, Query()]):
+async def id_lookup(params: Annotated[AdminIDLookupQueryParams, Query()]):
     """Look up administrative boundary IDs matching a specified country name
     (and region name and subregion name, if specified)."""
     admin_source_to_dataset: Dict[str, str] = {"GADM": "gadm_administrative_boundaries"}
@@ -31,7 +34,7 @@ async def id_lookup(params: Annotated[GeoencoderQueryParams, Query()]):
         params.admin_source, params.admin_version
     )
 
-    names: List[str | None] = sanitize_names(
+    names: List[str | None] = normalize_names(
         params.normalize_search, params.country, params.region, params.subregion
     )
 
@@ -45,12 +48,12 @@ async def id_lookup(params: Annotated[GeoencoderQueryParams, Query()]):
         dataset, version_str, sql, None
     )
 
-    return form_geoencoder_response(
+    return form_admin_id_lookup_response(
         params.admin_source, params.admin_version, adm_level, json_data
     )
 
 
-def sanitize_names(
+def normalize_names(
     normalize_search: bool,
     country: str | None,
     region: str | None,
@@ -122,16 +125,16 @@ def _admin_boundary_lookup_sql(
 
 
 def lookup_admin_source_version(source, version) -> str:
-    # The GeoencoderQueryParams validator should have already ensured
+    # The AdminIDLookupQueryParams validator should have already ensured
     # that the following is safe
     deployed_version_in_data_api = per_env_admin_boundary_versions[ENV][source][version]
 
     return deployed_version_in_data_api
 
 
-def form_geoencoder_response(
+def form_admin_id_lookup_response(
     admin_source, admin_version, adm_level, match_list
-) -> GeoencoderResponse:
+) -> AdminIDLookupResponse:
     matches = []
 
     for match in match_list:
@@ -154,7 +157,7 @@ def form_geoencoder_response(
         "adminVersion": admin_version,
         "matches": matches,
     }
-    resp = GeoencoderResponse(**{"data": data})
+    resp = AdminIDLookupResponse(**{"data": data})
     return resp
 
 

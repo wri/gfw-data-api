@@ -6,7 +6,7 @@ from httpx import AsyncClient
 
 from app.models.pydantic.geostore import GeostoreCommon
 from app.routes.political import id_lookup
-from app.routes.political.id_lookup import _admin_boundary_lookup_sql, sanitize_names
+from app.routes.political.id_lookup import _admin_boundary_lookup_sql, normalize_names
 
 ENDPOINT_UNDER_TEST = "/political/id-lookup"
 
@@ -18,7 +18,7 @@ async def test_sanitize_names_pass_through() -> None:
     subregion = "SUBREGION"
     normalize = False
 
-    names = sanitize_names(normalize, country, region, subregion)
+    names = normalize_names(normalize, country, region, subregion)
 
     assert names == [country, region, subregion]
 
@@ -30,7 +30,7 @@ async def test_sanitize_names_normalize() -> None:
     subregion = "SÜBREGION"
     normalize = True
 
-    names = sanitize_names(normalize, country, region, subregion)
+    names = normalize_names(normalize, country, region, subregion)
 
     assert names == ["ficticious de san mexico", "some region", "subregion"]
 
@@ -42,7 +42,7 @@ async def test_sanitize_names_tolerate_empty() -> None:
     subregion = ""
     normalize = False
 
-    names = sanitize_names(normalize, country, region, subregion)
+    names = normalize_names(normalize, country, region, subregion)
 
     assert names == [country, region, None]
 
@@ -55,7 +55,7 @@ async def test_sanitize_names_tolerate_enforce_hierarchy() -> None:
     normalize = False
 
     try:
-        _ = sanitize_names(normalize, country, region, subregion)
+        _ = normalize_names(normalize, country, region, subregion)
     except HTTPException as e:
         assert (
             e.detail == "If subregion is specified, region must be specified as well."
