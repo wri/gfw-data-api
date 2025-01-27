@@ -93,6 +93,16 @@ class WDPAInfo(StrictBaseModel):
     wdpaid: int
 
 
+class LandUseUse(StrictBaseModel):
+    use: LandUseTypeUseString
+    id: int
+
+
+class LandUseInfo(StrictBaseModel):
+    use: LandUseUse
+    simplify: bool
+
+
 class RWGeostoreAttributes(StrictBaseModel):
     geojson: FeatureCollection
     hash: str
@@ -100,7 +110,7 @@ class RWGeostoreAttributes(StrictBaseModel):
     areaHa: float
     bbox: List[float]
     lock: bool
-    info: AdminBoundaryInfo | CreateGeostoreResponseInfo | WDPAInfo
+    info: AdminBoundaryInfo | CreateGeostoreResponseInfo | LandUseInfo | WDPAInfo
 
 
 class RWGeostore(StrictBaseModel):
@@ -111,13 +121,3 @@ class RWGeostore(StrictBaseModel):
 
 class RWGeostoreResponse(StrictBaseModel):
     data: RWGeostore
-
-
-class LandUseUse(StrictBaseModel):
-    use: LandUseTypeUseString
-    id: int
-
-
-class LandUseInfo(StrictBaseModel):
-    use: LandUseUse
-    simplify: bool
