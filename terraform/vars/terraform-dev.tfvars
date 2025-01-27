@@ -15,4 +15,4 @@ lb_dns_name                    = "gfw-data-api-elb-shared-dev-lb-10091095.us-eas
 api_gateway_id        = "ett3a69n8h"
 api_gw_external_up_id = "08ipvv"
 api_gw_internal_up_id = "ahj8m0"
-# api_gateway_url       = "https://ett3a69n8h.execute-api.us-east-1.amazonaws.com/deploy"
+api_gateway_url       = "https://ett3a69n8h.execute-api.us-east-1.amazonaws.com/deploy"
