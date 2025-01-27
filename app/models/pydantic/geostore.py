@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import validator
 
+from ..enum.geostore import LandUseTypeUseString
 from .base import BaseRecord, StrictBaseModel
 from .responses import Response
 
@@ -110,3 +111,13 @@ class RWGeostore(StrictBaseModel):
 
 class RWGeostoreResponse(StrictBaseModel):
     data: RWGeostore
+
+
+class LandUseUse(StrictBaseModel):
+    use: LandUseTypeUseString
+    id: int
+
+
+class LandUseInfo(StrictBaseModel):
+    use: LandUseUse
+    simplify: bool

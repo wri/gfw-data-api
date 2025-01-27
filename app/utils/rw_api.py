@@ -303,3 +303,22 @@ async def get_boundary_by_subregion_id(
         return RWGeostoreResponse.parse_obj(response.json())
     else:
         raise HTTPException(response.status_code, response.text)
+
+
+async def get_geostore_by_land_use_and_index(
+    land_use_type: str, index: str, x_api_key: str | None = None
+) -> RWGeostoreResponse:
+    url = f"{RW_API_URL}/v2/geostore/use/{land_use_type}/{index}"
+
+    async with AsyncClient() as client:
+        if x_api_key is not None:
+            response: HTTPXResponse = await client.get(
+                url, headers={"x-api-key": x_api_key}
+            )
+        else:
+            response = await client.get(url)
+
+    if response.status_code == 200:
+        return RWGeostoreResponse.parse_obj(response.json())
+    else:
+        raise HTTPException(response.status_code, response.text)
