@@ -26,7 +26,7 @@ ENV UV_LINK_MODE=copy \
 ENV PATH=$VIRTUAL_ENV/bin:/usr/local/bin:$PATH
 
 # Create a virtual environment with uv inside the container
-RUN curl -LsSf https://astral.sh/uv/0.5.13/install.sh | sh && \
+RUN curl -LsSf https://astral.sh/uv/0.5.24/install.sh | sh && \
     uv venv $VIRTUAL_ENV --python 3.10 --seed
 
 # Copy pyproject.toml and uv.lock to a temporary directory and install
