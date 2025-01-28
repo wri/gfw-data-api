@@ -9,7 +9,6 @@ from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
 from ...errors import BadRequestError, RecordNotFoundError
-from ...models.enum.geostore import LandUseType
 from ...models.pydantic.geostore import (
     Geostore,
     GeostoreIn,
@@ -178,7 +177,7 @@ async def rw_get_boundary_by_subregion_id(
 )
 async def rw_get_geostore_by_land_use_and_index(
     *,
-    land_use_type: LandUseType = Path(..., title="land_use_type"),
+    land_use_type: str = Path(..., title="land_use_type"),
     index: str = Path(..., title="index"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
