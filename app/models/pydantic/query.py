@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from app.models.enum.creation_options import Delimiters
 from app.models.pydantic.base import StrictBaseModel
@@ -18,8 +18,11 @@ class QueryBatchRequestIn(StrictBaseModel):
     uri: Optional[str] = Field(
         None, description="URI to a vector file in a variety of formats supported by Geopandas, including GeoJson and CSV format, giving a list of features on which to do the same query. For a CSV file, the column with the geometry in WKB format should be named 'WKT' (not 'WKB')"
     )
+    geostore_ids: Optional[List[str]] = Field(
+        None, description="An inline list of ResourceWatch geostore ids"
+    )
     id_field: str = Field(
-        "fid", description="Name of field with the feature id, for use in labeling the results for each feature. This field must contain a unique value for each feature."
+        "fid", description="Name of field with the feature id, for use in labeling the results for each feature. This field must contain a unique value for each feature. If geostore_ids are specified, then they will automatically be used as the feature id for labeling the results."
     )
     sql: str
 
