@@ -217,35 +217,15 @@ async def proxy_get_geostore(
 ) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/{geostore_id}"
 
-    async with AsyncClient() as client:
-        if x_api_key is not None:
-            response: HTTPXResponse = await client.get(
-                url, headers={"x-api-key": x_api_key}
-            )
-        else:
-            response = await client.get(url)
-
-    if response.status_code == 200:
-        return RWGeostoreResponse.parse_obj(response.json())
-    else:
-        raise HTTPException(response.status_code, response.text)
+    response = await proxy_get_request_to_rw_api(url, x_api_key)
+    return RWGeostoreResponse.parse_obj(response.json())
 
 
 async def get_admin_list(x_api_key: str | None = None) -> RWAdminListResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/list"
 
-    async with AsyncClient() as client:
-        if x_api_key is not None:
-            response: HTTPXResponse = await client.get(
-                url, headers={"x-api-key": x_api_key}
-            )
-        else:
-            response = await client.get(url)
-
-    if response.status_code == 200:
-        return RWAdminListResponse.parse_obj(response.json())
-    else:
-        raise HTTPException(response.status_code, response.text)
+    response = await proxy_get_request_to_rw_api(url, x_api_key)
+    return RWAdminListResponse.parse_obj(response.json())
 
 
 async def get_boundary_by_country_id(
@@ -253,18 +233,8 @@ async def get_boundary_by_country_id(
 ) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/{country_id}"
 
-    async with AsyncClient() as client:
-        if x_api_key is not None:
-            response: HTTPXResponse = await client.get(
-                url, headers={"x-api-key": x_api_key}
-            )
-        else:
-            response = await client.get(url)
-
-    if response.status_code == 200:
-        return RWGeostoreResponse.parse_obj(response.json())
-    else:
-        raise HTTPException(response.status_code, response.text)
+    response = await proxy_get_request_to_rw_api(url, x_api_key)
+    return RWGeostoreResponse.parse_obj(response.json())
 
 
 async def get_boundary_by_region_id(
@@ -272,18 +242,8 @@ async def get_boundary_by_region_id(
 ) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/{country_id}/{region_id}"
 
-    async with AsyncClient() as client:
-        if x_api_key is not None:
-            response: HTTPXResponse = await client.get(
-                url, headers={"x-api-key": x_api_key}
-            )
-        else:
-            response = await client.get(url)
-
-    if response.status_code == 200:
-        return RWGeostoreResponse.parse_obj(response.json())
-    else:
-        raise HTTPException(response.status_code, response.text)
+    response = await proxy_get_request_to_rw_api(url, x_api_key)
+    return RWGeostoreResponse.parse_obj(response.json())
 
 
 async def get_boundary_by_subregion_id(
@@ -291,18 +251,8 @@ async def get_boundary_by_subregion_id(
 ) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/{country_id}/{region_id}/{subregion_id}"
 
-    async with AsyncClient() as client:
-        if x_api_key is not None:
-            response: HTTPXResponse = await client.get(
-                url, headers={"x-api-key": x_api_key}
-            )
-        else:
-            response = await client.get(url)
-
-    if response.status_code == 200:
-        return RWGeostoreResponse.parse_obj(response.json())
-    else:
-        raise HTTPException(response.status_code, response.text)
+    response = await proxy_get_request_to_rw_api(url, x_api_key)
+    return RWGeostoreResponse.parse_obj(response.json())
 
 
 async def get_geostore_by_land_use_and_index(
@@ -310,6 +260,11 @@ async def get_geostore_by_land_use_and_index(
 ) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/use/{land_use_type}/{index}"
 
+    response = await proxy_get_request_to_rw_api(url, x_api_key)
+    return RWGeostoreResponse.parse_obj(response.json())
+
+
+async def proxy_get_request_to_rw_api(url: str, x_api_key: str | None) -> HTTPXResponse:
     async with AsyncClient() as client:
         if x_api_key is not None:
             response: HTTPXResponse = await client.get(
@@ -319,6 +274,6 @@ async def get_geostore_by_land_use_and_index(
             response = await client.get(url)
 
     if response.status_code == 200:
-        return RWGeostoreResponse.parse_obj(response.json())
+        return response
     else:
         raise HTTPException(response.status_code, response.text)
