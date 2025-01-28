@@ -122,16 +122,57 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
             "when input files are in different projections from each other."
         )
     )
-    pixel_meaning: str
+    pixel_meaning: str = Field(
+        ..., description="Description of what the pixel value in the "
+        "raster represents. This is used to clarify the meaning of the raster "
+        "and distinguish multiple raster tile sets based on the same dataset "
+        "version. The pixel_meaning string should be fairly short, use all "
+        "lower-case letters, and use underscores instead of spaces."
+    )
     data_type: DataType
-    nbits: Optional[int]
-    calc: Optional[str]
+    nbits: Optional[int] = Field(
+        None,
+        description="Advanced option that lets GDAL compress the data even "
+        "more based on the number of bits you need."
+    )
+    calc: Optional[str] = Field(
+        None,
+        description="There are two modes for this field, one for rasterizing vector "
+        "sources and one for transforming and/or combining one or more "
+        "sources that are already raster. For rasterizing vector sources, "
+        "this field should be an SQL expression that yields the desired "
+        "raster value based on the fields of your vector dataset.\n\nFor raster "
+        "sources, this should be a raster algebra expression, similar to that "
+        "provided to gdal_calc (see "
+        "https://gdal.org/en/stable/programs/gdal_calc.html), "
+        "that transforms one or more input bands into one or more output "
+        "bands. For use in this expression, each band in "
+        "the sources is assigned an alphabetic variable (A-Z, then AA-AZ, "
+        "etc.) in the order it exists in those sources, with those of the "
+        "first source first, continuing with those of the second, and so on. "
+        "So with two input sources of two bands each, they would be assigned "
+        "to variables A and B (for the first source) and C and D (for the "
+        "second source). The NumPy module is in scope, accessible as np"
+    )
     band_count: int = 1
     union_bands: bool = False
     no_data: Optional[Union[List[NoDataType], NoDataType]]
-    rasterize_method: Optional[RasterizeMethod]
+    rasterize_method: Optional[RasterizeMethod] = Field(
+        RasterizeMethod.value,
+        description="For raster sources or default assets, 'value' (the "
+        "default) means use the value from the last or only band processed, "
+        "and 'count' means count the number of bands with data values."
+    )
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
-    order: Optional[Order]
+    order: Optional[Order] = Field(
+        None,
+        description="For vector default assets, order the features by the "
+        "calculated raster value. For 'asc', the features are ordered by "
+        "ascending calculated value so that the largest calculated value is "
+        "used in the raster when there are overlapping features. For 'desc', "
+        "the ordering is descending, so that the smallest calculated value "
+        "is used when there are overlaps."
+    )
     overwrite: bool = False
     subset: Optional[str]
     grid: Grid
@@ -139,7 +180,11 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     compute_stats: bool = True
     compute_histogram: bool = False
     process_locally: bool = True
-    auxiliary_assets: Optional[List[UUID]] = None
+    auxiliary_assets: Optional[List[UUID]] = Field(
+        None,
+        description="Asset IDs of additional rasters you might want to include "
+        "in your calc expression."
+    )
     photometric: Optional[PhotometricType] = None
     num_processes: Optional[StrictInt] = None
     timeout_sec: Optional[StrictInt] = Field(
@@ -209,7 +254,15 @@ class VectorSourceCreationOptions(StrictBaseModel):
             Index(index_type=IndexType.gist.value, column_names=["geom_wm"]),
             Index(index_type=IndexType.hash.value, column_names=["gfw_geostore_id"]),
         ],
-        description="List of indices to add to table",
+        description="List of indices to add to the database table representing "
+        "the vector dataset.  Each element of the indices field contains an "
+        "index_type field (which is a string) and a column_names field (which "
+        "is a list of field names included in this index). The possibilities "
+        "for the index_type field are hash, btree, or gist. hash is efficient "
+        "for standard exact-value lookups, while btree is efficient for range "
+        "lookups. gist is used for geometry fields and can do "
+        "intersection-type lookups. See "
+        "https://www.postgresql.org/docs/current/indexes-types.html"
     )
     cluster: Optional[Index] = Field(None, description="Index to use for clustering.")
     table_schema: Optional[List[FieldType]] = Field(
@@ -331,7 +384,7 @@ class RasterTileCacheCreationOptions(TileCacheBaseModel):
         "default",
         description="Name space to use for raster tile cache. "
         "This will be part of the URI and will "
-        "allow to create multiple raster tile caches per version,",
+        "allow creation of multiple raster tile caches per version,",
     )
     symbology: Symbology = Field(..., description="Symbology to use for output tiles")
     source_asset_id: str = Field(

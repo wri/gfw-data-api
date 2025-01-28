@@ -81,7 +81,8 @@ router = APIRouter()
 async def get_version(
     *, dv: Tuple[str, str] = Depends(dataset_version_dependency)
 ) -> VersionResponse:
-    """Get basic metadata for a given version. The list of assets is sorted by
+    """Get basic metadata for a given version. The list of assets only includes
+    saved (non-pending and non-failed) assets and is sorted by
     the creation time of each asset."""
 
     dataset, version = dv
@@ -106,8 +107,8 @@ async def add_new_version(
     user: User = Depends(get_owner),
     response: Response,
 ):
-    """Create a version for a given dataset by uploading the geospatial/tabular
-    asset.
+    """Create a version for a given dataset by uploading the tabular, vector,
+    or raster asset.
 
     Only the dataset's owner or a user with `ADMIN` user role can do
     this operation.
@@ -373,6 +374,14 @@ async def get_stats(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
     response_model=Union[FieldsMetadataResponse, RasterBandsMetadataResponse],
 )
 async def get_fields(dv: Tuple[str, str] = Depends(dataset_version_dependency)):
+    """Get the fields of a version.  For a version with a vector default asset,
+    these are the fields (attributes) of the features of the base vector dataset.
+
+    For a version with a raster default asset, the fields are all the raster
+    tile sets that use the same grid as the raster default asset.  Also
+    included are some fields with special meaning such as 'area__ha',
+    'latitude', and 'longitude'.
+    """
     dataset, version = dv
     orm_asset: ORMAsset = await assets.get_default_asset(dataset, version)
 
