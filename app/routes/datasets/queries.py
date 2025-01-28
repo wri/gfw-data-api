@@ -339,10 +339,11 @@ async def query_dataset_list_post(
 ):
     """Execute a READ-ONLY SQL query on the specified raster-based dataset version
     for a potentially large list of features. The features may be specified by an
-    inline GeoJson feature collection or the URI of vector file that is in any of a
-    variety of formats supported by GeoPandas, include GeoJson and CSV format. For
-    CSV files, the geometry column should be named "WKT" (not "WKB") and the geometry
-    values should be in WKB format.
+    inline GeoJson feature collection, or a list of ResourceWatch geostore IDs, or
+    the URI of vector file that is in any of a variety of formats supported by
+    GeoPandas, include GeoJson and CSV format. For CSV files, the geometry column
+    should be named "WKT" (not "WKB") and the geometry values should be in WKB
+    format.
 
     The specified sql query will be run on each individual feature, and so may take a
     while. Therefore, the results of this query include a job_id. The user should
@@ -397,21 +398,23 @@ async def query_dataset_list_post(
         "environment": data_environment.dict()["layers"],
     }
 
-    if request.feature_collection is not None:
-        if request.uri is not None:
-            raise HTTPException(
-                status_code=400,
-                detail="Must provide only one of valid feature collection or URI.",
-            )
+    if (request.feature_collection and request.uri) or (request.feature_collection and request.geostore_ids) or (request.uri and request.geostore_ids):
+        raise HTTPException(
+            status_code=400,
+            detail="Must provide only one of valid feature collection, URI, or geostore_ids list.",
+        )
 
+    if request.feature_collection is not None:
         input["feature_collection"] = jsonable_encoder(request.feature_collection)
     elif request.uri is not None:
         _verify_source_file_access([request.uri])
         input["uri"] = request.uri
+    elif request.geostore_ids is not None:
+        input["geostore_ids"] = request.geostore_ids
     else:
         raise HTTPException(
             status_code=400,
-            detail="Must provide valid feature collection or URI.",
+            detail="Must provide valid feature collection, URI, or geostore_ids list.",
         )
 
     try:
