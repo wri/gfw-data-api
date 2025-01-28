@@ -6,6 +6,7 @@ from unidecode import unidecode
 from app.models.pydantic.political import (
     AdminIDLookupQueryParams,
     AdminIDLookupResponse,
+    AdminIDLookupResponseData,
 )
 from app.routes.datasets.queries import _query_dataset_json
 from app.settings.globals import ENV, per_env_admin_boundary_versions
@@ -124,7 +125,7 @@ def _admin_boundary_lookup_sql(
     return sql
 
 
-def lookup_admin_source_version(source, version) -> str:
+def lookup_admin_source_version(source: str, version: str) -> str:
     # The AdminIDLookupQueryParams validator should have already ensured
     # that the following is safe
     deployed_version_in_data_api = per_env_admin_boundary_versions[ENV][source][version]
@@ -133,7 +134,7 @@ def lookup_admin_source_version(source, version) -> str:
 
 
 def form_admin_id_lookup_response(
-    admin_source, admin_version, adm_level, match_list
+    admin_source, admin_version, adm_level: int, match_list
 ) -> AdminIDLookupResponse:
     matches = []
 
@@ -152,15 +153,16 @@ def form_admin_id_lookup_response(
 
         matches.append({"country": country, "region": region, "subregion": subregion})
 
-    data = {
-        "adminSource": admin_source,
-        "adminVersion": admin_version,
-        "matches": matches,
-    }
-    resp = AdminIDLookupResponse(**{"data": data})
-    return resp
+    data = AdminIDLookupResponseData(
+        **{
+            "adminSource": admin_source,
+            "adminVersion": admin_version,
+            "matches": matches,
+        }
+    )
+    return AdminIDLookupResponse(data=data)
 
 
-def extract_level_gid(gid_level, match):
+def extract_level_gid(gid_level: int, match):
     gid_level_name = f"gid_{gid_level}"
     return (match[gid_level_name].rsplit("_")[0]).split(".")[gid_level]
