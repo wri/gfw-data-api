@@ -1,4 +1,12 @@
+ARG PYTHON_VERSION="3.10"
+ARG USR_LOCAL_BIN=/usr/local/bin
+ARG VENV_DIR=/app/.venv
+
 FROM ubuntu:noble AS build
+
+ARG PYTHON_VERSION
+ARG USR_LOCAL_BIN
+ARG VENV_DIR
 
 RUN apt-get update -qy && \
     apt-get install -qyy \
@@ -14,20 +22,15 @@ RUN apt-get update -qy && \
         make
 
 # Set uv env variables for behavior and venv directory
-ENV UV_LINK_MODE=copy \
+ENV PATH=${USR_LOCAL_BIN}:${PATH} \
+    UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
-    UV_INSTALL_DIR="/usr/local/bin" \
-    UV_PROJECT_ENVIRONMENT=/app/.venv \
-    VIRTUAL_ENV=/app/.venv
-
-# Make sure that the virtual environment is in the PATH so
-# we can use the binaries of packages that we install such as pip
-# without needing to activate the virtual environment explicitly
-ENV PATH=$VIRTUAL_ENV/bin:/usr/local/bin:$PATH
+    UV_UNMANAGED_INSTALL=${USR_LOCAL_BIN} \
+    VENV_DIR=${VENV_DIR}
 
 # Create a virtual environment with uv inside the container
 RUN curl -LsSf https://astral.sh/uv/0.5.24/install.sh | sh && \
-    uv venv $VIRTUAL_ENV --python 3.10 --seed
+    uv venv ${VENV_DIR} --python ${PYTHON_VERSION} --seed
 
 # Copy pyproject.toml and uv.lock to a temporary directory and install
 # dependencies into the venv
@@ -38,9 +41,16 @@ RUN cd /_lock && \
 
 # Start the runtime stage
 FROM ubuntu:noble
+
+ARG USR_LOCAL_BIN
+ARG VENV_DIR
+
 SHELL ["sh", "-exc"]
 
+ENV PATH=${VENV_DIR}/bin:${USR_LOCAL_BIN}:${PATH}
 ENV TZ=UTC
+ENV VENV_DIR=${VENV_DIR}
+
 RUN echo $TZ > /etc/timezone
 
 RUN apt-get update -qy && \
