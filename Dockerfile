@@ -79,6 +79,7 @@ COPY --from=build --chmod=777 /root /root
 COPY newrelic.ini /app/newrelic.ini
 COPY alembic.ini /app/alembic.ini
 
+COPY --chmod=777 app/settings/gunicorn_conf.py /app/gunicorn_conf.py
 COPY --chmod=777 app/settings/prestart.sh /app/prestart.sh
 COPY --chmod=777 app/settings/start.sh /app/start.sh
 

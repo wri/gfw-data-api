@@ -54,7 +54,7 @@ services:
       - NAME_SUFFIX=
     ports:
       - "8008:80"
-    entrypoint: wait_for_postgres.sh /start-reload.sh
+    entrypoint: wait_for_postgres.sh /app/start.sh
     depends_on:
       - database_12
 
