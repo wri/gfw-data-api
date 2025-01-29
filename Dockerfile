@@ -61,6 +61,7 @@ RUN apt-get update -qy && \
         -o APT::Install-Recommends=false \
         -o APT::Install-Suggests=false \
         expat \
+        jq \
         libgdal-dev \
         postgresql-client
 
