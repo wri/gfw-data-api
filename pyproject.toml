@@ -22,6 +22,7 @@ dependencies = [
     "gino",
     "gino_starlette",
     "google-cloud-storage",
+    "gunicorn",
     "httpcore",
     "httpx",
     "httpx-auth",
