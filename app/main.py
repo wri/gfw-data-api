@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.errors import http_error_handler
+from app.routes.political import id_lookup
 
 from .application import app
 from .middleware import no_cache_response_header, redirect_latest, set_db_mode
@@ -126,6 +127,13 @@ dataset_routers = (
 
 for r in dataset_routers:
     app.include_router(r, prefix="/dataset")
+
+
+################
+# POLITICAL API #
+################
+
+app.include_router(id_lookup.router, prefix="/political")
 
 
 ###############
