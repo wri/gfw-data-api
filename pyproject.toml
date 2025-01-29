@@ -43,6 +43,7 @@ dependencies = [
     "sqlalchemy-utils",
     "starlette",
     "typer",
+    "unidecode",
     "uvicorn[standard]",
 ]
 
