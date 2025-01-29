@@ -206,7 +206,7 @@ async def create_rw_geostore(
         else:
             response = await client.post(url, json=payload.dict())
 
-    if response.status_code == 201:
+    if response.status_code == 200:
         return RWGeostoreResponse.parse_obj(response.json())
     else:
         raise HTTPException(response.status_code, response.text)
