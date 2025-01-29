@@ -45,7 +45,7 @@ google-cloud-storage = "*"
 httpcore = "*"
 httpx = "*"
 httpx-auth = "*"
-numpy = "*"
+numpy = "<2.0"
 orjson = "*"
 packaging = "*"
 pendulum = "<3"
@@ -60,6 +60,7 @@ sqlalchemy = "<1.4"
 sqlalchemy-utils = "*"
 starlette = "*"
 typer = "*"
+unidecode = "*"
 uvicorn = {version = "*", extras = ["standard"]}
 
 [requires]
