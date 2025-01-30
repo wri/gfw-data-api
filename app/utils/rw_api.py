@@ -158,7 +158,7 @@ async def login(user_name: str, password: str) -> str:
 
 
 async def signup(name: str, email: str) -> User:
-    """Obtain a token form RW API using given user name and password."""
+    """Obtain a token from RW API using given username and password."""
 
     headers = {"Content-Type": "application/json"}
     payload = {"name": name, "email": email, "apps": ["gfw"]}
