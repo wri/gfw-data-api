@@ -180,13 +180,14 @@ create_gfw_geostore_data = {
 @pytest.mark.asyncio
 async def test_get_admin_geostore(async_client: AsyncClient, monkeypatch: MonkeyPatch):
     async def mock_resp_func(request: Request) -> Response:
+        assert "foo" in str(request.url)
         return Response(status_code=200, json=example_admin_geostore_snipped)
 
     transport = MockTransport(mock_resp_func)
 
     mocked_client = partial(AsyncClient, transport=transport)
     monkeypatch.setattr(rw_api, "AsyncClient", mocked_client)
-    response = await async_client.get("/geostore/admin/MEX/1/1")
+    response = await async_client.get("/geostore/admin/MEX/1/1?foo=bar")
 
     assert response.json() == example_admin_geostore_snipped
     assert response.status_code == 200

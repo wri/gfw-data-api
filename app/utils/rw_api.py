@@ -1,3 +1,4 @@
+from typing import Dict
 from uuid import UUID
 
 from async_lru import alru_cache
@@ -5,6 +6,7 @@ from fastapi import HTTPException, Response
 from fastapi.logger import logger
 from httpx import AsyncClient, ReadTimeout
 from httpx import Response as HTTPXResponse
+from starlette.requests import QueryParams
 
 from ..errors import (
     BadResponseError,
@@ -146,7 +148,9 @@ async def login(user_name: str, password: str) -> str:
 
     if response.status_code != 200:
         logger.warning(
-            f"Authentication for user {user_name} failed. API responded with status code {response.status_code} and message {response.text}"
+            f"Authentication for user {user_name} failed. "
+            f"API responded with status code {response.status_code} "
+            f"and message {response.text}"
         )
         raise UnauthorizedError("Authentication failed")
 
@@ -213,65 +217,79 @@ async def create_rw_geostore(
 
 
 async def proxy_get_geostore(
-    geostore_id: str, x_api_key: str | None = None
+    geostore_id: str, query_params: QueryParams, x_api_key: str | None = None
 ) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/{geostore_id}"
 
-    response = await proxy_get_request_to_rw_api(url, x_api_key)
+    response = await proxy_get_request_to_rw_api(url, dict(**query_params), x_api_key)
     return RWGeostoreResponse.parse_obj(response.json())
 
 
-async def get_admin_list(x_api_key: str | None = None) -> RWAdminListResponse:
+async def get_admin_list(
+    query_params: QueryParams, x_api_key: str | None = None
+) -> RWAdminListResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/list"
 
-    response = await proxy_get_request_to_rw_api(url, x_api_key)
+    response = await proxy_get_request_to_rw_api(url, dict(**query_params), x_api_key)
     return RWAdminListResponse.parse_obj(response.json())
 
 
 async def get_boundary_by_country_id(
-    country_id: str, x_api_key: str | None = None
+    country_id: str, query_params: QueryParams, x_api_key: str | None = None
 ) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/{country_id}"
 
-    response = await proxy_get_request_to_rw_api(url, x_api_key)
+    response = await proxy_get_request_to_rw_api(url, dict(**query_params), x_api_key)
     return RWGeostoreResponse.parse_obj(response.json())
 
 
 async def get_boundary_by_region_id(
-    country_id: str, region_id: str, x_api_key: str | None = None
+    country_id: str,
+    region_id: str,
+    query_params: QueryParams,
+    x_api_key: str | None = None,
 ) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/{country_id}/{region_id}"
 
-    response = await proxy_get_request_to_rw_api(url, x_api_key)
+    response = await proxy_get_request_to_rw_api(url, dict(**query_params), x_api_key)
     return RWGeostoreResponse.parse_obj(response.json())
 
 
 async def get_boundary_by_subregion_id(
-    country_id: str, region_id: str, subregion_id: str, x_api_key: str | None = None
+    country_id: str,
+    region_id: str,
+    subregion_id: str,
+    query_params: QueryParams,
+    x_api_key: str | None = None,
 ) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/{country_id}/{region_id}/{subregion_id}"
 
-    response = await proxy_get_request_to_rw_api(url, x_api_key)
+    response = await proxy_get_request_to_rw_api(url, dict(**query_params), x_api_key)
     return RWGeostoreResponse.parse_obj(response.json())
 
 
 async def get_geostore_by_land_use_and_index(
-    land_use_type: str, index: str, x_api_key: str | None = None
+    land_use_type: str,
+    index: str,
+    query_params: QueryParams,
+    x_api_key: str | None = None,
 ) -> RWGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/use/{land_use_type}/{index}"
 
-    response = await proxy_get_request_to_rw_api(url, x_api_key)
+    response = await proxy_get_request_to_rw_api(url, dict(**query_params), x_api_key)
     return RWGeostoreResponse.parse_obj(response.json())
 
 
-async def proxy_get_request_to_rw_api(url: str, x_api_key: str | None) -> HTTPXResponse:
+async def proxy_get_request_to_rw_api(
+    url: str, query_params: Dict, x_api_key: str | None = None
+) -> HTTPXResponse:
     async with AsyncClient() as client:
         if x_api_key is not None:
             response: HTTPXResponse = await client.get(
-                url, headers={"x-api-key": x_api_key}
+                url, headers={"x-api-key": x_api_key}, params=query_params
             )
         else:
-            response = await client.get(url)
+            response = await client.get(url, params=query_params)
 
     if response.status_code == 200:
         return response
