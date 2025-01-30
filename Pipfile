@@ -60,6 +60,7 @@ sqlalchemy = "<1.4"
 sqlalchemy-utils = "*"
 starlette = "*"
 typer = "*"
+unidecode = "*"
 uvicorn = {version = "*", extras = ["standard"]}
 
 [requires]

@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
 
 from pydantic import validator
@@ -14,7 +14,7 @@ class Geometry(StrictBaseModel):
 
 
 class Feature(StrictBaseModel):
-    properties: Dict[str, Any]
+    properties: Optional[Dict[str, Any]]
     type: str
     geometry: Optional[Geometry]
 
@@ -50,5 +50,73 @@ class GeostoreIn(StrictBaseModel):
     geometry: Geometry
 
 
+class RWGeostoreIn(StrictBaseModel):
+    geojson: Geometry | Feature | FeatureCollection
+
+
 class GeostoreResponse(Response):
     data: Geostore
+
+
+class AdminBoundaryInfo(StrictBaseModel):
+    use: Dict
+    simplifyThresh: float
+    gadm: str  # TODO: Make an enum?
+    name: str
+    id2: int
+    id1: int
+    iso: str
+
+
+class CreateGeostoreResponseInfo(StrictBaseModel):
+    use: Dict
+
+
+class RWAdminListItem(StrictBaseModel):
+    geostoreId: str
+    iso: str
+    name: str
+
+
+class RWAdminListItemWithName(StrictBaseModel):
+    geostoreId: str
+    iso: str
+
+
+class RWAdminListResponse(StrictBaseModel):
+    data: List[RWAdminListItem | RWAdminListItemWithName]
+
+
+class WDPAInfo(StrictBaseModel):
+    use: Dict
+    wdpaid: int
+
+
+class LandUseUse(StrictBaseModel):
+    use: str
+    id: int
+
+
+class LandUseInfo(StrictBaseModel):
+    use: LandUseUse
+    simplify: bool
+
+
+class RWGeostoreAttributes(StrictBaseModel):
+    geojson: FeatureCollection
+    hash: str
+    provider: Dict
+    areaHa: float
+    bbox: List[float]
+    lock: bool
+    info: AdminBoundaryInfo | CreateGeostoreResponseInfo | LandUseInfo | WDPAInfo
+
+
+class RWGeostore(StrictBaseModel):
+    type: Literal["geoStore"]
+    id: str
+    attributes: RWGeostoreAttributes
+
+
+class RWGeostoreResponse(StrictBaseModel):
+    data: RWGeostore
