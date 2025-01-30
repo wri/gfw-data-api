@@ -4,7 +4,7 @@ geometries in the datastore."""
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException, Path
+from fastapi import APIRouter, Header, HTTPException, Path, Request
 from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
@@ -67,6 +67,7 @@ async def add_new_geostore(
 async def get_any_geostore(
     *,
     geostore_id: str = Path(..., title="geostore_id"),
+    request: Request,
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Retrieve GeoJSON representation for a given geostore ID of any dataset.
@@ -84,7 +85,7 @@ async def get_any_geostore(
                 raise HTTPException(status_code=404, detail=str(e))
     except (AttributeError, ValueError):
         pass
-    result = await proxy_get_geostore(geostore_id, x_api_key)
+    result = await proxy_get_geostore(geostore_id, request.query_params, x_api_key)
     return result
 
 
@@ -95,10 +96,12 @@ async def get_any_geostore(
     tags=["Geostore"],
     include_in_schema=False,
 )
-async def rw_get_admin_list(x_api_key: Annotated[str | None, Header()] = None):
+async def rw_get_admin_list(
+    request: Request, x_api_key: Annotated[str | None, Header()] = None
+):
     """Get all Geostore IDs, names and country codes (proxies request to the RW
     API)"""
-    result: RWAdminListResponse = await get_admin_list(x_api_key)
+    result: RWAdminListResponse = await get_admin_list(request.query_params, x_api_key)
 
     return result
 
@@ -113,11 +116,14 @@ async def rw_get_admin_list(x_api_key: Annotated[str | None, Header()] = None):
 async def rw_get_boundary_by_country_id(
     *,
     country_id: str = Path(..., title="country_id"),
+    request: Request,
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get a GADM boundary by country ID (proxies request to the RW API)"""
 
-    result: RWGeostoreResponse = await get_boundary_by_country_id(country_id, x_api_key)
+    result: RWGeostoreResponse = await get_boundary_by_country_id(
+        country_id, request.query_params, x_api_key
+    )
 
     return result
 
@@ -133,12 +139,13 @@ async def rw_get_boundary_by_region_id(
     *,
     country_id: str = Path(..., title="country_id"),
     region_id: str = Path(..., title="region_id"),
+    request: Request,
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get a GADM boundary by country and region IDs (proxies request to the RW
     API)"""
     result: RWGeostoreResponse = await get_boundary_by_region_id(
-        country_id, region_id, x_api_key
+        country_id, region_id, request.query_params, x_api_key
     )
 
     return result
@@ -156,13 +163,14 @@ async def rw_get_boundary_by_subregion_id(
     country_id: str = Path(..., title="country_id"),
     region_id: str = Path(..., title="region_id"),
     subregion_id: str = Path(..., title="subregion_id"),
+    request: Request,
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get a GADM boundary by country, region, and subregion IDs (proxies
     request to the RW API)"""
 
     result: RWGeostoreResponse = await get_boundary_by_subregion_id(
-        country_id, region_id, subregion_id, x_api_key
+        country_id, region_id, subregion_id, request.query_params, x_api_key
     )
 
     return result
@@ -179,6 +187,7 @@ async def rw_get_geostore_by_land_use_and_index(
     *,
     land_use_type: str = Path(..., title="land_use_type"),
     index: str = Path(..., title="index"),
+    request: Request,
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get a geostore object by land use type name and id.
@@ -188,7 +197,7 @@ async def rw_get_geostore_by_land_use_and_index(
     API)
     """
     result: RWGeostoreResponse = await get_geostore_by_land_use_and_index(
-        land_use_type, index, x_api_key
+        land_use_type, index, request.query_params, x_api_key
     )
 
     return result
