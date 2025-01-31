@@ -58,14 +58,20 @@ class GeostoreResponse(Response):
     data: Geostore
 
 
-class AdminBoundaryInfo(StrictBaseModel):
+class Adm0BoundaryInfo(StrictBaseModel):
     use: Dict
-    simplifyThresh: float
-    gadm: str  # TODO: Make an enum?
+    simplifyThresh: Optional[float]
+    gadm: str
     name: str
-    id2: int
-    id1: int
     iso: str
+
+
+class Adm1BoundaryInfo(Adm0BoundaryInfo):
+    id1: int
+
+
+class Adm2BoundaryInfo(Adm1BoundaryInfo):
+    id2: int
 
 
 class CreateGeostoreResponseInfo(StrictBaseModel):
@@ -109,7 +115,14 @@ class RWGeostoreAttributes(StrictBaseModel):
     areaHa: float
     bbox: List[float]
     lock: bool
-    info: AdminBoundaryInfo | CreateGeostoreResponseInfo | LandUseInfo | WDPAInfo
+    info: (
+        Adm2BoundaryInfo
+        | Adm1BoundaryInfo
+        | Adm0BoundaryInfo
+        | CreateGeostoreResponseInfo
+        | LandUseInfo
+        | WDPAInfo
+    )
 
 
 class RWGeostore(StrictBaseModel):
