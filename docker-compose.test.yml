@@ -16,12 +16,12 @@ services:
     environment:
       - PYTHONPATH=batch/python
       - ENV=test
-      - DB_HOST=test_database_12
+      - DB_HOST=test_database_14
       - DATABASE=_test
       - DB_USER=gfw
       - DB_PASSWORD=postgres           # pragma: allowlist secret
       - DB_PORT=5432
-      - DB_HOST_RO=test_database_12
+      - DB_HOST_RO=test_database_14
       - DATABASE_RO=_test
       - DB_USER_RO=gfw_readonly
       - DB_PASSWORD_RO=readonly        # pragma: allowlist secret
@@ -68,12 +68,12 @@ services:
       - AWS_SECRETSMANAGER_URL=http://motoserver:50000
     entrypoint: wait_for_postgres.sh pytest --timeout 480 -vv --cov-report term
     depends_on:
-      - test_database_12
+      - test_database_14
       - motoserver
 
-  test_database_12:
-    container_name: gfw-data-api-test-database-12
-    image: postgis/postgis:12-3.3-alpine
+  test_database_14:
+    container_name: gfw-data-api-test-database-14
+    image: postgis/postgis:14-3.4-alpine
     ports:
       - 54321:5432
     environment:
@@ -82,7 +82,7 @@ services:
       - POSTGRES_USER=gfw
       - POSTGRES_PASSWORD=postgres # pragma: allowlist secret
     volumes:
-      - test_database_data_12:/var/lib/postgresql/data
+      - test_database_data_14:/var/lib/postgresql/data
     command: ["postgres", "-c", "log_statement=all"]
     restart: on-failure
 
@@ -97,4 +97,4 @@ services:
     restart: on-failure
 
 volumes:
-  test_database_data_12:
+  test_database_data_14:
