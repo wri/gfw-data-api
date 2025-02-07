@@ -1,3 +1,4 @@
+ARG ENV
 ARG PYTHON_VERSION="3.10"
 ARG USR_LOCAL_BIN=/usr/local/bin
 ARG UV_VERSION="0.5.24"
@@ -5,6 +6,7 @@ ARG VENV_DIR=/app/.venv
 
 FROM ubuntu:noble AS build
 
+ARG ENV
 ARG PYTHON_VERSION
 ARG USR_LOCAL_BIN
 ARG VENV_DIR
@@ -37,8 +39,16 @@ RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh && \
 # dependencies into the venv
 COPY pyproject.toml /_lock/
 COPY uv.lock /_lock/
-RUN cd /_lock && \
-    uv sync --locked --no-install-project
+RUN if [ "$ENV" = "dev" ] || [ "$ENV" = "test" ]; then \
+        echo "Install all dependencies" && \
+        cd /_lock && \
+        uv sync --locked --no-install-project --dev; \
+    else \
+        echo "Install production dependencies only" && \
+        cd /_lock && \
+        uv sync --locked --no-install-project --no-dev; \
+    fi
+
 
 # Start the runtime stage
 FROM ubuntu:noble
