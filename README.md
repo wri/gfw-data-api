@@ -9,7 +9,7 @@ High-performance Async REST API, in Python. FastAPI + GINO + Uvicorn (powered by
 3. Run locally using docker-compose. `./scripts/develop`
 
 ### Developing
-* Activate the virtual environment installed with `scripts/setup`: `. .venv/bin/activate`
+* Activate the virtual environment installed with `scripts/setup`: `. .venv_uv/bin/activate`
 * Add a package as a project dependency, with minimum version: `uv add "pydantic>=2"`
 * Re-lock all packages, upgrading those with newer versions (but obeying version pins in pyproject.toml): `uv lock --upgrade`
 * Generate a DB Migration: `./scripts/migrate` (note `app/settings/prestart.sh` will run migrations automatically when running `/scripts/develop`)
