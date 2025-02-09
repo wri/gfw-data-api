@@ -2,8 +2,34 @@
 
 set -e
 
-pip3.8 install pipenv
-/Library/Frameworks/Python.framework/Versions/3.8/bin/pipenv install --dev
+PYTHON_VERSION="3.10"
+VIRTUAL_ENV="${VIRTUAL_ENV:-.venv_uv}"
 
-detect-secrets scan > .secrets.baseline
+# Install Python and create the venv all in one go
+uv venv ${VIRTUAL_ENV} --python ${PYTHON_VERSION} --seed
+
+# Now install all Data API deps in the venv
+# But first avoid some common pitfalls
+if command -v "pg_config" >/dev/null 2>&1; then
+  echo "pg_config (needed to built psycopg2) found in path"
+else
+  echo "pg_config (needed to built psycopg2) not found in path"
+  echo "If libpq is installed, add its binary directory to your path and try "
+  echo "running setup script again. For example: "
+  echo "try 'PATH=\$PATH:/opt/homebrew/opt/libpq/bin ./scripts/setup' for "
+  echo "libpg installed with homebrew"
+  exit 1
+fi
+
+echo "Installing deps into venv"
+echo "If this fails with a message like 'ld: library 'ssl' not found' "
+echo "try adding your OpenSSL dir to your library path like so (modify "
+echo "for your OpenSSL version): "
+echo "LIBRARY_PATH=/opt/homebrew/Cellar/openssl@3/3.4.0/lib ./scripts/setup"
+uv sync --locked --no-install-project
+
+. ${VIRTUAL_ENV}/bin/activate
+
+echo "Installing pre-commit hooks"
 pre-commit install
+pre-commit
