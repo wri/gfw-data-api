@@ -6,17 +6,27 @@ PYTHON_VERSION="3.10"
 VIRTUAL_ENV="${VIRTUAL_ENV:-.venv_uv}"
 
 # Install Python and create the venv all in one go
+if command -v "uv" >/dev/null 2>&1; then
+  echo "uv (needed to create venv) found in path"
+else
+  echo "uv (needed to create venv) NOT found in path"
+  echo "If uv is installed, add its binary directory to your path and try "
+  echo "running setup script again. For example: "
+  echo "'PATH=\$PATH:~/bin ./scripts/setup' for uv installed in ~/bin"
+  echo "Otherwise, see https://docs.astral.sh/uv/getting-started/installation/"
+  exit 1
+fi
 uv venv ${VIRTUAL_ENV} --python ${PYTHON_VERSION} --seed
 
 # Now install all Data API deps in the venv
 # But first avoid some common pitfalls
 if command -v "pg_config" >/dev/null 2>&1; then
-  echo "pg_config (needed to built psycopg2) found in path"
+  echo "pg_config (needed to build psycopg2) found in path"
 else
-  echo "pg_config (needed to built psycopg2) not found in path"
+  echo "pg_config (needed to build psycopg2) NOT found in path"
   echo "If libpq is installed, add its binary directory to your path and try "
   echo "running setup script again. For example: "
-  echo "try 'PATH=\$PATH:/opt/homebrew/opt/libpq/bin ./scripts/setup' for "
+  echo "'PATH=\$PATH:/opt/homebrew/opt/libpq/bin ./scripts/setup' for "
   echo "libpg installed with homebrew"
   exit 1
 fi
