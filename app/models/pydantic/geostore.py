@@ -25,11 +25,26 @@ class FeatureCollection(StrictBaseModel):
     type: str
 
 
+class GeostoreInfo(StrictBaseModel):
+    country: str  # iso
+    name: str  # name of the most specific region
+    region: str  # gid1
+    subregion: str  # gid2
+    gadm: str  # GADM version, for backwards compat
+    adminProvider: str  # e.g. "gadm"
+    adminVersion: str  # e.g. "4.1"
+    simplify: bool
+    simplifyThresh: Optional[float]
+    use: Dict[str, str]
+
+
 class Geostore(BaseRecord):
     gfw_geostore_id: UUID
     gfw_geojson: Geometry
     gfw_area__ha: float
     gfw_bbox: List[float]
+
+    info: Optional[GeostoreInfo]
 
     @validator("gfw_geojson", pre=True)
     def convert_to_dict(cls, v):

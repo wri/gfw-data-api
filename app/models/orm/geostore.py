@@ -16,6 +16,8 @@ class Geostore(Base):
     gfw_area__ha = db.Column(db.Numeric)
     gfw_bbox = db.Column(db.ARRAY(db.Numeric))
 
+    info = db.Column(db.JSON)
+
     _geostore_gfw_geostore_id_idx = db.Index(
         "geostore_gfw_geostore_id_idx", "gfw_geostore_id", postgresql_using="hash"
     )

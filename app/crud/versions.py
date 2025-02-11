@@ -10,10 +10,7 @@ from ..models.orm.version_metadata import VersionMetadata as ORMVersionMetadata
 from ..models.orm.versions import Version as ORMVersion
 from ..utils.generators import list_to_async_generator
 from . import datasets, update_data
-from .metadata import (
-    create_version_metadata,
-    update_version_metadata,
-)
+from .metadata import create_version_metadata, update_version_metadata
 
 
 async def get_versions(dataset: str) -> List[ORMVersion]:
@@ -114,7 +111,7 @@ async def create_version(dataset: str, version: str, **data) -> ORMVersion:
 async def update_version(dataset: str, version: str, **data) -> ORMVersion:
     """Update fields of version."""
     row: ORMVersion = await get_version(dataset, version)
-    metadata_data = data.pop("metadata", None)
+    metadata_data = data.pop("metadata", None)  # FIXME: Shouldn't we default to {}?
     row = await update_data(row, data)
 
     if metadata_data:
