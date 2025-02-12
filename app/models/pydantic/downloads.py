@@ -2,9 +2,9 @@ from typing import Optional
 
 from pydantic import Field
 
-from app.models.enum.creation_options import Delimiters
-from app.models.pydantic.base import StrictBaseModel
-from app.models.pydantic.geostore import Geometry
+from ..enum.creation_options import Delimiters
+from .base import StrictBaseModel
+from .geostore import Geometry
 
 
 class DownloadJSONIn(StrictBaseModel):

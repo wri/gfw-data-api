@@ -11,8 +11,8 @@ from ..enum.pg_types import (
     PGTextType,
     PGType,
 )
-from ..pydantic.geostore import FeatureCollection
-from ..pydantic.responses import Response
+from .geostore import FeatureCollection
+from .responses import Response
 from .base import StrictBaseModel
 
 
