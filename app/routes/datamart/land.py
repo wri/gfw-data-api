@@ -4,6 +4,7 @@ import uuid
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query
+from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
@@ -18,7 +19,7 @@ MOCK_IDS = {}
 
 
 @router.get(
-    "/v0/land/tree-cover-loss-by-driver",
+    "/tree-cover-loss-by-driver",
     response_class=ORJSONResponse,
     response_model=Response,
     tags=["Land"],
@@ -31,6 +32,7 @@ async def tree_cover_loss_by_driver_search(
 ):
     """Beta endpoint, currently does no real work."""
 
+    logger.info("SEARCH")
     try:
         resource_id = MOCK_IDS[f"{geostore_id}_{canopy_cover}"]["id"]
         return {"link": f"/v0/land/tree-cover-loss-by-driver/{resource_id}"}
@@ -45,7 +47,7 @@ async def tree_cover_loss_by_driver_search(
 
 
 @router.get(
-    "/v0/land/tree-cover-loss-by-driver/{uuid}",
+    "/tree-cover-loss-by-driver/{uuid}",
     response_class=ORJSONResponse,
     response_model=Response,
     tags=["Land"],
@@ -56,7 +58,7 @@ async def tree_cover_loss_by_driver_get(
     api_key: APIKey = Depends(get_api_key),
 ):
     """"""
-
+    logger.info("GET")
     resource = None
     for mock_id in MOCK_IDS.values():
         if mock_id["id"] == uuid:
@@ -73,24 +75,43 @@ async def tree_cover_loss_by_driver_get(
 
     if resource["retries"] < 1:
         resource["retries"] += 1
-        return Response(
-            headers={"Retry-After": 1},
+        return ORJSONResponse(
+            status_code=200,
+            headers={"Retry-After": "1"},
             content={"data": {"status": "pending"}, "status": "success"},
         )
     else:
-        return {
-            "self": f"/v0/land/tree-cover-loss-by-driver/{resource['id']}",
-            "treeCoverLossByDriver": {
-                "Wildfire": 10,
-                "Shifting Agriculture": 12,
-                "Urbanization": 7,
+        return ORJSONResponse(
+            status_code=200,
+            content={
+                "data": {
+                    "self": f"/v0/land/tree-cover-loss-by-driver/{resource['id']}",
+                    "treeCoverLossByDriver": {
+                        "Wildfire": 10,
+                        "Shifting Agriculture": 12,
+                        "Urbanization": 7,
+                    },
+                    "metadata": {
+                        "sources": [
+                            {"dataset": "umd_tree_cover_loss", "version": "v1.11"},
+                            {
+                                "dataset": "wri_google_tree_cover_loss_by_drivers",
+                                "version": "v1.11",
+                            },
+                            {
+                                "dataset": "umd_tree_cover_density_2000",
+                                "version": "v1.11",
+                            },
+                        ]
+                    },
+                },
+                "status": "success",
             },
-            "metadata": {"sources": []},
-        }
+        )
 
 
 @router.post(
-    "/v0/land/tree-cover-loss-by-driver",
+    "/tree-cover-loss-by-driver",
     response_class=ORJSONResponse,
     response_model=Response,
     tags=["Land"],
@@ -102,6 +123,7 @@ async def tree_cover_loss_by_driver_post(
     # create initial Job item as pending
     # trigger background task to create item
     # return 202 accepted
+    logger.info("POST")
     resource_id = uuid.uuid4()
     MOCK_IDS[f"{request.geostore_id}_{request.canopy_cover}"] = {
         "id": resource_id,
@@ -110,5 +132,10 @@ async def tree_cover_loss_by_driver_post(
 
     return ORJSONResponse(
         status_code=202,
-        content={"link": f"/v0/land/tree-cover-loss-by-driver/{resource_id}"},
+        content={
+            "data": {
+                "link": f"/v0/land/tree-cover-loss-by-driver/{resource_id}",
+            },
+            "status": "success",
+        },
     )
