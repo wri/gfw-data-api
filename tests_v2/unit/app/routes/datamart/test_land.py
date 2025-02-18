@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -44,7 +46,13 @@ async def test_post_tree_cover_loss_by_drivers(
     body = response.json()
     assert body["status"] == "success"
     assert "/v0/land/tree-cover-loss-by-driver/" in body["data"]["link"]
-    # assert contains_valid_uuid(body["data"]["link"])
+
+    resource_id = body["data"]["link"].split("/")[-1]
+    try:
+        uuid.UUID(resource_id)
+        assert True
+    except ValueError:
+        assert False
 
 
 @pytest.mark.asyncio
@@ -75,16 +83,31 @@ async def test_get_tree_cover_loss_by_drivers_after_create(
     assert "Retry-After" in response.headers
     assert int(response.headers["Retry-After"]) == 1
 
-    response = await async_client.get(link, headers=headers)
+    retries = 0
+    while retries < 3:
+        response = await async_client.get(link, headers=headers)
 
+        if "Retry-After" in response.headers:
+            assert response.status_code == 200
+            assert int(response.headers["Retry-After"]) == 1
+            assert response.json()["data"]["status"] == "pending"
+            retries += 1
+        else:
+            break
+
+    assert not retries == 3
     assert response.status_code == 200
     assert "Retry-After" not in response.headers
 
     data = response.json()["data"]
     assert data["treeCoverLossByDriver"] == {
-        "Wildfire": 10,
-        "Shifting Agriculture": 12,
-        "Urbanization": 7,
+        "Permanent agriculture": 10,
+        "Hard commodities": 12,
+        "Shifting cultivation": 7,
+        "Forest management": 93.4,
+        "Wildfires": 42,
+        "Settlements and infrastructure": 13.562,
+        "Other natural disturbances": 6,
     }
     assert data["metadata"] == {
         "sources": [
@@ -93,3 +116,11 @@ async def test_get_tree_cover_loss_by_drivers_after_create(
             {"dataset": "umd_tree_cover_density_2000", "version": "v1.11"},
         ]
     }
+
+    # now we should also see the resource when looking with the same params
+    params = {"x-api-key": api_key, "geostore_id": geostore, "canopy_cover": 30}
+    response = await async_client.get(
+        "/v0/land/tree-cover-loss-by-driver", headers=headers, params=params
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["link"] == link

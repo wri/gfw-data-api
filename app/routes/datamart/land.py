@@ -1,9 +1,10 @@
 """Run analysis on registered datasets."""
 
+import random
 import uuid
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, FastAPI, Path, Query
+from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
@@ -14,9 +15,6 @@ from ...authentication.api_keys import get_api_key
 from ...models.pydantic.responses import Response
 
 router = APIRouter()
-
-app = FastAPI()
-app.state.mock_ids = {}
 
 
 @router.get(
@@ -29,18 +27,29 @@ async def tree_cover_loss_by_driver_search(
     *,
     geostore_id: UUID = Query(..., title="Geostore ID"),
     canopy_cover: int = Query(..., alias="canopy_cover", title="Canopy Cover Percent"),
+    request: Request,
     api_key: APIKey = Depends(get_api_key),
 ):
-    """Beta endpoint, currently does no real work."""
+    """Search if a resource exists for a given geostore and canopy cover."""
+    # create mock_ids state if it doesn't exist
+    if not hasattr(request.app.state, "mock_ids"):
+        request.app.state.mock_ids = {}
 
     try:
-        resource_id = app.state.mock_ids[f"{geostore_id}_{canopy_cover}"]["id"]
-        return {"link": f"/v0/land/tree-cover-loss-by-driver/{resource_id}"}
+        resource_id = request.app.state.mock_ids[f"{geostore_id}_{canopy_cover}"]["id"]
+        return ORJSONResponse(
+            status_code=200,
+            content={
+                "status": "success",
+                "data": {"link": f"/v0/land/tree-cover-loss-by-driver/{resource_id}"},
+            },
+        )
+        return
     except KeyError:
         return ORJSONResponse(
             status_code=404,
             content={
-                "status": "status",
+                "status": "failed",
                 "message": "Not Found",
             },
         )
@@ -55,13 +64,18 @@ async def tree_cover_loss_by_driver_search(
 async def tree_cover_loss_by_driver_get(
     *,
     uuid: UUID = Path(..., title="Tree cover loss by driver ID"),
+    request: Request,
     api_key: APIKey = Depends(get_api_key),
 ):
-    """"""
-    logger.info(app.state.mock_ids)
+    """Retrieve a tree cover loss by drivers resource."""
+    # create mock_ids state if it doesn't exist
+    if not hasattr(request.app.state, "mock_ids"):
+        request.app.state.mock_ids = {}
+
+    logger.info(request.app.state.mock_ids)
 
     resource = None
-    for mock_id in app.state.mock_ids.values():
+    for mock_id in request.app.state.mock_ids.values():
         if mock_id["id"] == uuid:
             resource = mock_id
 
@@ -74,7 +88,7 @@ async def tree_cover_loss_by_driver_get(
             },
         )
 
-    if resource["retries"] < 1:
+    if resource["retries"] < 3:
         resource["retries"] += 1
         return ORJSONResponse(
             status_code=200,
@@ -88,9 +102,13 @@ async def tree_cover_loss_by_driver_get(
                 "data": {
                     "self": f"/v0/land/tree-cover-loss-by-driver/{resource['id']}",
                     "treeCoverLossByDriver": {
-                        "Wildfire": 10,
-                        "Shifting Agriculture": 12,
-                        "Urbanization": 7,
+                        "Permanent agriculture": 10,
+                        "Hard commodities": 12,
+                        "Shifting cultivation": 7,
+                        "Forest management": 93.4,
+                        "Wildfires": 42,
+                        "Settlements and infrastructure": 13.562,
+                        "Other natural disturbances": 6,
                     },
                     "metadata": {
                         "sources": [
@@ -119,15 +137,27 @@ async def tree_cover_loss_by_driver_get(
     deprecated=True,
 )
 async def tree_cover_loss_by_driver_post(
-    request: TreeCoverLossByDriverIn, api_key: APIKey = Depends(get_api_key)
+    data: TreeCoverLossByDriverIn,
+    request: Request,
+    api_key: APIKey = Depends(get_api_key),
 ):
+    """Create new tree cover loss by drivers resource for a given geostore and
+    canopy cover."""
+
     # create initial Job item as pending
     # trigger background task to create item
     # return 202 accepted
     resource_id = uuid.uuid4()
-    app.state.mock_ids[f"{request.geostore_id}_{request.canopy_cover}"] = {
+
+    # create mock_ids state if it doesn't exist
+    if not hasattr(request.app.state, "mock_ids"):
+        request.app.state.mock_ids = {}
+
+    # mocks randomness of analysis time
+    retries = random.randint(0, 3)
+    request.app.state.mock_ids[f"{data.geostore_id}_{data.canopy_cover}"] = {
         "id": resource_id,
-        "retries": 0,
+        "retries": retries,
     }
 
     return ORJSONResponse(
