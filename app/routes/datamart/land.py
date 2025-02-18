@@ -3,7 +3,7 @@
 import uuid
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, FastAPI, Path, Query
 from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
@@ -15,7 +15,8 @@ from ...models.pydantic.responses import Response
 
 router = APIRouter()
 
-MOCK_IDS = {}
+app = FastAPI()
+app.state.mock_ids = {}
 
 
 @router.get(
@@ -32,9 +33,8 @@ async def tree_cover_loss_by_driver_search(
 ):
     """Beta endpoint, currently does no real work."""
 
-    logger.info("SEARCH")
     try:
-        resource_id = MOCK_IDS[f"{geostore_id}_{canopy_cover}"]["id"]
+        resource_id = app.state.mock_ids[f"{geostore_id}_{canopy_cover}"]["id"]
         return {"link": f"/v0/land/tree-cover-loss-by-driver/{resource_id}"}
     except KeyError:
         return ORJSONResponse(
@@ -58,9 +58,10 @@ async def tree_cover_loss_by_driver_get(
     api_key: APIKey = Depends(get_api_key),
 ):
     """"""
-    logger.info("GET")
+    logger.info(app.state.mock_ids)
+
     resource = None
-    for mock_id in MOCK_IDS.values():
+    for mock_id in app.state.mock_ids.values():
         if mock_id["id"] == uuid:
             resource = mock_id
 
@@ -123,9 +124,8 @@ async def tree_cover_loss_by_driver_post(
     # create initial Job item as pending
     # trigger background task to create item
     # return 202 accepted
-    logger.info("POST")
     resource_id = uuid.uuid4()
-    MOCK_IDS[f"{request.geostore_id}_{request.canopy_cover}"] = {
+    app.state.mock_ids[f"{request.geostore_id}_{request.canopy_cover}"] = {
         "id": resource_id,
         "retries": 0,
     }
