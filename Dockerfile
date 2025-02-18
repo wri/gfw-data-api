@@ -22,7 +22,7 @@ COPY Pipfile.lock Pipfile.lock
 
 RUN if [ "$ENV" = "dev" ] || [ "$ENV" = "test" ]; then \
         echo "Install all dependencies" \
-        && pipenv install --system --deploy --ignore-pipfile --dev; \
+        && pipenv install --system --deploy --skip-lock --dev; \
     else \
         echo "Install production dependencies only" \
         && pipenv install --system --deploy; \
