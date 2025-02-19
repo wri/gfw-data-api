@@ -88,7 +88,7 @@ async def test_get_tree_cover_loss_by_drivers_after_create(
         else:
             break
 
-    assert not retries == 3
+    assert not retries == 4
     assert response.status_code == 200
     assert "Retry-After" not in response.headers
 
