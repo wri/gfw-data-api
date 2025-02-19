@@ -119,13 +119,13 @@ async def create_user_area(geometry: Geometry) -> Geostore:
 
 async def get_admin_boundary_list() -> AdminListResponse:
     dataset = "gadm_administrative_boundaries"
-    version = "v4.1.64"
+    version = "v4.1.64"  # FIXME: Use the env-specific lookup table
 
     src_table: Table = db.table(version)
     src_table.schema = dataset
 
-    where_clause: TextClause = db.text("adm_level=:'adm_level'")
-    bind_vals = {"adm_level": f"{0}"}
+    where_clause: TextClause = db.text("adm_level=:adm_level")
+    bind_vals = {"adm_level": "'0'"}
     where_clause = where_clause.bindparams(**bind_vals)
 
     gadm_admin_list_columns: List[Column] = [
@@ -144,7 +144,11 @@ async def get_admin_boundary_list() -> AdminListResponse:
         **{
             "status": "success",
             "data": [
-                {"geostoreID": row.gfw_gestore_id, "iso": row.gid_0, "name": row.name_0}
+                {
+                    "geostoreID": row.gfw_gestore_id,
+                    "iso": row.gid_0,
+                    "name": row.country,
+                }
                 for row in rows
             ],
         }

@@ -98,21 +98,21 @@ async def get_any_geostore(
 )
 async def get_admin_list(
     *,
-    admin_version: Optional[str] = Query(None, description="Version of GADM features"),
+    adminVersion: Optional[str] = Query(None, description="Version of GADM features"),
     request: Request,
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get all Geostore IDs, names and country codes (proxies requests for GADM
     3.6 features to the RW API)"""
-    if admin_version == "3.6" or admin_version is None:
+    if adminVersion == "3.6" or adminVersion is None:
         result: AdminListResponse = await rw_get_admin_list(
             request.query_params, x_api_key
         )
-    elif admin_version == "4.1":
+    elif adminVersion == "4.1":
         result = await geostore.get_admin_boundary_list()
     else:
         raise HTTPException(
-            status_code=404, detail=f"Invalid admin version {admin_version}"
+            status_code=404, detail=f"Invalid admin version {adminVersion}"
         )
 
     return result
