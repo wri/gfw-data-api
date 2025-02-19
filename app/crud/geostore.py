@@ -10,7 +10,7 @@ from sqlalchemy.sql.elements import TextClause
 from app.application import db
 from app.errors import RecordNotFoundError
 from app.models.orm.user_areas import UserArea as ORMUserArea
-from app.models.pydantic.geostore import Geometry, Geostore
+from app.models.pydantic.geostore import AdminListResponse, Geometry, Geostore
 
 GEOSTORE_COLUMNS: List[Column] = [
     db.column("gfw_geostore_id"),
@@ -115,3 +115,36 @@ async def create_user_area(geometry: Geometry) -> Geostore:
         geostore = await get_gfw_geostore_from_any_dataset(geo_id)
 
     return geostore
+
+
+async def get_admin_boundary_list() -> AdminListResponse:
+    dataset = "gadm_administrative_boundaries"
+    version = "v4.1.64"
+
+    src_table: Table = db.table(version)
+    src_table.schema = dataset
+
+    where_clause: TextClause = db.text("adm_level=:'adm_level'")
+    bind_vals = {"adm_level": f"{0}"}
+    where_clause = where_clause.bindparams(**bind_vals)
+
+    gadm_admin_list_columns: List[Column] = [
+        db.column("gfw_geostore_id"),
+        db.column("gid_0"),
+        db.column("country"),
+    ]
+    sql: Select = (
+        db.select(gadm_admin_list_columns).select_from(src_table).where(where_clause)
+    )
+
+    rows = await db.all(sql)
+
+    return AdminListResponse(
+        **{
+            "status": "success",
+            "data": [
+                {"geostoreID": row.gfw_gestore_id, "iso": row.gid_0, "name": row.name_0}
+                for row in rows
+            ],
+        }
+    )

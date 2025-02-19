@@ -1,30 +1,30 @@
 """Retrieve a geometry using its md5 hash for a given dataset, user defined
 geometries in the datastore."""
 
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException, Path, Request
+from fastapi import APIRouter, Header, HTTPException, Path, Query, Request
 from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
 from ...errors import BadRequestError, RecordNotFoundError
 from ...models.pydantic.geostore import (
+    AdminListResponse,
     Geostore,
     GeostoreIn,
     GeostoreResponse,
-    RWAdminListResponse,
     RWGeostoreIn,
     RWGeostoreResponse,
 )
 from ...utils.rw_api import (
     create_rw_geostore,
-    get_admin_list,
     get_boundary_by_country_id,
     get_boundary_by_region_id,
     get_boundary_by_subregion_id,
     get_geostore_by_land_use_and_index,
     proxy_get_geostore,
+    rw_get_admin_list,
 )
 
 router = APIRouter()
@@ -92,16 +92,28 @@ async def get_any_geostore(
 @router.get(
     "/admin/list",
     response_class=ORJSONResponse,
-    response_model=RWAdminListResponse,
+    response_model=AdminListResponse,
     tags=["Geostore"],
     include_in_schema=False,
 )
-async def rw_get_admin_list(
-    request: Request, x_api_key: Annotated[str | None, Header()] = None
+async def get_admin_list(
+    *,
+    admin_version: Optional[str] = Query(None, description="Version of GADM features"),
+    request: Request,
+    x_api_key: Annotated[str | None, Header()] = None,
 ):
-    """Get all Geostore IDs, names and country codes (proxies request to the RW
-    API)"""
-    result: RWAdminListResponse = await get_admin_list(request.query_params, x_api_key)
+    """Get all Geostore IDs, names and country codes (proxies requests for GADM
+    3.6 features to the RW API)"""
+    if admin_version == "3.6" or admin_version is None:
+        result: AdminListResponse = await rw_get_admin_list(
+            request.query_params, x_api_key
+        )
+    elif admin_version == "4.1":
+        result = await geostore.get_admin_boundary_list()
+    else:
+        raise HTTPException(
+            status_code=404, detail=f"Invalid admin version {admin_version}"
+        )
 
     return result
 

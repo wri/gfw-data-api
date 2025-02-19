@@ -16,9 +16,9 @@ from ..errors import (
 )
 from ..models.pydantic.authentication import User
 from ..models.pydantic.geostore import (
+    AdminListResponse,
     Geometry,
     GeostoreCommon,
-    RWAdminListResponse,
     RWGeostoreIn,
     RWGeostoreResponse,
 )
@@ -225,13 +225,13 @@ async def proxy_get_geostore(
     return RWGeostoreResponse.parse_obj(response.json())
 
 
-async def get_admin_list(
+async def rw_get_admin_list(
     query_params: QueryParams, x_api_key: str | None = None
-) -> RWAdminListResponse:
+) -> AdminListResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/list"
 
     response = await proxy_get_request_to_rw_api(url, dict(**query_params), x_api_key)
-    return RWAdminListResponse.parse_obj(response.json())
+    return AdminListResponse.parse_obj(response.json())
 
 
 async def get_boundary_by_country_id(

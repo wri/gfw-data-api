@@ -6,7 +6,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient, MockTransport, Request, Response
 
 from app.crud import geostore as crud_geostore
-from app.models.pydantic.geostore import Geostore, RWGeostoreResponse
+from app.models.pydantic.geostore import AdminListResponse, Geostore, RWGeostoreResponse
 from app.routes.geostore import geostore
 from app.utils import rw_api
 
@@ -316,3 +316,58 @@ async def test_get_geostore_gfw_branch(
 
     assert mock_proxy_get_geostore.called is False
     assert mock_get_gfw_geostore_from_any_dataset.called is True
+
+
+@pytest.mark.asyncio
+async def test_get_admin_list_rw_branch(
+    async_client: AsyncClient, monkeypatch: MonkeyPatch
+):
+    url = "/geostore/admin/list"
+
+    mock_rw_get_admin_list = AsyncMock(
+        return_value=AdminListResponse(**example_admin_list),
+        spec=rw_api.rw_get_admin_list,
+    )
+    monkeypatch.setattr(geostore, "rw_get_admin_list", mock_rw_get_admin_list)
+
+    _ = await async_client.get(url)
+
+    assert mock_rw_get_admin_list.called is True
+
+
+@pytest.mark.asyncio
+async def test_get_admin_list_rw_branch_36(
+    async_client: AsyncClient, monkeypatch: MonkeyPatch
+):
+    url = "/geostore/admin/list"
+    params = {"admin_version": "3.6"}
+
+    mock_rw_get_admin_list = AsyncMock(
+        return_value=AdminListResponse(**example_admin_list),
+        spec=rw_api.rw_get_admin_list,
+    )
+    monkeypatch.setattr(geostore, "rw_get_admin_list", mock_rw_get_admin_list)
+
+    _ = await async_client.get(url, params=params)
+
+    assert mock_rw_get_admin_list.called is True
+
+
+@pytest.mark.asyncio
+async def test_get_admin_list_gfw_branch_41(
+    async_client: AsyncClient, monkeypatch: MonkeyPatch
+):
+    url = "/geostore/admin/list"
+    params = {"admin_version": "4.1"}
+
+    mock_gfw_get_admin_list = AsyncMock(
+        return_value=AdminListResponse(**example_admin_list),
+        spec=crud_geostore.get_admin_boundary_list,
+    )
+    monkeypatch.setattr(
+        crud_geostore, "get_admin_boundary_list", mock_gfw_get_admin_list
+    )
+
+    _ = await async_client.get(url, params=params)
+
+    assert mock_gfw_get_admin_list.called is True

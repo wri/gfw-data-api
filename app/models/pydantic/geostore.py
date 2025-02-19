@@ -89,7 +89,7 @@ class RWAdminListItemWithName(StrictBaseModel):
     iso: str
 
 
-class RWAdminListResponse(StrictBaseModel):
+class AdminListResponse(StrictBaseModel):
     data: List[RWAdminListItem | RWAdminListItemWithName]
 
 
