@@ -21,6 +21,7 @@ from .routes import health
 from .routes.analysis import analysis
 from .routes.assets import asset, assets
 from .routes.authentication import authentication
+from .routes.datamart import land
 from .routes.datasets import asset as version_asset
 from .routes.datasets import (
     dataset,
@@ -187,6 +188,15 @@ for r in job_routes:
 health_routers = (health.router,)
 for r in health_routers:
     app.include_router(r, prefix="")
+
+
+###############
+# LAND API
+###############
+
+job_routes = (land.router,)
+for r in job_routes:
+    app.include_router(r, prefix="/v0/land")
 
 
 #######################
