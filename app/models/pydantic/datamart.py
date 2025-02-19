@@ -5,4 +5,4 @@ from .base import StrictBaseModel
 
 class TreeCoverLossByDriverIn(StrictBaseModel):
     geostore_id: UUID
-    canopy_cover: int
+    canopy_cover: int = 30

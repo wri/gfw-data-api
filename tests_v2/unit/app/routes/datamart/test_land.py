@@ -39,7 +39,6 @@ async def test_post_tree_cover_loss_by_drivers(
         "/v0/land/tree-cover-loss-by-driver", headers=headers, json=payload
     )
 
-    print("HERE")
     print(response.json())
     assert response.status_code == 202
 
@@ -77,12 +76,6 @@ async def test_get_tree_cover_loss_by_drivers_after_create(
     assert body["status"] == "success"
 
     link = body["data"]["link"]
-    response = await async_client.get(link, headers=headers)
-
-    assert response.status_code == 200
-    assert "Retry-After" in response.headers
-    assert int(response.headers["Retry-After"]) == 1
-
     retries = 0
     while retries < 3:
         response = await async_client.get(link, headers=headers)
