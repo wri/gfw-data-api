@@ -129,6 +129,7 @@ async def get_admin_boundary_list() -> AdminListResponse:
     where_clause = where_clause.bindparams(**bind_vals)
 
     gadm_admin_list_columns: List[Column] = [
+        db.column("adm_level"),
         db.column("gfw_geostore_id"),
         db.column("gid_0"),
         db.column("country"),
