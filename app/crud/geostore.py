@@ -142,7 +142,6 @@ async def get_admin_boundary_list() -> AdminListResponse:
 
     return AdminListResponse(
         **{
-            "status": "success",
             "data": [
                 {
                     "geostoreID": row.gfw_gestore_id,

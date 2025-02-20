@@ -348,9 +348,10 @@ async def test_get_admin_list_rw_branch_36(
     )
     monkeypatch.setattr(geostore, "rw_get_admin_list", mock_rw_get_admin_list)
 
-    _ = await async_client.get(url, params=params)
+    resp = await async_client.get(url, params=params)
 
     assert mock_rw_get_admin_list.called is True
+    assert resp.json().get("status") == "success"
 
 
 @pytest.mark.asyncio
@@ -368,6 +369,7 @@ async def test_get_admin_list_gfw_branch_41(
         crud_geostore, "get_admin_boundary_list", mock_gfw_get_admin_list
     )
 
-    _ = await async_client.get(url, params=params)
+    resp = await async_client.get(url, params=params)
 
     assert mock_gfw_get_admin_list.called is True
+    assert resp.json().get("status") == "success"

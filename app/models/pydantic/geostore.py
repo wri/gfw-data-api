@@ -78,19 +78,19 @@ class CreateGeostoreResponseInfo(StrictBaseModel):
     use: Dict
 
 
-class RWAdminListItem(StrictBaseModel):
+class AdminListItem(StrictBaseModel):
     geostoreId: str
     iso: str
     name: str
 
 
-class RWAdminListItemWithName(StrictBaseModel):
+class AdminListItemWithName(StrictBaseModel):
     geostoreId: str
     iso: str
 
 
-class AdminListResponse(StrictBaseModel):
-    data: List[RWAdminListItem | RWAdminListItemWithName]
+class AdminListResponse(Response):
+    data: List[AdminListItem | AdminListItemWithName]
 
 
 class WDPAInfo(StrictBaseModel):
