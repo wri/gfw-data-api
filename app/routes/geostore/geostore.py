@@ -1,7 +1,7 @@
 """Retrieve a geometry using its md5 hash for a given dataset, user defined
 geometries in the datastore."""
 
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Path, Query, Request
@@ -17,9 +17,9 @@ from ...models.pydantic.geostore import (
     RWGeostoreIn,
     RWGeostoreResponse,
 )
+from ...utils.rw_api import create_rw_geostore
+from ...utils.rw_api import get_boundary_by_country_id as rw_get_boundary_by_country_id
 from ...utils.rw_api import (
-    create_rw_geostore,
-    get_boundary_by_country_id,
     get_boundary_by_region_id,
     get_boundary_by_subregion_id,
     get_geostore_by_land_use_and_index,
@@ -121,21 +121,29 @@ async def get_admin_list(
 @router.get(
     "/admin/{country_id}",
     response_class=ORJSONResponse,
-    response_model=RWGeostoreResponse,
+    # response_model=RWGeostoreResponse,
     tags=["Geostore"],
     include_in_schema=False,
 )
-async def rw_get_boundary_by_country_id(
+async def get_boundary_by_country_id(
     *,
     country_id: str = Path(..., title="country_id"),
     request: Request,
+    adminVersion: Optional[str] = Query(None, description="Version of GADM features"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get a GADM boundary by country ID (proxies request to the RW API)"""
 
-    result: RWGeostoreResponse = await get_boundary_by_country_id(
-        country_id, request.query_params, x_api_key
-    )
+    if adminVersion == "3.6" or adminVersion is None:
+        result: Any = await rw_get_boundary_by_country_id(  # FIXME: Any
+            country_id, request.query_params, x_api_key
+        )
+    elif adminVersion == "4.1":
+        result = await geostore.get_geostore_by_country_id(country_id)
+    else:
+        raise HTTPException(
+            status_code=404, detail=f"Invalid admin version {adminVersion}"
+        )
 
     return result
 
