@@ -26,6 +26,7 @@ example_admin_list = {
 
 
 example_admin_geostore_snipped = {
+    "status": "success",
     "data": {
         "type": "geoStore",
         "id": "851679102625f53c3254df99efbfba17",  # pragma: allowlist secret
@@ -75,11 +76,12 @@ example_admin_geostore_snipped = {
                 "iso": "MEX",
             },
         },
-    }
+    },
 }
 
 
 example_geostore_resp = {
+    "status": "success",
     "data": {
         "type": "geoStore",
         "id": "88db597b6bcd096fb80d1542cdc442be",  # pragma: allowlist secret
@@ -115,7 +117,7 @@ example_geostore_resp = {
             "lock": False,
             "info": {"use": {}, "wdpaid": 142809},
         },
-    }
+    },
 }
 
 

@@ -131,5 +131,5 @@ class RWGeostore(StrictBaseModel):
     attributes: RWGeostoreAttributes
 
 
-class RWGeostoreResponse(StrictBaseModel):
+class RWGeostoreResponse(Response):
     data: RWGeostore
