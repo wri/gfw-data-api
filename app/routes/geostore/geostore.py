@@ -160,13 +160,21 @@ async def rw_get_boundary_by_region_id(
     country_id: str = Path(..., title="country_id"),
     region_id: str = Path(..., title="region_id"),
     request: Request,
+    adminVersion: Optional[str] = Query(None, description="Version of GADM features"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get a GADM boundary by country and region IDs (proxies request to the RW
     API)"""
-    result: RWGeostoreResponse = await get_boundary_by_region_id(
-        country_id, region_id, request.query_params, x_api_key
-    )
+    if adminVersion == "3.6" or adminVersion is None:
+        result: RWGeostoreResponse = await get_boundary_by_region_id(
+            country_id, region_id, request.query_params, x_api_key
+        )
+    elif adminVersion == "4.1":
+        result = await geostore.get_geostore_by_region_id(country_id, region_id)
+    else:
+        raise HTTPException(
+            status_code=404, detail=f"Invalid admin version {adminVersion}"
+        )
 
     return result
 

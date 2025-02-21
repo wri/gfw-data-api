@@ -187,3 +187,41 @@ async def get_geostore_by_country_id(country_id: str) -> Any:  # FIXME
         )
 
     return Geostore.from_orm(row)
+
+
+async def get_geostore_by_region_id(country_id: str, region_id: str) -> Any:  # FIXME
+    dataset = "gadm_administrative_boundaries"
+    version = "v4.1.64"  # FIXME: Use the env-specific lookup table
+
+    src_table: Table = db.table(version)
+    src_table.schema = dataset
+
+    where_level_clause: TextClause = db.text("adm_level=:adm_level").bindparams(
+        adm_level="0"
+    )
+    where_country_clause: TextClause = db.text("gid_0=:country_id").bindparams(
+        country_id=country_id
+    )
+    where_region_clause: TextClause = db.text("gid_1=:region_id").bindparams(
+        region_id=f"{country_id}.{region_id}"
+    )
+
+    sql: Select = (
+        db.select("*")
+        .select_from(src_table)
+        .where(where_level_clause)
+        .where(where_country_clause)
+        .where(where_region_clause)
+    )
+
+    # foo = (sql.compile(compile_kwargs={"literal_binds": True}))
+    #
+    # raise Exception(f"SQL: {foo}")
+
+    row = await db.first(sql)
+    if row is None:
+        raise RecordNotFoundError(
+            f"Geostore with ID {country_id}.{region_id} not found in GADM 4.1"  # FIXME
+        )
+
+    return Geostore.from_orm(row)
