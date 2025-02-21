@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List
 from uuid import UUID
 
 from asyncpg.exceptions import UniqueViolationError
@@ -124,9 +124,7 @@ async def get_admin_boundary_list() -> AdminListResponse:
     src_table: Table = db.table(version)
     src_table.schema = dataset
 
-    where_clause: TextClause = db.text("adm_level=:adm_level")
-    bind_vals = {"adm_level": "0"}
-    where_clause = where_clause.bindparams(**bind_vals)
+    where_clause: TextClause = db.text("adm_level=:adm_level").bindparams(adm_level="0")
 
     gadm_admin_list_columns: List[Column] = [
         db.column("adm_level"),
@@ -137,6 +135,9 @@ async def get_admin_boundary_list() -> AdminListResponse:
     sql: Select = (
         db.select(gadm_admin_list_columns).select_from(src_table).where(where_clause)
     )
+    # foo = (sql.compile(compile_kwargs={"literal_binds": True}))
+    #
+    # raise Exception(f"SQL: {foo}")
 
     rows = await db.all(sql)
 
@@ -154,7 +155,7 @@ async def get_admin_boundary_list() -> AdminListResponse:
     )
 
 
-async def get_geostore_by_country_id(country_id: str) -> Geostore:
+async def get_geostore_by_country_id(country_id: str) -> Any:  # FIXME
     dataset = "gadm_administrative_boundaries"
     version = "v4.1.64"  # FIXME: Use the env-specific lookup table
 
@@ -162,18 +163,22 @@ async def get_geostore_by_country_id(country_id: str) -> Geostore:
     src_table.schema = dataset
 
     where_level_clause: TextClause = db.text("adm_level=:adm_level").bindparams(
-        **{"adm_level": "0"}
+        adm_level="0"
     )
     where_country_clause: TextClause = db.text("country=:country_id").bindparams(
-        **{"country_id": country_id}
+        country_id=country_id
     )
 
     sql: Select = (
-        db.select(GEOSTORE_COLUMNS)
+        db.select("*")
         .select_from(src_table)
         .where(where_level_clause)
         .where(where_country_clause)
     )
+
+    # foo = (sql.compile(compile_kwargs={"literal_binds": True}))
+    #
+    # raise Exception(f"SQL: {foo}")
 
     row = await db.first(sql)
     if row is None:
