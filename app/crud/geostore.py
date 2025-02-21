@@ -145,7 +145,7 @@ async def get_admin_boundary_list() -> AdminListResponse:
         **{
             "data": [
                 {
-                    "geostoreID": row.gfw_gestore_id,
+                    "geostoreID": row.gfw_gesotore_id,
                     "iso": row.gid_0,
                     "name": row.country,
                 }
@@ -165,7 +165,7 @@ async def get_geostore_by_country_id(country_id: str) -> Any:  # FIXME
     where_level_clause: TextClause = db.text("adm_level=:adm_level").bindparams(
         adm_level="0"
     )
-    where_country_clause: TextClause = db.text("country=:country_id").bindparams(
+    where_country_clause: TextClause = db.text("gid_0=:country_id").bindparams(
         country_id=country_id
     )
 
