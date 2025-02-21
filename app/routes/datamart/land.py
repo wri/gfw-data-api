@@ -1,16 +1,17 @@
 """Run analysis on registered datasets."""
 
+import json
 import os
-import random
 import uuid
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Path, Query
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
 from app.models.pydantic.datamart import TreeCoverLossByDriverIn
 from app.settings.globals import API_URL
+from app.tasks.datamart.land import compute_tree_cover_loss_by_driver
 
 from ...authentication.api_keys import get_api_key
 from ...models.pydantic.responses import Response
@@ -68,50 +69,17 @@ async def tree_cover_loss_by_driver_get(
     """Retrieve a tree cover loss by drivers resource."""
     try:
         with open(f"/tmp/{resource_id}", "r") as f:
-            retries = int(f.read().strip())
+            result = json.loads(f.read())
 
-        if retries < 3:
-            retries += 1
-            with open(f"/tmp/{resource_id}", "w") as f:
-                f.write(str(retries))
+        headers = {}
+        if result["status"] == "pending":
+            headers = {"Retry-After": "1"}
 
-            return ORJSONResponse(
-                status_code=200,
-                headers={"Retry-After": "1"},
-                content={"data": {"status": "pending"}, "status": "success"},
-            )
-        else:
-            return ORJSONResponse(
-                status_code=200,
-                content={
-                    "data": {
-                        "self": f"/v0/land/tree-cover-loss-by-driver/{resource_id}",
-                        "treeCoverLossByDriver": {
-                            "Permanent agriculture": 10,
-                            "Hard commodities": 12,
-                            "Shifting cultivation": 7,
-                            "Forest management": 93.4,
-                            "Wildfires": 42,
-                            "Settlements and infrastructure": 13.562,
-                            "Other natural disturbances": 6,
-                        },
-                        "metadata": {
-                            "sources": [
-                                {"dataset": "umd_tree_cover_loss", "version": "v1.11"},
-                                {
-                                    "dataset": "wri_google_tree_cover_loss_by_drivers",
-                                    "version": "v1.11",
-                                },
-                                {
-                                    "dataset": "umd_tree_cover_density_2000",
-                                    "version": "v1.11",
-                                },
-                            ]
-                        },
-                    },
-                    "status": "success",
-                },
-            )
+        return ORJSONResponse(
+            status_code=200,
+            headers=headers,
+            content={"data": result, "status": "success"},
+        )
     except FileNotFoundError:
         return ORJSONResponse(
             status_code=404,
@@ -131,6 +99,7 @@ async def tree_cover_loss_by_driver_get(
 )
 async def tree_cover_loss_by_driver_post(
     data: TreeCoverLossByDriverIn,
+    background_tasks: BackgroundTasks,
     api_key: APIKey = Depends(get_api_key),
 ):
     """Create new tree cover loss by drivers resource for a given geostore and
@@ -140,11 +109,17 @@ async def tree_cover_loss_by_driver_post(
     # trigger background task to create item
     # return 202 accepted
     resource_id = _get_resource_id(data.geostore_id, data.canopy_cover)
+    pending_result = {"data": {"status": "pending"}, "status": "success"}
 
-    # mocks randomness of analysis time
-    retries = random.randint(0, 3)
     with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(str(retries))
+        f.write(json.dumps(pending_result))
+
+    background_tasks.add_task(
+        compute_tree_cover_loss_by_driver,
+        resource_id,
+        data.geostore_id,
+        data.canopy_cover,
+    )
 
     return ORJSONResponse(
         status_code=202,
