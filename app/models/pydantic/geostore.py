@@ -81,12 +81,10 @@ class CreateGeostoreResponseInfo(StrictBaseModel):
 class AdminListItem(StrictBaseModel):
     geostoreId: str
     iso: str
+
+
+class AdminListItemWithName(AdminListItem):
     name: str
-
-
-class AdminListItemWithName(StrictBaseModel):
-    geostoreId: str
-    iso: str
 
 
 class AdminListResponse(Response):

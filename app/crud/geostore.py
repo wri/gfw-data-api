@@ -145,9 +145,9 @@ async def get_admin_boundary_list() -> AdminListResponse:
         **{
             "data": [
                 {
-                    "geostoreId": row.gfw_geostore_id,
-                    "iso": row.gid_0,
-                    "name": row.country,
+                    "geostoreId": str(row.gfw_geostore_id),
+                    "iso": str(row.gid_0),
+                    "name": str(row.country),
                 }
                 for row in rows
             ],
