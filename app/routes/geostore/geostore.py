@@ -139,7 +139,10 @@ async def get_boundary_by_country_id(
             country_id, request.query_params, x_api_key
         )
     elif adminVersion == "4.1":
-        result = await geostore.get_geostore_by_country_id(country_id)
+        try:
+            result = await geostore.get_geostore_by_country_id(country_id)
+        except RecordNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
     else:
         raise HTTPException(
             status_code=404, detail=f"Invalid admin version {adminVersion}"
@@ -170,7 +173,10 @@ async def rw_get_boundary_by_region_id(
             country_id, region_id, request.query_params, x_api_key
         )
     elif adminVersion == "4.1":
-        result = await geostore.get_geostore_by_region_id(country_id, region_id)
+        try:
+            result = await geostore.get_geostore_by_region_id(country_id, region_id)
+        except RecordNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
     else:
         raise HTTPException(
             status_code=404, detail=f"Invalid admin version {adminVersion}"
