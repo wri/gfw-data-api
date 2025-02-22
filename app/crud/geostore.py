@@ -186,7 +186,31 @@ async def get_geostore_by_country_id(country_id: str) -> Any:  # FIXME
             f"Geostore with country_id {country_id} not found in GADM 4.1"  # FIXME
         )
 
-    return Geostore.from_orm(row)
+    foo = {
+        "type": "geoStore",
+        "id": str(row.gfw_geostore_id),
+        "attributes": {
+            "geojson": {
+                "crs": {},
+                "type": "FeatureCollection",
+                "features": [{"geometry": row.gfw_geojson}],
+            },
+            "hash": str(row.gfw_geostore_id),
+            "provider": {},
+            "areaHa": str(row.gfw_area__ha),
+            "bbox": str(row.gfw_bbox),
+            "lock": False,
+            "info": {
+                "use": {},
+                "simplifyThresh": False,
+                "gadm": "4.1",
+                "name": str(row.country),
+                "iso": str(row.gid_0),
+            },
+        },
+    }
+
+    return foo
 
 
 async def get_geostore_by_region_id(country_id: str, region_id: str) -> Any:  # FIXME
