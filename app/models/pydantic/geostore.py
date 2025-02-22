@@ -106,7 +106,7 @@ class LandUseInfo(StrictBaseModel):
     simplify: bool
 
 
-class RWGeostoreAttributes(StrictBaseModel):
+class AdminGeostoreAttributes(StrictBaseModel):
     geojson: FeatureCollection
     hash: str
     provider: Dict
@@ -123,11 +123,11 @@ class RWGeostoreAttributes(StrictBaseModel):
     )
 
 
-class RWGeostore(StrictBaseModel):
+class AdminGeostore(StrictBaseModel):
     type: Literal["geoStore"]
     id: str
-    attributes: RWGeostoreAttributes
+    attributes: AdminGeostoreAttributes
 
 
-class RWGeostoreResponse(Response):
-    data: RWGeostore
+class AdminGeostoreResponse(Response):
+    data: AdminGeostore

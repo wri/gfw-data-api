@@ -16,11 +16,11 @@ from ..errors import (
 )
 from ..models.pydantic.authentication import User
 from ..models.pydantic.geostore import (
+    AdminGeostoreResponse,
     AdminListResponse,
     Geometry,
     GeostoreCommon,
     RWGeostoreIn,
-    RWGeostoreResponse,
 )
 from ..settings.globals import RW_API_URL, SERVICE_ACCOUNT_TOKEN
 
@@ -199,7 +199,7 @@ async def signup(name: str, email: str) -> User:
 
 async def create_rw_geostore(
     payload: RWGeostoreIn, x_api_key: str | None = None
-) -> RWGeostoreResponse:
+) -> AdminGeostoreResponse:
     url = f"{RW_API_URL}/v1/geostore"
 
     async with AsyncClient() as client:
@@ -211,18 +211,18 @@ async def create_rw_geostore(
             response = await client.post(url, json=payload.dict())
 
     if response.status_code == 200:
-        return RWGeostoreResponse.parse_obj(response.json())
+        return AdminGeostoreResponse.parse_obj(response.json())
     else:
         raise HTTPException(response.status_code, response.text)
 
 
 async def proxy_get_geostore(
     geostore_id: str, query_params: QueryParams, x_api_key: str | None = None
-) -> RWGeostoreResponse:
+) -> AdminGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/{geostore_id}"
 
     response = await proxy_get_request_to_rw_api(url, dict(**query_params), x_api_key)
-    return RWGeostoreResponse.parse_obj(response.json())
+    return AdminGeostoreResponse.parse_obj(response.json())
 
 
 async def rw_get_admin_list(
@@ -236,11 +236,11 @@ async def rw_get_admin_list(
 
 async def get_boundary_by_country_id(
     country_id: str, query_params: QueryParams, x_api_key: str | None = None
-) -> RWGeostoreResponse:
+) -> AdminGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/{country_id}"
 
     response = await proxy_get_request_to_rw_api(url, dict(**query_params), x_api_key)
-    return RWGeostoreResponse.parse_obj(response.json())
+    return AdminGeostoreResponse.parse_obj(response.json())
 
 
 async def get_boundary_by_region_id(
@@ -248,11 +248,11 @@ async def get_boundary_by_region_id(
     region_id: str,
     query_params: QueryParams,
     x_api_key: str | None = None,
-) -> RWGeostoreResponse:
+) -> AdminGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/{country_id}/{region_id}"
 
     response = await proxy_get_request_to_rw_api(url, dict(**query_params), x_api_key)
-    return RWGeostoreResponse.parse_obj(response.json())
+    return AdminGeostoreResponse.parse_obj(response.json())
 
 
 async def get_boundary_by_subregion_id(
@@ -261,11 +261,11 @@ async def get_boundary_by_subregion_id(
     subregion_id: str,
     query_params: QueryParams,
     x_api_key: str | None = None,
-) -> RWGeostoreResponse:
+) -> AdminGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/admin/{country_id}/{region_id}/{subregion_id}"
 
     response = await proxy_get_request_to_rw_api(url, dict(**query_params), x_api_key)
-    return RWGeostoreResponse.parse_obj(response.json())
+    return AdminGeostoreResponse.parse_obj(response.json())
 
 
 async def get_geostore_by_land_use_and_index(
@@ -273,11 +273,11 @@ async def get_geostore_by_land_use_and_index(
     index: str,
     query_params: QueryParams,
     x_api_key: str | None = None,
-) -> RWGeostoreResponse:
+) -> AdminGeostoreResponse:
     url = f"{RW_API_URL}/v2/geostore/use/{land_use_type}/{index}"
 
     response = await proxy_get_request_to_rw_api(url, dict(**query_params), x_api_key)
-    return RWGeostoreResponse.parse_obj(response.json())
+    return AdminGeostoreResponse.parse_obj(response.json())
 
 
 async def proxy_get_request_to_rw_api(

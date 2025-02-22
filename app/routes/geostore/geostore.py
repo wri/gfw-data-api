@@ -10,12 +10,12 @@ from fastapi.responses import ORJSONResponse
 from ...crud import geostore
 from ...errors import BadRequestError, RecordNotFoundError
 from ...models.pydantic.geostore import (
+    AdminGeostoreResponse,
     AdminListResponse,
     Geostore,
     GeostoreIn,
     GeostoreResponse,
     RWGeostoreIn,
-    RWGeostoreResponse,
 )
 from ...utils.rw_api import create_rw_geostore
 from ...utils.rw_api import get_boundary_by_country_id as rw_get_boundary_by_country_id
@@ -33,7 +33,7 @@ router = APIRouter()
 @router.post(
     "/",
     response_class=ORJSONResponse,
-    response_model=GeostoreResponse | RWGeostoreResponse,
+    response_model=GeostoreResponse | AdminGeostoreResponse,
     status_code=201,
     tags=["Geostore"],
 )
@@ -48,7 +48,7 @@ async def add_new_geostore(
     API
     """
     if isinstance(request, RWGeostoreIn):
-        result: RWGeostoreResponse = await create_rw_geostore(request, x_api_key)
+        result: AdminGeostoreResponse = await create_rw_geostore(request, x_api_key)
         return result
     # Otherwise, meant for GFW Data API geostore
     try:
@@ -61,7 +61,7 @@ async def add_new_geostore(
 @router.get(
     "/{geostore_id}",
     response_class=ORJSONResponse,
-    response_model=GeostoreResponse | RWGeostoreResponse,
+    response_model=GeostoreResponse | AdminGeostoreResponse,
     tags=["Geostore"],
 )
 async def get_any_geostore(
@@ -121,7 +121,7 @@ async def get_admin_list(
 @router.get(
     "/admin/{country_id}",
     response_class=ORJSONResponse,
-    # response_model=RWGeostoreResponse,
+    response_model=AdminGeostoreResponse,
     tags=["Geostore"],
     include_in_schema=False,
 )
@@ -154,7 +154,7 @@ async def get_boundary_by_country_id(
 @router.get(
     "/admin/{country_id}/{region_id}",
     response_class=ORJSONResponse,
-    response_model=RWGeostoreResponse,
+    response_model=AdminGeostoreResponse,
     tags=["Geostore"],
     include_in_schema=False,
 )
@@ -169,7 +169,7 @@ async def rw_get_boundary_by_region_id(
     """Get a GADM boundary by country and region IDs (proxies request to the RW
     API)"""
     if adminVersion == "3.6" or adminVersion is None:
-        result: RWGeostoreResponse = await get_boundary_by_region_id(
+        result: AdminGeostoreResponse = await get_boundary_by_region_id(
             country_id, region_id, request.query_params, x_api_key
         )
     elif adminVersion == "4.1":
@@ -188,7 +188,7 @@ async def rw_get_boundary_by_region_id(
 @router.get(
     "/admin/{country_id}/{region_id}/{subregion_id}",
     response_class=ORJSONResponse,
-    response_model=RWGeostoreResponse,
+    response_model=AdminGeostoreResponse,
     tags=["Geostore"],
     include_in_schema=False,
 )
@@ -203,7 +203,7 @@ async def rw_get_boundary_by_subregion_id(
     """Get a GADM boundary by country, region, and subregion IDs (proxies
     request to the RW API)"""
 
-    result: RWGeostoreResponse = await get_boundary_by_subregion_id(
+    result: AdminGeostoreResponse = await get_boundary_by_subregion_id(
         country_id, region_id, subregion_id, request.query_params, x_api_key
     )
 
@@ -213,7 +213,7 @@ async def rw_get_boundary_by_subregion_id(
 @router.get(
     "/use/{land_use_type}/{index}",
     response_class=ORJSONResponse,
-    response_model=RWGeostoreResponse,
+    response_model=AdminGeostoreResponse,
     tags=["Geostore"],
     include_in_schema=False,
 )
@@ -230,7 +230,7 @@ async def rw_get_geostore_by_land_use_and_index(
     Present just for completeness for now. (proxies request to the RW
     API)
     """
-    result: RWGeostoreResponse = await get_geostore_by_land_use_and_index(
+    result: AdminGeostoreResponse = await get_geostore_by_land_use_and_index(
         land_use_type, index, request.query_params, x_api_key
     )
 

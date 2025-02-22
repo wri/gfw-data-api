@@ -6,7 +6,11 @@ from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient, MockTransport, Request, Response
 
 from app.crud import geostore as crud_geostore
-from app.models.pydantic.geostore import AdminListResponse, Geostore, RWGeostoreResponse
+from app.models.pydantic.geostore import (
+    AdminGeostoreResponse,
+    AdminListResponse,
+    Geostore,
+)
 from app.routes.geostore import geostore
 from app.utils import rw_api
 
@@ -232,7 +236,7 @@ async def test_add_geostore_rw_branch(
     url = "/geostore"
 
     mock_create_rw_geostore = AsyncMock(
-        return_value=RWGeostoreResponse(**create_rw_geostore_response),
+        return_value=AdminGeostoreResponse(**create_rw_geostore_response),
         spec=geostore.create_rw_geostore,
     )
     monkeypatch.setattr(geostore, "create_rw_geostore", mock_create_rw_geostore)
@@ -258,7 +262,7 @@ async def test_add_geostore_gfw_branch(
     url = "/geostore"
 
     mock_create_rw_geostore = AsyncMock(
-        return_value=RWGeostoreResponse(**create_rw_geostore_response),
+        return_value=AdminGeostoreResponse(**create_rw_geostore_response),
         spec=geostore.create_rw_geostore,
     )
     monkeypatch.setattr(geostore, "create_rw_geostore", mock_create_rw_geostore)
@@ -283,7 +287,7 @@ async def test_get_geostore_rw_branch(
     url = "/geostore/88db597b6bcd096fb80d1542cdc442be"
 
     mock_proxy_get_geostore = AsyncMock(
-        return_value=RWGeostoreResponse(**example_geostore_resp),
+        return_value=AdminGeostoreResponse(**example_geostore_resp),
         spec=geostore.proxy_get_geostore,
     )
     monkeypatch.setattr(geostore, "proxy_get_geostore", mock_proxy_get_geostore)
@@ -312,7 +316,7 @@ async def test_get_geostore_gfw_branch(
     url = "/geostore/db2b4428-bad2-fc94-1ea8-041597dc482c"
 
     mock_proxy_get_geostore = AsyncMock(
-        return_value=RWGeostoreResponse(**example_geostore_resp),
+        return_value=AdminGeostoreResponse(**example_geostore_resp),
         spec=geostore.proxy_get_geostore,
     )
     monkeypatch.setattr(geostore, "proxy_get_geostore", mock_proxy_get_geostore)
