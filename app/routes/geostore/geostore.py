@@ -1,7 +1,7 @@
 """Retrieve a geometry using its md5 hash for a given dataset, user defined
 geometries in the datastore."""
 
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Path, Query, Request
@@ -132,10 +132,11 @@ async def get_boundary_by_country_id(
     adminVersion: Optional[str] = Query(None, description="Version of GADM features"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
-    """Get a GADM boundary by country ID (proxies request to the RW API)"""
+    """Get a GADM boundary by country ID (proxies requests for GADM 3.6
+    boundaries to the RW API)"""
 
     if adminVersion == "3.6" or adminVersion is None:
-        result: Any = await rw_get_boundary_by_country_id(  # FIXME: Any
+        result: AdminGeostoreResponse = await rw_get_boundary_by_country_id(
             country_id, request.query_params, x_api_key
         )
     elif adminVersion == "4.1":
