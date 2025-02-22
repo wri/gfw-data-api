@@ -200,12 +200,12 @@ async def get_geostore_by_country_id(country_id: str) -> AdminGeostoreResponse: 
                     "geojson": {
                         "crs": {},
                         "type": "FeatureCollection",
-                        "features": [{"geometry": row.gfw_geojson}],
+                        "features": [row.gfw_geojson],
                     },
                     "hash": str(row.gfw_geostore_id),
                     "provider": {},
                     "areaHa": str(row.gfw_area__ha),
-                    "bbox": str(row.gfw_bbox),
+                    "bbox": [float(val) for val in row.gfw_bbox],
                     "lock": False,
                     "info": {
                         "use": {},
