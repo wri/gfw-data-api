@@ -221,7 +221,7 @@ async def get_geostore_by_region_id(country_id: str, region_id: str) -> Any:  # 
     src_table.schema = dataset
 
     where_level_clause: TextClause = db.text("adm_level=:adm_level").bindparams(
-        adm_level="0"
+        adm_level="1"
     )
     where_country_clause: TextClause = db.text("gid_0=:country_id").bindparams(
         country_id=country_id
