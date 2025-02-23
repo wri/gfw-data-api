@@ -1,3 +1,4 @@
+import json
 from typing import Any, List
 from uuid import UUID
 
@@ -200,7 +201,7 @@ async def get_geostore_by_country_id(country_id: str) -> AdminGeostoreResponse: 
                     "geojson": {
                         "crs": {},
                         "type": "FeatureCollection",
-                        "features": [row.gfw_geojson],
+                        "features": [json.loads(row.gfw_geojson)],
                     },
                     "hash": str(row.gfw_geostore_id),
                     "provider": {},
