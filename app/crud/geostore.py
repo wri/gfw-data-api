@@ -201,7 +201,13 @@ async def get_geostore_by_country_id(country_id: str) -> AdminGeostoreResponse: 
                     "geojson": {
                         "crs": {},
                         "type": "FeatureCollection",
-                        "features": [json.loads(row.gfw_geojson)],
+                        "features": [
+                            {
+                                "geometry": json.loads(row.gfw_geojson),
+                                "properties": None,
+                                "type": "Feature",
+                            }
+                        ],
                     },
                     "hash": str(row.gfw_geostore_id),
                     "provider": {},
