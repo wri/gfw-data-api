@@ -1,11 +1,10 @@
 """Run analysis on registered datasets."""
 
 import json
-import os
 import uuid
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Path, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
@@ -35,22 +34,16 @@ async def tree_cover_loss_by_driver_search(
 
     resource_id = _get_resource_id(geostore_id, canopy_cover)
 
-    if os.path.exists(f"/tmp/{resource_id}"):
-        return ORJSONResponse(
-            status_code=200,
-            content={
-                "status": "success",
-                "data": {
-                    "link": f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}"
-                },
-            },
-        )
+    # check if it exists
+    await _get_resource(resource_id)
 
     return ORJSONResponse(
-        status_code=404,
+        status_code=200,
         content={
-            "status": "failed",
-            "message": "Not Found",
+            "status": "success",
+            "data": {
+                "link": f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}",
+            },
         },
     )
 
@@ -67,27 +60,17 @@ async def tree_cover_loss_by_driver_get(
     api_key: APIKey = Depends(get_api_key),
 ):
     """Retrieve a tree cover loss by drivers resource."""
-    try:
-        with open(f"/tmp/{resource_id}", "r") as f:
-            result = json.loads(f.read())
+    resource = await _get_resource(resource_id)
 
-        headers = {}
-        if result["status"] == "pending":
-            headers = {"Retry-After": "1"}
+    headers = {}
+    if resource["status"] == "pending":
+        headers = {"Retry-After": "1"}
 
-        return ORJSONResponse(
-            status_code=200,
-            headers=headers,
-            content={"data": result, "status": "success"},
-        )
-    except FileNotFoundError:
-        return ORJSONResponse(
-            status_code=404,
-            content={
-                "status": "failed",
-                "message": "Not Found",
-            },
-        )
+    return ORJSONResponse(
+        status_code=200,
+        headers=headers,
+        content={"data": resource, "status": "success"},
+    )
 
 
 @router.post(
@@ -109,10 +92,7 @@ async def tree_cover_loss_by_driver_post(
     # trigger background task to create item
     # return 202 accepted
     resource_id = _get_resource_id(data.geostore_id, data.canopy_cover)
-    pending_result = {"data": {"status": "pending"}, "status": "success"}
-
-    with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(json.dumps(pending_result))
+    await _save_pending_result(resource_id)
 
     background_tasks.add_task(
         compute_tree_cover_loss_by_driver,
@@ -134,3 +114,20 @@ async def tree_cover_loss_by_driver_post(
 
 def _get_resource_id(geostore_id, canopy_cover):
     return uuid.uuid5(uuid.NAMESPACE_OID, f"{geostore_id}_{canopy_cover}")
+
+
+async def _get_resource(resource_id):
+    try:
+        with open(f"/tmp/{resource_id}", "r") as f:
+            result = json.loads(f.read())
+            return result
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404, detail="Resource not found, may require computation."
+        )
+
+
+async def _save_pending_result(resource_id):
+    pending_result = {"status": "pending"}
+    with open(f"/tmp/{resource_id}", "w") as f:
+        f.write(json.dumps(pending_result))
