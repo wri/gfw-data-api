@@ -121,10 +121,11 @@ def _update_lifecycle_rule(bucket, rule) -> Dict[str, Any]:
     client = get_s3_client()
     rules = _get_lifecycle_rules(bucket)
     rules.append(rule)
-    logger.debug(f"Add lifecycle configuration rule {rules} to bucket {bucket}")
+    logger.info(f"Add lifecycle configuration rule {rules} to bucket {bucket}")
     response = client.put_bucket_lifecycle_configuration(
         Bucket=bucket, LifecycleConfiguration={"Rules": rules}
     )
+    logger.info(f"Response {response}")
     return response
 
 
