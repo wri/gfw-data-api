@@ -6,6 +6,7 @@ from ..settings.globals import (
 )
 from ..utils.path import split_s3_path
 from .aws_tasks import delete_s3_objects, expire_s3_objects, flush_cloudfront_cache
+from fastapi.logger import logger
 
 
 async def delete_all_assets(dataset: str, version: str) -> None:
@@ -14,6 +15,7 @@ async def delete_all_assets(dataset: str, version: str) -> None:
 
     expire_s3_objects(TILE_CACHE_BUCKET, f"{dataset}/{version}/")
     flush_cloudfront_cache(TILE_CACHE_CLOUDFRONT_ID, [f"/{dataset}/{version}/*"])
+    logger.info("Finish delete_all_assets")
 
 
 async def delete_dynamic_vector_tile_cache_assets(

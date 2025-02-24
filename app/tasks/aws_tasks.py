@@ -122,10 +122,14 @@ def _update_lifecycle_rule(bucket, rule) -> Dict[str, Any]:
     rules = _get_lifecycle_rules(bucket)
     rules.append(rule)
     logger.info(f"Add lifecycle configuration rule {rules} to bucket {bucket}")
-    response = client.put_bucket_lifecycle_configuration(
-        Bucket=bucket, LifecycleConfiguration={"Rules": rules}
-    )
-    logger.info(f"Response {response}")
+    response = {}
+    try:
+        response = client.put_bucket_lifecycle_configuration(
+            Bucket=bucket, LifecycleConfiguration={"Rules": rules}
+        )
+    except Exception as e:
+        logger.info(f"lifecycle exception {str(e)}, {e.__class__.__name__}, {e.args}")
+    logger.info(f"Response lifecycle {response}")
     return response
 
 
