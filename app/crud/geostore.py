@@ -199,6 +199,11 @@ async def get_geostore_by_country_id(
             "geojson", func.ST_AsGeoJSON(func.ST_Simplify("geom", simplify))
         )
 
+    #     full_geojson_expression = func.json_build_object(
+    #         'type', 'FeatureCollection',
+    #         'features', func.json_agg(func.ST_AsGeoJSON("geom"))
+    # )
+
     src_table: Table = db.table(version)
     src_table.schema = dataset
 
@@ -216,9 +221,9 @@ async def get_geostore_by_country_id(
         .where(where_country_clause)
     )
 
-    foo = sql.compile(compile_kwargs={"literal_binds": True})
-
-    raise Exception(f"SQL: {foo}")
+    # foo = sql.compile(compile_kwargs={"literal_binds": True})
+    #
+    # raise Exception(f"SQL: {foo}")
 
     row = await db.first(sql)
     if row is None:
