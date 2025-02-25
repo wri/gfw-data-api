@@ -134,7 +134,7 @@ def _update_lifecycle_rule(bucket, rule) -> Dict[str, Any]:
     except Exception as e:
         # Make sure to print out any exception, since this function is probably
         # running in a background task, so any thrown exception may get lost.
-        logger.info(f"lifecycle exception {str(e)}, {e.__class__.__name__}, {e.args}")
+        logger.warning(f"lifecycle exception {str(e)}, {e.__class__.__name__}, {e.args}")
     logger.info(f"Response lifecycle {response}")
     return response
 
