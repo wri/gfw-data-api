@@ -1,7 +1,7 @@
 import json
 from uuid import UUID
 
-from fastapi import HTTPException
+from fastapi import HTTPException, logger
 
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
@@ -27,6 +27,9 @@ TREE_COVER_LOSS_DENSITY_DATASET_VERSION = "v1.8"
 async def compute_tree_cover_loss_by_driver(
     resource_id: UUID, geostore_id: UUID, canopy_cover: int
 ):
+    logger.info(
+        f"Computing tree cover loss by driver for resource {resource_id} with geostore {geostore_id} and canopy cover {canopy_cover}"
+    )
     geostore: GeostoreCommon = await get_geostore(geostore_id, GeostoreOrigin.rw)
     query = f"SELECT SUM(area__ha) FROM data WHERE umd_tree_cover_density_2000__threshold >= {canopy_cover} GROUP BY tsc_tree_cover_loss_drivers__driver"
 
@@ -52,6 +55,7 @@ async def compute_tree_cover_loss_by_driver(
 
         await _write_resource(resource_id, resource)
     except HTTPException as e:
+        logger.error(e)
         await _write_error(resource_id, e.detail)
 
 
