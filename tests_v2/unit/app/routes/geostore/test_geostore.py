@@ -378,7 +378,7 @@ async def test_get_admin_list_gfw_branch_41(
     async_client: AsyncClient, monkeypatch: MonkeyPatch
 ):
     url = "/geostore/admin/list"
-    params = {"adminVersion": "4.1"}
+    params = {"source[version]": "4.1"}
 
     mock_gfw_get_admin_list = AsyncMock(
         return_value=AdminListResponse(**example_admin_list),
