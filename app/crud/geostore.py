@@ -299,7 +299,7 @@ async def admin_params_to_dataset_version(
         )
 
     try:
-        version: str = per_env_admin_boundary_versions[ENV][source_provider][
+        version: str = per_env_admin_boundary_versions[ENV][source_provider.upper()][
             source_version
         ]
     except KeyError:
