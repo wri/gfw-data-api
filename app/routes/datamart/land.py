@@ -92,7 +92,7 @@ async def tree_cover_loss_by_driver_post(
     # trigger background task to create item
     # return 202 accepted
     resource_id = _get_resource_id(data.geostore_id, data.canopy_cover)
-    await _save_pending_result(resource_id)
+    await _save_pending_resource(resource_id)
 
     background_tasks.add_task(
         compute_tree_cover_loss_by_driver,
@@ -119,15 +119,15 @@ def _get_resource_id(geostore_id, canopy_cover):
 async def _get_resource(resource_id):
     try:
         with open(f"/tmp/{resource_id}", "r") as f:
-            result = json.loads(f.read())
-            return result
+            resource = json.loads(f.read())
+            return resource
     except FileNotFoundError:
         raise HTTPException(
             status_code=404, detail="Resource not found, may require computation."
         )
 
 
-async def _save_pending_result(resource_id):
-    pending_result = {"status": "pending"}
+async def _save_pending_resource(resource_id):
+    pending_resource = {"status": "pending"}
     with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(json.dumps(pending_result))
+        f.write(json.dumps(pending_resource))

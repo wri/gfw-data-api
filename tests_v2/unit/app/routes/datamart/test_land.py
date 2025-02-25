@@ -77,7 +77,9 @@ async def test_post_tree_cover_loss_by_drivers(
     headers = {"origin": origin, "x-api-key": api_key}
     payload = {"geostore_id": geostore, "canopy_cover": 30}
     with (
-        patch("app.routes.datamart.land._save_pending_result") as mock_pending_result,
+        patch(
+            "app.routes.datamart.land._save_pending_resource"
+        ) as mock_pending_resource,
         patch(
             "app.routes.datamart.land.compute_tree_cover_loss_by_driver"
         ) as mock_compute_result,
@@ -98,7 +100,7 @@ async def test_post_tree_cover_loss_by_drivers(
         except ValueError:
             assert False
 
-        mock_pending_result.assert_awaited_with(resource_id)
+        mock_pending_resource.assert_awaited_with(resource_id)
         mock_compute_result.assert_awaited_with(resource_id, uuid.UUID(geostore), 30)
 
 
