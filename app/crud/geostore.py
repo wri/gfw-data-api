@@ -178,9 +178,7 @@ async def get_admin_boundary_list(
     )
 
 
-async def get_geostore_by_country_id(
-    country_id: str, simplify: float | None
-) -> AdminGeostoreResponse:
+async def get_geostore_by_country_id(country_id: str, simplify: float | None) -> Any:
     dataset = "gadm_administrative_boundaries"
     version = "v4.1.64"  # FIXME: Use the env-specific lookup table
 
