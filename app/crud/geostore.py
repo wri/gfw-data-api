@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, List, Tuple
 from uuid import UUID
 
@@ -157,9 +158,6 @@ async def get_admin_boundary_list(
         .where(where_clause)
         .order_by("gid_0")
     )
-    # foo = (sql.compile(compile_kwargs={"literal_binds": True}))
-    #
-    # raise Exception(f"SQL: {foo}")
 
     rows = await db.all(sql)
 
@@ -243,7 +241,7 @@ async def get_geostore_by_country_id(
                     "type": "FeatureCollection",
                     "features": [
                         {
-                            "geometry": str(row.geojson),
+                            "geometry": json.loads(row.geojson),
                             "properties": None,
                             "type": "Feature",
                         }

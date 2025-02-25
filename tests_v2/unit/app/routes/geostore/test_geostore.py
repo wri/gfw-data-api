@@ -2,6 +2,8 @@ from functools import partial
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
+# import sqlalchemy
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient, MockTransport, Request, Response
 
@@ -187,8 +189,16 @@ create_gfw_geostore_data = {
 # async def test_get_admin_country_geostore(
 #     async_client: AsyncClient, monkeypatch: MonkeyPatch
 # ):
-#     url = "/geostore/admin/MEX"
-#     params = {"adminVersion": "4.1"}
+#     CursorResult = MagicMock(cursor)
+#     mock_session.execute.return_value = [
+#         CursorResult(tup1),
+#         CursorResult(tup2)
+#     ]
+#     CursorResult.return_value._asdict.side_effect = [tup1, tup2]
+#
+#
+#     url = "/geostore/admin/MCO"
+#     params = {"source[version]": "4.1"}
 #
 #     response = await async_client.get(url, params=params)
 #
