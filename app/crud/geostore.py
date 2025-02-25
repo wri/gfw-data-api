@@ -143,12 +143,12 @@ async def get_admin_boundary_list(
     src_table: Table = db.table(version)
     src_table.schema = dataset
 
-    # What exactly is served-up by RW? At first I thought just admin 0s, but
-    # it looks like more.
-    # where_clause: TextClause = db.text("adm_level=:adm_level").bindparams(adm_level="0")
+    # What exactly is served-up by RW? It looks like it INTENDS to just
+    # serve admin 0s, but the response contains much more
+    where_clause: TextClause = db.text("adm_level=:adm_level").bindparams(adm_level="0")
 
     gadm_admin_list_columns: List[Column] = [
-        # db.column("adm_level"),
+        db.column("adm_level"),
         db.column("gfw_geostore_id"),
         db.column("gid_0"),
         db.column("country"),
@@ -156,7 +156,8 @@ async def get_admin_boundary_list(
     sql: Select = (
         db.select(gadm_admin_list_columns)
         .select_from(src_table)
-        .order_by("gid_0")  # .where(where_clause)
+        .where(where_clause)
+        .order_by("gid_0")
     )
     # foo = (sql.compile(compile_kwargs={"literal_binds": True}))
     #
