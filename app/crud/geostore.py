@@ -242,7 +242,7 @@ async def get_geostore_by_country_id(
                         "type": "FeatureCollection",
                         "features": [
                             {
-                                "geometry": row.geojson,
+                                "geometry": str(row.geojson),
                                 "properties": None,
                                 "type": "Feature",
                             }
