@@ -267,9 +267,13 @@ async def get_geostore_by_country_id(
     # )
 
 
-async def get_geostore_by_region_id(country_id: str, region_id: str) -> Any:  # FIXME
-    dataset = "gadm_administrative_boundaries"
-    version = "v4.1.64"  # FIXME: Use the env-specific lookup table
+async def get_geostore_by_region_id(
+    admin_provider: str, admin_version: str, country_id: str, region_id: str
+) -> Any:  # FIXME
+    dv: Tuple[str, str] = await admin_params_to_dataset_version(
+        admin_provider, admin_version
+    )
+    dataset, version = dv
 
     src_table: Table = db.table(version)
     src_table.schema = dataset
