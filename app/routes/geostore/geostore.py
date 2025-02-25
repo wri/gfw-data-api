@@ -8,6 +8,7 @@ from fastapi import APIRouter, Header, HTTPException, Path, Query, Request
 from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
+from ...crud.geostore import BadAdminSourceException, BadAdminVersionException
 from ...errors import BadRequestError, RecordNotFoundError
 from ...models.pydantic.geostore import (
     AdminGeostoreResponse,
@@ -98,21 +99,31 @@ async def get_any_geostore(
 )
 async def get_admin_list(
     *,
-    adminVersion: Optional[str] = Query(None, description="Version of GADM features"),
+    admin_provider: Optional[str] = Query(
+        "gadm", alias="source[provider]", description="Source of admin boundaries"
+    ),
+    admin_version: Optional[str] = Query(
+        "3.6", alias="source[version]", description="Version of admin boundaries"
+    ),
     request: Request,
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get all Geostore IDs, names and country codes (proxies requests for GADM
     3.6 features to the RW API)"""
-    if adminVersion == "3.6" or adminVersion is None:
+    if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: AdminListResponse = await rw_get_admin_list(
             request.query_params, x_api_key
         )
-    elif adminVersion == "4.1":
-        result = await geostore.get_admin_boundary_list()
+    elif admin_provider and admin_version:
+        try:
+            result = await geostore.get_admin_boundary_list(
+                admin_provider, admin_version
+            )
+        except (BadAdminSourceException, BadAdminVersionException) as e:
+            raise HTTPException(status_code=404, detail=str(e))
     else:
         raise HTTPException(
-            status_code=404, detail=f"Invalid admin version {adminVersion}"
+            status_code=404, detail="source provider and version must be non-empty"
         )
 
     return result

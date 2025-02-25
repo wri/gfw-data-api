@@ -1,5 +1,5 @@
 import json
-from typing import Any, List
+from typing import Any, Dict, List, Tuple
 from uuid import UUID
 
 from asyncpg.exceptions import UniqueViolationError
@@ -17,6 +17,7 @@ from app.models.pydantic.geostore import (
     Geometry,
     Geostore,
 )
+from app.settings.globals import ENV, per_env_admin_boundary_versions
 
 GEOSTORE_COLUMNS: List[Column] = [
     db.column("gfw_geostore_id"),
@@ -26,6 +27,14 @@ GEOSTORE_COLUMNS: List[Column] = [
     db.column("created_on"),
     db.column("updated_on"),
 ]
+
+
+class BadAdminSourceException(Exception):
+    pass
+
+
+class BadAdminVersionException(Exception):
+    pass
 
 
 async def get_gfw_geostore_from_any_dataset(geostore_id: UUID) -> Geostore:
@@ -123,13 +132,19 @@ async def create_user_area(geometry: Geometry) -> Geostore:
     return geostore
 
 
-async def get_admin_boundary_list() -> AdminListResponse:
-    dataset = "gadm_administrative_boundaries"
-    version = "v4.1.64"  # FIXME: Use the env-specific lookup table
+async def get_admin_boundary_list(
+    admin_provider: str, admin_version: str
+) -> AdminListResponse:
+    dv: Tuple[str, str] = await admin_params_to_dataset_version(
+        admin_provider, admin_version
+    )
+    dataset, version = dv
 
     src_table: Table = db.table(version)
     src_table.schema = dataset
 
+    # What exactly is served-up by RW? At first I thought just admin 0s, but
+    # it looks like more.
     # where_clause: TextClause = db.text("adm_level=:adm_level").bindparams(adm_level="0")
 
     gadm_admin_list_columns: List[Column] = [
@@ -265,3 +280,33 @@ async def get_geostore_by_region_id(country_id: str, region_id: str) -> Any:  # 
         )
 
     return Geostore.from_orm(row)
+
+
+async def admin_params_to_dataset_version(
+    source_provider: str, source_version: str
+) -> Tuple[str, str]:
+    admin_source_to_dataset: Dict[str, str] = {"GADM": "gadm_administrative_boundaries"}
+
+    try:
+        dataset: str = admin_source_to_dataset[source_provider.upper()]
+    except KeyError:
+        raise BadAdminSourceException(
+            (
+                "Invalid admin boundary source. Valid sources:"
+                f" {[source for source in admin_source_to_dataset.keys()]}"
+            )
+        )
+
+    try:
+        version: str = per_env_admin_boundary_versions[ENV][source_provider][
+            source_version
+        ]
+    except KeyError:
+        raise BadAdminVersionException(
+            (
+                "Invalid admin boundary version. Valid versions:"
+                f" {[v for v in per_env_admin_boundary_versions[ENV][source_provider].keys()]}"
+            )
+        )
+
+    return dataset, version
