@@ -10,8 +10,7 @@ from sqlalchemy.sql.elements import TextClause
 from app.application import db
 from app.errors import RecordNotFoundError
 from app.models.orm.user_areas import UserArea as ORMUserArea
-from app.models.pydantic.geostore import (
-    AdminGeostoreResponse,
+from app.models.pydantic.geostore import (  # AdminGeostoreResponse,
     AdminListResponse,
     Geometry,
     Geostore,
@@ -233,39 +232,39 @@ async def get_geostore_by_country_id(
             f"Geostore with country_id {country_id} not found in GADM 4.1"  # FIXME
         )
 
-    return AdminGeostoreResponse(
-        **{
-            "data": {
-                "type": "geoStore",
-                "id": str(row.gfw_geostore_id),
-                "attributes": {
-                    "geojson": {
-                        "crs": {},
-                        "type": "FeatureCollection",
-                        "features": [
-                            {
-                                "geometry": str(row.geojson),
-                                "properties": None,
-                                "type": "Feature",
-                            }
-                        ],
-                    },
-                    "hash": str(row.gfw_geostore_id),
-                    "provider": {},
-                    "areaHa": str(row.gfw_area__ha),
-                    "bbox": [float(val) for val in row.gfw_bbox],
-                    "lock": False,
-                    "info": {
-                        "use": {},
-                        "simplifyThresh": simplify,
-                        "gadm": "4.1",
-                        "name": str(row.country),
-                        "iso": str(row.gid_0),
-                    },
+    # return AdminGeostoreResponse(**{
+    return {
+        "data": {
+            "type": "geoStore",
+            "id": str(row.gfw_geostore_id),
+            "attributes": {
+                "geojson": {
+                    "crs": {},
+                    "type": "FeatureCollection",
+                    "features": [
+                        {
+                            "geometry": str(row.geojson),
+                            "properties": None,
+                            "type": "Feature",
+                        }
+                    ],
                 },
-            }
+                "hash": str(row.gfw_geostore_id),
+                "provider": {},
+                "areaHa": str(row.gfw_area__ha),
+                "bbox": [float(val) for val in row.gfw_bbox],
+                "lock": False,
+                "info": {
+                    "use": {},
+                    "simplifyThresh": simplify,
+                    "gadm": "4.1",
+                    "name": str(row.country),
+                    "iso": str(row.gid_0),
+                },
+            },
         }
-    )
+    }
+    # )
 
 
 async def get_geostore_by_region_id(country_id: str, region_id: str) -> Any:  # FIXME
