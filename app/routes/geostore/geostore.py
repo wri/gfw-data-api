@@ -110,21 +110,21 @@ async def get_admin_list(
 ):
     """Get all Geostore IDs, names and country codes (proxies requests for GADM
     3.6 features to the RW API)"""
+    if not (admin_provider and admin_version):
+        raise HTTPException(
+            status_code=404, detail="source provider and version must be non-empty"
+        )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: AdminListResponse = await rw_get_admin_list(
             request.query_params, x_api_key
         )
-    elif admin_provider and admin_version:
+    else:
         try:
             result = await geostore.get_admin_boundary_list(
                 admin_provider, admin_version
             )
         except (BadAdminSourceException, BadAdminVersionException) as e:
             raise HTTPException(status_code=404, detail=str(e))
-    else:
-        raise HTTPException(
-            status_code=404, detail="source provider and version must be non-empty"
-        )
 
     return result
 
@@ -140,26 +140,36 @@ async def get_boundary_by_country_id(
     *,
     country_id: str = Path(..., title="country_id"),
     request: Request,
-    adminVersion: Optional[str] = Query(None, description="Version of GADM features"),
+    admin_provider: Optional[str] = Query(
+        "gadm", alias="source[provider]", description="Source of admin boundaries"
+    ),
+    admin_version: Optional[str] = Query(
+        "3.6", alias="source[version]", description="Version of admin boundaries"
+    ),
     simplify: Optional[float] = Query(None, description="Simplify tolerance"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get a GADM boundary by country ID (proxies requests for GADM 3.6
     boundaries to the RW API)"""
-
-    if adminVersion == "3.6" or adminVersion is None:
+    if not (admin_provider and admin_version):
+        raise HTTPException(
+            status_code=404, detail="source provider and version must be non-empty"
+        )
+    if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: Any = await rw_get_boundary_by_country_id(
             country_id, request.query_params, x_api_key
         )
-    elif adminVersion == "4.1":
-        try:
-            result = await geostore.get_geostore_by_country_id(country_id, simplify)
-        except RecordNotFoundError as e:
-            raise HTTPException(status_code=404, detail=str(e))
     else:
-        raise HTTPException(
-            status_code=404, detail=f"Invalid admin version {adminVersion}"
-        )
+        try:
+            result = await geostore.get_geostore_by_country_id(
+                admin_provider, admin_version, country_id, simplify
+            )
+        except (
+            BadAdminSourceException,
+            BadAdminVersionException,
+            RecordNotFoundError,
+        ) as e:
+            raise HTTPException(status_code=404, detail=str(e))
 
     return result
 

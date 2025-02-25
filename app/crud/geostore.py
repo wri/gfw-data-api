@@ -178,9 +178,16 @@ async def get_admin_boundary_list(
     )
 
 
-async def get_geostore_by_country_id(country_id: str, simplify: float | None) -> Any:
-    dataset = "gadm_administrative_boundaries"
-    version = "v4.1.64"  # FIXME: Use the env-specific lookup table
+async def get_geostore_by_country_id(
+    admin_provider: str, admin_version: str, country_id: str, simplify: float | None
+) -> Any:
+    dv: Tuple[str, str] = await admin_params_to_dataset_version(
+        admin_provider, admin_version
+    )
+    dataset, version = dv
+
+    src_table: Table = db.table(version)
+    src_table.schema = dataset
 
     gadm_geostore_columns: List[Column] = [
         db.column("country"),
@@ -201,9 +208,6 @@ async def get_geostore_by_country_id(country_id: str, simplify: float | None) ->
     #         'type', 'FeatureCollection',
     #         'features', func.json_agg(func.ST_AsGeoJSON("geom"))
     # )
-
-    src_table: Table = db.table(version)
-    src_table.schema = dataset
 
     where_level_clause: TextClause = db.text("adm_level=:adm_level").bindparams(
         adm_level="0"
