@@ -193,10 +193,10 @@ async def get_geostore_by_country_id(
     ]
 
     if simplify is None:
-        geom_expression = label("geojson", func.ST_AsGeoJSON("geom"))
+        geom_expression = label("geojson", func.ST_AsGeoJSON(db.column("geom")))
     else:
         geom_expression = label(
-            "geojson", func.ST_AsGeoJSON(func.ST_Simplify("geom", simplify))
+            "geojson", func.ST_AsGeoJSON(func.ST_Simplify(db.column("geom"), simplify))
         )
 
     #     full_geojson_expression = func.json_build_object(
