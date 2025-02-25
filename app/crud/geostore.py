@@ -130,16 +130,18 @@ async def get_admin_boundary_list() -> AdminListResponse:
     src_table: Table = db.table(version)
     src_table.schema = dataset
 
-    where_clause: TextClause = db.text("adm_level=:adm_level").bindparams(adm_level="0")
+    # where_clause: TextClause = db.text("adm_level=:adm_level").bindparams(adm_level="0")
 
     gadm_admin_list_columns: List[Column] = [
-        db.column("adm_level"),
+        # db.column("adm_level"),
         db.column("gfw_geostore_id"),
         db.column("gid_0"),
         db.column("country"),
     ]
     sql: Select = (
-        db.select(gadm_admin_list_columns).select_from(src_table).where(where_clause)
+        db.select(gadm_admin_list_columns)
+        .select_from(src_table)
+        .order_by("gid_0")  # .where(where_clause)
     )
     # foo = (sql.compile(compile_kwargs={"literal_binds": True}))
     #
@@ -161,7 +163,7 @@ async def get_admin_boundary_list() -> AdminListResponse:
     )
 
 
-async def get_geostore_by_country_id(country_id: str) -> AdminGeostoreResponse:  # FIXME
+async def get_geostore_by_country_id(country_id: str) -> AdminGeostoreResponse:
     dataset = "gadm_administrative_boundaries"
     version = "v4.1.64"  # FIXME: Use the env-specific lookup table
 
