@@ -1,4 +1,7 @@
+import json
 from uuid import UUID
+
+from fastapi import HTTPException
 
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
@@ -29,23 +32,27 @@ async def compute_tree_cover_loss_by_driver(
 
     # TODO right now this is just using latest versions, need
     # to add a way to later to put specific versions in the data environment
-    results = await _query_dataset_json(
-        TREE_COVER_LOSS_DATASET_NAME,
-        TREE_COVER_LOSS_DATASET_VERSION,
-        query,
-        geostore,
-    )
+    try:
+        results = await _query_dataset_json(
+            TREE_COVER_LOSS_DATASET_NAME,
+            TREE_COVER_LOSS_DATASET_VERSION,
+            query,
+            geostore,
+        )
 
-    tcl_by_driver = {
-        row["tsc_tree_cover_loss_drivers__driver"]: row["area__ha"] for row in results
-    }
+        tcl_by_driver = {
+            row["tsc_tree_cover_loss_drivers__driver"]: row["area__ha"]
+            for row in results
+        }
 
-    resource = TreeCoverLossByDriver(
-        treeCoverLossByDriver=tcl_by_driver,
-        metadata=_get_metadata(geostore, canopy_cover),
-    )
+        resource = TreeCoverLossByDriver(
+            treeCoverLossByDriver=tcl_by_driver,
+            metadata=_get_metadata(geostore, canopy_cover),
+        )
 
-    await _write_resource(resource_id, resource)
+        await _write_resource(resource_id, resource)
+    except HTTPException as e:
+        await _write_error(resource_id, e.detail)
 
 
 def _get_metadata(geostore: GeostoreCommon, canopy_cover: int):
@@ -72,3 +79,9 @@ def _get_metadata(geostore: GeostoreCommon, canopy_cover: int):
 async def _write_resource(resource_id: UUID, resource: DataMartResource):
     with open(f"/tmp/{resource_id}", "w") as f:
         f.write(resource.model_dump_json())
+
+
+async def _write_error(resource_id: UUID, error: str):
+    error_resource = {"status": "failed", "details": error}
+    with open(f"/tmp/{resource_id}", "w") as f:
+        f.write(json.dumps(error_resource))

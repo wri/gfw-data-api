@@ -178,6 +178,29 @@ async def test_compute_tree_cover_loss_by_driver(geostore):
         )
 
 
+@pytest.mark.asyncio
+async def test_compute_tree_cover_loss_by_driver_error(geostore):
+    with (
+        patch(
+            "app.tasks.datamart.land._query_dataset_json",
+            side_effect=HTTPException(status_code=500, detail="error"),
+        ) as mock_query_dataset_json,
+        patch("app.tasks.datamart.land._write_error") as mock_write_error,
+    ):
+        resource_id = _get_resource_id(geostore, 30)
+        geostore_common = await get_geostore(geostore, GeostoreOrigin.rw)
+
+        await compute_tree_cover_loss_by_driver(resource_id, geostore, 30)
+
+        mock_query_dataset_json.assert_awaited_once_with(
+            "umd_tree_cover_loss",
+            "v1.11",
+            "SELECT SUM(area__ha) FROM data WHERE umd_tree_cover_density_2000__threshold >= 30 GROUP BY tsc_tree_cover_loss_drivers__driver",
+            geostore_common,
+        )
+        mock_write_error.assert_awaited_once_with(resource_id, "error")
+
+
 MOCK_RESULT = [
     {
         "tsc_tree_cover_loss_drivers__driver": "Permanent agriculture",
