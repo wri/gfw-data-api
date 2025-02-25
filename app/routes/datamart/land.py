@@ -8,9 +8,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Qu
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
+from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import TreeCoverLossByDriverIn
 from app.settings.globals import API_URL
 from app.tasks.datamart.land import compute_tree_cover_loss_by_driver
+from app.utils.geostore import get_geostore
 
 from ...authentication.api_keys import get_api_key
 from ...models.pydantic.responses import Response
@@ -87,6 +89,15 @@ async def tree_cover_loss_by_driver_post(
 ):
     """Create new tree cover loss by drivers resource for a given geostore and
     canopy cover."""
+
+    # check geostore is valid
+    try:
+        await get_geostore(data.geostore_id, GeostoreOrigin.rw)
+    except HTTPException:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Geostore {data.geostore_id} can't be found or is not valid.",
+        )
 
     # create initial Job item as pending
     # trigger background task to create item
