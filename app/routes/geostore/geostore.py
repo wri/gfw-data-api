@@ -141,7 +141,7 @@ async def get_boundary_by_country_id(
     country_id: str = Path(..., title="country_id"),
     request: Request,
     adminVersion: Optional[str] = Query(None, description="Version of GADM features"),
-    simplify: Optional[float] = Query(None, description="Version of GADM features"),
+    simplify: Optional[float] = Query(None, description="Simplify tolerance"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get a GADM boundary by country ID (proxies requests for GADM 3.6
