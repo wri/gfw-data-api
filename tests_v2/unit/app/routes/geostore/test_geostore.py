@@ -183,15 +183,17 @@ create_gfw_geostore_data = {
 }
 
 
-# @pytest.mark.asyncio
-# async def test_get_admin_country_geostore(async_client: AsyncClient, monkeypatch: MonkeyPatch):
-#     url = "/geostore/admin/MEX"
-#     params = {"adminVersion": "4.1"}
-#
-#     response = await async_client.get(url, params=params)
-#
-#     assert response.json() == example_admin_geostore_snipped
-#     assert response.status_code == 200
+@pytest.mark.asyncio
+async def test_get_admin_country_geostore(
+    async_client: AsyncClient, monkeypatch: MonkeyPatch
+):
+    url = "/geostore/admin/MEX"
+    params = {"adminVersion": "4.1"}
+
+    response = await async_client.get(url, params=params)
+
+    assert response.json() == example_admin_geostore_snipped
+    assert response.status_code == 200
 
 
 @pytest.mark.asyncio

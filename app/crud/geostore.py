@@ -1,11 +1,10 @@
-import json
 from typing import Any, Dict, List, Tuple
 from uuid import UUID
 
 from asyncpg.exceptions import UniqueViolationError
 from fastapi.logger import logger
-from sqlalchemy import Column, Table
-from sqlalchemy.sql import Select
+from sqlalchemy import Column, Table, func
+from sqlalchemy.sql import Select, label
 from sqlalchemy.sql.elements import TextClause
 
 from app.application import db
@@ -179,9 +178,26 @@ async def get_admin_boundary_list(
     )
 
 
-async def get_geostore_by_country_id(country_id: str) -> AdminGeostoreResponse:
+async def get_geostore_by_country_id(
+    country_id: str, simplify: float | None
+) -> AdminGeostoreResponse:
     dataset = "gadm_administrative_boundaries"
     version = "v4.1.64"  # FIXME: Use the env-specific lookup table
+
+    gadm_geostore_columns: List[Column] = [
+        db.column("country"),
+        db.column("gfw_bbox"),
+        db.column("gfw_area__ha"),
+        db.column("gfw_geostore_id"),
+        db.column("gid_0"),
+    ]
+
+    if simplify is None:
+        geom_expression = label("geojson", func.ST_AsGeoJSON("geom", 0))
+    else:
+        geom_expression = label(
+            "geojson", func.ST_AsGeoJSON(func.ST_Simplify("geom", simplify))
+        )
 
     src_table: Table = db.table(version)
     src_table.schema = dataset
@@ -194,15 +210,15 @@ async def get_geostore_by_country_id(country_id: str) -> AdminGeostoreResponse:
     )
 
     sql: Select = (
-        db.select("*")
+        db.select([*gadm_geostore_columns, geom_expression])
         .select_from(src_table)
         .where(where_level_clause)
         .where(where_country_clause)
     )
 
-    # foo = (sql.compile(compile_kwargs={"literal_binds": True}))
-    #
-    # raise Exception(f"SQL: {foo}")
+    foo = sql.compile(compile_kwargs={"literal_binds": True})
+
+    raise Exception(f"SQL: {foo}")
 
     row = await db.first(sql)
     if row is None:
@@ -221,7 +237,7 @@ async def get_geostore_by_country_id(country_id: str) -> AdminGeostoreResponse:
                         "type": "FeatureCollection",
                         "features": [
                             {
-                                "geometry": json.loads(row.gfw_geojson),
+                                "geometry": row.geojson,
                                 "properties": None,
                                 "type": "Feature",
                             }
@@ -234,7 +250,7 @@ async def get_geostore_by_country_id(country_id: str) -> AdminGeostoreResponse:
                     "lock": False,
                     "info": {
                         "use": {},
-                        "simplifyThresh": 0.0,
+                        "simplifyThresh": simplify,
                         "gadm": "4.1",
                         "name": str(row.country),
                         "iso": str(row.gid_0),
