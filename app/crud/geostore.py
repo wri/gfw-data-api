@@ -272,8 +272,12 @@ async def get_geostore_by_region_id(
     where_country_clause: TextClause = db.text("gid_0=:country_id").bindparams(
         country_id=country_id
     )
-    where_region_clause: TextClause = db.text("gid_1=:region_id").bindparams(
-        region_id=f"{country_id}.{region_id}"
+    # gid_0 is just a three-character code, but all lower level ids are
+    # followed by an underscore (which has to be escaped because normally in
+    # SQL an underscore is a wildcard) and a revision number (for which we
+    # use an UN-escaped underscore).
+    like_region_clause: TextClause = db.text("gid_1 LIKE :region_id").bindparams(
+        region_id=f"{country_id}.{region_id}\\__"
     )
 
     sql: Select = (
@@ -281,7 +285,7 @@ async def get_geostore_by_region_id(
         .select_from(src_table)
         .where(where_level_clause)
         .where(where_country_clause)
-        .where(where_region_clause)
+        .where(like_region_clause)
     )
 
     # foo = (sql.compile(compile_kwargs={"literal_binds": True}))
