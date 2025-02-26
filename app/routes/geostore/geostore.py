@@ -116,7 +116,7 @@ async def get_admin_list(
     3.6 features to the RW API)"""
     if not (admin_provider and admin_version):
         raise HTTPException(
-            status_code=404, detail="source provider and version must be non-empty"
+            status_code=400, detail="source provider and version must be non-empty"
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: AdminListResponse = await rw_get_admin_list(
@@ -128,7 +128,7 @@ async def get_admin_list(
                 admin_provider, admin_version
             )
         except (BadAdminSourceException, BadAdminVersionException) as e:
-            raise HTTPException(status_code=404, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e))
 
     return result
 
@@ -157,7 +157,7 @@ async def get_boundary_by_country_id(
     boundaries to the RW API)"""
     if not (admin_provider and admin_version):
         raise HTTPException(
-            status_code=404, detail="source provider and version must be non-empty"
+            status_code=400, detail="source provider and version must be non-empty"
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: Any = await rw_get_boundary_by_country_id(
@@ -202,7 +202,7 @@ async def rw_get_boundary_by_region_id(
     API)"""
     if not (admin_provider and admin_version):
         raise HTTPException(
-            status_code=404, detail="source provider and version must be non-empty"
+            status_code=400, detail="source provider and version must be non-empty"
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: AdminGeostoreResponse = await get_boundary_by_region_id(
