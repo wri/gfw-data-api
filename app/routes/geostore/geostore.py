@@ -181,7 +181,7 @@ async def get_boundary_by_country_id(
 @router.get(
     "/admin/{country_id}/{region_id}",
     response_class=ORJSONResponse,
-    response_model=AdminGeostoreResponse,
+    # response_model=AdminGeostoreResponse,
     tags=["Geostore"],
     include_in_schema=False,
 )
@@ -196,10 +196,11 @@ async def rw_get_boundary_by_region_id(
     admin_version: Optional[str] = Query(
         "3.6", alias="source[version]", description="Version of admin boundaries"
     ),
+    simplify: Optional[float] = Query(None, description="Simplify tolerance"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
-    """Get a GADM boundary by country and region IDs (proxies request to the RW
-    API)"""
+    """Get a GADM boundary by country and region IDs (proxies requests for GADM
+    3.6 boundaries to the RW API)"""
     if not (admin_provider and admin_version):
         raise HTTPException(
             status_code=400, detail="source provider and version must be non-empty"
@@ -211,14 +212,14 @@ async def rw_get_boundary_by_region_id(
     else:
         try:
             result = await geostore.get_geostore_by_region_id(
-                admin_provider, admin_version, country_id, region_id
+                admin_provider, admin_version, country_id, region_id, simplify
             )
-        except (
-            BadAdminSourceException,
-            BadAdminVersionException,
-            RecordNotFoundError,
-        ) as e:
+        except (BadAdminSourceException, BadAdminVersionException) as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except RecordNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e))
+        except GeometryIsNullError as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     return result
 
@@ -226,7 +227,7 @@ async def rw_get_boundary_by_region_id(
 @router.get(
     "/admin/{country_id}/{region_id}/{subregion_id}",
     response_class=ORJSONResponse,
-    response_model=AdminGeostoreResponse,
+    # response_model=AdminGeostoreResponse,
     tags=["Geostore"],
     include_in_schema=False,
 )

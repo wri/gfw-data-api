@@ -12,6 +12,9 @@ from app.application import db
 from app.errors import RecordNotFoundError
 from app.models.orm.user_areas import UserArea as ORMUserArea
 from app.models.pydantic.geostore import (
+    Adm0BoundaryInfo,
+    Adm1BoundaryInfo,
+    Adm2BoundaryInfo,
     AdminGeostore,
     AdminGeostoreResponse,
     AdminListResponse,
@@ -242,10 +245,11 @@ async def get_geostore_by_country_id(
         )
 
     geostore = await form_admin_geostore(
+        adm_level=0,
         admin_version=admin_version,
         area=float(row.gfw_area__ha),
         bbox=[float(val) for val in row.gfw_bbox],
-        country=str(row.country),
+        name=str(row.country),
         geojson=json.loads(row.geojson),
         geostore_id=str(row.gfw_geostore_id),
         gid_0=str(row.gid_0),
@@ -256,7 +260,11 @@ async def get_geostore_by_country_id(
 
 
 async def get_geostore_by_region_id(
-    admin_provider: str, admin_version: str, country_id: str, region_id: str
+    admin_provider: str,
+    admin_version: str,
+    country_id: str,
+    region_id: str,
+    simplify: float | None,
 ) -> Any:  # FIXME
     dv: Tuple[str, str] = await admin_params_to_dataset_version(
         admin_provider, admin_version
@@ -265,6 +273,22 @@ async def get_geostore_by_region_id(
 
     src_table: Table = db.table(version)
     src_table.schema = dataset
+
+    gadm_geostore_columns: List[Column] = [
+        db.column("gfw_bbox"),
+        db.column("gfw_area__ha"),
+        db.column("gfw_geostore_id"),
+        db.column("gid_0"),
+        db.column("gid_1"),
+        db.column("name_1"),
+    ]
+
+    if simplify is None:
+        geom_expression = label("geojson", func.ST_AsGeoJSON(db.column("geom")))
+    else:
+        geom_expression = label(
+            "geojson", func.ST_AsGeoJSON(func.ST_Simplify(db.column("geom"), simplify))
+        )
 
     where_level_clause: TextClause = db.text("adm_level=:adm_level").bindparams(
         adm_level="1"
@@ -281,7 +305,7 @@ async def get_geostore_by_region_id(
     )
 
     sql: Select = (
-        db.select("*")
+        db.select([*gadm_geostore_columns, geom_expression])
         .select_from(src_table)
         .where(where_level_clause)
         .where(where_country_clause)
@@ -298,7 +322,20 @@ async def get_geostore_by_region_id(
             f"Geostore with ID {country_id}.{region_id} not found in GADM 4.1"  # FIXME
         )
 
-    return Geostore.from_orm(row)
+    geostore = await form_admin_geostore(
+        adm_level=1,
+        admin_version=admin_version,
+        area=float(row.gfw_area__ha),
+        bbox=[float(val) for val in row.gfw_bbox],
+        name=str(row.name_1),
+        geojson=json.loads(row.geojson),
+        geostore_id=str(row.gfw_geostore_id),
+        gid_0=str(row.gid_0),
+        gid_1=str(row.gid_1),
+        simplify=simplify,
+    )
+
+    return AdminGeostoreResponse(data=geostore)
 
 
 async def admin_params_to_dataset_version(
@@ -332,6 +369,7 @@ async def admin_params_to_dataset_version(
 
 
 async def form_admin_geostore(
+    adm_level: int,
     bbox: List[float],
     area: float,
     geostore_id: str,
@@ -339,8 +377,30 @@ async def form_admin_geostore(
     simplify: Optional[float],
     admin_version: str,
     geojson: Dict,
-    country: str,
+    name: str,
+    gid_1: str | None = None,
+    gid_2: str | None = None,
 ) -> AdminGeostore:
+    info = Adm0BoundaryInfo(
+        **{
+            "use": {},
+            "simplifyThresh": simplify,
+            "gadm": admin_version,
+            "name": name,
+            "iso": gid_0,
+        }
+    )
+    if adm_level == 1:
+        info = Adm1BoundaryInfo(
+            **info.dict(),
+            id1=gid_1,
+        )
+    if adm_level == 2:
+        info = Adm2BoundaryInfo(
+            **info.dict(),
+            id2=gid_2,
+        )
+
     return AdminGeostore(
         **{
             "type": "geoStore",
@@ -362,13 +422,7 @@ async def form_admin_geostore(
                 "areaHa": area,
                 "bbox": bbox,
                 "lock": False,
-                "info": {
-                    "use": {},
-                    "simplifyThresh": simplify,
-                    "gadm": admin_version,
-                    "name": country,
-                    "iso": gid_0,
-                },
+                "info": info.dict(),
             },
         }
     )
