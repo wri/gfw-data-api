@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from asyncpg.exceptions import UniqueViolationError
@@ -11,7 +11,9 @@ from sqlalchemy.sql.elements import TextClause
 from app.application import db
 from app.errors import RecordNotFoundError
 from app.models.orm.user_areas import UserArea as ORMUserArea
-from app.models.pydantic.geostore import (  # AdminGeostoreResponse,
+from app.models.pydantic.geostore import (
+    AdminGeostore,
+    AdminGeostoreResponse,
     AdminListResponse,
     Geometry,
     Geostore,
@@ -236,42 +238,21 @@ async def get_geostore_by_country_id(
 
     if row.geojson is None and simplify is not None:
         raise GeometryIsNullError(
-            f"Geometry is null. Try reducing/eliminating simplification."
+            "Geometry is null. Try reducing/eliminating simplification."
         )
 
-    # return AdminGeostoreResponse(**{
-    return {
-        "data": {
-            "type": "geoStore",
-            "id": str(row.gfw_geostore_id),
-            "attributes": {
-                "geojson": {
-                    "crs": {},
-                    "type": "FeatureCollection",
-                    "features": [
-                        {
-                            "geometry": json.loads(row.geojson),
-                            "properties": None,
-                            "type": "Feature",
-                        }
-                    ],
-                },
-                "hash": str(row.gfw_geostore_id),
-                "provider": {},
-                "areaHa": str(row.gfw_area__ha),
-                "bbox": [float(val) for val in row.gfw_bbox],
-                "lock": False,
-                "info": {
-                    "use": {},
-                    "simplifyThresh": simplify,
-                    "gadm": str(admin_version),
-                    "name": str(row.country),
-                    "iso": str(row.gid_0),
-                },
-            },
-        }
-    }
-    # )
+    geostore = await form_admin_geostore(
+        admin_version=admin_version,
+        area=float(row.gfw_area__ha),
+        bbox=[float(val) for val in row.gfw_bbox],
+        country=str(row.country),
+        geojson=json.loads(row.geojson),
+        geostore_id=str(row.gfw_geostore_id),
+        gid_0=str(row.gid_0),
+        simplify=simplify,
+    )
+
+    return AdminGeostoreResponse(data=geostore)
 
 
 async def get_geostore_by_region_id(
@@ -344,3 +325,46 @@ async def admin_params_to_dataset_version(
         )
 
     return dataset, version
+
+
+async def form_admin_geostore(
+    bbox: List[float],
+    area: float,
+    geostore_id: str,
+    gid_0: str,
+    simplify: Optional[float],
+    admin_version: str,
+    geojson: Dict,
+    country: str,
+) -> AdminGeostore:
+    return AdminGeostore(
+        **{
+            "type": "geoStore",
+            "id": geostore_id,
+            "attributes": {
+                "geojson": {
+                    "crs": {},
+                    "type": "FeatureCollection",
+                    "features": [
+                        {
+                            "geometry": geojson,
+                            "properties": None,
+                            "type": "Feature",
+                        }
+                    ],
+                },
+                "hash": geostore_id,
+                "provider": {},
+                "areaHa": area,
+                "bbox": bbox,
+                "lock": False,
+                "info": {
+                    "use": {},
+                    "simplifyThresh": simplify,
+                    "gadm": admin_version,
+                    "name": country,
+                    "iso": gid_0,
+                },
+            },
+        }
+    )
