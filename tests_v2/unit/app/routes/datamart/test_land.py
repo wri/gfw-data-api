@@ -198,7 +198,7 @@ async def test_compute_tree_cover_loss_by_driver_error(geostore):
             "SELECT SUM(area__ha) FROM data WHERE umd_tree_cover_density_2000__threshold >= 30 GROUP BY tsc_tree_cover_loss_drivers__driver",
             geostore_common,
         )
-        mock_write_error.assert_awaited_once_with(resource_id, "error")
+        mock_write_error.assert_awaited_once_with(resource_id, "500: error")
 
 
 MOCK_RESULT = [
