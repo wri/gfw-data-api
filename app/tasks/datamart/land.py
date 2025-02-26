@@ -11,17 +11,16 @@ from app.models.pydantic.datamart import (
     TreeCoverLossByDriverMetadata,
 )
 from app.models.pydantic.geostore import GeostoreCommon
+from app.routes.datamart.land import (
+    DEFAULT_TREE_COVER_DENSTY_DATASET_NAME,
+    DEFAULT_TREE_COVER_LOSS_BY_DRIVER_DATASET_NAME,
+    DEFAULT_TREE_COVER_LOSS_BY_DRIVER_DATASET_VERSION,
+    DEFAULT_TREE_COVER_LOSS_DATASET_NAME,
+    DEFAULT_TREE_COVER_LOSS_DATASET_VERSION,
+    DEFAULT_TREE_COVER_LOSS_DENSITY_DATASET_VERSION,
+)
 from app.routes.datasets.queries import _query_dataset_json
 from app.utils.geostore import get_geostore
-
-TREE_COVER_LOSS_DATASET_NAME = "umd_tree_cover_loss"
-TREE_COVER_LOSS_DATASET_VERSION = "v1.11"
-
-TREE_COVER_LOSS_BY_DRIVER_DATASET_NAME = "tsc_tree_cover_loss_drivers"
-TREE_COVER_LOSS_BY_DRIVER_DATASET_VERSION = "v2023"
-
-TREE_COVER_DENSTY_DATASET_NAME = "umd_tree_cover_density_2000"
-TREE_COVER_LOSS_DENSITY_DATASET_VERSION = "v1.8"
 
 
 async def compute_tree_cover_loss_by_driver(
@@ -37,8 +36,8 @@ async def compute_tree_cover_loss_by_driver(
         # TODO right now this is just using latest versions, need
         # to add a way to later to put specific versions in the data environment
         results = await _query_dataset_json(
-            TREE_COVER_LOSS_DATASET_NAME,
-            TREE_COVER_LOSS_DATASET_VERSION,
+            DEFAULT_TREE_COVER_LOSS_DATASET_NAME,
+            DEFAULT_TREE_COVER_LOSS_DATASET_VERSION,
             query,
             geostore,
         )
@@ -65,16 +64,16 @@ def _get_metadata(geostore: GeostoreCommon, canopy_cover: int):
         canopy_cover=canopy_cover,
         sources=[
             DataMartSource(
-                dataset=TREE_COVER_LOSS_DATASET_NAME,
-                version=TREE_COVER_LOSS_DATASET_VERSION,
+                dataset=DEFAULT_TREE_COVER_LOSS_DATASET_NAME,
+                version=DEFAULT_TREE_COVER_LOSS_DATASET_VERSION,
             ),
             DataMartSource(
-                dataset=TREE_COVER_LOSS_BY_DRIVER_DATASET_NAME,
-                version=TREE_COVER_LOSS_BY_DRIVER_DATASET_VERSION,
+                dataset=DEFAULT_TREE_COVER_LOSS_BY_DRIVER_DATASET_NAME,
+                version=DEFAULT_TREE_COVER_LOSS_BY_DRIVER_DATASET_VERSION,
             ),
             DataMartSource(
-                dataset=TREE_COVER_DENSTY_DATASET_NAME,
-                version=TREE_COVER_LOSS_DENSITY_DATASET_VERSION,
+                dataset=DEFAULT_TREE_COVER_DENSTY_DATASET_NAME,
+                version=DEFAULT_TREE_COVER_LOSS_DENSITY_DATASET_VERSION,
             ),
         ],
     )

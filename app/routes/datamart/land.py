@@ -20,6 +20,16 @@ from ...models.pydantic.responses import Response
 router = APIRouter()
 
 
+DEFAULT_TREE_COVER_LOSS_DATASET_NAME = "umd_tree_cover_loss"
+DEFAULT_TREE_COVER_LOSS_DATASET_VERSION = "v1.11"
+
+DEFAULT_TREE_COVER_LOSS_BY_DRIVER_DATASET_NAME = "tsc_tree_cover_loss_drivers"
+DEFAULT_TREE_COVER_LOSS_BY_DRIVER_DATASET_VERSION = "v2023"
+
+DEFAULT_TREE_COVER_DENSTY_DATASET_NAME = "umd_tree_cover_density_2000"
+DEFAULT_TREE_COVER_LOSS_DENSITY_DATASET_VERSION = "v1.8"
+
+
 @router.get(
     "/tree-cover-loss-by-driver",
     response_class=ORJSONResponse,
