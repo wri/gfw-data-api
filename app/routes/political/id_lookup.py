@@ -10,6 +10,7 @@ from app.models.pydantic.political import (
 )
 from app.routes.datasets.queries import _query_dataset_json
 from app.settings.globals import ENV, per_env_admin_boundary_versions
+from app.utils.gadm import extract_level_gid
 
 router = APIRouter()
 
@@ -134,22 +135,28 @@ def lookup_admin_source_version(source: str, version: str) -> str:
 
 
 def form_admin_id_lookup_response(
-    admin_source, admin_version, adm_level: int, match_list
+    admin_source, admin_version, adm_level: int, match_list: List[Dict[str, Any]]
 ) -> AdminIDLookupResponse:
     matches = []
 
     for match in match_list:
-        country = {"id": extract_level_gid(0, match), "name": match["country"]}
+        country = {"id": extract_level_gid(0, match["gid_0"]), "name": match["country"]}
 
         if adm_level < 1:
             region = {"id": None, "name": None}
         else:
-            region = {"id": extract_level_gid(1, match), "name": match["name_1"]}
+            region = {
+                "id": extract_level_gid(1, match["gid_1"]),
+                "name": match["name_1"],
+            }
 
         if adm_level < 2:
             subregion = {"id": None, "name": None}
         else:
-            subregion = {"id": extract_level_gid(2, match), "name": match["name_2"]}
+            subregion = {
+                "id": extract_level_gid(2, match["gid_2"]),
+                "name": match["name_2"],
+            }
 
         matches.append({"country": country, "region": region, "subregion": subregion})
 
@@ -161,18 +168,3 @@ def form_admin_id_lookup_response(
         }
     )
     return AdminIDLookupResponse(data=data)
-
-
-def extract_level_gid(gid_level: int, match):
-    gid_level_name = f"gid_{gid_level}"
-    gid_str = match[gid_level_name]
-
-    # Exception because of bad formatting of GHA gids in gadm_administrative_boundaries/v4.1
-    if gid_str.startswith("GHA") and not gid_str.startswith("GHA."):
-        gid_str = "GHA." + gid_str[3:]
-    # Exception because bad ids IDN.35.4, IDN.35.8, IDN.35.9, IDN.35.13, IDN.35.14
-    # (they are missing final '_1') in gadm_administrative_boundaries/v4.1
-    if gid_str.startswith("IDN") and not gid_str.endswith("_1"):
-        gid_str += "_1"
-
-    return (gid_str.rsplit("_")[0]).split(".")[gid_level]

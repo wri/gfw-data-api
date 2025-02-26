@@ -21,8 +21,8 @@ from app.models.pydantic.geostore import (
     Geometry,
     Geostore,
 )
-from app.routes.political.id_lookup import extract_level_gid
 from app.settings.globals import ENV, per_env_admin_boundary_versions
+from app.utils.gadm import extract_level_gid
 
 GEOSTORE_COLUMNS: List[Column] = [
     db.column("gfw_geostore_id"),
