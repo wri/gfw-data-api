@@ -448,6 +448,7 @@ async def _query_dataset_json(
     version: str,
     sql: str,
     geostore: Optional[GeostoreCommon],
+    raster_version_overrides: Dict[str, str] = {},
 ) -> List[Dict[str, Any]]:
     # Make sure we can query the dataset
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
@@ -457,7 +458,9 @@ async def _query_dataset_json(
         return await _query_table(dataset, version, sql, geometry)
     elif query_type == QueryType.raster:
         geostore = cast(GeostoreCommon, geostore)
-        results = await _query_raster(dataset, default_asset, sql, geostore)
+        results = await _query_raster(
+            dataset, default_asset, sql, geostore, raster_version_overrides
+        )
         return results["data"]
     else:
         raise HTTPException(

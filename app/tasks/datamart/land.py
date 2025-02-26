@@ -1,4 +1,5 @@
 import json
+from typing import Dict
 from uuid import UUID
 
 from fastapi.logger import logger
@@ -11,20 +12,21 @@ from app.models.pydantic.datamart import (
     TreeCoverLossByDriverMetadata,
 )
 from app.models.pydantic.geostore import GeostoreCommon
-from app.routes.datamart.land import (
-    DEFAULT_TREE_COVER_DENSTY_DATASET_NAME,
-    DEFAULT_TREE_COVER_LOSS_BY_DRIVER_DATASET_NAME,
-    DEFAULT_TREE_COVER_LOSS_BY_DRIVER_DATASET_VERSION,
-    DEFAULT_TREE_COVER_LOSS_DATASET_NAME,
-    DEFAULT_TREE_COVER_LOSS_DATASET_VERSION,
-    DEFAULT_TREE_COVER_LOSS_DENSITY_DATASET_VERSION,
-)
 from app.routes.datasets.queries import _query_dataset_json
 from app.utils.geostore import get_geostore
 
+DEFAULT_LAND_DATASET_VERSIONS = {
+    "umd_tree_cover_loss": "v1.11",
+    "tsc_tree_cover_loss_drivers": "v2023",
+    "umd_tree_cover_density_2000": "v1.8",
+}
+
 
 async def compute_tree_cover_loss_by_driver(
-    resource_id: UUID, geostore_id: UUID, canopy_cover: int
+    resource_id: UUID,
+    geostore_id: UUID,
+    canopy_cover: int,
+    dataset_version: Dict[str, str],
 ):
     try:
         logger.info(
@@ -33,13 +35,12 @@ async def compute_tree_cover_loss_by_driver(
         geostore: GeostoreCommon = await get_geostore(geostore_id, GeostoreOrigin.rw)
         query = f"SELECT SUM(area__ha) FROM data WHERE umd_tree_cover_density_2000__threshold >= {canopy_cover} GROUP BY tsc_tree_cover_loss_drivers__driver"
 
-        # TODO right now this is just using latest versions, need
-        # to add a way to later to put specific versions in the data environment
         results = await _query_dataset_json(
-            DEFAULT_TREE_COVER_LOSS_DATASET_NAME,
-            DEFAULT_TREE_COVER_LOSS_DATASET_VERSION,
+            "umd_tree_cover_loss",
+            DEFAULT_LAND_DATASET_VERSIONS["umd_tree_cover_loss"],
             query,
             geostore,
+            dataset_version,
         )
 
         tcl_by_driver = {
@@ -49,7 +50,7 @@ async def compute_tree_cover_loss_by_driver(
 
         resource = TreeCoverLossByDriver(
             treeCoverLossByDriver=tcl_by_driver,
-            metadata=_get_metadata(geostore, canopy_cover),
+            metadata=_get_metadata(geostore, canopy_cover, dataset_version),
         )
 
         await _write_resource(resource_id, resource)
@@ -58,24 +59,17 @@ async def compute_tree_cover_loss_by_driver(
         await _write_error(resource_id, str(e))
 
 
-def _get_metadata(geostore: GeostoreCommon, canopy_cover: int):
+def _get_metadata(
+    geostore: GeostoreCommon, canopy_cover: int, dataset_version: Dict[str, str]
+):
+    sources = [
+        DataMartSource(dataset=dataset, version=version)
+        for dataset, version in dataset_version.items()
+    ]
     return TreeCoverLossByDriverMetadata(
         geostore_id=geostore.geostore_id,
         canopy_cover=canopy_cover,
-        sources=[
-            DataMartSource(
-                dataset=DEFAULT_TREE_COVER_LOSS_DATASET_NAME,
-                version=DEFAULT_TREE_COVER_LOSS_DATASET_VERSION,
-            ),
-            DataMartSource(
-                dataset=DEFAULT_TREE_COVER_LOSS_BY_DRIVER_DATASET_NAME,
-                version=DEFAULT_TREE_COVER_LOSS_BY_DRIVER_DATASET_VERSION,
-            ),
-            DataMartSource(
-                dataset=DEFAULT_TREE_COVER_DENSTY_DATASET_NAME,
-                version=DEFAULT_TREE_COVER_LOSS_DENSITY_DATASET_VERSION,
-            ),
-        ],
+        sources=sources,
     )
 
 

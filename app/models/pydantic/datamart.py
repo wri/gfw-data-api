@@ -7,6 +7,7 @@ from .base import StrictBaseModel
 class TreeCoverLossByDriverIn(StrictBaseModel):
     geostore_id: UUID
     canopy_cover: int = 30
+    dataset_version: Dict[str, str] = {}
 
 
 class DataMartSource(StrictBaseModel):

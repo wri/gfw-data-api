@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
@@ -11,23 +12,16 @@ from fastapi.responses import ORJSONResponse
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import TreeCoverLossByDriverIn
 from app.settings.globals import API_URL
-from app.tasks.datamart.land import compute_tree_cover_loss_by_driver
+from app.tasks.datamart.land import (
+    DEFAULT_LAND_DATASET_VERSIONS,
+    compute_tree_cover_loss_by_driver,
+)
 from app.utils.geostore import get_geostore
 
 from ...authentication.api_keys import get_api_key
 from ...models.pydantic.responses import Response
 
 router = APIRouter()
-
-
-DEFAULT_TREE_COVER_LOSS_DATASET_NAME = "umd_tree_cover_loss"
-DEFAULT_TREE_COVER_LOSS_DATASET_VERSION = "v1.11"
-
-DEFAULT_TREE_COVER_LOSS_BY_DRIVER_DATASET_NAME = "tsc_tree_cover_loss_drivers"
-DEFAULT_TREE_COVER_LOSS_BY_DRIVER_DATASET_VERSION = "v2023"
-
-DEFAULT_TREE_COVER_DENSTY_DATASET_NAME = "umd_tree_cover_density_2000"
-DEFAULT_TREE_COVER_LOSS_DENSITY_DATASET_VERSION = "v1.8"
 
 
 @router.get(
@@ -39,12 +33,19 @@ DEFAULT_TREE_COVER_LOSS_DENSITY_DATASET_VERSION = "v1.8"
 async def tree_cover_loss_by_driver_search(
     *,
     geostore_id: UUID = Query(..., title="Geostore ID"),
-    canopy_cover: int = Query(30, alias="canopy_cover", title="Canopy Cover Percent"),
+    canopy_cover: int = Query(30, alias="canopy_cover", title="Canopy cover percent"),
+    dataset: Optional[list[str]] = Query([], title="Dataset overrides"),
+    version: Optional[list[str]] = Query([], title="Version overrides"),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
+    # Merge dataset version overrides with default dataset versions
+    query_dataset_version = {ds: v for ds, v in zip(dataset, version)}
+    dataset_version = DEFAULT_LAND_DATASET_VERSIONS | query_dataset_version
 
-    resource_id = _get_resource_id(geostore_id, canopy_cover)
+    resource_id = _get_resource_id(
+        "tree-cover-loss-by-driver", geostore_id, canopy_cover, dataset_version
+    )
 
     # check if it exists
     await _get_resource(resource_id)
@@ -112,7 +113,14 @@ async def tree_cover_loss_by_driver_post(
     # create initial Job item as pending
     # trigger background task to create item
     # return 202 accepted
-    resource_id = _get_resource_id(data.geostore_id, data.canopy_cover)
+    dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
+    resource_id = _get_resource_id(
+        "tree-cover-loss-by-driver",
+        data.geostore_id,
+        data.canopy_cover,
+        dataset_version,
+    )
+
     await _save_pending_resource(resource_id)
 
     background_tasks.add_task(
@@ -120,6 +128,7 @@ async def tree_cover_loss_by_driver_post(
         resource_id,
         data.geostore_id,
         data.canopy_cover,
+        dataset_version,
     )
 
     return ORJSONResponse(
@@ -133,8 +142,10 @@ async def tree_cover_loss_by_driver_post(
     )
 
 
-def _get_resource_id(geostore_id, canopy_cover):
-    return uuid.uuid5(uuid.NAMESPACE_OID, f"{geostore_id}_{canopy_cover}")
+def _get_resource_id(path, geostore_id, canopy_cover, dataset_version):
+    return uuid.uuid5(
+        uuid.NAMESPACE_OID, f"{path}_{geostore_id}_{canopy_cover}_{dataset_version}"
+    )
 
 
 async def _get_resource(resource_id):
