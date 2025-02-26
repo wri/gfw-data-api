@@ -21,6 +21,7 @@ from app.models.pydantic.geostore import (
     Geometry,
     Geostore,
 )
+from app.routes.political.id_lookup import extract_level_gid
 from app.settings.globals import ENV, per_env_admin_boundary_versions
 
 GEOSTORE_COLUMNS: List[Column] = [
@@ -393,12 +394,12 @@ async def form_admin_geostore(
     if adm_level == 1:
         info = Adm1BoundaryInfo(
             **info.dict(),
-            id1=gid_1,
+            id1=int(extract_level_gid(adm_level, gid_1)),
         )
     if adm_level == 2:
         info = Adm2BoundaryInfo(
             **info.dict(),
-            id2=gid_2,
+            id2=int(extract_level_gid(adm_level, gid_2)),
         )
 
     return AdminGeostore(
