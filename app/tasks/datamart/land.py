@@ -56,7 +56,7 @@ async def compute_tree_cover_loss_by_driver(
         await _write_resource(resource_id, resource)
     except Exception as e:
         logger.error(e)
-        await _write_error(resource_id, e.detail)
+        await _write_error(resource_id, str(e))
 
 
 def _get_metadata(geostore: GeostoreCommon, canopy_cover: int):
