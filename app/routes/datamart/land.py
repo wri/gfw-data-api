@@ -91,7 +91,6 @@ async def tree_cover_loss_by_driver_get(
     response_class=ORJSONResponse,
     response_model=Response,
     tags=["Land"],
-    deprecated=True,
 )
 async def tree_cover_loss_by_driver_post(
     data: TreeCoverLossByDriverIn,
