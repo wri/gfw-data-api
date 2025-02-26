@@ -36,6 +36,10 @@ class BadAdminVersionException(Exception):
     pass
 
 
+class GeometryIsNullError(Exception):
+    pass
+
+
 async def get_gfw_geostore_from_any_dataset(geostore_id: UUID) -> Geostore:
     src_table: Table = db.table("geostore")
 
@@ -230,6 +234,11 @@ async def get_geostore_by_country_id(
             f"Geostore with country_id {country_id} not found in GADM 4.1"  # FIXME
         )
 
+    if row.geojson is None and simplify is not None:
+        raise GeometryIsNullError(
+            f"Geometry is null. Try reducing/eliminating simplification."
+        )
+
     # return AdminGeostoreResponse(**{
     return {
         "data": {
@@ -255,7 +264,7 @@ async def get_geostore_by_country_id(
                 "info": {
                     "use": {},
                     "simplifyThresh": simplify,
-                    "gadm": "4.1",
+                    "gadm": str(admin_version),
                     "name": str(row.country),
                     "iso": str(row.gid_0),
                 },

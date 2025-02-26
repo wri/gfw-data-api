@@ -8,7 +8,11 @@ from fastapi import APIRouter, Header, HTTPException, Path, Query, Request
 from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
-from ...crud.geostore import BadAdminSourceException, BadAdminVersionException
+from ...crud.geostore import (
+    BadAdminSourceException,
+    BadAdminVersionException,
+    GeometryIsNullError,
+)
 from ...errors import BadRequestError, RecordNotFoundError
 from ...models.pydantic.geostore import (
     AdminGeostoreResponse,
@@ -164,12 +168,12 @@ async def get_boundary_by_country_id(
             result = await geostore.get_geostore_by_country_id(
                 admin_provider, admin_version, country_id, simplify
             )
-        except (
-            BadAdminSourceException,
-            BadAdminVersionException,
-            RecordNotFoundError,
-        ) as e:
+        except (BadAdminSourceException, BadAdminVersionException) as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except RecordNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e))
+        except GeometryIsNullError as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     return result
 
