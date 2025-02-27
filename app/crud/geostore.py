@@ -350,7 +350,7 @@ async def admin_params_to_dataset_version(
         raise BadAdminSourceException(
             (
                 "Invalid admin boundary source. Valid sources:"
-                f" {[source for source in admin_source_to_dataset.keys()]}"
+                f" {[source.lower() for source in admin_source_to_dataset.keys()]}"
             )
         )
 
@@ -362,7 +362,7 @@ async def admin_params_to_dataset_version(
         raise BadAdminVersionException(
             (
                 "Invalid admin boundary version. Valid versions:"
-                f" {[v for v in per_env_admin_boundary_versions[ENV][source_provider].keys()]}"
+                f" {[v for v in per_env_admin_boundary_versions[ENV][source_provider.upper()].keys()]}"
             )
         )
 
@@ -392,11 +392,13 @@ async def form_admin_geostore(
         }
     )
     if adm_level == 1:
+        assert gid_1 is not None
         info = Adm1BoundaryInfo(
             **info.dict(),
             id1=int(extract_level_gid(adm_level, gid_1)),
         )
     if adm_level == 2:
+        assert gid_2 is not None
         info = Adm2BoundaryInfo(
             **info.dict(),
             id2=int(extract_level_gid(adm_level, gid_2)),
