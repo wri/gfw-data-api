@@ -14,7 +14,7 @@ from .responses import Response
 
 
 class AssetBase(StrictBaseModel):
-    tags: Optional[str]
+    tags: Optional[List[str]]
 
 
 class FieldMetadata(StrictBaseModel):
