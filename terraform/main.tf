@@ -25,15 +25,15 @@ locals {
   project               = "gfw-data-api"
   aurora_instance_class = data.terraform_remote_state.core.outputs.aurora_cluster_instance_class
   aurora_max_vcpus      = local.aurora_instance_class == "db.t3.medium" ? 2 : local.aurora_instance_class == "db.r6g.large" ? 2 : local.aurora_instance_class == "db.r6g.xlarge" ? 4 : local.aurora_instance_class == "db.r6g.2xlarge" ? 8 : local.aurora_instance_class == "db.r6g.4xlarge" ? 16 : local.aurora_instance_class == "db.r6g.8xlarge" ? 32 : local.aurora_instance_class == "db.r6g.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.large" ? 2 : local.aurora_instance_class == "db.r5.xlarge" ? 4 : local.aurora_instance_class == "db.r5.2xlarge" ? 8 : local.aurora_instance_class == "db.r5.4xlarge" ? 16 : local.aurora_instance_class == "db.r5.8xlarge" ? 32 : local.aurora_instance_class == "db.r5.12xlarge" ? 48 : local.aurora_instance_class == "db.r5.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.24xlarge" ? 96 : ""
-  service_url           = var.environment == "dev" ? "http://${module.fargate_autoscaling.lb_dns_name}" : var.service_url
+  service_url           = var.environment == "dev" ? "http://${local.lb_dns_name}:${data.external.generate_port[0].result["port"]}" : var.service_url
   # The container_registry module only pushes a new Docker image if the docker hash
   # computed by its hash.sh script has changed. So, we make the container tag exactly
   # be that hash. Therefore, we will know that either the previous docker with the
   # same contents and tag will already exist, if nothing has changed in the docker
   # image, or the container registry module will push a new docker with the tag we
   # want.
-  container_tag         = lookup(data.external.hash.result, "hash")
-  lb_dns_name           = coalesce(module.fargate_autoscaling.lb_dns_name, var.lb_dns_name)
+  container_tag = lookup(data.external.hash.result, "hash")
+  lb_dns_name   = coalesce(module.fargate_autoscaling.lb_dns_name, var.lb_dns_name)
 }
 
 # Docker image for FastAPI app

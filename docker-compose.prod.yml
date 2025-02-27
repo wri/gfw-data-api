@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   app:
     build:
@@ -40,17 +38,17 @@ services:
       - RW_API_URL=https://api.resourcewatch.org
       - GOOGLE_APPLICATION_CREDENTIALS=/root/.gcs/private_key.json
     ports:
-      - 8000:80
+      - "8000:80"
     entrypoint: wait_for_postgres.sh /app/start.sh
     depends_on:
       - database
 
   database:
     container_name: gfw-data-api-database
-    image: postgis/postgis:12-3.3-alpine
+    image: postgis/postgis:14-3.4-alpine
     restart: on-failure
     ports:
-      - 54320:5432
+      - "54320:5432"
     environment:
       - POSTGRES_DB=geostore
       - POSTGRES_USER=gfw

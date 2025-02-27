@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   app:
     build:
@@ -13,13 +11,13 @@ services:
       - ./app:/app/app
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      - 'DB_WRITER_SECRET={"host": "database_12", "port": 5432, "username": "gfw", "password": "postgres", "dbname": "geostore"}'
-      - DB_HOST=database_12
+      - 'DB_WRITER_SECRET={"host": "database_14", "port": 5432, "username": "gfw", "password": "postgres", "dbname": "geostore"}'
+      - DB_HOST=database_14
       - DATABASE=geostore
       - DB_USER=gfw
       - DB_PASSWORD=postgres # pragma: allowlist secret
       - DB_PORT=5432
-      - DB_HOST_RO=database_12
+      - DB_HOST_RO=database_14
       - DATABASE_RO=geostore
       - DB_USER_RO=gfw_readonly
       - DB_PASSWORD_RO=readonly # pragma: allowlist secret
@@ -55,23 +53,23 @@ services:
       - API_GATEWAY_STAGE_NAME=deploy_feature_rate_limiting
       - NAME_SUFFIX=
     ports:
-      - 8008:80
-    entrypoint: wait_for_postgres.sh /start-reload.sh
+      - "8008:80"
+    entrypoint: wait_for_postgres.sh /app/start.sh
     depends_on:
-      - database_12
+      - database_14
 
-  database_12:
-    container_name: gfw-data-api-database_12
-    image: postgis/postgis:12-3.3-alpine
+  database_14:
+    container_name: gfw-data-api-database_14
+    image: postgis/postgis:14-3.4-alpine
     restart: on-failure
     ports:
-      - 54320:5432
+      - "54320:5432"
     environment:
       - POSTGRES_DB=geostore
       - POSTGRES_USER=gfw
       - POSTGRES_PASSWORD=postgres # pragma: allowlist secret
     volumes:
-      - database_data_12:/var/lib/postgresql/data
+      - database_data_14:/var/lib/postgresql/data
 
 volumes:
-  database_data_12:
+  database_data_14:
