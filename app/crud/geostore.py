@@ -207,7 +207,7 @@ async def get_gadm_geostore(
         db.column("gfw_area__ha"),
         db.column("gfw_bbox"),
         db.column("gfw_geostore_id"),
-        label("level_gid", db.column(f"gid_{adm_level}")),
+        label("level_id", db.column(f"gid_{adm_level}")),
     ]
 
     if adm_level == 0:
