@@ -38,7 +38,7 @@ services:
       - RW_API_URL=https://api.resourcewatch.org
       - GOOGLE_APPLICATION_CREDENTIALS=/root/.gcs/private_key.json
     ports:
-      - 8000:80
+      - "8000:80"
     entrypoint: wait_for_postgres.sh /app/start.sh
     depends_on:
       - database
