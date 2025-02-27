@@ -12,13 +12,16 @@ sys.path.extend(["./"])
 from app.application import db
 
 # To include a model in migrations, add a line here.
+from app.models.orm.api_keys import ApiKey  # noqa: F401
+from app.models.orm.asset_metadata import AssetMetadata  # noqa: F401
 from app.models.orm.assets import Asset  # noqa: F401
+from app.models.orm.dataset_metadata import DatasetMetadata  # noqa: F401
 from app.models.orm.datasets import Dataset  # noqa: F401
 from app.models.orm.geostore import Geostore  # noqa: F401
 from app.models.orm.tasks import Task  # noqa: F401
 from app.models.orm.user_areas import UserArea  # noqa: F401
+from app.models.orm.version_metadata import VersionMetadata  # noqa: F401
 from app.models.orm.versions import Version  # noqa: F401
-from app.models.orm.api_keys import ApiKey  # noqa: F401
 
 ###############################################################################
 
@@ -58,13 +61,12 @@ def include_object(obj, name, type_, reflected, compare_to):
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
 
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
+    This configures the context with just a URL and not an Engine,
+    though an Engine is acceptable here as well.  By skipping the Engine
+    creation we don't even need a DBAPI to be available.
 
-    Calls to context.execute() here emit the given string to the
-    script output.
+    Calls to context.execute() here emit the given string to the script
+    output.
     """
     context.configure(
         url=ALEMBIC_CONFIG.url.__to_string__(hide_password=False),
