@@ -268,6 +268,11 @@ async def get_gadm_geostore(
             f"Geostore with ID {country_id}.{region_id} not found in GADM 4.1"  # FIXME
         )
 
+    if row.geojson is None:
+        raise GeometryIsNullError(
+            "GeoJSON is None, try reducing or eliminating simplification."
+        )
+
     geostore = await form_admin_geostore(
         adm_level=adm_level,
         admin_version=admin_version,

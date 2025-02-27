@@ -112,7 +112,7 @@ async def get_admin_list(
     request: Request,
     x_api_key: Annotated[str | None, Header()] = None,
 ):
-    """Get all Geostore IDs, names and country codes (proxies requests for GADM
+    """Get all national IDs, names and country codes (proxies requests for GADM
     3.6 features to the RW API)"""
     if not (admin_provider and admin_version):
         raise HTTPException(
@@ -153,8 +153,8 @@ async def get_boundary_by_country_id(
     simplify: Optional[float] = Query(None, description="Simplify tolerance"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
-    """Get a GADM boundary by country ID (proxies requests for GADM 3.6
-    boundaries to the RW API)"""
+    """Get an administrative boundary by country ID (proxies requests for GADM
+    3.6 boundaries to the RW API)"""
     if not (admin_provider and admin_version):
         raise HTTPException(
             status_code=400, detail="source provider and version must be non-empty"
@@ -199,7 +199,7 @@ async def rw_get_boundary_by_region_id(
     simplify: Optional[float] = Query(None, description="Simplify tolerance"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
-    """Get a GADM boundary by country and region IDs (proxies requests for GADM
+    """Get an administrative boundary by country and region IDs (proxies requests for GADM
     3.6 boundaries to the RW API)"""
     if not (admin_provider and admin_version):
         raise HTTPException(
@@ -237,14 +237,42 @@ async def rw_get_boundary_by_subregion_id(
     region_id: str = Path(..., title="region_id"),
     subregion_id: str = Path(..., title="subregion_id"),
     request: Request,
+    admin_provider: Optional[str] = Query(
+        "gadm", alias="source[provider]", description="Source of admin boundaries"
+    ),
+    admin_version: Optional[str] = Query(
+        "3.6", alias="source[version]", description="Version of admin boundaries"
+    ),
+    simplify: Optional[float] = Query(None, description="Simplify tolerance"),
     x_api_key: Annotated[str | None, Header()] = None,
 ):
-    """Get a GADM boundary by country, region, and subregion IDs (proxies
-    request to the RW API)"""
-
-    result: AdminGeostoreResponse = await get_boundary_by_subregion_id(
-        country_id, region_id, subregion_id, request.query_params, x_api_key
-    )
+    """Get an administrative boundary by country, region, and subregion IDs
+    (proxies requests for GADM 3.6 boundaries to the RW API)"""
+    if not (admin_provider and admin_version):
+        raise HTTPException(
+            status_code=400, detail="source provider and version must be non-empty"
+        )
+    if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
+        result: AdminGeostoreResponse = await get_boundary_by_subregion_id(
+            country_id, region_id, subregion_id, request.query_params, x_api_key
+        )
+    else:
+        try:
+            result = await geostore.get_gadm_geostore(
+                admin_provider,
+                admin_version,
+                2,
+                simplify,
+                country_id,
+                region_id,
+                subregion_id,
+            )
+        except (BadAdminSourceException, BadAdminVersionException) as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except RecordNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except GeometryIsNullError as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     return result
 
