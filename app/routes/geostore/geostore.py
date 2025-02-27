@@ -165,8 +165,8 @@ async def get_boundary_by_country_id(
         )
     else:
         try:
-            result = await geostore.get_geostore_by_country_id(
-                admin_provider, admin_version, country_id, simplify
+            result = await geostore.get_gadm_geostore(
+                admin_provider, admin_version, 0, simplify, country_id
             )
         except (BadAdminSourceException, BadAdminVersionException) as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -211,8 +211,8 @@ async def rw_get_boundary_by_region_id(
         )
     else:
         try:
-            result = await geostore.get_geostore_by_region_id(
-                admin_provider, admin_version, country_id, region_id, simplify
+            result = await geostore.get_gadm_geostore(
+                admin_provider, admin_version, 1, simplify, country_id, region_id
             )
         except (BadAdminSourceException, BadAdminVersionException) as e:
             raise HTTPException(status_code=400, detail=str(e))

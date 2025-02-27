@@ -6,7 +6,7 @@ from asyncpg.exceptions import UniqueViolationError
 from fastapi.logger import logger
 from sqlalchemy import Column, Table, func
 from sqlalchemy.sql import Select, label
-from sqlalchemy.sql.elements import TextClause
+from sqlalchemy.sql.elements import Label, TextClause
 
 from app.application import db
 from app.errors import RecordNotFoundError
@@ -185,87 +185,14 @@ async def get_admin_boundary_list(
     )
 
 
-async def get_geostore_by_country_id(
-    admin_provider: str, admin_version: str, country_id: str, simplify: float | None
-) -> Any:
-    dv: Tuple[str, str] = await admin_params_to_dataset_version(
-        admin_provider, admin_version
-    )
-    dataset, version = dv
-
-    src_table: Table = db.table(version)
-    src_table.schema = dataset
-
-    gadm_geostore_columns: List[Column] = [
-        db.column("country"),
-        db.column("gfw_bbox"),
-        db.column("gfw_area__ha"),
-        db.column("gfw_geostore_id"),
-        db.column("gid_0"),
-    ]
-
-    if simplify is None:
-        geom_expression = label("geojson", func.ST_AsGeoJSON(db.column("geom")))
-    else:
-        geom_expression = label(
-            "geojson", func.ST_AsGeoJSON(func.ST_Simplify(db.column("geom"), simplify))
-        )
-
-    #     full_geojson_expression = func.json_build_object(
-    #         'type', 'FeatureCollection',
-    #         'features', func.json_agg(func.ST_AsGeoJSON("geom"))
-    # )
-
-    where_level_clause: TextClause = db.text("adm_level=:adm_level").bindparams(
-        adm_level="0"
-    )
-    where_country_clause: TextClause = db.text("gid_0=:country_id").bindparams(
-        country_id=country_id
-    )
-
-    sql: Select = (
-        db.select([*gadm_geostore_columns, geom_expression])
-        .select_from(src_table)
-        .where(where_level_clause)
-        .where(where_country_clause)
-    )
-
-    # foo = sql.compile(compile_kwargs={"literal_binds": True})
-    #
-    # raise Exception(f"SQL: {foo}")
-
-    row = await db.first(sql)
-    if row is None:
-        raise RecordNotFoundError(
-            f"Geostore with country_id {country_id} not found in GADM 4.1"  # FIXME
-        )
-
-    if row.geojson is None and simplify is not None:
-        raise GeometryIsNullError(
-            "Geometry is null. Try reducing/eliminating simplification."
-        )
-
-    geostore = await form_admin_geostore(
-        adm_level=0,
-        admin_version=admin_version,
-        area=float(row.gfw_area__ha),
-        bbox=[float(val) for val in row.gfw_bbox],
-        name=str(row.country),
-        geojson=json.loads(row.geojson),
-        geostore_id=str(row.gfw_geostore_id),
-        gid_0=str(row.gid_0),
-        simplify=simplify,
-    )
-
-    return AdminGeostoreResponse(data=geostore)
-
-
-async def get_geostore_by_region_id(
+async def get_gadm_geostore(
     admin_provider: str,
     admin_version: str,
-    country_id: str,
-    region_id: str,
+    adm_level: int,
     simplify: float | None,
+    country_id: str,
+    region_id: str | None = None,
+    subregion_id: str | None = None,
 ) -> Any:  # FIXME
     dv: Tuple[str, str] = await admin_params_to_dataset_version(
         admin_provider, admin_version
@@ -275,46 +202,64 @@ async def get_geostore_by_region_id(
     src_table: Table = db.table(version)
     src_table.schema = dataset
 
-    gadm_geostore_columns: List[Column] = [
-        db.column("gfw_bbox"),
+    columns_etc: List[Column | Label] = [
+        db.column("adm_level"),
         db.column("gfw_area__ha"),
+        db.column("gfw_bbox"),
         db.column("gfw_geostore_id"),
-        db.column("gid_0"),
-        db.column("gid_1"),
-        db.column("name_1"),
+        label("level_gid", db.column(f"gid_{adm_level}")),
     ]
 
-    if simplify is None:
-        geom_expression = label("geojson", func.ST_AsGeoJSON(db.column("geom")))
+    if adm_level == 0:
+        columns_etc.append(label("name", db.column("country")))
     else:
-        geom_expression = label(
-            "geojson", func.ST_AsGeoJSON(func.ST_Simplify(db.column("geom"), simplify))
+        columns_etc.append(label("name", db.column(f"name_{adm_level}")))
+
+    if simplify is None:
+        columns_etc.append(label("geojson", func.ST_AsGeoJSON(db.column("geom"))))
+    else:
+        columns_etc.append(
+            label(
+                "geojson",
+                func.ST_AsGeoJSON(func.ST_Simplify(db.column("geom"), simplify)),
+            )
         )
 
-    where_level_clause: TextClause = db.text("adm_level=:adm_level").bindparams(
-        adm_level="1"
-    )
-    where_country_clause: TextClause = db.text("gid_0=:country_id").bindparams(
-        country_id=country_id
-    )
-    # gid_0 is just a three-character code, but all lower level ids are
+    where_clauses: List[TextClause] = [
+        db.text("adm_level=:adm_level").bindparams(adm_level=str(adm_level))
+    ]
+
+    # gid_0 is just a three-character value, but all more specific ids are
     # followed by an underscore (which has to be escaped because normally in
     # SQL an underscore is a wildcard) and a revision number (for which we
     # use an UN-escaped underscore).
-    like_region_clause: TextClause = db.text("gid_1 LIKE :region_id").bindparams(
-        region_id=f"{country_id}.{region_id}\\__"
-    )
+    level_id_pattern: str = country_id
 
-    sql: Select = (
-        db.select([*gadm_geostore_columns, geom_expression])
-        .select_from(src_table)
-        .where(where_level_clause)
-        .where(where_country_clause)
-        .where(like_region_clause)
-    )
+    if adm_level == 0:  # Special-case to avoid slow LIKE
+        where_clauses.append(
+            db.text("gid_0=:level_id_pattern").bindparams(
+                level_id_pattern=level_id_pattern
+            )
+        )
+    else:
+        level_id_pattern = ".".join((level_id_pattern, region_id))
+        if adm_level >= 2:
+            level_id_pattern = ".".join((level_id_pattern, subregion_id))
+
+        level_id_pattern += r"\__"
+
+        where_clauses.append(
+            db.text(f"gid_{adm_level} LIKE :level_id_pattern").bindparams(
+                level_id_pattern=level_id_pattern
+            )
+        )
+
+    sql: Select = db.select(columns_etc).select_from(src_table)
+
+    for clause in where_clauses:
+        sql = sql.where(clause)
 
     # foo = (sql.compile(compile_kwargs={"literal_binds": True}))
-    #
     # raise Exception(f"SQL: {foo}")
 
     row = await db.first(sql)
@@ -324,15 +269,14 @@ async def get_geostore_by_region_id(
         )
 
     geostore = await form_admin_geostore(
-        adm_level=1,
+        adm_level=adm_level,
         admin_version=admin_version,
         area=float(row.gfw_area__ha),
         bbox=[float(val) for val in row.gfw_bbox],
-        name=str(row.name_1),
+        name=str(row.name),
         geojson=json.loads(row.geojson),
         geostore_id=str(row.gfw_geostore_id),
-        gid_0=str(row.gid_0),
-        gid_1=str(row.gid_1),
+        level_id=str(row.level_id),
         simplify=simplify,
     )
 
@@ -374,13 +318,11 @@ async def form_admin_geostore(
     bbox: List[float],
     area: float,
     geostore_id: str,
-    gid_0: str,
+    level_id: str,
     simplify: Optional[float],
     admin_version: str,
     geojson: Dict,
     name: str,
-    gid_1: str | None = None,
-    gid_2: str | None = None,
 ) -> AdminGeostore:
     info = Adm0BoundaryInfo(
         **{
@@ -388,20 +330,18 @@ async def form_admin_geostore(
             "simplifyThresh": simplify,
             "gadm": admin_version,
             "name": name,
-            "iso": gid_0,
+            "iso": extract_level_gid(0, level_id),
         }
     )
-    if adm_level == 1:
-        assert gid_1 is not None
+    if adm_level >= 1:
         info = Adm1BoundaryInfo(
             **info.dict(),
-            id1=int(extract_level_gid(adm_level, gid_1)),
+            id1=int(extract_level_gid(1, level_id)),
         )
     if adm_level == 2:
-        assert gid_2 is not None
         info = Adm2BoundaryInfo(
             **info.dict(),
-            id2=int(extract_level_gid(adm_level, gid_2)),
+            id2=int(extract_level_gid(2, level_id)),
         )
 
     return AdminGeostore(
