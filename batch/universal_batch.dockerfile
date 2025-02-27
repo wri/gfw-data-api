@@ -1,8 +1,8 @@
 FROM ghcr.io/osgeo/gdal:ubuntu-full-3.9.3
 LABEL desc="Docker image with ALL THE THINGS for use in Batch by the GFW data API"
-LABEL version="v1.1"
+LABEL version="v1.0"
 
-ENV TIPPECANOE_VERSION=2.72.0
+ENV TIPPECANOE_VERSION=2.75.1
 
 ENV VENV_DIR="/.venv"
 
