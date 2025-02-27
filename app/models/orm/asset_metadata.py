@@ -17,7 +17,7 @@ class AssetMetadata(db.Model):
     resolution = db.Column(db.Numeric)
     min_zoom = db.Column(db.Integer)
     max_zoom = db.Column(db.Integer)
-    tags = db.Column(db.String)
+    tags = db.Column(db.ARRAY(db.String))
 
 
 class FieldMetadata(db.Model):
