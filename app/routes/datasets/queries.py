@@ -89,6 +89,7 @@ from ...settings.globals import (
     RASTER_ANALYSIS_STATE_MACHINE_ARN,
 )
 from ...utils.aws import get_sfn_client, invoke_lambda
+from ...utils.decorators import hash_dict
 from ...utils.geostore import get_geostore
 from .. import dataset_version_dependency
 from . import _verify_source_file_access
@@ -826,6 +827,7 @@ def _get_default_layer(dataset, pixel_meaning):
         return f"{dataset}__{default_type}"
 
 
+@hash_dict
 @alru_cache(maxsize=16, ttl=300.0)
 async def _get_data_environment(
     grid: Grid, version_overrides: Dict[str, str] = {}
