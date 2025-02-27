@@ -3,7 +3,7 @@ name = "gfw-data-api"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = "~= 3.10"
+requires-python = "~= 3.12"
 dependencies = [
     "aenum",
     "aiofiles",
@@ -27,12 +27,12 @@ dependencies = [
     "httpx",
     "httpx-auth",
     "newrelic",
-    "numpy<2",
+    "numpy",
     "openapi_spec_validator",
     "orjson",
     "packaging",
-    "pendulum<3",
-    "pglast<2",
+    "pglast",
+    "pendulum>=3.0",
     "psutil",
     "psycopg2",
     "pydantic<2",

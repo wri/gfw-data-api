@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class EntityType(str, Enum):
+class EntityType(StrEnum):
     saved = "dataset"
     pending = "version"
     failed = "asset"

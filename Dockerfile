@@ -49,7 +49,6 @@ RUN if [ "$ENV" = "dev" ] || [ "$ENV" = "test" ]; then \
         uv sync --locked --no-install-project --no-dev; \
     fi
 
-
 # Start the runtime stage
 FROM ubuntu:noble
 

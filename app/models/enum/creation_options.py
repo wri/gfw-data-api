@@ -1,18 +1,18 @@
-from enum import Enum
+from enum import Enum, StrEnum
 
 
-class RasterDrivers(str, Enum):
+class RasterDrivers(StrEnum):
     __doc__ = "Raster source driver of input file"
     geotiff = "GeoTIFF"
 
 
-class TableDrivers(str, Enum):
+class TableDrivers(StrEnum):
     __doc__ = "Driver of input file."
     text = "text"
     # json = "json" # TODO: need to implement this eventually
 
 
-class VectorDrivers(str, Enum):
+class VectorDrivers(StrEnum):
     __doc__ = "Vector source driver of input file"
     csv = "CSV"
     esrijson = "ESRIJSON"
@@ -23,7 +23,7 @@ class VectorDrivers(str, Enum):
     shp = "ESRI Shapefile"
 
 
-class Delimiters(str, Enum):
+class Delimiters(StrEnum):
     __doc__ = "Delimiter used to separate columns in input text file"
     comma = ","
     tab = "\t"
@@ -31,19 +31,19 @@ class Delimiters(str, Enum):
     semicolon = ";"
 
 
-class IndexType(str, Enum):
+class IndexType(StrEnum):
     __doc__ = "Index type"
     gist = "gist"
     btree = "btree"
     hash = "hash"
 
 
-class ConstraintType(str, Enum):
+class ConstraintType(StrEnum):
     __doc__ = "Constraint type"
     unique = "unique"
 
 
-class TileStrategy(str, Enum):
+class TileStrategy(StrEnum):
     __doc__ = (
         "Tile strategy for generating vector tiles. "
         "Use `continuous` when working with mostly adjacent polygon files, "
@@ -55,13 +55,13 @@ class TileStrategy(str, Enum):
     keep_all = "keep_all"
 
 
-class PartitionType(str, Enum):
+class PartitionType(StrEnum):
     hash = "hash"
     list = "list"
     range = "range"
 
 
-class PGType(str, Enum):
+class PGType(StrEnum):
     bigint = "bigint"
     boolean = "boolean"
     character_varying = "character varying"
@@ -79,7 +79,7 @@ class PGType(str, Enum):
     xml = "xml"
 
 
-class ColorMapType(str, Enum):
+class ColorMapType(StrEnum):
     discrete = "discrete"
     discrete_intensity = "discrete_intensity"
     gradient = "gradient"
@@ -97,6 +97,6 @@ class TileBlockSize(int, Enum):
     ten_twenty_four = 1024
 
 
-class Srid(str, Enum):
+class Srid(StrEnum):
     wgs84 = "epsg:4326"
     web_mercator = "epsg:3857"

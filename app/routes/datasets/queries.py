@@ -1,4 +1,5 @@
 """Explore data entries for a given dataset version using standard SQL."""
+
 import csv
 import json
 import re
@@ -19,11 +20,12 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse, RedirectResponse
-from pglast import printers  # noqa
-from pglast import Node, parse_sql
+from pglast import parse_sql, printers  # noqa
+from pglast.ast import Node, RangeSubselect, RawStmt, SelectStmt
 from pglast.parser import ParseError
-from pglast.printer import RawStream
+from pglast.stream import RawStream
 from pydantic.tools import parse_obj_as
+
 from app.settings.globals import API_URL
 
 from ...application import db
@@ -121,7 +123,8 @@ async def query_dataset(
     entire feature geometry, including areas outside the geostore
     boundaries.
 
-    This path is deprecated and will permanently redirect to /query/json.
+    This path is deprecated and will permanently redirect to
+    /query/json.
     """
     dataset, version = dataset_version
 
@@ -159,8 +162,8 @@ async def query_dataset_json(
     calculations will be applied on the entire feature geometry,
     including areas outside the geostore boundaries.
 
-    A geostore ID or geometry must be specified for a query to a
-    raster-only dataset.
+    A geostore ID or geometry must be specified for a query to a raster-
+    only dataset.
 
     GET to /dataset/{dataset}/{version}/fields will show fields that can
     be used in the query. For raster-only datasets, fields for other
@@ -337,29 +340,30 @@ async def query_dataset_list_post(
     request: QueryBatchRequestIn,
     api_key: APIKey = Depends(get_api_key),
 ):
-    """Execute a READ-ONLY SQL query on the specified raster-based dataset version
-    for a potentially large list of features. The features may be specified by an
-    inline GeoJson feature collection, or a list of ResourceWatch geostore IDs, or
-    the URI of vector file that is in any of a variety of formats supported by
-    GeoPandas, include GeoJson and CSV format. For CSV files, the geometry column
-    should be named "WKT" (not "WKB") and the geometry values should be in WKB
-    format.
+    """Execute a READ-ONLY SQL query on the specified raster-based dataset
+    version for a potentially large list of features. The features may be
+    specified by an inline GeoJson feature collection, or a list of
+    ResourceWatch geostore IDs, or the URI of vector file that is in any of a
+    variety of formats supported by GeoPandas, include GeoJson and CSV format.
+    For CSV files, the geometry column should be named "WKT" (not "WKB") and
+    the geometry values should be in WKB format.
 
-    The specified sql query will be run on each individual feature, and so may take a
-    while. Therefore, the results of this query include a job_id. The user should
-    then periodically query the specified job via the /job/{job_id} api. When the
-    "data.status" indicates "success" or "partial_success", then the successful
-    results will be available at the specified "data.download_link". When the
-    "data.status" indicates "partial_success" or "failed", then failed results
-    (likely because of improper geometries) will be available at
-    "data.failed_geometries_link". If the "data.status" indicates "error", then there
-    will be no results available (nothing was able to complete, possible because of
-    an infrastructure problem).
+    The specified sql query will be run on each individual feature, and
+    so may take a while. Therefore, the results of this query include a
+    job_id. The user should then periodically query the specified job
+    via the /job/{job_id} api. When the "data.status" indicates
+    "success" or "partial_success", then the successful results will be
+    available at the specified "data.download_link". When the
+    "data.status" indicates "partial_success" or "failed", then failed
+    results (likely because of improper geometries) will be available at
+    "data.failed_geometries_link". If the "data.status" indicates
+    "error", then there will be no results available (nothing was able
+    to complete, possible because of an infrastructure problem).
 
-    There is currently a five-minute time limit on the entire list query, but up to
-    100 individual feature queries proceed in parallel, so lists with several
-    thousands of features can potentially be processed within that time limit.
-
+    There is currently a five-minute time limit on the entire list
+    query, but up to 100 individual feature queries proceed in parallel,
+    so lists with several thousands of features can potentially be
+    processed within that time limit.
     """
 
     dataset, version = dataset_version
@@ -398,7 +402,11 @@ async def query_dataset_list_post(
         "environment": data_environment.dict()["layers"],
     }
 
-    if (request.feature_collection and request.uri) or (request.feature_collection and request.geostore_ids) or (request.uri and request.geostore_ids):
+    if (
+        (request.feature_collection and request.uri)
+        or (request.feature_collection and request.geostore_ids)
+        or (request.uri and request.geostore_ids)
+    ):
         raise HTTPException(
             status_code=400,
             detail="Must provide only one of valid feature collection, URI, or geostore_ids list.",
@@ -512,7 +520,7 @@ async def _query_table(
 ) -> List[Dict[str, Any]]:
     # Parse and validate SQL statement
     try:
-        parsed = parse_sql(unquote(sql))
+        parsed: Tuple[RawStmt] = parse_sql(unquote(sql))
     except ParseError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -571,42 +579,43 @@ def _orm_to_csv(
     return csv_file
 
 
-def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
+def _has_only_one_statement(parsed: Tuple[RawStmt]) -> None:
     if len(parsed) != 1:
         raise HTTPException(
             status_code=400, detail="Must use exactly one SQL statement."
         )
 
 
-def _is_select_statement(parsed: List[Dict[str, Any]]) -> None:
-    select = parsed[0]["RawStmt"]["stmt"].get("SelectStmt", None)
-    if not select:
+def _is_select_statement(parsed: Tuple[RawStmt]) -> None:
+    if not isinstance(parsed[0].stmt, SelectStmt):
         raise HTTPException(status_code=400, detail="Must use SELECT statements only.")
 
 
-def _has_no_with_clause(parsed: List[Dict[str, Any]]) -> None:
-    with_clause = parsed[0]["RawStmt"]["stmt"]["SelectStmt"].get("withClause", None)
-    if with_clause:
+def _has_no_with_clause(parsed: Tuple[RawStmt]) -> None:
+    select_stmt: SelectStmt = parsed[0].stmt
+    with_clause = select_stmt.withClause
+    if with_clause is not None:
         raise HTTPException(status_code=400, detail="Must not have WITH clause.")
 
 
-def _only_one_from_table(parsed: List[Dict[str, Any]]) -> None:
-    from_clause = parsed[0]["RawStmt"]["stmt"]["SelectStmt"].get("fromClause", None)
+def _only_one_from_table(parsed: Tuple[RawStmt]) -> None:
+    select_stmt: SelectStmt = parsed[0].stmt
+    from_clause = select_stmt.fromClause
     if not from_clause or len(from_clause) > 1:
         raise HTTPException(
             status_code=400, detail="Must list exactly one table in FROM clause."
         )
 
 
-def _no_subqueries(parsed: List[Dict[str, Any]]) -> None:
-    sub_query = parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0].get(
-        "RangeSubselect", None
-    )
-    if sub_query:
-        raise HTTPException(status_code=400, detail="Must not use sub queries.")
+def _no_subqueries(parsed: Tuple[RawStmt]) -> None:
+    select_stmt: SelectStmt = parsed[0].stmt
+    from_clause = select_stmt.fromClause
+    for fc in from_clause:
+        if isinstance(fc, RangeSubselect):
+            raise HTTPException(status_code=400, detail="Must not use sub queries.")
 
 
-def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
+def _no_forbidden_functions(parsed: Tuple[RawStmt]) -> None:
     functions = _get_item_value("FuncCall", parsed)
 
     forbidden_function_list = [
@@ -660,7 +669,7 @@ def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
                     )
 
 
-def _no_forbidden_value_functions(parsed: List[Dict[str, Any]]) -> None:
+def _no_forbidden_value_functions(parsed: Tuple[RawStmt]) -> None:
     value_functions = _get_item_value("SQLValueFunction", parsed)
     if value_functions:
         raise HTTPException(
