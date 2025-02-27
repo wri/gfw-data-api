@@ -10,7 +10,7 @@ from app.models.pydantic.political import (
 )
 from app.routes.datasets.queries import _query_dataset_json
 from app.settings.globals import ENV, per_env_admin_boundary_versions
-from app.utils.gadm import extract_level_gid
+from app.utils.gadm import extract_level_id
 
 router = APIRouter()
 
@@ -140,13 +140,13 @@ def form_admin_id_lookup_response(
     matches = []
 
     for match in match_list:
-        country = {"id": extract_level_gid(0, match["gid_0"]), "name": match["country"]}
+        country = {"id": extract_level_id(0, match["gid_0"]), "name": match["country"]}
 
         if adm_level < 1:
             region = {"id": None, "name": None}
         else:
             region = {
-                "id": extract_level_gid(1, match["gid_1"]),
+                "id": extract_level_id(1, match["gid_1"]),
                 "name": match["name_1"],
             }
 
@@ -154,7 +154,7 @@ def form_admin_id_lookup_response(
             subregion = {"id": None, "name": None}
         else:
             subregion = {
-                "id": extract_level_gid(2, match["gid_2"]),
+                "id": extract_level_id(2, match["gid_2"]),
                 "name": match["name_2"],
             }
 

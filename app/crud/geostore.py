@@ -22,7 +22,7 @@ from app.models.pydantic.geostore import (
     Geostore,
 )
 from app.settings.globals import ENV, per_env_admin_boundary_versions
-from app.utils.gadm import extract_level_gid
+from app.utils.gadm import extract_level_id, fix_id_pattern
 
 GEOSTORE_COLUMNS: List[Column] = [
     db.column("gfw_geostore_id"),
@@ -242,11 +242,17 @@ async def get_gadm_geostore(
             )
         )
     else:
+        assert region_id is not None
         level_id_pattern = ".".join((level_id_pattern, region_id))
         if adm_level >= 2:
+            assert subregion_id is not None
             level_id_pattern = ".".join((level_id_pattern, subregion_id))
-
         level_id_pattern += r"\__"
+
+        # Adjust for any errata
+        level_id_pattern = fix_id_pattern(
+            adm_level, level_id_pattern, admin_provider, admin_version
+        )
 
         where_clauses.append(
             db.text(f"gid_{adm_level} LIKE :level_id_pattern").bindparams(
@@ -335,18 +341,18 @@ async def form_admin_geostore(
             "simplifyThresh": simplify,
             "gadm": admin_version,
             "name": name,
-            "iso": extract_level_gid(0, level_id),
+            "iso": extract_level_id(0, level_id),
         }
     )
     if adm_level >= 1:
         info = Adm1BoundaryInfo(
             **info.dict(),
-            id1=int(extract_level_gid(1, level_id)),
+            id1=int(extract_level_id(1, level_id)),
         )
     if adm_level == 2:
         info = Adm2BoundaryInfo(
             **info.dict(),
-            id2=int(extract_level_gid(2, level_id)),
+            id2=int(extract_level_id(2, level_id)),
         )
 
     return AdminGeostore(
