@@ -265,7 +265,7 @@ async def get_gadm_geostore(
     row = await db.first(sql)
     if row is None:
         raise RecordNotFoundError(
-            f"Geostore with ID {country_id}.{region_id} not found in GADM 4.1"  # FIXME
+            f"Admin boundary not found in {admin_provider} version {admin_version}"
         )
 
     if row.geojson is None:
