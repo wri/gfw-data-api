@@ -1,3 +1,4 @@
+import re
 from typing import Tuple
 from unittest.mock import Mock
 from urllib.parse import parse_qsl, urlparse
@@ -10,7 +11,7 @@ from httpx import AsyncClient
 from app.models.enum.pixetl import Grid
 from app.models.pydantic.raster_analysis import DerivedLayer, SourceLayer
 from app.routes.datasets import queries
-from app.routes.datasets.queries import _get_data_environment
+from app.routes.datasets.queries import _get_data_environment, _get_data_environment_sql
 from tests_v2.fixtures.creation_options.versions import RASTER_CREATION_OPTIONS
 from tests_v2.utils import (
     custom_raster_version,
@@ -663,6 +664,72 @@ async def test__get_data_environment_helper_called(
             no_data_value,
             None,
         )
+
+
+def test_get_data_environment_sql_no_overrides():
+    sql = _get_data_environment_sql({})
+    print(sql)
+    assert re.sub("\s+", " ", sql.strip()) == re.sub(
+        "\s+",
+        " ",
+        """
+        SELECT
+        assets.asset_id,
+        assets.dataset,
+        assets.version,
+        creation_options,
+        asset_uri,
+        rb.values_table
+        FROM
+        assets
+        LEFT JOIN asset_metadata am
+            ON am.asset_id = assets.asset_id
+        JOIN versions
+            ON versions.dataset = assets.dataset
+            AND versions.version = assets.version
+        LEFT JOIN raster_band_metadata rb
+            ON rb.asset_metadata_id = am.id
+        WHERE assets.asset_type = 'Raster tile set'
+        AND assets.creation_options->>'pixel_meaning' NOT LIKE '%tcd%'
+        AND assets.creation_options->>'grid' = :grid
+        AND versions.is_latest = true
+    """.strip(),
+    )
+
+
+def test_get_data_environment_sql_overrides():
+    sql = _get_data_environment_sql(
+        {"umd_tree_cover_loss": "v1.8", "umd_glad_landsat_alerts": "v20220224"}
+    )
+
+    assert re.sub("\s+", " ", sql.strip()) == re.sub(
+        "\s+",
+        " ",
+        """
+        SELECT
+        assets.asset_id,
+        assets.dataset,
+        assets.version,
+        creation_options,
+        asset_uri,
+        rb.values_table
+        FROM
+        assets
+        LEFT JOIN asset_metadata am
+            ON am.asset_id = assets.asset_id
+        JOIN versions
+            ON versions.dataset = assets.dataset
+            AND versions.version = assets.version
+        LEFT JOIN raster_band_metadata rb
+            ON rb.asset_metadata_id = am.id
+        WHERE assets.asset_type = 'Raster tile set'
+        AND assets.creation_options->>'pixel_meaning' NOT LIKE '%tcd%'
+        AND assets.creation_options->>'grid' = :grid
+        AND ((assets.dataset NOT IN ('umd_tree_cover_loss', 'umd_glad_landsat_alerts') AND versions.is_latest = true)
+            OR (assets.dataset = 'umd_tree_cover_loss' AND assets.version = 'v1.8')
+            OR (assets.dataset = 'umd_glad_landsat_alerts' AND assets.version = 'v20220224'))
+    """.strip(),
+    )
 
 
 @pytest.mark.asyncio
