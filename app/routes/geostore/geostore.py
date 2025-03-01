@@ -1,7 +1,7 @@
 """Retrieve a geometry using its md5 hash for a given dataset, user defined
 geometries in the datastore."""
 
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Path, Query, Request
@@ -136,7 +136,7 @@ async def get_admin_list(
 @router.get(
     "/admin/{country_id}",
     response_class=ORJSONResponse,
-    # response_model=AdminGeostoreResponse,
+    response_model=AdminGeostoreResponse,
     tags=["Geostore"],
     include_in_schema=False,
 )
@@ -160,7 +160,7 @@ async def get_boundary_by_country_id(
             status_code=400, detail="source provider and version must be non-empty"
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
-        result: Any = await rw_get_boundary_by_country_id(
+        result: AdminGeostoreResponse = await rw_get_boundary_by_country_id(
             country_id, request.query_params, x_api_key
         )
     else:
@@ -181,7 +181,7 @@ async def get_boundary_by_country_id(
 @router.get(
     "/admin/{country_id}/{region_id}",
     response_class=ORJSONResponse,
-    # response_model=AdminGeostoreResponse,
+    response_model=AdminGeostoreResponse,
     tags=["Geostore"],
     include_in_schema=False,
 )
@@ -227,7 +227,7 @@ async def rw_get_boundary_by_region_id(
 @router.get(
     "/admin/{country_id}/{region_id}/{subregion_id}",
     response_class=ORJSONResponse,
-    # response_model=AdminGeostoreResponse,
+    response_model=AdminGeostoreResponse,
     tags=["Geostore"],
     include_in_schema=False,
 )

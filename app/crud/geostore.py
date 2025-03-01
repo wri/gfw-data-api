@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
 from asyncpg.exceptions import UniqueViolationError
@@ -193,7 +193,7 @@ async def get_gadm_geostore(
     country_id: str,
     region_id: str | None = None,
     subregion_id: str | None = None,
-) -> Any:  # FIXME
+) -> AdminGeostoreResponse:
     dv: Tuple[str, str] = await admin_params_to_dataset_version(
         admin_provider, admin_version
     )
@@ -279,7 +279,7 @@ async def get_gadm_geostore(
             "GeoJSON is None, try reducing or eliminating simplification."
         )
 
-    geostore = await form_admin_geostore(
+    geostore: AdminGeostore = await form_admin_geostore(
         adm_level=adm_level,
         admin_version=admin_version,
         area=float(row.gfw_area__ha),
