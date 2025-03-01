@@ -78,19 +78,17 @@ class CreateGeostoreResponseInfo(StrictBaseModel):
     use: Dict
 
 
-class RWAdminListItem(StrictBaseModel):
+class AdminListItem(StrictBaseModel):
     geostoreId: str
     iso: str
+
+
+class AdminListItemWithName(AdminListItem):
     name: str
 
 
-class RWAdminListItemWithName(StrictBaseModel):
-    geostoreId: str
-    iso: str
-
-
-class RWAdminListResponse(StrictBaseModel):
-    data: List[RWAdminListItem | RWAdminListItemWithName]
+class AdminListResponse(Response):
+    data: List[AdminListItem | AdminListItemWithName]
 
 
 class WDPAInfo(StrictBaseModel):
@@ -108,7 +106,7 @@ class LandUseInfo(StrictBaseModel):
     simplify: bool
 
 
-class RWGeostoreAttributes(StrictBaseModel):
+class AdminGeostoreAttributes(StrictBaseModel):
     geojson: FeatureCollection
     hash: str
     provider: Dict
@@ -125,11 +123,11 @@ class RWGeostoreAttributes(StrictBaseModel):
     )
 
 
-class RWGeostore(StrictBaseModel):
+class AdminGeostore(StrictBaseModel):
     type: Literal["geoStore"]
     id: str
-    attributes: RWGeostoreAttributes
+    attributes: AdminGeostoreAttributes
 
 
-class RWGeostoreResponse(StrictBaseModel):
-    data: RWGeostore
+class AdminGeostoreResponse(Response):
+    data: AdminGeostore

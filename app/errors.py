@@ -51,3 +51,15 @@ def http_error_handler(exc: HTTPException) -> ORJSONResponse:
     return ORJSONResponse(
         status_code=exc.status_code, content={"status": status, "message": message}
     )
+
+
+class BadAdminSourceException(Exception):
+    pass
+
+
+class BadAdminVersionException(Exception):
+    pass
+
+
+class GeometryIsNullError(Exception):
+    pass
