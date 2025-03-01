@@ -9,7 +9,12 @@ from sqlalchemy.sql import Select, label
 from sqlalchemy.sql.elements import Label, TextClause
 
 from app.application import db
-from app.errors import RecordNotFoundError
+from app.errors import (
+    BadAdminSourceException,
+    BadAdminVersionException,
+    GeometryIsNullError,
+    RecordNotFoundError,
+)
 from app.models.orm.user_areas import UserArea as ORMUserArea
 from app.models.pydantic.geostore import (
     Adm0BoundaryInfo,
@@ -32,18 +37,6 @@ GEOSTORE_COLUMNS: List[Column] = [
     db.column("created_on"),
     db.column("updated_on"),
 ]
-
-
-class BadAdminSourceException(Exception):
-    pass
-
-
-class BadAdminVersionException(Exception):
-    pass
-
-
-class GeometryIsNullError(Exception):
-    pass
 
 
 async def get_gfw_geostore_from_any_dataset(geostore_id: UUID) -> Geostore:

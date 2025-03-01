@@ -8,12 +8,13 @@ from fastapi import APIRouter, Header, HTTPException, Path, Query, Request
 from fastapi.responses import ORJSONResponse
 
 from ...crud import geostore
-from ...crud.geostore import (
+from ...errors import (
     BadAdminSourceException,
     BadAdminVersionException,
+    BadRequestError,
     GeometryIsNullError,
+    RecordNotFoundError,
 )
-from ...errors import BadRequestError, RecordNotFoundError
 from ...models.pydantic.geostore import (
     AdminGeostoreResponse,
     AdminListResponse,
