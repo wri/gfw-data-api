@@ -162,18 +162,32 @@ async def get_admin_boundary_list(
         .order_by("gid_0")
     )
 
+    rows = await get_all_rows(sql)
+
+    return AdminListResponse.parse_obj(
+        {
+            "data": [
+                {
+                    "geostoreId": str(row.gfw_geostore_id),
+                    "iso": str(row.gid_0),
+                    "name": str(row.country),
+                }
+                for row in rows
+            ],
+        }
+    )
+
+
+async def get_all_rows(sql: Select):
     rows = await db.all(sql)
 
-    return AdminListResponse.parse_obj({
-        "data": [
-            {
-                "geostoreId": str(row.gfw_geostore_id),
-                "iso": str(row.gid_0),
-                "name": str(row.country),
-            }
-            for row in rows
-        ],
-    })
+    return rows
+
+
+async def get_first_row(sql: Select):
+    row = await db.first(sql)
+
+    return row
 
 
 async def get_gadm_geostore(
@@ -256,10 +270,7 @@ async def get_gadm_geostore(
     for clause in where_clauses:
         sql = sql.where(clause)
 
-    # foo = (sql.compile(compile_kwargs={"literal_binds": True}))
-    # raise Exception(f"SQL: {foo}")
-
-    row = await db.first(sql)
+    row = await get_first_row(sql)
     if row is None:
         raise RecordNotFoundError(
             f"Admin boundary not found in {admin_provider} version {admin_version}"
@@ -326,13 +337,15 @@ async def form_admin_geostore(
     geojson: Dict,
     name: str,
 ) -> AdminGeostore:
-    info = Adm0BoundaryInfo.parse_obj({
-        "use": {},
-        "simplifyThresh": simplify,
-        "gadm": admin_version,
-        "name": name,
-        "iso": extract_level_id(0, level_id),
-    })
+    info = Adm0BoundaryInfo.parse_obj(
+        {
+            "use": {},
+            "simplifyThresh": simplify,
+            "gadm": admin_version,
+            "name": name,
+            "iso": extract_level_id(0, level_id),
+        }
+    )
     if adm_level >= 1:
         info = Adm1BoundaryInfo(
             **info.dict(),
@@ -344,26 +357,28 @@ async def form_admin_geostore(
             id2=int(extract_level_id(2, level_id)),
         )
 
-    return AdminGeostore.parse_obj({
-        "type": "geoStore",
-        "id": geostore_id,
-        "attributes": {
-            "geojson": {
-                "crs": {},
-                "type": "FeatureCollection",
-                "features": [
-                    {
-                        "geometry": geojson,
-                        "properties": None,
-                        "type": "Feature",
-                    }
-                ],
+    return AdminGeostore.parse_obj(
+        {
+            "type": "geoStore",
+            "id": geostore_id,
+            "attributes": {
+                "geojson": {
+                    "crs": {},
+                    "type": "FeatureCollection",
+                    "features": [
+                        {
+                            "geometry": geojson,
+                            "properties": None,
+                            "type": "Feature",
+                        }
+                    ],
+                },
+                "hash": geostore_id,
+                "provider": {},
+                "areaHa": area,
+                "bbox": bbox,
+                "lock": False,
+                "info": info.dict(),
             },
-            "hash": geostore_id,
-            "provider": {},
-            "areaHa": area,
-            "bbox": bbox,
-            "lock": False,
-            "info": info.dict(),
-        },
-    })
+        }
+    )

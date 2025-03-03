@@ -2,8 +2,6 @@ from functools import partial
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-# import sqlalchemy
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient, MockTransport, Request, Response
 
@@ -185,25 +183,90 @@ create_gfw_geostore_data = {
 }
 
 
-# @pytest.mark.asyncio
-# async def test_get_admin_country_geostore(
-#     async_client: AsyncClient, monkeypatch: MonkeyPatch
-# ):
-#     CursorResult = MagicMock(cursor)
-#     mock_session.execute.return_value = [
-#         CursorResult(tup1),
-#         CursorResult(tup2)
-#     ]
-#     CursorResult.return_value._asdict.side_effect = [tup1, tup2]
-#
-#
-#     url = "/geostore/admin/MCO"
-#     params = {"source[version]": "4.1"}
-#
-#     response = await async_client.get(url, params=params)
-#
-#     assert response.json() == example_admin_geostore_snipped
-#     assert response.status_code == 200
+@pytest.mark.asyncio
+async def test_get_admin_country_geostore_gfw_branch(
+    async_client: AsyncClient, monkeypatch: MonkeyPatch
+):
+    # CursorResult = MagicMock(cursor)
+    # mock_session.execute.return_value = [
+    #     CursorResult(tup1),
+    #     CursorResult(tup2)
+    # ]
+    # CursorResult.return_value._asdict.side_effect = [tup1, tup2]
+
+    mock_get_first_row: AsyncMock = AsyncMock(return_value=None)
+
+    monkeypatch.setattr(crud_geostore, "get_first_row", mock_get_first_row)
+
+    url = "/geostore/admin/MCO"
+    params = {"source[version]": "4.1"}
+
+    _ = await async_client.get(url, params=params)
+
+    expected_sql = (
+        "SELECT adm_level, gfw_area__ha, gfw_bbox, gfw_geostore_id, "
+        "gid_0 AS level_id, country AS name, ST_AsGeoJSON(geom) AS geojson "
+        '\nFROM gadm_administrative_boundaries."v4.1.64" \n'
+        "WHERE adm_level='0' AND gid_0='MCO'"
+    )
+    actual_sql = str(
+        mock_get_first_row.call_args.args[0].compile(
+            compile_kwargs={"literal_binds": True}
+        )
+    )
+    assert actual_sql == expected_sql
+
+
+@pytest.mark.asyncio
+async def test_get_admin_region_geostore_gfw_branch(
+    async_client: AsyncClient, monkeypatch: MonkeyPatch
+):
+    mock_get_first_row: AsyncMock = AsyncMock(return_value=None)
+    monkeypatch.setattr(crud_geostore, "get_first_row", mock_get_first_row)
+
+    url = "/geostore/admin/MEX/1"
+    params = {"source[version]": "4.1"}
+
+    _ = await async_client.get(url, params=params)
+
+    expected_sql = (
+        "SELECT adm_level, gfw_area__ha, gfw_bbox, gfw_geostore_id, "
+        "gid_1 AS level_id, name_1 AS name, ST_AsGeoJSON(geom) AS geojson "
+        '\nFROM gadm_administrative_boundaries."v4.1.64" \n'
+        r"WHERE adm_level='1' AND gid_1 LIKE 'MEX.1\__'"
+    )
+    actual_sql = str(
+        mock_get_first_row.call_args.args[0].compile(
+            compile_kwargs={"literal_binds": True}
+        )
+    )
+    assert actual_sql == expected_sql
+
+
+@pytest.mark.asyncio
+async def test_get_admin_subregion_geostore_gfw_branch(
+    async_client: AsyncClient, monkeypatch: MonkeyPatch
+):
+    mock_get_first_row: AsyncMock = AsyncMock(return_value=None)
+    monkeypatch.setattr(crud_geostore, "get_first_row", mock_get_first_row)
+
+    url = "/geostore/admin/MEX/1/1"
+    params = {"source[version]": "4.1"}
+
+    _ = await async_client.get(url, params=params)
+
+    expected_sql = (
+        "SELECT adm_level, gfw_area__ha, gfw_bbox, gfw_geostore_id, "
+        "gid_2 AS level_id, name_2 AS name, ST_AsGeoJSON(geom) AS geojson "
+        '\nFROM gadm_administrative_boundaries."v4.1.64" \n'
+        r"WHERE adm_level='2' AND gid_2 LIKE 'MEX.1.1\__'"
+    )
+    actual_sql = str(
+        mock_get_first_row.call_args.args[0].compile(
+            compile_kwargs={"literal_binds": True}
+        )
+    )
+    assert actual_sql == expected_sql
 
 
 @pytest.mark.asyncio
