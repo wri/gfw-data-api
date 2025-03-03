@@ -1,4 +1,3 @@
-import json
 from typing import Dict
 from uuid import UUID
 
@@ -79,6 +78,6 @@ async def _write_resource(resource_id: UUID, resource: DataMartResource):
 
 
 async def _write_error(resource_id: UUID, error: str):
-    error_resource = {"status": "failed", "details": error}
+    error_resource = DataMartResource(status="failed", details=error)
     with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(json.dumps(error_resource))
+        f.write(error_resource.model_dump_json())

@@ -10,7 +10,14 @@ from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
 from app.models.enum.geostore import GeostoreOrigin
-from app.models.pydantic.datamart import TreeCoverLossByDriverIn
+from app.models.pydantic.datamart import (
+    DataMartResource,
+    DataMartResourceLink,
+    DataMartResourceLinkResponse,
+    TreeCoverLossByDriver,
+    TreeCoverLossByDriverIn,
+    TreeCoverLossByDriverResponse,
+)
 from app.settings.globals import API_URL
 from app.tasks.datamart.land import (
     DEFAULT_LAND_DATASET_VERSIONS,
@@ -19,7 +26,6 @@ from app.tasks.datamart.land import (
 from app.utils.geostore import get_geostore
 
 from ...authentication.api_keys import get_api_key
-from ...models.pydantic.responses import Response
 
 router = APIRouter()
 
@@ -27,8 +33,9 @@ router = APIRouter()
 @router.get(
     "/tree-cover-loss-by-driver",
     response_class=ORJSONResponse,
-    response_model=Response,
+    response_model=DataMartResourceLinkResponse,
     tags=["Land"],
+    status_code=200,
 )
 async def tree_cover_loss_by_driver_search(
     *,
@@ -49,23 +56,18 @@ async def tree_cover_loss_by_driver_search(
 
     # check if it exists
     await _get_resource(resource_id)
-
-    return ORJSONResponse(
-        status_code=200,
-        content={
-            "status": "success",
-            "data": {
-                "link": f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}",
-            },
-        },
+    link = DataMartResourceLink(
+        link=f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}"
     )
+    return DataMartResourceLinkResponse(data=link)
 
 
 @router.get(
     "/tree-cover-loss-by-driver/{resource_id}",
     response_class=ORJSONResponse,
-    response_model=Response,
+    response_model=TreeCoverLossByDriverResponse,
     tags=["Land"],
+    status_code=200,
 )
 async def tree_cover_loss_by_driver_get(
     *,
@@ -79,18 +81,24 @@ async def tree_cover_loss_by_driver_get(
     if resource["status"] == "pending":
         headers = {"Retry-After": "1"}
 
+    tree_cover_loss_by_driver = TreeCoverLossByDriver(**resource)
+    tree_cover_loss_by_driver_response = TreeCoverLossByDriverResponse(
+        data=tree_cover_loss_by_driver
+    )
+
     return ORJSONResponse(
         status_code=200,
         headers=headers,
-        content={"data": resource, "status": "success"},
+        content=tree_cover_loss_by_driver_response.dict(),
     )
 
 
 @router.post(
     "/tree-cover-loss-by-driver",
     response_class=ORJSONResponse,
-    response_model=Response,
+    response_model=DataMartResourceLinkResponse,
     tags=["Land"],
+    status_code=202,
 )
 async def tree_cover_loss_by_driver_post(
     data: TreeCoverLossByDriverIn,
@@ -130,15 +138,10 @@ async def tree_cover_loss_by_driver_post(
         dataset_version,
     )
 
-    return ORJSONResponse(
-        status_code=202,
-        content={
-            "data": {
-                "link": f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}",
-            },
-            "status": "success",
-        },
+    link = DataMartResourceLink(
+        link=f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}"
     )
+    return DataMartResourceLinkResponse(data=link)
 
 
 def _get_resource_id(path, geostore_id, canopy_cover, dataset_version):
@@ -159,6 +162,6 @@ async def _get_resource(resource_id):
 
 
 async def _save_pending_resource(resource_id):
-    pending_resource = {"status": "pending"}
+    pending_resource = DataMartResource(status="pending")
     with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(json.dumps(pending_resource))
+        f.write(pending_resource.model_dump_json())

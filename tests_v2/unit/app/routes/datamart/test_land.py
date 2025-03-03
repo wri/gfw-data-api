@@ -312,14 +312,15 @@ MOCK_RESULT = [
 
 MOCK_RESOURCE = {
     "status": "saved",
+    "details": None,
     "treeCoverLossByDriver": {
-        "Permanent agriculture": 10,
-        "Hard commodities": 12,
-        "Shifting cultivation": 7,
+        "Permanent agriculture": 10.0,
+        "Hard commodities": 12.0,
+        "Shifting cultivation": 7.0,
         "Forest management": 93.4,
-        "Wildfires": 42,
+        "Wildfires": 42.0,
         "Settlements and infrastructure": 13.562,
-        "Other natural disturbances": 6,
+        "Other natural disturbances": 6.0,
     },
     "metadata": {
         "canopy_cover": 30,
