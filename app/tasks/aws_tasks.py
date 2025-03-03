@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from botocore.exceptions import ClientError
@@ -89,11 +89,15 @@ def flush_cloudfront_cache(cloudfront_id: str, paths: List[str]) -> Dict[str, An
 def _expiration_rule(
     prefix: Optional[str] = None,
     key: Optional[str] = None,
-    value: Optional[str] = None,
-    expiration_date=datetime.utcnow(),
+    value: Optional[str] = None
 ) -> Dict[str, Any]:
     """Define S3 lifecycle rule which will delete all files with prefix
     dataset/version/ within 24h."""
+
+    # The specified expiration time must be at midnight UTC, so set it to midnight
+    # UTC of current date.
+    now_utc = datetime.utcnow()
+    expiration_date = datetime(now_utc.year, now_utc.month, now_utc.day, 0, 0, 0, 0, tzinfo=timezone.utc)
 
     if prefix and key and value:
         rule_filter: Dict[str, Any] = {
@@ -121,10 +125,17 @@ def _update_lifecycle_rule(bucket, rule) -> Dict[str, Any]:
     client = get_s3_client()
     rules = _get_lifecycle_rules(bucket)
     rules.append(rule)
-    logger.debug(f"Add lifecycle configuration rule {rules} to bucket {bucket}")
-    response = client.put_bucket_lifecycle_configuration(
-        Bucket=bucket, LifecycleConfiguration={"Rules": rules}
-    )
+    logger.info(f"Add lifecycle configuration rule {rules} to bucket {bucket}")
+    response = {}
+    try:
+        response = client.put_bucket_lifecycle_configuration(
+            Bucket=bucket, LifecycleConfiguration={"Rules": rules}
+        )
+    except Exception as e:
+        # Make sure to print out any exception, since this function is probably
+        # running in a background task, so any thrown exception may get lost.
+        logger.warning(f"lifecycle exception {str(e)}, {e.__class__.__name__}, {e.args}")
+    logger.info(f"Response lifecycle {response}")
     return response
 
 

@@ -6,7 +6,7 @@ from httpx import AsyncClient
 
 from app.models.pydantic.geostore import GeostoreCommon
 from app.routes.political import id_lookup
-from app.routes.political.id_lookup import _admin_boundary_lookup_sql, normalize_names
+from app.routes.political.id_lookup import _admin_boundary_lookup_sql, normalize_names, extract_level_gid
 
 ENDPOINT_UNDER_TEST = "/political/id-lookup"
 
@@ -277,6 +277,27 @@ async def test_id_lookup_matches_hide_extraneous(
         },
     }
     assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_extract_level_gid() -> None:
+    # Normal gid values
+    match1 = {"gid_0": "USA", "gid_1": "USA.5_1", "gid_2": "USA.5.10_1"}
+    assert extract_level_gid(0, match1) == "USA"
+    assert extract_level_gid(1, match1) == "5"
+    assert extract_level_gid(2, match1) == "10"
+
+    # Ghana values with bad formatting (missing dot after GHA in gadm 4.1)
+    match2 = {"gid_0": "GHA", "gid_1": "GHA7_2", "gid_2": "GHA7.1_2"}
+    assert extract_level_gid(0, match2) == "GHA"
+    assert extract_level_gid(1, match2) == "7"
+    assert extract_level_gid(2, match2) == "1"
+
+    # Indonesia values with bad formatting (missing suffix _1 in gadm 4.1)
+    match3 = {"gid_0": "IDN", "gid_1": "IDN.35_1", "gid_2": "IDN.35.4"}
+    assert extract_level_gid(0, match3) == "IDN"
+    assert extract_level_gid(1, match3) == "35"
+    assert extract_level_gid(2, match3) == "4"
 
 
 async def _query_dataset_json_mocked_no_results(
