@@ -2,10 +2,18 @@
 
 import json
 import uuid
-from typing import Optional
+from typing import Dict, List
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+)
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
@@ -31,7 +39,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/tree-cover-loss-by-driver",
+    "/tree_cover_loss_by_driver",
     response_class=ORJSONResponse,
     response_model=DataMartResourceLinkResponse,
     tags=["Land"],
@@ -39,31 +47,31 @@ router = APIRouter()
 )
 async def tree_cover_loss_by_driver_search(
     *,
+    request: Request,
     geostore_id: UUID = Query(..., title="Geostore ID"),
     canopy_cover: int = Query(30, alias="canopy_cover", title="Canopy cover percent"),
-    dataset: Optional[list[str]] = Query([], title="Dataset overrides"),
-    version: Optional[list[str]] = Query([], title="Version overrides"),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
     # Merge dataset version overrides with default dataset versions
-    query_dataset_version = {ds: v for ds, v in zip(dataset, version)}
+    # query_dataset_version = {ds: v for ds, v in zip(dataset, version)}
+    query_dataset_version = _parse_dataset_versions(request.query_params)
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | query_dataset_version
 
     resource_id = _get_resource_id(
-        "tree-cover-loss-by-driver", geostore_id, canopy_cover, dataset_version
+        "tree_cover_loss_by_driver", geostore_id, canopy_cover, dataset_version
     )
 
     # check if it exists
     await _get_resource(resource_id)
     link = DataMartResourceLink(
-        link=f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}"
+        link=f"{API_URL}/v0/land/tree_cover_loss_by_driver/{resource_id}"
     )
     return DataMartResourceLinkResponse(data=link)
 
 
 @router.get(
-    "/tree-cover-loss-by-driver/{resource_id}",
+    "/tree_cover_loss_by_driver/{resource_id}",
     response_class=ORJSONResponse,
     response_model=TreeCoverLossByDriverResponse,
     tags=["Land"],
@@ -94,7 +102,7 @@ async def tree_cover_loss_by_driver_get(
 
 
 @router.post(
-    "/tree-cover-loss-by-driver",
+    "/tree_cover_loss_by_driver",
     response_class=ORJSONResponse,
     response_model=DataMartResourceLinkResponse,
     tags=["Land"],
@@ -122,7 +130,7 @@ async def tree_cover_loss_by_driver_post(
     # return 202 accepted
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
     resource_id = _get_resource_id(
-        "tree-cover-loss-by-driver",
+        "tree_cover_loss_by_driver",
         data.geostore_id,
         data.canopy_cover,
         dataset_version,
@@ -139,7 +147,7 @@ async def tree_cover_loss_by_driver_post(
     )
 
     link = DataMartResourceLink(
-        link=f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}"
+        link=f"{API_URL}/v0/land/tree_cover_loss_by_driver/{resource_id}"
     )
     return DataMartResourceLinkResponse(data=link)
 
@@ -165,3 +173,12 @@ async def _save_pending_resource(resource_id):
     pending_resource = DataMartResource(status="pending")
     with open(f"/tmp/{resource_id}", "w") as f:
         f.write(pending_resource.model_dump_json())
+
+
+def _parse_dataset_versions(query_params: Dict[str, List[str]]) -> Dict[str, str]:
+    datasets = [
+        param.split("[")[1].strip("]")
+        for param in query_params.keys()
+        if param.startswith("dataset_version")
+    ]
+    return {ds: query_params[f"dataset_version[{ds}]"] for ds in datasets}
