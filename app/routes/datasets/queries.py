@@ -65,7 +65,7 @@ from ...models.enum.pg_sys_functions import (
 from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
-from ...models.orm.queries.raster_assets import latest_raster_tile_sets
+from ...models.orm.queries.raster_assets import data_environment_raster_tile_sets
 from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
 from ...models.pydantic.creation_options import NoDataType
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
@@ -460,7 +460,11 @@ async def _query_dataset_json(
     elif query_type == QueryType.raster:
         geostore = cast(GeostoreCommon, geostore)
         results = await _query_raster(
-            dataset, default_asset, sql, geostore, raster_version_overrides
+            dataset,
+            default_asset,
+            sql,
+            geostore,
+            version_overrides=raster_version_overrides,
         )
         return results["data"]
     else:
@@ -834,12 +838,12 @@ async def _get_data_environment(
 ) -> DataEnvironment:
     # get all raster tile set assets with the same grid.
     sql = _get_data_environment_sql(version_overrides)
-    latest_tile_sets = await db.all(db.text(sql), {"grid": grid})
+    data_environment_tile_sets = await db.all(db.text(sql), {"grid": grid})
 
     # build list of layers, including any derived layers, for all
     # single-band rasters found
     layers: List[Layer] = []
-    for row in latest_tile_sets:
+    for row in data_environment_tile_sets:
         creation_options = row.creation_options
         # only include single band rasters
         if creation_options.get("band_count", 1) > 1:
@@ -967,7 +971,7 @@ def _get_data_environment_sql(version_overrides: Dict[str, str]) -> str:
     latest for the rest.
     """
     if not version_overrides:
-        sql = latest_raster_tile_sets + " AND versions.is_latest = true"
+        sql = data_environment_raster_tile_sets + " AND versions.is_latest = true"
     else:
         override_datasets = tuple(version_overrides.keys())
         override_filters = " OR ".join(
@@ -978,7 +982,7 @@ def _get_data_environment_sql(version_overrides: Dict[str, str]) -> str:
         )
 
         sql = (
-            latest_raster_tile_sets
+            data_environment_raster_tile_sets
             + f" AND ((assets.dataset NOT IN {override_datasets} AND versions.is_latest = true) OR {override_filters})"
         )
 

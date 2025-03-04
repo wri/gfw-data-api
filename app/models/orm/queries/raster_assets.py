@@ -1,4 +1,4 @@
-latest_raster_tile_sets = """
+data_environment_raster_tile_sets = """
     SELECT
       assets.asset_id,
       assets.dataset,
