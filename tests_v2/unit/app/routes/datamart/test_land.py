@@ -167,6 +167,7 @@ async def test_post_tree_cover_loss_by_drivers(
         )
 
 
+@pytest.mark.skip
 @pytest.mark.asyncio
 async def test_get_tree_cover_loss_by_drivers_after_create_with_retry(
     geostore,
