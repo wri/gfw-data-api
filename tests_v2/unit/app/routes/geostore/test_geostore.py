@@ -1,5 +1,5 @@
 from functools import partial
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -184,82 +184,81 @@ create_gfw_geostore_data = {
 
 
 @pytest.mark.asyncio
-async def test_get_admin_country_geostore_gfw_branch(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
+async def test_get_gadm_geostore_by_country_with_gadm_41_calls_gfw_branch_with_correct_args(
+    async_client: AsyncClient,
 ):
-    mock_get_first_row: AsyncMock = AsyncMock(return_value=None)
-
-    monkeypatch.setattr(crud_geostore, "get_first_row", mock_get_first_row)
-
-    url = "/geostore/admin/MCO"
+    country = "MEX"
+    url = f"/geostore/admin/{country}"
     params = {"source[version]": "4.1"}
 
-    _ = await async_client.get(url, params=params)
-
-    expected_sql = (
-        "SELECT adm_level, gfw_area__ha, gfw_bbox, gfw_geostore_id, "
-        "gid_0 AS level_id, country AS name, ST_AsGeoJSON(geom) AS geojson "
-        '\nFROM gadm_administrative_boundaries."v4.1.64" \n'
-        "WHERE adm_level='0' AND gid_0='MCO'"
-    )
-    actual_sql = str(
-        mock_get_first_row.call_args.args[0].compile(
-            compile_kwargs={"literal_binds": True}
+    with patch(
+        "app.routes.geostore.geostore.geostore.get_gadm_geostore"
+    ) as mock_get_gadm_geostore:
+        mock_get_gadm_geostore.return_value = AdminGeostoreResponse(
+            **example_geostore_resp
         )
-    )
-    assert actual_sql == expected_sql
+        _ = await async_client.get(url, params=params)
+
+    assert mock_get_gadm_geostore.called is True
+    assert mock_get_gadm_geostore.call_args.args == ("gadm", "4.1", 0, None, country)
 
 
 @pytest.mark.asyncio
-async def test_get_admin_region_geostore_gfw_branch(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
+async def test_get_gadm_geostore_by_region_with_gadm_41_calls_gfw_branch_with_correct_args(
+    async_client: AsyncClient,
 ):
-    mock_get_first_row: AsyncMock = AsyncMock(return_value=None)
-    monkeypatch.setattr(crud_geostore, "get_first_row", mock_get_first_row)
-
-    url = "/geostore/admin/MEX/1"
+    country = "MEX"
+    region = "2"
+    url = f"/geostore/admin/{country}/{region}"
     params = {"source[version]": "4.1"}
 
-    _ = await async_client.get(url, params=params)
-
-    expected_sql = (
-        "SELECT adm_level, gfw_area__ha, gfw_bbox, gfw_geostore_id, "
-        "gid_1 AS level_id, name_1 AS name, ST_AsGeoJSON(geom) AS geojson "
-        '\nFROM gadm_administrative_boundaries."v4.1.64" \n'
-        r"WHERE adm_level='1' AND gid_1 LIKE 'MEX.1\__'"
-    )
-    actual_sql = str(
-        mock_get_first_row.call_args.args[0].compile(
-            compile_kwargs={"literal_binds": True}
+    with patch(
+        "app.routes.geostore.geostore.geostore.get_gadm_geostore"
+    ) as mock_get_gadm_geostore:
+        mock_get_gadm_geostore.return_value = AdminGeostoreResponse(
+            **example_geostore_resp
         )
+        _ = await async_client.get(url, params=params)
+
+    assert mock_get_gadm_geostore.called is True
+    assert mock_get_gadm_geostore.call_args.args == (
+        "gadm",
+        "4.1",
+        0,
+        None,
+        country,
+        region,
     )
-    assert actual_sql == expected_sql
 
 
 @pytest.mark.asyncio
-async def test_get_admin_subregion_geostore_gfw_branch(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
+async def test_get_gadm_geostore_by_subregion_with_gadm_41_calls_gfw_branch_with_correct_args(
+    async_client: AsyncClient,
 ):
-    mock_get_first_row: AsyncMock = AsyncMock(return_value=None)
-    monkeypatch.setattr(crud_geostore, "get_first_row", mock_get_first_row)
-
-    url = "/geostore/admin/MEX/1/1"
+    country = "MEX"
+    region = "2"
+    subregion = "1"
+    url = f"/geostore/admin/{country}/{region}/{subregion}"
     params = {"source[version]": "4.1"}
 
-    _ = await async_client.get(url, params=params)
-
-    expected_sql = (
-        "SELECT adm_level, gfw_area__ha, gfw_bbox, gfw_geostore_id, "
-        "gid_2 AS level_id, name_2 AS name, ST_AsGeoJSON(geom) AS geojson "
-        '\nFROM gadm_administrative_boundaries."v4.1.64" \n'
-        r"WHERE adm_level='2' AND gid_2 LIKE 'MEX.1.1\__'"
-    )
-    actual_sql = str(
-        mock_get_first_row.call_args.args[0].compile(
-            compile_kwargs={"literal_binds": True}
+    with patch(
+        "app.routes.geostore.geostore.geostore.get_gadm_geostore"
+    ) as mock_get_gadm_geostore:
+        mock_get_gadm_geostore.return_value = AdminGeostoreResponse(
+            **example_geostore_resp
         )
+        _ = await async_client.get(url, params=params)
+
+    assert mock_get_gadm_geostore.called is True
+    assert mock_get_gadm_geostore.call_args.args == (
+        "gadm",
+        "4.1",
+        0,
+        None,
+        country,
+        region,
+        subregion,
     )
-    assert actual_sql == expected_sql
 
 
 @pytest.mark.asyncio
@@ -411,13 +410,11 @@ async def test_get_admin_list_proxies_to_rw_when_no_source_info_is_provided(
 ):
     url = "/geostore/admin/list"
 
-    mock_rw_get_admin_list = AsyncMock(
-        return_value=AdminListResponse(**example_admin_list),
-        spec=rw_api.rw_get_admin_list,
-    )
-    monkeypatch.setattr(geostore, "rw_get_admin_list", mock_rw_get_admin_list)
-
-    _ = await async_client.get(url)
+    with patch(
+        "app.routes.geostore.geostore.rw_get_admin_list"
+    ) as mock_rw_get_admin_list:
+        mock_rw_get_admin_list.return_value = AdminListResponse(**example_admin_list)
+        _ = await async_client.get(url)
 
     assert mock_rw_get_admin_list.called is True
 
@@ -429,34 +426,26 @@ async def test_get_admin_list_proxies_to_rw_when_gadm_36_requested(
     url = "/geostore/admin/list"
     params = {"source[version]": "3.6"}
 
-    mock_rw_get_admin_list = AsyncMock(
-        return_value=AdminListResponse(**example_admin_list),
-        spec=rw_api.rw_get_admin_list,
-    )
-    monkeypatch.setattr(geostore, "rw_get_admin_list", mock_rw_get_admin_list)
-
-    resp = await async_client.get(url, params=params)
+    with patch(
+        "app.routes.geostore.geostore.rw_get_admin_list"
+    ) as mock_rw_get_admin_list:
+        mock_rw_get_admin_list.return_value = AdminListResponse(**example_admin_list)
+        resp = await async_client.get(url, params=params)
 
     assert mock_rw_get_admin_list.called is True
     assert resp.json().get("status") == "success"
 
 
 @pytest.mark.asyncio
-async def test_get_admin_list_gets_gadm_41_from_data_api(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
-):
+async def test_get_admin_list_gets_gadm_41_from_data_api(async_client: AsyncClient):
     url = "/geostore/admin/list"
     params = {"source[version]": "4.1"}
 
-    mock_gfw_get_admin_list = AsyncMock(
-        return_value=AdminListResponse(**example_admin_list),
-        spec=crud_geostore.get_admin_boundary_list,
-    )
-    monkeypatch.setattr(
-        crud_geostore, "get_admin_boundary_list", mock_gfw_get_admin_list
-    )
-
-    resp = await async_client.get(url, params=params)
+    with patch(
+        "app.routes.geostore.geostore.geostore.get_admin_boundary_list"
+    ) as mock_gfw_get_admin_list:
+        mock_gfw_get_admin_list.return_value = AdminListResponse(**example_admin_list)
+        resp = await async_client.get(url, params=params)
 
     assert mock_gfw_get_admin_list.called is True
     assert resp.json().get("status") == "success"
