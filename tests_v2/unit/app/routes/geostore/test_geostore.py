@@ -406,7 +406,7 @@ async def test_get_geostore_gfw_branch(
 
 
 @pytest.mark.asyncio
-async def test_get_admin_list_rw_branch(
+async def test_get_admin_list_proxies_to_rw_when_no_source_info_is_provided(
     async_client: AsyncClient, monkeypatch: MonkeyPatch
 ):
     url = "/geostore/admin/list"
@@ -423,7 +423,7 @@ async def test_get_admin_list_rw_branch(
 
 
 @pytest.mark.asyncio
-async def test_get_admin_list_rw_branch_36(
+async def test_get_admin_list_proxies_to_rw_when_gadm_36_requested(
     async_client: AsyncClient, monkeypatch: MonkeyPatch
 ):
     url = "/geostore/admin/list"
@@ -442,7 +442,7 @@ async def test_get_admin_list_rw_branch_36(
 
 
 @pytest.mark.asyncio
-async def test_get_admin_list_gfw_branch_41(
+async def test_get_admin_list_gets_gadm_41_from_data_api(
     async_client: AsyncClient, monkeypatch: MonkeyPatch
 ):
     url = "/geostore/admin/list"
