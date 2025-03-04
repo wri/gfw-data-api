@@ -224,7 +224,7 @@ async def test_get_gadm_geostore_by_region_with_gadm_41_calls_gfw_branch_with_co
     assert mock_get_gadm_geostore.call_args.args == (
         "gadm",
         "4.1",
-        0,
+        1,
         None,
         country,
         region,
@@ -253,7 +253,7 @@ async def test_get_gadm_geostore_by_subregion_with_gadm_41_calls_gfw_branch_with
     assert mock_get_gadm_geostore.call_args.args == (
         "gadm",
         "4.1",
-        0,
+        2,
         None,
         country,
         region,
