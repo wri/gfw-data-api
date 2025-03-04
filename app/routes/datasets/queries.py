@@ -1,4 +1,5 @@
 """Explore data entries for a given dataset version using standard SQL."""
+
 import csv
 import json
 import re
@@ -24,6 +25,7 @@ from pglast import Node, parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
 from pydantic.tools import parse_obj_as
+
 from app.settings.globals import API_URL
 
 from ...application import db
@@ -87,6 +89,7 @@ from ...settings.globals import (
     RASTER_ANALYSIS_STATE_MACHINE_ARN,
 )
 from ...utils.aws import get_sfn_client, invoke_lambda
+from ...utils.decorators import hash_dict
 from ...utils.geostore import get_geostore
 from .. import dataset_version_dependency
 from . import _verify_source_file_access
@@ -121,7 +124,8 @@ async def query_dataset(
     entire feature geometry, including areas outside the geostore
     boundaries.
 
-    This path is deprecated and will permanently redirect to /query/json.
+    This path is deprecated and will permanently redirect to
+    /query/json.
     """
     dataset, version = dataset_version
 
@@ -159,8 +163,8 @@ async def query_dataset_json(
     calculations will be applied on the entire feature geometry,
     including areas outside the geostore boundaries.
 
-    A geostore ID or geometry must be specified for a query to a
-    raster-only dataset.
+    A geostore ID or geometry must be specified for a query to a raster-
+    only dataset.
 
     GET to /dataset/{dataset}/{version}/fields will show fields that can
     be used in the query. For raster-only datasets, fields for other
@@ -337,29 +341,30 @@ async def query_dataset_list_post(
     request: QueryBatchRequestIn,
     api_key: APIKey = Depends(get_api_key),
 ):
-    """Execute a READ-ONLY SQL query on the specified raster-based dataset version
-    for a potentially large list of features. The features may be specified by an
-    inline GeoJson feature collection, or a list of ResourceWatch geostore IDs, or
-    the URI of vector file that is in any of a variety of formats supported by
-    GeoPandas, include GeoJson and CSV format. For CSV files, the geometry column
-    should be named "WKT" (not "WKB") and the geometry values should be in WKB
-    format.
+    """Execute a READ-ONLY SQL query on the specified raster-based dataset
+    version for a potentially large list of features. The features may be
+    specified by an inline GeoJson feature collection, or a list of
+    ResourceWatch geostore IDs, or the URI of vector file that is in any of a
+    variety of formats supported by GeoPandas, include GeoJson and CSV format.
+    For CSV files, the geometry column should be named "WKT" (not "WKB") and
+    the geometry values should be in WKB format.
 
-    The specified sql query will be run on each individual feature, and so may take a
-    while. Therefore, the results of this query include a job_id. The user should
-    then periodically query the specified job via the /job/{job_id} api. When the
-    "data.status" indicates "success" or "partial_success", then the successful
-    results will be available at the specified "data.download_link". When the
-    "data.status" indicates "partial_success" or "failed", then failed results
-    (likely because of improper geometries) will be available at
-    "data.failed_geometries_link". If the "data.status" indicates "error", then there
-    will be no results available (nothing was able to complete, possible because of
-    an infrastructure problem).
+    The specified sql query will be run on each individual feature, and
+    so may take a while. Therefore, the results of this query include a
+    job_id. The user should then periodically query the specified job
+    via the /job/{job_id} api. When the "data.status" indicates
+    "success" or "partial_success", then the successful results will be
+    available at the specified "data.download_link". When the
+    "data.status" indicates "partial_success" or "failed", then failed
+    results (likely because of improper geometries) will be available at
+    "data.failed_geometries_link". If the "data.status" indicates
+    "error", then there will be no results available (nothing was able
+    to complete, possible because of an infrastructure problem).
 
-    There is currently a five-minute time limit on the entire list query, but up to
-    100 individual feature queries proceed in parallel, so lists with several
-    thousands of features can potentially be processed within that time limit.
-
+    There is currently a five-minute time limit on the entire list
+    query, but up to 100 individual feature queries proceed in parallel,
+    so lists with several thousands of features can potentially be
+    processed within that time limit.
     """
 
     dataset, version = dataset_version
@@ -398,7 +403,11 @@ async def query_dataset_list_post(
         "environment": data_environment.dict()["layers"],
     }
 
-    if (request.feature_collection and request.uri) or (request.feature_collection and request.geostore_ids) or (request.uri and request.geostore_ids):
+    if (
+        (request.feature_collection and request.uri)
+        or (request.feature_collection and request.geostore_ids)
+        or (request.uri and request.geostore_ids)
+    ):
         raise HTTPException(
             status_code=400,
             detail="Must provide only one of valid feature collection, URI, or geostore_ids list.",
@@ -440,6 +449,7 @@ async def _query_dataset_json(
     version: str,
     sql: str,
     geostore: Optional[GeostoreCommon],
+    raster_version_overrides: Dict[str, str] = {},
 ) -> List[Dict[str, Any]]:
     # Make sure we can query the dataset
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
@@ -449,7 +459,9 @@ async def _query_dataset_json(
         return await _query_table(dataset, version, sql, geometry)
     elif query_type == QueryType.raster:
         geostore = cast(GeostoreCommon, geostore)
-        results = await _query_raster(dataset, default_asset, sql, geostore)
+        results = await _query_raster(
+            dataset, default_asset, sql, geostore, raster_version_overrides
+        )
         return results["data"]
     else:
         raise HTTPException(
@@ -716,6 +728,7 @@ async def _query_raster(
     geostore: GeostoreCommon,
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
+    version_overrides: Dict[str, str] = {},
 ) -> Dict[str, Any]:
     if geostore.area__ha > GEOSTORE_SIZE_LIMIT_OTF:
         raise HTTPException(
@@ -733,7 +746,9 @@ async def _query_raster(
     grid = asset.creation_options["grid"]
     sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
 
-    return await _query_raster_lambda(geostore.geojson, sql, grid, format, delimiter)
+    return await _query_raster_lambda(
+        geostore.geojson, sql, grid, format, delimiter, version_overrides
+    )
 
 
 async def _query_raster_lambda(
@@ -742,8 +757,9 @@ async def _query_raster_lambda(
     grid: Grid = Grid.ten_by_forty_thousand,
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
+    version_overrides: Dict[str, str] = {},
 ) -> Dict[str, Any]:
-    data_environment = await _get_data_environment(grid)
+    data_environment = await _get_data_environment(grid, version_overrides)
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
@@ -811,10 +827,14 @@ def _get_default_layer(dataset, pixel_meaning):
         return f"{dataset}__{default_type}"
 
 
+@hash_dict
 @alru_cache(maxsize=16, ttl=300.0)
-async def _get_data_environment(grid: Grid) -> DataEnvironment:
+async def _get_data_environment(
+    grid: Grid, version_overrides: Dict[str, str] = {}
+) -> DataEnvironment:
     # get all raster tile set assets with the same grid.
-    latest_tile_sets = await db.all(latest_raster_tile_sets, {"grid": grid})
+    sql = _get_data_environment_sql(version_overrides)
+    latest_tile_sets = await db.all(db.text(sql), {"grid": grid})
 
     # build list of layers, including any derived layers, for all
     # single-band rasters found
@@ -937,3 +957,29 @@ def _get_predefined_layers(row, source_layer_name):
                 "calc": "A * area * (0.5 * 44 / 12)",
             }
         ]
+
+
+def _get_data_environment_sql(version_overrides: Dict[str, str]) -> str:
+    """Construct SQL to get data environment based on version overrides.
+
+    If no version overrides, just add condition to use latest versions.
+    If version overrides provided, return those specific versions, and
+    latest for the rest.
+    """
+    if not version_overrides:
+        sql = latest_raster_tile_sets + " AND versions.is_latest = true"
+    else:
+        override_datasets = tuple(version_overrides.keys())
+        override_filters = " OR ".join(
+            [
+                f"(assets.dataset = '{dataset}' AND assets.version = '{version}')"
+                for dataset, version in version_overrides.items()
+            ]
+        )
+
+        sql = (
+            latest_raster_tile_sets
+            + f" AND ((assets.dataset NOT IN {override_datasets} AND versions.is_latest = true) OR {override_filters})"
+        )
+
+    return sql
