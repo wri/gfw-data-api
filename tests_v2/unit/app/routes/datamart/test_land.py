@@ -313,7 +313,7 @@ MOCK_RESULT = [
 MOCK_RESOURCE = {
     "status": "saved",
     "details": None,
-    "treeCoverLossByDriver": {
+    "tree_cover_loss_by_driver": {
         "Permanent agriculture": 10.0,
         "Hard commodities": 12.0,
         "Shifting cultivation": 7.0,
@@ -323,6 +323,7 @@ MOCK_RESOURCE = {
         "Other natural disturbances": 6.0,
     },
     "metadata": {
+        "geostore_id": "",
         "canopy_cover": 30,
         "sources": [
             {"dataset": "umd_tree_cover_loss", "version": "v1.11"},

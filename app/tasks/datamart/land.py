@@ -48,7 +48,7 @@ async def compute_tree_cover_loss_by_driver(
         }
 
         resource = TreeCoverLossByDriver(
-            treeCoverLossByDriver=tcl_by_driver,
+            tree_cover_loss_by_driver=tcl_by_driver,
             metadata=_get_metadata(geostore, canopy_cover, dataset_version),
         )
 
@@ -74,10 +74,10 @@ def _get_metadata(
 
 async def _write_resource(resource_id: UUID, resource: DataMartResource):
     with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(resource.model_dump_json())
+        f.write(resource.json())
 
 
 async def _write_error(resource_id: UUID, error: str):
     error_resource = DataMartResource(status="failed", details=error)
     with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(error_resource.model_dump_json())
+        f.write(error_resource.json())

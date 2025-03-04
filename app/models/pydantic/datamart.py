@@ -19,7 +19,7 @@ class DataMartMetadata(StrictBaseModel):
 class DataMartResource(StrictBaseModel):
     status: str = "saved"
     details: Optional[str] = None
-    metadata: DataMartMetadata = None
+    metadata: Optional[DataMartMetadata] = None
 
 
 class DataMartResourceLink(StrictBaseModel):
@@ -41,7 +41,7 @@ class TreeCoverLossByDriverMetadata(DataMartMetadata):
 
 
 class TreeCoverLossByDriver(DataMartResource):
-    treeCoverLossByDriver: Optional[Dict[str, float]] = None
+    tree_cover_loss_by_driver: Optional[Dict[str, float]] = None
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
 
 
