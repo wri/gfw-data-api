@@ -1,7 +1,4 @@
-from ....application import db
-from ...enum.pixetl import Grid
-
-sql = """
+data_environment_raster_tile_sets = """
     SELECT
       assets.asset_id,
       assets.dataset,
@@ -18,11 +15,7 @@ sql = """
         AND versions.version = assets.version
       LEFT JOIN raster_band_metadata rb
         ON rb.asset_metadata_id = am.id
-      WHERE versions.is_latest = true
-      AND assets.asset_type = 'Raster tile set'
+      WHERE assets.asset_type = 'Raster tile set'
       AND assets.creation_options->>'pixel_meaning' NOT LIKE '%tcd%'
       AND assets.creation_options->>'grid' = :grid
     """
-
-
-latest_raster_tile_sets = db.text(sql)
