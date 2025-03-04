@@ -187,13 +187,6 @@ create_gfw_geostore_data = {
 async def test_get_admin_country_geostore_gfw_branch(
     async_client: AsyncClient, monkeypatch: MonkeyPatch
 ):
-    # CursorResult = MagicMock(cursor)
-    # mock_session.execute.return_value = [
-    #     CursorResult(tup1),
-    #     CursorResult(tup2)
-    # ]
-    # CursorResult.return_value._asdict.side_effect = [tup1, tup2]
-
     mock_get_first_row: AsyncMock = AsyncMock(return_value=None)
 
     monkeypatch.setattr(crud_geostore, "get_first_row", mock_get_first_row)
@@ -434,7 +427,7 @@ async def test_get_admin_list_rw_branch_36(
     async_client: AsyncClient, monkeypatch: MonkeyPatch
 ):
     url = "/geostore/admin/list"
-    params = {"adminVersion": "3.6"}
+    params = {"source[version]": "3.6"}
 
     mock_rw_get_admin_list = AsyncMock(
         return_value=AdminListResponse(**example_admin_list),
