@@ -164,4 +164,4 @@ async def _get_resource(resource_id):
 async def _save_pending_resource(resource_id):
     pending_resource = DataMartResource(status="pending")
     with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(pending_resource.model_dump_json())
+        f.write(pending_resource.json())
