@@ -1,17 +1,32 @@
 import re
 from typing import Tuple
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from urllib.parse import parse_qsl, urlparse
 from uuid import UUID
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from httpx import AsyncClient
+from fastapi import HTTPException
+from httpx import AsyncClient, Response
 
+from app.crud.assets import get_default_asset
+from app.models.enum.creation_options import Delimiters
+from app.models.enum.geostore import GeostoreOrigin
 from app.models.enum.pixetl import Grid
-from app.models.pydantic.raster_analysis import DerivedLayer, SourceLayer
+from app.models.pydantic.raster_analysis import (
+    DataEnvironment,
+    DerivedLayer,
+    SourceLayer,
+)
 from app.routes.datasets import queries
-from app.routes.datasets.queries import _get_data_environment, _get_data_environment_sql
+from app.routes.datasets.queries import (
+    _get_data_environment,
+    _get_data_environment_sql,
+    _query_dataset_json,
+    _query_raster,
+    _query_raster_lambda,
+)
+from app.utils.geostore import get_geostore
 from tests_v2.fixtures.creation_options.versions import RASTER_CREATION_OPTIONS
 from tests_v2.utils import (
     custom_raster_version,
@@ -821,6 +836,120 @@ async def test_query_batch_uri(
     assert data["status"] == "pending"
 
     assert response.json()["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_query_dataset_json_with_overrides(
+    generic_raster_version,
+    geostore,
+):
+    dataset_name, version_name, _ = generic_raster_version
+    geostore_common = await get_geostore(geostore, GeostoreOrigin.rw)
+    sql = "SELECT sum(area__ha) FROM data"
+
+    with patch(
+        "app.routes.datasets.queries._query_raster", return_value={"data": []}
+    ) as mock_query_raster:
+        result = await _query_dataset_json(
+            dataset_name, version_name, sql, geostore_common, {dataset_name: "v2"}
+        )
+
+        mock_query_raster.assert_awaited_once()
+        args = mock_query_raster.await_args
+        assert args[1]["version_overrides"] == {dataset_name: "v2"}
+        assert result == []
+
+
+@pytest.mark.asyncio
+async def test_query_raster_with_overrides(
+    generic_raster_version,
+    geostore,
+):
+    dataset_name, version_name, _ = generic_raster_version
+    asset = await get_default_asset(dataset_name, version_name)
+    geostore_common = await get_geostore(geostore, GeostoreOrigin.rw)
+    sql = "SELECT sum(area__ha) FROM data"
+
+    with patch(
+        "app.routes.datasets.queries._query_raster_lambda", return_value={"data": []}
+    ) as mock_raster_query_lambda:
+        result = await _query_raster(
+            dataset_name,
+            asset,
+            sql,
+            geostore_common,
+            version_overrides={dataset_name: "v2"},
+        )
+
+        mock_raster_query_lambda.assert_awaited_once()
+        args = mock_raster_query_lambda.await_args
+        assert args[0][5] == {dataset_name: "v2"}
+        assert result == {"data": []}
+
+
+@pytest.mark.asyncio
+async def test_query_raster_lambda_with_overrides(
+    generic_raster_version,
+    geostore,
+):
+    dataset_name, _ = generic_raster_version
+    geostore_common = await get_geostore(geostore, GeostoreOrigin.rw)
+    sql = "SELECT sum(area__ha) FROM data"
+
+    with (
+        patch(
+            "app.routes.datasets.queries._get_data_environment",
+            return_value=DataEnvironment(layers=[]),
+        ) as mock_get_data_environment,
+        patch(
+            "app.routes.datasets.queries.invoke_lambda",
+            return_value=Response(status_code=500),
+        ),
+    ):
+        try:
+            await _query_raster_lambda(
+                geostore_common.geojson,
+                sql,
+                Grid.ten_by_forty_thousand,
+                Delimiters.comma,
+                version_overrides={dataset_name: "v2"},
+            )
+        except HTTPException:
+            mock_get_data_environment.assert_awaited_once_with(
+                Grid.ten_by_forty_thousand, {dataset_name: "v2"}
+            )
+
+
+@pytest.mark.asyncio
+async def test_get_data_environment_sql():
+    sql = _get_data_environment_sql(
+        {"umd_tree_cover_loss": "v1.9", "umd_tree_cover_density_2000": "v1.6"}
+    )
+    assert sql.strip() == DATA_ENV_SQL.strip()
+
+
+DATA_ENV_SQL = """
+    SELECT
+      assets.asset_id,
+      assets.dataset,
+      assets.version,
+      creation_options,
+      asset_uri,
+      rb.values_table
+    FROM
+      assets
+      LEFT JOIN asset_metadata am
+        ON am.asset_id = assets.asset_id
+      JOIN versions
+        ON versions.dataset = assets.dataset
+        AND versions.version = assets.version
+      LEFT JOIN raster_band_metadata rb
+        ON rb.asset_metadata_id = am.id
+      WHERE assets.asset_type = 'Raster tile set'
+      AND assets.creation_options->>'pixel_meaning' NOT LIKE '%tcd%'
+      AND assets.creation_options->>'grid' = :grid
+     AND ((assets.dataset NOT IN ('umd_tree_cover_loss', 'umd_tree_cover_density_2000') AND versions.is_latest = true) OR (assets.dataset = 'umd_tree_cover_loss' AND assets.version = 'v1.9') OR (assets.dataset = 'umd_tree_cover_density_2000' AND assets.version = 'v1.6'))
+"""
 
 
 FEATURE_COLLECTION = {
