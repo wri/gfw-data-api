@@ -127,6 +127,31 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
 
 
 @pytest.mark.asyncio
+async def test_get_tree_cover_loss_by_drivers_with_malformed_overrides(
+    geostore,
+    apikey,
+    async_client: AsyncClient,
+):
+    api_key, payload = apikey
+    origin = payload["domains"][0]
+
+    headers = {"origin": origin}
+    params = {"x-api-key": api_key, "geostore_id": geostore, "canopy_cover": 30}
+
+    response = await async_client.get(
+        "/v0/land/tree_cover_loss_by_driver?x-api-key={api_key}&geostore_id={geostore_id}&canopy_cover=30&dataset_version[umd_tree_cover_loss]]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
+        headers=headers,
+        params=params,
+    )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["message"]
+        == "Could not parse the following malformed dataset_version parameters: ['dataset_version[umd_tree_cover_loss]]']"
+    )
+
+
+@pytest.mark.asyncio
 async def test_post_tree_cover_loss_by_drivers(
     geostore,
     apikey,

@@ -1,6 +1,7 @@
 """Run analysis on registered datasets."""
 
 import json
+import re
 import uuid
 from typing import Dict, List
 from uuid import UUID
@@ -172,13 +173,24 @@ async def _get_resource(resource_id):
 async def _save_pending_resource(resource_id):
     pending_resource = DataMartResource(status="pending")
     with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(pending_resource.model_dump_json())
+        f.write(pending_resource.json())
 
 
 def _parse_dataset_versions(query_params: Dict[str, List[str]]) -> Dict[str, str]:
-    datasets = [
-        param.split("[")[1].strip("]")
-        for param in query_params.keys()
-        if param.startswith("dataset_version")
-    ]
-    return {ds: query_params[f"dataset_version[{ds}]"] for ds in datasets}
+    dataset_versions = {}
+    errors = []
+    for key in query_params.keys():
+        if key.startswith("dataset_version"):
+            matches = re.findall(r"dataset_version\[([a-z][a-z0-9_-]*)\]$", key)
+            if len(matches) == 1:
+                dataset_versions[matches[0]] = query_params[key]
+            else:
+                errors.append(key)
+
+    if errors:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Could not parse the following malformed dataset_version parameters: {errors}",
+        )
+
+    return dataset_versions
