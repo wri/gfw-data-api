@@ -1,9 +1,17 @@
+from enum import Enum
 from typing import Dict, Optional
 from uuid import UUID
+from pydantic import Field
 
 from app.models.pydantic.responses import Response
 
 from .base import StrictBaseModel
+
+
+class AnalysisStatus(str, Enum):
+    saved = "saved"
+    pending = "pending"
+    failed = "failed"
 
 
 class DataMartSource(StrictBaseModel):
@@ -17,8 +25,11 @@ class DataMartMetadata(StrictBaseModel):
 
 
 class DataMartResource(StrictBaseModel):
-    status: str = "saved"
-    details: Optional[str] = None
+    id: UUID
+    status: AnalysisStatus
+    error: Optional[str] = None
+    requested_by: Optional[UUID] = None
+    endpoint: str
     metadata: DataMartMetadata = None
 
 
@@ -40,9 +51,25 @@ class TreeCoverLossByDriverMetadata(DataMartMetadata):
     canopy_cover: int
 
 
-class TreeCoverLossByDriver(DataMartResource):
-    treeCoverLossByDriver: Optional[Dict[str, float]] = None
+class TreeCoverLossByDriver(StrictBaseModel):
+    result: Optional[Dict[str, float]] = Field(None, alias="treeCoverLossByDriver")
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
+    error: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+
+class TreeCoverLossByDriverUpdate(StrictBaseModel):
+    result: Optional[Dict[str, float]] = Field(None, alias="treeCoverLossByDriver")
+    metadata: Optional[TreeCoverLossByDriverMetadata] = None
+    status: Optional[AnalysisStatus] = AnalysisStatus.saved
+    error: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
 
 
 class TreeCoverLossByDriverResponse(Response):

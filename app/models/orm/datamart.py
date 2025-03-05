@@ -2,7 +2,7 @@ from .base import Base, db
 
 
 class AnalysisResult(Base):
-    __tablename__ = "analysis_result"
+    __tablename__ = "analysis_results"
     id = db.Column(db.UUID, primary_key=True)
     endpoint = db.Column(db.String)
     result = db.Column(db.JSONB)
