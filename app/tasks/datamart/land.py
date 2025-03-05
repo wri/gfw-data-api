@@ -7,7 +7,6 @@ import app.crud.datamart as datamart_crud
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
     AnalysisStatus,
-    DataMartResource,
     DataMartSource,
     TreeCoverLossByDriverUpdate,
     TreeCoverLossByDriverMetadata,
@@ -78,14 +77,3 @@ def _get_metadata(
         canopy_cover=canopy_cover,
         sources=sources,
     )
-
-
-async def _write_resource(resource_id: UUID, resource: DataMartResource):
-    with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(resource.model_dump_json())
-
-
-async def _write_error(resource_id: UUID, error: str):
-    error_resource = DataMartResource(status="failed", details=error)
-    with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(error_resource.model_dump_json())
