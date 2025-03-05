@@ -51,7 +51,7 @@ class TreeCoverLossByDriverMetadata(DataMartMetadata):
 
 
 class TreeCoverLossByDriver(StrictBaseModel):
-    result: Optional[Dict[str, float]] = Field(None, alias="treeCoverLossByDriver")
+    result: Optional[Dict[str, float]] = Field(None, alias="tree_cover_loss_by_driver")
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
     error: Optional[str] = None
 
@@ -61,7 +61,7 @@ class TreeCoverLossByDriver(StrictBaseModel):
 
 
 class TreeCoverLossByDriverUpdate(StrictBaseModel):
-    result: Optional[Dict[str, float]] = Field(None, alias="treeCoverLossByDriver")
+    result: Optional[Dict[str, float]] = Field(None, alias="tree_cover_loss_by_driver")
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
     status: Optional[AnalysisStatus] = AnalysisStatus.saved
     error: Optional[str] = None
