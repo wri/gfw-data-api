@@ -55,7 +55,6 @@ async def tree_cover_loss_by_driver_search(
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
     # Merge dataset version overrides with default dataset versions
-    # query_dataset_version = {ds: v for ds, v in zip(dataset, version)}
     query_dataset_version = _parse_dataset_versions(request.query_params)
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | query_dataset_version
 
