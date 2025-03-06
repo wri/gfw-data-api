@@ -22,7 +22,7 @@ from ..models.pydantic.geostore import (
     GeostoreCommon,
     RWGeostoreIn,
 )
-from ..settings.globals import RW_API_URL, SERVICE_ACCOUNT_TOKEN
+from ..settings.globals import RW_API_KEY, RW_API_URL, SERVICE_ACCOUNT_TOKEN
 
 
 @alru_cache(maxsize=128)
@@ -284,12 +284,9 @@ async def proxy_get_request_to_rw_api(
     url: str, query_params: Dict, x_api_key: str | None = None
 ) -> HTTPXResponse:
     async with AsyncClient() as client:
-        if x_api_key is not None:
-            response: HTTPXResponse = await client.get(
-                url, headers={"x-api-key": x_api_key}, params=query_params
-            )
-        else:
-            response = await client.get(url, params=query_params)
+        response: HTTPXResponse = await client.get(
+            url, headers={"x-api-key": RW_API_KEY}, params=query_params
+        )
 
     if response.status_code == 200:
         return response
