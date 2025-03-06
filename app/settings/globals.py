@@ -147,7 +147,7 @@ AWS_SECRETSMANAGER_URL = config("AWS_SECRETSMANAGER_URL", cast=str, default=None
 
 RW_API_URL = config("RW_API_URL", cast=str, default=None)
 RW_API_KEY = json.loads(
-    config("RW_API_KEY", cast=Secret, default=json.dumps({"api_key": "foo"}))
+    config("RW_API_KEY", cast=str, default=json.dumps({"api_key": "foo"}))
 )["api_key"]
 
 HOUR: int = int(60 * 60)
