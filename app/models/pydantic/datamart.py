@@ -26,10 +26,14 @@ class DataMartMetadata(StrictBaseModel):
 class DataMartResource(StrictBaseModel):
     id: UUID
     status: AnalysisStatus
-    message: Optional[str] = None
+    error: Optional[str] = Field(None, alias="message")
     requested_by: Optional[UUID] = None
     endpoint: str
     metadata: DataMartMetadata = None
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
 
 
 class DataMartResourceLink(StrictBaseModel):
@@ -53,7 +57,7 @@ class TreeCoverLossByDriverMetadata(DataMartMetadata):
 class TreeCoverLossByDriver(StrictBaseModel):
     result: Optional[Dict[str, float]] = Field(None, alias="tree_cover_loss_by_driver")
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
-    message: Optional[str] = None
+    error: Optional[str] = Field(None, alias="message")
 
     class Config:
         orm_mode = True
@@ -64,7 +68,7 @@ class TreeCoverLossByDriverUpdate(StrictBaseModel):
     result: Optional[Dict[str, float]] = Field(None, alias="tree_cover_loss_by_driver")
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
     status: Optional[AnalysisStatus] = AnalysisStatus.saved
-    message: Optional[str] = None
+    error: Optional[str] = Field(None, alias="message")
 
     class Config:
         orm_mode = True
