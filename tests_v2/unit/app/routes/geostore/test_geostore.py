@@ -125,6 +125,31 @@ example_geostore_resp = {
     },
 }
 
+real_sample_geostore_resp = {
+    "status": "success",
+    "data": {
+        "created_on": "2024-06-21T23:29:15.799130",
+        "updated_on": "2024-06-21T23:29:15.799136",
+        "gfw_geostore_id": "b9faa657-34c9-96d4-fce4-8bb8a1507cb3",
+        "gfw_geojson": {
+            "type": "MultiPolygon",
+            "coordinates": [
+                [
+                    [
+                        [10.67647934, 53.857791641],
+                        [10.699653625, 53.857791641],
+                        [10.699653625, 53.875758665],
+                        [10.67647934, 53.875758665],
+                        [10.67647934, 53.857791641],
+                    ]
+                ]
+            ],
+        },
+        "gfw_area__ha": 304.86964509449007,
+        "gfw_bbox": [10.67647934, 53.857791641, 10.699653625, 53.875758665],
+    },
+}
+
 
 create_rw_geostore_payload = {
     "geojson": {
@@ -413,36 +438,26 @@ async def test_get_geostore_rw_branch(
 
 
 @pytest.mark.asyncio
-async def test_get_geostore_gfw_branch(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
-):
-    url = "/geostore/db2b4428-bad2-fc94-1ea8-041597dc482c"
+async def test_get_geostore_by_gfw_style_id(async_client: AsyncClient):
+    url = "/geostore/b9faa657-34c9-96d4-fce4-8bb8a1507cb3"
 
-    mock_proxy_get_geostore = AsyncMock(
-        return_value=AdminGeostoreResponse(**example_geostore_resp),
-        spec=geostore.proxy_get_geostore,
-    )
-    monkeypatch.setattr(geostore, "proxy_get_geostore", mock_proxy_get_geostore)
+    with patch(
+        "app.routes.geostore.geostore.geostore.get_gfw_geostore_from_any_dataset",
+        return_value=Geostore.parse_obj(real_sample_geostore_resp["data"]),
+    ) as mock_get_gfw_geostore_from_any_dataset:
+        with patch(
+            "app.routes.geostore.geostore.proxy_get_geostore", side_effect=Exception
+        ) as mock_proxy_get_geostore:
+            resp = await async_client.get(url)
 
-    mock_get_gfw_geostore_from_any_dataset = AsyncMock(
-        return_value=Geostore(**create_gfw_geostore_data),
-        spec=crud_geostore.get_gfw_geostore_from_any_dataset,
-    )
-    monkeypatch.setattr(
-        crud_geostore,
-        "get_gfw_geostore_from_any_dataset",
-        mock_get_gfw_geostore_from_any_dataset,
-    )
-
-    _ = await async_client.get(url)
-
+    assert resp.status_code == 200
     assert mock_proxy_get_geostore.called is False
     assert mock_get_gfw_geostore_from_any_dataset.called is True
 
 
 @pytest.mark.asyncio
 async def test_get_admin_list_proxies_to_rw_when_no_source_info_is_provided(
-    apikey, async_client: AsyncClient, monkeypatch: MonkeyPatch
+    apikey, async_client: AsyncClient
 ):
     url = "/geostore/admin/list"
 
@@ -450,14 +465,15 @@ async def test_get_admin_list_proxies_to_rw_when_no_source_info_is_provided(
         "app.routes.geostore.geostore.rw_get_admin_list"
     ) as mock_rw_get_admin_list:
         mock_rw_get_admin_list.return_value = AdminListResponse(**example_admin_list)
-        _ = await async_client.get(url, headers={"x-api-key": apikey[0]})
+        resp = await async_client.get(url, headers={"x-api-key": apikey[0]})
 
     assert mock_rw_get_admin_list.called is True
+    assert resp.json().get("status") == "success"
 
 
 @pytest.mark.asyncio
 async def test_get_admin_list_proxies_to_rw_when_gadm_36_requested(
-    apikey, async_client: AsyncClient, monkeypatch: MonkeyPatch
+    apikey, async_client: AsyncClient
 ):
     url = "/geostore/admin/list"
     params = {"source[version]": "3.6"}
