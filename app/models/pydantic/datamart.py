@@ -58,6 +58,7 @@ class TreeCoverLossByDriver(StrictBaseModel):
     result: Optional[Dict[str, float]] = Field(None, alias="tree_cover_loss_by_driver")
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
     error: Optional[str] = Field(None, alias="message")
+    status: AnalysisStatus
 
     class Config:
         orm_mode = True
