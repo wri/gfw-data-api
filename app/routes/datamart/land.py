@@ -174,7 +174,7 @@ async def _save_pending_resource(resource_id, endpoint, api_key):
         id=resource_id,
         status=AnalysisStatus.pending,
         endpoint=endpoint,
-        requested_by=api_key,
+        message="Resource is still processing, follow Retry-After header.",
     )
 
     await datamart_crud.save_result(pending_resource)

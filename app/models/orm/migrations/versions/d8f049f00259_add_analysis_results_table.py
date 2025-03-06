@@ -32,7 +32,7 @@ def upgrade():
         sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("status", sa.String(), nullable=False, default="pending"),
         sa.Column("requested_by", postgresql.UUID(), nullable=True),
-        sa.Column("error", sa.String(), nullable=True),
+        sa.Column("message", sa.String(), nullable=True),
         sa.Column(
             "created_on", sa.DateTime(), server_default=sa.text("now()"), nullable=True
         ),
