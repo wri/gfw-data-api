@@ -60,7 +60,7 @@ async def compute_tree_cover_loss_by_driver(
             f"Tree cover loss by drivers analysis failed for geostore ${geostore_id} with error: {e}"
         )
         resource.status = AnalysisStatus.failed
-        resource.error = str(e)
+        resource.message = str(e)
 
         await datamart_crud.update_result(resource_id, resource)
 
