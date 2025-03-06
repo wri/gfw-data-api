@@ -66,14 +66,14 @@ async def compute_tree_cover_loss_by_driver(
 
 
 def _get_metadata(
-    geostore: GeostoreCommon, canopy_cover: int, dataset_version: Dict[str, str]
+    geostore_id: UUID, canopy_cover: int, dataset_version: Dict[str, str]
 ):
     sources = [
         DataMartSource(dataset=dataset, version=version)
         for dataset, version in dataset_version.items()
     ]
     return TreeCoverLossByDriverMetadata(
-        geostore_id=geostore.geostore_id,
+        geostore_id=geostore_id,
         canopy_cover=canopy_cover,
         sources=sources,
     )
