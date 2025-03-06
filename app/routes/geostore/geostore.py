@@ -25,7 +25,6 @@ from ...models.pydantic.geostore import (
     GeostoreResponse,
     RWGeostoreIn,
 )
-from ...settings.globals import RW_API_KEY
 from ...utils.rw_api import create_rw_geostore
 from ...utils.rw_api import get_boundary_by_country_id as rw_get_boundary_by_country_id
 from ...utils.rw_api import (
@@ -94,7 +93,7 @@ async def get_any_geostore(
                 raise HTTPException(status_code=404, detail=str(e))
     except (AttributeError, ValueError):
         pass
-    result = await proxy_get_geostore(geostore_id, request.query_params, x_api_key)
+    result = await proxy_get_geostore(geostore_id, request.query_params)
     return result
 
 
@@ -114,7 +113,7 @@ async def get_admin_list(
         "3.6", alias="source[version]", description="Version of admin boundaries"
     ),
     request: Request,
-    x_api_key: Annotated[str | None, Header()] = None,
+    _: APIKey = Depends(get_api_key),
 ):
     """Get all national IDs, names and country codes (proxies requests for GADM
     3.6 features to the RW API)"""
@@ -123,9 +122,7 @@ async def get_admin_list(
             status_code=400, detail="source provider and version must be non-empty"
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
-        result: AdminListResponse = await rw_get_admin_list(
-            request.query_params, x_api_key
-        )
+        result: AdminListResponse = await rw_get_admin_list(request.query_params)
     else:
         try:
             result = await geostore.get_admin_boundary_list(
@@ -165,7 +162,7 @@ async def get_boundary_by_country_id(
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: AdminGeostoreResponse = await rw_get_boundary_by_country_id(
-            country_id, request.query_params, RW_API_KEY
+            country_id, request.query_params
         )
     else:
         try:
@@ -201,7 +198,7 @@ async def rw_get_boundary_by_region_id(
         "3.6", alias="source[version]", description="Version of admin boundaries"
     ),
     simplify: Optional[float] = Query(None, description="Simplify tolerance"),
-    x_api_key: Annotated[str | None, Header()] = None,
+    _: APIKey = Depends(get_api_key),
 ):
     """Get an administrative boundary by country and region IDs (proxies requests for GADM
     3.6 boundaries to the RW API)"""
@@ -211,7 +208,7 @@ async def rw_get_boundary_by_region_id(
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: AdminGeostoreResponse = await get_boundary_by_region_id(
-            country_id, region_id, request.query_params, x_api_key
+            country_id, region_id, request.query_params
         )
     else:
         try:
@@ -248,7 +245,7 @@ async def rw_get_boundary_by_subregion_id(
         "3.6", alias="source[version]", description="Version of admin boundaries"
     ),
     simplify: Optional[float] = Query(None, description="Simplify tolerance"),
-    x_api_key: Annotated[str | None, Header()] = None,
+    _: APIKey = Depends(get_api_key),
 ):
     """Get an administrative boundary by country, region, and subregion IDs
     (proxies requests for GADM 3.6 boundaries to the RW API)"""
@@ -258,7 +255,7 @@ async def rw_get_boundary_by_subregion_id(
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: AdminGeostoreResponse = await get_boundary_by_subregion_id(
-            country_id, region_id, subregion_id, request.query_params, x_api_key
+            country_id, region_id, subregion_id, request.query_params
         )
     else:
         try:
@@ -293,7 +290,7 @@ async def rw_get_geostore_by_land_use_and_index(
     land_use_type: str = Path(..., title="land_use_type"),
     index: str = Path(..., title="index"),
     request: Request,
-    x_api_key: Annotated[str | None, Header()] = None,
+    _: APIKey = Depends(get_api_key),
 ):
     """Get a geostore object by land use type name and id.
 
@@ -302,7 +299,7 @@ async def rw_get_geostore_by_land_use_and_index(
     API)
     """
     result: AdminGeostoreResponse = await get_geostore_by_land_use_and_index(
-        land_use_type, index, request.query_params, x_api_key
+        land_use_type, index, request.query_params
     )
 
     return result
