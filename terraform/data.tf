@@ -73,6 +73,7 @@ data "template_file" "container_definition" {
     raster_analysis_sfn_arn     = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_state_machine_arn
     service_url                 = local.service_url
     rw_api_url                  = var.rw_api_url
+    rw_api_key_arn              = var.rw_api_key_arn
     api_token_secret_arn        = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
     aws_gcs_key_secret_arn      = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
 

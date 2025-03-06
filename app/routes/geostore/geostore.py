@@ -4,9 +4,11 @@ geometries in the datastore."""
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Request
+from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
+from ...authentication.api_keys import get_api_key
 from ...crud import geostore
 from ...errors import (
     BadAdminSourceException,
@@ -23,6 +25,7 @@ from ...models.pydantic.geostore import (
     GeostoreResponse,
     RWGeostoreIn,
 )
+from ...settings.globals import RW_API_KEY
 from ...utils.rw_api import create_rw_geostore
 from ...utils.rw_api import get_boundary_by_country_id as rw_get_boundary_by_country_id
 from ...utils.rw_api import (
@@ -152,7 +155,7 @@ async def get_boundary_by_country_id(
         "3.6", alias="source[version]", description="Version of admin boundaries"
     ),
     simplify: Optional[float] = Query(None, description="Simplify tolerance"),
-    x_api_key: Annotated[str | None, Header()] = None,
+    _: APIKey = Depends(get_api_key),
 ):
     """Get an administrative boundary by country ID (proxies requests for GADM
     3.6 boundaries to the RW API)"""
@@ -162,7 +165,7 @@ async def get_boundary_by_country_id(
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: AdminGeostoreResponse = await rw_get_boundary_by_country_id(
-            country_id, request.query_params, x_api_key
+            country_id, request.query_params, RW_API_KEY
         )
     else:
         try:
