@@ -1,19 +1,31 @@
 """Run analysis on registered datasets."""
 
-import os
-import random
+import json
 import uuid
+from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
-from app.models.pydantic.datamart import TreeCoverLossByDriverIn
+from app.models.enum.geostore import GeostoreOrigin
+from app.models.pydantic.datamart import (
+    DataMartResource,
+    DataMartResourceLink,
+    DataMartResourceLinkResponse,
+    TreeCoverLossByDriver,
+    TreeCoverLossByDriverIn,
+    TreeCoverLossByDriverResponse,
+)
 from app.settings.globals import API_URL
+from app.tasks.datamart.land import (
+    DEFAULT_LAND_DATASET_VERSIONS,
+    compute_tree_cover_loss_by_driver,
+)
+from app.utils.geostore import get_geostore
 
 from ...authentication.api_keys import get_api_key
-from ...models.pydantic.responses import Response
 
 router = APIRouter()
 
@@ -21,44 +33,41 @@ router = APIRouter()
 @router.get(
     "/tree-cover-loss-by-driver",
     response_class=ORJSONResponse,
-    response_model=Response,
+    response_model=DataMartResourceLinkResponse,
     tags=["Land"],
+    status_code=200,
 )
 async def tree_cover_loss_by_driver_search(
     *,
     geostore_id: UUID = Query(..., title="Geostore ID"),
-    canopy_cover: int = Query(30, alias="canopy_cover", title="Canopy Cover Percent"),
+    canopy_cover: int = Query(30, alias="canopy_cover", title="Canopy cover percent"),
+    dataset: Optional[list[str]] = Query([], title="Dataset overrides"),
+    version: Optional[list[str]] = Query([], title="Version overrides"),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
+    # Merge dataset version overrides with default dataset versions
+    query_dataset_version = {ds: v for ds, v in zip(dataset, version)}
+    dataset_version = DEFAULT_LAND_DATASET_VERSIONS | query_dataset_version
 
-    resource_id = _get_resource_id(geostore_id, canopy_cover)
-
-    if os.path.exists(f"/tmp/{resource_id}"):
-        return ORJSONResponse(
-            status_code=200,
-            content={
-                "status": "success",
-                "data": {
-                    "link": f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}"
-                },
-            },
-        )
-
-    return ORJSONResponse(
-        status_code=404,
-        content={
-            "status": "failed",
-            "message": "Not Found",
-        },
+    resource_id = _get_resource_id(
+        "tree-cover-loss-by-driver", geostore_id, canopy_cover, dataset_version
     )
+
+    # check if it exists
+    await _get_resource(resource_id)
+    link = DataMartResourceLink(
+        link=f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}"
+    )
+    return DataMartResourceLinkResponse(data=link)
 
 
 @router.get(
     "/tree-cover-loss-by-driver/{resource_id}",
     response_class=ORJSONResponse,
-    response_model=Response,
+    response_model=TreeCoverLossByDriverResponse,
     tags=["Land"],
+    status_code=200,
 )
 async def tree_cover_loss_by_driver_get(
     *,
@@ -66,96 +75,93 @@ async def tree_cover_loss_by_driver_get(
     api_key: APIKey = Depends(get_api_key),
 ):
     """Retrieve a tree cover loss by drivers resource."""
-    try:
-        with open(f"/tmp/{resource_id}", "r") as f:
-            retries = int(f.read().strip())
+    resource = await _get_resource(resource_id)
 
-        if retries < 3:
-            retries += 1
-            with open(f"/tmp/{resource_id}", "w") as f:
-                f.write(str(retries))
+    headers = {}
+    if resource["status"] == "pending":
+        headers = {"Retry-After": "1"}
 
-            return ORJSONResponse(
-                status_code=200,
-                headers={"Retry-After": "1"},
-                content={"data": {"status": "pending"}, "status": "success"},
-            )
-        else:
-            return ORJSONResponse(
-                status_code=200,
-                content={
-                    "data": {
-                        "self": f"/v0/land/tree-cover-loss-by-driver/{resource_id}",
-                        "treeCoverLossByDriver": {
-                            "Permanent agriculture": 10,
-                            "Hard commodities": 12,
-                            "Shifting cultivation": 7,
-                            "Forest management": 93.4,
-                            "Wildfires": 42,
-                            "Settlements and infrastructure": 13.562,
-                            "Other natural disturbances": 6,
-                        },
-                        "metadata": {
-                            "sources": [
-                                {"dataset": "umd_tree_cover_loss", "version": "v1.11"},
-                                {
-                                    "dataset": "wri_google_tree_cover_loss_by_drivers",
-                                    "version": "v1.11",
-                                },
-                                {
-                                    "dataset": "umd_tree_cover_density_2000",
-                                    "version": "v1.11",
-                                },
-                            ]
-                        },
-                    },
-                    "status": "success",
-                },
-            )
-    except FileNotFoundError:
-        return ORJSONResponse(
-            status_code=404,
-            content={
-                "status": "failed",
-                "message": "Not Found",
-            },
-        )
+    tree_cover_loss_by_driver = TreeCoverLossByDriver(**resource)
+    tree_cover_loss_by_driver_response = TreeCoverLossByDriverResponse(
+        data=tree_cover_loss_by_driver
+    )
+
+    return ORJSONResponse(
+        status_code=200,
+        headers=headers,
+        content=tree_cover_loss_by_driver_response.dict(),
+    )
 
 
 @router.post(
     "/tree-cover-loss-by-driver",
     response_class=ORJSONResponse,
-    response_model=Response,
+    response_model=DataMartResourceLinkResponse,
     tags=["Land"],
-    deprecated=True,
+    status_code=202,
 )
 async def tree_cover_loss_by_driver_post(
     data: TreeCoverLossByDriverIn,
+    background_tasks: BackgroundTasks,
     api_key: APIKey = Depends(get_api_key),
 ):
     """Create new tree cover loss by drivers resource for a given geostore and
     canopy cover."""
 
+    # check geostore is valid
+    try:
+        await get_geostore(data.geostore_id, GeostoreOrigin.rw)
+    except HTTPException:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Geostore {data.geostore_id} can't be found or is not valid.",
+        )
+
     # create initial Job item as pending
     # trigger background task to create item
     # return 202 accepted
-    resource_id = _get_resource_id(data.geostore_id, data.canopy_cover)
+    dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
+    resource_id = _get_resource_id(
+        "tree-cover-loss-by-driver",
+        data.geostore_id,
+        data.canopy_cover,
+        dataset_version,
+    )
 
-    # mocks randomness of analysis time
-    retries = random.randint(0, 3)
-    with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(str(retries))
+    await _save_pending_resource(resource_id)
 
-    return ORJSONResponse(
-        status_code=202,
-        content={
-            "data": {
-                "link": f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}",
-            },
-            "status": "success",
-        },
+    background_tasks.add_task(
+        compute_tree_cover_loss_by_driver,
+        resource_id,
+        data.geostore_id,
+        data.canopy_cover,
+        dataset_version,
+    )
+
+    link = DataMartResourceLink(
+        link=f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}"
+    )
+    return DataMartResourceLinkResponse(data=link)
+
+
+def _get_resource_id(path, geostore_id, canopy_cover, dataset_version):
+    return uuid.uuid5(
+        uuid.NAMESPACE_OID, f"{path}_{geostore_id}_{canopy_cover}_{dataset_version}"
     )
 
 
-def _get_resource_id(geostore_id, canopy_cover):
-    return uuid.uuid5(uuid.NAMESPACE_OID, f"{geostore_id}_{canopy_cover}")
+async def _get_resource(resource_id):
+    try:
+        with open(f"/tmp/{resource_id}", "r") as f:
+            resource = json.loads(f.read())
+            return resource
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404, detail="Resource not found, may require computation."
+        )
+
+
+async def _save_pending_resource(resource_id):
+    pending_resource = DataMartResource(status="pending")
+    with open(f"/tmp/{resource_id}", "w") as f:
+        f.write(pending_resource.json())
