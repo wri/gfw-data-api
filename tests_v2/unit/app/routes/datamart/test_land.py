@@ -103,7 +103,7 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
         )
 
         response = await async_client.get(
-            "/v0/land/tree_cover_loss_by_driver?x-api-key={api_key}&geostore_id={geostore_id}&canopy_cover=30&dataset=umd_tree_cover_loss&version=v1.8&dataset=umd_tree_cover_density_2000&version=v1.6",
+            f"/v0/land/tree_cover_loss_by_driver?geostore_id={geostore}&canopy_cover=30&dataset=umd_tree_cover_loss&version=v1.8&dataset=umd_tree_cover_density_2000&version=v1.6",
             headers=headers,
             params=params,
         )

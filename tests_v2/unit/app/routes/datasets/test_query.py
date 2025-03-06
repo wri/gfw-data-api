@@ -892,7 +892,7 @@ async def test_query_raster_lambda_with_overrides(
     generic_raster_version,
     geostore,
 ):
-    dataset_name, _ = generic_raster_version
+    dataset_name, _, _ = generic_raster_version
     geostore_common = await get_geostore(geostore, GeostoreOrigin.rw)
     sql = "SELECT sum(area__ha) FROM data"
 
