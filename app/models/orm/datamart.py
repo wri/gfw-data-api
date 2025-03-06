@@ -12,3 +12,7 @@ class AnalysisResult(Base):
         db.UUID, db.ForeignKey("api_keys.api_key", name="api_key_fk")
     )
     error = db.Column(db.String)
+
+    _api_keys_api_key_idx = db.Index(
+        "analysis_results_id_idx", "id", postgresql_using="hash"
+    )

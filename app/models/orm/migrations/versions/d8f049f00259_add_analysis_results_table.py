@@ -48,6 +48,13 @@ def upgrade():
         ),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_index(
+        "analysis_results_id_idx",
+        "analysis_results",
+        ["id"],
+        unique=False,
+        postgresql_using="hash",
+    ),
     # ### end Alembic commands ###
 
 
