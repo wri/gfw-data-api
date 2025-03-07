@@ -7,7 +7,7 @@ from httpx import AsyncClient
 
 from app.settings.globals import S3_ENTRYPOINT_URL
 from app.utils.aws import get_s3_client
-from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME, GPKG_NAME
+from tests import BUCKET, DATA_LAKE_BUCKET, GPKG_NAME, SHP_NAME
 from tests.conftest import FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import (
@@ -56,11 +56,13 @@ async def test_versions(async_client: AsyncClient):
     assert version_data["data"]["dataset"] == dataset
     assert version_data["data"]["version"] == version
     assert (
-        version_data["data"]["metadata"]["spatial_resolution"] == version_metadata["spatial_resolution"]
+        version_data["data"]["metadata"]["spatial_resolution"]
+        == version_metadata["spatial_resolution"]
     )
     assert (
-        version_data["data"]["metadata"]["resolution_description"] == version_metadata["resolution_description"]
-    )    
+        version_data["data"]["metadata"]["resolution_description"]
+        == version_metadata["resolution_description"]
+    )
     assert (
         version_data["data"]["metadata"]["content_date_range"]["start_date"]
         == version_metadata["content_date_range"]["start_date"]
@@ -329,8 +331,8 @@ async def test_invalid_source_uri(async_client: AsyncClient):
 
     # Test appending to a version that exists
     response = await async_client.post(
-        f"/dataset/{dataset}/{version}/append", 
-        json={"source_uri": source_uri, "source_driver": "ESRI Shapefile"}
+        f"/dataset/{dataset}/{version}/append",
+        json={"source_uri": source_uri, "source_driver": "ESRI Shapefile"},
     )
     assert response.status_code == 400
     assert response.json()["status"] == "failed"
@@ -448,6 +450,7 @@ async def test_version_put_raster(async_client: AsyncClient):
     )
     assert response.status_code == 404
 
+
 @pytest.mark.asyncio
 async def test_version_post_append(async_client: AsyncClient):
     """Test version append operations."""
@@ -460,7 +463,7 @@ async def test_version_post_append(async_client: AsyncClient):
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{GPKG_NAME}"],
             "source_driver": "GPKG",
-            "layers": ["layer1"]
+            "layers": ["layer1"],
         },
     }
 
@@ -470,7 +473,7 @@ async def test_version_post_append(async_client: AsyncClient):
         dataset_payload=dataset_payload,
         version_payload=version_payload,
         async_client=async_client,
-        execute_batch_jobs=False,
+        execute_batch_jobs=True,
     )
 
     response = await async_client.get(f"/dataset/{dataset}/{version}")
@@ -479,11 +482,11 @@ async def test_version_post_append(async_client: AsyncClient):
     # Test appending existing source_uri
     response = await async_client.post(
         f"/dataset/{dataset}/{version}/append",
-        json = {
+        json={
             "source_driver": "GPKG",
             "source_uri": [f"s3://{BUCKET}/{GPKG_NAME}"],
-            "layers": ["layer2"]
-        }
+            "layers": ["layer2"],
+        },
     )
     assert response.status_code == 200
 
@@ -491,10 +494,10 @@ async def test_version_post_append(async_client: AsyncClient):
     bad_uri = "s3://doesnotexist"
     response = await async_client.post(
         f"/dataset/{dataset}/{version}/append",
-        json = {
+        json={
             "source_driver": "GPKG",
             "source_uri": [bad_uri],
-        }
+        },
     )
     assert response.status_code == 400
     assert response.json()["status"] == "failed"
@@ -506,16 +509,20 @@ async def test_version_post_append(async_client: AsyncClient):
     # Test appending with invalid source driver
     response = await async_client.post(
         f"/dataset/{dataset}/{version}/append",
-        json = {
+        json={
             "source_driver": "ESRI Shapefile",
             "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
-        }
+        },
     )
     assert response.status_code == 400
     assert response.json()["status"] == "failed"
-    assert (response.json()["message"] == "source_driver must match the original source_driver")
+    assert (
+        response.json()["message"]
+        == "source_driver must match the original source_driver"
+    )
 
     ## TODO: test with missing layers
+
 
 @pytest.mark.hanging
 @pytest.mark.asyncio
