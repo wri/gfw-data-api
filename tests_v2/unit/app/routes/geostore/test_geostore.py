@@ -1,18 +1,15 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient
 from starlette.datastructures import QueryParams
 
-from app.crud import geostore as crud_geostore
 from app.models.pydantic.geostore import (
     AdminGeostoreResponse,
     AdminListResponse,
     Geostore,
     GeostoreResponse,
 )
-from app.routes.geostore import geostore
 
 example_admin_list = {
     "data": [
@@ -378,52 +375,43 @@ async def test_get_gadm_geostore_by_subregion_sends_arbitrary_query_params_to_rw
 
 
 @pytest.mark.asyncio
-async def test_add_geostore_rw_branch(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
-):
+async def test_add_geostore_sends_rw_style_payloads_to_rw(async_client: AsyncClient):
     url = "/geostore"
 
-    mock_create_rw_geostore = AsyncMock(
+    with patch(
+        "app.routes.geostore.geostore.create_rw_geostore",
         return_value=AdminGeostoreResponse(**create_rw_geostore_response),
-        spec=geostore.create_rw_geostore,
-    )
-    monkeypatch.setattr(geostore, "create_rw_geostore", mock_create_rw_geostore)
+    ) as mock_create_rw_geostore:
+        with patch(
+            "app.routes.geostore.geostore.geostore.create_user_area",
+            side_effect=Exception,
+        ) as mock_create_gfw_geostore:
+            resp = await async_client.post(
+                url, json=create_rw_geostore_payload, follow_redirects=True
+            )
 
-    mock_geostore_obj = MagicMock(spec=Geostore)
-    mock_create_gfw_geostore = AsyncMock(
-        return_value=mock_geostore_obj, spec=crud_geostore.create_user_area
-    )
-    monkeypatch.setattr(crud_geostore, "create_user_area", mock_create_gfw_geostore)
-
-    _ = await async_client.post(
-        url, json=create_rw_geostore_payload, follow_redirects=True
-    )
-
+    assert resp.status_code == 201
     assert mock_create_rw_geostore.called is True
     assert mock_create_gfw_geostore.called is False
 
 
 @pytest.mark.asyncio
-async def test_add_geostore_gfw_branch(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
-):
+async def test_add_geostore_sends_gfw_style_payloads_to_gfw(async_client: AsyncClient):
     url = "/geostore"
 
-    mock_create_rw_geostore = AsyncMock(
-        return_value=AdminGeostoreResponse(**create_rw_geostore_response),
-        spec=geostore.create_rw_geostore,
-    )
-    monkeypatch.setattr(geostore, "create_rw_geostore", mock_create_rw_geostore)
+    with patch(
+        "app.routes.geostore.geostore.create_rw_geostore",
+        side_effect=Exception,
+    ) as mock_create_rw_geostore:
+        with patch(
+            "app.routes.geostore.geostore.geostore.create_user_area",
+            return_value=create_gfw_geostore_data,
+        ) as mock_create_gfw_geostore:
+            resp = await async_client.post(
+                url, json=create_gfw_geostore_payload, follow_redirects=True
+            )
 
-    mock_create_gfw_geostore = AsyncMock(
-        return_value=create_gfw_geostore_data, spec=crud_geostore.create_user_area
-    )
-    monkeypatch.setattr(crud_geostore, "create_user_area", mock_create_gfw_geostore)
-
-    _ = await async_client.post(
-        url, json=create_gfw_geostore_payload, follow_redirects=True
-    )
-
+    assert resp.status_code == 201
     assert mock_create_rw_geostore.called is False
     assert mock_create_gfw_geostore.called is True
 
