@@ -1,9 +1,8 @@
-from functools import partial
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from httpx import AsyncClient, MockTransport, Request, Response
+from httpx import AsyncClient
 from starlette.datastructures import QueryParams
 
 from app.crud import geostore as crud_geostore
@@ -14,7 +13,6 @@ from app.models.pydantic.geostore import (
     GeostoreResponse,
 )
 from app.routes.geostore import geostore
-from app.utils import rw_api
 
 example_admin_list = {
     "data": [
@@ -347,23 +345,33 @@ async def test_get_gadm_geostore_by_subregion_without_specifying_version_proxies
 
 
 @pytest.mark.asyncio
-async def test_get_admin_geostore_with_query_params(
-    apikey, async_client: AsyncClient, monkeypatch: MonkeyPatch
+async def test_get_gadm_geostore_by_subregion_sends_arbitrary_query_params_to_rw(
+    apikey,
+    async_client: AsyncClient,
 ):
-    async def mock_resp_func(request: Request) -> Response:
-        assert "foo" in str(request.url)
-        return Response(status_code=200, json=example_admin_geostore_snipped)
+    country = "MEX"
+    region = "1"
+    subregion = "1"
+    url = f"/geostore/admin/{country}/{region}/{subregion}"
+    params = {"foo": "bar"}
 
-    transport = MockTransport(mock_resp_func)
+    with patch(
+        "app.routes.geostore.geostore.get_boundary_by_subregion_id",
+        return_value=AdminGeostoreResponse(**example_admin_geostore_snipped),
+    ) as mock_get_boundary_by_subregion_id:
+        resp = await async_client.get(
+            url, params=params, headers={"x-api-key": apikey[0]}
+        )
 
-    mocked_client = partial(AsyncClient, transport=transport)
-    monkeypatch.setattr(rw_api, "AsyncClient", mocked_client)
-    response = await async_client.get(
-        "/geostore/admin/MEX/1/1?foo=bar", headers={"x-api-key": apikey[0]}
+    assert resp.status_code == 200
+    assert resp.json() == example_admin_geostore_snipped
+    assert mock_get_boundary_by_subregion_id.called is True
+    assert mock_get_boundary_by_subregion_id.call_args.args == (
+        country,
+        region,
+        subregion,
+        QueryParams(params),
     )
-
-    assert response.json() == example_admin_geostore_snipped
-    assert response.status_code == 200
 
 
 @pytest.mark.asyncio
