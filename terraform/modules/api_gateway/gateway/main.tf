@@ -135,6 +135,74 @@ module "download_shapes_endpoint" {
   integration_uri = "http://${var.lb_dns_name}/dataset/{dataset}/{version}/download/${each.key}"
 }
 
+resource "aws_api_gateway_resource" "datamart_v0" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id   = aws_api_gateway_rest_api.api_gw_api.root_resource_id
+  path_part   = "v0"
+}
+
+resource "aws_api_gateway_resource" "datamart_land" {
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id   = aws_api_gateway_resource.datamart_v0.id
+  path_part   = "land"
+}
+
+module "datamart_proxy" {
+  source = "../resource"
+
+  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id   = aws_api_gateway_resource.datamart_land.id
+  path_part   = "{proxy+}"
+}
+
+
+module "datamart_get" {
+  source = "../endpoint"
+
+  rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
+  authorizer_id = aws_api_gateway_authorizer.api_key.id
+  api_resource  = module.datamart_proxy.aws_api_gateway_resource
+
+  require_api_key = true
+  http_method     = "GET"
+  authorization   = "CUSTOM"
+
+  integration_parameters = {
+    "integration.request.path.proxy" = "method.request.path.proxy"
+  }
+
+  method_parameters = {
+    "method.request.path.proxy" = true
+
+  }
+
+  integration_uri = "http://${var.lb_dns_name}/v0/land/{proxy}"
+}
+
+
+module "datamart_post" {
+  source = "../endpoint"
+
+  rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
+  authorizer_id = aws_api_gateway_authorizer.api_key.id
+  api_resource  = module.datamart_proxy.aws_api_gateway_resource
+
+  require_api_key = true
+  http_method     = "POST"
+  authorization   = "CUSTOM"
+
+  integration_parameters = {
+    "integration.request.path.proxy" = "method.request.path.proxy"
+  }
+
+  method_parameters = {
+    "method.request.path.proxy" = true
+
+  }
+
+  integration_uri = "http://${var.lb_dns_name}/v0/land/{proxy}"
+}
+
 module "unprotected_resource" {
   source = "../resource"
 
@@ -157,7 +225,7 @@ module "unprotected_endpoints" {
   authorization   = "NONE"
 
   method_parameters      = { "method.request.path.proxy" = true }
-  integration_parameters = { "integration.request.path.proxy" = "method.request.path.proxy" }
+  integration_parameters = { "integration.request.proxy" = "method.request.path.proxy" }
 
   integration_uri = "http://${var.lb_dns_name}/{proxy}"
 }
@@ -215,7 +283,9 @@ resource "aws_api_gateway_deployment" "api_gw_dep" {
     module.download_shapes_endpoint["shp"].integration_point,
     module.download_shapes_endpoint["gpkg"].integration_point,
     module.download_shapes_endpoint["geotiff"].integration_point,
-    module.unprotected_endpoints.integration_point
+    module.unprotected_endpoints.integration_point,
+    module.datamart_get.integration_point,
+    module.datamart_post.integration_point
   ]
 
   lifecycle {
