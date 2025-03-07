@@ -4,11 +4,9 @@ geometries in the datastore."""
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Request
-from fastapi.openapi.models import APIKey
+from fastapi import APIRouter, Header, HTTPException, Path, Query, Request
 from fastapi.responses import ORJSONResponse
 
-from ...authentication.api_keys import get_api_key
 from ...crud import geostore
 from ...errors import (
     BadAdminSourceException,
@@ -113,7 +111,7 @@ async def get_admin_list(
         "3.6", alias="source[version]", description="Version of admin boundaries"
     ),
     request: Request,
-    _: APIKey = Depends(get_api_key),
+    x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get all national IDs, names and country codes (proxies requests for GADM
     3.6 features to the RW API)"""
@@ -152,7 +150,7 @@ async def get_boundary_by_country_id(
         "3.6", alias="source[version]", description="Version of admin boundaries"
     ),
     simplify: Optional[float] = Query(None, description="Simplify tolerance"),
-    _: APIKey = Depends(get_api_key),
+    x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get an administrative boundary by country ID (proxies requests for GADM
     3.6 boundaries to the RW API)"""
@@ -198,7 +196,7 @@ async def rw_get_boundary_by_region_id(
         "3.6", alias="source[version]", description="Version of admin boundaries"
     ),
     simplify: Optional[float] = Query(None, description="Simplify tolerance"),
-    _: APIKey = Depends(get_api_key),
+    x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get an administrative boundary by country and region IDs (proxies requests for GADM
     3.6 boundaries to the RW API)"""
@@ -245,7 +243,7 @@ async def rw_get_boundary_by_subregion_id(
         "3.6", alias="source[version]", description="Version of admin boundaries"
     ),
     simplify: Optional[float] = Query(None, description="Simplify tolerance"),
-    _: APIKey = Depends(get_api_key),
+    x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get an administrative boundary by country, region, and subregion IDs
     (proxies requests for GADM 3.6 boundaries to the RW API)"""
@@ -290,7 +288,7 @@ async def rw_get_geostore_by_land_use_and_index(
     land_use_type: str = Path(..., title="land_use_type"),
     index: str = Path(..., title="index"),
     request: Request,
-    _: APIKey = Depends(get_api_key),
+    x_api_key: Annotated[str | None, Header()] = None,
 ):
     """Get a geostore object by land use type name and id.
 
