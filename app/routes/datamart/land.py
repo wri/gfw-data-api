@@ -42,7 +42,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/tree-cover-loss-by-driver",
+    "/tree_cover_loss_by_driver",
     response_class=ORJSONResponse,
     response_model=DataMartResourceLinkResponse,
     tags=["Land"],
@@ -62,19 +62,19 @@ async def tree_cover_loss_by_driver_search(
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | query_dataset_version
 
     resource_id = _get_resource_id(
-        "tree-cover-loss-by-driver", geostore_id, canopy_cover, dataset_version
+        "tree_cover_loss_by_driver", geostore_id, canopy_cover, dataset_version
     )
 
     # check if it exists
     await _get_resource(resource_id)
     link = DataMartResourceLink(
-        link=f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}"
+        link=f"{API_URL}/v0/land/tree_cover_loss_by_driver/{resource_id}"
     )
     return DataMartResourceLinkResponse(data=link)
 
 
 @router.get(
-    "/tree-cover-loss-by-driver/{resource_id}",
+    "/tree_cover_loss_by_driver/{resource_id}",
     response_class=ORJSONResponse,
     response_model=TreeCoverLossByDriverResponse,
     tags=["Land"],
@@ -100,7 +100,7 @@ async def tree_cover_loss_by_driver_get(
 
 
 @router.post(
-    "/tree-cover-loss-by-driver",
+    "/tree_cover_loss_by_driver",
     response_class=ORJSONResponse,
     response_model=DataMartResourceLinkResponse,
     tags=["Land"],
@@ -130,7 +130,7 @@ async def tree_cover_loss_by_driver_post(
     # return 202 accepted
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
     resource_id = _get_resource_id(
-        "tree-cover-loss-by-driver",
+        "tree_cover_loss_by_driver",
         data.geostore_id,
         data.canopy_cover,
         dataset_version,
@@ -147,7 +147,7 @@ async def tree_cover_loss_by_driver_post(
     )
 
     link = DataMartResourceLink(
-        link=f"{API_URL}/v0/land/tree-cover-loss-by-driver/{resource_id}"
+        link=f"{API_URL}/v0/land/tree_cover_loss_by_driver/{resource_id}"
     )
     return DataMartResourceLinkResponse(data=link)
 
