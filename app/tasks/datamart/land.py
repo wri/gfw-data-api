@@ -36,7 +36,7 @@ async def compute_tree_cover_loss_by_driver(
 
         results = await _query_dataset_json(
             "umd_tree_cover_loss",
-            DEFAULT_LAND_DATASET_VERSIONS["umd_tree_cover_loss"],
+            dataset_version["umd_tree_cover_loss"],
             query,
             geostore,
             dataset_version,
