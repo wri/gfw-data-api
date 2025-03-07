@@ -303,8 +303,11 @@ async def test_get_gadm_geostore_by_subregion_with_gadm_41_calls_gfw_branch_with
         mock_get_gadm_geostore.return_value = AdminGeostoreResponse(
             **example_geostore_resp
         )
-        _ = await async_client.get(url, params=params, headers={"x-api-key": apikey[0]})
+        resp = await async_client.get(
+            url, params=params, headers={"x-api-key": apikey[0]}
+        )
 
+    assert resp.status_code == 200
     assert mock_get_gadm_geostore.called is True
     assert mock_get_gadm_geostore.call_args.args == (
         "gadm",
