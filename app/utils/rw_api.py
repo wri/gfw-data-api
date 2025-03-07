@@ -197,18 +197,13 @@ async def signup(name: str, email: str) -> User:
     return User(**response.json()["data"])
 
 
-async def create_rw_geostore(
-    payload: RWGeostoreIn, x_api_key: str | None = None
-) -> AdminGeostoreResponse:
+async def create_rw_geostore(payload: RWGeostoreIn) -> AdminGeostoreResponse:
     url = f"{RW_API_URL}/v1/geostore"
 
     async with AsyncClient() as client:
-        if x_api_key is not None:
-            response: HTTPXResponse = await client.post(
-                url, json=payload.dict(), headers={"x-api-key": x_api_key}
-            )
-        else:
-            response = await client.post(url, json=payload.dict())
+        response: HTTPXResponse = await client.post(
+            url, json=payload.dict(), headers={"x-api-key": RW_API_KEY}
+        )
 
     if response.status_code == 200:
         return AdminGeostoreResponse.parse_obj(response.json())

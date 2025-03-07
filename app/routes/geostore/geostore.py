@@ -54,7 +54,7 @@ async def add_new_geostore(
     API
     """
     if isinstance(request, RWGeostoreIn):
-        result: AdminGeostoreResponse = await create_rw_geostore(request, x_api_key)
+        result: AdminGeostoreResponse = await create_rw_geostore(request)
         return result
     # Otherwise, meant for GFW Data API geostore
     try:
