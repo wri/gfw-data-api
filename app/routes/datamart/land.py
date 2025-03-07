@@ -87,12 +87,11 @@ async def tree_cover_loss_by_driver_get(
     api_key: APIKey = Depends(get_api_key),
 ):
     """Retrieve a tree cover loss by drivers resource."""
-    resource = await _get_resource(resource_id)
+    tree_cover_loss_by_driver = await _get_resource(resource_id)
 
-    if resource.status == AnalysisStatus.pending:
+    if tree_cover_loss_by_driver.status == AnalysisStatus.pending:
         response.headers["Retry-After"] = "1"
 
-    tree_cover_loss_by_driver = TreeCoverLossByDriver.from_orm(resource)
     tree_cover_loss_by_driver_response = TreeCoverLossByDriverResponse(
         data=tree_cover_loss_by_driver
     )
@@ -162,7 +161,7 @@ def _get_resource_id(path, geostore_id, canopy_cover, dataset_version):
 async def _get_resource(resource_id):
     try:
         resource = await datamart_crud.get_result(resource_id)
-        return resource
+        return TreeCoverLossByDriver.from_orm(resource)
     except RecordNotFoundError:
         raise HTTPException(
             status_code=404, detail="Resource not found, may require computation."
@@ -174,6 +173,7 @@ async def _save_pending_resource(resource_id, endpoint, api_key):
         id=resource_id,
         status=AnalysisStatus.pending,
         endpoint=endpoint,
+        requested_by=api_key,
         message="Resource is still processing, follow Retry-After header.",
     )
 
