@@ -410,7 +410,7 @@ async def test_add_geostore_gfw_branch(
 
 
 @pytest.mark.asyncio
-async def test_get_geostore_by_rw_style_id(async_client: AsyncClient):
+async def test_get_geostore_by_rw_style_id_proxies_to_rw(async_client: AsyncClient):
     url = "/geostore/88db597b6bcd096fb80d1542cdc442be"
 
     with patch(
@@ -429,7 +429,7 @@ async def test_get_geostore_by_rw_style_id(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_geostore_by_gfw_style_id(async_client: AsyncClient):
+async def test_get_geostore_by_gfw_style_id_queries_data_api(async_client: AsyncClient):
     url = "/geostore/b9faa657-34c9-96d4-fce4-8bb8a1507cb3"
 
     with patch(
@@ -496,5 +496,5 @@ async def test_get_admin_list_gets_gadm_41_from_data_api(
             url, params=params, headers={"x-api-key": apikey[0]}
         )
 
-    assert mock_gfw_get_admin_list.called is True
     assert resp.json().get("status") == "success"
+    assert mock_gfw_get_admin_list.called is True
