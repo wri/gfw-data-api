@@ -168,7 +168,7 @@ async def test_post_tree_cover_loss_by_drivers(
             assert False
 
         mock_pending_resource.assert_awaited_with(
-            resource_id, "/v0/land/tree-cover-loss-by-driver", api_key
+            resource_id, "/v0/land/tree_cover_loss_by_driver", api_key
         )
         mock_compute_result.assert_awaited_with(
             resource_id,
