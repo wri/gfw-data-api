@@ -11,6 +11,7 @@ from app.models.pydantic.geostore import (
     AdminGeostoreResponse,
     AdminListResponse,
     Geostore,
+    GeostoreResponse,
 )
 from app.routes.geostore import geostore
 from app.utils import rw_api
@@ -409,30 +410,20 @@ async def test_add_geostore_gfw_branch(
 
 
 @pytest.mark.asyncio
-async def test_get_geostore_rw_branch(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
-):
+async def test_get_geostore_by_rw_style_id(async_client: AsyncClient):
     url = "/geostore/88db597b6bcd096fb80d1542cdc442be"
 
-    mock_proxy_get_geostore = AsyncMock(
-        return_value=AdminGeostoreResponse(**example_geostore_resp),
-        spec=geostore.proxy_get_geostore,
-    )
-    monkeypatch.setattr(geostore, "proxy_get_geostore", mock_proxy_get_geostore)
+    with patch(
+        "app.routes.geostore.geostore.geostore.get_gfw_geostore_from_any_dataset",
+        side_effect=Exception,
+    ) as mock_get_gfw_geostore_from_any_dataset:
+        with patch(
+            "app.routes.geostore.geostore.proxy_get_geostore",
+            return_value=GeostoreResponse.parse_obj(real_sample_geostore_resp),
+        ) as mock_proxy_get_geostore:
+            resp = await async_client.get(url)
 
-    mock_geostore_obj = MagicMock(spec=Geostore)
-    mock_get_gfw_geostore_from_any_dataset = AsyncMock(
-        return_value=mock_geostore_obj,
-        spec=crud_geostore.get_gfw_geostore_from_any_dataset,
-    )
-    monkeypatch.setattr(
-        crud_geostore,
-        "get_gfw_geostore_from_any_dataset",
-        mock_get_gfw_geostore_from_any_dataset,
-    )
-
-    _ = await async_client.get(url)
-
+    assert resp.status_code == 200
     assert mock_proxy_get_geostore.called is True
     assert mock_get_gfw_geostore_from_any_dataset.called is False
 
