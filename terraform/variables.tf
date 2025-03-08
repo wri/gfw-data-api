@@ -60,6 +60,11 @@ variable "rw_api_url" {
   type = string
 }
 
+variable "rw_api_key_arn" {
+  type        = string
+  description = "RW API key ARN"
+}
+
 variable "git_sha" {
   type = string
 }
