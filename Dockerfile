@@ -1,7 +1,7 @@
 ARG ENV
 ARG PYTHON_VERSION="3.10"
 ARG USR_LOCAL_BIN=/usr/local/bin
-ARG UV_VERSION="0.5.63"
+ARG UV_VERSION="0.6.3"
 ARG VENV_DIR=/app/.venv
 
 FROM ubuntu:noble AS build
