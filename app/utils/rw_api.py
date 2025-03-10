@@ -271,9 +271,13 @@ async def get_geostore_by_land_use_and_index(
 
 
 async def proxy_get_request_to_rw_api(url: str, query_params: Dict) -> HTTPXResponse:
+    headers = {}
+    if RW_API_KEY is not None:
+        headers["x-api-key"] = RW_API_KEY
+
     async with AsyncClient() as client:
         response: HTTPXResponse = await client.get(
-            url, headers={"x-api-key": RW_API_KEY}, params=query_params
+            url, headers=headers, params=query_params
         )
 
     if response.status_code == 200:
