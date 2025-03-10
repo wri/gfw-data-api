@@ -232,7 +232,7 @@ module "unprotected_endpoints" {
 
 
 resource "aws_api_gateway_usage_plan" "internal" {
-  name = substr("internal_apps", 0, 64)
+  name = "internal_apps"
 
   api_stages {
     api_id = aws_api_gateway_rest_api.api_gw_api.id
@@ -251,7 +251,7 @@ resource "aws_api_gateway_usage_plan" "internal" {
 }
 
 resource "aws_api_gateway_usage_plan" "external" {
-  name = substr("external_apps", 0, 64)
+  name = "external_apps"
 
   api_stages {
     api_id = aws_api_gateway_rest_api.api_gw_api.id
