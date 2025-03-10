@@ -77,8 +77,8 @@ data "template_file" "container_definition" {
     aws_gcs_key_secret_arn      = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
 
     api_gateway_id                  = var.api_gateway_id == "" ? module.api_gateway[0].api_gateway_id : var.api_gateway_id
-    api_gateway_external_usage_plan = var.api_gw_external_up_id == "" ? module.api_gateway[0].external_usage_plan_id : var.api_gw_external_up_id
-    api_gateway_internal_usage_plan = var.api_gw_internal_up_id == "" ? module.api_gateway[0].internal_usage_plan_id : var.api_gw_internal_up_id
+    api_gateway_external_usage_plan = var.api_gw_external_app_id == "" ? module.api_gateway[0].external_usage_plan_id : var.api_gw_external_app_id
+    api_gateway_internal_usage_plan = var.api_gw_internal_app_id == "" ? module.api_gateway[0].internal_usage_plan_id : var.api_gw_internal_app_id
     api_gateway_stage_name          = var.api_gateway_stage_name
     internal_domains                = var.internal_domains
 
