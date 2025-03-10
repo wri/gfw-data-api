@@ -161,7 +161,11 @@ async def test_post_tree_cover_loss_by_drivers(
     origin = payload["domains"][0]
 
     headers = {"origin": origin, "x-api-key": api_key}
-    payload = {"geostore_id": geostore, "canopy_cover": 30}
+    payload = {
+        "geostore_id": geostore,
+        "canopy_cover": 30,
+        "dataset_version": {"umd_tree_cover_loss": "v1.8"},
+    }
     with (
         patch(
             "app.routes.datamart.land._save_pending_resource"
@@ -173,6 +177,7 @@ async def test_post_tree_cover_loss_by_drivers(
         response = await async_client.post(
             "/v0/land/tree_cover_loss_by_driver", headers=headers, json=payload
         )
+
         assert response.status_code == 202
 
         body = response.json()
@@ -188,7 +193,10 @@ async def test_post_tree_cover_loss_by_drivers(
 
         mock_pending_resource.assert_awaited_with(resource_id)
         mock_compute_result.assert_awaited_with(
-            resource_id, uuid.UUID(geostore), 30, DEFAULT_LAND_DATASET_VERSIONS
+            resource_id,
+            uuid.UUID(geostore),
+            30,
+            DEFAULT_LAND_DATASET_VERSIONS | {"umd_tree_cover_loss": "v1.8"},
         )
 
 
@@ -258,15 +266,18 @@ async def test_compute_tree_cover_loss_by_driver(geostore):
         geostore_common = await get_geostore(geostore, GeostoreOrigin.rw)
 
         await compute_tree_cover_loss_by_driver(
-            resource_id, geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
+            resource_id,
+            geostore,
+            30,
+            DEFAULT_LAND_DATASET_VERSIONS | {"umd_tree_cover_loss": "v1.8"},
         )
 
         mock_query_dataset_json.assert_awaited_once_with(
             "umd_tree_cover_loss",
-            "v1.11",
+            "v1.8",
             "SELECT SUM(area__ha) FROM data WHERE umd_tree_cover_density_2000__threshold >= 30 GROUP BY tsc_tree_cover_loss_drivers__driver",
             geostore_common,
-            DEFAULT_LAND_DATASET_VERSIONS,
+            DEFAULT_LAND_DATASET_VERSIONS | {"umd_tree_cover_loss": "v1.8"},
         )
 
         MOCK_RESOURCE["metadata"]["geostore_id"] = geostore
@@ -351,7 +362,7 @@ MOCK_RESOURCE = {
         "geostore_id": "",
         "canopy_cover": 30,
         "sources": [
-            {"dataset": "umd_tree_cover_loss", "version": "v1.11"},
+            {"dataset": "umd_tree_cover_loss", "version": "v1.8"},
             {"dataset": "tsc_tree_cover_loss_drivers", "version": "v2023"},
             {"dataset": "umd_tree_cover_density_2000", "version": "v1.8"},
         ],
