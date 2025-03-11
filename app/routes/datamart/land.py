@@ -1,6 +1,5 @@
 """Run analysis on registered datasets."""
 
-import json
 import re
 import uuid
 from typing import Dict, List
@@ -14,12 +13,16 @@ from fastapi import (
     Path,
     Query,
     Request,
+    Response,
 )
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 
+from app.crud import datamart as datamart_crud
+from app.errors import RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
+    AnalysisStatus,
     DataMartResource,
     DataMartResourceLink,
     DataMartResourceLinkResponse,
@@ -80,25 +83,20 @@ async def tree_cover_loss_by_driver_search(
 async def tree_cover_loss_by_driver_get(
     *,
     resource_id: UUID = Path(..., title="Tree cover loss by driver ID"),
+    response: Response,
     api_key: APIKey = Depends(get_api_key),
 ):
     """Retrieve a tree cover loss by drivers resource."""
-    resource = await _get_resource(resource_id)
+    tree_cover_loss_by_driver = await _get_resource(resource_id)
 
-    headers = {}
-    if resource["status"] == "pending":
-        headers = {"Retry-After": "1"}
+    if tree_cover_loss_by_driver.status == AnalysisStatus.pending:
+        response.headers["Retry-After"] = "1"
 
-    tree_cover_loss_by_driver = TreeCoverLossByDriver(**resource)
     tree_cover_loss_by_driver_response = TreeCoverLossByDriverResponse(
         data=tree_cover_loss_by_driver
     )
 
-    return ORJSONResponse(
-        status_code=200,
-        headers=headers,
-        content=tree_cover_loss_by_driver_response.dict(),
-    )
+    return tree_cover_loss_by_driver_response
 
 
 @router.post(
@@ -109,9 +107,11 @@ async def tree_cover_loss_by_driver_get(
     status_code=202,
 )
 async def tree_cover_loss_by_driver_post(
+    *,
     data: TreeCoverLossByDriverIn,
     background_tasks: BackgroundTasks,
     api_key: APIKey = Depends(get_api_key),
+    request: Request,
 ):
     """Create new tree cover loss by drivers resource for a given geostore and
     canopy cover."""
@@ -136,7 +136,7 @@ async def tree_cover_loss_by_driver_post(
         dataset_version,
     )
 
-    await _save_pending_resource(resource_id)
+    await _save_pending_resource(resource_id, request.url.path, api_key)
 
     background_tasks.add_task(
         compute_tree_cover_loss_by_driver,
@@ -160,19 +160,12 @@ def _get_resource_id(path, geostore_id, canopy_cover, dataset_version):
 
 async def _get_resource(resource_id):
     try:
-        with open(f"/tmp/{resource_id}", "r") as f:
-            resource = json.loads(f.read())
-            return resource
-    except FileNotFoundError:
+        resource = await datamart_crud.get_result(resource_id)
+        return TreeCoverLossByDriver.from_orm(resource)
+    except RecordNotFoundError:
         raise HTTPException(
             status_code=404, detail="Resource not found, may require computation."
         )
-
-
-async def _save_pending_resource(resource_id):
-    pending_resource = DataMartResource(status="pending")
-    with open(f"/tmp/{resource_id}", "w") as f:
-        f.write(pending_resource.json())
 
 
 def _parse_dataset_versions(query_params: Dict[str, List[str]]) -> Dict[str, str]:
@@ -193,3 +186,15 @@ def _parse_dataset_versions(query_params: Dict[str, List[str]]) -> Dict[str, str
         )
 
     return dataset_versions
+
+
+async def _save_pending_resource(resource_id, endpoint, api_key):
+    pending_resource = DataMartResource(
+        id=resource_id,
+        status=AnalysisStatus.pending,
+        endpoint=endpoint,
+        requested_by=api_key,
+        message="Resource is still processing, follow Retry-After header.",
+    )
+
+    await datamart_crud.save_result(pending_resource)

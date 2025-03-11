@@ -6,7 +6,10 @@ from fastapi import HTTPException
 from httpx import AsyncClient
 
 from app.models.enum.geostore import GeostoreOrigin
-from app.models.pydantic.datamart import TreeCoverLossByDriver
+from app.models.pydantic.datamart import (
+    TreeCoverLossByDriver,
+    TreeCoverLossByDriverUpdate,
+)
 from app.routes.datamart.land import _get_resource_id
 from app.tasks.datamart.land import (
     DEFAULT_LAND_DATASET_VERSIONS,
@@ -103,7 +106,7 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
         )
 
         response = await async_client.get(
-            "/v0/land/tree_cover_loss_by_driver?x-api-key={api_key}&geostore_id={geostore_id}&canopy_cover=30&dataset_version[umd_tree_cover_loss]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
+            "/v0/land/tree_cover_loss_by_driver?&geostore_id={geostore_id}&canopy_cover=30&dataset_version[umd_tree_cover_loss]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
             headers=headers,
             params=params,
         )
@@ -191,7 +194,9 @@ async def test_post_tree_cover_loss_by_drivers(
         except ValueError:
             assert False
 
-        mock_pending_resource.assert_awaited_with(resource_id)
+        mock_pending_resource.assert_awaited_with(
+            resource_id, "/v0/land/tree_cover_loss_by_driver", api_key
+        )
         mock_compute_result.assert_awaited_with(
             resource_id,
             uuid.UUID(geostore),
@@ -237,7 +242,10 @@ async def test_get_tree_cover_loss_by_drivers_after_create_saved(
     headers = {"origin": origin, "x-api-key": api_key}
     MOCK_RESOURCE["metadata"]["geostore_id"] = geostore
 
-    with patch("app.routes.datamart.land._get_resource", return_value=MOCK_RESOURCE):
+    with patch(
+        "app.routes.datamart.land._get_resource",
+        return_value=TreeCoverLossByDriver(**MOCK_RESOURCE),
+    ):
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
         )
@@ -258,7 +266,7 @@ async def test_compute_tree_cover_loss_by_driver(geostore):
         patch(
             "app.tasks.datamart.land._query_dataset_json", return_value=MOCK_RESULT
         ) as mock_query_dataset_json,
-        patch("app.tasks.datamart.land._write_resource") as mock_write_result,
+        patch("app.crud.datamart.update_result") as mock_write_result,
     ):
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
@@ -282,7 +290,7 @@ async def test_compute_tree_cover_loss_by_driver(geostore):
 
         MOCK_RESOURCE["metadata"]["geostore_id"] = geostore
         mock_write_result.assert_awaited_once_with(
-            resource_id, TreeCoverLossByDriver.parse_obj(MOCK_RESOURCE)
+            resource_id, TreeCoverLossByDriverUpdate.parse_obj(MOCK_RESOURCE)
         )
 
 
@@ -293,7 +301,7 @@ async def test_compute_tree_cover_loss_by_driver_error(geostore):
             "app.tasks.datamart.land._query_dataset_json",
             side_effect=HTTPException(status_code=500, detail="error"),
         ) as mock_query_dataset_json,
-        patch("app.tasks.datamart.land._write_error") as mock_write_error,
+        patch("app.crud.datamart.update_result") as mock_write_error,
     ):
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
@@ -311,7 +319,9 @@ async def test_compute_tree_cover_loss_by_driver_error(geostore):
             geostore_common,
             DEFAULT_LAND_DATASET_VERSIONS,
         )
-        mock_write_error.assert_awaited_once_with(resource_id, "500: error")
+        mock_write_error.assert_awaited_once_with(
+            resource_id, TreeCoverLossByDriverUpdate.parse_obj(MOCK_ERROR_RESOURCE)
+        )
 
 
 MOCK_RESULT = [
@@ -348,7 +358,7 @@ MOCK_RESULT = [
 
 MOCK_RESOURCE = {
     "status": "saved",
-    "details": None,
+    "message": None,
     "tree_cover_loss_by_driver": {
         "Permanent agriculture": 10.0,
         "Hard commodities": 12.0,
@@ -363,6 +373,21 @@ MOCK_RESOURCE = {
         "canopy_cover": 30,
         "sources": [
             {"dataset": "umd_tree_cover_loss", "version": "v1.8"},
+            {"dataset": "tsc_tree_cover_loss_drivers", "version": "v2023"},
+            {"dataset": "umd_tree_cover_density_2000", "version": "v1.8"},
+        ],
+    },
+}
+
+MOCK_ERROR_RESOURCE = {
+    "status": "failed",
+    "message": "500: error",
+    "tree_cover_loss_by_driver": None,
+    "metadata": {
+        "geostore_id": "b9faa657-34c9-96d4-fce4-8bb8a1507cb3",
+        "canopy_cover": 30,
+        "sources": [
+            {"dataset": "umd_tree_cover_loss", "version": "v1.11"},
             {"dataset": "tsc_tree_cover_loss_drivers", "version": "v2023"},
             {"dataset": "umd_tree_cover_density_2000", "version": "v1.8"},
         ],
