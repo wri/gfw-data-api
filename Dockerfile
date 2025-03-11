@@ -1,7 +1,7 @@
 ARG ENV
 ARG PYTHON_VERSION="3.10"
 ARG USR_LOCAL_BIN=/usr/local/bin
-ARG UV_VERSION="0.5.63"
+ARG UV_VERSION="0.6.3"
 ARG VENV_DIR=/app/.venv
 
 FROM ubuntu:noble AS build
@@ -9,6 +9,7 @@ FROM ubuntu:noble AS build
 ARG ENV
 ARG PYTHON_VERSION
 ARG USR_LOCAL_BIN
+ARG UV_VERSION
 ARG VENV_DIR
 
 RUN apt-get update -qy && \
@@ -32,7 +33,7 @@ ENV PATH=${USR_LOCAL_BIN}:${PATH} \
     UV_UNMANAGED_INSTALL=${USR_LOCAL_BIN}
 
 # Create a virtual environment with uv inside the container
-RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh && \
+RUN curl -LsSf https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-installer.sh | sh && \
     uv venv ${VENV_DIR} --python ${PYTHON_VERSION} --seed
 
 # Copy pyproject.toml and uv.lock to a temporary directory and install
