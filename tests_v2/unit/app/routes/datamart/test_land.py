@@ -7,6 +7,7 @@ from httpx import AsyncClient
 
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
+    AnalysisStatus,
     TreeCoverLossByDriver,
     TreeCoverLossByDriverUpdate,
 )
@@ -216,7 +217,8 @@ async def test_get_tree_cover_loss_by_drivers_after_create_with_retry(
 
     headers = {"origin": origin, "x-api-key": api_key}
     with patch(
-        "app.routes.datamart.land._get_resource", return_value={"status": "pending"}
+        "app.routes.datamart.land._get_resource",
+        return_value=TreeCoverLossByDriver(status=AnalysisStatus.pending),
     ):
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
