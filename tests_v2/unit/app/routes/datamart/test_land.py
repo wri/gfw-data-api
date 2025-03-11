@@ -5,9 +5,12 @@ import pytest
 from fastapi import HTTPException
 from httpx import AsyncClient
 
-from app.crud.datamart import get_result
 from app.models.enum.geostore import GeostoreOrigin
-from app.models.pydantic.datamart import TreeCoverLossByDriver, TreeCoverLossByDriverUpdate
+from app.models.pydantic.datamart import (
+    AnalysisStatus,
+    TreeCoverLossByDriver,
+    TreeCoverLossByDriverUpdate,
+)
 from app.routes.datamart.land import _get_resource_id
 from app.tasks.datamart.land import (
     DEFAULT_LAND_DATASET_VERSIONS,
@@ -104,7 +107,7 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
         )
 
         response = await async_client.get(
-            f"/v0/land/tree_cover_loss_by_driver?geostore_id={geostore}&canopy_cover=30&dataset=umd_tree_cover_loss&version=v1.8&dataset=umd_tree_cover_density_2000&version=v1.6",
+            "/v0/land/tree_cover_loss_by_driver?&geostore_id={geostore_id}&canopy_cover=30&dataset_version[umd_tree_cover_loss]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
             headers=headers,
             params=params,
         )
@@ -125,6 +128,31 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
             in response.json()["data"]["link"]
         )
         mock_get_resources.assert_awaited_with(resource_id)
+
+
+@pytest.mark.asyncio
+async def test_get_tree_cover_loss_by_drivers_with_malformed_overrides(
+    geostore,
+    apikey,
+    async_client: AsyncClient,
+):
+    api_key, payload = apikey
+    origin = payload["domains"][0]
+
+    headers = {"origin": origin}
+    params = {"x-api-key": api_key, "geostore_id": geostore, "canopy_cover": 30}
+
+    response = await async_client.get(
+        "/v0/land/tree_cover_loss_by_driver?x-api-key={api_key}&geostore_id={geostore_id}&canopy_cover=30&dataset_version[umd_tree_cover_loss]]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
+        headers=headers,
+        params=params,
+    )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["message"]
+        == "Could not parse the following malformed dataset_version parameters: ['dataset_version[umd_tree_cover_loss]]']"
+    )
 
 
 @pytest.mark.asyncio
@@ -178,7 +206,6 @@ async def test_post_tree_cover_loss_by_drivers(
         )
 
 
-@pytest.mark.skip
 @pytest.mark.asyncio
 async def test_get_tree_cover_loss_by_drivers_after_create_with_retry(
     geostore,
@@ -190,7 +217,8 @@ async def test_get_tree_cover_loss_by_drivers_after_create_with_retry(
 
     headers = {"origin": origin, "x-api-key": api_key}
     with patch(
-        "app.routes.datamart.land._get_resource", return_value={"status": "pending"}
+        "app.routes.datamart.land._get_resource",
+        return_value=TreeCoverLossByDriver(status=AnalysisStatus.pending),
     ):
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
@@ -216,7 +244,10 @@ async def test_get_tree_cover_loss_by_drivers_after_create_saved(
     headers = {"origin": origin, "x-api-key": api_key}
     MOCK_RESOURCE["metadata"]["geostore_id"] = geostore
 
-    with patch("app.routes.datamart.land._get_resource", return_value=TreeCoverLossByDriver(**MOCK_RESOURCE)):
+    with patch(
+        "app.routes.datamart.land._get_resource",
+        return_value=TreeCoverLossByDriver(**MOCK_RESOURCE),
+    ):
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
         )
@@ -364,4 +395,3 @@ MOCK_ERROR_RESOURCE = {
         ],
     },
 }
-

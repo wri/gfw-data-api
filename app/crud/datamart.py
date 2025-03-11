@@ -1,4 +1,4 @@
-"""CRUD functions for data mart analysis results"""
+"""CRUD functions for data mart analysis results."""
 
 import json
 import uuid

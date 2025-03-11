@@ -1,9 +1,11 @@
 from enum import Enum
 from typing import Dict, Optional
 from uuid import UUID
+
 from pydantic import Field
 
 from app.models.pydantic.responses import Response
+
 from .base import StrictBaseModel
 
 

@@ -1,7 +1,8 @@
 """Run analysis on registered datasets."""
 
+import re
 import uuid
-from typing import Optional
+from typing import Dict, List
 from uuid import UUID
 
 from fastapi import (
@@ -20,8 +21,8 @@ from fastapi.responses import ORJSONResponse
 from app.crud import datamart as datamart_crud
 from app.errors import RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
-from app.models.pydantic.datamart import AnalysisStatus
 from app.models.pydantic.datamart import (
+    AnalysisStatus,
     DataMartResource,
     DataMartResourceLink,
     DataMartResourceLinkResponse,
@@ -50,15 +51,14 @@ router = APIRouter()
 )
 async def tree_cover_loss_by_driver_search(
     *,
+    request: Request,
     geostore_id: UUID = Query(..., title="Geostore ID"),
     canopy_cover: int = Query(30, alias="canopy_cover", title="Canopy cover percent"),
-    dataset: Optional[list[str]] = Query([], title="Dataset overrides"),
-    version: Optional[list[str]] = Query([], title="Version overrides"),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
     # Merge dataset version overrides with default dataset versions
-    query_dataset_version = {ds: v for ds, v in zip(dataset, version)}
+    query_dataset_version = _parse_dataset_versions(request.query_params)
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | query_dataset_version
 
     resource_id = _get_resource_id(
@@ -166,6 +166,26 @@ async def _get_resource(resource_id):
         raise HTTPException(
             status_code=404, detail="Resource not found, may require computation."
         )
+
+
+def _parse_dataset_versions(query_params: Dict[str, List[str]]) -> Dict[str, str]:
+    dataset_versions = {}
+    errors = []
+    for key in query_params.keys():
+        if key.startswith("dataset_version"):
+            matches = re.findall(r"dataset_version\[([a-z][a-z0-9_-]*)\]$", key)
+            if len(matches) == 1:
+                dataset_versions[matches[0]] = query_params[key]
+            else:
+                errors.append(key)
+
+    if errors:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Could not parse the following malformed dataset_version parameters: {errors}",
+        )
+
+    return dataset_versions
 
 
 async def _save_pending_resource(resource_id, endpoint, api_key):
