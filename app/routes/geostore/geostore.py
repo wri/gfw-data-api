@@ -54,7 +54,7 @@ async def add_new_geostore(
     API
     """
     if isinstance(request, RWGeostoreIn):
-        result: AdminGeostoreResponse = await create_rw_geostore(request, x_api_key)
+        result: AdminGeostoreResponse = await create_rw_geostore(request)
         return result
     # Otherwise, meant for GFW Data API geostore
     try:
@@ -91,7 +91,7 @@ async def get_any_geostore(
                 raise HTTPException(status_code=404, detail=str(e))
     except (AttributeError, ValueError):
         pass
-    result = await proxy_get_geostore(geostore_id, request.query_params, x_api_key)
+    result = await proxy_get_geostore(geostore_id, request.query_params)
     return result
 
 
@@ -120,9 +120,7 @@ async def get_admin_list(
             status_code=400, detail="source provider and version must be non-empty"
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
-        result: AdminListResponse = await rw_get_admin_list(
-            request.query_params, x_api_key
-        )
+        result: AdminListResponse = await rw_get_admin_list(request.query_params)
     else:
         try:
             result = await geostore.get_admin_boundary_list(
@@ -162,7 +160,7 @@ async def get_boundary_by_country_id(
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: AdminGeostoreResponse = await rw_get_boundary_by_country_id(
-            country_id, request.query_params, x_api_key
+            country_id, request.query_params
         )
     else:
         try:
@@ -208,7 +206,7 @@ async def rw_get_boundary_by_region_id(
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: AdminGeostoreResponse = await get_boundary_by_region_id(
-            country_id, region_id, request.query_params, x_api_key
+            country_id, region_id, request.query_params
         )
     else:
         try:
@@ -255,7 +253,7 @@ async def rw_get_boundary_by_subregion_id(
         )
     if admin_provider == "gadm" and (admin_version == "3.6" or admin_version is None):
         result: AdminGeostoreResponse = await get_boundary_by_subregion_id(
-            country_id, region_id, subregion_id, request.query_params, x_api_key
+            country_id, region_id, subregion_id, request.query_params
         )
     else:
         try:
@@ -299,7 +297,7 @@ async def rw_get_geostore_by_land_use_and_index(
     API)
     """
     result: AdminGeostoreResponse = await get_geostore_by_land_use_and_index(
-        land_use_type, index, request.query_params, x_api_key
+        land_use_type, index, request.query_params
     )
 
     return result
