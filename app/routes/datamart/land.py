@@ -2,7 +2,7 @@
 
 import re
 import uuid
-from typing import Dict, List
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from fastapi import (
@@ -41,6 +41,25 @@ from ...authentication.api_keys import get_api_key
 
 router = APIRouter()
 
+def _parse_dataset_versions(request: Request) -> Dict[str, str]:
+    dataset_versions = {}
+    errors = []
+    for key in request.query_params.keys():
+        if key.startswith("dataset_version"):
+            matches = re.findall(r"dataset_version\[([a-z][a-z0-9_-]*)\]$", key)
+            if len(matches) == 1:
+                dataset_versions[matches[0]] = request.query_params[key]
+            else:
+                errors.append(key)
+
+    if errors:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Could not parse the following malformed dataset_version parameters: {errors}",
+        )
+
+    # Merge dataset version overrides with default dataset versions
+    return DEFAULT_LAND_DATASET_VERSIONS | dataset_versions
 
 @router.get(
     "/tree_cover_loss_by_driver",
@@ -48,21 +67,39 @@ router = APIRouter()
     response_model=DataMartResourceLinkResponse,
     tags=["Land"],
     status_code=200,
+    openapi_extra={
+        "parameters": [
+            {
+                "name": "dataset_version",
+                "in": "query",
+                "required": False,
+                "style": "deepObject",
+                "explode": True,
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                },
+                "example": {
+                    "umd_tree_cover_loss": "v1.11",
+                    "tsc_tree_cover_loss_drivers": "v2023",
+                },
+                "description": (
+                        "Pass dataset version overrides as bracketed query parameters.",
+                )
+            }
+        ]
+    },
 )
 async def tree_cover_loss_by_driver_search(
     *,
-    request: Request,
     geostore_id: UUID = Query(..., title="Geostore ID"),
     canopy_cover: int = Query(30, alias="canopy_cover", title="Canopy cover percent"),
+    dataset_versions: Optional[Dict[str, str]] = Depends(_parse_dataset_versions),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
-    # Merge dataset version overrides with default dataset versions
-    query_dataset_version = _parse_dataset_versions(request.query_params)
-    dataset_version = DEFAULT_LAND_DATASET_VERSIONS | query_dataset_version
-
     resource_id = _get_resource_id(
-        "tree_cover_loss_by_driver", geostore_id, canopy_cover, dataset_version
+        "tree_cover_loss_by_driver", geostore_id, canopy_cover, dataset_versions
     )
 
     # check if it exists
@@ -168,24 +205,7 @@ async def _get_resource(resource_id):
         )
 
 
-def _parse_dataset_versions(query_params: Dict[str, List[str]]) -> Dict[str, str]:
-    dataset_versions = {}
-    errors = []
-    for key in query_params.keys():
-        if key.startswith("dataset_version"):
-            matches = re.findall(r"dataset_version\[([a-z][a-z0-9_-]*)\]$", key)
-            if len(matches) == 1:
-                dataset_versions[matches[0]] = query_params[key]
-            else:
-                errors.append(key)
 
-    if errors:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Could not parse the following malformed dataset_version parameters: {errors}",
-        )
-
-    return dataset_versions
 
 
 async def _save_pending_resource(resource_id, endpoint, api_key):
