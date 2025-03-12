@@ -16,7 +16,11 @@ from ..models.pydantic.creation_options import (
     creation_option_factory,
 )
 from ..models.pydantic.jobs import GdalPythonExportJob, TileCacheJob
-from ..settings.globals import TILE_CACHE_BUCKET, TILE_CACHE_JOB_QUEUE, TILE_CACHE_URL
+from ..settings.globals import (
+    ON_DEMAND_COMPUTE_JOB_QUEUE,
+    TILE_CACHE_BUCKET,
+    TILE_CACHE_URL,
+)
 from ..utils.aws import get_s3_client
 from ..utils.fields import get_field_attributes
 from ..utils.path import get_asset_uri
@@ -90,10 +94,11 @@ async def static_vector_tile_cache_asset(
         ",".join([field["name"] for field in field_attributes]),
     ]
 
+    # Use the on-demand queue because the job is non-resumable
     export_ndjson = GdalPythonExportJob(
         dataset=dataset,
         job_name="export_ndjson",
-        job_queue=TILE_CACHE_JOB_QUEUE,
+        job_queue=ON_DEMAND_COMPUTE_JOB_QUEUE,
         command=command,
         environment=reader_secrets,
         callback=callback_constructor(ndjson_asset.asset_id),
@@ -119,7 +124,7 @@ async def static_vector_tile_cache_asset(
     if creation_options.feature_filter:
         command += (
             "--filter",
-            json.dumps(jsonable_encoder(creation_options.feature_filter))
+            json.dumps(jsonable_encoder(creation_options.feature_filter)),
         )
 
     create_vector_tile_cache = TileCacheJob(
@@ -191,9 +196,9 @@ async def _get_vector_tile_server(
 ) -> Dict[str, Any]:
 
     try:
-        dataset_metadata: Optional[
-            ORMDatasetMetadata
-        ] = await metadata.get_dataset_metadata(dataset)
+        dataset_metadata: Optional[ORMDatasetMetadata] = (
+            await metadata.get_dataset_metadata(dataset)
+        )
     except RecordNotFoundError:
         dataset_metadata = None
 
