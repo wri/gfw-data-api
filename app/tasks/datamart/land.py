@@ -8,8 +8,8 @@ from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
     AnalysisStatus,
     DataMartSource,
-    TreeCoverLossByDriverUpdate,
     TreeCoverLossByDriverMetadata,
+    TreeCoverLossByDriverUpdate,
 )
 from app.models.pydantic.geostore import GeostoreCommon
 from app.routes.datasets.queries import _query_dataset_json
@@ -55,6 +55,7 @@ async def compute_tree_cover_loss_by_driver(
         resource.result = tcl_by_driver
         resource.status = AnalysisStatus.saved
         await datamart_crud.update_result(resource_id, resource)
+
     except Exception as e:
         logger.error(
             f"Tree cover loss by drivers analysis failed for geostore ${geostore_id} with error: {e}"
