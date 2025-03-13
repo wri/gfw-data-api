@@ -32,7 +32,11 @@ async def test_get_tree_cover_loss_by_drivers_not_found(
         origin = payload["domains"][0]
 
         headers = {"origin": origin}
-        params = {"x-api-key": api_key, "aoi[geostore_id]": geostore, "canopy_cover": 30}
+        params = {
+            "x-api-key": api_key,
+            "aoi[geostore_id]": geostore,
+            "canopy_cover": 30,
+        }
 
         response = await async_client.get(
             "/v0/land/tree_cover_loss_by_driver", headers=headers, params=params
@@ -59,7 +63,11 @@ async def test_get_tree_cover_loss_by_drivers_found(
         origin = payload["domains"][0]
 
         headers = {"origin": origin}
-        params = {"x-api-key": api_key, "aoi[geostore_id]": geostore, "canopy_cover": 30}
+        params = {
+            "x-api-key": api_key,
+            "aoi[geostore_id]": geostore,
+            "canopy_cover": 30,
+        }
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
         )
@@ -94,7 +102,11 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
         origin = payload["domains"][0]
 
         headers = {"origin": origin}
-        params = {"x-api-key": api_key, "aoi[geostore_id]": geostore, "canopy_cover": 30}
+        params = {
+            "x-api-key": api_key,
+            "aoi[geostore_id]": geostore,
+            "canopy_cover": 30,
+        }
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver",
             geostore,
@@ -260,6 +272,42 @@ async def test_get_tree_cover_loss_by_drivers_after_create_saved(
 
         data = response.json()["data"]
         assert data == MOCK_RESOURCE
+
+
+@pytest.mark.asyncio
+async def test_get_tree_cover_loss_by_drivers_as_csv(
+    geostore,
+    apikey,
+    async_client: AsyncClient,
+):
+    api_key, payload = apikey
+    origin = payload["domains"][0]
+
+    headers = {
+        "origin": origin,
+        "x-api-key": api_key,
+        "Content-Type": "application/csv",
+    }
+    MOCK_RESOURCE["metadata"]["geostore_id"] = geostore
+
+    with patch(
+        "app.routes.datamart.land._get_resource",
+        return_value=TreeCoverLossByDriver(**MOCK_RESOURCE),
+    ):
+        resource_id = _get_resource_id(
+            "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
+        )
+        response = await async_client.get(
+            f"/v0/land/tree_cover_loss_by_driver/{resource_id}", headers=headers
+        )
+
+        assert response.status_code == 200
+        assert "Retry-After" not in response.headers
+
+        assert (
+            response.content
+            == b'"tsc_tree_cover_loss_drivers__driver","area__ha"\r\n"Permanent agriculture",10.0\r\n"Hard commodities",12.0\r\n"Shifting cultivation",7.0\r\n"Forest management",93.4\r\n"Wildfires",42.0\r\n"Settlements and infrastructure",13.562\r\n"Other natural disturbances",6.0\r\n'
+        )
 
 
 @pytest.mark.asyncio

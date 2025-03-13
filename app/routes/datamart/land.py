@@ -2,7 +2,7 @@
 
 import re
 import uuid
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from uuid import UUID
 
 from fastapi import (
@@ -23,13 +23,16 @@ from app.errors import RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
     AnalysisStatus,
+    AreaOfInterest,
     DataMartResource,
     DataMartResourceLink,
     DataMartResourceLinkResponse,
+    GeostoreAreaOfInterest,
     TreeCoverLossByDriver,
     TreeCoverLossByDriverIn,
-    TreeCoverLossByDriverResponse, AreaOfInterest, GeostoreAreaOfInterest,
+    TreeCoverLossByDriverResponse,
 )
+from app.responses import CSVStreamingResponse
 from app.settings.globals import API_URL
 from app.tasks.datamart.land import (
     DEFAULT_LAND_DATASET_VERSIONS,
@@ -40,6 +43,7 @@ from app.utils.geostore import get_geostore
 from ...authentication.api_keys import get_api_key
 
 router = APIRouter()
+
 
 def _parse_dataset_versions(request: Request) -> Dict[str, str]:
     dataset_versions = {}
@@ -63,8 +67,9 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
 
 
 def _parse_area_of_interest(request: Request) -> AreaOfInterest:
-    aoi_info = request.query_params.getlist('aoi[geostore_id]');
+    aoi_info = request.query_params.getlist("aoi[geostore_id]")
     return GeostoreAreaOfInterest(geostore_id=aoi_info[0])
+
 
 @router.get(
     "/tree_cover_loss_by_driver",
@@ -89,7 +94,7 @@ def _parse_area_of_interest(request: Request) -> AreaOfInterest:
                         {"$ref": "#/components/schemas/GeostoreAreaOfInterest"},
                         {"$ref": "#/components/schemas/WdpaAreaOfInterest"},
                     ]
-                }
+                },
             },
             {
                 "name": "dataset_version",
@@ -106,9 +111,9 @@ def _parse_area_of_interest(request: Request) -> AreaOfInterest:
                     "tsc_tree_cover_loss_drivers": "v2023",
                 },
                 "description": (
-                        "Pass dataset version overrides as bracketed query parameters.",
-                )
-            }
+                    "Pass dataset version overrides as bracketed query parameters.",
+                ),
+            },
         ]
     },
 )
@@ -121,7 +126,10 @@ async def tree_cover_loss_by_driver_search(
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
     resource_id = _get_resource_id(
-        "tree_cover_loss_by_driver", aoi.get_geostore_id(), canopy_cover, dataset_versions
+        "tree_cover_loss_by_driver",
+        aoi.get_geostore_id(),
+        canopy_cover,
+        dataset_versions,
     )
 
     # check if it exists
@@ -134,7 +142,7 @@ async def tree_cover_loss_by_driver_search(
 
 @router.get(
     "/tree_cover_loss_by_driver/{resource_id}",
-    response_class=ORJSONResponse,
+    response_class=ORJSONResponse | CSVStreamingResponse,
     response_model=TreeCoverLossByDriverResponse,
     tags=["Land"],
     status_code=200,
@@ -142,6 +150,7 @@ async def tree_cover_loss_by_driver_search(
 async def tree_cover_loss_by_driver_get(
     *,
     resource_id: UUID = Path(..., title="Tree cover loss by driver ID"),
+    request: Request,
     response: Response,
     api_key: APIKey = Depends(get_api_key),
 ):
@@ -154,6 +163,13 @@ async def tree_cover_loss_by_driver_get(
     tree_cover_loss_by_driver_response = TreeCoverLossByDriverResponse(
         data=tree_cover_loss_by_driver
     )
+
+    if request.headers["Content-Type"] == "application/csv":
+        csv_data = tree_cover_loss_by_driver_response.to_csv()
+        download = "Content-Disposition" in request.headers and request.headers[
+            "Content-Disposition"
+        ].startswith("attachment")
+        return CSVStreamingResponse(iter([csv_data.getvalue()]), download=download)
 
     return tree_cover_loss_by_driver_response
 
@@ -225,9 +241,6 @@ async def _get_resource(resource_id):
         raise HTTPException(
             status_code=404, detail="Resource not found, may require computation."
         )
-
-
-
 
 
 async def _save_pending_resource(resource_id, endpoint, api_key):

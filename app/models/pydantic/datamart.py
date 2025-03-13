@@ -1,13 +1,16 @@
+import csv
+from abc import ABC, abstractmethod
 from enum import Enum
+from io import StringIO
 from typing import Dict, Optional, Union
 from uuid import UUID
-from abc import ABC, abstractmethod
 
 from pydantic import Field
 
 from app.models.pydantic.responses import Response
 
 from .base import StrictBaseModel
+
 
 class AreaOfInterest(StrictBaseModel, ABC):
     @abstractmethod
@@ -17,7 +20,7 @@ class AreaOfInterest(StrictBaseModel, ABC):
 
 
 class GeostoreAreaOfInterest(AreaOfInterest):
-    geostore_id:UUID = Field(..., title="Geostore ID")
+    geostore_id: UUID = Field(..., title="Geostore ID")
 
     def get_geostore_id(self) -> UUID:
         return self.geostore_id
@@ -91,5 +94,18 @@ class TreeCoverLossByDriverUpdate(StrictBaseModel):
 class TreeCoverLossByDriverResponse(Response):
     data: TreeCoverLossByDriver
 
+    def to_csv(
+        self,
+    ) -> StringIO:
+        """Create a new csv file that represents the resource Response will
+        return a temporary redirect to download URL."""
+        csv_file = StringIO()
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
+        wr.writerow(["tsc_tree_cover_loss_drivers__driver", "area__ha"])
 
+        if self.data.status == "saved":
+            for driver, year in self.data.result.items():
+                wr.writerow([driver, year])
 
+        csv_file.seek(0)
+        return csv_file
