@@ -1,12 +1,26 @@
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 from uuid import UUID
+from abc import ABC, abstractmethod
 
 from pydantic import Field
 
 from app.models.pydantic.responses import Response
 
 from .base import StrictBaseModel
+
+class AreaOfInterest(StrictBaseModel, ABC):
+    @abstractmethod
+    def get_geostore_id(self) -> UUID:
+        """Return the unique identifier for the area of interest."""
+        pass
+
+
+class GeostoreAreaOfInterest(AreaOfInterest):
+    geostore_id:UUID = Field(..., title="Geostore ID")
+
+    def get_geostore_id(self) -> UUID:
+        return self.geostore_id
 
 
 class AnalysisStatus(str, Enum):
@@ -43,7 +57,7 @@ class DataMartResourceLinkResponse(Response):
 
 
 class TreeCoverLossByDriverIn(StrictBaseModel):
-    geostore_id: UUID
+    aoi: Union[GeostoreAreaOfInterest]
     canopy_cover: int = 30
     dataset_version: Dict[str, str] = {}
 
@@ -76,3 +90,6 @@ class TreeCoverLossByDriverUpdate(StrictBaseModel):
 
 class TreeCoverLossByDriverResponse(Response):
     data: TreeCoverLossByDriver
+
+
+

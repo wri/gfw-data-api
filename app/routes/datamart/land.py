@@ -28,7 +28,7 @@ from app.models.pydantic.datamart import (
     DataMartResourceLinkResponse,
     TreeCoverLossByDriver,
     TreeCoverLossByDriverIn,
-    TreeCoverLossByDriverResponse,
+    TreeCoverLossByDriverResponse, AreaOfInterest, GeostoreAreaOfInterest,
 )
 from app.settings.globals import API_URL
 from app.tasks.datamart.land import (
@@ -61,6 +61,11 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
     # Merge dataset version overrides with default dataset versions
     return DEFAULT_LAND_DATASET_VERSIONS | dataset_versions
 
+
+def _parse_area_of_interest(request: Request) -> AreaOfInterest:
+    aoi_info = request.query_params.getlist('aoi[geostore_id]');
+    return GeostoreAreaOfInterest(geostore_id=aoi_info[0])
+
 @router.get(
     "/tree_cover_loss_by_driver",
     response_class=ORJSONResponse,
@@ -69,6 +74,23 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
     status_code=200,
     openapi_extra={
         "parameters": [
+            {
+                "name": "aoi",
+                "in": "query",
+                "required": True,
+                "style": "deepObject",
+                "explode": True,
+                "example": {
+                    "geostore_id": "637d378f-93a9-4364-bfa8-95b6afd28c3a",
+                },
+                "description": "The Area of Interest",
+                "schema": {
+                    "oneOf": [
+                        {"$ref": "#/components/schemas/GeostoreAreaOfInterest"},
+                        {"$ref": "#/components/schemas/WdpaAreaOfInterest"},
+                    ]
+                }
+            },
             {
                 "name": "dataset_version",
                 "in": "query",
@@ -92,14 +114,14 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
 )
 async def tree_cover_loss_by_driver_search(
     *,
-    geostore_id: UUID = Query(..., title="Geostore ID"),
+    aoi: AreaOfInterest = Depends(_parse_area_of_interest),
     canopy_cover: int = Query(30, alias="canopy_cover", title="Canopy cover percent"),
     dataset_versions: Optional[Dict[str, str]] = Depends(_parse_dataset_versions),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
     resource_id = _get_resource_id(
-        "tree_cover_loss_by_driver", geostore_id, canopy_cover, dataset_versions
+        "tree_cover_loss_by_driver", aoi.get_geostore_id(), canopy_cover, dataset_versions
     )
 
     # check if it exists
@@ -155,7 +177,7 @@ async def tree_cover_loss_by_driver_post(
 
     # check geostore is valid
     try:
-        await get_geostore(data.geostore_id, GeostoreOrigin.rw)
+        await get_geostore(data.aoi.get_geostore_id(), GeostoreOrigin.rw)
     except HTTPException:
         raise HTTPException(
             status_code=422,
@@ -168,7 +190,7 @@ async def tree_cover_loss_by_driver_post(
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
     resource_id = _get_resource_id(
         "tree_cover_loss_by_driver",
-        data.geostore_id,
+        data.aoi.get_geostore_id(),
         data.canopy_cover,
         dataset_version,
     )
@@ -178,7 +200,7 @@ async def tree_cover_loss_by_driver_post(
     background_tasks.add_task(
         compute_tree_cover_loss_by_driver,
         resource_id,
-        data.geostore_id,
+        data.aoi.get_geostore_id(),
         data.canopy_cover,
         dataset_version,
     )
