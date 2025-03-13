@@ -146,7 +146,7 @@ AWS_GCS_KEY_SECRET_ARN = config("AWS_GCS_KEY_SECRET_ARN", cast=str, default=None
 AWS_SECRETSMANAGER_URL = config("AWS_SECRETSMANAGER_URL", cast=str, default=None)
 
 RW_API_URL = config("RW_API_URL", cast=str, default=None)
-RW_API_KEY = json.loads(config("RW_API_KEY", cast=str))["api_key"]
+RW_API_KEY = json.loads(config("RW_API_KEY", cast=str))["api-key"]
 
 HOUR: int = int(60 * 60)
 # Temporarily set high timeout for TCLF. See https://gfw.atlassian.net/browse/GTC-1843

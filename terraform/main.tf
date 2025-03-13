@@ -118,6 +118,7 @@ module "fargate_autoscaling" {
   task_execution_role_policies = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.read_new_relic_secret.arn,
+    aws_iam_policy.read_rw_api_key_secret.arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_policy_arn
