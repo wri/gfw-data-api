@@ -175,6 +175,14 @@ data "aws_iam_policy_document" "read_new_relic_lic" {
   }
 }
 
+data "aws_iam_policy_document" "read_rw_api_key" {
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [var.rw_api_key_arn]
+    effect    = "Allow"
+  }
+}
+
 data "external" "generate_port" {
   count   = var.environment == "dev" ? 1 : 0
   program = ["python3", "${path.module}/generate_port.py", local.name_suffix, "30000", "31000"]
