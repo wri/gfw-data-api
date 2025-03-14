@@ -9,6 +9,7 @@ from sqlalchemy.sql import Select, label
 from sqlalchemy.sql.elements import Label, TextClause
 
 from app.application import db
+from app.crud.tasks import create_or_update_task
 from app.errors import (
     BadAdminSourceException,
     BadAdminVersionException,
@@ -190,7 +191,7 @@ async def get_first_row(sql: Select):
     return row
 
 
-async def get_gadm_geostore(
+async def build_gadm_geostore(
     admin_provider: str,
     admin_version: str,
     adm_level: int,
@@ -198,7 +199,7 @@ async def get_gadm_geostore(
     country_id: str,
     region_id: str | None = None,
     subregion_id: str | None = None,
-) -> AdminGeostoreResponse:
+) -> AdminGeostore:
     dv: Tuple[str, str] = await admin_params_to_dataset_version(
         admin_provider, admin_version
     )
@@ -281,7 +282,7 @@ async def get_gadm_geostore(
             "GeoJSON is None, try reducing or eliminating simplification."
         )
 
-    geostore: AdminGeostore = await form_admin_geostore(
+    return await form_admin_geostore(
         adm_level=adm_level,
         admin_version=admin_version,
         area=float(row.gfw_area__ha),
@@ -291,6 +292,26 @@ async def get_gadm_geostore(
         geostore_id=str(row.gfw_geostore_id),
         level_id=str(row.level_id),
         simplify=simplify,
+    )
+
+
+async def get_gadm_geostore(
+    admin_provider: str,
+    admin_version: str,
+    adm_level: int,
+    simplify: float | None,
+    country_id: str,
+    region_id: str | None = None,
+    subregion_id: str | None = None,
+) -> AdminGeostoreResponse:
+    geostore: AdminGeostore = await build_gadm_geostore(
+        admin_provider=admin_provider,
+        admin_version=admin_version,
+        adm_level=adm_level,
+        simplify=simplify,
+    country_id=country_id,
+        region_id=region_id,
+        subregion_id=subregion_id,
     )
 
     return AdminGeostoreResponse(data=geostore)

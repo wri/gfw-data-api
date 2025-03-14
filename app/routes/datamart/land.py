@@ -28,7 +28,10 @@ from app.models.pydantic.datamart import (
     DataMartResourceLinkResponse,
     TreeCoverLossByDriver,
     TreeCoverLossByDriverIn,
-    TreeCoverLossByDriverResponse, AreaOfInterest, GeostoreAreaOfInterest,
+    TreeCoverLossByDriverResponse,
+    AreaOfInterest,
+    GeostoreAreaOfInterest,
+    AdminAreaOfInterest,
 )
 from app.settings.globals import API_URL
 from app.tasks.datamart.land import (
@@ -63,8 +66,22 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
 
 
 def _parse_area_of_interest(request: Request) -> AreaOfInterest:
-    aoi_info = request.query_params.getlist('aoi[geostore_id]');
-    return GeostoreAreaOfInterest(geostore_id=aoi_info[0])
+    if 'aoi[geostore_id]' in request.query_params:
+        return GeostoreAreaOfInterest(geostore_id=request.query_params['aoi[geostore_id]'])
+
+        # Otherwise, check if the request contains admin area information
+    if 'aoi[country]' in request.query_params:
+        return AdminAreaOfInterest(
+            country=request.query_params['aoi[country]'],
+            region=request.query_params.get('aoi[region]'),
+            subregion=request.query_params.get('aoi[subregion]'),
+            provider=request.query_params.get('aoi[provider]'),
+            version=request.query_params.get('aoi[version]'),
+        )
+
+    # If neither type is provided, raise an error
+    raise HTTPException(status_code=422, detail="Invalid Area of Interest parameters")
+
 
 @router.get(
     "/tree_cover_loss_by_driver",
@@ -87,7 +104,7 @@ def _parse_area_of_interest(request: Request) -> AreaOfInterest:
                 "schema": {
                     "oneOf": [
                         {"$ref": "#/components/schemas/GeostoreAreaOfInterest"},
-                        {"$ref": "#/components/schemas/WdpaAreaOfInterest"},
+                        {"$ref": "#/components/schemas/AdminAreaOfInterest"},
                     ]
                 }
             },
@@ -120,8 +137,9 @@ async def tree_cover_loss_by_driver_search(
     api_key: APIKey = Depends(get_api_key),
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
+    geostore_id = await aoi.get_geostore_id()
     resource_id = _get_resource_id(
-        "tree_cover_loss_by_driver", aoi.get_geostore_id(), canopy_cover, dataset_versions
+        "tree_cover_loss_by_driver", geostore_id, canopy_cover, dataset_versions
     )
 
     # check if it exists
@@ -174,10 +192,11 @@ async def tree_cover_loss_by_driver_post(
 ):
     """Create new tree cover loss by drivers resource for a given geostore and
     canopy cover."""
+    geostore_id = await data.aoi.get_geostore_id()
 
     # check geostore is valid
     try:
-        await get_geostore(data.aoi.get_geostore_id(), GeostoreOrigin.rw)
+        await get_geostore(geostore_id, GeostoreOrigin.rw)
     except HTTPException:
         raise HTTPException(
             status_code=422,
@@ -190,7 +209,7 @@ async def tree_cover_loss_by_driver_post(
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
     resource_id = _get_resource_id(
         "tree_cover_loss_by_driver",
-        data.aoi.get_geostore_id(),
+        geostore_id,
         data.canopy_cover,
         dataset_version,
     )
@@ -200,7 +219,7 @@ async def tree_cover_loss_by_driver_post(
     background_tasks.add_task(
         compute_tree_cover_loss_by_driver,
         resource_id,
-        data.aoi.get_geostore_id(),
+        geostore_id,
         data.canopy_cover,
         dataset_version,
     )

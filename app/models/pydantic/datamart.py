@@ -8,10 +8,12 @@ from pydantic import Field
 from app.models.pydantic.responses import Response
 
 from .base import StrictBaseModel
+from ...crud.geostore import build_gadm_geostore
+
 
 class AreaOfInterest(StrictBaseModel, ABC):
     @abstractmethod
-    def get_geostore_id(self) -> UUID:
+    async def get_geostore_id(self) -> UUID:
         """Return the unique identifier for the area of interest."""
         pass
 
@@ -19,8 +21,30 @@ class AreaOfInterest(StrictBaseModel, ABC):
 class GeostoreAreaOfInterest(AreaOfInterest):
     geostore_id:UUID = Field(..., title="Geostore ID")
 
-    def get_geostore_id(self) -> UUID:
+    async def get_geostore_id(self) -> UUID:
         return self.geostore_id
+
+
+class AdminAreaOfInterest(AreaOfInterest):
+    country: str = Field(..., title="ISO Country Code")
+    region: Optional[str] = Field(None, title="Region")
+    subregion: Optional[str] = Field(None, title="Subregion")
+    provider: str = Field('gadm', title="Administrative Boundary Provider")
+    version: str = Field('4.1', title="Administrative Boundary Version")
+
+
+    async def get_geostore_id(self) -> UUID:
+        admin_level = sum(1 for field in (self.country, self.region, self.subregion) if field is not None) - 1
+        geostore = await build_gadm_geostore(
+            admin_provider=self.provider,
+            admin_version=self.version,
+            adm_level=admin_level,
+            simplify=None,
+            country_id=self.country,
+            region_id=self.region,
+            subregion_id=self.subregion,
+        )
+        return UUID(geostore.id)
 
 
 class AnalysisStatus(str, Enum):
@@ -57,7 +81,7 @@ class DataMartResourceLinkResponse(Response):
 
 
 class TreeCoverLossByDriverIn(StrictBaseModel):
-    aoi: Union[GeostoreAreaOfInterest]
+    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest]
     canopy_cover: int = 30
     dataset_version: Dict[str, str] = {}
 
