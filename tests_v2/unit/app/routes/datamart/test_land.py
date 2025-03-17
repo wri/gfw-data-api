@@ -306,7 +306,7 @@ async def test_get_tree_cover_loss_by_drivers_as_csv(
 
         assert (
             response.content
-            == b'"tsc_tree_cover_loss_drivers__driver","area__ha"\r\n"Permanent agriculture",10.0\r\n"Hard commodities",12.0\r\n"Shifting cultivation",7.0\r\n"Forest management",93.4\r\n"Wildfires",42.0\r\n"Settlements and infrastructure",13.562\r\n"Other natural disturbances",6.0\r\n'
+            == b'"umd_tree_cover_loss__year","tsc_tree_cover_loss_drivers__driver","area__ha"\r\n"2001","Permanent agriculture",10.0\r\n"2001","Hard commodities",12.0\r\n"2001","Shifting cultivation",7.0\r\n"2001","Forest management",93.4\r\n"2001","Wildfires",42.0\r\n"2001","Settlements and infrastructure",13.562\r\n"2001","Other natural disturbances",6.0\r\n'
         )
 
 
@@ -333,7 +333,7 @@ async def test_compute_tree_cover_loss_by_driver(geostore):
         mock_query_dataset_json.assert_awaited_once_with(
             "umd_tree_cover_loss",
             "v1.8",
-            "SELECT SUM(area__ha) FROM data WHERE umd_tree_cover_density_2000__threshold >= 30 GROUP BY tsc_tree_cover_loss_drivers__driver",
+            "SELECT SUM(area__ha) FROM data WHERE umd_tree_cover_density_2000__threshold >= 30 GROUP BY umd_tree_cover_loss__year, tsc_tree_cover_loss_drivers__driver",
             geostore_common,
             DEFAULT_LAND_DATASET_VERSIONS | {"umd_tree_cover_loss": "v1.8"},
         )
@@ -376,30 +376,37 @@ async def test_compute_tree_cover_loss_by_driver_error(geostore):
 
 MOCK_RESULT = [
     {
+        "umd_tree_cover_loss__year": "2001",
         "tsc_tree_cover_loss_drivers__driver": "Permanent agriculture",
         "area__ha": 10,
     },
     {
+        "umd_tree_cover_loss__year": "2001",
         "tsc_tree_cover_loss_drivers__driver": "Hard commodities",
         "area__ha": 12,
     },
     {
+        "umd_tree_cover_loss__year": "2001",
         "tsc_tree_cover_loss_drivers__driver": "Shifting cultivation",
         "area__ha": 7,
     },
     {
+        "umd_tree_cover_loss__year": "2001",
         "tsc_tree_cover_loss_drivers__driver": "Forest management",
         "area__ha": 93.4,
     },
     {
+        "umd_tree_cover_loss__year": "2001",
         "tsc_tree_cover_loss_drivers__driver": "Wildfires",
         "area__ha": 42,
     },
     {
+        "umd_tree_cover_loss__year": "2001",
         "tsc_tree_cover_loss_drivers__driver": "Settlements and infrastructure",
         "area__ha": 13.562,
     },
     {
+        "umd_tree_cover_loss__year": "2001",
         "tsc_tree_cover_loss_drivers__driver": "Other natural disturbances",
         "area__ha": 6,
     },
@@ -409,14 +416,27 @@ MOCK_RESULT = [
 MOCK_RESOURCE = {
     "status": "saved",
     "message": None,
-    "tree_cover_loss_by_driver": {
-        "Permanent agriculture": 10.0,
-        "Hard commodities": 12.0,
-        "Shifting cultivation": 7.0,
-        "Forest management": 93.4,
-        "Wildfires": 42.0,
-        "Settlements and infrastructure": 13.562,
-        "Other natural disturbances": 6.0,
+    "result": {
+        "tree_cover_loss_by_driver": {
+            "Permanent agriculture": 10.0,
+            "Hard commodities": 12.0,
+            "Shifting cultivation": 7.0,
+            "Forest management": 93.4,
+            "Wildfires": 42.0,
+            "Settlements and infrastructure": 13.562,
+            "Other natural disturbances": 6.0,
+        },
+        "yearly_tree_cover_loss_by_driver": {
+            "2001": {
+                "Permanent agriculture": 10.0,
+                "Hard commodities": 12.0,
+                "Shifting cultivation": 7.0,
+                "Forest management": 93.4,
+                "Wildfires": 42.0,
+                "Settlements and infrastructure": 13.562,
+                "Other natural disturbances": 6.0,
+            }
+        },
     },
     "metadata": {
         "geostore_id": "",

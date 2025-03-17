@@ -9,6 +9,7 @@ from app.models.pydantic.datamart import (
     AnalysisStatus,
     DataMartSource,
     TreeCoverLossByDriverMetadata,
+    TreeCoverLossByDriverResult,
     TreeCoverLossByDriverUpdate,
 )
 from app.models.pydantic.geostore import GeostoreCommon
@@ -37,7 +38,7 @@ async def compute_tree_cover_loss_by_driver(
             f"Computing tree cover loss by driver for resource {resource_id} with geostore {geostore_id} and canopy cover {canopy_cover}"
         )
         geostore: GeostoreCommon = await get_geostore(geostore_id, GeostoreOrigin.rw)
-        query = f"SELECT SUM(area__ha) FROM data WHERE umd_tree_cover_density_2000__threshold >= {canopy_cover} GROUP BY tsc_tree_cover_loss_drivers__driver"
+        query = f"SELECT SUM(area__ha) FROM data WHERE umd_tree_cover_density_2000__threshold >= {canopy_cover} GROUP BY umd_tree_cover_loss__year, tsc_tree_cover_loss_drivers__driver"
 
         results = await _query_dataset_json(
             "umd_tree_cover_loss",
@@ -47,12 +48,7 @@ async def compute_tree_cover_loss_by_driver(
             dataset_version,
         )
 
-        tcl_by_driver = {
-            row["tsc_tree_cover_loss_drivers__driver"]: row["area__ha"]
-            for row in results
-        }
-
-        resource.result = tcl_by_driver
+        resource.result = TreeCoverLossByDriverResult.from_rows(results)
         resource.status = AnalysisStatus.saved
         await datamart_crud.update_result(resource_id, resource)
 
