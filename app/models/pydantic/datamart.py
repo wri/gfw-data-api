@@ -8,7 +8,7 @@ from pydantic import Field
 from app.models.pydantic.responses import Response
 
 from .base import StrictBaseModel
-from ...crud.geostore import build_gadm_geostore
+from ...crud.geostore import get_gadm_geostore_id
 
 
 class AreaOfInterest(StrictBaseModel, ABC):
@@ -35,16 +35,15 @@ class AdminAreaOfInterest(AreaOfInterest):
 
     async def get_geostore_id(self) -> UUID:
         admin_level = sum(1 for field in (self.country, self.region, self.subregion) if field is not None) - 1
-        geostore = await build_gadm_geostore(
+        geostore_id = await get_gadm_geostore_id(
             admin_provider=self.provider,
             admin_version=self.version,
             adm_level=admin_level,
-            simplify=None,
             country_id=self.country,
             region_id=self.region,
             subregion_id=self.subregion,
         )
-        return UUID(geostore.id)
+        return UUID(geostore_id)
 
 
 class AnalysisStatus(str, Enum):
