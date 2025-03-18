@@ -17,6 +17,7 @@ from fastapi import (
 )
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
+from pydantic import ValidationError
 
 from app.crud import datamart as datamart_crud
 from app.errors import RecordNotFoundError
@@ -66,21 +67,26 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
 
 
 def _parse_area_of_interest(request: Request) -> AreaOfInterest:
-    if 'aoi[geostore_id]' in request.query_params:
-        return GeostoreAreaOfInterest(geostore_id=request.query_params['aoi[geostore_id]'])
+    params = request.query_params
+    aoi_type = params.get('aoi[type]')
+    try:
+        if aoi_type == 'geostore':
+            return GeostoreAreaOfInterest(geostore_id=params.get('aoi[geostore_id]', None))
 
-        # Otherwise, check if the request contains admin area information
-    if 'aoi[country]' in request.query_params:
-        return AdminAreaOfInterest(
-            country=request.query_params['aoi[country]'],
-            region=request.query_params.get('aoi[region]'),
-            subregion=request.query_params.get('aoi[subregion]'),
-            provider=request.query_params.get('aoi[provider]'),
-            version=request.query_params.get('aoi[version]'),
-        )
+            # Otherwise, check if the request contains admin area information
+        if aoi_type == 'admin':
+            return AdminAreaOfInterest(
+                country=params.get('aoi[country]', None),
+                region=params.get('aoi[region]', None),
+                subregion=params.get('aoi[subregion]', None),
+                provider=params.get('aoi[provider]', None),
+                version=params.get('aoi[version]', None),
+            )
 
-    # If neither type is provided, raise an error
-    raise HTTPException(status_code=422, detail="Invalid Area of Interest parameters")
+        # If neither type is provided, raise an error
+        raise HTTPException(status_code=422, detail="Invalid Area of Interest parameters")
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())
 
 
 @router.get(
@@ -200,7 +206,7 @@ async def tree_cover_loss_by_driver_post(
     except HTTPException:
         raise HTTPException(
             status_code=422,
-            detail=f"Geostore {data.geostore_id} can't be found or is not valid.",
+            detail=f"Geostore {geostore_id} can't be found or is not valid.",
         )
 
     # create initial Job item as pending

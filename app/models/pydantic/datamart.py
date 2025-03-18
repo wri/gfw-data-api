@@ -1,9 +1,9 @@
 from enum import Enum
-from typing import Dict, Optional, Union
+from typing import Dict, Literal, Optional, Union
 from uuid import UUID
 from abc import ABC, abstractmethod
 
-from pydantic import Field
+from pydantic import Field, root_validator, validator
 
 from app.models.pydantic.responses import Response
 
@@ -19,6 +19,7 @@ class AreaOfInterest(StrictBaseModel, ABC):
 
 
 class GeostoreAreaOfInterest(AreaOfInterest):
+    type: Literal['geostore'] = 'geostore'
     geostore_id:UUID = Field(..., title="Geostore ID")
 
     async def get_geostore_id(self) -> UUID:
@@ -26,6 +27,7 @@ class GeostoreAreaOfInterest(AreaOfInterest):
 
 
 class AdminAreaOfInterest(AreaOfInterest):
+    type: Literal['admin'] = 'admin'
     country: str = Field(..., title="ISO Country Code")
     region: Optional[str] = Field(None, title="Region")
     subregion: Optional[str] = Field(None, title="Subregion")
@@ -44,6 +46,23 @@ class AdminAreaOfInterest(AreaOfInterest):
             subregion_id=self.subregion,
         )
         return UUID(geostore_id)
+
+    @root_validator
+    def check_region_subregion(cls, values):
+        region = values.get("region")
+        subregion = values.get("subregion")
+        if subregion is not None and region is None:
+            raise ValueError("region must be specified if subregion is provided")
+        return values
+
+    @validator('provider', pre=True, always=True)
+    def set_provider_default(cls, v):
+        return v or 'gadm'
+
+    @validator('version', pre=True, always=True)
+    def set_version_default(cls, v):
+        return v or '4.1'
+
 
 
 class AnalysisStatus(str, Enum):
@@ -80,7 +99,7 @@ class DataMartResourceLinkResponse(Response):
 
 
 class TreeCoverLossByDriverIn(StrictBaseModel):
-    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest]
+    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest] = Field(..., discriminator='type')
     canopy_cover: int = 30
     dataset_version: Dict[str, str] = {}
 
