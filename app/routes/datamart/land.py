@@ -246,9 +246,6 @@ async def _get_resource(resource_id):
         )
 
 
-
-
-
 async def _save_pending_resource(resource_id, endpoint, api_key):
     pending_resource = DataMartResource(
         id=resource_id,
