@@ -191,6 +191,27 @@ async def get_first_row(sql: Select):
     return row
 
 
+async def get_gadm_geostore_id(
+        admin_provider: str,
+        admin_version: str,
+        adm_level: int,
+        country_id: str,
+        region_id: str | None = None,
+        subregion_id: str | None = None,
+) -> str:
+    src_table = await get_versioned_dataset(admin_provider, admin_version)
+    columns_etc: List[Column | Label] = [db.column("gfw_geostore_id"),]
+    sql: Select = db.select(columns_etc).select_from(src_table)
+    sql = await add_where_clauses(adm_level, admin_provider, admin_version, country_id, region_id, sql, subregion_id)
+    row = await get_first_row(sql)
+    if row is None:
+        raise RecordNotFoundError(
+            f"Admin boundary not found in {admin_provider} version {admin_version}"
+        )
+
+    return await row.gfw_geostore_id
+
+
 async def build_gadm_geostore(
     admin_provider: str,
     admin_version: str,
