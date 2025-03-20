@@ -17,11 +17,13 @@ from fastapi import (
 )
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
+from pydantic import ValidationError
 
 from app.crud import datamart as datamart_crud
 from app.errors import RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
+    AdminAreaOfInterest,
     AnalysisStatus,
     AreaOfInterest,
     DataMartResource,
@@ -67,8 +69,30 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
 
 
 def _parse_area_of_interest(request: Request) -> AreaOfInterest:
-    aoi_info = request.query_params.getlist("aoi[geostore_id]")
-    return GeostoreAreaOfInterest(geostore_id=aoi_info[0])
+    params = request.query_params
+    aoi_type = params.get("aoi[type]")
+    try:
+        if aoi_type == "geostore":
+            return GeostoreAreaOfInterest(
+                geostore_id=params.get("aoi[geostore_id]", None)
+            )
+
+            # Otherwise, check if the request contains admin area information
+        if aoi_type == "admin":
+            return AdminAreaOfInterest(
+                country=params.get("aoi[country]", None),
+                region=params.get("aoi[region]", None),
+                subregion=params.get("aoi[subregion]", None),
+                provider=params.get("aoi[provider]", None),
+                version=params.get("aoi[version]", None),
+            )
+
+        # If neither type is provided, raise an error
+        raise HTTPException(
+            status_code=422, detail="Invalid Area of Interest parameters"
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())
 
 
 @router.get(
@@ -92,7 +116,7 @@ def _parse_area_of_interest(request: Request) -> AreaOfInterest:
                 "schema": {
                     "oneOf": [
                         {"$ref": "#/components/schemas/GeostoreAreaOfInterest"},
-                        {"$ref": "#/components/schemas/WdpaAreaOfInterest"},
+                        {"$ref": "#/components/schemas/AdminAreaOfInterest"},
                     ]
                 },
             },
@@ -125,11 +149,10 @@ async def tree_cover_loss_by_driver_search(
     api_key: APIKey = Depends(get_api_key),
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
+
+    geostore_id = await aoi.get_geostore_id()
     resource_id = _get_resource_id(
-        "tree_cover_loss_by_driver",
-        aoi.get_geostore_id(),
-        canopy_cover,
-        dataset_versions,
+        "tree_cover_loss_by_driver", geostore_id, canopy_cover, dataset_versions
     )
 
     # check if it exists
@@ -190,14 +213,15 @@ async def tree_cover_loss_by_driver_post(
 ):
     """Create new tree cover loss by drivers resource for a given geostore and
     canopy cover."""
+    geostore_id = await data.aoi.get_geostore_id()
 
     # check geostore is valid
     try:
-        await get_geostore(data.aoi.get_geostore_id(), GeostoreOrigin.rw)
+        await get_geostore(geostore_id, GeostoreOrigin.rw)
     except HTTPException:
         raise HTTPException(
             status_code=422,
-            detail=f"Geostore {data.geostore_id} can't be found or is not valid.",
+            detail=f"Geostore {geostore_id} can't be found or is not valid.",
         )
 
     # create initial Job item as pending
@@ -216,7 +240,7 @@ async def tree_cover_loss_by_driver_post(
     background_tasks.add_task(
         compute_tree_cover_loss_by_driver,
         resource_id,
-        data.aoi.get_geostore_id(),
+        geostore_id,
         data.canopy_cover,
         dataset_version,
     )

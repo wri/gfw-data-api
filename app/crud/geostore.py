@@ -9,6 +9,7 @@ from sqlalchemy.sql import Select, label
 from sqlalchemy.sql.elements import Label, TextClause
 
 from app.application import db
+from app.crud.tasks import create_or_update_task
 from app.errors import (
     BadAdminSourceException,
     BadAdminVersionException,
@@ -190,7 +191,28 @@ async def get_first_row(sql: Select):
     return row
 
 
-async def get_gadm_geostore(
+async def get_gadm_geostore_id(
+        admin_provider: str,
+        admin_version: str,
+        adm_level: int,
+        country_id: str,
+        region_id: str | None = None,
+        subregion_id: str | None = None,
+) -> str:
+    src_table = await get_versioned_dataset(admin_provider, admin_version)
+    columns_etc: List[Column | Label] = [db.column("gfw_geostore_id"),]
+    sql: Select = db.select(columns_etc).select_from(src_table)
+    sql = await add_where_clauses(adm_level, admin_provider, admin_version, country_id, region_id, sql, subregion_id)
+    row = await get_first_row(sql)
+    if row is None:
+        raise RecordNotFoundError(
+            f"Admin boundary not found in {admin_provider} version {admin_version}"
+        )
+
+    return await row.gfw_geostore_id
+
+
+async def build_gadm_geostore(
     admin_provider: str,
     admin_version: str,
     adm_level: int,
@@ -198,14 +220,8 @@ async def get_gadm_geostore(
     country_id: str,
     region_id: str | None = None,
     subregion_id: str | None = None,
-) -> AdminGeostoreResponse:
-    dv: Tuple[str, str] = await admin_params_to_dataset_version(
-        admin_provider, admin_version
-    )
-    dataset, version = dv
-
-    src_table: Table = db.table(version)
-    src_table.schema = dataset
+) -> AdminGeostore:
+    src_table = await get_versioned_dataset(admin_provider, admin_version)
 
     columns_etc: List[Column | Label] = [
         db.column("adm_level"),
@@ -230,16 +246,43 @@ async def get_gadm_geostore(
             )
         )
 
+    sql: Select = db.select(columns_etc).select_from(src_table)
+
+    sql = await add_where_clauses(adm_level, admin_provider, admin_version, country_id, region_id, sql, subregion_id)
+
+    row = await get_first_row(sql)
+    if row is None:
+        raise RecordNotFoundError(
+            f"Admin boundary not found in {admin_provider} version {admin_version}"
+        )
+
+    if row.geojson is None:
+        raise GeometryIsNullError(
+            "GeoJSON is None, try reducing or eliminating simplification."
+        )
+
+    return await form_admin_geostore(
+        adm_level=adm_level,
+        admin_version=admin_version,
+        area=float(row.gfw_area__ha),
+        bbox=[float(val) for val in row.gfw_bbox],
+        name=str(row.name),
+        geojson=json.loads(row.geojson),
+        geostore_id=str(row.gfw_geostore_id),
+        level_id=str(row.level_id),
+        simplify=simplify,
+    )
+
+
+async def add_where_clauses(adm_level, admin_provider, admin_version, country_id, region_id, sql, subregion_id):
     where_clauses: List[TextClause] = [
         db.text("adm_level=:adm_level").bindparams(adm_level=str(adm_level))
     ]
-
     # gid_0 is just a three-character value, but all more specific ids are
     # followed by an underscore (which has to be escaped because normally in
     # SQL an underscore is a wildcard) and a revision number (for which we
     # use an UN-escaped underscore).
     level_id_pattern: str = country_id
-
     if adm_level == 0:  # Special-case to avoid slow LIKE
         where_clauses.append(
             db.text("gid_0=:level_id_pattern").bindparams(
@@ -264,33 +307,38 @@ async def get_gadm_geostore(
                 level_id_pattern=level_id_pattern
             )
         )
-
-    sql: Select = db.select(columns_etc).select_from(src_table)
-
     for clause in where_clauses:
         sql = sql.where(clause)
+    return sql
 
-    row = await get_first_row(sql)
-    if row is None:
-        raise RecordNotFoundError(
-            f"Admin boundary not found in {admin_provider} version {admin_version}"
-        )
 
-    if row.geojson is None:
-        raise GeometryIsNullError(
-            "GeoJSON is None, try reducing or eliminating simplification."
-        )
+async def get_versioned_dataset(admin_provider, admin_version):
+    dv: Tuple[str, str] = await admin_params_to_dataset_version(
+        admin_provider, admin_version
+    )
+    dataset, version = dv
+    src_table: Table = db.table(version)
+    src_table.schema = dataset
+    return src_table
 
-    geostore: AdminGeostore = await form_admin_geostore(
-        adm_level=adm_level,
+
+async def get_gadm_geostore(
+    admin_provider: str,
+    admin_version: str,
+    adm_level: int,
+    simplify: float | None,
+    country_id: str,
+    region_id: str | None = None,
+    subregion_id: str | None = None,
+) -> AdminGeostoreResponse:
+    geostore: AdminGeostore = await build_gadm_geostore(
+        admin_provider=admin_provider,
         admin_version=admin_version,
-        area=float(row.gfw_area__ha),
-        bbox=[float(val) for val in row.gfw_bbox],
-        name=str(row.name),
-        geojson=json.loads(row.geojson),
-        geostore_id=str(row.gfw_geostore_id),
-        level_id=str(row.level_id),
+        adm_level=adm_level,
         simplify=simplify,
+    country_id=country_id,
+        region_id=region_id,
+        subregion_id=subregion_id,
     )
 
     return AdminGeostoreResponse(data=geostore)
