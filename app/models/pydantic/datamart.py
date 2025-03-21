@@ -1,7 +1,6 @@
 from enum import Enum
 from typing import Dict, Literal, Optional, Union
 from uuid import UUID
-from abc import ABC, abstractmethod
 
 from pydantic import Field, root_validator, validator
 
@@ -11,8 +10,7 @@ from .base import StrictBaseModel
 from ...crud.geostore import get_gadm_geostore_id
 
 
-class AreaOfInterest(StrictBaseModel, ABC):
-    @abstractmethod
+class AreaOfInterest(StrictBaseModel):
     async def get_geostore_id(self) -> UUID:
         """Return the unique identifier for the area of interest."""
         pass
@@ -20,7 +18,7 @@ class AreaOfInterest(StrictBaseModel, ABC):
 
 class GeostoreAreaOfInterest(AreaOfInterest):
     type: Literal['geostore'] = 'geostore'
-    geostore_id:UUID = Field(..., title="Geostore ID")
+    geostore_id: UUID = Field(..., title="Geostore ID")
 
     async def get_geostore_id(self) -> UUID:
         return self.geostore_id
@@ -33,7 +31,6 @@ class AdminAreaOfInterest(AreaOfInterest):
     subregion: Optional[str] = Field(None, title="Subregion")
     provider: str = Field('gadm', title="Administrative Boundary Provider")
     version: str = Field('4.1', title="Administrative Boundary Version")
-
 
     async def get_geostore_id(self) -> UUID:
         admin_level = sum(1 for field in (self.country, self.region, self.subregion) if field is not None) - 1
@@ -63,6 +60,9 @@ class AdminAreaOfInterest(AreaOfInterest):
     def set_version_default(cls, v):
         return v or '4.1'
 
+
+class Global(AreaOfInterest):
+    type: Literal["global"] = "global"
 
 
 class AnalysisStatus(str, Enum):
@@ -99,7 +99,7 @@ class DataMartResourceLinkResponse(Response):
 
 
 class TreeCoverLossByDriverIn(StrictBaseModel):
-    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest] = Field(..., discriminator='type')
+    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest, Global] = Field(..., discriminator='type')
     canopy_cover: int = 30
     dataset_version: Dict[str, str] = {}
 
@@ -132,6 +132,3 @@ class TreeCoverLossByDriverUpdate(StrictBaseModel):
 
 class TreeCoverLossByDriverResponse(Response):
     data: TreeCoverLossByDriver
-
-
-

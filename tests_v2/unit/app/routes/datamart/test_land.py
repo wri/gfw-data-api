@@ -431,3 +431,73 @@ class TestAdminAreaOfInterest:
                     in response.json()["data"]["link"]
             )
             mock_get_resources.assert_awaited_with(resource_id)
+
+class TestGlobal:
+    @pytest.mark.asyncio
+    async def test_get_tree_cover_loss_by_drivers_found(
+            self,
+            apikey,
+            async_client: AsyncClient,
+    ):
+        with (
+            patch("app.routes.datamart.land._get_resource", return_value=None) as mock_get_resources,
+        ):
+            api_key, payload = apikey
+            origin = payload["domains"][0]
+
+            headers = {"origin": origin}
+            params = {"x-api-key": api_key, "aoi[type]": "global", "canopy_cover": 30}
+            resource_id = _get_resource_id(
+                "tree_cover_loss_by_driver", "global", 30, DEFAULT_LAND_DATASET_VERSIONS
+            )
+
+            response = await async_client.get(
+                "/v0/land/tree_cover_loss_by_driver", headers=headers, params=params
+            )
+
+            assert response.status_code == 200
+            assert (
+                    f"/v0/land/tree_cover_loss_by_driver/{resource_id}"
+                    in response.json()["data"]["link"]
+            )
+            mock_get_resources.assert_awaited_with(resource_id)
+
+
+    @pytest.mark.asyncio
+    async def test_post_tree_cover_loss_by_drivers(
+        self,
+        apikey,
+        async_client: AsyncClient,
+    ):
+        api_key, payload = apikey
+        origin = payload["domains"][0]
+
+        headers = {"origin": origin, "x-api-key": api_key}
+        payload = {
+            "aoi": {
+                "type": "global",
+            },
+            "canopy_cover": 30,
+            "dataset_version": {"umd_tree_cover_loss": "v1.8"},
+        }
+        with (
+            patch("app.routes.datamart.land._get_resource", return_value=None) as mock_get_resources,
+        ):
+            response = await async_client.post(
+                "/v0/land/tree_cover_loss_by_driver", headers=headers, json=payload
+            )
+
+            assert response.status_code == 202
+
+            body = response.json()
+            assert body["status"] == "success"
+            assert "/v0/land/tree_cover_loss_by_driver/" in body["data"]["link"]
+
+            resource_id = body["data"]["link"].split("/")[-1]
+            try:
+                resource_id = uuid.UUID(resource_id)
+                assert True
+            except ValueError:
+                assert False
+
+            mock_get_resources.assert_awaited_with(resource_id)
