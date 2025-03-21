@@ -201,14 +201,8 @@ async def get_gadm_geostore_id(
 ) -> str:
     src_table = await get_versioned_dataset(admin_provider, admin_version)
     columns_etc: List[Column | Label] = [db.column("gfw_geostore_id"),]
-    sql: Select = db.select(columns_etc).select_from(src_table)
-    sql = await add_where_clauses(adm_level, admin_provider, admin_version, country_id, region_id, sql, subregion_id)
-    row = await get_first_row(sql)
-    if row is None:
-        raise RecordNotFoundError(
-            f"Admin boundary not found in {admin_provider} version {admin_version}"
-        )
-
+    row = await _find_first_geostore(adm_level, admin_provider, admin_version, columns_etc, country_id, region_id,
+                               src_table, subregion_id)
     return await row.gfw_geostore_id
 
 
@@ -246,15 +240,8 @@ async def build_gadm_geostore(
             )
         )
 
-    sql: Select = db.select(columns_etc).select_from(src_table)
-
-    sql = await add_where_clauses(adm_level, admin_provider, admin_version, country_id, region_id, sql, subregion_id)
-
-    row = await get_first_row(sql)
-    if row is None:
-        raise RecordNotFoundError(
-            f"Admin boundary not found in {admin_provider} version {admin_version}"
-        )
+    row = await _find_first_geostore(adm_level, admin_provider, admin_version, columns_etc, country_id, region_id,
+                                     src_table, subregion_id)
 
     if row.geojson is None:
         raise GeometryIsNullError(
@@ -272,6 +259,18 @@ async def build_gadm_geostore(
         level_id=str(row.level_id),
         simplify=simplify,
     )
+
+
+async def _find_first_geostore(adm_level, admin_provider, admin_version, columns_etc, country_id, region_id, src_table,
+                               subregion_id):
+    sql: Select = db.select(columns_etc).select_from(src_table)
+    sql = await add_where_clauses(adm_level, admin_provider, admin_version, country_id, region_id, sql, subregion_id)
+    row = await get_first_row(sql)
+    if row is None:
+        raise RecordNotFoundError(
+            f"Admin boundary not found in {admin_provider} version {admin_version}"
+        )
+    return row
 
 
 async def add_where_clauses(adm_level, admin_provider, admin_version, country_id, region_id, sql, subregion_id):
