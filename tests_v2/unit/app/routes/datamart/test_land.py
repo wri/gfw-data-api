@@ -163,7 +163,7 @@ async def test_get_tree_cover_loss_by_drivers_with_malformed_overrides(
     }
 
     response = await async_client.get(
-        f"/v0/land/tree_cover_loss_by_driver?dataset_version[umd_tree_cover_loss]]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
+        "/v0/land/tree_cover_loss_by_driver?dataset_version[umd_tree_cover_loss]]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
         headers=headers,
         params=params,
     )

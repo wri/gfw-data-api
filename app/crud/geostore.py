@@ -9,7 +9,6 @@ from sqlalchemy.sql import Select, label
 from sqlalchemy.sql.elements import Label, TextClause
 
 from app.application import db
-from app.crud.tasks import create_or_update_task
 from app.errors import (
     BadAdminSourceException,
     BadAdminVersionException,
@@ -213,7 +212,7 @@ async def get_gadm_geostore_id(
         src_table,
         subregion_id,
     )
-    return await row.gfw_geostore_id
+    return row.gfw_geostore_id
 
 
 async def build_gadm_geostore(

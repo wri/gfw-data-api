@@ -92,7 +92,7 @@ class DataMartResource(StrictBaseModel):
     message: Optional[str] = None
     requested_by: Optional[UUID] = None
     endpoint: str
-    metadata: DataMartMetadata = None
+    metadata: Optional[DataMartMetadata] = None
 
 
 class DataMartResourceLink(StrictBaseModel):
