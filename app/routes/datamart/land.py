@@ -40,6 +40,7 @@ from app.tasks.datamart.land import (
     compute_tree_cover_loss_by_driver,
 )
 from app.utils.geostore import get_geostore
+from . import OPENAPI_EXTRA
 
 from ...authentication.api_keys import get_api_key
 
@@ -95,45 +96,7 @@ def _parse_area_of_interest(request: Request) -> AreaOfInterest:
     response_model=DataMartResourceLinkResponse,
     tags=["Land"],
     status_code=200,
-    openapi_extra={
-        "parameters": [
-            {
-                "name": "aoi",
-                "in": "query",
-                "required": True,
-                "style": "deepObject",
-                "explode": True,
-                "example": {
-                    "geostore_id": "637d378f-93a9-4364-bfa8-95b6afd28c3a",
-                },
-                "description": "The Area of Interest",
-                "schema": {
-                    "oneOf": [
-                        {"$ref": "#/components/schemas/GeostoreAreaOfInterest"},
-                        {"$ref": "#/components/schemas/AdminAreaOfInterest"},
-                    ]
-                }
-            },
-            {
-                "name": "dataset_version",
-                "in": "query",
-                "required": False,
-                "style": "deepObject",
-                "explode": True,
-                "schema": {
-                    "type": "object",
-                    "additionalProperties": {"type": "string"},
-                },
-                "example": {
-                    "umd_tree_cover_loss": "v1.11",
-                    "tsc_tree_cover_loss_drivers": "v2023",
-                },
-                "description": (
-                        "Pass dataset version overrides as bracketed query parameters.",
-                )
-            }
-        ]
-    },
+    openapi_extra= OPENAPI_EXTRA,
 )
 async def tree_cover_loss_by_driver_search(
     *,
