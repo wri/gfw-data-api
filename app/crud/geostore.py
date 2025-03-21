@@ -192,17 +192,27 @@ async def get_first_row(sql: Select):
 
 
 async def get_gadm_geostore_id(
-        admin_provider: str,
-        admin_version: str,
-        adm_level: int,
-        country_id: str,
-        region_id: str | None = None,
-        subregion_id: str | None = None,
+    admin_provider: str,
+    admin_version: str,
+    adm_level: int,
+    country_id: str,
+    region_id: str | None = None,
+    subregion_id: str | None = None,
 ) -> str:
     src_table = await get_versioned_dataset(admin_provider, admin_version)
-    columns_etc: List[Column | Label] = [db.column("gfw_geostore_id"),]
-    row = await _find_first_geostore(adm_level, admin_provider, admin_version, columns_etc, country_id, region_id,
-                               src_table, subregion_id)
+    columns_etc: List[Column | Label] = [
+        db.column("gfw_geostore_id"),
+    ]
+    row = await _find_first_geostore(
+        adm_level,
+        admin_provider,
+        admin_version,
+        columns_etc,
+        country_id,
+        region_id,
+        src_table,
+        subregion_id,
+    )
     return await row.gfw_geostore_id
 
 
@@ -240,8 +250,16 @@ async def build_gadm_geostore(
             )
         )
 
-    row = await _find_first_geostore(adm_level, admin_provider, admin_version, columns_etc, country_id, region_id,
-                                     src_table, subregion_id)
+    row = await _find_first_geostore(
+        adm_level,
+        admin_provider,
+        admin_version,
+        columns_etc,
+        country_id,
+        region_id,
+        src_table,
+        subregion_id,
+    )
 
     if row.geojson is None:
         raise GeometryIsNullError(
@@ -261,10 +279,26 @@ async def build_gadm_geostore(
     )
 
 
-async def _find_first_geostore(adm_level, admin_provider, admin_version, columns_etc, country_id, region_id, src_table,
-                               subregion_id):
+async def _find_first_geostore(
+    adm_level,
+    admin_provider,
+    admin_version,
+    columns_etc,
+    country_id,
+    region_id,
+    src_table,
+    subregion_id,
+):
     sql: Select = db.select(columns_etc).select_from(src_table)
-    sql = await add_where_clauses(adm_level, admin_provider, admin_version, country_id, region_id, sql, subregion_id)
+    sql = await add_where_clauses(
+        adm_level,
+        admin_provider,
+        admin_version,
+        country_id,
+        region_id,
+        sql,
+        subregion_id,
+    )
     row = await get_first_row(sql)
     if row is None:
         raise RecordNotFoundError(
@@ -273,7 +307,9 @@ async def _find_first_geostore(adm_level, admin_provider, admin_version, columns
     return row
 
 
-async def add_where_clauses(adm_level, admin_provider, admin_version, country_id, region_id, sql, subregion_id):
+async def add_where_clauses(
+    adm_level, admin_provider, admin_version, country_id, region_id, sql, subregion_id
+):
     where_clauses: List[TextClause] = [
         db.text("adm_level=:adm_level").bindparams(adm_level=str(adm_level))
     ]
@@ -335,7 +371,7 @@ async def get_gadm_geostore(
         admin_version=admin_version,
         adm_level=adm_level,
         simplify=simplify,
-    country_id=country_id,
+        country_id=country_id,
         region_id=region_id,
         subregion_id=subregion_id,
     )

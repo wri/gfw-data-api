@@ -13,7 +13,7 @@ OPENAPI_EXTRA = {
                     "value": {
                         "type": "geostore",
                         "geostore_id": "637d378f-93a9-4364-bfa8-95b6afd28c3a",
-                    }
+                    },
                 },
                 "Admin Area Of Interest": {
                     "summary": "Admin Area Of Interest",
@@ -23,8 +23,8 @@ OPENAPI_EXTRA = {
                         "country": "BRA",
                         "region": "12",
                         "subregion": "2",
-                    }
-                }
+                    },
+                },
             },
             "description": "The Area of Interest",
             "schema": {
@@ -32,7 +32,7 @@ OPENAPI_EXTRA = {
                     {"$ref": "#/components/schemas/GeostoreAreaOfInterest"},
                     {"$ref": "#/components/schemas/AdminAreaOfInterest"},
                 ]
-            }
+            },
         },
         {
             "name": "dataset_version",
@@ -50,7 +50,7 @@ OPENAPI_EXTRA = {
             },
             "description": (
                 "Pass dataset version overrides as bracketed query parameters.",
-            )
-        }
+            ),
+        },
     ]
 }

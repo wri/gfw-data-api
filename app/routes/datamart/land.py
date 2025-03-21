@@ -23,16 +23,16 @@ from app.crud import datamart as datamart_crud
 from app.errors import RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
+    AdminAreaOfInterest,
     AnalysisStatus,
+    AreaOfInterest,
     DataMartResource,
     DataMartResourceLink,
     DataMartResourceLinkResponse,
+    GeostoreAreaOfInterest,
     TreeCoverLossByDriver,
     TreeCoverLossByDriverIn,
     TreeCoverLossByDriverResponse,
-    AreaOfInterest,
-    GeostoreAreaOfInterest,
-    AdminAreaOfInterest,
 )
 from app.settings.globals import API_URL
 from app.tasks.datamart.land import (
@@ -40,11 +40,12 @@ from app.tasks.datamart.land import (
     compute_tree_cover_loss_by_driver,
 )
 from app.utils.geostore import get_geostore
-from . import OPENAPI_EXTRA
 
 from ...authentication.api_keys import get_api_key
+from . import OPENAPI_EXTRA
 
 router = APIRouter()
+
 
 def _parse_dataset_versions(request: Request) -> Dict[str, str]:
     dataset_versions = {}
@@ -69,23 +70,27 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
 
 def _parse_area_of_interest(request: Request) -> AreaOfInterest:
     params = request.query_params
-    aoi_type = params.get('aoi[type]')
+    aoi_type = params.get("aoi[type]")
     try:
-        if aoi_type == 'geostore':
-            return GeostoreAreaOfInterest(geostore_id=params.get('aoi[geostore_id]', None))
+        if aoi_type == "geostore":
+            return GeostoreAreaOfInterest(
+                geostore_id=params.get("aoi[geostore_id]", None)
+            )
 
             # Otherwise, check if the request contains admin area information
-        if aoi_type == 'admin':
+        if aoi_type == "admin":
             return AdminAreaOfInterest(
-                country=params.get('aoi[country]', None),
-                region=params.get('aoi[region]', None),
-                subregion=params.get('aoi[subregion]', None),
-                provider=params.get('aoi[provider]', None),
-                version=params.get('aoi[version]', None),
+                country=params.get("aoi[country]", None),
+                region=params.get("aoi[region]", None),
+                subregion=params.get("aoi[subregion]", None),
+                provider=params.get("aoi[provider]", None),
+                version=params.get("aoi[version]", None),
             )
 
         # If neither type is provided, raise an error
-        raise HTTPException(status_code=422, detail="Invalid Area of Interest parameters")
+        raise HTTPException(
+            status_code=422, detail="Invalid Area of Interest parameters"
+        )
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=e.errors())
 
@@ -96,7 +101,7 @@ def _parse_area_of_interest(request: Request) -> AreaOfInterest:
     response_model=DataMartResourceLinkResponse,
     tags=["Land"],
     status_code=200,
-    openapi_extra= OPENAPI_EXTRA,
+    openapi_extra=OPENAPI_EXTRA,
 )
 async def tree_cover_loss_by_driver_search(
     *,
