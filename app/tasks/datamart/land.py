@@ -47,10 +47,13 @@ async def compute_tree_cover_loss_by_driver(
             dataset_version,
         )
 
-        tcl_by_driver = {
-            row["tsc_tree_cover_loss_drivers__driver"]: row["area__ha"]
+        tcl_by_driver = [
+            {
+                "drivers_type": row["tsc_tree_cover_loss_drivers__driver"],
+                "loss_area_ha": row["area__ha"],
+            }
             for row in results
-        }
+        ]
 
         resource.result = tcl_by_driver
         resource.status = AnalysisStatus.saved

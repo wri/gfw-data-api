@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from pydantic import Field, root_validator, validator
@@ -116,7 +116,9 @@ class TreeCoverLossByDriverMetadata(DataMartMetadata):
 
 
 class TreeCoverLossByDriver(StrictBaseModel):
-    result: Optional[Dict[str, float]] = Field(None, alias="tree_cover_loss_by_driver")
+    result: Optional[List[Dict[str, Any]]] = Field(
+        None, alias="tree_cover_loss_by_driver"
+    )
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
     message: Optional[str] = None
     status: AnalysisStatus
@@ -127,7 +129,9 @@ class TreeCoverLossByDriver(StrictBaseModel):
 
 
 class TreeCoverLossByDriverUpdate(StrictBaseModel):
-    result: Optional[Dict[str, float]] = Field(None, alias="tree_cover_loss_by_driver")
+    result: Optional[List[Dict[str, Any]]] = Field(
+        None, alias="tree_cover_loss_by_driver"
+    )
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
     status: Optional[AnalysisStatus] = AnalysisStatus.saved
     message: Optional[str] = None
