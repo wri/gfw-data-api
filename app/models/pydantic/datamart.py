@@ -1,8 +1,11 @@
+import csv
 from abc import ABC, abstractmethod
 from enum import Enum
+from io import StringIO
 from typing import Dict, Literal, Optional, Union
 from uuid import UUID
 
+import pandas as pd
 from pydantic import Field, root_validator, validator
 
 from app.models.pydantic.responses import Response
@@ -115,8 +118,36 @@ class TreeCoverLossByDriverMetadata(DataMartMetadata):
     canopy_cover: int
 
 
+class TreeCoverLossByDriverResult(StrictBaseModel):
+    tree_cover_loss_by_driver: Dict[str, float]
+    yearly_tree_cover_loss_by_driver: Dict[str, Dict[str, float]]
+
+    @staticmethod
+    def from_rows(rows):
+        df = pd.DataFrame(rows)
+        by_year = (
+            df.groupby(["umd_tree_cover_loss__year"])
+            .apply(
+                lambda x: dict(
+                    zip(x["tsc_tree_cover_loss_drivers__driver"], x["area__ha"])
+                )
+            )
+            .to_dict()
+        )
+        by_driver = (
+            df.drop(["umd_tree_cover_loss__year"], axis=1)
+            .groupby(["tsc_tree_cover_loss_drivers__driver"])
+            .sum()
+            .to_dict()["area__ha"]
+        )
+        return TreeCoverLossByDriverResult(
+            tree_cover_loss_by_driver=by_driver,
+            yearly_tree_cover_loss_by_driver=by_year,
+        )
+
+
 class TreeCoverLossByDriver(StrictBaseModel):
-    result: Optional[Dict[str, float]] = Field(None, alias="tree_cover_loss_by_driver")
+    result: Optional[TreeCoverLossByDriverResult] = None
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
     message: Optional[str] = None
     status: AnalysisStatus
@@ -127,7 +158,7 @@ class TreeCoverLossByDriver(StrictBaseModel):
 
 
 class TreeCoverLossByDriverUpdate(StrictBaseModel):
-    result: Optional[Dict[str, float]] = Field(None, alias="tree_cover_loss_by_driver")
+    result: Optional[TreeCoverLossByDriverResult] = None
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
     status: Optional[AnalysisStatus] = AnalysisStatus.saved
     message: Optional[str] = None
@@ -139,3 +170,29 @@ class TreeCoverLossByDriverUpdate(StrictBaseModel):
 
 class TreeCoverLossByDriverResponse(Response):
     data: TreeCoverLossByDriver
+
+    def to_csv(
+        self,
+    ) -> StringIO:
+        """Create a new csv file that represents the resource Response will
+        return a temporary redirect to download URL."""
+        csv_file = StringIO()
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
+        wr.writerow(
+            [
+                "umd_tree_cover_loss__year",
+                "tsc_tree_cover_loss_drivers__driver",
+                "area__ha",
+            ]
+        )
+
+        if self.data.status == "saved":
+            for (
+                year,
+                tcl_by_driver,
+            ) in self.data.result.yearly_tree_cover_loss_by_driver.items():
+                for driver, area in tcl_by_driver.items():
+                    wr.writerow([year, driver, area])
+
+        csv_file.seek(0)
+        return csv_file
