@@ -299,7 +299,7 @@ async def test_get_tree_cover_loss_by_drivers_as_csv(
     headers = {
         "origin": origin,
         "x-api-key": api_key,
-        "Content-Type": "application/csv",
+        "Accept": "text/csv",
     }
     MOCK_RESOURCE["metadata"]["geostore_id"] = geostore
 
@@ -378,7 +378,7 @@ async def test_compute_tree_cover_loss_by_driver_error(geostore):
         mock_query_dataset_json.assert_awaited_once_with(
             "umd_tree_cover_loss",
             "v1.11",
-            "SELECT SUM(area__ha) FROM data WHERE umd_tree_cover_density_2000__threshold >= 30 GROUP BY tsc_tree_cover_loss_drivers__driver",
+            "SELECT SUM(area__ha) FROM data WHERE umd_tree_cover_density_2000__threshold >= 30 GROUP BY umd_tree_cover_loss__year, tsc_tree_cover_loss_drivers__driver",
             geostore_common,
             DEFAULT_LAND_DATASET_VERSIONS,
         )
@@ -465,7 +465,7 @@ MOCK_RESOURCE = {
 MOCK_ERROR_RESOURCE = {
     "status": "failed",
     "message": "500: error",
-    "tree_cover_loss_by_driver": None,
+    "result": None,
     "metadata": {
         "geostore_id": "b9faa657-34c9-96d4-fce4-8bb8a1507cb3",
         "canopy_cover": 30,

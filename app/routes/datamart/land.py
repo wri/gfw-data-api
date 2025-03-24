@@ -165,10 +165,19 @@ async def tree_cover_loss_by_driver_search(
 
 @router.get(
     "/tree_cover_loss_by_driver/{resource_id}",
-    response_class=ORJSONResponse | CSVStreamingResponse,
+    response_class=ORJSONResponse,
     response_model=TreeCoverLossByDriverResponse,
     tags=["Land"],
     status_code=200,
+    responses={
+        200: {
+            "content": {
+                "application/json": {"example": {"message": "This is a JSON response"}},
+                "text/csv": {"example": "id,name\n1,Alice\n2,Bob"},
+            },
+            "description": "Returns either JSON or CSV representation based on the Accept header. CSV representation will only return tree cover loss year, driver, and area.",
+        }
+    },
 )
 async def tree_cover_loss_by_driver_get(
     *,
@@ -187,7 +196,8 @@ async def tree_cover_loss_by_driver_get(
         data=tree_cover_loss_by_driver
     )
 
-    if request.headers["Content-Type"] == "application/csv":
+    if request.headers.get("Accept", None) == "text/csv":
+        response.headers["Content-Type"] = "test/csv"
         csv_data = tree_cover_loss_by_driver_response.to_csv()
         download = "Content-Disposition" in request.headers and request.headers[
             "Content-Disposition"
