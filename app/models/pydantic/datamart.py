@@ -13,7 +13,7 @@ from ...crud.geostore import get_gadm_geostore_id
 class AreaOfInterest(StrictBaseModel):
     async def get_geostore_id(self) -> UUID:
         """Return the unique identifier for the area of interest."""
-        pass
+        raise NotImplementedError("This method is not implemented.")
 
 
 class GeostoreAreaOfInterest(AreaOfInterest):
