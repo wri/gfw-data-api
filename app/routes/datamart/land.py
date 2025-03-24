@@ -134,8 +134,9 @@ async def tree_cover_loss_by_driver_search(
     responses={
         200: {
             "content": {
-                "application/json": {"example": {"message": "This is a JSON response"}},
-                "text/csv": {"example": "id,name\n1,Alice\n2,Bob"},
+                "text/csv": {
+                    "example": '"umd_tree_cover_loss__year","tsc_tree_cover_loss_drivers__driver","area__ha"\r\n"2001","Permanent agriculture",10.0\r\n"2001","Hard commodities",12.0\r\n"2001","Shifting cultivation",7.0\r\n"2001","Forest management",93.4\r\n"2001","Wildfires",42.0\r\n"2001","Settlements and infrastructure",13.562\r\n"2001","Other natural disturbances",6.0\r\n'
+                },
             },
             "description": "Returns either JSON or CSV representation based on the Accept header. CSV representation will only return tree cover loss year, driver, and area.",
         }
@@ -160,11 +161,9 @@ async def tree_cover_loss_by_driver_get(
 
     if request.headers.get("Accept", None) == "text/csv":
         response.headers["Content-Type"] = "test/csv"
+        response.header["Content-Disposition"] = "attachment"
         csv_data = tree_cover_loss_by_driver_response.to_csv()
-        download = "Content-Disposition" in request.headers and request.headers[
-            "Content-Disposition"
-        ].startswith("attachment")
-        return CSVStreamingResponse(iter([csv_data.getvalue()]), download=download)
+        return CSVStreamingResponse(iter([csv_data.getvalue()]), download=True)
 
     return tree_cover_loss_by_driver_response
 
