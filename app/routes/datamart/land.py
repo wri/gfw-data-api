@@ -43,6 +43,7 @@ from app.tasks.datamart.land import (
 from app.utils.geostore import get_geostore
 
 from ...authentication.api_keys import get_api_key
+from . import OPENAPI_EXTRA
 
 router = APIRouter()
 
@@ -101,45 +102,7 @@ def _parse_area_of_interest(request: Request) -> AreaOfInterest:
     response_model=DataMartResourceLinkResponse,
     tags=["Land"],
     status_code=200,
-    openapi_extra={
-        "parameters": [
-            {
-                "name": "aoi",
-                "in": "query",
-                "required": True,
-                "style": "deepObject",
-                "explode": True,
-                "example": {
-                    "geostore_id": "637d378f-93a9-4364-bfa8-95b6afd28c3a",
-                },
-                "description": "The Area of Interest",
-                "schema": {
-                    "oneOf": [
-                        {"$ref": "#/components/schemas/GeostoreAreaOfInterest"},
-                        {"$ref": "#/components/schemas/AdminAreaOfInterest"},
-                    ]
-                },
-            },
-            {
-                "name": "dataset_version",
-                "in": "query",
-                "required": False,
-                "style": "deepObject",
-                "explode": True,
-                "schema": {
-                    "type": "object",
-                    "additionalProperties": {"type": "string"},
-                },
-                "example": {
-                    "umd_tree_cover_loss": "v1.11",
-                    "tsc_tree_cover_loss_drivers": "v2023",
-                },
-                "description": (
-                    "Pass dataset version overrides as bracketed query parameters.",
-                ),
-            },
-        ]
-    },
+    openapi_extra=OPENAPI_EXTRA,
 )
 async def tree_cover_loss_by_driver_search(
     *,
@@ -149,7 +112,6 @@ async def tree_cover_loss_by_driver_search(
     api_key: APIKey = Depends(get_api_key),
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
-
     geostore_id = await aoi.get_geostore_id()
     resource_id = _get_resource_id(
         "tree_cover_loss_by_driver", geostore_id, canopy_cover, dataset_versions
@@ -240,7 +202,7 @@ async def tree_cover_loss_by_driver_post(
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
     resource_id = _get_resource_id(
         "tree_cover_loss_by_driver",
-        data.aoi.get_geostore_id(),
+        geostore_id,
         data.canopy_cover,
         dataset_version,
     )

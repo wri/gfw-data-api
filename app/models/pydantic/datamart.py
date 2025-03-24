@@ -73,13 +73,6 @@ class AdminAreaOfInterest(AreaOfInterest):
         return v or "4.1"
 
 
-class AreaOfInterest(StrictBaseModel, ABC):
-    @abstractmethod
-    def get_geostore_id(self) -> UUID:
-        """Return the unique identifier for the area of interest."""
-        pass
-
-
 class AnalysisStatus(str, Enum):
     saved = "saved"
     pending = "pending"
@@ -102,7 +95,7 @@ class DataMartResource(StrictBaseModel):
     message: Optional[str] = None
     requested_by: Optional[UUID] = None
     endpoint: str
-    metadata: DataMartMetadata = None
+    metadata: Optional[DataMartMetadata] = None
 
 
 class DataMartResourceLink(StrictBaseModel):
