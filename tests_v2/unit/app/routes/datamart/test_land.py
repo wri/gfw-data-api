@@ -32,7 +32,12 @@ async def test_get_tree_cover_loss_by_drivers_not_found(
         origin = payload["domains"][0]
 
         headers = {"origin": origin}
-        params = {"x-api-key": api_key, "geostore_id": geostore, "canopy_cover": 30}
+        params = {
+            "x-api-key": api_key,
+            "aoi[type]": "geostore",
+            "aoi[geostore_id]": geostore,
+            "canopy_cover": 30,
+        }
 
         response = await async_client.get(
             "/v0/land/tree_cover_loss_by_driver", headers=headers, params=params
@@ -59,7 +64,12 @@ async def test_get_tree_cover_loss_by_drivers_found(
         origin = payload["domains"][0]
 
         headers = {"origin": origin}
-        params = {"x-api-key": api_key, "geostore_id": geostore, "canopy_cover": 30}
+        params = {
+            "x-api-key": api_key,
+            "aoi[type]": "geostore",
+            "aoi[geostore_id]": geostore,
+            "canopy_cover": 30,
+        }
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
         )
@@ -94,7 +104,12 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
         origin = payload["domains"][0]
 
         headers = {"origin": origin}
-        params = {"x-api-key": api_key, "geostore_id": geostore, "canopy_cover": 30}
+        params = {
+            "x-api-key": api_key,
+            "aoi[type]": "geostore",
+            "aoi[geostore_id]": geostore,
+            "canopy_cover": 30,
+        }
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver",
             geostore,
@@ -140,10 +155,15 @@ async def test_get_tree_cover_loss_by_drivers_with_malformed_overrides(
     origin = payload["domains"][0]
 
     headers = {"origin": origin}
-    params = {"x-api-key": api_key, "geostore_id": geostore, "canopy_cover": 30}
+    params = {
+        "x-api-key": api_key,
+        "aoi[type]": "geostore",
+        "aoi[geostore_id]": geostore,
+        "canopy_cover": 30,
+    }
 
     response = await async_client.get(
-        "/v0/land/tree_cover_loss_by_driver?x-api-key={api_key}&geostore_id={geostore_id}&canopy_cover=30&dataset_version[umd_tree_cover_loss]]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
+        "/v0/land/tree_cover_loss_by_driver?dataset_version[umd_tree_cover_loss]]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
         headers=headers,
         params=params,
     )
@@ -166,7 +186,10 @@ async def test_post_tree_cover_loss_by_drivers(
 
     headers = {"origin": origin, "x-api-key": api_key}
     payload = {
-        "geostore_id": geostore,
+        "aoi": {
+            "type": "geostore",
+            "geostore_id": geostore,
+        },
         "canopy_cover": 30,
         "dataset_version": {"umd_tree_cover_loss": "v1.8"},
     }
@@ -395,3 +418,46 @@ MOCK_ERROR_RESOURCE = {
         ],
     },
 }
+
+
+class TestAdminAreaOfInterest:
+    @pytest.mark.asyncio
+    async def test_get_tree_cover_loss_by_drivers_found(
+        self,
+        geostore,
+        apikey,
+        async_client: AsyncClient,
+    ):
+        with (
+            patch(
+                "app.routes.datamart.land._get_resource", return_value=None
+            ) as mock_get_resources,
+            patch(
+                "app.models.pydantic.datamart.get_gadm_geostore_id",
+                return_value=geostore,
+            ),
+        ):
+            api_key, payload = apikey
+            origin = payload["domains"][0]
+
+            headers = {"origin": origin}
+            params = {
+                "x-api-key": api_key,
+                "aoi[type]": "admin",
+                "aoi[country]": "BRA",
+                "canopy_cover": 30,
+            }
+            resource_id = _get_resource_id(
+                "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
+            )
+
+            response = await async_client.get(
+                "/v0/land/tree_cover_loss_by_driver", headers=headers, params=params
+            )
+
+            assert response.status_code == 200
+            assert (
+                f"/v0/land/tree_cover_loss_by_driver/{resource_id}"
+                in response.json()["data"]["link"]
+            )
+            mock_get_resources.assert_awaited_with(resource_id)
