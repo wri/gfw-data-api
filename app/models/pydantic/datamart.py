@@ -62,7 +62,10 @@ class AdminAreaOfInterest(AreaOfInterest):
 
 
 class Global(AreaOfInterest):
-    type: Literal["global"] = "global"
+    type: Literal["global"] = Field(
+        "global",
+        description="Apply analysis to the full spatial extent of the dataset."
+    )
 
 
 class AnalysisStatus(str, Enum):
