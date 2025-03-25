@@ -384,15 +384,36 @@ MOCK_RESULT = [
 MOCK_RESOURCE = {
     "status": "saved",
     "message": None,
-    "tree_cover_loss_by_driver": {
-        "Permanent agriculture": 10.0,
-        "Hard commodities": 12.0,
-        "Shifting cultivation": 7.0,
-        "Forest management": 93.4,
-        "Wildfires": 42.0,
-        "Settlements and infrastructure": 13.562,
-        "Other natural disturbances": 6.0,
-    },
+    "tree_cover_loss_by_driver": [
+        {
+            "drivers_type": "Permanent agriculture",
+            "loss_area_ha": 10,
+        },
+        {
+            "drivers_type": "Hard commodities",
+            "loss_area_ha": 12,
+        },
+        {
+            "drivers_type": "Shifting cultivation",
+            "loss_area_ha": 7,
+        },
+        {
+            "drivers_type": "Forest management",
+            "loss_area_ha": 93.4,
+        },
+        {
+            "drivers_type": "Wildfires",
+            "loss_area_ha": 42,
+        },
+        {
+            "drivers_type": "Settlements and infrastructure",
+            "loss_area_ha": 13.562,
+        },
+        {
+            "drivers_type": "Other natural disturbances",
+            "loss_area_ha": 6,
+        },
+    ],
     "metadata": {
         "geostore_id": "",
         "canopy_cover": 30,
