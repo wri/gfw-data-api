@@ -17,7 +17,7 @@ class AreaOfInterest(StrictBaseModel):
 
 
 class GeostoreAreaOfInterest(AreaOfInterest):
-    type: Literal['geostore'] = 'geostore'
+    type: Literal["geostore"] = "geostore"
     geostore_id: UUID = Field(..., title="Geostore ID")
 
     async def get_geostore_id(self) -> UUID:
@@ -25,15 +25,22 @@ class GeostoreAreaOfInterest(AreaOfInterest):
 
 
 class AdminAreaOfInterest(AreaOfInterest):
-    type: Literal['admin'] = 'admin'
+    type: Literal["admin"] = "admin"
     country: str = Field(..., title="ISO Country Code")
     region: Optional[str] = Field(None, title="Region")
     subregion: Optional[str] = Field(None, title="Subregion")
-    provider: str = Field('gadm', title="Administrative Boundary Provider")
-    version: str = Field('4.1', title="Administrative Boundary Version")
+    provider: str = Field("gadm", title="Administrative Boundary Provider")
+    version: str = Field("4.1", title="Administrative Boundary Version")
 
     async def get_geostore_id(self) -> UUID:
-        admin_level = sum(1 for field in (self.country, self.region, self.subregion) if field is not None) - 1
+        admin_level = (
+            sum(
+                1
+                for field in (self.country, self.region, self.subregion)
+                if field is not None
+            )
+            - 1
+        )
         geostore_id = await get_gadm_geostore_id(
             admin_provider=self.provider,
             admin_version=self.version,
@@ -52,19 +59,19 @@ class AdminAreaOfInterest(AreaOfInterest):
             raise ValueError("region must be specified if subregion is provided")
         return values
 
-    @validator('provider', pre=True, always=True)
+    @validator("provider", pre=True, always=True)
     def set_provider_default(cls, v):
-        return v or 'gadm'
+        return v or "gadm"
 
-    @validator('version', pre=True, always=True)
+    @validator("version", pre=True, always=True)
     def set_version_default(cls, v):
-        return v or '4.1'
+        return v or "4.1"
 
 
 class Global(AreaOfInterest):
     type: Literal["global"] = Field(
         "global",
-        description="Apply analysis to the full spatial extent of the dataset."
+        description="Apply analysis to the full spatial extent of the dataset.",
     )
 
 
@@ -102,7 +109,9 @@ class DataMartResourceLinkResponse(Response):
 
 
 class TreeCoverLossByDriverIn(StrictBaseModel):
-    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest, Global] = Field(..., discriminator='type')
+    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest, Global] = Field(
+        ..., discriminator="type"
+    )
     canopy_cover: int = 30
     dataset_version: Dict[str, str] = {}
 
