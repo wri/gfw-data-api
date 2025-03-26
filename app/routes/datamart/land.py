@@ -73,26 +73,30 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
 
 def _parse_area_of_interest(request: Request) -> AreaOfInterest:
     params = request.query_params
-    aoi_type = params.get('aoi[type]')
+    aoi_type = params.get("aoi[type]")
     try:
-        if aoi_type == 'geostore':
-            return GeostoreAreaOfInterest(geostore_id=params.get('aoi[geostore_id]', None))
+        if aoi_type == "geostore":
+            return GeostoreAreaOfInterest(
+                geostore_id=params.get("aoi[geostore_id]", None)
+            )
 
             # Otherwise, check if the request contains admin area information
-        if aoi_type == 'admin':
+        if aoi_type == "admin":
             return AdminAreaOfInterest(
-                country=params.get('aoi[country]', None),
-                region=params.get('aoi[region]', None),
-                subregion=params.get('aoi[subregion]', None),
-                provider=params.get('aoi[provider]', None),
-                version=params.get('aoi[version]', None),
+                country=params.get("aoi[country]", None),
+                region=params.get("aoi[region]", None),
+                subregion=params.get("aoi[subregion]", None),
+                provider=params.get("aoi[provider]", None),
+                version=params.get("aoi[version]", None),
             )
 
         if aoi_type == "global":
             return Global()
 
         # If neither type is provided, raise an error
-        raise HTTPException(status_code=422, detail="Invalid Area of Interest parameters")
+        raise HTTPException(
+            status_code=422, detail="Invalid Area of Interest parameters"
+        )
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=e.errors())
 
@@ -169,7 +173,9 @@ async def tree_cover_loss_by_driver_post(
     """Create new tree cover loss by drivers resource for a given geostore and
     canopy cover."""
 
-    area_id = "global" if data.aoi.type == "global" else await data.aoi.get_geostore_id()
+    area_id = (
+        "global" if data.aoi.type == "global" else await data.aoi.get_geostore_id()
+    )
 
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
     resource_id = _get_resource_id(
@@ -188,7 +194,7 @@ async def tree_cover_loss_by_driver_post(
         except HTTPException:
             raise HTTPException(
                 HTTP_400_BAD_REQUEST,
-                detail="Global computation not supported for this dataset and pre-computed results are not available."
+                detail="Global computation not supported for this dataset and pre-computed results are not available.",
             )
 
         return DataMartResourceLinkResponse(data=link)
