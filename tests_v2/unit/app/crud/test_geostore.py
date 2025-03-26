@@ -1,16 +1,13 @@
 from unittest.mock import patch
 
 import pytest
-from httpx import AsyncClient
 
 from app.crud.geostore import get_gadm_geostore, get_gadm_geostore_id
 from app.errors import RecordNotFoundError
 
 
 @pytest.mark.asyncio
-async def test_get_gadm_geostore_generates_correct_sql_for_country_lookup(
-        async_client: AsyncClient
-):
+async def test_get_gadm_geostore_generates_correct_sql_for_country_lookup():
     provider = "gadm"
     version = "4.1"
     adm_level = 0
@@ -44,9 +41,7 @@ async def test_get_gadm_geostore_generates_correct_sql_for_country_lookup(
 
 
 @pytest.mark.asyncio
-async def test_get_gadm_geostore_generates_correct_sql_for_region_lookup(
-        async_client: AsyncClient
-):
+async def test_get_gadm_geostore_generates_correct_sql_for_region_lookup():
     provider = "gadm"
     version = "4.1"
     adm_level = 1
@@ -81,9 +76,7 @@ async def test_get_gadm_geostore_generates_correct_sql_for_region_lookup(
 
 
 @pytest.mark.asyncio
-async def test_get_gadm_geostore_generates_correct_sql_for_subregion_lookup(
-        async_client: AsyncClient
-):
+async def test_get_gadm_geostore_generates_correct_sql_for_subregion_lookup():
     provider = "gadm"
     version = "4.1"
     adm_level = 2
@@ -120,9 +113,7 @@ async def test_get_gadm_geostore_generates_correct_sql_for_subregion_lookup(
 
 class TestGadmGeostoreIDLookup:
     @pytest.mark.asyncio
-    async def test_get_gadm_geostore_id_generates_correct_sql_for_country_lookup(
-            async_client: AsyncClient
-    ):
+    async def test_get_gadm_geostore_id_generates_correct_sql_for_country_lookup(self):
         provider = "gadm"
         version = "4.1"
         adm_level = 0
@@ -152,11 +143,8 @@ class TestGadmGeostoreIDLookup:
         assert mock_get_first_row.called is True
         assert actual_sql == expected_sql
 
-
     @pytest.mark.asyncio
-    async def test_get_gadm_geostore_id_generates_correct_sql_for_region_lookup(
-            async_client: AsyncClient
-    ):
+    async def test_get_gadm_geostore_id_generates_correct_sql_for_region_lookup(self):
         provider = "gadm"
         version = "4.1"
         adm_level = 1
@@ -187,11 +175,8 @@ class TestGadmGeostoreIDLookup:
         assert mock_get_first_row.called is True
         assert actual_sql == expected_sql
 
-
     @pytest.mark.asyncio
-    async def test_get_gadm_geostore_id_generates_correct_sql_for_subregion_lookup(
-            async_client: AsyncClient
-    ):
+    async def test_get_gadm_geostore_id_generates_correct_sql_for_subregion_lookup(self):
         provider = "gadm"
         version = "4.1"
         adm_level = 2

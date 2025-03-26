@@ -1,13 +1,13 @@
 from enum import Enum
-from typing import Dict, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from pydantic import Field, root_validator, validator
 
 from app.models.pydantic.responses import Response
 
-from .base import StrictBaseModel
 from ...crud.geostore import get_gadm_geostore_id
+from .base import StrictBaseModel
 
 
 class AreaOfInterest(StrictBaseModel):
@@ -90,7 +90,7 @@ class DataMartResource(StrictBaseModel):
     message: Optional[str] = None
     requested_by: Optional[UUID] = None
     endpoint: str
-    metadata: DataMartMetadata = None
+    metadata: Optional[DataMartMetadata] = None
 
 
 class DataMartResourceLink(StrictBaseModel):
@@ -112,7 +112,9 @@ class TreeCoverLossByDriverMetadata(DataMartMetadata):
 
 
 class TreeCoverLossByDriver(StrictBaseModel):
-    result: Optional[Dict[str, float]] = Field(None, alias="tree_cover_loss_by_driver")
+    result: Optional[List[Dict[str, Any]]] = Field(
+        None, alias="tree_cover_loss_by_driver"
+    )
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
     message: Optional[str] = None
     status: AnalysisStatus
@@ -123,7 +125,9 @@ class TreeCoverLossByDriver(StrictBaseModel):
 
 
 class TreeCoverLossByDriverUpdate(StrictBaseModel):
-    result: Optional[Dict[str, float]] = Field(None, alias="tree_cover_loss_by_driver")
+    result: Optional[List[Dict[str, Any]]] = Field(
+        None, alias="tree_cover_loss_by_driver"
+    )
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
     status: Optional[AnalysisStatus] = AnalysisStatus.saved
     message: Optional[str] = None
