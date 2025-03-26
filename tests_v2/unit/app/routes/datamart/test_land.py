@@ -478,20 +478,23 @@ class TestAdminAreaOfInterest:
 
             assert response.status_code == 200
             assert (
-                    f"/v0/land/tree_cover_loss_by_driver/{resource_id}"
-                    in response.json()["data"]["link"]
+                f"/v0/land/tree_cover_loss_by_driver/{resource_id}"
+                in response.json()["data"]["link"]
             )
             mock_get_resources.assert_awaited_with(resource_id)
+
 
 class TestGlobal:
     @pytest.mark.asyncio
     async def test_get_tree_cover_loss_by_drivers_found(
-            self,
-            apikey,
-            async_client: AsyncClient,
+        self,
+        apikey,
+        async_client: AsyncClient,
     ):
         with (
-            patch("app.routes.datamart.land._get_resource", return_value=None) as mock_get_resources,
+            patch(
+                "app.routes.datamart.land._get_resource", return_value=None
+            ) as mock_get_resources,
         ):
             api_key, payload = apikey
             origin = payload["domains"][0]
@@ -508,11 +511,10 @@ class TestGlobal:
 
             assert response.status_code == 200
             assert (
-                    f"/v0/land/tree_cover_loss_by_driver/{resource_id}"
-                    in response.json()["data"]["link"]
+                f"/v0/land/tree_cover_loss_by_driver/{resource_id}"
+                in response.json()["data"]["link"]
             )
             mock_get_resources.assert_awaited_with(resource_id)
-
 
     @pytest.mark.asyncio
     async def test_post_tree_cover_loss_by_drivers(
@@ -532,7 +534,9 @@ class TestGlobal:
             "dataset_version": {"umd_tree_cover_loss": "v1.8"},
         }
         with (
-            patch("app.routes.datamart.land._get_resource", return_value=None) as mock_get_resources,
+            patch(
+                "app.routes.datamart.land._get_resource", return_value=None
+            ) as mock_get_resources,
         ):
             response = await async_client.post(
                 "/v0/land/tree_cover_loss_by_driver", headers=headers, json=payload
