@@ -51,7 +51,7 @@ class AdminAreaOfInterest(AreaOfInterest):
             region_id=self.region,
             subregion_id=self.subregion,
         )
-        return UUID(geostore_id)
+        return geostore_id
 
     @root_validator
     def check_region_subregion(cls, values):

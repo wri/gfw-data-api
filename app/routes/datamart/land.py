@@ -117,7 +117,12 @@ async def tree_cover_loss_by_driver_search(
     )
 
     # check if it exists
-    await _get_resource(resource_id)
+    resource_exists = await _check_resource_exists(resource_id)
+    if not resource_exists:
+        raise HTTPException(
+            status_code=404, detail="Resource not found, may require computation."
+        )
+
     link = DataMartResourceLink(
         link=f"{API_URL}/v0/land/tree_cover_loss_by_driver/{resource_id}"
     )
@@ -188,6 +193,13 @@ async def tree_cover_loss_by_driver_post(
         dataset_version,
     )
 
+    resource_exists = await _check_resource_exists(resource_id)
+    if resource_exists:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Resource f{resource_id} already exists with those parameters.",
+        )
+
     await _save_pending_resource(resource_id, request.url.path, api_key)
 
     background_tasks.add_task(
@@ -218,6 +230,14 @@ async def _get_resource(resource_id):
         raise HTTPException(
             status_code=404, detail="Resource not found, may require computation."
         )
+
+
+async def _check_resource_exists(resource_id) -> bool:
+    try:
+        await datamart_crud.get_result(resource_id)
+        return True
+    except RecordNotFoundError:
+        return False
 
 
 async def _save_pending_resource(resource_id, endpoint, api_key):
