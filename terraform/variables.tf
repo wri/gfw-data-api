@@ -60,6 +60,11 @@ variable "rw_api_url" {
   type = string
 }
 
+variable "rw_api_key_arn" {
+  type        = string
+  description = "RW API key ARN"
+}
+
 variable "git_sha" {
   type = string
 }
@@ -121,13 +126,13 @@ variable "api_gateway_id" {
   default     = ""
 }
 
-variable "api_gw_internal_up_id" {
+variable "api_gw_internal_app_id" {
   type        = string
   description = "ID of API Gateway usage plan for internal domains"
   default     = ""
 }
 
-variable "api_gw_external_up_id" {
+variable "api_gw_external_app_id" {
   type        = string
   description = "ID of API Gateway usage plan for external domains"
   default     = ""

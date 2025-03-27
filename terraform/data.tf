@@ -73,12 +73,13 @@ data "template_file" "container_definition" {
     raster_analysis_sfn_arn     = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_state_machine_arn
     service_url                 = local.service_url
     rw_api_url                  = var.rw_api_url
+    rw_api_key_arn              = var.rw_api_key_arn
     api_token_secret_arn        = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
     aws_gcs_key_secret_arn      = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
 
     api_gateway_id                  = var.api_gateway_id == "" ? module.api_gateway[0].api_gateway_id : var.api_gateway_id
-    api_gateway_external_usage_plan = var.api_gw_external_up_id == "" ? module.api_gateway[0].external_usage_plan_id : var.api_gw_external_up_id
-    api_gateway_internal_usage_plan = var.api_gw_internal_up_id == "" ? module.api_gateway[0].internal_usage_plan_id : var.api_gw_internal_up_id
+    api_gateway_external_usage_plan = var.api_gw_external_app_id == "" ? module.api_gateway[0].external_usage_plan_id : var.api_gw_external_app_id
+    api_gateway_internal_usage_plan = var.api_gw_internal_app_id == "" ? module.api_gateway[0].internal_usage_plan_id : var.api_gw_internal_app_id
     api_gateway_stage_name          = var.api_gateway_stage_name
     internal_domains                = var.internal_domains
 
@@ -170,6 +171,14 @@ data "aws_iam_policy_document" "read_new_relic_lic" {
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
     resources = [var.new_relic_license_key_arn]
+    effect    = "Allow"
+  }
+}
+
+data "aws_iam_policy_document" "read_rw_api_key" {
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [var.rw_api_key_arn]
     effect    = "Allow"
   }
 }

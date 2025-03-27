@@ -52,6 +52,7 @@ services:
       - API_GATEWAY_EXTERNAL_USAGE_PLAN=f56y9r
       - API_GATEWAY_STAGE_NAME=deploy_feature_rate_limiting
       - NAME_SUFFIX=
+      - 'RW_API_KEY={"api-key": null}'
     ports:
       - "8008:80"
     entrypoint: wait_for_postgres.sh /app/start.sh
