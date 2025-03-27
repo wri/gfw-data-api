@@ -87,7 +87,7 @@ class DataMartSource(StrictBaseModel):
 
 
 class DataMartMetadata(StrictBaseModel):
-    geostore_id: UUID
+    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest, Global]
     sources: list[DataMartSource]
 
 
@@ -137,7 +137,6 @@ class TreeCoverLossByDriverUpdate(StrictBaseModel):
     result: Optional[List[Dict[str, Any]]] = Field(
         None, alias="tree_cover_loss_by_driver"
     )
-    metadata: Optional[TreeCoverLossByDriverMetadata] = None
     status: Optional[AnalysisStatus] = AnalysisStatus.saved
     message: Optional[str] = None
 

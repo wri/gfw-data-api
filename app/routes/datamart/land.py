@@ -31,9 +31,11 @@ from app.models.pydantic.datamart import (
     DataMartResource,
     DataMartResourceLink,
     DataMartResourceLinkResponse,
+    DataMartSource,
     GeostoreAreaOfInterest,
     TreeCoverLossByDriver,
     TreeCoverLossByDriverIn,
+    TreeCoverLossByDriverMetadata,
     TreeCoverLossByDriverResponse,
     Global,
 )
@@ -208,8 +210,9 @@ async def tree_cover_loss_by_driver_post(
             detail=f"Geostore {area_id} can't be found or is not valid.",
         )
 
+    metadata = _get_metadata(data.aoi, data.canopy_cover, dataset_version)
     # create initial Job item as pending
-    await _save_pending_resource(resource_id, request.url.path, api_key)
+    await _save_pending_resource(resource_id, metadata, request.url.path, api_key)
 
     # trigger background task to create item
     # return 202 accepted
@@ -224,9 +227,9 @@ async def tree_cover_loss_by_driver_post(
     return DataMartResourceLinkResponse(data=link)
 
 
-def _get_resource_id(path, geostore_id, canopy_cover, dataset_version):
+def _get_resource_id(path, area_id, canopy_cover, dataset_version):
     return uuid.uuid5(
-        uuid.NAMESPACE_OID, f"{path}_{geostore_id}_{canopy_cover}_{dataset_version}"
+        uuid.NAMESPACE_OID, f"{path}_{area_id}_{canopy_cover}_{dataset_version}"
     )
 
 
@@ -240,9 +243,10 @@ async def _get_resource(resource_id):
         )
 
 
-async def _save_pending_resource(resource_id, endpoint, api_key):
+async def _save_pending_resource(resource_id, metadata, endpoint, api_key):
     pending_resource = DataMartResource(
         id=resource_id,
+        metadata=metadata,
         status=AnalysisStatus.pending,
         endpoint=endpoint,
         requested_by=api_key,
@@ -250,3 +254,17 @@ async def _save_pending_resource(resource_id, endpoint, api_key):
     )
 
     await datamart_crud.save_result(pending_resource)
+
+
+def _get_metadata(
+    aoi: AreaOfInterest, canopy_cover: int, dataset_version: Dict[str, str]
+) -> TreeCoverLossByDriverMetadata:
+    sources = [
+        DataMartSource(dataset=dataset, version=version)
+        for dataset, version in dataset_version.items()
+    ]
+    return TreeCoverLossByDriverMetadata(
+        aoi=aoi,
+        canopy_cover=canopy_cover,
+        sources=sources,
+    )
