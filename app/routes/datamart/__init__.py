@@ -31,6 +31,7 @@ OPENAPI_EXTRA = {
                 "oneOf": [
                     {"$ref": "#/components/schemas/GeostoreAreaOfInterest"},
                     {"$ref": "#/components/schemas/AdminAreaOfInterest"},
+                    {"$ref": "#/components/schemas/Global"},
                 ]
             },
         },
