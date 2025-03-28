@@ -181,11 +181,11 @@ def batch_client():
         ON_DEMAND_COMPUTE_JOB_QUEUE, cogify_env["computeEnvironmentArn"]
     )
 
-    aws_mock.add_job_definition(GDAL_PYTHON_JOB_DEFINITION, "batch_gdal-python_test")
+    aws_mock.add_job_definition(GDAL_PYTHON_JOB_DEFINITION, "batch_jobs_test")
     aws_mock.add_job_definition(
-        POSTGRESQL_CLIENT_JOB_DEFINITION, "batch_postgresql-client_test"
+        POSTGRESQL_CLIENT_JOB_DEFINITION, "batch_jobs_test"
     )
-    aws_mock.add_job_definition(TILE_CACHE_JOB_DEFINITION, "batch_tile_cache_test")
+    aws_mock.add_job_definition(TILE_CACHE_JOB_DEFINITION, "batch_jobs_test")
     aws_mock.add_job_definition(PIXETL_JOB_DEFINITION, "pixetl_test", mount_tmp=True)
 
     yield aws_mock.mocked_services["batch"]["client"], aws_mock.mocked_services["logs"][
@@ -223,7 +223,7 @@ def httpd():
     t.join()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="function")
 def flush_request_list(httpd):
     """Delete request cache before every test."""
     _ = httpx.delete(f"http://localhost:{httpd.server_port}")
