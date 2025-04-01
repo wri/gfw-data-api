@@ -242,7 +242,7 @@ def custom_openapi():
         {"name": "Task API", "tags": ["Tasks"]},
         {"name": "Analysis API", "tags": ["Analysis"]},
         {"name": "Health API", "tags": ["Health"]},
-        {"name": "Land API", "tags": ["Beta Land"]},
+        {"name": "Beta Land API", "tags": ["Beta Land"]},
     ]
 
     app.openapi_schema = openapi_schema
