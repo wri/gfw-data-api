@@ -216,6 +216,7 @@ tags_metadata = [
     {"name": "Analysis", "description": analysis.__doc__},
     {"name": "Job", "description": job.__doc__},
     {"name": "Health", "description": health.__doc__},
+    {"name": "Land", "description": land.__doc__},
 ]
 
 
@@ -241,6 +242,7 @@ def custom_openapi():
         {"name": "Task API", "tags": ["Tasks"]},
         {"name": "Analysis API", "tags": ["Analysis"]},
         {"name": "Health API", "tags": ["Health"]},
+        {"name": "Land API", "tags": ["Beta Land"]},
     ]
 
     app.openapi_schema = openapi_schema
