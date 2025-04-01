@@ -26,7 +26,7 @@ async def test_get_tree_cover_loss_by_drivers_not_found(
     async_client: AsyncClient,
 ):
     with patch(
-        "app.routes.datamart.land._get_resource", side_effect=HTTPException(404)
+        "app.routes.datamart.land._check_resource_exists", return_value=False
     ) as mock_get_resources:
         api_key, payload = apikey
         origin = payload["domains"][0]
@@ -58,7 +58,7 @@ async def test_get_tree_cover_loss_by_drivers_found(
     async_client: AsyncClient,
 ):
     with patch(
-        "app.routes.datamart.land._get_resource", return_value=None
+        "app.routes.datamart.land._check_resource_exists", return_value=True
     ) as mock_get_resources:
         api_key, payload = apikey
         origin = payload["domains"][0]
@@ -94,7 +94,7 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
 ):
     with (
         patch(
-            "app.routes.datamart.land._get_resource", return_value=None
+            "app.routes.datamart.land._check_resource_exists", return_value=True
         ) as mock_get_resources,
         patch(
             "app.routes.datamart.land._get_resource_id", side_effect=_get_resource_id
@@ -230,6 +230,33 @@ async def test_post_tree_cover_loss_by_drivers(
 
 
 @pytest.mark.asyncio
+async def test_post_tree_cover_loss_by_drivers_conflict(
+    geostore,
+    apikey,
+    async_client: AsyncClient,
+):
+    api_key, payload = apikey
+    origin = payload["domains"][0]
+
+    headers = {"origin": origin, "x-api-key": api_key}
+    payload = {
+        "aoi": {
+            "type": "geostore",
+            "geostore_id": geostore,
+        },
+        "canopy_cover": 30,
+        "dataset_version": {"umd_tree_cover_loss": "v1.8"},
+    }
+
+    with patch("app.routes.datamart.land._check_resource_exists", return_value=True):
+        response = await async_client.post(
+            "/v0/land/tree_cover_loss_by_driver", headers=headers, json=payload
+        )
+
+        assert response.status_code == 409
+
+
+@pytest.mark.asyncio
 async def test_get_tree_cover_loss_by_drivers_after_create_with_retry(
     geostore,
     apikey,
@@ -317,7 +344,7 @@ async def test_get_tree_cover_loss_by_drivers_as_csv(
 
         assert (
             response.content
-            == b'"umd_tree_cover_loss__year","tsc_tree_cover_loss_drivers__driver","area__ha"\r\n"2001","Permanent agriculture",10.0\r\n"2001","Hard commodities",12.0\r\n"2001","Shifting cultivation",7.0\r\n"2001","Forest management",93.4\r\n"2001","Wildfires",42.0\r\n"2001","Settlements and infrastructure",13.562\r\n"2001","Other natural disturbances",6.0\r\n'
+            == b'"drivers_type","loss_year","loss_area_ha"\r\n"Permanent agriculture",2001,10\r\n"Hard commodities",2001,12\r\n"Shifting cultivation",2001,7\r\n"Forest management",2001,93.4\r\n"Wildfires",2001,42\r\n"Settlements and infrastructure",2001,13.562\r\n"Other natural disturbances",2001,6\r\n'
         )
 
 
@@ -387,37 +414,37 @@ async def test_compute_tree_cover_loss_by_driver_error(geostore):
 
 MOCK_RESULT = [
     {
-        "umd_tree_cover_loss__year": "2001",
+        "umd_tree_cover_loss__year": 2001,
         "tsc_tree_cover_loss_drivers__driver": "Permanent agriculture",
         "area__ha": 10,
     },
     {
-        "umd_tree_cover_loss__year": "2001",
+        "umd_tree_cover_loss__year": 2001,
         "tsc_tree_cover_loss_drivers__driver": "Hard commodities",
         "area__ha": 12,
     },
     {
-        "umd_tree_cover_loss__year": "2001",
+        "umd_tree_cover_loss__year": 2001,
         "tsc_tree_cover_loss_drivers__driver": "Shifting cultivation",
         "area__ha": 7,
     },
     {
-        "umd_tree_cover_loss__year": "2001",
+        "umd_tree_cover_loss__year": 2001,
         "tsc_tree_cover_loss_drivers__driver": "Forest management",
         "area__ha": 93.4,
     },
     {
-        "umd_tree_cover_loss__year": "2001",
+        "umd_tree_cover_loss__year": 2001,
         "tsc_tree_cover_loss_drivers__driver": "Wildfires",
         "area__ha": 42,
     },
     {
-        "umd_tree_cover_loss__year": "2001",
+        "umd_tree_cover_loss__year": 2001,
         "tsc_tree_cover_loss_drivers__driver": "Settlements and infrastructure",
         "area__ha": 13.562,
     },
     {
-        "umd_tree_cover_loss__year": "2001",
+        "umd_tree_cover_loss__year": 2001,
         "tsc_tree_cover_loss_drivers__driver": "Other natural disturbances",
         "area__ha": 6,
     },
@@ -428,26 +455,73 @@ MOCK_RESOURCE = {
     "status": "saved",
     "message": None,
     "result": {
-        "tree_cover_loss_by_driver": {
-            "Permanent agriculture": 10.0,
-            "Hard commodities": 12.0,
-            "Shifting cultivation": 7.0,
-            "Forest management": 93.4,
-            "Wildfires": 42.0,
-            "Settlements and infrastructure": 13.562,
-            "Other natural disturbances": 6.0,
-        },
-        "yearly_tree_cover_loss_by_driver": {
-            "2001": {
-                "Permanent agriculture": 10.0,
-                "Hard commodities": 12.0,
-                "Shifting cultivation": 7.0,
-                "Forest management": 93.4,
-                "Wildfires": 42.0,
-                "Settlements and infrastructure": 13.562,
-                "Other natural disturbances": 6.0,
-            }
-        },
+        "tree_cover_loss_by_driver": [
+            {
+                "drivers_type": "Permanent agriculture",
+                "loss_area_ha": 10,
+            },
+            {
+                "drivers_type": "Hard commodities",
+                "loss_area_ha": 12,
+            },
+            {
+                "drivers_type": "Shifting cultivation",
+                "loss_area_ha": 7,
+            },
+            {
+                "drivers_type": "Forest management",
+                "loss_area_ha": 93.4,
+            },
+            {
+                "drivers_type": "Wildfires",
+                "loss_area_ha": 42,
+            },
+            {
+                "drivers_type": "Settlements and infrastructure",
+                "loss_area_ha": 13.562,
+            },
+            {
+                "drivers_type": "Other natural disturbances",
+                "loss_area_ha": 6,
+            },
+        ],
+        "yearly_tree_cover_loss_by_driver": [
+            {
+                "drivers_type": "Permanent agriculture",
+                "loss_year": 2001,
+                "loss_area_ha": 10,
+            },
+            {
+                "drivers_type": "Hard commodities",
+                "loss_year": 2001,
+                "loss_area_ha": 12,
+            },
+            {
+                "drivers_type": "Shifting cultivation",
+                "loss_year": 2001,
+                "loss_area_ha": 7,
+            },
+            {
+                "drivers_type": "Forest management",
+                "loss_year": 2001,
+                "loss_area_ha": 93.4,
+            },
+            {
+                "drivers_type": "Wildfires",
+                "loss_year": 2001,
+                "loss_area_ha": 42,
+            },
+            {
+                "drivers_type": "Settlements and infrastructure",
+                "loss_year": 2001,
+                "loss_area_ha": 13.562,
+            },
+            {
+                "drivers_type": "Other natural disturbances",
+                "loss_year": 2001,
+                "loss_area_ha": 6,
+            },
+        ],
     },
     "metadata": {
         "geostore_id": "",
@@ -486,7 +560,7 @@ class TestAdminAreaOfInterest:
     ):
         with (
             patch(
-                "app.routes.datamart.land._get_resource", return_value=None
+                "app.routes.datamart.land._check_resource_exists", return_value=True
             ) as mock_get_resources,
             patch(
                 "app.models.pydantic.datamart.get_gadm_geostore_id",

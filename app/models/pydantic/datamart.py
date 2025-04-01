@@ -2,10 +2,10 @@ import csv
 from abc import ABC, abstractmethod
 from enum import Enum
 from io import StringIO
-from typing import Dict, Literal, Optional, Union
+from itertools import groupby
+from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-import pandas as pd
 from pydantic import Field, root_validator, validator
 
 from app.models.pydantic.responses import Response
@@ -54,7 +54,7 @@ class AdminAreaOfInterest(AreaOfInterest):
             region_id=self.region,
             subregion_id=self.subregion,
         )
-        return UUID(geostore_id)
+        return geostore_id
 
     @root_validator
     def check_region_subregion(cls, values):
@@ -119,30 +119,33 @@ class TreeCoverLossByDriverMetadata(DataMartMetadata):
 
 
 class TreeCoverLossByDriverResult(StrictBaseModel):
-    tree_cover_loss_by_driver: Dict[str, float]
-    yearly_tree_cover_loss_by_driver: Dict[str, Dict[str, float]]
+    tree_cover_loss_by_driver: List[Dict[str, Any]]
+    yearly_tree_cover_loss_by_driver: List[Dict[str, Any]]
 
     @staticmethod
     def from_rows(rows):
-        df = pd.DataFrame(rows)
-        by_year = (
-            df.groupby(["umd_tree_cover_loss__year"])
-            .apply(
-                lambda x: dict(
-                    zip(x["tsc_tree_cover_loss_drivers__driver"], x["area__ha"])
-                )
+        yearly_tcl_by_driver = [
+            {
+                "drivers_type": row["tsc_tree_cover_loss_drivers__driver"],
+                "loss_year": row["umd_tree_cover_loss__year"],
+                "loss_area_ha": row["area__ha"],
+            }
+            for row in rows
+        ]
+
+        tcl_by_driver = [
+            {
+                "drivers_type": driver,
+                "loss_area_ha": sum([year["area__ha"] for year in years]),
+            }
+            for driver, years in groupby(
+                rows, key=lambda x: x["tsc_tree_cover_loss_drivers__driver"]
             )
-            .to_dict()
-        )
-        by_driver = (
-            df.drop(["umd_tree_cover_loss__year"], axis=1)
-            .groupby(["tsc_tree_cover_loss_drivers__driver"])
-            .sum()
-            .to_dict()["area__ha"]
-        )
+        ]
+
         return TreeCoverLossByDriverResult(
-            tree_cover_loss_by_driver=by_driver,
-            yearly_tree_cover_loss_by_driver=by_year,
+            tree_cover_loss_by_driver=tcl_by_driver,
+            yearly_tree_cover_loss_by_driver=yearly_tcl_by_driver,
         )
 
 
@@ -180,19 +183,17 @@ class TreeCoverLossByDriverResponse(Response):
         wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
         wr.writerow(
             [
-                "umd_tree_cover_loss__year",
-                "tsc_tree_cover_loss_drivers__driver",
-                "area__ha",
+                "drivers_type",
+                "loss_year",
+                "loss_area_ha",
             ]
         )
 
         if self.data.status == "saved":
-            for (
-                year,
-                tcl_by_driver,
-            ) in self.data.result.yearly_tree_cover_loss_by_driver.items():
-                for driver, area in tcl_by_driver.items():
-                    wr.writerow([year, driver, area])
+            for row in self.data.result.yearly_tree_cover_loss_by_driver:
+                wr.writerow(
+                    [row["drivers_type"], row["loss_year"], row["loss_area_ha"]]
+                )
 
         csv_file.seek(0)
         return csv_file

@@ -49,6 +49,7 @@ async def compute_tree_cover_loss_by_driver(
         )
 
         resource.result = TreeCoverLossByDriverResult.from_rows(results)
+
         resource.status = AnalysisStatus.saved
         await datamart_crud.update_result(resource_id, resource)
 
