@@ -165,7 +165,7 @@ async def tree_cover_loss_by_driver_get(
     )
 
     if request.headers.get("Accept", None) == "text/csv":
-        response.headers["Content-Type"] = "test/csv"
+        response.headers["Content-Type"] = "text/csv"
         response.headers["Content-Disposition"] = "attachment"
         csv_data = tree_cover_loss_by_driver_response.to_csv()
         return CSVStreamingResponse(iter([csv_data.getvalue()]), download=True)
