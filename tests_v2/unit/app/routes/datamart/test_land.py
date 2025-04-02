@@ -26,7 +26,7 @@ async def test_get_tree_cover_loss_by_drivers_not_found(
     async_client: AsyncClient,
 ):
     with patch(
-        "app.routes.datamart.land._get_resource", side_effect=HTTPException(404)
+        "app.routes.datamart.land._check_resource_exists", return_value=False
     ) as mock_get_resources:
         api_key, payload = apikey
         origin = payload["domains"][0]
@@ -58,7 +58,7 @@ async def test_get_tree_cover_loss_by_drivers_found(
     async_client: AsyncClient,
 ):
     with patch(
-        "app.routes.datamart.land._get_resource", return_value=None
+        "app.routes.datamart.land._check_resource_exists", return_value=True
     ) as mock_get_resources:
         api_key, payload = apikey
         origin = payload["domains"][0]
@@ -94,7 +94,7 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
 ):
     with (
         patch(
-            "app.routes.datamart.land._get_resource", return_value=None
+            "app.routes.datamart.land._check_resource_exists", return_value=True
         ) as mock_get_resources,
         patch(
             "app.routes.datamart.land._get_resource_id", side_effect=_get_resource_id
@@ -235,6 +235,33 @@ async def test_post_tree_cover_loss_by_drivers(
             canopy_cover,
             DEFAULT_LAND_DATASET_VERSIONS | {"umd_tree_cover_loss": "v1.8"},
         )
+
+
+@pytest.mark.asyncio
+async def test_post_tree_cover_loss_by_drivers_conflict(
+    geostore,
+    apikey,
+    async_client: AsyncClient,
+):
+    api_key, payload = apikey
+    origin = payload["domains"][0]
+
+    headers = {"origin": origin, "x-api-key": api_key}
+    payload = {
+        "aoi": {
+            "type": "geostore",
+            "geostore_id": geostore,
+        },
+        "canopy_cover": 30,
+        "dataset_version": {"umd_tree_cover_loss": "v1.8"},
+    }
+
+    with patch("app.routes.datamart.land._check_resource_exists", return_value=True):
+        response = await async_client.post(
+            "/v0/land/tree_cover_loss_by_driver", headers=headers, json=payload
+        )
+
+        assert response.status_code == 409
 
 
 @pytest.mark.asyncio
@@ -470,7 +497,7 @@ class TestAdminAreaOfInterest:
     ):
         with (
             patch(
-                "app.routes.datamart.land._get_resource", return_value=None
+                "app.routes.datamart.land._check_resource_exists", return_value=True
             ) as mock_get_resources,
             patch(
                 "app.models.pydantic.datamart.get_gadm_geostore_id",
