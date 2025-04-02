@@ -539,7 +539,7 @@ class TestGlobal:
     ):
         with (
             patch(
-                "app.routes.datamart.land._get_resource", return_value=None
+                "app.routes.datamart.land._check_resource_exists", return_value=True
             ) as mock_get_resources,
         ):
             api_key, payload = apikey
