@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from botocore.exceptions import ClientError
@@ -55,6 +55,23 @@ def delete_s3_objects(
         client.delete_objects(Bucket=bucket, Delete=delete_us)
 
     return count
+
+
+def check_prefix_exists(
+    bucket: str,
+    prefix: str
+):
+    """Return true if and only if there is any object that starts with the specified
+    prefix in the specified bucket. This can be used to see if there is a non-empty
+    folder at 'prefix'.
+    """
+    client = get_s3_client()
+    try:
+        response = client.list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=1)
+        return 'Contents' in response
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return False
 
 
 def expire_s3_objects(
