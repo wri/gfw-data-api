@@ -1,4 +1,5 @@
-"""Run analysis on registered datasets."""
+"""Beta APIs to more easily access important land use/land cover data without
+needing to directly query our low-level data management APIs."""
 
 import re
 import uuid
@@ -107,7 +108,7 @@ def _parse_area_of_interest(request: Request) -> AreaOfInterest:
     "/tree_cover_loss_by_driver",
     response_class=ORJSONResponse,
     response_model=DataMartResourceLinkResponse,
-    tags=["Land"],
+    tags=["Beta Land"],
     status_code=200,
     openapi_extra=OPENAPI_EXTRA,
 )
@@ -141,7 +142,7 @@ async def tree_cover_loss_by_driver_search(
     "/tree_cover_loss_by_driver/{resource_id}",
     response_class=ORJSONResponse,
     response_model=TreeCoverLossByDriverResponse,
-    tags=["Land"],
+    tags=["Beta Land"],
     status_code=200,
 )
 async def tree_cover_loss_by_driver_get(
@@ -167,7 +168,7 @@ async def tree_cover_loss_by_driver_get(
     "/tree_cover_loss_by_driver",
     response_class=ORJSONResponse,
     response_model=DataMartResourceLinkResponse,
-    tags=["Land"],
+    tags=["Beta Land"],
     status_code=202,
 )
 async def tree_cover_loss_by_driver_post(
