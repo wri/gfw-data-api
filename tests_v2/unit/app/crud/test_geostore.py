@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-from httpx import AsyncClient
 
 from app.crud.geostore import get_gadm_geostore, get_gadm_geostore_id
 from app.errors import RecordNotFoundError
