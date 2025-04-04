@@ -11,7 +11,7 @@ from app.models.pydantic.datamart import DataMartResource
 async def save_result(result_data: DataMartResource) -> AnalysisResult:
 
     analysis_result: AnalysisResult = await AnalysisResult.create(
-        **result_data.dict(by_alias=False)
+        **json.loads(result_data.json(by_alias=False))
     )
 
     return analysis_result
