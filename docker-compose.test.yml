@@ -58,7 +58,7 @@ services:
       - SERVICE_ACCOUNT_TOKEN=testing
       - RASTER_ANALYSIS_LAMBDA_NAME=test_raster_analysis
       - RW_API_URL=https://staging-api.resourcewatch.org
-      - 'RW_API_KEY={"api_key": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"}'
+      - 'RW_API_KEY={"api-key": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"}'
       - API_GATEWAY_ID=test
       - API_GATEWAY_INTERNAL_USAGE_PLAN=test
       - API_GATEWAY_EXTERNAL_USAGE_PLAN=test

@@ -11,7 +11,7 @@ from app.models.pydantic.datamart import (
     TreeCoverLossByDriver,
     TreeCoverLossByDriverUpdate,
 )
-from app.routes.datamart.land import _get_resource_id
+from app.routes.datamart.land import _get_resource_id, _get_metadata
 from app.tasks.datamart.land import (
     DEFAULT_LAND_DATASET_VERSIONS,
     compute_tree_cover_loss_by_driver,
@@ -26,13 +26,18 @@ async def test_get_tree_cover_loss_by_drivers_not_found(
     async_client: AsyncClient,
 ):
     with patch(
-        "app.routes.datamart.land._get_resource", side_effect=HTTPException(404)
+        "app.routes.datamart.land._check_resource_exists", return_value=False
     ) as mock_get_resources:
         api_key, payload = apikey
         origin = payload["domains"][0]
 
         headers = {"origin": origin}
-        params = {"x-api-key": api_key, "geostore_id": geostore, "canopy_cover": 30}
+        params = {
+            "x-api-key": api_key,
+            "aoi[type]": "geostore",
+            "aoi[geostore_id]": geostore,
+            "canopy_cover": 30,
+        }
 
         response = await async_client.get(
             "/v0/land/tree_cover_loss_by_driver", headers=headers, params=params
@@ -53,13 +58,18 @@ async def test_get_tree_cover_loss_by_drivers_found(
     async_client: AsyncClient,
 ):
     with patch(
-        "app.routes.datamart.land._get_resource", return_value=None
+        "app.routes.datamart.land._check_resource_exists", return_value=True
     ) as mock_get_resources:
         api_key, payload = apikey
         origin = payload["domains"][0]
 
         headers = {"origin": origin}
-        params = {"x-api-key": api_key, "geostore_id": geostore, "canopy_cover": 30}
+        params = {
+            "x-api-key": api_key,
+            "aoi[type]": "geostore",
+            "aoi[geostore_id]": geostore,
+            "canopy_cover": 30,
+        }
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
         )
@@ -84,7 +94,7 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
 ):
     with (
         patch(
-            "app.routes.datamart.land._get_resource", return_value=None
+            "app.routes.datamart.land._check_resource_exists", return_value=True
         ) as mock_get_resources,
         patch(
             "app.routes.datamart.land._get_resource_id", side_effect=_get_resource_id
@@ -94,7 +104,12 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
         origin = payload["domains"][0]
 
         headers = {"origin": origin}
-        params = {"x-api-key": api_key, "geostore_id": geostore, "canopy_cover": 30}
+        params = {
+            "x-api-key": api_key,
+            "aoi[type]": "geostore",
+            "aoi[geostore_id]": geostore,
+            "canopy_cover": 30,
+        }
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver",
             geostore,
@@ -140,10 +155,15 @@ async def test_get_tree_cover_loss_by_drivers_with_malformed_overrides(
     origin = payload["domains"][0]
 
     headers = {"origin": origin}
-    params = {"x-api-key": api_key, "geostore_id": geostore, "canopy_cover": 30}
+    params = {
+        "x-api-key": api_key,
+        "aoi[type]": "geostore",
+        "aoi[geostore_id]": geostore,
+        "canopy_cover": 30,
+    }
 
     response = await async_client.get(
-        "/v0/land/tree_cover_loss_by_driver?x-api-key={api_key}&geostore_id={geostore_id}&canopy_cover=30&dataset_version[umd_tree_cover_loss]]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
+        "/v0/land/tree_cover_loss_by_driver?dataset_version[umd_tree_cover_loss]]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
         headers=headers,
         params=params,
     )
@@ -164,10 +184,16 @@ async def test_post_tree_cover_loss_by_drivers(
     api_key, payload = apikey
     origin = payload["domains"][0]
 
+    canopy_cover = 30
+    aoi = {
+        "type": "geostore",
+        "geostore_id": geostore,
+    }
+
     headers = {"origin": origin, "x-api-key": api_key}
     payload = {
-        "geostore_id": geostore,
-        "canopy_cover": 30,
+        "aoi": aoi,
+        "canopy_cover": canopy_cover,
         "dataset_version": {"umd_tree_cover_loss": "v1.8"},
     }
     with (
@@ -195,15 +221,47 @@ async def test_post_tree_cover_loss_by_drivers(
         except ValueError:
             assert False
 
+        metadata = _get_metadata(
+            aoi,
+            canopy_cover,
+            DEFAULT_LAND_DATASET_VERSIONS | {"umd_tree_cover_loss": "v1.8"},
+        )
         mock_pending_resource.assert_awaited_with(
-            resource_id, "/v0/land/tree_cover_loss_by_driver", api_key
+            resource_id, metadata, "/v0/land/tree_cover_loss_by_driver", api_key
         )
         mock_compute_result.assert_awaited_with(
             resource_id,
             uuid.UUID(geostore),
-            30,
+            canopy_cover,
             DEFAULT_LAND_DATASET_VERSIONS | {"umd_tree_cover_loss": "v1.8"},
         )
+
+
+@pytest.mark.asyncio
+async def test_post_tree_cover_loss_by_drivers_conflict(
+    geostore,
+    apikey,
+    async_client: AsyncClient,
+):
+    api_key, payload = apikey
+    origin = payload["domains"][0]
+
+    headers = {"origin": origin, "x-api-key": api_key}
+    payload = {
+        "aoi": {
+            "type": "geostore",
+            "geostore_id": geostore,
+        },
+        "canopy_cover": 30,
+        "dataset_version": {"umd_tree_cover_loss": "v1.8"},
+    }
+
+    with patch("app.routes.datamart.land._check_resource_exists", return_value=True):
+        response = await async_client.post(
+            "/v0/land/tree_cover_loss_by_driver", headers=headers, json=payload
+        )
+
+        assert response.status_code == 409
 
 
 @pytest.mark.asyncio
@@ -242,7 +300,7 @@ async def test_get_tree_cover_loss_by_drivers_after_create_saved(
     origin = payload["domains"][0]
 
     headers = {"origin": origin, "x-api-key": api_key}
-    MOCK_RESOURCE["metadata"]["geostore_id"] = geostore
+    MOCK_RESOURCE["metadata"]["aoi"]["geostore_id"] = geostore
 
     with patch(
         "app.routes.datamart.land._get_resource",
@@ -290,9 +348,13 @@ async def test_compute_tree_cover_loss_by_driver(geostore):
             DEFAULT_LAND_DATASET_VERSIONS | {"umd_tree_cover_loss": "v1.8"},
         )
 
-        MOCK_RESOURCE["metadata"]["geostore_id"] = geostore
+        MOCK_RESOURCE["metadata"]["aoi"]["geostore_id"] = geostore
         mock_write_result.assert_awaited_once_with(
-            resource_id, TreeCoverLossByDriverUpdate.parse_obj(MOCK_RESOURCE)
+            resource_id,
+            TreeCoverLossByDriverUpdate(
+                result=MOCK_RESOURCE["tree_cover_loss_by_driver"],
+                status=MOCK_RESOURCE["status"],
+            ),
         )
 
 
@@ -322,7 +384,11 @@ async def test_compute_tree_cover_loss_by_driver_error(geostore):
             DEFAULT_LAND_DATASET_VERSIONS,
         )
         mock_write_error.assert_awaited_once_with(
-            resource_id, TreeCoverLossByDriverUpdate.parse_obj(MOCK_ERROR_RESOURCE)
+            resource_id,
+            TreeCoverLossByDriverUpdate(
+                status=MOCK_ERROR_RESOURCE["status"],
+                message=MOCK_ERROR_RESOURCE["message"],
+            ),
         )
 
 
@@ -361,17 +427,38 @@ MOCK_RESULT = [
 MOCK_RESOURCE = {
     "status": "saved",
     "message": None,
-    "tree_cover_loss_by_driver": {
-        "Permanent agriculture": 10.0,
-        "Hard commodities": 12.0,
-        "Shifting cultivation": 7.0,
-        "Forest management": 93.4,
-        "Wildfires": 42.0,
-        "Settlements and infrastructure": 13.562,
-        "Other natural disturbances": 6.0,
-    },
+    "tree_cover_loss_by_driver": [
+        {
+            "drivers_type": "Permanent agriculture",
+            "loss_area_ha": 10,
+        },
+        {
+            "drivers_type": "Hard commodities",
+            "loss_area_ha": 12,
+        },
+        {
+            "drivers_type": "Shifting cultivation",
+            "loss_area_ha": 7,
+        },
+        {
+            "drivers_type": "Forest management",
+            "loss_area_ha": 93.4,
+        },
+        {
+            "drivers_type": "Wildfires",
+            "loss_area_ha": 42,
+        },
+        {
+            "drivers_type": "Settlements and infrastructure",
+            "loss_area_ha": 13.562,
+        },
+        {
+            "drivers_type": "Other natural disturbances",
+            "loss_area_ha": 6,
+        },
+    ],
     "metadata": {
-        "geostore_id": "",
+        "aoi": {"type": "geostore", "geostore_id": ""},
         "canopy_cover": 30,
         "sources": [
             {"dataset": "umd_tree_cover_loss", "version": "v1.8"},
@@ -386,7 +473,10 @@ MOCK_ERROR_RESOURCE = {
     "message": "500: error",
     "tree_cover_loss_by_driver": None,
     "metadata": {
-        "geostore_id": "b9faa657-34c9-96d4-fce4-8bb8a1507cb3",
+        "aoi": {
+            "type": "geostore",
+            "geostore_id": "b9faa657-34c9-96d4-fce4-8bb8a1507cb3",
+        },
         "canopy_cover": 30,
         "sources": [
             {"dataset": "umd_tree_cover_loss", "version": "v1.11"},
@@ -395,3 +485,120 @@ MOCK_ERROR_RESOURCE = {
         ],
     },
 }
+
+
+class TestAdminAreaOfInterest:
+    @pytest.mark.asyncio
+    async def test_get_tree_cover_loss_by_drivers_found(
+        self,
+        geostore,
+        apikey,
+        async_client: AsyncClient,
+    ):
+        with (
+            patch(
+                "app.routes.datamart.land._check_resource_exists", return_value=True
+            ) as mock_get_resources,
+            patch(
+                "app.models.pydantic.datamart.get_gadm_geostore_id",
+                return_value=geostore,
+            ),
+        ):
+            api_key, payload = apikey
+            origin = payload["domains"][0]
+
+            headers = {"origin": origin}
+            params = {
+                "x-api-key": api_key,
+                "aoi[type]": "admin",
+                "aoi[country]": "BRA",
+                "canopy_cover": 30,
+            }
+            resource_id = _get_resource_id(
+                "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
+            )
+
+            response = await async_client.get(
+                "/v0/land/tree_cover_loss_by_driver", headers=headers, params=params
+            )
+
+            assert response.status_code == 200
+            assert (
+                f"/v0/land/tree_cover_loss_by_driver/{resource_id}"
+                in response.json()["data"]["link"]
+            )
+            mock_get_resources.assert_awaited_with(resource_id)
+
+
+class TestGlobal:
+    @pytest.mark.asyncio
+    async def test_get_tree_cover_loss_by_drivers_found(
+        self,
+        apikey,
+        async_client: AsyncClient,
+    ):
+        with (
+            patch(
+                "app.routes.datamart.land._check_resource_exists", return_value=True
+            ) as mock_get_resources,
+        ):
+            api_key, payload = apikey
+            origin = payload["domains"][0]
+
+            headers = {"origin": origin}
+            params = {"x-api-key": api_key, "aoi[type]": "global", "canopy_cover": 30}
+            resource_id = _get_resource_id(
+                "tree_cover_loss_by_driver", "global", 30, DEFAULT_LAND_DATASET_VERSIONS
+            )
+
+            response = await async_client.get(
+                "/v0/land/tree_cover_loss_by_driver", headers=headers, params=params
+            )
+
+            assert response.status_code == 200
+            assert (
+                f"/v0/land/tree_cover_loss_by_driver/{resource_id}"
+                in response.json()["data"]["link"]
+            )
+            mock_get_resources.assert_awaited_with(resource_id)
+
+    @pytest.mark.asyncio
+    async def test_post_tree_cover_loss_by_drivers(
+        self,
+        apikey,
+        async_client: AsyncClient,
+    ):
+        api_key, payload = apikey
+        origin = payload["domains"][0]
+
+        headers = {"origin": origin, "x-api-key": api_key}
+        payload = {
+            "aoi": {
+                "type": "global",
+            },
+            "canopy_cover": 30,
+            "dataset_version": {"umd_tree_cover_loss": "v1.8"},
+        }
+        with (
+            patch(
+                "app.routes.datamart.land._get_resource", return_value=None
+            ) as mock_get_resources,
+        ):
+            response = await async_client.post(
+                "/v0/land/tree_cover_loss_by_driver", headers=headers, json=payload
+            )
+
+            assert response.status_code == 202
+
+            body = response.json()
+            assert body["status"] == "success"
+            assert "/v0/land/tree_cover_loss_by_driver/" in body["data"]["link"]
+
+            resource_id = body["data"]["link"].split("/")[-1]
+            try:
+                resource_id = uuid.UUID(resource_id)
+                assert True
+            except ValueError:
+                assert False
+
+            mock_get_resources.assert_awaited_with(resource_id)
