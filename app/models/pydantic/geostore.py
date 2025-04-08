@@ -108,7 +108,7 @@ class LandUseInfo(StrictBaseModel):
 
 class AdminGeostoreAttributes(StrictBaseModel):
     geojson: FeatureCollection
-    hash: str
+    hash: str | None
     provider: Dict
     areaHa: float
     bbox: List[float]
@@ -125,7 +125,7 @@ class AdminGeostoreAttributes(StrictBaseModel):
 
 class AdminGeostore(StrictBaseModel):
     type: Literal["geoStore"]
-    id: str
+    id: str | None
     attributes: AdminGeostoreAttributes
 
 
