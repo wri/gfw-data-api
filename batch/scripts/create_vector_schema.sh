@@ -23,7 +23,7 @@ set -u
 # TODO: Downloading the whole file for this step might be unnecessary
 # See https://gfw.atlassian.net/browse/GTC-2233
 echo "AWSCLI: COPY DATA FROM $SRC TO $LOCAL_FILE"
-aws s3 cp "$SRC" "$LOCAL_FILE"
+aws s3 cp "$SRC" "$LOCAL_FILE" --no-progress
 
 # use virtual GDAL vsizip wrapper for ZIP files
 # TODO: [GTC-661] Allow for a more flexible file structure inside the ZIP file
