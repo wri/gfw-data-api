@@ -1,6 +1,7 @@
 """Beta APIs to more easily access important land use/land cover data without
 needing to directly query our low-level data management APIs."""
 
+import json
 import re
 import uuid
 from typing import Dict, Optional
@@ -121,7 +122,10 @@ async def tree_cover_loss_by_driver_search(
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
     resource_id = _get_resource_id(
-        "tree_cover_loss_by_driver", aoi, canopy_cover, dataset_versions
+        "tree_cover_loss_by_driver",
+        json.loads(aoi.json(exclude_none=True)),
+        canopy_cover,
+        dataset_versions,
     )
 
     # check if it exists
@@ -183,7 +187,7 @@ async def tree_cover_loss_by_driver_post(
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
     resource_id = _get_resource_id(
         "tree_cover_loss_by_driver",
-        data.aoi,
+        json.loads(data.aoi.json(exclude_none=True)),
         data.canopy_cover,
         dataset_version,
     )
