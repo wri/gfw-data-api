@@ -18,10 +18,13 @@ from app.models.pydantic.extent import Extent
 from app.models.pydantic.geostore import FeatureCollection
 from app.models.pydantic.jobs import Job
 from app.models.pydantic.statistics import BandStats, Histogram, RasterStats
-from app.settings.globals import DATA_LAKE_BUCKET
+from app.settings.globals import DATA_LAKE_BUCKET, ON_DEMAND_COMPUTE_JOB_QUEUE
 from app.tasks import Callback, callback_constructor
 from app.tasks.batch import execute
-from app.tasks.raster_tile_set_assets.utils import create_pixetl_job, create_unify_projection_job
+from app.tasks.raster_tile_set_assets.utils import (
+    create_pixetl_job,
+    create_unify_projection_job,
+)
 from app.utils.aws import get_s3_client
 from app.utils.path import (
     get_asset_uri,
@@ -75,7 +78,7 @@ async def raster_tile_set_asset(
     if creation_options.unify_projection:
         target_crs = "epsg:4326"
         new_src_uris = list()
-        for i,_ in enumerate(creation_options.source_uri):
+        for i, _ in enumerate(creation_options.source_uri):
             new_src_uris.append(
                 f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/"
                 f"{target_crs.replace(':', '-')}/reprojected/SRC_{i}"
@@ -87,7 +90,7 @@ async def raster_tile_set_asset(
             target_prefix,
             target_crs,
             "unify_projection",
-            callback
+            callback,
         )
         jobs.append(unify_job)
         creation_options.source_uri = new_src_uris
@@ -100,6 +103,7 @@ async def raster_tile_set_asset(
             "create_raster_tile_set",
             callback,
             [unify_job] if unify_job is not None else None,
+            job_queue=ON_DEMAND_COMPUTE_JOB_QUEUE,
         )
     )
 
