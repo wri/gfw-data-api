@@ -176,7 +176,9 @@ class TestGadmGeostoreIDLookup:
         assert actual_sql == expected_sql
 
     @pytest.mark.asyncio
-    async def test_get_gadm_geostore_id_generates_correct_sql_for_subregion_lookup(self):
+    async def test_get_gadm_geostore_id_generates_correct_sql_for_subregion_lookup(
+        self,
+    ):
         provider = "gadm"
         version = "4.1"
         adm_level = 2
