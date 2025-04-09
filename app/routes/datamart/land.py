@@ -1,5 +1,7 @@
-"""Run analysis on registered datasets."""
+"""Beta APIs to more easily access important land use/land cover data without
+needing to directly query our low-level data management APIs."""
 
+import json
 import re
 import uuid
 from typing import Dict, Optional
@@ -107,7 +109,7 @@ def _parse_area_of_interest(request: Request) -> AreaOfInterest:
     "/tree_cover_loss_by_driver",
     response_class=ORJSONResponse,
     response_model=DataMartResourceLinkResponse,
-    tags=["Land"],
+    tags=["Beta Land"],
     status_code=200,
     openapi_extra=OPENAPI_EXTRA,
 )
@@ -119,9 +121,11 @@ async def tree_cover_loss_by_driver_search(
     api_key: APIKey = Depends(get_api_key),
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
-    area_id = "global" if aoi.type == "global" else await aoi.get_geostore_id()
     resource_id = _get_resource_id(
-        "tree_cover_loss_by_driver", area_id, canopy_cover, dataset_versions
+        "tree_cover_loss_by_driver",
+        json.loads(aoi.json(exclude_none=True)),
+        canopy_cover,
+        dataset_versions,
     )
 
     # check if it exists
@@ -141,7 +145,7 @@ async def tree_cover_loss_by_driver_search(
     "/tree_cover_loss_by_driver/{resource_id}",
     response_class=ORJSONResponse,
     response_model=TreeCoverLossByDriverResponse,
-    tags=["Land"],
+    tags=["Beta Land"],
     status_code=200,
     responses={
         200: {
@@ -184,7 +188,7 @@ async def tree_cover_loss_by_driver_get(
     "/tree_cover_loss_by_driver",
     response_class=ORJSONResponse,
     response_model=DataMartResourceLinkResponse,
-    tags=["Land"],
+    tags=["Beta Land"],
     status_code=202,
 )
 async def tree_cover_loss_by_driver_post(
@@ -197,14 +201,10 @@ async def tree_cover_loss_by_driver_post(
     """Create new tree cover loss by drivers resource for a given geostore and
     canopy cover."""
 
-    area_id = (
-        "global" if data.aoi.type == "global" else await data.aoi.get_geostore_id()
-    )
-
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
     resource_id = _get_resource_id(
         "tree_cover_loss_by_driver",
-        area_id,
+        json.loads(data.aoi.json(exclude_none=True)),
         data.canopy_cover,
         dataset_version,
     )
@@ -230,13 +230,14 @@ async def tree_cover_loss_by_driver_post(
 
         return DataMartResourceLinkResponse(data=link)
 
+    geostore_id = await data.aoi.get_geostore_id()
     # check geostore is valid
     try:
-        await get_geostore(area_id, GeostoreOrigin.rw)
+        await get_geostore(geostore_id, GeostoreOrigin.rw)
     except HTTPException:
         raise HTTPException(
             status_code=422,
-            detail=f"Geostore {area_id} can't be found or is not valid.",
+            detail=f"Geostore {geostore_id} can't be found or is not valid.",
         )
 
     metadata = _get_metadata(data.aoi, data.canopy_cover, dataset_version)
@@ -248,7 +249,7 @@ async def tree_cover_loss_by_driver_post(
     background_tasks.add_task(
         compute_tree_cover_loss_by_driver,
         resource_id,
-        area_id,
+        geostore_id,
         data.canopy_cover,
         dataset_version,
     )
@@ -256,9 +257,9 @@ async def tree_cover_loss_by_driver_post(
     return DataMartResourceLinkResponse(data=link)
 
 
-def _get_resource_id(path, area_id, canopy_cover, dataset_version):
+def _get_resource_id(path, aoi, canopy_cover, dataset_version):
     return uuid.uuid5(
-        uuid.NAMESPACE_OID, f"{path}_{area_id}_{canopy_cover}_{dataset_version}"
+        uuid.NAMESPACE_OID, f"{path}_{aoi}_{canopy_cover}_{dataset_version}"
     )
 
 

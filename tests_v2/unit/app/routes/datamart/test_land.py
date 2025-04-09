@@ -45,8 +45,9 @@ async def test_get_tree_cover_loss_by_drivers_not_found(
 
         assert response.status_code == 404
 
+        aoi = {"type": "geostore", "geostore_id": geostore}
         resource_id = _get_resource_id(
-            "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
+            "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
         )
         mock_get_resources.assert_awaited_with(resource_id)
 
@@ -70,8 +71,9 @@ async def test_get_tree_cover_loss_by_drivers_found(
             "aoi[geostore_id]": geostore,
             "canopy_cover": 30,
         }
+        aoi = {"type": "geostore", "geostore_id": geostore}
         resource_id = _get_resource_id(
-            "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
+            "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
         )
 
         response = await async_client.get(
@@ -110,9 +112,10 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
             "aoi[geostore_id]": geostore,
             "canopy_cover": 30,
         }
+        aoi = {"type": "geostore", "geostore_id": geostore}
         resource_id = _get_resource_id(
             "tree_cover_loss_by_driver",
-            geostore,
+            aoi,
             30,
             {
                 "umd_tree_cover_loss": "v1.8",
@@ -130,7 +133,7 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
         assert response.status_code == 200
         mock_get_resource_id.assert_called_with(
             "tree_cover_loss_by_driver",
-            uuid.UUID(geostore),
+            {"type": "geostore", "geostore_id": geostore},
             30,
             {
                 "umd_tree_cover_loss": "v1.8",
@@ -185,11 +188,8 @@ async def test_post_tree_cover_loss_by_drivers(
     origin = payload["domains"][0]
 
     canopy_cover = 30
-    aoi = {
-        "type": "geostore",
-        "geostore_id": geostore,
-    }
 
+    aoi = {"type": "geostore", "geostore_id": geostore}
     headers = {"origin": origin, "x-api-key": api_key}
     payload = {
         "aoi": aoi,
@@ -278,8 +278,9 @@ async def test_get_tree_cover_loss_by_drivers_after_create_with_retry(
         "app.routes.datamart.land._get_resource",
         return_value=TreeCoverLossByDriver(status=AnalysisStatus.pending),
     ):
+        aoi = {"type": "geostore", "geostore_id": geostore}
         resource_id = _get_resource_id(
-            "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
+            "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
         )
         response = await async_client.get(
             f"/v0/land/tree_cover_loss_by_driver/{resource_id}", headers=headers
@@ -301,13 +302,13 @@ async def test_get_tree_cover_loss_by_drivers_after_create_saved(
 
     headers = {"origin": origin, "x-api-key": api_key}
     MOCK_RESOURCE["metadata"]["aoi"]["geostore_id"] = geostore
-
     with patch(
         "app.routes.datamart.land._get_resource",
         return_value=TreeCoverLossByDriver(**MOCK_RESOURCE),
     ):
+        aoi = {"type": "geostore", "geostore_id": geostore}
         resource_id = _get_resource_id(
-            "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
+            "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
         )
         response = await async_client.get(
             f"/v0/land/tree_cover_loss_by_driver/{resource_id}", headers=headers
@@ -365,8 +366,9 @@ async def test_compute_tree_cover_loss_by_driver(geostore):
         ) as mock_query_dataset_json,
         patch("app.crud.datamart.update_result") as mock_write_result,
     ):
+        aoi = {"type": "geostore", "geostore_id": geostore}
         resource_id = _get_resource_id(
-            "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
+            "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
         )
         geostore_common = await get_geostore(geostore, GeostoreOrigin.rw)
 
@@ -404,8 +406,9 @@ async def test_compute_tree_cover_loss_by_driver_error(geostore):
         ) as mock_query_dataset_json,
         patch("app.crud.datamart.update_result") as mock_write_error,
     ):
+        aoi = {"type": "geostore", "geostore_id": geostore}
         resource_id = _get_resource_id(
-            "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
+            "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
         )
         geostore_common = await get_geostore(geostore, GeostoreOrigin.rw)
 
@@ -597,8 +600,14 @@ class TestAdminAreaOfInterest:
                 "aoi[country]": "BRA",
                 "canopy_cover": 30,
             }
+            aoi = {
+                "type": "admin",
+                "country": "BRA",
+                "provider": "gadm",
+                "version": "4.1",
+            }
             resource_id = _get_resource_id(
-                "tree_cover_loss_by_driver", geostore, 30, DEFAULT_LAND_DATASET_VERSIONS
+                "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
             )
 
             response = await async_client.get(
@@ -630,8 +639,9 @@ class TestGlobal:
 
             headers = {"origin": origin}
             params = {"x-api-key": api_key, "aoi[type]": "global", "canopy_cover": 30}
+            aoi = {"type": "global"}
             resource_id = _get_resource_id(
-                "tree_cover_loss_by_driver", "global", 30, DEFAULT_LAND_DATASET_VERSIONS
+                "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
             )
 
             response = await async_client.get(
@@ -655,18 +665,28 @@ class TestGlobal:
         origin = payload["domains"][0]
 
         headers = {"origin": origin, "x-api-key": api_key}
+        dataset_version = {"umd_tree_cover_loss": "v1.8"}
         payload = {
             "aoi": {
                 "type": "global",
             },
             "canopy_cover": 30,
-            "dataset_version": {"umd_tree_cover_loss": "v1.8"},
+            "dataset_version": dataset_version,
         }
         with (
             patch(
                 "app.routes.datamart.land._get_resource", return_value=None
             ) as mock_get_resources,
         ):
+            aoi = {"type": "global"}
+            dataset_versions = DEFAULT_LAND_DATASET_VERSIONS | dataset_version
+            resource_id = _get_resource_id(
+                "tree_cover_loss_by_driver",
+                aoi,
+                30,
+                dataset_versions,
+            )
+
             response = await async_client.post(
                 "/v0/land/tree_cover_loss_by_driver", headers=headers, json=payload
             )
@@ -675,7 +695,10 @@ class TestGlobal:
 
             body = response.json()
             assert body["status"] == "success"
-            assert "/v0/land/tree_cover_loss_by_driver/" in body["data"]["link"]
+            assert (
+                f"/v0/land/tree_cover_loss_by_driver/{resource_id}"
+                in body["data"]["link"]
+            )
 
             resource_id = body["data"]["link"].split("/")[-1]
             try:
