@@ -130,6 +130,7 @@ async def static_vector_tile_cache_asset(
     create_vector_tile_cache = TileCacheJob(
         dataset=dataset,
         job_name="create_vector_tile_cache",
+        job_queue=ON_DEMAND_COMPUTE_JOB_QUEUE,
         command=command,
         parents=[export_ndjson.job_name],
         environment=report_vars,
