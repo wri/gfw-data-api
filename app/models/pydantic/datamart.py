@@ -1,5 +1,4 @@
 import csv
-from abc import ABC, abstractmethod
 from enum import Enum
 from io import StringIO
 from itertools import groupby
@@ -14,11 +13,10 @@ from ...crud.geostore import get_gadm_geostore_id
 from .base import StrictBaseModel
 
 
-class AreaOfInterest(StrictBaseModel, ABC):
-    @abstractmethod
+class AreaOfInterest(StrictBaseModel):
     async def get_geostore_id(self) -> UUID:
         """Return the unique identifier for the area of interest."""
-        pass
+        raise NotImplementedError("This method is not implemented.")
 
 
 class GeostoreAreaOfInterest(AreaOfInterest):
@@ -73,6 +71,13 @@ class AdminAreaOfInterest(AreaOfInterest):
         return v or "4.1"
 
 
+class Global(AreaOfInterest):
+    type: Literal["global"] = Field(
+        "global",
+        description="Apply analysis to the full spatial extent of the dataset.",
+    )
+
+
 class AnalysisStatus(str, Enum):
     saved = "saved"
     pending = "pending"
@@ -85,7 +90,7 @@ class DataMartSource(StrictBaseModel):
 
 
 class DataMartMetadata(StrictBaseModel):
-    geostore_id: UUID
+    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest, Global]
     sources: list[DataMartSource]
 
 
@@ -107,7 +112,7 @@ class DataMartResourceLinkResponse(Response):
 
 
 class TreeCoverLossByDriverIn(StrictBaseModel):
-    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest] = Field(
+    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest, Global] = Field(
         ..., discriminator="type"
     )
     canopy_cover: int = 30

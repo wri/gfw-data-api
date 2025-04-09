@@ -18,6 +18,7 @@ from fastapi import (
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
 from pydantic import ValidationError
+from starlette.status import HTTP_400_BAD_REQUEST
 
 from app.crud import datamart as datamart_crud
 from app.errors import RecordNotFoundError
@@ -29,9 +30,12 @@ from app.models.pydantic.datamart import (
     DataMartResource,
     DataMartResourceLink,
     DataMartResourceLinkResponse,
+    DataMartSource,
     GeostoreAreaOfInterest,
+    Global,
     TreeCoverLossByDriver,
     TreeCoverLossByDriverIn,
+    TreeCoverLossByDriverMetadata,
     TreeCoverLossByDriverResponse,
 )
 from app.responses import CSVStreamingResponse
@@ -88,6 +92,9 @@ def _parse_area_of_interest(request: Request) -> AreaOfInterest:
                 version=params.get("aoi[version]", None),
             )
 
+        if aoi_type == "global":
+            return Global()
+
         # If neither type is provided, raise an error
         raise HTTPException(
             status_code=422, detail="Invalid Area of Interest parameters"
@@ -112,9 +119,9 @@ async def tree_cover_loss_by_driver_search(
     api_key: APIKey = Depends(get_api_key),
 ):
     """Search if a resource exists for a given geostore and canopy cover."""
-    geostore_id = await aoi.get_geostore_id()
+    area_id = "global" if aoi.type == "global" else await aoi.get_geostore_id()
     resource_id = _get_resource_id(
-        "tree_cover_loss_by_driver", geostore_id, canopy_cover, dataset_versions
+        "tree_cover_loss_by_driver", area_id, canopy_cover, dataset_versions
     )
 
     # check if it exists
@@ -189,24 +196,15 @@ async def tree_cover_loss_by_driver_post(
 ):
     """Create new tree cover loss by drivers resource for a given geostore and
     canopy cover."""
-    geostore_id = await data.aoi.get_geostore_id()
 
-    # check geostore is valid
-    try:
-        await get_geostore(geostore_id, GeostoreOrigin.rw)
-    except HTTPException:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Geostore {geostore_id} can't be found or is not valid.",
-        )
+    area_id = (
+        "global" if data.aoi.type == "global" else await data.aoi.get_geostore_id()
+    )
 
-    # create initial Job item as pending
-    # trigger background task to create item
-    # return 202 accepted
     dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
     resource_id = _get_resource_id(
         "tree_cover_loss_by_driver",
-        geostore_id,
+        area_id,
         data.canopy_cover,
         dataset_version,
     )
@@ -218,25 +216,49 @@ async def tree_cover_loss_by_driver_post(
             detail=f"Resource f{resource_id} already exists with those parameters.",
         )
 
-    await _save_pending_resource(resource_id, request.url.path, api_key)
+    link = DataMartResourceLink(
+        link=f"{API_URL}/v0/land/tree_cover_loss_by_driver/{resource_id}"
+    )
+    if data.aoi.type == "global":
+        try:
+            _ = await _get_resource(resource_id)
+        except HTTPException:
+            raise HTTPException(
+                HTTP_400_BAD_REQUEST,
+                detail="Global computation not supported for this dataset and pre-computed results are not available.",
+            )
 
+        return DataMartResourceLinkResponse(data=link)
+
+    # check geostore is valid
+    try:
+        await get_geostore(area_id, GeostoreOrigin.rw)
+    except HTTPException:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Geostore {area_id} can't be found or is not valid.",
+        )
+
+    metadata = _get_metadata(data.aoi, data.canopy_cover, dataset_version)
+    # create initial Job item as pending
+    await _save_pending_resource(resource_id, metadata, request.url.path, api_key)
+
+    # trigger background task to create item
+    # return 202 accepted
     background_tasks.add_task(
         compute_tree_cover_loss_by_driver,
         resource_id,
-        geostore_id,
+        area_id,
         data.canopy_cover,
         dataset_version,
     )
 
-    link = DataMartResourceLink(
-        link=f"{API_URL}/v0/land/tree_cover_loss_by_driver/{resource_id}"
-    )
     return DataMartResourceLinkResponse(data=link)
 
 
-def _get_resource_id(path, geostore_id, canopy_cover, dataset_version):
+def _get_resource_id(path, area_id, canopy_cover, dataset_version):
     return uuid.uuid5(
-        uuid.NAMESPACE_OID, f"{path}_{geostore_id}_{canopy_cover}_{dataset_version}"
+        uuid.NAMESPACE_OID, f"{path}_{area_id}_{canopy_cover}_{dataset_version}"
     )
 
 
@@ -258,9 +280,10 @@ async def _check_resource_exists(resource_id) -> bool:
         return False
 
 
-async def _save_pending_resource(resource_id, endpoint, api_key):
+async def _save_pending_resource(resource_id, metadata, endpoint, api_key):
     pending_resource = DataMartResource(
         id=resource_id,
+        metadata=metadata,
         status=AnalysisStatus.pending,
         endpoint=endpoint,
         requested_by=api_key,
@@ -268,3 +291,17 @@ async def _save_pending_resource(resource_id, endpoint, api_key):
     )
 
     await datamart_crud.save_result(pending_resource)
+
+
+def _get_metadata(
+    aoi: AreaOfInterest, canopy_cover: int, dataset_version: Dict[str, str]
+) -> TreeCoverLossByDriverMetadata:
+    sources = [
+        DataMartSource(dataset=dataset, version=version)
+        for dataset, version in dataset_version.items()
+    ]
+    return TreeCoverLossByDriverMetadata(
+        aoi=aoi,
+        canopy_cover=canopy_cover,
+        sources=sources,
+    )

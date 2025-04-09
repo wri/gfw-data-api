@@ -7,8 +7,6 @@ import app.crud.datamart as datamart_crud
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
     AnalysisStatus,
-    DataMartSource,
-    TreeCoverLossByDriverMetadata,
     TreeCoverLossByDriverResult,
     TreeCoverLossByDriverUpdate,
 )
@@ -30,9 +28,6 @@ async def compute_tree_cover_loss_by_driver(
     dataset_version: Dict[str, str],
 ):
 
-    resource = TreeCoverLossByDriverUpdate(
-        metadata=_get_metadata(geostore_id, canopy_cover, dataset_version),
-    )
     try:
         logger.info(
             f"Computing tree cover loss by driver for resource {resource_id} with geostore {geostore_id} and canopy cover {canopy_cover}"
@@ -48,30 +43,18 @@ async def compute_tree_cover_loss_by_driver(
             dataset_version,
         )
 
-        resource.result = TreeCoverLossByDriverResult.from_rows(results)
-
-        resource.status = AnalysisStatus.saved
+        resource = TreeCoverLossByDriverUpdate(
+            result=TreeCoverLossByDriverResult.from_rows(results),
+            status=AnalysisStatus.saved,
+        )
         await datamart_crud.update_result(resource_id, resource)
 
     except Exception as e:
         logger.error(
             f"Tree cover loss by drivers analysis failed for geostore ${geostore_id} with error: {e}"
         )
-        resource.status = AnalysisStatus.failed
-        resource.message = str(e)
+        resource = TreeCoverLossByDriverUpdate(
+            status=AnalysisStatus.failed, message=str(e)
+        )
 
         await datamart_crud.update_result(resource_id, resource)
-
-
-def _get_metadata(
-    geostore_id: UUID, canopy_cover: int, dataset_version: Dict[str, str]
-):
-    sources = [
-        DataMartSource(dataset=dataset, version=version)
-        for dataset, version in dataset_version.items()
-    ]
-    return TreeCoverLossByDriverMetadata(
-        geostore_id=geostore_id,
-        canopy_cover=canopy_cover,
-        sources=sources,
-    )
