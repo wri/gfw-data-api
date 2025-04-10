@@ -22,7 +22,6 @@ from fastapi.responses import ORJSONResponse
 from pydantic import ValidationError
 from starlette.status import HTTP_400_BAD_REQUEST
 
-
 from app.crud import datamart as datamart_crud
 from app.errors import RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
@@ -35,12 +34,13 @@ from app.models.pydantic.datamart import (
     DataMartResourceLinkResponse,
     DataMartSource,
     GeostoreAreaOfInterest,
+    Global,
     TreeCoverLossByDriver,
     TreeCoverLossByDriverIn,
     TreeCoverLossByDriverMetadata,
     TreeCoverLossByDriverResponse,
-    Global,
 )
+from app.responses import CSVStreamingResponse
 from app.settings.globals import API_URL
 from app.tasks.datamart.land import (
     DEFAULT_LAND_DATASET_VERSIONS,
@@ -147,10 +147,21 @@ async def tree_cover_loss_by_driver_search(
     response_model=TreeCoverLossByDriverResponse,
     tags=["Beta Land"],
     status_code=200,
+    responses={
+        200: {
+            "content": {
+                "text/csv": {
+                    "example": '"umd_tree_cover_loss__year","tsc_tree_cover_loss_drivers__driver","area__ha"\r\n"2001","Permanent agriculture",10.0\r\n"2001","Hard commodities",12.0\r\n"2001","Shifting cultivation",7.0\r\n"2001","Forest management",93.4\r\n"2001","Wildfires",42.0\r\n"2001","Settlements and infrastructure",13.562\r\n"2001","Other natural disturbances",6.0\r\n'
+                },
+            },
+            "description": "Returns either JSON or CSV representation based on the Accept header. CSV representation will only return tree cover loss year, driver, and area.",
+        }
+    },
 )
 async def tree_cover_loss_by_driver_get(
     *,
     resource_id: UUID = Path(..., title="Tree cover loss by driver ID"),
+    request: Request,
     response: Response,
     api_key: APIKey = Depends(get_api_key),
 ):
@@ -163,6 +174,12 @@ async def tree_cover_loss_by_driver_get(
     tree_cover_loss_by_driver_response = TreeCoverLossByDriverResponse(
         data=tree_cover_loss_by_driver
     )
+
+    if request.headers.get("Accept", None) == "text/csv":
+        response.headers["Content-Type"] = "text/csv"
+        response.headers["Content-Disposition"] = "attachment"
+        csv_data = tree_cover_loss_by_driver_response.to_csv()
+        return CSVStreamingResponse(iter([csv_data.getvalue()]), download=True)
 
     return tree_cover_loss_by_driver_response
 
