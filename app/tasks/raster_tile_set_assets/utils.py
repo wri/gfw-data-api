@@ -7,14 +7,13 @@ from fastapi.encoders import jsonable_encoder
 from app.models.enum.assets import AssetType
 from app.models.enum.pixetl import ResamplingMethod
 from app.models.pydantic.creation_options import PixETLCreationOptions
-from app.models.pydantic.jobs import GDAL2TilesJob, GDALDEMJob, Job, PixETLJob
+from app.models.pydantic.jobs import GDALDEMJob, Job, PixETLJob, GDAL2TilesJob
 from app.settings.globals import (
     AWS_GCS_KEY_SECRET_ARN,
     DEFAULT_JOB_DURATION,
     ENV,
     MAX_CORES,
     MAX_MEM,
-    PIXETL_JOB_QUEUE,
     S3_ENTRYPOINT_URL,
 )
 from app.tasks import Callback, reader_secrets
@@ -44,7 +43,6 @@ async def create_pixetl_job(
     job_name: str,
     callback: Callback,
     parents: Optional[List[Job]] = None,
-    job_queue=PIXETL_JOB_QUEUE,
 ) -> Job:
     """Create a Batch job to process a raster tile set using pixetl."""
     co_copy = co.dict(exclude_none=True, by_alias=True)
@@ -89,7 +87,6 @@ async def create_pixetl_job(
     return PixETLJob(
         dataset=dataset,
         job_name=job_name,
-        job_queue=job_queue,
         command=command,
         environment=JOB_ENV,
         callback=callback,
@@ -229,22 +226,19 @@ async def create_resample_job(
         **kwargs,
     )
 
-
 async def create_unify_projection_job(
     dataset: str,
     old_source_uris: List[str],
     target_prefix: str,
     target_crs: str,
     job_name: str,
-    callback: Callback,
+    callback: Callback
 ) -> GDAL2TilesJob:
     """Creates a Batch job that takes all files indicated in old_source_uris
     and re-projects each to a common CRS, then places them in a mirror of the
     original directory structure under the target_prefix, divided by source
-    number.
-
-    More specifically, the files from the first source URI will be put
-    at <target_prefix>/SRC_0, the files from the second under
+    number. More specifically, the files from the first source URI will be
+    put at <target_prefix>/SRC_0, the files from the second under
     <target_prefix>/SRC_1, and so on.
     """
 
