@@ -5,6 +5,8 @@ from itertools import groupby
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
+from fastapi import HTTPException, Request
+from jsonschema import ValidationError
 from pydantic import Field, root_validator, validator
 
 from app.models.pydantic.responses import Response
@@ -202,3 +204,33 @@ class TreeCoverLossByDriverResponse(Response):
 
         csv_file.seek(0)
         return csv_file
+
+
+def _parse_area_of_interest(request: Request) -> AreaOfInterest:
+    params = request.query_params
+    aoi_type = params.get("aoi[type]")
+    try:
+        if aoi_type == "geostore":
+            return GeostoreAreaOfInterest(
+                geostore_id=params.get("aoi[geostore_id]", None)
+            )
+
+            # Otherwise, check if the request contains admin area information
+        if aoi_type == "admin":
+            return AdminAreaOfInterest(
+                country=params.get("aoi[country]", None),
+                region=params.get("aoi[region]", None),
+                subregion=params.get("aoi[subregion]", None),
+                provider=params.get("aoi[provider]", None),
+                version=params.get("aoi[version]", None),
+            )
+
+        if aoi_type == "global":
+            return Global()
+
+        # If neither type is provided, raise an error
+        raise HTTPException(
+            status_code=422, detail="Invalid Area of Interest parameters"
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())

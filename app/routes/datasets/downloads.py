@@ -1,12 +1,15 @@
 """Download dataset in different formats."""
+
 from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
+
+from app.models.pydantic.datamart import AreaOfInterest, _parse_area_of_interest
 
 from ...crud.assets import get_assets_by_filter
 from ...crud.versions import get_version
@@ -191,6 +194,56 @@ async def download_csv_post(
     )
 
     response = CSVStreamingResponse(iter([data.getvalue()]), filename=request.filename)
+    return response
+
+
+@router.get(
+    "/{dataset}/{version}/download_by_aoi",
+    response_class=CSVStreamingResponse,
+    tags=["Download"],
+)
+async def download_by_aoi(
+    request: Request,
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    sql: str = Query(..., description="SQL query."),
+    aoi: AreaOfInterest = Depends(_parse_area_of_interest),
+    filename: str = Query("export.json", description="Name of export file."),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented) for a given AOI.
+
+    Returns downloads in either JSON or CSV depending on the Accept
+    header.
+    """
+
+    dataset, version = dataset_version
+
+    await _check_downloadability(dataset, version)
+
+    geostore_id = await aoi.get_geostore_id()
+    geostore: Optional[GeostoreCommon] = await get_geostore(geostore_id)
+
+    accept_type = request.headers.get("Accept", None)
+    if request.headers.get("Accept", None) == "application/json":
+        data: List[Dict[str, Any]] = await _query_dataset_json(
+            dataset, version, sql, geostore
+        )
+        response = ORJSONStreamingResponse(data, filename=filename)
+        response.headers["Content-Type"] = "application/json"
+    elif accept_type == "text/csv":
+        data: StringIO = await _query_dataset_csv(
+            dataset, version, request.sql, geostore, request.delimiter
+        )
+        response = CSVStreamingResponse(
+            iter([data.getvalue()]), filename=request.filename
+        )
+        response.headers["Content-Type"] = "text/csv"
+    else:
+        raise HTTPException(
+            400, f"Server cannot return data in negoatiated format {accept_type}"
+        )
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
     return response
 
 
