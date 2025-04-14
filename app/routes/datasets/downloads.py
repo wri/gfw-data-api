@@ -4,7 +4,7 @@ from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
@@ -198,12 +198,48 @@ async def download_csv_post(
 
 
 @router.get(
-    "/{dataset}/{version}/download_by_aoi",
+    "/{dataset}/{version}/download_by_aoi/csv",
     response_class=CSVStreamingResponse,
     tags=["Download"],
 )
-async def download_by_aoi(
-    request: Request,
+async def download_by_aoi_csv(
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    sql: str = Query(..., description="SQL query."),
+    aoi: AreaOfInterest = Depends(_parse_area_of_interest),
+    filename: str = Query("export.json", description="Name of export file."),
+    delimiter: Delimiters = Query(
+        Delimiters.comma, description="Delimiter to use for CSV file."
+    ),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented) for a given AOI.
+
+    Returns downloads in either JSON or CSV depending on the Accept
+    header.
+    """
+
+    dataset, version = dataset_version
+
+    await _check_downloadability(dataset, version)
+
+    geostore_id = await aoi.get_geostore_id()
+    geostore: Optional[GeostoreCommon] = await get_geostore(geostore_id)
+    data: StringIO = await _query_dataset_csv(
+        dataset, version, sql, geostore, delimiter
+    )
+    response = CSVStreamingResponse(iter([data.getvalue()]), filename=filename)
+    response.headers["Content-Type"] = "text/csv"
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
+    return response
+
+
+@router.get(
+    "/{dataset}/{version}/download_by_aoi/json",
+    response_class=ORJSONStreamingResponse,
+    tags=["Download"],
+)
+async def download_by_aoi_json(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
     aoi: AreaOfInterest = Depends(_parse_area_of_interest),
@@ -223,25 +259,11 @@ async def download_by_aoi(
     geostore_id = await aoi.get_geostore_id()
     geostore: Optional[GeostoreCommon] = await get_geostore(geostore_id)
 
-    accept_type = request.headers.get("Accept", None)
-    if request.headers.get("Accept", None) == "application/json":
-        data: List[Dict[str, Any]] = await _query_dataset_json(
-            dataset, version, sql, geostore
-        )
-        response = ORJSONStreamingResponse(data, filename=filename)
-        response.headers["Content-Type"] = "application/json"
-    elif accept_type == "text/csv":
-        data: StringIO = await _query_dataset_csv(
-            dataset, version, request.sql, geostore, request.delimiter
-        )
-        response = CSVStreamingResponse(
-            iter([data.getvalue()]), filename=request.filename
-        )
-        response.headers["Content-Type"] = "text/csv"
-    else:
-        raise HTTPException(
-            400, f"Server cannot return data in negoatiated format {accept_type}"
-        )
+    data: List[Dict[str, Any]] = await _query_dataset_json(
+        dataset, version, sql, geostore
+    )
+    response = ORJSONStreamingResponse(data, filename=filename)
+    response.headers["Content-Type"] = "application/json"
 
     response.headers["Cache-Control"] = "max-age=7200"  # 2h
     return response
