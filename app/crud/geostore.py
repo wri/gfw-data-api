@@ -409,15 +409,15 @@ async def admin_params_to_dataset_version(
 
 
 async def form_admin_geostore(
-        adm_level: int,
-        bbox: List[float],
-        area: float,
-        geostore_id: str,
-        level_id: str,
-        simplify: float | None,
-        admin_version: str,
-        geojson: Dict,
-        name: str,
+    adm_level: int,
+    bbox: List[float],
+    area: float,
+    geostore_id: str,
+    level_id: str,
+    simplify: Optional[float],
+    admin_version: str,
+    geojson: Dict,
+    name: str,
 ) -> AdminGeostore:
     info = Adm0BoundaryInfo.parse_obj(
         {
@@ -428,7 +428,6 @@ async def form_admin_geostore(
             "iso": extract_level_id(0, level_id),
         }
     )
-
     if adm_level >= 1:
         info = Adm1BoundaryInfo(
             **info.dict(),
@@ -440,35 +439,28 @@ async def form_admin_geostore(
             id2=int(extract_level_id(2, level_id)),
         )
 
-    # Prepare the base attributes
-    attributes = {
-        "geojson": {
-            "crs": {},
-            "type": "FeatureCollection",
-            "features": [
-                {
-                    "geometry": geojson,
-                    "properties": None,
-                    "type": "Feature",
-                }
-            ],
-        },
-        "provider": {},
-        "areaHa": area,
-        "bbox": bbox,
-        "lock": False,
-        "info": info.dict(),
-    }
-
-    # Prepare the base geostore data
-    geostore_data = {
-        "type": "geoStore",
-        "attributes": attributes,
-    }
-
-    # Only include id and hash if non-simplified area is requested. This is the only geostore we persist
-    if simplify is None:
-        geostore_data["id"] = geostore_id
-        attributes["hash"] = geostore_id
-
-    return AdminGeostore.parse_obj(geostore_data)
+    return AdminGeostore.parse_obj(
+        {
+            "type": "geoStore",
+            "id": geostore_id,
+            "attributes": {
+                "geojson": {
+                    "crs": {},
+                    "type": "FeatureCollection",
+                    "features": [
+                        {
+                            "geometry": geojson,
+                            "properties": None,
+                            "type": "Feature",
+                        }
+                    ],
+                },
+                "hash": geostore_id,
+                "provider": {},
+                "areaHa": area,
+                "bbox": bbox,
+                "lock": False,
+                "info": info.dict(),
+            },
+        }
+    )
