@@ -30,6 +30,46 @@ from .queries import _query_dataset_csv, _query_dataset_json
 
 router: APIRouter = APIRouter()
 
+OPENAPI_EXTRA_AOI = {
+    "parameters": [
+        {
+            "name": "aoi",
+            "in": "query",
+            "required": True,
+            "style": "deepObject",
+            "explode": True,
+            "examples": {
+                "Geostore Area Of Interest": {
+                    "summary": "Geostore Area Of Interest",
+                    "description": "Custom area",
+                    "value": {
+                        "type": "geostore",
+                        "geostore_id": "637d378f-93a9-4364-bfa8-95b6afd28c3a",
+                    },
+                },
+                "Admin Area Of Interest": {
+                    "summary": "Admin Area Of Interest",
+                    "description": "Administrative Boundary",
+                    "value": {
+                        "type": "admin",
+                        "country": "BRA",
+                        "region": "12",
+                        "subregion": "2",
+                    },
+                },
+            },
+            "description": "The Area of Interest",
+            "schema": {
+                "oneOf": [
+                    {"$ref": "#/components/schemas/GeostoreAreaOfInterest"},
+                    {"$ref": "#/components/schemas/AdminAreaOfInterest"},
+                    {"$ref": "#/components/schemas/Global"},
+                ]
+            },
+        }
+    ]
+}
+
 
 @router.get(
     "/{dataset}/{version}/download/json",
@@ -201,6 +241,7 @@ async def download_csv_post(
     "/{dataset}/{version}/download_by_aoi/csv",
     response_class=CSVStreamingResponse,
     tags=["Download"],
+    openapi_extra=OPENAPI_EXTRA_AOI,
 )
 async def download_by_aoi_csv(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
@@ -238,6 +279,7 @@ async def download_by_aoi_csv(
     "/{dataset}/{version}/download_by_aoi/json",
     response_class=ORJSONStreamingResponse,
     tags=["Download"],
+    openapi_extra=OPENAPI_EXTRA_AOI,
 )
 async def download_by_aoi_json(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
