@@ -206,7 +206,7 @@ class TreeCoverLossByDriverResponse(Response):
         return csv_file
 
 
-def _parse_area_of_interest(request: Request) -> AreaOfInterest:
+def parse_area_of_interest(request: Request) -> AreaOfInterest:
     params = request.query_params
     aoi_type = params.get("aoi[type]")
     try:

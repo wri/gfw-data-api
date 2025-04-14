@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 
-from app.models.pydantic.datamart import AreaOfInterest, _parse_area_of_interest
+from app.models.pydantic.datamart import AreaOfInterest, parse_area_of_interest
 
 from ...crud.assets import get_assets_by_filter
 from ...crud.versions import get_version
@@ -25,50 +25,10 @@ from ...utils.path import split_s3_path
 from .. import dataset_version_dependency
 
 # from ...authentication.api_keys import get_api_key
-from . import _get_presigned_url
+from . import OPENAPI_EXTRA_AOI, _get_presigned_url
 from .queries import _query_dataset_csv, _query_dataset_json
 
 router: APIRouter = APIRouter()
-
-OPENAPI_EXTRA_AOI = {
-    "parameters": [
-        {
-            "name": "aoi",
-            "in": "query",
-            "required": True,
-            "style": "deepObject",
-            "explode": True,
-            "examples": {
-                "Geostore Area Of Interest": {
-                    "summary": "Geostore Area Of Interest",
-                    "description": "Custom area",
-                    "value": {
-                        "type": "geostore",
-                        "geostore_id": "637d378f-93a9-4364-bfa8-95b6afd28c3a",
-                    },
-                },
-                "Admin Area Of Interest": {
-                    "summary": "Admin Area Of Interest",
-                    "description": "Administrative Boundary",
-                    "value": {
-                        "type": "admin",
-                        "country": "BRA",
-                        "region": "12",
-                        "subregion": "2",
-                    },
-                },
-            },
-            "description": "The Area of Interest",
-            "schema": {
-                "oneOf": [
-                    {"$ref": "#/components/schemas/GeostoreAreaOfInterest"},
-                    {"$ref": "#/components/schemas/AdminAreaOfInterest"},
-                    {"$ref": "#/components/schemas/Global"},
-                ]
-            },
-        }
-    ]
-}
 
 
 @router.get(
@@ -246,18 +206,14 @@ async def download_csv_post(
 async def download_by_aoi_csv(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    aoi: AreaOfInterest = Depends(_parse_area_of_interest),
+    aoi: AreaOfInterest = Depends(parse_area_of_interest),
     filename: str = Query("export.json", description="Name of export file."),
     delimiter: Delimiters = Query(
         Delimiters.comma, description="Delimiter to use for CSV file."
     ),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
-    implemented) for a given AOI.
-
-    Returns downloads in either JSON or CSV depending on the Accept
-    header.
-    """
+    implemented) for a given AOI, and return as a CSV file."""
 
     dataset, version = dataset_version
 
@@ -284,15 +240,11 @@ async def download_by_aoi_csv(
 async def download_by_aoi_json(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
-    aoi: AreaOfInterest = Depends(_parse_area_of_interest),
+    aoi: AreaOfInterest = Depends(parse_area_of_interest),
     filename: str = Query("export.json", description="Name of export file."),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
-    implemented) for a given AOI.
-
-    Returns downloads in either JSON or CSV depending on the Accept
-    header.
-    """
+    implemented) for a given AOI, and returns it as JSON file."""
 
     dataset, version = dataset_version
 

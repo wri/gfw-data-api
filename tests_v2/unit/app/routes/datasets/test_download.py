@@ -205,7 +205,7 @@ async def test_download_by_aoi_raster_csv(
         ) as mock_query_dataset_csv,
     ):
         response = await async_client.get(
-            f"/dataset/{dataset_name}/{version_name}/download_by_aoi/csv?sql={TEST_SQL}&aoi[type]=admin&aoi[country]=IDN&aoi[region]=9&aoi[subregion]=9",
+            f"/dataset/{dataset_name}/{version_name}/download_by_aoi/csv?sql={TEST_SQL}&aoi[type]=admin&aoi[country]=IDN&aoi[region]=9&aoi[subregion]=9&aoi[provider]=gadm&aoi[version]=4.1",
             headers=headers,
         )
 
@@ -241,7 +241,7 @@ async def test_download_by_aoi_raster_json(
         ) as mock_query_dataset_json,
     ):
         response = await async_client.get(
-            f"/dataset/{dataset_name}/{version_name}/download_by_aoi/json?sql={TEST_SQL}&aoi[type]=admin&aoi[country]=IDN&aoi[region]=9&aoi[subregion]=9",
+            f"/dataset/{dataset_name}/{version_name}/download_by_aoi/json?sql={TEST_SQL}&aoi[type]=admin&aoi[country]=IDN&aoi[region]=9&aoi[subregion]=9&aoi[provider]=gadm&aoi[version]=4.1",
             headers=headers,
         )
 

@@ -35,7 +35,7 @@ from app.models.pydantic.datamart import (
     TreeCoverLossByDriverIn,
     TreeCoverLossByDriverMetadata,
     TreeCoverLossByDriverResponse,
-    _parse_area_of_interest,
+    parse_area_of_interest,
 )
 from app.responses import CSVStreamingResponse
 from app.settings.globals import API_URL
@@ -82,7 +82,7 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
 )
 async def tree_cover_loss_by_driver_search(
     *,
-    aoi: AreaOfInterest = Depends(_parse_area_of_interest),
+    aoi: AreaOfInterest = Depends(parse_area_of_interest),
     canopy_cover: int = Query(30, alias="canopy_cover", title="Canopy cover percent"),
     dataset_versions: Optional[Dict[str, str]] = Depends(_parse_dataset_versions),
     api_key: APIKey = Depends(get_api_key),
