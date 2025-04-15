@@ -19,26 +19,23 @@ from fastapi import (
 )
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse
-from pydantic import ValidationError
 from starlette.status import HTTP_400_BAD_REQUEST
 
 from app.crud import datamart as datamart_crud
 from app.errors import RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
-    AdminAreaOfInterest,
     AnalysisStatus,
     AreaOfInterest,
     DataMartResource,
     DataMartResourceLink,
     DataMartResourceLinkResponse,
     DataMartSource,
-    GeostoreAreaOfInterest,
-    Global,
     TreeCoverLossByDriver,
     TreeCoverLossByDriverIn,
     TreeCoverLossByDriverMetadata,
     TreeCoverLossByDriverResponse,
+    parse_area_of_interest,
 )
 from app.responses import CSVStreamingResponse
 from app.settings.globals import API_URL
@@ -75,36 +72,6 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
     return DEFAULT_LAND_DATASET_VERSIONS | dataset_versions
 
 
-def _parse_area_of_interest(request: Request) -> AreaOfInterest:
-    params = request.query_params
-    aoi_type = params.get("aoi[type]")
-    try:
-        if aoi_type == "geostore":
-            return GeostoreAreaOfInterest(
-                geostore_id=params.get("aoi[geostore_id]", None)
-            )
-
-            # Otherwise, check if the request contains admin area information
-        if aoi_type == "admin":
-            return AdminAreaOfInterest(
-                country=params.get("aoi[country]", None),
-                region=params.get("aoi[region]", None),
-                subregion=params.get("aoi[subregion]", None),
-                provider=params.get("aoi[provider]", None),
-                version=params.get("aoi[version]", None),
-            )
-
-        if aoi_type == "global":
-            return Global()
-
-        # If neither type is provided, raise an error
-        raise HTTPException(
-            status_code=422, detail="Invalid Area of Interest parameters"
-        )
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=e.errors())
-
-
 @router.get(
     "/tree_cover_loss_by_driver",
     response_class=ORJSONResponse,
@@ -115,7 +82,7 @@ def _parse_area_of_interest(request: Request) -> AreaOfInterest:
 )
 async def tree_cover_loss_by_driver_search(
     *,
-    aoi: AreaOfInterest = Depends(_parse_area_of_interest),
+    aoi: AreaOfInterest = Depends(parse_area_of_interest),
     canopy_cover: int = Query(30, alias="canopy_cover", title="Canopy cover percent"),
     dataset_versions: Optional[Dict[str, str]] = Depends(_parse_dataset_versions),
     api_key: APIKey = Depends(get_api_key),
