@@ -1,4 +1,5 @@
 """Download dataset in different formats."""
+
 from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
@@ -7,6 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
+
+from app.models.pydantic.datamart import AreaOfInterest, parse_area_of_interest
 
 from ...crud.assets import get_assets_by_filter
 from ...crud.versions import get_version
@@ -22,7 +25,7 @@ from ...utils.path import split_s3_path
 from .. import dataset_version_dependency
 
 # from ...authentication.api_keys import get_api_key
-from . import _get_presigned_url
+from . import OPENAPI_EXTRA_AOI, _get_presigned_url
 from .queries import _query_dataset_csv, _query_dataset_json
 
 router: APIRouter = APIRouter()
@@ -191,6 +194,72 @@ async def download_csv_post(
     )
 
     response = CSVStreamingResponse(iter([data.getvalue()]), filename=request.filename)
+    return response
+
+
+@router.get(
+    "/{dataset}/{version}/download_by_aoi/csv",
+    response_class=CSVStreamingResponse,
+    tags=["Download"],
+    openapi_extra=OPENAPI_EXTRA_AOI,
+)
+async def download_by_aoi_csv(
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    sql: str = Query(..., description="SQL query."),
+    aoi: AreaOfInterest = Depends(parse_area_of_interest),
+    filename: str = Query("export.json", description="Name of export file."),
+    delimiter: Delimiters = Query(
+        Delimiters.comma, description="Delimiter to use for CSV file."
+    ),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented) for a given AOI, and return as a CSV file."""
+
+    dataset, version = dataset_version
+
+    await _check_downloadability(dataset, version)
+
+    geostore_id = await aoi.get_geostore_id()
+    geostore: Optional[GeostoreCommon] = await get_geostore(geostore_id)
+    data: StringIO = await _query_dataset_csv(
+        dataset, version, sql, geostore, delimiter
+    )
+    response = CSVStreamingResponse(iter([data.getvalue()]), filename=filename)
+    response.headers["Content-Type"] = "text/csv"
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
+    return response
+
+
+@router.get(
+    "/{dataset}/{version}/download_by_aoi/json",
+    response_class=ORJSONStreamingResponse,
+    tags=["Download"],
+    openapi_extra=OPENAPI_EXTRA_AOI,
+)
+async def download_by_aoi_json(
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    sql: str = Query(..., description="SQL query."),
+    aoi: AreaOfInterest = Depends(parse_area_of_interest),
+    filename: str = Query("export.json", description="Name of export file."),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented) for a given AOI, and returns it as JSON file."""
+
+    dataset, version = dataset_version
+
+    await _check_downloadability(dataset, version)
+
+    geostore_id = await aoi.get_geostore_id()
+    geostore: Optional[GeostoreCommon] = await get_geostore(geostore_id)
+
+    data: List[Dict[str, Any]] = await _query_dataset_json(
+        dataset, version, sql, geostore
+    )
+    response = ORJSONStreamingResponse(data, filename=filename)
+    response.headers["Content-Type"] = "application/json"
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
     return response
 
 
