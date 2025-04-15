@@ -220,7 +220,9 @@ async def download_by_aoi_csv(
     await _check_downloadability(dataset, version)
 
     geostore_id = await aoi.get_geostore_id()
-    geostore: Optional[GeostoreCommon] = await get_geostore(geostore_id)
+    geostore: Optional[GeostoreCommon] = await get_geostore(
+        geostore_id, GeostoreOrigin.rw
+    )
     data: StringIO = await _query_dataset_csv(
         dataset, version, sql, geostore, delimiter
     )
@@ -251,7 +253,9 @@ async def download_by_aoi_json(
     await _check_downloadability(dataset, version)
 
     geostore_id = await aoi.get_geostore_id()
-    geostore: Optional[GeostoreCommon] = await get_geostore(geostore_id)
+    geostore: Optional[GeostoreCommon] = await get_geostore(
+        geostore_id, GeostoreOrigin.rw
+    )
 
     data: List[Dict[str, Any]] = await _query_dataset_json(
         dataset, version, sql, geostore

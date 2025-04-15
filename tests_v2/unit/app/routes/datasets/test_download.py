@@ -6,6 +6,7 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient
 
+from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.geostore import GeostoreCommon
 from app.routes.datasets import queries
 
@@ -209,7 +210,7 @@ async def test_download_by_aoi_raster_csv(
             headers=headers,
         )
 
-        mock_get_geostore.assert_awaited_once_with(TEST_GEOSTORE_ID)
+        mock_get_geostore.assert_awaited_once_with(TEST_GEOSTORE_ID, GeostoreOrigin.rw)
         mock_query_dataset_csv.assert_awaited_once_with(
             dataset_name, version_name, TEST_SQL, TEST_GEOSTORE, ","
         )
@@ -245,7 +246,7 @@ async def test_download_by_aoi_raster_json(
             headers=headers,
         )
 
-        mock_get_geostore.assert_awaited_once_with(TEST_GEOSTORE_ID)
+        mock_get_geostore.assert_awaited_once_with(TEST_GEOSTORE_ID, GeostoreOrigin.rw)
         mock_query_dataset_json.assert_awaited_once_with(
             dataset_name, version_name, TEST_SQL, TEST_GEOSTORE
         )
