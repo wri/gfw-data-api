@@ -6,8 +6,12 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient
 
-from app.models.enum.geostore import GeostoreOrigin
-from app.models.pydantic.geostore import GeostoreCommon
+from app.models.pydantic.geostore import (
+    Adm2BoundaryInfo,
+    AdminGeostore,
+    AdminGeostoreAttributes,
+    GeostoreCommon,
+)
 from app.routes.datasets import queries
 
 TEST_SQL = "select count(*) as count from data"
@@ -36,6 +40,39 @@ TEST_GEOJSON = {
 TEST_GEOSTORE_ID = "c3833748f6815d31bad47d47f147c0f0"
 TEST_GEOSTORE = GeostoreCommon(
     geojson=TEST_GEOJSON, geostore_id=TEST_GEOSTORE_ID, area__ha=0, bbox=[0, 0, 0, 0]
+)
+TEST_ADMIN_GEOSTORE = AdminGeostore(
+    type="geoStore",
+    id=TEST_GEOSTORE_ID,
+    attributes=AdminGeostoreAttributes(
+        geojson={
+            "crs": {},
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "geometry": TEST_GEOJSON,
+                    "properties": None,
+                    "type": "Feature",
+                }
+            ],
+        },
+        hash=TEST_GEOSTORE_ID,
+        provider={},
+        areaHa=0.0,
+        bbox=[0, 0, 0, 0],
+        lock=False,
+        info=Adm2BoundaryInfo.parse_obj(
+            {
+                "use": {},
+                "simplifyThresh": 0.1,
+                "gadm": "4.1",
+                "name": "Indonesia",
+                "iso": "IDN",
+                "id1": 24,
+                "id2": 9,
+            }
+        ),
+    ),
 )
 
 
@@ -184,7 +221,7 @@ async def test_download_raster_csv_with_geometry(
 
 
 @pytest.mark.asyncio
-async def test_download_by_aoi_raster_csv(
+async def test_download_by_aoi_raster_gadm_csv(
     generic_raster_version, apikey, async_client: AsyncClient
 ):
     dataset_name, version_name, _ = generic_raster_version
@@ -194,33 +231,35 @@ async def test_download_by_aoi_raster_csv(
 
     with (
         patch(
-            "app.models.pydantic.datamart.AdminAreaOfInterest.get_geostore_id",
-            return_value=TEST_GEOSTORE_ID,
-        ),
-        patch(
-            "app.routes.datasets.downloads.get_geostore", return_value=TEST_GEOSTORE
-        ) as mock_get_geostore,
+            "app.routes.datasets.downloads.build_gadm_geostore",
+            return_value=TEST_ADMIN_GEOSTORE,
+        ) as mock_build_gadm_geostore,
         patch(
             "app.routes.datasets.downloads._query_dataset_csv",
             return_value=StringIO("x,y\n,1,2"),
         ) as mock_query_dataset_csv,
     ):
         response = await async_client.get(
-            f"/dataset/{dataset_name}/{version_name}/download_by_aoi/csv?sql={TEST_SQL}&aoi[type]=admin&aoi[country]=IDN&aoi[region]=9&aoi[subregion]=9&aoi[provider]=gadm&aoi[version]=4.1",
+            f"/dataset/{dataset_name}/{version_name}/download_by_aoi/csv?sql={TEST_SQL}&aoi[type]=admin&aoi[country]=IDN&aoi[region]=24&aoi[subregion]=9&aoi[provider]=gadm&aoi[version]=4.1&aoi[simplify]=0.1",
             headers=headers,
         )
 
-        mock_get_geostore.assert_awaited_once_with(TEST_GEOSTORE_ID, GeostoreOrigin.rw)
+        mock_build_gadm_geostore.assert_awaited_once_with(
+            "gadm", "4.1", 2, 0.1, "IDN", "24", "9"
+        )
         mock_query_dataset_csv.assert_awaited_once_with(
             dataset_name, version_name, TEST_SQL, TEST_GEOSTORE, ","
         )
 
         assert response.status_code == 200
         assert response.content == b"x,y\n,1,2"
+        assert (
+            response.headers["Content-Disposition"] == "attachment; filename=export.csv"
+        )
 
 
 @pytest.mark.asyncio
-async def test_download_by_aoi_raster_json(
+async def test_download_by_aoi_raster_gadm_json(
     generic_raster_version, apikey, async_client: AsyncClient
 ):
     dataset_name, version_name, _ = generic_raster_version
@@ -230,26 +269,29 @@ async def test_download_by_aoi_raster_json(
 
     with (
         patch(
-            "app.models.pydantic.datamart.AdminAreaOfInterest.get_geostore_id",
-            return_value=TEST_GEOSTORE_ID,
-        ),
-        patch(
-            "app.routes.datasets.downloads.get_geostore", return_value=TEST_GEOSTORE
-        ) as mock_get_geostore,
+            "app.routes.datasets.downloads.build_gadm_geostore",
+            return_value=TEST_ADMIN_GEOSTORE,
+        ) as mock_build_gadm_geostore,
         patch(
             "app.routes.datasets.downloads._query_dataset_json",
             return_value={"data": [{"x": 1, "y": 2}]},
         ) as mock_query_dataset_json,
     ):
         response = await async_client.get(
-            f"/dataset/{dataset_name}/{version_name}/download_by_aoi/json?sql={TEST_SQL}&aoi[type]=admin&aoi[country]=IDN&aoi[region]=9&aoi[subregion]=9&aoi[provider]=gadm&aoi[version]=4.1",
+            f"/dataset/{dataset_name}/{version_name}/download_by_aoi/json?sql={TEST_SQL}&aoi[type]=admin&aoi[country]=IDN&aoi[region]=24&aoi[subregion]=9&aoi[provider]=gadm&aoi[version]=4.1&aoi[simplify]=0.1",
             headers=headers,
         )
 
-        mock_get_geostore.assert_awaited_once_with(TEST_GEOSTORE_ID, GeostoreOrigin.rw)
+        mock_build_gadm_geostore.assert_awaited_once_with(
+            "gadm", "4.1", 2, 0.1, "IDN", "24", "9"
+        )
         mock_query_dataset_json.assert_awaited_once_with(
             dataset_name, version_name, TEST_SQL, TEST_GEOSTORE
         )
 
         assert response.status_code == 200
         assert response.json() == {"data": [{"x": 1, "y": 2}]}
+        assert (
+            response.headers["Content-Disposition"]
+            == "attachment; filename=export.json"
+        )

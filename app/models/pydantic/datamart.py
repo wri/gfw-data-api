@@ -36,16 +36,10 @@ class AdminAreaOfInterest(AreaOfInterest):
     subregion: Optional[str] = Field(None, title="Subregion")
     provider: str = Field("gadm", title="Administrative Boundary Provider")
     version: str = Field("4.1", title="Administrative Boundary Version")
+    simplify: Optional[float] = Field(None, title="Simplification factor for geometry")
 
     async def get_geostore_id(self) -> UUID:
-        admin_level = (
-            sum(
-                1
-                for field in (self.country, self.region, self.subregion)
-                if field is not None
-            )
-            - 1
-        )
+        admin_level = self.get_admin_level()
         geostore_id = await get_gadm_geostore_id(
             admin_provider=self.provider,
             admin_version=self.version,
@@ -55,6 +49,17 @@ class AdminAreaOfInterest(AreaOfInterest):
             subregion_id=self.subregion,
         )
         return geostore_id
+
+    def get_admin_level(self):
+        admin_level = (
+            sum(
+                1
+                for field in (self.country, self.region, self.subregion)
+                if field is not None
+            )
+            - 1
+        )
+        return admin_level
 
     @root_validator
     def check_region_subregion(cls, values):
@@ -223,6 +228,7 @@ def parse_area_of_interest(request: Request) -> AreaOfInterest:
                 subregion=params.get("aoi[subregion]", None),
                 provider=params.get("aoi[provider]", None),
                 version=params.get("aoi[version]", None),
+                simplify=params.get("aoi[simplify]", None),
             )
 
         if aoi_type == "global":

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
 
+from app.crud.geostore import build_gadm_geostore
 from app.models.pydantic.datamart import AreaOfInterest, parse_area_of_interest
 
 from ...crud.assets import get_assets_by_filter
@@ -207,7 +208,7 @@ async def download_by_aoi_csv(
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     sql: str = Query(..., description="SQL query."),
     aoi: AreaOfInterest = Depends(parse_area_of_interest),
-    filename: str = Query("export.json", description="Name of export file."),
+    filename: str = Query("export.csv", description="Name of export file."),
     delimiter: Delimiters = Query(
         Delimiters.comma, description="Delimiter to use for CSV file."
     ),
@@ -218,11 +219,8 @@ async def download_by_aoi_csv(
     dataset, version = dataset_version
 
     await _check_downloadability(dataset, version)
+    geostore = await get_aoi_geostore_common(aoi)
 
-    geostore_id = await aoi.get_geostore_id()
-    geostore: Optional[GeostoreCommon] = await get_geostore(
-        geostore_id, GeostoreOrigin.rw
-    )
     data: StringIO = await _query_dataset_csv(
         dataset, version, sql, geostore, delimiter
     )
@@ -251,11 +249,7 @@ async def download_by_aoi_json(
     dataset, version = dataset_version
 
     await _check_downloadability(dataset, version)
-
-    geostore_id = await aoi.get_geostore_id()
-    geostore: Optional[GeostoreCommon] = await get_geostore(
-        geostore_id, GeostoreOrigin.rw
-    )
+    geostore = await get_aoi_geostore_common(aoi)
 
     data: List[Dict[str, Any]] = await _query_dataset_json(
         dataset, version, sql, geostore
@@ -400,3 +394,30 @@ async def _check_downloadability(dataset, version):
         raise HTTPException(
             status_code=403, detail="This dataset is not available for download"
         )
+
+
+async def get_aoi_geostore_common(aoi: AreaOfInterest):
+    if aoi.type == "admin":
+        admin_geostore = await build_gadm_geostore(
+            aoi.provider,
+            aoi.version,
+            aoi.get_admin_level(),
+            aoi.simplify,
+            aoi.country,
+            aoi.region,
+            aoi.subregion,
+        )
+        geojson = admin_geostore.attributes.geojson.features[0].geometry
+        geostore = GeostoreCommon(
+            geostore_id=admin_geostore.id,
+            geojson=geojson,
+            area__ha=admin_geostore.attributes.areaHa,
+            bbox=admin_geostore.attributes.bbox,
+        )
+    else:
+        geostore_id = await aoi.get_geostore_id()
+        geostore: Optional[GeostoreCommon] = await get_geostore(
+            geostore_id, GeostoreOrigin.rw
+        )
+
+    return geostore
