@@ -1,7 +1,12 @@
+import csv
 from enum import Enum
+from io import StringIO
+from itertools import groupby
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
+from fastapi import HTTPException, Request
+from jsonschema import ValidationError
 from pydantic import Field, root_validator, validator
 
 from app.models.pydantic.responses import Response
@@ -31,16 +36,10 @@ class AdminAreaOfInterest(AreaOfInterest):
     subregion: Optional[str] = Field(None, title="Subregion")
     provider: str = Field("gadm", title="Administrative Boundary Provider")
     version: str = Field("4.1", title="Administrative Boundary Version")
+    simplify: Optional[float] = Field(None, title="Simplification factor for geometry")
 
     async def get_geostore_id(self) -> UUID:
-        admin_level = (
-            sum(
-                1
-                for field in (self.country, self.region, self.subregion)
-                if field is not None
-            )
-            - 1
-        )
+        admin_level = self.get_admin_level()
         geostore_id = await get_gadm_geostore_id(
             admin_provider=self.provider,
             admin_version=self.version,
@@ -50,6 +49,17 @@ class AdminAreaOfInterest(AreaOfInterest):
             subregion_id=self.subregion,
         )
         return geostore_id
+
+    def get_admin_level(self):
+        admin_level = (
+            sum(
+                1
+                for field in (self.country, self.region, self.subregion)
+                if field is not None
+            )
+            - 1
+        )
+        return admin_level
 
     @root_validator
     def check_region_subregion(cls, values):
@@ -120,10 +130,39 @@ class TreeCoverLossByDriverMetadata(DataMartMetadata):
     canopy_cover: int
 
 
+class TreeCoverLossByDriverResult(StrictBaseModel):
+    tree_cover_loss_by_driver: List[Dict[str, Any]]
+    yearly_tree_cover_loss_by_driver: List[Dict[str, Any]]
+
+    @staticmethod
+    def from_rows(rows):
+        yearly_tcl_by_driver = [
+            {
+                "drivers_type": row["tsc_tree_cover_loss_drivers__driver"],
+                "loss_year": row["umd_tree_cover_loss__year"],
+                "loss_area_ha": row["area__ha"],
+            }
+            for row in rows
+        ]
+
+        tcl_by_driver = [
+            {
+                "drivers_type": driver,
+                "loss_area_ha": sum([year["area__ha"] for year in years]),
+            }
+            for driver, years in groupby(
+                rows, key=lambda x: x["tsc_tree_cover_loss_drivers__driver"]
+            )
+        ]
+
+        return TreeCoverLossByDriverResult(
+            tree_cover_loss_by_driver=tcl_by_driver,
+            yearly_tree_cover_loss_by_driver=yearly_tcl_by_driver,
+        )
+
+
 class TreeCoverLossByDriver(StrictBaseModel):
-    result: Optional[List[Dict[str, Any]]] = Field(
-        None, alias="tree_cover_loss_by_driver"
-    )
+    result: Optional[TreeCoverLossByDriverResult] = None
     metadata: Optional[TreeCoverLossByDriverMetadata] = None
     message: Optional[str] = None
     status: AnalysisStatus
@@ -134,9 +173,8 @@ class TreeCoverLossByDriver(StrictBaseModel):
 
 
 class TreeCoverLossByDriverUpdate(StrictBaseModel):
-    result: Optional[List[Dict[str, Any]]] = Field(
-        None, alias="tree_cover_loss_by_driver"
-    )
+    result: Optional[TreeCoverLossByDriverResult] = None
+    metadata: Optional[TreeCoverLossByDriverMetadata] = None
     status: Optional[AnalysisStatus] = AnalysisStatus.saved
     message: Optional[str] = None
 
@@ -147,3 +185,58 @@ class TreeCoverLossByDriverUpdate(StrictBaseModel):
 
 class TreeCoverLossByDriverResponse(Response):
     data: TreeCoverLossByDriver
+
+    def to_csv(
+        self,
+    ) -> StringIO:
+        """Create a new csv file that represents the resource Response will
+        return a temporary redirect to download URL."""
+        csv_file = StringIO()
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
+        wr.writerow(
+            [
+                "drivers_type",
+                "loss_year",
+                "loss_area_ha",
+            ]
+        )
+
+        if self.data.status == "saved":
+            for row in self.data.result.yearly_tree_cover_loss_by_driver:
+                wr.writerow(
+                    [row["drivers_type"], row["loss_year"], row["loss_area_ha"]]
+                )
+
+        csv_file.seek(0)
+        return csv_file
+
+
+def parse_area_of_interest(request: Request) -> AreaOfInterest:
+    params = request.query_params
+    aoi_type = params.get("aoi[type]")
+    try:
+        if aoi_type == "geostore":
+            return GeostoreAreaOfInterest(
+                geostore_id=params.get("aoi[geostore_id]", None)
+            )
+
+            # Otherwise, check if the request contains admin area information
+        if aoi_type == "admin":
+            return AdminAreaOfInterest(
+                country=params.get("aoi[country]", None),
+                region=params.get("aoi[region]", None),
+                subregion=params.get("aoi[subregion]", None),
+                provider=params.get("aoi[provider]", None),
+                version=params.get("aoi[version]", None),
+                simplify=params.get("aoi[simplify]", None),
+            )
+
+        if aoi_type == "global":
+            return Global()
+
+        # If neither type is provided, raise an error
+        raise HTTPException(
+            status_code=422, detail="Invalid Area of Interest parameters"
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())

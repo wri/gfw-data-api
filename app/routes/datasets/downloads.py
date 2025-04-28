@@ -1,4 +1,5 @@
 """Download dataset in different formats."""
+
 from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
@@ -7,6 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 # from fastapi.openapi.models import APIKey
 from fastapi.responses import RedirectResponse
+
+from app.crud.geostore import build_gadm_geostore
+from app.models.pydantic.datamart import AreaOfInterest, parse_area_of_interest
 
 from ...crud.assets import get_assets_by_filter
 from ...crud.versions import get_version
@@ -22,7 +26,7 @@ from ...utils.path import split_s3_path
 from .. import dataset_version_dependency
 
 # from ...authentication.api_keys import get_api_key
-from . import _get_presigned_url
+from . import OPENAPI_EXTRA_AOI, _get_presigned_url
 from .queries import _query_dataset_csv, _query_dataset_json
 
 router: APIRouter = APIRouter()
@@ -195,6 +199,69 @@ async def download_csv_post(
 
 
 @router.get(
+    "/{dataset}/{version}/download_by_aoi/csv",
+    response_class=CSVStreamingResponse,
+    tags=["Download"],
+    openapi_extra=OPENAPI_EXTRA_AOI,
+)
+async def download_by_aoi_csv(
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    sql: str = Query(..., description="SQL query."),
+    aoi: AreaOfInterest = Depends(parse_area_of_interest),
+    filename: str = Query("export.csv", description="Name of export file."),
+    delimiter: Delimiters = Query(
+        Delimiters.comma, description="Delimiter to use for CSV file."
+    ),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented) for a given AOI, and return as a CSV file."""
+
+    dataset, version = dataset_version
+
+    await _check_downloadability(dataset, version)
+    geostore = await get_aoi_geostore_common(aoi)
+
+    data: StringIO = await _query_dataset_csv(
+        dataset, version, sql, geostore, delimiter
+    )
+    response = CSVStreamingResponse(iter([data.getvalue()]), filename=filename)
+    response.headers["Content-Type"] = "text/csv"
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
+    return response
+
+
+@router.get(
+    "/{dataset}/{version}/download_by_aoi/json",
+    response_class=ORJSONStreamingResponse,
+    tags=["Download"],
+    openapi_extra=OPENAPI_EXTRA_AOI,
+)
+async def download_by_aoi_json(
+    dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
+    sql: str = Query(..., description="SQL query."),
+    aoi: AreaOfInterest = Depends(parse_area_of_interest),
+    filename: str = Query("export.json", description="Name of export file."),
+):
+    """Execute a READ-ONLY SQL query on the given dataset version (if
+    implemented) for a given AOI, and returns it as JSON file."""
+
+    dataset, version = dataset_version
+
+    await _check_downloadability(dataset, version)
+    geostore = await get_aoi_geostore_common(aoi)
+
+    data: List[Dict[str, Any]] = await _query_dataset_json(
+        dataset, version, sql, geostore
+    )
+    response = ORJSONStreamingResponse(data, filename=filename)
+    response.headers["Content-Type"] = "application/json"
+
+    response.headers["Cache-Control"] = "max-age=7200"  # 2h
+    return response
+
+
+@router.get(
     "/{dataset}/{version}/download/geotiff",
     response_class=RedirectResponse,
     tags=["Download"],
@@ -327,3 +394,30 @@ async def _check_downloadability(dataset, version):
         raise HTTPException(
             status_code=403, detail="This dataset is not available for download"
         )
+
+
+async def get_aoi_geostore_common(aoi: AreaOfInterest):
+    if aoi.type == "admin":
+        admin_geostore = await build_gadm_geostore(
+            aoi.provider,
+            aoi.version,
+            aoi.get_admin_level(),
+            aoi.simplify,
+            aoi.country,
+            aoi.region,
+            aoi.subregion,
+        )
+        geojson = admin_geostore.attributes.geojson.features[0].geometry
+        geostore = GeostoreCommon(
+            geostore_id=admin_geostore.id,
+            geojson=geojson,
+            area__ha=admin_geostore.attributes.areaHa,
+            bbox=admin_geostore.attributes.bbox,
+        )
+    else:
+        geostore_id = await aoi.get_geostore_id()
+        geostore: Optional[GeostoreCommon] = await get_geostore(
+            geostore_id, GeostoreOrigin.rw
+        )
+
+    return geostore
