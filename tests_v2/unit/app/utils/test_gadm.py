@@ -50,25 +50,28 @@ async def test_strip_revision_sql_for_those_missing_revision() -> None:
         assert fix_id_pattern(2, pattern, "gadm", "4.1") == problem_gid
 
 
+# In the official GADM 4.1 files some Ghana GIDs were missing a "." between "GHA"
+# and the region IDs (so what should have been "GHA.2.1_1" was "GHA2.1_1". We had
+# instituted a workaround in the Data API for this, but later decided to fix the
+# IDs by pre-processing the GADM file. These next three tests are to verify that
+# the new, fixed, IDs are dealt with correctly.
 @pytest.mark.asyncio
-async def test_GHA_GIDs_are_NOT_changed_now_that_we_have_mitigated_at_source_0() -> (
-    None
-):
+async def test_GHA_GID_0_is_NOT_changed_now_that_we_have_mitigated_at_source() -> None:
     orig_pattern = "GHA"
     assert fix_id_pattern(0, orig_pattern, "gadm", "4.1") == orig_pattern
 
 
 @pytest.mark.asyncio
-async def test_GHA_GIDs_are_NOT_changed_now_that_we_have_mitigated_at_source_1() -> (
+async def test_GHA_GID_1s_are_NOT_changed_now_that_we_have_mitigated_at_source() -> (
     None
 ):
     orig_pattern = r"GHA.4\__"
-    assert fix_id_pattern(1, orig_pattern, "gadm", "4.1") == r"GHA.4\__"
+    assert fix_id_pattern(1, orig_pattern, "gadm", "4.1") == orig_pattern
 
 
 @pytest.mark.asyncio
-async def test_GHA_GIDs_are_NOT_changed_now_that_we_have_mitigated_at_source_2() -> (
+async def test_GHA_GID_2s_are_NOT_changed_now_that_we_have_mitigated_at_source() -> (
     None
 ):
     orig_pattern = r"GHA.4.1\__"
-    assert fix_id_pattern(1, orig_pattern, "gadm", "4.1") == r"GHA.4.1\__"
+    assert fix_id_pattern(2, orig_pattern, "gadm", "4.1") == orig_pattern
