@@ -11,7 +11,8 @@ def extract_level_id(adm_level: int, id_string: str):
     """Given a desired admin level and a string containing at least that level
     of id, return the id of just that level."""
 
-    # Exception because of bad formatting of GHA gids in gadm_administrative_boundaries/v4.1
+    # Exception because of bad formatting of GHA gids in v4.1
+    # (corrected by us in gadm_administrative_boundaries/v4.1.85 and higher)
     if id_string.startswith("GHA") and not id_string.startswith("GHA."):
         id_string = "GHA." + id_string[3:]
     # Exception because bad ids IDN.35.4, IDN.35.8, IDN.35.9, IDN.35.13, IDN.35.14
@@ -29,9 +30,7 @@ def fix_id_pattern(adm_level: int, id_pattern_string: str, provider: str, versio
     new_pattern: str = id_pattern_string
 
     if provider == "gadm" and version == "4.1":
-        if adm_level in (1, 2) and id_pattern_string.startswith("GHA."):
-            new_pattern = new_pattern.replace("GHA.", "GHA")
-        elif id_pattern_string.rstrip(r"\__") in GADM_41_IDS_MISSING_REVISION:
+        if id_pattern_string.rstrip(r"\__") in GADM_41_IDS_MISSING_REVISION:
             new_pattern = new_pattern.rstrip(r"\__")
 
     return new_pattern
