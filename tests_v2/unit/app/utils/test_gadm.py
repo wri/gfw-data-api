@@ -49,12 +49,12 @@ async def test_fix_id_pattern_pass_through_ghana_level_0() -> None:
 
 
 @pytest.mark.asyncio
-async def test_fix_id_pattern_remove_period_in_ghana_level_1() -> None:
+async def test_fix_id_pattern_post_ghana_mitigation_level_1() -> None:
     orig_pattern = r"GHA.4\__"
-    assert fix_id_pattern(1, orig_pattern, "gadm", "4.1") == r"GHA4\__"
+    assert fix_id_pattern(1, orig_pattern, "gadm", "4.1") == r"GHA.4\__"
 
 
 @pytest.mark.asyncio
-async def test_fix_id_pattern_remove_period_in_ghana_level_2() -> None:
+async def test_fix_id_pattern_post_ghana_mitigation_level_2() -> None:
     orig_pattern = r"GHA.4.1\__"
-    assert fix_id_pattern(1, orig_pattern, "gadm", "4.1") == r"GHA4.1\__"
+    assert fix_id_pattern(1, orig_pattern, "gadm", "4.1") == r"GHA.4.1\__"
