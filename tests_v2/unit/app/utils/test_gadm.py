@@ -1,6 +1,10 @@
 import pytest
 
-from app.utils.gadm import extract_level_id, fix_id_pattern
+from app.utils.gadm import (
+    GADM_41_IDS_MISSING_REVISION,
+    extract_level_id,
+    fix_id_pattern,
+)
 
 
 @pytest.mark.asyncio
@@ -25,36 +29,46 @@ async def test_extract_level_gid() -> None:
 
 
 @pytest.mark.asyncio
-async def test_fix_id_pattern_unknown_gadms_pass_through() -> None:
+async def test_GADM_ids_are_unchanged_if_they_are_NOT_4_1() -> None:
     orig_pattern = r"USA.5.10\__"
     assert fix_id_pattern(2, orig_pattern, "gadm", "3.9") == orig_pattern
 
 
 @pytest.mark.asyncio
-async def test_fix_id_pattern_non_problematic_features_pass_through() -> None:
-    orig_pattern = r"USA.4.1\__"
+async def test_GADM_ids_are_unchanged_if_they_are_NOT_problematic() -> None:
+    orig_id = "USA.5.10"
+    assert orig_id not in GADM_41_IDS_MISSING_REVISION
+
+    orig_pattern = orig_id + r"\__"
     assert fix_id_pattern(2, orig_pattern, "gadm", "4.1") == orig_pattern
 
 
 @pytest.mark.asyncio
-async def test_fix_id_pattern_strip_revision_sql_for_those_missing_it() -> None:
-    orig_pattern = r"IDN.35.4\__"
-    assert fix_id_pattern(2, orig_pattern, "gadm", "4.1") == "IDN.35.4"
+async def test_strip_revision_sql_for_those_missing_revision() -> None:
+    for problem_gid in GADM_41_IDS_MISSING_REVISION:
+        pattern = problem_gid + r"\__"
+        assert fix_id_pattern(2, pattern, "gadm", "4.1") == problem_gid
 
 
 @pytest.mark.asyncio
-async def test_fix_id_pattern_pass_through_ghana_level_0() -> None:
-    orig_pattern = r"GHA"
+async def test_GHA_GIDs_are_NOT_changed_now_that_we_have_mitigated_at_source_0() -> (
+    None
+):
+    orig_pattern = "GHA"
     assert fix_id_pattern(0, orig_pattern, "gadm", "4.1") == orig_pattern
 
 
 @pytest.mark.asyncio
-async def test_fix_id_pattern_post_ghana_mitigation_level_1() -> None:
+async def test_GHA_GIDs_are_NOT_changed_now_that_we_have_mitigated_at_source_1() -> (
+    None
+):
     orig_pattern = r"GHA.4\__"
     assert fix_id_pattern(1, orig_pattern, "gadm", "4.1") == r"GHA.4\__"
 
 
 @pytest.mark.asyncio
-async def test_fix_id_pattern_post_ghana_mitigation_level_2() -> None:
+async def test_GHA_GIDs_are_NOT_changed_now_that_we_have_mitigated_at_source_2() -> (
+    None
+):
     orig_pattern = r"GHA.4.1\__"
     assert fix_id_pattern(1, orig_pattern, "gadm", "4.1") == r"GHA.4.1\__"
