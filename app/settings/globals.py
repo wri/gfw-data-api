@@ -202,7 +202,7 @@ per_env_admin_boundary_versions: Dict[str, Dict[str, Dict[str, str]]] = {
     },
     "staging": {
         "GADM": {
-            "4.1": "v4.1.64",
+            "4.1": "v4.1.85",
         }
     },
     "production": {
