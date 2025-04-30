@@ -81,7 +81,7 @@ class AdminAreaOfInterest(AreaOfInterest):
 
 class WdpaAreaOfInterest(AreaOfInterest):
     type: Literal["protected_area"] = "protected_area"
-    wdpa_id: int = Field(..., title="World Database on Protected Areas (WDPA) ID")
+    wdpa_id: str = Field(..., title="World Database on Protected Areas (WDPA) ID")
 
     async def get_geostore_id(self) -> UUID:
         dataset = "wdpa_protected_areas"

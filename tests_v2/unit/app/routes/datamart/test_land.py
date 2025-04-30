@@ -730,9 +730,9 @@ class TestWdpaAreaOfInterest:
                 "x-api-key": api_key,
                 "aoi[type]": "protected_area",
                 "canopy_cover": 30,
-                "aoi[wdpa_id]": 123,
+                "aoi[wdpa_id]": "123",
             }
-            aoi = {"type": "protected_area", "wdpa_id": 123}
+            aoi = {"type": "protected_area", "wdpa_id": "123"}
             resource_id = _get_resource_id(
                 "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
             )
@@ -760,7 +760,7 @@ class TestWdpaAreaOfInterest:
 
         headers = {"origin": origin, "x-api-key": api_key}
         dataset_version = {"umd_tree_cover_loss": "v1.8"}
-        aoi = {"type": "protected_area", "wdpa_id": 123}
+        aoi = {"type": "protected_area", "wdpa_id": "123"}
         payload = {
             "aoi": aoi,
             "canopy_cover": 30,
