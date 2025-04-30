@@ -11,7 +11,8 @@ from pydantic import Field, root_validator, validator
 
 from app.models.pydantic.responses import Response
 
-from ...crud.geostore import get_gadm_geostore_id
+from ...crud.geostore import get_gadm_geostore_id, get_wdpa_geostore_id
+from ...crud.versions import get_latest_version
 from .base import StrictBaseModel
 
 
@@ -78,6 +79,16 @@ class AdminAreaOfInterest(AreaOfInterest):
         return v or "4.1"
 
 
+class WdpaAreaOfInterest(AreaOfInterest):
+    type: Literal["protected_area"] = "protected_area"
+    wdpa_id: str = Field(..., title="World Database on Protected Areas (WDPA) ID")
+
+    async def get_geostore_id(self) -> UUID:
+        dataset = "wdpa_protected_areas"
+        latest_version = get_latest_version(dataset)
+        return await get_wdpa_geostore_id(dataset, latest_version, self.wdpa_id)
+
+
 class Global(AreaOfInterest):
     type: Literal["global"] = Field(
         "global",
@@ -97,7 +108,7 @@ class DataMartSource(StrictBaseModel):
 
 
 class DataMartMetadata(StrictBaseModel):
-    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest, Global]
+    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest, Global, WdpaAreaOfInterest]
     sources: list[DataMartSource]
 
 
@@ -119,9 +130,9 @@ class DataMartResourceLinkResponse(Response):
 
 
 class TreeCoverLossByDriverIn(StrictBaseModel):
-    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest, Global] = Field(
-        ..., discriminator="type"
-    )
+    aoi: Union[
+        GeostoreAreaOfInterest, AdminAreaOfInterest, Global, WdpaAreaOfInterest
+    ] = Field(..., discriminator="type")
     canopy_cover: int = 30
     dataset_version: Dict[str, str] = {}
 
@@ -145,13 +156,29 @@ class TreeCoverLossByDriverResult(StrictBaseModel):
             for row in rows
         ]
 
+        # sort rows first since groupby will only group consecutive keys
+        # this shouldn't matter, but to match existing sorting behavior, sort by
+        # mapped pixel value rather than alphabetical
+        driver_value_map = {
+            "Permanent agriculture": 1,
+            "Hard commodities": 2,
+            "Shifting cultivation": 3,
+            "Forest management": 4,
+            "Wildfires": 5,
+            "Settlements and infrastructure": 6,
+            "Other natural disturbances": 7,
+        }
+        sorted_rows = sorted(
+            rows,
+            key=lambda x: driver_value_map[x["tsc_tree_cover_loss_drivers__driver"]],
+        )
         tcl_by_driver = [
             {
                 "drivers_type": driver,
                 "loss_area_ha": sum([year["area__ha"] for year in years]),
             }
             for driver, years in groupby(
-                rows, key=lambda x: x["tsc_tree_cover_loss_drivers__driver"]
+                sorted_rows, key=lambda x: x["tsc_tree_cover_loss_drivers__driver"]
             )
         ]
 
@@ -233,6 +260,9 @@ def parse_area_of_interest(request: Request) -> AreaOfInterest:
 
         if aoi_type == "global":
             return Global()
+
+        if aoi_type == "protected_area":
+            return WdpaAreaOfInterest(wdpa_id=params.get("aoi[wdpa_id]"))
 
         # If neither type is provided, raise an error
         raise HTTPException(
