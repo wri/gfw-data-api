@@ -145,13 +145,29 @@ class TreeCoverLossByDriverResult(StrictBaseModel):
             for row in rows
         ]
 
+        # sort rows first since groupby will only group consecutive keys
+        # this shouldn't matter, but to match existing sorting behavior, sort by
+        # mapped pixel value rather than alphabetical
+        driver_value_map = {
+            "Permanent agriculture": 1,
+            "Hard commodities": 2,
+            "Shifting cultivation": 3,
+            "Forest management": 4,
+            "Wildfires": 5,
+            "Settlements and infrastructure": 6,
+            "Other natural disturbances": 7,
+        }
+        sorted_rows = sorted(
+            rows,
+            key=lambda x: driver_value_map[x["tsc_tree_cover_loss_drivers__driver"]],
+        )
         tcl_by_driver = [
             {
                 "drivers_type": driver,
                 "loss_area_ha": sum([year["area__ha"] for year in years]),
             }
             for driver, years in groupby(
-                rows, key=lambda x: x["tsc_tree_cover_loss_drivers__driver"]
+                sorted_rows, key=lambda x: x["tsc_tree_cover_loss_drivers__driver"]
             )
         ]
 
