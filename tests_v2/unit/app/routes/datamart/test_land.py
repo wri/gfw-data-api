@@ -352,9 +352,11 @@ async def test_get_tree_cover_loss_by_drivers_as_csv(
         assert response.status_code == 200
         assert "Retry-After" not in response.headers
 
+        print("HERE")
+        print(response.content)
         assert (
             response.content
-            == b'"drivers_type","loss_year","loss_area_ha"\r\n"Permanent agriculture",2001,10\r\n"Hard commodities",2001,12\r\n"Shifting cultivation",2001,7\r\n"Forest management",2001,93.4\r\n"Wildfires",2001,42\r\n"Settlements and infrastructure",2001,13.562\r\n"Other natural disturbances",2001,6\r\n'
+            == b'"drivers_type","loss_year","loss_area_ha"\r\n"Permanent agriculture",2001,10\r\n"Hard commodities",2001,12\r\n"Shifting cultivation",2001,7\r\n"Forest management",2001,93.4\r\n"Wildfires",2001,42\r\n"Settlements and infrastructure",2001,13.562\r\n"Other natural disturbances",2001,6\r\n"Permanent agriculture",2002,100\r\n"Hard commodities",2002,100\r\n"Shifting cultivation",2002,100\r\n"Forest management",2002,100\r\n"Wildfires",2002,100\r\n'
         )
 
 
@@ -430,147 +432,6 @@ async def test_compute_tree_cover_loss_by_driver_error(geostore):
                 message=MOCK_ERROR_RESOURCE["message"],
             ),
         )
-
-
-MOCK_RESULT = [
-    {
-        "umd_tree_cover_loss__year": 2001,
-        "tsc_tree_cover_loss_drivers__driver": "Permanent agriculture",
-        "area__ha": 10,
-    },
-    {
-        "umd_tree_cover_loss__year": 2001,
-        "tsc_tree_cover_loss_drivers__driver": "Hard commodities",
-        "area__ha": 12,
-    },
-    {
-        "umd_tree_cover_loss__year": 2001,
-        "tsc_tree_cover_loss_drivers__driver": "Shifting cultivation",
-        "area__ha": 7,
-    },
-    {
-        "umd_tree_cover_loss__year": 2001,
-        "tsc_tree_cover_loss_drivers__driver": "Forest management",
-        "area__ha": 93.4,
-    },
-    {
-        "umd_tree_cover_loss__year": 2001,
-        "tsc_tree_cover_loss_drivers__driver": "Wildfires",
-        "area__ha": 42,
-    },
-    {
-        "umd_tree_cover_loss__year": 2001,
-        "tsc_tree_cover_loss_drivers__driver": "Settlements and infrastructure",
-        "area__ha": 13.562,
-    },
-    {
-        "umd_tree_cover_loss__year": 2001,
-        "tsc_tree_cover_loss_drivers__driver": "Other natural disturbances",
-        "area__ha": 6,
-    },
-]
-
-
-MOCK_RESOURCE = {
-    "status": "saved",
-    "message": None,
-    "result": {
-        "tree_cover_loss_by_driver": [
-            {
-                "drivers_type": "Permanent agriculture",
-                "loss_area_ha": 10,
-            },
-            {
-                "drivers_type": "Hard commodities",
-                "loss_area_ha": 12,
-            },
-            {
-                "drivers_type": "Shifting cultivation",
-                "loss_area_ha": 7,
-            },
-            {
-                "drivers_type": "Forest management",
-                "loss_area_ha": 93.4,
-            },
-            {
-                "drivers_type": "Wildfires",
-                "loss_area_ha": 42,
-            },
-            {
-                "drivers_type": "Settlements and infrastructure",
-                "loss_area_ha": 13.562,
-            },
-            {
-                "drivers_type": "Other natural disturbances",
-                "loss_area_ha": 6,
-            },
-        ],
-        "yearly_tree_cover_loss_by_driver": [
-            {
-                "drivers_type": "Permanent agriculture",
-                "loss_year": 2001,
-                "loss_area_ha": 10,
-            },
-            {
-                "drivers_type": "Hard commodities",
-                "loss_year": 2001,
-                "loss_area_ha": 12,
-            },
-            {
-                "drivers_type": "Shifting cultivation",
-                "loss_year": 2001,
-                "loss_area_ha": 7,
-            },
-            {
-                "drivers_type": "Forest management",
-                "loss_year": 2001,
-                "loss_area_ha": 93.4,
-            },
-            {
-                "drivers_type": "Wildfires",
-                "loss_year": 2001,
-                "loss_area_ha": 42,
-            },
-            {
-                "drivers_type": "Settlements and infrastructure",
-                "loss_year": 2001,
-                "loss_area_ha": 13.562,
-            },
-            {
-                "drivers_type": "Other natural disturbances",
-                "loss_year": 2001,
-                "loss_area_ha": 6,
-            },
-        ],
-    },
-    "metadata": {
-        "aoi": {"type": "geostore", "geostore_id": ""},
-        "canopy_cover": 30,
-        "sources": [
-            {"dataset": "umd_tree_cover_loss", "version": "v1.8"},
-            {"dataset": "tsc_tree_cover_loss_drivers", "version": "v2023"},
-            {"dataset": "umd_tree_cover_density_2000", "version": "v1.8"},
-        ],
-    },
-}
-
-MOCK_ERROR_RESOURCE = {
-    "status": "failed",
-    "message": "500: error",
-    "result": None,
-    "metadata": {
-        "aoi": {
-            "type": "geostore",
-            "geostore_id": "b9faa657-34c9-96d4-fce4-8bb8a1507cb3",
-        },
-        "canopy_cover": 30,
-        "sources": [
-            {"dataset": "umd_tree_cover_loss", "version": "v1.11"},
-            {"dataset": "tsc_tree_cover_loss_drivers", "version": "v2023"},
-            {"dataset": "umd_tree_cover_density_2000", "version": "v1.8"},
-        ],
-    },
-}
 
 
 class TestAdminAreaOfInterest:
@@ -708,3 +569,194 @@ class TestGlobal:
                 assert False
 
             mock_get_resources.assert_awaited_with(resource_id)
+
+
+MOCK_RESULT = [
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tsc_tree_cover_loss_drivers__driver": "Permanent agriculture",
+        "area__ha": 10,
+    },
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tsc_tree_cover_loss_drivers__driver": "Hard commodities",
+        "area__ha": 12,
+    },
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tsc_tree_cover_loss_drivers__driver": "Shifting cultivation",
+        "area__ha": 7,
+    },
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tsc_tree_cover_loss_drivers__driver": "Forest management",
+        "area__ha": 93.4,
+    },
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tsc_tree_cover_loss_drivers__driver": "Wildfires",
+        "area__ha": 42,
+    },
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tsc_tree_cover_loss_drivers__driver": "Settlements and infrastructure",
+        "area__ha": 13.562,
+    },
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tsc_tree_cover_loss_drivers__driver": "Other natural disturbances",
+        "area__ha": 6,
+    },
+    {
+        "umd_tree_cover_loss__year": 2002,
+        "tsc_tree_cover_loss_drivers__driver": "Permanent agriculture",
+        "area__ha": 100,
+    },
+    {
+        "umd_tree_cover_loss__year": 2002,
+        "tsc_tree_cover_loss_drivers__driver": "Hard commodities",
+        "area__ha": 100,
+    },
+    {
+        "umd_tree_cover_loss__year": 2002,
+        "tsc_tree_cover_loss_drivers__driver": "Shifting cultivation",
+        "area__ha": 100,
+    },
+    {
+        "umd_tree_cover_loss__year": 2002,
+        "tsc_tree_cover_loss_drivers__driver": "Forest management",
+        "area__ha": 100,
+    },
+    {
+        "umd_tree_cover_loss__year": 2002,
+        "tsc_tree_cover_loss_drivers__driver": "Wildfires",
+        "area__ha": 100,
+    },
+]
+
+
+MOCK_RESOURCE = {
+    "status": "saved",
+    "message": None,
+    "result": {
+        "tree_cover_loss_by_driver": [
+            {
+                "drivers_type": "Permanent agriculture",
+                "loss_area_ha": 110,
+            },
+            {
+                "drivers_type": "Hard commodities",
+                "loss_area_ha": 112,
+            },
+            {
+                "drivers_type": "Shifting cultivation",
+                "loss_area_ha": 107,
+            },
+            {
+                "drivers_type": "Forest management",
+                "loss_area_ha": 193.4,
+            },
+            {
+                "drivers_type": "Wildfires",
+                "loss_area_ha": 142,
+            },
+            {
+                "drivers_type": "Settlements and infrastructure",
+                "loss_area_ha": 13.562,
+            },
+            {
+                "drivers_type": "Other natural disturbances",
+                "loss_area_ha": 6,
+            },
+        ],
+        "yearly_tree_cover_loss_by_driver": [
+            {
+                "drivers_type": "Permanent agriculture",
+                "loss_year": 2001,
+                "loss_area_ha": 10,
+            },
+            {
+                "drivers_type": "Hard commodities",
+                "loss_year": 2001,
+                "loss_area_ha": 12,
+            },
+            {
+                "drivers_type": "Shifting cultivation",
+                "loss_year": 2001,
+                "loss_area_ha": 7,
+            },
+            {
+                "drivers_type": "Forest management",
+                "loss_year": 2001,
+                "loss_area_ha": 93.4,
+            },
+            {
+                "drivers_type": "Wildfires",
+                "loss_year": 2001,
+                "loss_area_ha": 42,
+            },
+            {
+                "drivers_type": "Settlements and infrastructure",
+                "loss_year": 2001,
+                "loss_area_ha": 13.562,
+            },
+            {
+                "drivers_type": "Other natural disturbances",
+                "loss_year": 2001,
+                "loss_area_ha": 6,
+            },
+            {
+                "drivers_type": "Permanent agriculture",
+                "loss_year": 2002,
+                "loss_area_ha": 100,
+            },
+            {
+                "drivers_type": "Hard commodities",
+                "loss_year": 2002,
+                "loss_area_ha": 100,
+            },
+            {
+                "drivers_type": "Shifting cultivation",
+                "loss_year": 2002,
+                "loss_area_ha": 100,
+            },
+            {
+                "drivers_type": "Forest management",
+                "loss_year": 2002,
+                "loss_area_ha": 100,
+            },
+            {
+                "drivers_type": "Wildfires",
+                "loss_year": 2002,
+                "loss_area_ha": 100,
+            },
+        ],
+    },
+    "metadata": {
+        "aoi": {"type": "geostore", "geostore_id": ""},
+        "canopy_cover": 30,
+        "sources": [
+            {"dataset": "umd_tree_cover_loss", "version": "v1.8"},
+            {"dataset": "tsc_tree_cover_loss_drivers", "version": "v2023"},
+            {"dataset": "umd_tree_cover_density_2000", "version": "v1.8"},
+        ],
+    },
+}
+
+MOCK_ERROR_RESOURCE = {
+    "status": "failed",
+    "message": "500: error",
+    "result": None,
+    "metadata": {
+        "aoi": {
+            "type": "geostore",
+            "geostore_id": "b9faa657-34c9-96d4-fce4-8bb8a1507cb3",
+        },
+        "canopy_cover": 30,
+        "sources": [
+            {"dataset": "umd_tree_cover_loss", "version": "v1.11"},
+            {"dataset": "tsc_tree_cover_loss_drivers", "version": "v2023"},
+            {"dataset": "umd_tree_cover_density_2000", "version": "v1.8"},
+        ],
+    },
+}
