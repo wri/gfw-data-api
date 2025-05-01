@@ -619,9 +619,10 @@ class TestWdpaAreaOfInterest:
         api_key, payload = apikey
         origin = payload["domains"][0]
 
+        wdpa_id = "123"
         headers = {"origin": origin, "x-api-key": api_key}
         dataset_version = {"umd_tree_cover_loss": "v1.8"}
-        aoi = {"type": "protected_area", "wdpa_id": "123"}
+        aoi = {"type": "protected_area", "wdpa_id": wdpa_id}
         payload = {
             "aoi": aoi,
             "canopy_cover": 30,
@@ -634,6 +635,10 @@ class TestWdpaAreaOfInterest:
             patch(
                 "app.models.pydantic.datamart.get_wdpa_geostore_id",
                 return_value=geostore,
+            ) as mock_get_geostore,
+            patch(
+                "app.models.pydantic.datamart.get_latest_version",
+                return_value="v1.7",
             ),
         ):
             dataset_versions = DEFAULT_LAND_DATASET_VERSIONS | dataset_version
@@ -666,6 +671,9 @@ class TestWdpaAreaOfInterest:
                 assert False
 
             mock_get_resources.assert_awaited_with(resource_id)
+            mock_get_geostore.assert_awaited_with(
+                "wdpa_protected_areas", "v1.7", wdpa_id
+            )
 
 
 MOCK_RESULT = [
