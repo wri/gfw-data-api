@@ -13,6 +13,7 @@ from app.models.pydantic.responses import Response
 
 from ...crud.geostore import get_gadm_geostore_id, get_wdpa_geostore_id
 from ...crud.versions import get_latest_version
+from ...errors import RecordNotFoundError
 from .base import StrictBaseModel
 
 
@@ -85,7 +86,12 @@ class WdpaAreaOfInterest(AreaOfInterest):
 
     async def get_geostore_id(self) -> UUID:
         dataset = "wdpa_protected_areas"
-        latest_version = get_latest_version(dataset)
+        try:
+            latest_version = await get_latest_version(dataset)
+        except RecordNotFoundError:
+            raise HTTPException(
+                status_code=404, detail="WDPA dataset does not have latest version."
+            )
         return await get_wdpa_geostore_id(dataset, latest_version, self.wdpa_id)
 
 
