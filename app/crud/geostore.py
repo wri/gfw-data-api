@@ -288,7 +288,7 @@ async def get_wdpa_geostore_id(dataset, version, wdpa_id):
     sql: Select = (
         db.select(columns_etc)
         .select_from(src_table)
-        .where(db.text("wdpaid=:wdpa_id").bindparams(wdpa_id=wdpa_id))
+        .where(db.text("wdpa_pid=:wdpa_id").bindparams(wdpa_id=wdpa_id))
     )
     row = await db.first(sql)
 
