@@ -278,6 +278,27 @@ async def build_gadm_geostore(
     )
 
 
+async def get_wdpa_geostore_id(dataset, version, wdpa_id):
+    src_table: Table = db.table(version)
+    src_table.schema = dataset
+    columns_etc: List[Column | Label] = [
+        db.column("gfw_geostore_id"),
+    ]
+
+    sql: Select = (
+        db.select(columns_etc)
+        .select_from(src_table)
+        .where(db.text("wdpa_pid=:wdpa_id").bindparams(wdpa_id=wdpa_id))
+    )
+    row = await db.first(sql)
+
+    if row is None:
+        raise RecordNotFoundError(
+            f"WDPA area with id {wdpa_id} not found in {dataset} version {version}"
+        )
+    return row.gfw_geostore_id
+
+
 async def _find_first_geostore(
     adm_level,
     admin_provider,

@@ -11,7 +11,9 @@ from pydantic import Field, root_validator, validator
 
 from app.models.pydantic.responses import Response
 
-from ...crud.geostore import get_gadm_geostore_id
+from ...crud.geostore import get_gadm_geostore_id, get_wdpa_geostore_id
+from ...crud.versions import get_latest_version
+from ...errors import RecordNotFoundError
 from .base import StrictBaseModel
 
 
@@ -78,6 +80,21 @@ class AdminAreaOfInterest(AreaOfInterest):
         return v or "4.1"
 
 
+class WdpaAreaOfInterest(AreaOfInterest):
+    type: Literal["protected_area"] = "protected_area"
+    wdpa_id: str = Field(..., title="World Database on Protected Areas (WDPA) ID")
+
+    async def get_geostore_id(self) -> UUID:
+        dataset = "wdpa_protected_areas"
+        try:
+            latest_version = await get_latest_version(dataset)
+        except RecordNotFoundError:
+            raise HTTPException(
+                status_code=404, detail="WDPA dataset does not have latest version."
+            )
+        return await get_wdpa_geostore_id(dataset, latest_version, self.wdpa_id)
+
+
 class Global(AreaOfInterest):
     type: Literal["global"] = Field(
         "global",
@@ -97,7 +114,7 @@ class DataMartSource(StrictBaseModel):
 
 
 class DataMartMetadata(StrictBaseModel):
-    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest, Global]
+    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest, Global, WdpaAreaOfInterest]
     sources: list[DataMartSource]
 
 
@@ -119,9 +136,9 @@ class DataMartResourceLinkResponse(Response):
 
 
 class TreeCoverLossByDriverIn(StrictBaseModel):
-    aoi: Union[GeostoreAreaOfInterest, AdminAreaOfInterest, Global] = Field(
-        ..., discriminator="type"
-    )
+    aoi: Union[
+        GeostoreAreaOfInterest, AdminAreaOfInterest, Global, WdpaAreaOfInterest
+    ] = Field(..., discriminator="type")
     canopy_cover: int = 30
     dataset_version: Dict[str, str] = {}
 
@@ -249,6 +266,9 @@ def parse_area_of_interest(request: Request) -> AreaOfInterest:
 
         if aoi_type == "global":
             return Global()
+
+        if aoi_type == "protected_area":
+            return WdpaAreaOfInterest(wdpa_id=params.get("aoi[wdpa_id]"))
 
         # If neither type is provided, raise an error
         raise HTTPException(
