@@ -129,7 +129,10 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
         "version. The pixel_meaning string should be fairly short, use all "
         "lower-case letters, and use underscores instead of spaces."
     )
-    data_type: DataType
+    data_type: DataType = Field(
+        ..., description=("The type of the data stored at every pixel of "
+                          "the destination raster")
+    )
     nbits: Optional[int] = Field(
         None,
         description="Advanced option that lets GDAL compress the data even "
@@ -154,9 +157,33 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
         "to variables A and B (for the first source) and C and D (for the "
         "second source). The NumPy module is in scope, accessible as np"
     )
-    band_count: int = 1
-    union_bands: bool = False
-    no_data: Optional[Union[List[NoDataType], NoDataType]]
+    band_count: int = Field(
+        1,
+        description=(
+            "The number of bands in the output raster.  The default is 1, and multiple "
+            "bands is not common. To create multiple bands in the output, the calc string "
+            "will normally use np.ma.array([...])."
+        )
+    )
+    union_bands: bool = Field(
+        False,
+        description=(
+            "Relevant only for multiple input layers (because of multiple bands or "
+            "auxiliary assets).  If true, then the destination extent is the union of "
+            "the extents of the source layers. This is useful when some of the input "
+            "bands have limited geographic extents. If false (the default), then the "
+            "destination extent is the intersection of the extents of the source layers."
+        )
+    )
+    no_data: Optional[Union[List[NoDataType], NoDataType]] = Field(
+        None,
+        description=(
+            "The value of a pixel that indicates that no data is present (because the "
+            "dataset extent does not include that pixel). Typical values are -1 for signed "
+            "ints, 0 for unsigned ints, and nan for floating point values. But any valid "
+            "value of the data type can be used."
+        )
+    )
     rasterize_method: Optional[RasterizeMethod] = Field(
         RasterizeMethod.value,
         description="For raster sources or default assets, 'value' (the "
