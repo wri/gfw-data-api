@@ -161,7 +161,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
         1,
         description=(
             "The number of bands in the output raster.  The default is 1, and "
-            "output rasters with multiple bands is not common. To create multiple "
+            "output rasters with multiple bands are not common. To create multiple "
             "bands in the output, the calc string will normally use "
             "np.ma.array([...])."
         )
