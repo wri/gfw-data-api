@@ -160,9 +160,10 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     band_count: int = Field(
         1,
         description=(
-            "The number of bands in the output raster.  The default is 1, and multiple "
-            "bands is not common. To create multiple bands in the output, the calc string "
-            "will normally use np.ma.array([...])."
+            "The number of bands in the output raster.  The default is 1, and "
+            "output rasters with multiple bands is not common. To create multiple "
+            "bands in the output, the calc string will normally use "
+            "np.ma.array([...])."
         )
     )
     union_bands: bool = Field(
@@ -181,7 +182,8 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
             "The value of a pixel that indicates that no data is present (because the "
             "dataset extent does not include that pixel). Typical values are -1 for signed "
             "ints, 0 for unsigned ints, and nan for floating point values. But any valid "
-            "value of the data type can be used."
+            "value of the data type can be used. If nodata is a List, its length must "
+            "be equal to band_count."
         )
     )
     rasterize_method: Optional[RasterizeMethod] = Field(
