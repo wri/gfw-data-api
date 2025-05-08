@@ -142,11 +142,8 @@ async def table_source_asset(
             creation_options.delimiter.encode(
                 "unicode_escape"
             ).decode(),  # Need to escape special characters such as TAB for batch job payload
+            *chain.from_iterable(["-s", uri] for uri in uri_chunk),
         ]
-
-        for uri in uri_chunk:
-            command.append("-s")
-            command.append(uri)
 
         if creation_options.latitude and creation_options.longitude:
             command += [
@@ -260,10 +257,8 @@ async def append_table_source_asset(
             creation_options.delimiter.encode(
                 "unicode_escape"
             ).decode(),  # Need to escape special characters such as TAB for batch job payload,
+            *chain.from_iterable(["-s", uri] for uri in uri_chunk),
         ]
-
-        for uri in uri_chunk:
-            command += ["-s", uri]
 
         if creation_options.latitude and creation_options.longitude:
             command += [
