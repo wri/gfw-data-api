@@ -421,6 +421,34 @@ async def test_get_tree_cover_loss_by_drivers_after_create_with_retry(
         assert int(response.headers["Retry-After"]) == 1
         assert response.json()["data"]["status"] == "pending"
 
+class TestDeleteTclResource:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status", [AnalysisStatus.pending, AnalysisStatus.saved])
+    async def test_delete_tree_cover_loss_by_drivers_fails_for_status(
+            self,
+            status,
+            geostore,
+            apikey,
+            async_client: AsyncClient,
+    ):
+        api_key, payload = apikey
+        origin = payload["domains"][0]
+
+        headers = {"origin": origin, "x-api-key": api_key}
+        with patch(
+                "app.routes.datamart.land._get_resource",
+                return_value=TreeCoverLossByDriver(status=status),
+        ):
+            aoi = {"type": "geostore", "geostore_id": geostore}
+            resource_id = _get_resource_id(
+                "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
+            )
+            response = await async_client.delete(
+                f"/v0/land/tree_cover_loss_by_driver/{resource_id}", headers=headers
+            )
+
+            assert response.status_code == 400
+
 
 @pytest.mark.asyncio
 async def test_get_tree_cover_loss_by_drivers_after_create_saved(
