@@ -33,7 +33,7 @@ async def compute_tree_cover_loss_by_driver(
             f"Computing tree cover loss by driver for resource {resource_id} with geostore {geostore_id} and canopy cover {canopy_cover}"
         )
         geostore: GeostoreCommon = await get_geostore(geostore_id, GeostoreOrigin.rw)
-        query = f"SELECT SUM(area__ha) FROM data WHERE umd_tree_cover_density_2000__threshold >= {canopy_cover} GROUP BY umd_tree_cover_loss__year, tsc_tree_cover_loss_drivers__driver"
+        query = f"SELECT SUM(area__ha), SUM(gfw_forest_carbon_gross_emissions__Mg_CO2e) FROM data WHERE umd_tree_cover_density_2000__threshold >= {canopy_cover} GROUP BY umd_tree_cover_loss__year, tsc_tree_cover_loss_drivers__driver"
 
         results = await _query_dataset_json(
             "umd_tree_cover_loss",

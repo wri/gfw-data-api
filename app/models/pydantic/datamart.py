@@ -158,6 +158,9 @@ class TreeCoverLossByDriverResult(StrictBaseModel):
                 "drivers_type": row["tsc_tree_cover_loss_drivers__driver"],
                 "loss_year": row["umd_tree_cover_loss__year"],
                 "loss_area_ha": row["area__ha"],
+                "gross_carbon_emissions_Mg": row[
+                    "gfw_forest_carbon_gross_emissions__Mg_CO2e"
+                ],
             }
             for row in rows
         ]
@@ -166,12 +169,13 @@ class TreeCoverLossByDriverResult(StrictBaseModel):
         # this shouldn't matter, but to match existing sorting behavior, sort by
         # mapped pixel value rather than alphabetical
         driver_value_map = {
+            "Unknown": 0,
             "Permanent agriculture": 1,
-            "Hard commodities": 2,
-            "Shifting cultivation": 3,
-            "Forest management": 4,
-            "Wildfires": 5,
-            "Settlements and infrastructure": 6,
+            "Commodity driven deforestation": 2,
+            "Shifting agriculture": 3,
+            "Forestry": 4,
+            "Wildfire": 5,
+            "Urbanization": 6,
             "Other natural disturbances": 7,
         }
         sorted_rows = sorted(
@@ -182,10 +186,17 @@ class TreeCoverLossByDriverResult(StrictBaseModel):
             {
                 "drivers_type": driver,
                 "loss_area_ha": sum([year["area__ha"] for year in years]),
+                "gross_carbon_emissions_Mg": sum(
+                    [
+                        year["gfw_forest_carbon_gross_emissions__Mg_CO2e"]
+                        for year in years
+                    ]
+                ),
             }
-            for driver, years in groupby(
+            for driver, groups in groupby(
                 sorted_rows, key=lambda x: x["tsc_tree_cover_loss_drivers__driver"]
             )
+            for years in [list(groups)]
         ]
 
         return TreeCoverLossByDriverResult(
@@ -227,17 +238,18 @@ class TreeCoverLossByDriverResponse(Response):
         csv_file = StringIO()
         wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC)
         wr.writerow(
-            [
-                "drivers_type",
-                "loss_year",
-                "loss_area_ha",
-            ]
+            ["drivers_type", "loss_year", "loss_area_ha", "gross_carbon_emissions_Mg"]
         )
 
         if self.data.status == "saved":
             for row in self.data.result.yearly_tree_cover_loss_by_driver:
                 wr.writerow(
-                    [row["drivers_type"], row["loss_year"], row["loss_area_ha"]]
+                    [
+                        row["drivers_type"],
+                        row["loss_year"],
+                        row["loss_area_ha"],
+                        row["gross_carbon_emissions_Mg"],
+                    ]
                 )
 
         csv_file.seek(0)
