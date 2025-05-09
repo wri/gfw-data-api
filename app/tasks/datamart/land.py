@@ -1,3 +1,5 @@
+import json
+import traceback
 from typing import Dict
 from uuid import UUID
 
@@ -50,8 +52,32 @@ async def compute_tree_cover_loss_by_driver(
         await datamart_crud.update_result(resource_id, resource)
 
     except Exception as e:
+        # To debug this error in AWS Logs Insights:
+        # 1. Go to CloudWatch > Logs Insights
+        # 2. Select your log group
+        # 3. Run these queries (ALWAYS include type="tree_cover_loss_by_driver" for this workflow):
+        #    - Recent failures:
+        #      `filter event="analysis_failure" and type="tree_cover_loss_by_driver" | sort @timestamp desc | limit 20`
+        #    - Count by error type:
+        #      `stats count(*) by error_type | filter type="tree_cover_loss_by_driver"`
+        #    - Full error details for a resource:
+        #      `filter type="tree_cover_loss_by_driver" and resource_id="YOUR_ID" | display @timestamp, error_details, stack_trace`
+        #    - High severity alerts:
+        #      `filter severity="high" and type="tree_cover_loss_by_driver" | stats count(*) by bin(1h)`
+        # 4. Click "Run query" (results appear in 10-30 seconds)
         logger.error(
-            f"Tree cover loss by drivers analysis failed for geostore ${geostore_id} with error: {e}"
+            json.dumps({
+                "event": "analysis_failure",
+                "type": "tree_cover_loss_by_driver",
+                "severity": "high",  # Helps with alerting
+                "resource_id": str(resource_id),
+                "geostore_id": str(geostore_id),
+                "canopy_cover": canopy_cover,
+                "dataset_version": dataset_version,
+                "error_type": e.__class__.__name__,  # e.g., "ValueError", "ConnectionError"
+                "error_details": str(e),
+                "stack_trace": traceback.format_exc(),
+            })
         )
         resource = TreeCoverLossByDriverUpdate(
             status=AnalysisStatus.failed, message=str(e)
