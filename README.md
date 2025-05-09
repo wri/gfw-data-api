@@ -3,6 +3,29 @@ High-performance Async REST API, in Python. FastAPI + GINO + Uvicorn (powered by
 
 ## Get Started
 ### Run Locally with Docker
+#### GitHub Container Registry (GHCR) Access Setup
+
+To authenticate Docker with GitHub Container Registry (`ghcr.io`) for pulling/pushing images, follow these steps:
+
+##### 1. Create a GitHub Personal Access Token (PAT)
+
+1. Navigate to: GitHub → Settings → Developer Settings → Personal Access Tokens → Tokens (Classic)
+2. Click **Generate new token (Classic)**
+3. Configure:
+  - **Note**: `docker-ghcr-access` (descriptive name)
+  - **Expiration**: Set duration (or "No expiration" for CI/CD)
+  - **Scopes**:
+    - `read:packages` (required for pull)
+    - `write:packages` (required for push)
+4. Click **Generate token** and copy the token value
+
+##### 2. Authenticate with Docker
+
+```bash
+echo "YOUR_GHCR_TOKEN" | docker login ghcr.io -u GITHUB_USERNAME --password-stdin
+```
+
+#### Proceed with Setup
 
 1. Clone this Repository. `git clone https://github.com/wri/gfw-data-api.git`
 2. Run `./scripts/setup` from the root directory. (install `uv` first, if necessary.)
