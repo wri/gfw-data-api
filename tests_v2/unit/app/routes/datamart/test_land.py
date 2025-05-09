@@ -5,6 +5,7 @@ import pytest
 from fastapi import HTTPException
 from httpx import AsyncClient
 
+from app.errors import RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
     AnalysisStatus,
@@ -421,6 +422,7 @@ async def test_get_tree_cover_loss_by_drivers_after_create_with_retry(
         assert int(response.headers["Retry-After"]) == 1
         assert response.json()["data"]["status"] == "pending"
 
+
 class TestDeleteTclResource:
     @pytest.mark.asyncio
     @pytest.mark.parametrize("status", [AnalysisStatus.pending, AnalysisStatus.saved])
@@ -448,6 +450,35 @@ class TestDeleteTclResource:
             )
 
             assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_delete_tree_cover_loss_by_drivers_fails_when_resource_doesnt_exist(
+            self,
+            geostore,
+            apikey,
+            async_client: AsyncClient,
+    ):
+
+        api_key, payload = apikey
+        origin = payload["domains"][0]
+
+        headers = {"origin": origin, "x-api-key": api_key}
+
+        # Mock the underlying CRUD operation to raise RecordNotFoundError
+        with patch(
+            "app.routes.datamart.land.datamart_crud.get_result",
+            side_effect=RecordNotFoundError("Resource not found"),
+        ):
+            aoi = {"type": "geostore", "geostore_id": geostore}
+            resource_id = _get_resource_id(
+            "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
+            )
+            response = await async_client.delete(
+                f"/v0/land/tree_cover_loss_by_driver/{resource_id}",
+                headers=headers
+            )
+
+            assert response.status_code == 404
 
 
 @pytest.mark.asyncio
