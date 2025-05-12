@@ -276,7 +276,7 @@ async def _get_resource(resource_id):
 
 
 async def _delete_resource(resource_id):
-    pass
+    await datamart_crud.delete_result(resource_id)
 
 
 async def _check_resource_exists(resource_id) -> bool:

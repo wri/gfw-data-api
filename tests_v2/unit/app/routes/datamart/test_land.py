@@ -7,6 +7,7 @@ from httpx import AsyncClient
 
 from app.errors import RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
+from app.models.orm.datamart import AnalysisResult
 from app.models.pydantic.datamart import (
     AnalysisStatus,
     GeostoreAreaOfInterest,
@@ -425,6 +426,35 @@ async def test_get_tree_cover_loss_by_drivers_after_create_with_retry(
 
 class TestDeleteTclResource:
     @pytest.mark.asyncio
+    async def test_delete_tree_cover_loss_by_drivers_deletes_the_failed_resource(
+            self,
+            geostore,
+            apikey,
+            async_client: AsyncClient,
+    ):
+        api_key, payload = apikey
+        origin = payload["domains"][0]
+
+        headers = {"origin": origin, "x-api-key": api_key}
+        with patch(
+                "app.routes.datamart.land.datamart_crud.get_result",
+                return_value=AnalysisResult(status=AnalysisStatus.failed),
+        ), patch(
+            "app.routes.datamart.land.datamart_crud.delete_result",
+            return_value=AnalysisResult(status=AnalysisStatus.failed)
+        ):
+            aoi = {"type": "geostore", "geostore_id": geostore}
+            resource_id = _get_resource_id(
+                "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
+            )
+            response = await async_client.delete(
+                f"/v0/land/tree_cover_loss_by_driver/{resource_id}", headers=headers
+            )
+
+            assert response.status_code == 204
+
+
+    @pytest.mark.asyncio
     @pytest.mark.parametrize("status", [AnalysisStatus.pending, AnalysisStatus.saved])
     async def test_delete_tree_cover_loss_by_drivers_fails_for_status(
             self,
@@ -450,6 +480,7 @@ class TestDeleteTclResource:
             )
 
             assert response.status_code == 400
+
 
     @pytest.mark.asyncio
     async def test_delete_tree_cover_loss_by_drivers_fails_when_resource_doesnt_exist(

@@ -30,3 +30,10 @@ async def update_result(result_id: uuid.UUID, result_data) -> AnalysisResult:
     await analysis_result.update(**json.loads(result_data.json(by_alias=False))).apply()
 
     return analysis_result
+
+
+async def delete_result(result_id: uuid.UUID) -> AnalysisResult:
+    analysis_result: AnalysisResult = await get_result(result_id)
+    await AnalysisResult.delete.where(AnalysisResult.id == result_id).gino.status()
+
+    return analysis_result
