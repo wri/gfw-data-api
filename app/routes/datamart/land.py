@@ -156,15 +156,26 @@ async def tree_cover_loss_by_driver_get(
     response_class=ORJSONResponse,
     status_code=204,
     tags=["Beta Land"],
+    summary="Delete **failed** tree cover loass by driver analysis resource",
+    description="""
+      ## Delete Tree Cover Loss by Driver Analysis
+      **Only resources in 'failed' status can be removed.**
+      This operation permanently deletes the resource record.
+    """,
     responses={
-        204: {"description": "Resource successfully deleted"},
-        400: {"description": "Resource cannot be deleted because it's not in 'failed' status"},
-        404: {"description": "Resource not found"},
+        204: {"description": "Analysis resource successfully deleted"},
+        400: {"description": "Analysis resource cannot be deleted because it's not in 'failed' status"},
+        404: {"description": "Analysis resource not found"},
     },
 )
 async def tree_cover_loss_by_driver_delete(
         *,
-        resource_id: UUID = Path(..., title="Tree cover loss by driver ID"),
+        resource_id: UUID = Path(
+            ...,
+            title="Tree cover loss by driver analysis resource ID",
+            description="UUID of the **failed** analysis resource to delete",
+            example="123e4567-e89b-12d3-a456-426614174000"
+        ),
         api_key: APIKey = Depends(get_api_key),
 ):
     """Delete a tree cover loss by drivers resource.
@@ -182,6 +193,7 @@ async def tree_cover_loss_by_driver_delete(
     await _delete_resource(resource_id)
 
     return Response(status_code=204)
+
 
 @router.post(
     "/tree_cover_loss_by_driver",
