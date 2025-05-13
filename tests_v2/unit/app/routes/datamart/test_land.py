@@ -8,7 +8,6 @@ from httpx import AsyncClient
 from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
     AnalysisStatus,
-    AreaOfInterest,
     GeostoreAreaOfInterest,
     TreeCoverLossByDriver,
     TreeCoverLossByDriverUpdate,
@@ -141,6 +140,66 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
                 "umd_tree_cover_loss": "v1.8",
                 "tsc_tree_cover_loss_drivers": "v2023",
                 "umd_tree_cover_density_2000": "v1.6",
+            },
+        )
+        assert (
+            f"/v0/land/tree_cover_loss_by_driver/{resource_id}"
+            in response.json()["data"]["link"]
+        )
+        mock_get_resources.assert_awaited_with(resource_id)
+
+
+@pytest.mark.asyncio
+async def test_get_tree_cover_loss_by_drivers_with_overrides_mutually_exclusive(
+    geostore,
+    apikey,
+    async_client: AsyncClient,
+):
+    with (
+        patch(
+            "app.routes.datamart.land._check_resource_exists", return_value=True
+        ) as mock_get_resources,
+        patch(
+            "app.routes.datamart.land._get_resource_id", side_effect=_get_resource_id
+        ) as mock_get_resource_id,
+    ):
+        api_key, payload = apikey
+        origin = payload["domains"][0]
+
+        headers = {"origin": origin}
+        params = {
+            "x-api-key": api_key,
+            "aoi[type]": "geostore",
+            "aoi[geostore_id]": geostore,
+            "canopy_cover": 30,
+        }
+        aoi = {"type": "geostore", "geostore_id": geostore}
+        resource_id = _get_resource_id(
+            "tree_cover_loss_by_driver",
+            aoi,
+            30,
+            {
+                "umd_tree_cover_loss": "v1.11",
+                "umd_tree_cover_density_2000": "v1.8",
+                "wri_google_tree_cover_loss_drivers": "v20241224",
+            },
+        )
+
+        response = await async_client.get(
+            "/v0/land/tree_cover_loss_by_driver?&geostore_id={geostore_id}&canopy_cover=30&dataset_version[wri_google_tree_cover_loss_drivers]=v20241224",
+            headers=headers,
+            params=params,
+        )
+
+        assert response.status_code == 200
+        mock_get_resource_id.assert_called_with(
+            "tree_cover_loss_by_driver",
+            {"type": "geostore", "geostore_id": geostore},
+            30,
+            {
+                "umd_tree_cover_loss": "v1.11",
+                "umd_tree_cover_density_2000": "v1.8",
+                "wri_google_tree_cover_loss_drivers": "v20241224",
             },
         )
         assert (
