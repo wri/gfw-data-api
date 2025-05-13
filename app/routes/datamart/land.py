@@ -168,7 +168,17 @@ async def tree_cover_loss_by_driver_post(
     """Create new tree cover loss by drivers resource for a given geostore and
     canopy cover."""
 
-    dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
+    mutually_exclusive_datasets = {
+        "wri_google_tree_cover_loss_drivers": "tsc_tree_cover_loss_drivers"
+    }
+
+    dataset_version = DEFAULT_LAND_DATASET_VERSIONS.copy()
+    for d, v in data.dataset_version.items():
+        if d in mutually_exclusive_datasets:
+            dataset_to_remove = mutually_exclusive_datasets[d]
+            _ = dataset_version.pop(dataset_to_remove, None)
+        dataset_version[d] = v
+
     resource_id = _get_resource_id(
         "tree_cover_loss_by_driver",
         json.loads(data.aoi.json(exclude_none=True)),
