@@ -156,12 +156,8 @@ async def tree_cover_loss_by_driver_get(
     response_class=ORJSONResponse,
     status_code=204,
     tags=["Beta Land"],
-    summary="Delete **failed** tree cover loass by driver analysis resource",
-    description="""
-      ## Delete Tree Cover Loss by Driver Analysis
-      **Only resources in 'failed' status can be removed.**
-      This operation permanently deletes the resource record.
-    """,
+    summary="Delete Tree Cover Loss by Driver Analysis",
+    description="Only analysis resources with 'failed' status can be removed. This operation permanently deletes the resource.",
     responses={
         204: {"description": "Analysis resource successfully deleted"},
         400: {"description": "Analysis resource cannot be deleted because it's not in 'failed' status"},
