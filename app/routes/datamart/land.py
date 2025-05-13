@@ -69,7 +69,7 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
         )
 
     # Merge dataset version overrides with default dataset versions
-    return resolve_mutually_exclusive_datasets(dataset_versions)
+    return apply_overrides_and_remove_mutually_exclusive_datasets(dataset_versions)
 
 
 @router.get(
@@ -168,7 +168,9 @@ async def tree_cover_loss_by_driver_post(
     """Create new tree cover loss by drivers resource for a given geostore and
     canopy cover."""
 
-    dataset_version = resolve_mutually_exclusive_datasets(data.dataset_version)
+    dataset_version = apply_overrides_and_remove_mutually_exclusive_datasets(
+        data.dataset_version
+    )
 
     resource_id = _get_resource_id(
         "tree_cover_loss_by_driver",
@@ -276,7 +278,12 @@ def _get_metadata(
     )
 
 
-def resolve_mutually_exclusive_datasets(dataset_versions):
+def apply_overrides_and_remove_mutually_exclusive_datasets(
+    dataset_versions: Dict[str, str]
+) -> Dict[str, str]:
+    """Given a dictionary of dataset:version pair overrides, return a
+    dictionary of default dataset versions with those overrides applied and
+    mutually exclusive datasets removed."""
     mutually_exclusive_datasets = {
         "wri_google_tree_cover_loss_drivers": "tsc_tree_cover_loss_drivers"
     }
