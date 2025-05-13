@@ -112,6 +112,8 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
             "aoi[type]": "geostore",
             "aoi[geostore_id]": geostore,
             "canopy_cover": 30,
+            "dataset_version[umd_tree_cover_density_2000]": "v1.6",
+            "dataset_version[umd_tree_cover_loss]": "v1.8",
         }
         aoi = {"type": "geostore", "geostore_id": geostore}
         resource_id = _get_resource_id(
@@ -126,7 +128,7 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
         )
 
         response = await async_client.get(
-            "/v0/land/tree_cover_loss_by_driver?&geostore_id={geostore_id}&canopy_cover=30&dataset_version[umd_tree_cover_loss]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
+            "/v0/land/tree_cover_loss_by_driver",
             headers=headers,
             params=params,
         )
@@ -172,6 +174,7 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides_mutually_exclusive(
             "aoi[type]": "geostore",
             "aoi[geostore_id]": geostore,
             "canopy_cover": 30,
+            "dataset_version[wri_google_tree_cover_loss_drivers]": "v20241224",
         }
         aoi = {"type": "geostore", "geostore_id": geostore}
         resource_id = _get_resource_id(
@@ -186,7 +189,7 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides_mutually_exclusive(
         )
 
         response = await async_client.get(
-            "/v0/land/tree_cover_loss_by_driver?&geostore_id={geostore_id}&canopy_cover=30&dataset_version[wri_google_tree_cover_loss_drivers]=v20241224",
+            "/v0/land/tree_cover_loss_by_driver",
             headers=headers,
             params=params,
         )
@@ -224,10 +227,12 @@ async def test_get_tree_cover_loss_by_drivers_with_malformed_overrides(
         "aoi[type]": "geostore",
         "aoi[geostore_id]": geostore,
         "canopy_cover": 30,
+        "dataset_version[umd_tree_cover_loss]]": "v1.8",  # <- Note extra "]"
+        "dataset_version[umd_tree_cover_density_2000]": "v1.6",
     }
 
     response = await async_client.get(
-        "/v0/land/tree_cover_loss_by_driver?dataset_version[umd_tree_cover_loss]]=v1.8&dataset_version[umd_tree_cover_density_2000]=v1.6",
+        "/v0/land/tree_cover_loss_by_driver",
         headers=headers,
         params=params,
     )
@@ -478,8 +483,6 @@ async def test_get_tree_cover_loss_by_drivers_as_csv(
         assert response.status_code == 200
         assert "Retry-After" not in response.headers
 
-        print("HERE")
-        print(response.content)
         assert (
             response.content
             == b'"drivers_type","loss_year","loss_area_ha","gross_carbon_emissions_Mg"\r\n"Permanent agriculture",2001,10,66.5\r\n"Commodity driven deforestation",2001,12,78.9\r\n"Shifting agriculture",2001,7,54.2\r\n"Forestry",2001,93.4,101.0\r\n"Wildfire",2001,42,32.8\r\n"Urbanization",2001,13.562,25.0\r\n"Other natural disturbances",2001,6,11.5\r\n"Permanent agriculture",2002,100,80.0\r\n"Commodity driven deforestation",2002,100,91.3\r\n"Shifting agriculture",2002,100,87.0\r\n"Forestry",2002,100,95.2\r\n"Wildfire",2002,100,88.8\r\n'
