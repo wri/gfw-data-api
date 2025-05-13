@@ -152,7 +152,7 @@ async def test_get_tree_cover_loss_by_drivers_with_overrides(
 
 
 @pytest.mark.asyncio
-async def test_get_tree_cover_loss_by_drivers_with_overrides_mutually_exclusive(
+async def test_get_tree_cover_loss_by_drivers_with_overrides_removes_mutually_exclusive_datasets(
     geostore,
     apikey,
     async_client: AsyncClient,
@@ -304,7 +304,7 @@ async def test_post_tree_cover_loss_by_drivers(
 
 
 @pytest.mark.asyncio
-async def test_post_tree_cover_loss_by_drivers_mutually_exclusive(
+async def test_post_tree_cover_loss_by_drivers_removes_mutually_exclusive_datasets(
     geostore,
     apikey,
     async_client: AsyncClient,
