@@ -180,6 +180,29 @@ module "datamart_get" {
 }
 
 
+module "datamart_delete" {
+  source = "../endpoint"
+
+  rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
+  authorizer_id = aws_api_gateway_authorizer.api_key.id
+  api_resource  = module.datamart_proxy.aws_api_gateway_resource
+
+  require_api_key = true
+  http_method     = "DELETE"
+  authorization   = "CUSTOM"
+
+  integration_parameters = {
+    "integration.request.path.datamart_proxy" = "method.request.path.datamart_proxy"
+  }
+
+  method_parameters = {
+    "method.request.path.datamart_proxy" = true
+  }
+
+  integration_uri = "http://${var.lb_dns_name}/v0/land/{datamart_proxy}"
+}
+
+
 module "datamart_post" {
   source = "../endpoint"
 
@@ -285,7 +308,8 @@ resource "aws_api_gateway_deployment" "api_gw_dep" {
     module.download_shapes_endpoint["geotiff"].integration_point,
     module.unprotected_endpoints.integration_point,
     module.datamart_get.integration_point,
-    module.datamart_post.integration_point
+    module.datamart_post.integration_point,
+    module.datamart_delete.integration_point
   ]
 
   lifecycle {

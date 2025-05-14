@@ -151,6 +151,46 @@ async def tree_cover_loss_by_driver_get(
     return tree_cover_loss_by_driver_response
 
 
+@router.delete(
+    "/tree_cover_loss_by_driver/{resource_id}",
+    response_class=ORJSONResponse,
+    status_code=204,
+    tags=["Beta Land"],
+    summary="Delete Tree Cover Loss by Driver Analysis",
+    description="Only analysis resources with 'failed' status can be removed. This operation permanently deletes the resource.",
+    responses={
+        204: {"description": "Analysis resource successfully deleted"},
+        400: {"description": "Analysis resource cannot be deleted because it's not in 'failed' status"},
+        404: {"description": "Analysis resource not found"},
+    },
+)
+async def tree_cover_loss_by_driver_delete(
+        *,
+        resource_id: UUID = Path(
+            ...,
+            title="Tree cover loss by driver analysis resource ID",
+            description="UUID of the **failed** analysis resource to delete",
+            example="123e4567-e89b-12d3-a456-426614174000"
+        ),
+        api_key: APIKey = Depends(get_api_key),
+):
+    """Delete a tree cover loss by drivers resource.
+
+    Only resources with 'failed' status can be deleted.
+    """
+    tree_cover_loss_by_driver = await _get_resource(resource_id)
+
+    if tree_cover_loss_by_driver.status != AnalysisStatus.failed:
+        raise HTTPException(
+            status_code=400,
+            detail="Only resources with 'failed' status can be deleted"
+        )
+
+    await _delete_resource(resource_id)
+
+    return Response(status_code=204)
+
+
 @router.post(
     "/tree_cover_loss_by_driver",
     response_class=ORJSONResponse,
@@ -241,6 +281,10 @@ async def _get_resource(resource_id):
         raise HTTPException(
             status_code=404, detail="Resource not found, may require computation."
         )
+
+
+async def _delete_resource(resource_id):
+    await datamart_crud.delete_result(resource_id)
 
 
 async def _check_resource_exists(resource_id) -> bool:
