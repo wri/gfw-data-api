@@ -183,7 +183,7 @@ async def tree_cover_loss_by_driver_post(
     if resource_exists:
         raise HTTPException(
             status_code=409,
-            detail=f"Resource f{resource_id} already exists with those parameters.",
+            detail=f"Resource {resource_id} already exists with those parameters.",
         )
 
     link = DataMartResourceLink(
