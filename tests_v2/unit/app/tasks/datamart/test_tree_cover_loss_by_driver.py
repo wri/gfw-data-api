@@ -3,6 +3,7 @@ from pytest_unordered import unordered
 from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
+from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import AnalysisStatus
 from app.tasks.datamart.land import compute_tree_cover_loss_by_driver
 
@@ -49,7 +50,7 @@ async def test_compute_tree_cover_loss_by_driver_happy_path(
 
     # Assert
     mock_get_geostore.assert_awaited_once_with(
-        test_geostore_id, "rw"  # GeostoreOrigin.rw enum value would be better here
+        test_geostore_id, GeostoreOrigin.rw
     )
 
     expected_query = (
