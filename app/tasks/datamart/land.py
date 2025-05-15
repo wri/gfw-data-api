@@ -49,11 +49,16 @@ async def compute_tree_cover_loss_by_driver(
 ):
 
     try:
+        tree_cover_loss_by_driver_config = None
+        for mutually_exclusive_tcl_drivers_dataset in TREE_COVER_LOSS_DATASET_CONFIGS:
+            if mutually_exclusive_tcl_drivers_dataset in dataset_version:
+                tree_cover_loss_by_driver_config = TREE_COVER_LOSS_DATASET_CONFIGS[mutually_exclusive_tcl_drivers_dataset]
+
         logger.info(
             f"Computing tree cover loss by driver for resource {resource_id} with geostore {geostore_id} and canopy cover {canopy_cover}"
         )
         geostore: GeostoreCommon = await get_geostore(geostore_id, GeostoreOrigin.rw)
-        query = f"SELECT SUM(area__ha), SUM(gfw_forest_carbon_gross_emissions__Mg_CO2e) FROM data WHERE umd_tree_cover_density_2000__threshold >= {canopy_cover} GROUP BY umd_tree_cover_loss__year, {TREE_COVER_LOSS_DATASET_CONFIGS['tsc_tree_cover_loss_drivers']['sql_driver_field']}"
+        query = f"SELECT SUM(area__ha), SUM(gfw_forest_carbon_gross_emissions__Mg_CO2e) FROM data WHERE umd_tree_cover_density_2000__threshold >= {canopy_cover} GROUP BY umd_tree_cover_loss__year, {tree_cover_loss_by_driver_config['sql_driver_field']}"
 
         results = await _query_dataset_json(
             "umd_tree_cover_loss",
@@ -64,13 +69,13 @@ async def compute_tree_cover_loss_by_driver(
         )
 
         for item in results:
-            if TREE_COVER_LOSS_DATASET_CONFIGS['tsc_tree_cover_loss_drivers']['sql_driver_field'] in item:
-                item["tree_cover_loss_driver"] = item.pop(TREE_COVER_LOSS_DATASET_CONFIGS['tsc_tree_cover_loss_drivers']['sql_driver_field'])
+            if tree_cover_loss_by_driver_config['sql_driver_field'] in item:
+                item["tree_cover_loss_driver"] = item.pop(tree_cover_loss_by_driver_config['sql_driver_field'])
 
         resource = TreeCoverLossByDriverUpdate(
             result=TreeCoverLossByDriverResult.from_rows(
                 rows=results,
-                driver_value_map=TREE_COVER_LOSS_DATASET_CONFIGS['tsc_tree_cover_loss_drivers']['driver_value_map'],
+                driver_value_map=tree_cover_loss_by_driver_config['driver_value_map'],
                 drivers_key='tree_cover_loss_driver'  # TODO remove this soon
             ),
             status=AnalysisStatus.saved,

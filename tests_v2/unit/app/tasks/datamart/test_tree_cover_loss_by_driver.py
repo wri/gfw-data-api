@@ -20,7 +20,10 @@ async def test_compute_tree_cover_loss_by_driver_happy_path(
     test_resource_id = UUID("123e4567-e89b-12d3-a456-426614174000")
     test_geostore_id = UUID("123e4567-e89b-12d3-a456-426614174001")
     test_canopy_cover = 30
-    test_dataset_version = {"umd_tree_cover_loss": "v1.11"}
+    test_dataset_version = {
+        "umd_tree_cover_loss": "v1.11",
+        "tsc_tree_cover_loss_drivers": "v2023"
+    }
 
     mock_get_geostore.return_value = AsyncMock(
         geostore_id=test_geostore_id, origin="rw"
