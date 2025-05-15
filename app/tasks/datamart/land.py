@@ -18,20 +18,20 @@ from app.routes.datasets.queries import _query_dataset_json
 from app.utils.geostore import get_geostore
 
 
-class TCL_DRIVER_DATASET(str, Enum):
+class TCL_DRIVERS_DATASET(str, Enum):
     TSC = 'tsc_tree_cover_loss_drivers'
     WRI_GOOGLE = 'wri_google_tree_cover_loss_drivers'
 
 
 DEFAULT_LAND_DATASET_VERSIONS = {
     "umd_tree_cover_loss": "v1.11",
-    TCL_DRIVER_DATASET.TSC: "v2023",
+    TCL_DRIVERS_DATASET.TSC: "v2023",
     "umd_tree_cover_density_2000": "v1.8",
 }
 
 
-TREE_COVER_LOSS_DATASET_CONFIGS = {
-    TCL_DRIVER_DATASET.TSC: {
+TCL_DRIVERS_DATASET_CONFIGS = {
+    TCL_DRIVERS_DATASET.TSC: {
         "sql_driver_field": "tsc_tree_cover_loss_drivers__driver",
         "driver_value_map": {
             "Unknown": 0,
@@ -44,7 +44,7 @@ TREE_COVER_LOSS_DATASET_CONFIGS = {
             "Other natural disturbances": 7,
         }
     },
-    TCL_DRIVER_DATASET.WRI_GOOGLE: {
+    TCL_DRIVERS_DATASET.WRI_GOOGLE: {
         "sql_driver_field": "wri_google_tree_cover_loss_drivers__category",
         "driver_value_map": {
             "Unknown": 0,
@@ -68,16 +68,16 @@ async def compute_tree_cover_loss_by_driver(
 ):
 
     try:
-        tree_cover_loss_by_driver_config = None
-        for mutually_exclusive_tcl_drivers_dataset in (TCL_DRIVER_DATASET.TSC, TCL_DRIVER_DATASET.WRI_GOOGLE):
-            if mutually_exclusive_tcl_drivers_dataset in dataset_version:
-                tree_cover_loss_by_driver_config = TREE_COVER_LOSS_DATASET_CONFIGS[mutually_exclusive_tcl_drivers_dataset]
+        specified_tcl_drivers_config = None
+        for tcl_drivers_dataset in (TCL_DRIVERS_DATASET.TSC, TCL_DRIVERS_DATASET.WRI_GOOGLE):
+            if tcl_drivers_dataset in dataset_version:
+                specified_tcl_drivers_config = TCL_DRIVERS_DATASET_CONFIGS[tcl_drivers_dataset]
 
         logger.info(
             f"Computing tree cover loss by driver for resource {resource_id} with geostore {geostore_id} and canopy cover {canopy_cover}"
         )
         geostore: GeostoreCommon = await get_geostore(geostore_id, GeostoreOrigin.rw)
-        query = f"SELECT SUM(area__ha), SUM(gfw_forest_carbon_gross_emissions__Mg_CO2e) FROM data WHERE umd_tree_cover_density_2000__threshold >= {canopy_cover} GROUP BY umd_tree_cover_loss__year, {tree_cover_loss_by_driver_config['sql_driver_field']}"
+        query = f"SELECT SUM(area__ha), SUM(gfw_forest_carbon_gross_emissions__Mg_CO2e) FROM data WHERE umd_tree_cover_density_2000__threshold >= {canopy_cover} GROUP BY umd_tree_cover_loss__year, {specified_tcl_drivers_config['sql_driver_field']}"
 
         results = await _query_dataset_json(
             "umd_tree_cover_loss",
@@ -88,13 +88,13 @@ async def compute_tree_cover_loss_by_driver(
         )
 
         for item in results:
-            if tree_cover_loss_by_driver_config['sql_driver_field'] in item:
-                item["tree_cover_loss_driver"] = item.pop(tree_cover_loss_by_driver_config['sql_driver_field'])
+            if specified_tcl_drivers_config['sql_driver_field'] in item:
+                item["tree_cover_loss_driver"] = item.pop(specified_tcl_drivers_config['sql_driver_field'])
 
         resource = TreeCoverLossByDriverUpdate(
             result=TreeCoverLossByDriverResult.from_rows(
                 rows=results,
-                driver_value_map=tree_cover_loss_by_driver_config['driver_value_map']
+                driver_value_map=specified_tcl_drivers_config['driver_value_map']
             ),
             status=AnalysisStatus.saved,
         )
