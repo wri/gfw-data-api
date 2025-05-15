@@ -94,8 +94,7 @@ async def compute_tree_cover_loss_by_driver(
         resource = TreeCoverLossByDriverUpdate(
             result=TreeCoverLossByDriverResult.from_rows(
                 rows=results,
-                driver_value_map=tree_cover_loss_by_driver_config['driver_value_map'],
-                drivers_key='tree_cover_loss_driver'  # TODO remove this soon
+                driver_value_map=tree_cover_loss_by_driver_config['driver_value_map']
             ),
             status=AnalysisStatus.saved,
         )
