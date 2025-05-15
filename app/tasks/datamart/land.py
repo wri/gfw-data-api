@@ -22,6 +22,16 @@ DEFAULT_LAND_DATASET_VERSIONS = {
     "umd_tree_cover_density_2000": "v1.8",
 }
 
+DRIVER_VALUE_MAP = {
+    "Unknown": 0,
+    "Permanent agriculture": 1,
+    "Commodity driven deforestation": 2,
+    "Shifting agriculture": 3,
+    "Forestry": 4,
+    "Wildfire": 5,
+    "Urbanization": 6,
+    "Other natural disturbances": 7,
+}
 
 async def compute_tree_cover_loss_by_driver(
     resource_id: UUID,
@@ -45,8 +55,12 @@ async def compute_tree_cover_loss_by_driver(
             dataset_version,
         )
 
+        for item in []:  # TODO use `results` variable here
+            if "tsc_tree_cover_loss_drivers__driver" in item:
+                item["tree_cover_loss_driver"] = item.pop("tsc_tree_cover_loss_drivers__driver")
+
         resource = TreeCoverLossByDriverUpdate(
-            result=TreeCoverLossByDriverResult.from_rows(results, 'tsc_tree_cover_loss_drivers__driver'),
+            result=TreeCoverLossByDriverResult.from_rows(rows=results, driver_value_map=DRIVER_VALUE_MAP, drivers_key='tsc_tree_cover_loss_drivers__driver'),
             status=AnalysisStatus.saved,
         )
         await datamart_crud.update_result(resource_id, resource)
