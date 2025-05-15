@@ -1,51 +1,119 @@
 from app.models.pydantic.datamart import TreeCoverLossByDriverResult
-from tests_v2.unit.app.routes.datamart.test_land import (
-    MOCK_RESOURCE,
-    MOCK_RESULT_OLD_DRIVERS,
-)
+
+old_driver_value_map = {
+    "Unknown": 0,
+    "Permanent agriculture": 1,
+    "Commodity driven deforestation": 2,
+    "Shifting agriculture": 3,
+    "Forestry": 4,
+    "Wildfire": 5,
+    "Urbanization": 6,
+    "Other natural disturbances": 7,
+}
+
+new_driver_value_map = {
+    "Unknown": 0,
+    "Permanent agriculture": 1,
+    "Hard commodities": 2,  # This changed
+    "Shifting cultivation": 3,  # This changed
+    "Logging": 4,  # This changed
+    "Wildfire": 5,
+    "Settlements & Infrastructure": 6,  # This changed
+    "Other natural disturbances": 7,
+}
 
 
 class TestTreeCoverLossByDriverResult:
 
-    def test_from_rows_existing_behavior(self):
-        foo = TreeCoverLossByDriverResult.from_rows(MOCK_RESULT_OLD_DRIVERS)
-        assert foo == MOCK_RESOURCE["result"]
-
     def test_from_rows_override_with_old_driver_value_map(self):
-        driver_value_map = {
-            "Unknown": 0,
-            "Permanent agriculture": 1,
-            "Commodity driven deforestation": 2,
-            "Shifting agriculture": 3,
-            "Forestry": 4,
-            "Wildfire": 5,
-            "Urbanization": 6,
-            "Other natural disturbances": 7,
-        }
 
         foo = TreeCoverLossByDriverResult.from_rows(
-            MOCK_RESULT_OLD_DRIVERS,
-            "tsc_tree_cover_loss_drivers__driver",
-            driver_value_map,
+            MOCK_ROWS_OLD_DRIVERS,
+            driver_value_map=old_driver_value_map,
         )
-        assert foo == MOCK_RESOURCE["result"]
+        assert foo == MOCK_RESOURCE_OLD_DRIVERS["result"]
 
     def test_from_rows_override_with_new_driver_value_map(self):
-        driver_value_map = {
-            "Unknown": 0,
-            "Permanent agriculture": 1,
-            "Hard commodities": 2,  # This changed
-            "Shifting cultivation": 3,  # This changed
-            "Logging": 4,  # This changed
-            "Wildfire": 5,
-            "Settlements & Infrastructure": 6,  # This changed
-            "Other natural disturbances": 7,
-        }
-
         foo = TreeCoverLossByDriverResult.from_rows(
-            MOCK_ROWS_NEW_DRIVERS, "tree_cover_loss_driver", driver_value_map
+            MOCK_ROWS_NEW_DRIVERS, "tree_cover_loss_driver", new_driver_value_map
         )
         assert foo == MOCK_RESOURCE_NEW_DRIVERS["result"]
+
+
+MOCK_ROWS_OLD_DRIVERS = [
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tree_cover_loss_driver": "Permanent agriculture",
+        "area__ha": 10,
+        "gfw_forest_carbon_gross_emissions__Mg_CO2e": 66.5,
+    },
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tree_cover_loss_driver": "Commodity driven deforestation",
+        "area__ha": 12,
+        "gfw_forest_carbon_gross_emissions__Mg_CO2e": 78.9,
+    },
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tree_cover_loss_driver": "Shifting agriculture",
+        "area__ha": 7,
+        "gfw_forest_carbon_gross_emissions__Mg_CO2e": 54.2,
+    },
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tree_cover_loss_driver": "Forestry",
+        "area__ha": 93.4,
+        "gfw_forest_carbon_gross_emissions__Mg_CO2e": 101.0,
+    },
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tree_cover_loss_driver": "Wildfire",
+        "area__ha": 42,
+        "gfw_forest_carbon_gross_emissions__Mg_CO2e": 32.8,
+    },
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tree_cover_loss_driver": "Urbanization",
+        "area__ha": 13.562,
+        "gfw_forest_carbon_gross_emissions__Mg_CO2e": 25.0,
+    },
+    {
+        "umd_tree_cover_loss__year": 2001,
+        "tree_cover_loss_driver": "Other natural disturbances",
+        "area__ha": 6,
+        "gfw_forest_carbon_gross_emissions__Mg_CO2e": 11.5,
+    },
+    {
+        "umd_tree_cover_loss__year": 2002,
+        "tree_cover_loss_driver": "Permanent agriculture",
+        "area__ha": 100,
+        "gfw_forest_carbon_gross_emissions__Mg_CO2e": 80.0,
+    },
+    {
+        "umd_tree_cover_loss__year": 2002,
+        "tree_cover_loss_driver": "Commodity driven deforestation",
+        "area__ha": 100,
+        "gfw_forest_carbon_gross_emissions__Mg_CO2e": 91.3,
+    },
+    {
+        "umd_tree_cover_loss__year": 2002,
+        "tree_cover_loss_driver": "Shifting agriculture",
+        "area__ha": 100,
+        "gfw_forest_carbon_gross_emissions__Mg_CO2e": 87.0,
+    },
+    {
+        "umd_tree_cover_loss__year": 2002,
+        "tree_cover_loss_driver": "Forestry",
+        "area__ha": 100,
+        "gfw_forest_carbon_gross_emissions__Mg_CO2e": 95.2,
+    },
+    {
+        "umd_tree_cover_loss__year": 2002,
+        "tree_cover_loss_driver": "Wildfire",
+        "area__ha": 100,
+        "gfw_forest_carbon_gross_emissions__Mg_CO2e": 88.8,
+    },
+]
 
 
 MOCK_ROWS_NEW_DRIVERS = [
@@ -266,6 +334,135 @@ MOCK_ROWS_NEW_DRIVERS = [
         "gfw_forest_carbon_gross_emissions__Mg_CO2e": 884.85835,
     },
 ]
+
+
+MOCK_RESOURCE_OLD_DRIVERS = {
+    "status": "saved",
+    "message": None,
+    "result": {
+        "tree_cover_loss_by_driver": [
+            {
+                "drivers_type": "Permanent agriculture",
+                "loss_area_ha": 110,
+                "gross_carbon_emissions_Mg": 146.5,
+            },
+            {
+                "drivers_type": "Commodity driven deforestation",
+                "loss_area_ha": 112,
+                "gross_carbon_emissions_Mg": 170.2,
+            },
+            {
+                "drivers_type": "Shifting agriculture",
+                "loss_area_ha": 107,
+                "gross_carbon_emissions_Mg": 141.2,
+            },
+            {
+                "drivers_type": "Forestry",
+                "loss_area_ha": 193.4,
+                "gross_carbon_emissions_Mg": 196.2,
+            },
+            {
+                "drivers_type": "Wildfire",
+                "loss_area_ha": 142,
+                "gross_carbon_emissions_Mg": 121.6,
+            },
+            {
+                "drivers_type": "Urbanization",
+                "loss_area_ha": 13.562,
+                "gross_carbon_emissions_Mg": 25.0,
+            },
+            {
+                "drivers_type": "Other natural disturbances",
+                "loss_area_ha": 6,
+                "gross_carbon_emissions_Mg": 11.5,
+            },
+        ],
+        "yearly_tree_cover_loss_by_driver": [
+            {
+                "drivers_type": "Permanent agriculture",
+                "loss_year": 2001,
+                "loss_area_ha": 10,
+                "gross_carbon_emissions_Mg": 66.5,
+            },
+            {
+                "drivers_type": "Commodity driven deforestation",
+                "loss_year": 2001,
+                "loss_area_ha": 12,
+                "gross_carbon_emissions_Mg": 78.9,
+            },
+            {
+                "drivers_type": "Shifting agriculture",
+                "loss_year": 2001,
+                "loss_area_ha": 7,
+                "gross_carbon_emissions_Mg": 54.2,
+            },
+            {
+                "drivers_type": "Forestry",
+                "loss_year": 2001,
+                "loss_area_ha": 93.4,
+                "gross_carbon_emissions_Mg": 101.0,
+            },
+            {
+                "drivers_type": "Wildfire",
+                "loss_year": 2001,
+                "loss_area_ha": 42,
+                "gross_carbon_emissions_Mg": 32.8,
+            },
+            {
+                "drivers_type": "Urbanization",
+                "loss_year": 2001,
+                "loss_area_ha": 13.562,
+                "gross_carbon_emissions_Mg": 25.0,
+            },
+            {
+                "drivers_type": "Other natural disturbances",
+                "loss_year": 2001,
+                "loss_area_ha": 6,
+                "gross_carbon_emissions_Mg": 11.5,
+            },
+            {
+                "drivers_type": "Permanent agriculture",
+                "loss_year": 2002,
+                "loss_area_ha": 100,
+                "gross_carbon_emissions_Mg": 80.0,
+            },
+            {
+                "drivers_type": "Commodity driven deforestation",
+                "loss_year": 2002,
+                "loss_area_ha": 100,
+                "gross_carbon_emissions_Mg": 91.3,
+            },
+            {
+                "drivers_type": "Shifting agriculture",
+                "loss_year": 2002,
+                "loss_area_ha": 100,
+                "gross_carbon_emissions_Mg": 87.0,
+            },
+            {
+                "drivers_type": "Forestry",
+                "loss_year": 2002,
+                "loss_area_ha": 100,
+                "gross_carbon_emissions_Mg": 95.2,
+            },
+            {
+                "drivers_type": "Wildfire",
+                "loss_year": 2002,
+                "loss_area_ha": 100,
+                "gross_carbon_emissions_Mg": 88.8,
+            },
+        ],
+    },
+    "metadata": {
+        "aoi": {"type": "geostore", "geostore_id": ""},
+        "canopy_cover": 30,
+        "sources": [
+            {"dataset": "umd_tree_cover_loss", "version": "v1.8"},
+            {"dataset": "tsc_tree_cover_loss_drivers", "version": "v2023"},
+            {"dataset": "umd_tree_cover_density_2000", "version": "v1.8"},
+        ],
+    },
+}
+
 
 MOCK_RESOURCE_NEW_DRIVERS = {
     "status": "saved",

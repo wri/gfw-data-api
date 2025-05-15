@@ -154,9 +154,10 @@ class TreeCoverLossByDriverResult(StrictBaseModel):
     @staticmethod
     def from_rows(
         rows,
-        drivers_key: str = "tsc_tree_cover_loss_drivers__driver",
+        drivers_key: str = "ignored transitory parameter",
         driver_value_map: Dict[str, int] | None = None,
     ):
+        drivers_key: str = "tree_cover_loss_driver"
         yearly_tcl_by_driver = [
             {
                 "drivers_type": row[drivers_key],
