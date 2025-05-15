@@ -16,22 +16,30 @@ from app.models.pydantic.geostore import GeostoreCommon
 from app.routes.datasets.queries import _query_dataset_json
 from app.utils.geostore import get_geostore
 
+
 DEFAULT_LAND_DATASET_VERSIONS = {
     "umd_tree_cover_loss": "v1.11",
     "tsc_tree_cover_loss_drivers": "v2023",
     "umd_tree_cover_density_2000": "v1.8",
 }
 
-DRIVER_VALUE_MAP = {
-    "Unknown": 0,
-    "Permanent agriculture": 1,
-    "Commodity driven deforestation": 2,
-    "Shifting agriculture": 3,
-    "Forestry": 4,
-    "Wildfire": 5,
-    "Urbanization": 6,
-    "Other natural disturbances": 7,
+
+TREE_COVER_LOSS_DATASET_CONFIGS = {
+    "tsc_tree_cover_loss_drivers": {
+        "sql_driver_field": "tsc_tree_cover_loss_drivers__driver",
+        "driver_value_map": {
+            "Unknown": 0,
+            "Permanent agriculture": 1,
+            "Commodity driven deforestation": 2,
+            "Shifting agriculture": 3,
+            "Forestry": 4,
+            "Wildfire": 5,
+            "Urbanization": 6,
+            "Other natural disturbances": 7,
+        }
+    }
 }
+
 
 async def compute_tree_cover_loss_by_driver(
     resource_id: UUID,
@@ -45,7 +53,7 @@ async def compute_tree_cover_loss_by_driver(
             f"Computing tree cover loss by driver for resource {resource_id} with geostore {geostore_id} and canopy cover {canopy_cover}"
         )
         geostore: GeostoreCommon = await get_geostore(geostore_id, GeostoreOrigin.rw)
-        query = f"SELECT SUM(area__ha), SUM(gfw_forest_carbon_gross_emissions__Mg_CO2e) FROM data WHERE umd_tree_cover_density_2000__threshold >= {canopy_cover} GROUP BY umd_tree_cover_loss__year, tsc_tree_cover_loss_drivers__driver"
+        query = f"SELECT SUM(area__ha), SUM(gfw_forest_carbon_gross_emissions__Mg_CO2e) FROM data WHERE umd_tree_cover_density_2000__threshold >= {canopy_cover} GROUP BY umd_tree_cover_loss__year, {TREE_COVER_LOSS_DATASET_CONFIGS['tsc_tree_cover_loss_drivers']['sql_driver_field']}"
 
         results = await _query_dataset_json(
             "umd_tree_cover_loss",
@@ -60,7 +68,11 @@ async def compute_tree_cover_loss_by_driver(
                 item["tree_cover_loss_driver"] = item.pop("tsc_tree_cover_loss_drivers__driver")
 
         resource = TreeCoverLossByDriverUpdate(
-            result=TreeCoverLossByDriverResult.from_rows(rows=results, driver_value_map=DRIVER_VALUE_MAP, drivers_key='tsc_tree_cover_loss_drivers__driver'),
+            result=TreeCoverLossByDriverResult.from_rows(
+                rows=results,
+                driver_value_map=TREE_COVER_LOSS_DATASET_CONFIGS['tsc_tree_cover_loss_drivers']['driver_value_map'],
+                drivers_key='tsc_tree_cover_loss_drivers__driver'
+            ),
             status=AnalysisStatus.saved,
         )
         await datamart_crud.update_result(resource_id, resource)
