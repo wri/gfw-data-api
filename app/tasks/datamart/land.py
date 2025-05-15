@@ -19,13 +19,13 @@ from app.utils.geostore import get_geostore
 
 
 class TCL_DRIVERS_DATASET(str, Enum):
-    TSC = 'tsc_tree_cover_loss_drivers'
-    WRI_GOOGLE = 'wri_google_tree_cover_loss_drivers'
+    TSC = "tsc_tree_cover_loss_drivers"
+    WRI_GOOGLE = "wri_google_tree_cover_loss_drivers"
 
 
 DEFAULT_LAND_DATASET_VERSIONS = {
     "umd_tree_cover_loss": "v1.11",
-    TCL_DRIVERS_DATASET.TSC: "v2023",
+    TCL_DRIVERS_DATASET.TSC.value: "v2023",
     "umd_tree_cover_density_2000": "v1.8",
 }
 
@@ -42,7 +42,7 @@ TCL_DRIVERS_DATASET_CONFIGS = {
             "Wildfire": 5,
             "Urbanization": 6,
             "Other natural disturbances": 7,
-        }
+        },
     },
     TCL_DRIVERS_DATASET.WRI_GOOGLE: {
         "sql_driver_field": "wri_google_tree_cover_loss_drivers__category",
@@ -55,8 +55,8 @@ TCL_DRIVERS_DATASET_CONFIGS = {
             "Wildfire": 5,
             "Settlements & Infrastructure": 6,
             "Other natural disturbances": 7,
-        }
-    }
+        },
+    },
 }
 
 
@@ -69,9 +69,14 @@ async def compute_tree_cover_loss_by_driver(
 
     try:
         specified_tcl_drivers_config = None
-        for tcl_drivers_dataset in (TCL_DRIVERS_DATASET.TSC, TCL_DRIVERS_DATASET.WRI_GOOGLE):
+        for tcl_drivers_dataset in (
+            TCL_DRIVERS_DATASET.TSC,
+            TCL_DRIVERS_DATASET.WRI_GOOGLE,
+        ):
             if tcl_drivers_dataset in dataset_version:
-                specified_tcl_drivers_config = TCL_DRIVERS_DATASET_CONFIGS[tcl_drivers_dataset]
+                specified_tcl_drivers_config = TCL_DRIVERS_DATASET_CONFIGS[
+                    tcl_drivers_dataset
+                ]
 
         logger.info(
             f"Computing tree cover loss by driver for resource {resource_id} with geostore {geostore_id} and canopy cover {canopy_cover}"
@@ -88,13 +93,15 @@ async def compute_tree_cover_loss_by_driver(
         )
 
         for item in results:
-            if specified_tcl_drivers_config['sql_driver_field'] in item:
-                item["tree_cover_loss_driver"] = item.pop(specified_tcl_drivers_config['sql_driver_field'])
+            if specified_tcl_drivers_config["sql_driver_field"] in item:
+                item["tree_cover_loss_driver"] = item.pop(
+                    specified_tcl_drivers_config["sql_driver_field"]
+                )
 
         resource = TreeCoverLossByDriverUpdate(
             result=TreeCoverLossByDriverResult.from_rows(
                 rows=results,
-                driver_value_map=specified_tcl_drivers_config['driver_value_map']
+                driver_value_map=specified_tcl_drivers_config["driver_value_map"],
             ),
             status=AnalysisStatus.saved,
         )
@@ -115,18 +122,20 @@ async def compute_tree_cover_loss_by_driver(
         #      `filter severity="high" and type="tree_cover_loss_by_driver" | stats count(*) by bin(1h)`
         # 4. Click "Run query" (results appear in 10-30 seconds)
         logger.error(
-            json.dumps({
-                "event": "analysis_failure",
-                "type": "tree_cover_loss_by_driver",
-                "severity": "high",  # Helps with alerting
-                "resource_id": str(resource_id),
-                "geostore_id": str(geostore_id),
-                "canopy_cover": canopy_cover,
-                "dataset_version": dataset_version,
-                "error_type": e.__class__.__name__,  # e.g., "ValueError", "ConnectionError"
-                "error_details": str(e),
-                "stack_trace": traceback.format_exc(),
-            })
+            json.dumps(
+                {
+                    "event": "analysis_failure",
+                    "type": "tree_cover_loss_by_driver",
+                    "severity": "high",  # Helps with alerting
+                    "resource_id": str(resource_id),
+                    "geostore_id": str(geostore_id),
+                    "canopy_cover": canopy_cover,
+                    "dataset_version": dataset_version,
+                    "error_type": e.__class__.__name__,  # e.g., "ValueError", "ConnectionError"
+                    "error_details": str(e),
+                    "stack_trace": traceback.format_exc(),
+                }
+            )
         )
         resource = TreeCoverLossByDriverUpdate(
             status=AnalysisStatus.failed, message=str(e)
