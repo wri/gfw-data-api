@@ -35,7 +35,7 @@ class TestTreeCoverLossByDriverResult:
 
     def test_from_rows_override_with_new_driver_value_map(self):
         foo = TreeCoverLossByDriverResult.from_rows(
-            MOCK_ROWS_NEW_DRIVERS, "tree_cover_loss_driver", new_driver_value_map
+            MOCK_ROWS_NEW_DRIVERS, driver_value_map=new_driver_value_map
         )
         assert foo == MOCK_RESOURCE_NEW_DRIVERS["result"]
 
