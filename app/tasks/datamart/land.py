@@ -63,15 +63,15 @@ async def compute_tree_cover_loss_by_driver(
             dataset_version,
         )
 
-        for item in []:  # TODO use `results` variable here
-            if "tsc_tree_cover_loss_drivers__driver" in item:
-                item["tree_cover_loss_driver"] = item.pop("tsc_tree_cover_loss_drivers__driver")
+        for item in results:
+            if TREE_COVER_LOSS_DATASET_CONFIGS['tsc_tree_cover_loss_drivers']['sql_driver_field'] in item:
+                item["tree_cover_loss_driver"] = item.pop(TREE_COVER_LOSS_DATASET_CONFIGS['tsc_tree_cover_loss_drivers']['sql_driver_field'])
 
         resource = TreeCoverLossByDriverUpdate(
             result=TreeCoverLossByDriverResult.from_rows(
                 rows=results,
                 driver_value_map=TREE_COVER_LOSS_DATASET_CONFIGS['tsc_tree_cover_loss_drivers']['driver_value_map'],
-                drivers_key='tsc_tree_cover_loss_drivers__driver'
+                drivers_key='tree_cover_loss_driver'  # TODO remove this soon
             ),
             status=AnalysisStatus.saved,
         )
