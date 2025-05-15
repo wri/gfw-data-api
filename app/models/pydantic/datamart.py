@@ -152,7 +152,7 @@ class TreeCoverLossByDriverResult(StrictBaseModel):
     yearly_tree_cover_loss_by_driver: List[Dict[str, Any]]
 
     @staticmethod
-    def from_rows(rows):
+    def from_rows(rows, driver_value_map: Dict[str, int] | None = None):
         yearly_tcl_by_driver = [
             {
                 "drivers_type": row["tsc_tree_cover_loss_drivers__driver"],
