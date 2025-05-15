@@ -25,13 +25,13 @@ class TCL_DRIVER_DATASET(str, Enum):
 
 DEFAULT_LAND_DATASET_VERSIONS = {
     "umd_tree_cover_loss": "v1.11",
-    "tsc_tree_cover_loss_drivers": "v2023",
+    TCL_DRIVER_DATASET.TSC: "v2023",
     "umd_tree_cover_density_2000": "v1.8",
 }
 
 
 TREE_COVER_LOSS_DATASET_CONFIGS = {
-    "tsc_tree_cover_loss_drivers": {
+    TCL_DRIVER_DATASET.TSC: {
         "sql_driver_field": "tsc_tree_cover_loss_drivers__driver",
         "driver_value_map": {
             "Unknown": 0,
@@ -44,7 +44,7 @@ TREE_COVER_LOSS_DATASET_CONFIGS = {
             "Other natural disturbances": 7,
         }
     },
-    "wri_google_tree_cover_loss_drivers": {
+    TCL_DRIVER_DATASET.WRI_GOOGLE: {
         "sql_driver_field": "wri_google_tree_cover_loss_drivers__category",
         "driver_value_map": {
             "Unknown": 0,
