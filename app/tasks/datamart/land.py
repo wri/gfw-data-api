@@ -1,5 +1,6 @@
 import json
 import traceback
+from enum import Enum
 from typing import Dict
 from uuid import UUID
 
@@ -15,6 +16,11 @@ from app.models.pydantic.datamart import (
 from app.models.pydantic.geostore import GeostoreCommon
 from app.routes.datasets.queries import _query_dataset_json
 from app.utils.geostore import get_geostore
+
+
+class TCL_DRIVER_DATASET(str, Enum):
+    TSC = 'tsc_tree_cover_loss_drivers'
+    WRI_GOOGLE = 'wri_google_tree_cover_loss_drivers'
 
 
 DEFAULT_LAND_DATASET_VERSIONS = {
@@ -63,7 +69,7 @@ async def compute_tree_cover_loss_by_driver(
 
     try:
         tree_cover_loss_by_driver_config = None
-        for mutually_exclusive_tcl_drivers_dataset in TREE_COVER_LOSS_DATASET_CONFIGS:
+        for mutually_exclusive_tcl_drivers_dataset in (TCL_DRIVER_DATASET.TSC, TCL_DRIVER_DATASET.WRI_GOOGLE):
             if mutually_exclusive_tcl_drivers_dataset in dataset_version:
                 tree_cover_loss_by_driver_config = TREE_COVER_LOSS_DATASET_CONFIGS[mutually_exclusive_tcl_drivers_dataset]
 
