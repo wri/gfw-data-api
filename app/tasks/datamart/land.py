@@ -37,6 +37,19 @@ TREE_COVER_LOSS_DATASET_CONFIGS = {
             "Urbanization": 6,
             "Other natural disturbances": 7,
         }
+    },
+    "wri_google_tree_cover_loss_drivers": {
+        "sql_driver_field": "wri_google_tree_cover_loss_drivers__category",
+        "driver_value_map": {
+            "Unknown": 0,
+            "Permanent agriculture": 1,
+            "Hard commodities": 2,
+            "Shifting cultivation": 3,
+            "Logging": 4,
+            "Wildfire": 5,
+            "Settlements & Infrastructure": 6,
+            "Other natural disturbances": 7,
+        }
     }
 }
 
