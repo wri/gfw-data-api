@@ -69,7 +69,7 @@ def _parse_dataset_versions(request: Request) -> Dict[str, str]:
         )
 
     # Merge dataset version overrides with default dataset versions
-    return DEFAULT_LAND_DATASET_VERSIONS | dataset_versions
+    return apply_overrides_and_remove_mutually_exclusive_datasets(dataset_versions)
 
 
 @router.get(
@@ -151,6 +151,46 @@ async def tree_cover_loss_by_driver_get(
     return tree_cover_loss_by_driver_response
 
 
+@router.delete(
+    "/tree_cover_loss_by_driver/{resource_id}",
+    response_class=ORJSONResponse,
+    status_code=204,
+    tags=["Beta Land"],
+    summary="Delete Tree Cover Loss by Driver Analysis",
+    description="Only analysis resources with 'failed' status can be removed. This operation permanently deletes the resource.",
+    responses={
+        204: {"description": "Analysis resource successfully deleted"},
+        400: {"description": "Analysis resource cannot be deleted because it's not in 'failed' status"},
+        404: {"description": "Analysis resource not found"},
+    },
+)
+async def tree_cover_loss_by_driver_delete(
+        *,
+        resource_id: UUID = Path(
+            ...,
+            title="Tree cover loss by driver analysis resource ID",
+            description="UUID of the **failed** analysis resource to delete",
+            example="123e4567-e89b-12d3-a456-426614174000"
+        ),
+        api_key: APIKey = Depends(get_api_key),
+):
+    """Delete a tree cover loss by drivers resource.
+
+    Only resources with 'failed' status can be deleted.
+    """
+    tree_cover_loss_by_driver = await _get_resource(resource_id)
+
+    if tree_cover_loss_by_driver.status != AnalysisStatus.failed:
+        raise HTTPException(
+            status_code=400,
+            detail="Only resources with 'failed' status can be deleted"
+        )
+
+    await _delete_resource(resource_id)
+
+    return Response(status_code=204)
+
+
 @router.post(
     "/tree_cover_loss_by_driver",
     response_class=ORJSONResponse,
@@ -168,7 +208,10 @@ async def tree_cover_loss_by_driver_post(
     """Create new tree cover loss by drivers resource for a given geostore and
     canopy cover."""
 
-    dataset_version = DEFAULT_LAND_DATASET_VERSIONS | data.dataset_version
+    dataset_version = apply_overrides_and_remove_mutually_exclusive_datasets(
+        data.dataset_version
+    )
+
     resource_id = _get_resource_id(
         "tree_cover_loss_by_driver",
         json.loads(data.aoi.json(exclude_none=True)),
@@ -240,6 +283,10 @@ async def _get_resource(resource_id):
         )
 
 
+async def _delete_resource(resource_id):
+    await datamart_crud.delete_result(resource_id)
+
+
 async def _check_resource_exists(resource_id) -> bool:
     try:
         await datamart_crud.get_result(resource_id)
@@ -273,3 +320,22 @@ def _get_metadata(
         canopy_cover=canopy_cover,
         sources=sources,
     )
+
+
+def apply_overrides_and_remove_mutually_exclusive_datasets(
+    dataset_versions: Dict[str, str]
+) -> Dict[str, str]:
+    """Given a dictionary of dataset:version pair overrides, return a
+    dictionary of default dataset versions with those overrides applied and
+    mutually exclusive datasets removed."""
+    mutually_exclusive_datasets = {
+        "wri_google_tree_cover_loss_drivers": "tsc_tree_cover_loss_drivers"
+    }
+
+    dataset_version = DEFAULT_LAND_DATASET_VERSIONS.copy()
+    for d, v in dataset_versions.items():
+        if d in mutually_exclusive_datasets:
+            dataset_to_remove = mutually_exclusive_datasets[d]
+            _ = dataset_version.pop(dataset_to_remove, None)
+        dataset_version[d] = v
+    return dataset_version

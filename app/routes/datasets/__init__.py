@@ -56,6 +56,19 @@ OPENAPI_EXTRA_AOI = {
                         "subregion": "2",
                     },
                 },
+                "Global": {
+                    "summary": "Global Extent",
+                    "description": "Full spatial extent of dataset",
+                    "value": {"type": "global"},
+                },
+                "WDPA Area Of Interest": {
+                    "summary": "WDPA Area Of Interest",
+                    "description": "World Database on Protected Areas (WDPA) Boundary",
+                    "value": {
+                        "type": "protected_area",
+                        "wdpa_id": "123",
+                    },
+                },
             },
             "description": "The Area of Interest",
             "schema": {
@@ -63,6 +76,7 @@ OPENAPI_EXTRA_AOI = {
                     {"$ref": "#/components/schemas/GeostoreAreaOfInterest"},
                     {"$ref": "#/components/schemas/AdminAreaOfInterest"},
                     {"$ref": "#/components/schemas/Global"},
+                    {"$ref": "#/components/schemas/WdpaAreaOfInterest"},
                 ]
             },
         }
