@@ -136,6 +136,7 @@ module "batch_aurora_writer" {
   use_ephemeral_storage    = false
   ebs_volume_size          = 60
   compute_environment_name = "aurora_sql_writer"
+  launch_type              = "EC2"
 }
 
 
