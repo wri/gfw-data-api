@@ -95,6 +95,7 @@ class TileBlockSize(int, Enum):
     two_fifty_six = 256
     five_twelve = 512
     ten_twenty_four = 1024
+    twenty_forty_eight = 2048
 
 
 class Srid(str, Enum):
