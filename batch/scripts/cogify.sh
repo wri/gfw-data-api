@@ -16,29 +16,39 @@ ME=$(basename "$0")
 set -x
 # download all GeoTiff files
 
-if [[ $(aws s3 ls "${PREFIX}/${IMPLEMENTATION}_merged.tif") ]]; then
-  aws s3 cp "${PREFIX}/${IMPLEMENTATION}_merged.tif" "${IMPLEMENTATION}_merged.tif"
-else
+if [[ ${BLOCK_SIZE} -ge 2048 ]]; then
+  # For blocksize 2048 and greater, generate overviews internally.
   aws s3 cp --recursive --exclude "*" --include "*.tif" "${SRC}" .
 
   # create VRT of input files so we can use gdal_translate
   gdalbuildvrt "${IMPLEMENTATION}_merged.vrt" *.tif
 
-  # merge all rasters into one huge raster using COG block size
-  gdal_translate -of GTiff -co TILED=YES -co BLOCKXSIZE="${BLOCK_SIZE}" -co BLOCKYSIZE="${BLOCK_SIZE}" -co COMPRESS=DEFLATE -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS "${IMPLEMENTATION}_merged.vrt" "${IMPLEMENTATION}_merged.tif"
-  aws s3 cp "${IMPLEMENTATION}_merged.tif" "${PREFIX}/${IMPLEMENTATION}_merged.tif"
-fi
-
-if [[ $(aws s3 ls "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr") ]]; then
-  aws s3 cp "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr" "${IMPLEMENTATION}_merged.tif.ovr"
+  gdal_translate -of COG -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BLOCKSIZE="${BLOCK_SIZE}" -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS -co OVERVIEWS=AUTO -r "${RESAMPLE}" --config COMPRESS_OVERVIEW DEFLATE -co SPARSE_OK=TRUE --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS "${IMPLEMENTATION}_merged.vrt" "${IMPLEMENTATION}.tif" 
 else
-  # generate overviews externally
-  gdaladdo "${IMPLEMENTATION}_merged.tif" -r "${RESAMPLE}" -ro --config GDAL_NUM_THREADS ALL_CPUS --config GDAL_CACHEMAX 70% --config COMPRESS_OVERVIEW DEFLATE --config CHECK_DISK_FREE_SPACE NO
-  aws s3 cp "${IMPLEMENTATION}_merged.tif.ovr" "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr"
-fi
+  if [[ $(aws s3 ls "${PREFIX}/${IMPLEMENTATION}_merged.tif") ]]; then
+    aws s3 cp "${PREFIX}/${IMPLEMENTATION}_merged.tif" "${IMPLEMENTATION}_merged.tif"
+  else
+    aws s3 cp --recursive --exclude "*" --include "*.tif" "${SRC}" .
 
-# convert to COG using existing overviews, this adds some additional layout optimizations
-gdal_translate "${IMPLEMENTATION}_merged.tif" "${IMPLEMENTATION}.tif" -of COG -co COMPRESS=DEFLATE -co BLOCKSIZE="${BLOCK_SIZE}" -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS -co OVERVIEWS=FORCE_USE_EXISTING -co SPARSE_OK=TRUE --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS
+    # create VRT of input files so we can use gdal_translate
+    gdalbuildvrt "${IMPLEMENTATION}_merged.vrt" *.tif
+
+    # merge all rasters into one huge raster using COG block size
+    gdal_translate -of GTiff -co TILED=YES -co BLOCKXSIZE="${BLOCK_SIZE}" -co BLOCKYSIZE="${BLOCK_SIZE}" -co COMPRESS=DEFLATE -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS "${IMPLEMENTATION}_merged.vrt" "${IMPLEMENTATION}_merged.tif"
+    aws s3 cp "${IMPLEMENTATION}_merged.tif" "${PREFIX}/${IMPLEMENTATION}_merged.tif"
+  fi
+
+  if [[ $(aws s3 ls "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr") ]]; then
+    aws s3 cp "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr" "${IMPLEMENTATION}_merged.tif.ovr"
+  else
+    # generate overviews externally
+    gdaladdo "${IMPLEMENTATION}_merged.tif" -r "${RESAMPLE}" -ro --config GDAL_NUM_THREADS ALL_CPUS --config GDAL_CACHEMAX 70% --config COMPRESS_OVERVIEW DEFLATE
+    aws s3 cp "${IMPLEMENTATION}_merged.tif.ovr" "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr"
+  fi
+
+  # convert to COG using existing overviews, this adds some additional layout optimizations
+  gdal_translate "${IMPLEMENTATION}_merged.tif" "${IMPLEMENTATION}.tif" -of COG -co COMPRESS=DEFLATE -co BLOCKSIZE="${BLOCK_SIZE}" -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS -co OVERVIEWS=FORCE_USE_EXISTING -co SPARSE_OK=TRUE --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS
+fi
 
 # upload to data lake
 aws s3 cp "${IMPLEMENTATION}.tif" "${TARGET}"
