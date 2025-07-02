@@ -71,7 +71,7 @@ resource "aws_api_gateway_gateway_response" "exceeded_quota" {
   response_type = "QUOTA_EXCEEDED"
 
   response_templates = {
-    "application/json" = "{\"status\":\"failed\",\"message\":\"Exceeded the daily quota for this resource.  If you're running analysis on a list of areas of interest, please use the batch analysis endpoint to avoid this error: https://staging-data-api.globalforestwatch.org/#tag/Query/operation/query_dataset_list_post_dataset__dataset___version__query_batch_post. Otherwise, email us at gfw@wri.org to see if your use case may qualify for higher quota.\"}"
+    "application/json" = "{\"status\":\"failed\",\"message\":\"You have exceeded the daily quota of ${var.api_gateway_usage_plans.external_apps.quota_limit} requests (for non-WRI platforms) or ${var.api_gateway_usage_plans.internal_apps.quota_limit} requests (for WRI platforms) for this resource. If you are running analysis on a list of areas of interest, consider using the batch analysis endpoint to avoid this error: https://data-api.globalforestwatch.org/#tag/Query/operation/query_dataset_list_post_dataset__dataset___version__query_batch_post. If you believe your use case may qualify for a higher quota, please contact us at gfw@wri.org.\"}"
   }
 }
 
@@ -81,7 +81,7 @@ resource "aws_api_gateway_gateway_response" "throttled" {
   response_type = "THROTTLED"
 
   response_templates = {
-    "application/json" = "{\"status\":\"failed\",\"message\":\"Exceeded the rate limit for this resource. If you're running analysis on a list of areas of interest, please use the batch analysis endpoint to avoid this error: https://staging-data-api.globalforestwatch.org/#tag/Query/operation/query_dataset_list_post_dataset__dataset___version__query_batch_post. Otherwise, email us at gfw@wri.org to see if your use case may qualify for higher rate limit.\"}"
+    "application/json" = "{\"status\":\"failed\",\"message\":\"You have exceeded the daily quota of ${var.api_gateway_usage_plans.external_apps.quota_limit} requests (for non-WRI platforms) or ${var.api_gateway_usage_plans.internal_apps.quota_limit} requests (for WRI platforms) for this resource. If you are running analysis on a list of areas of interest, consider using the batch analysis endpoint to avoid this error: https://${var.service_url}/#tag/Query/operation/query_dataset_list_post_dataset__dataset___version__query_batch_post. If you believe your use case may qualify for a higher quota, please contact us at gfw@wri.org.\"}"
   }
 }
 

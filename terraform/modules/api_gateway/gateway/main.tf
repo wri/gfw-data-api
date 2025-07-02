@@ -33,10 +33,12 @@ resource "aws_api_gateway_resource" "query_parent" {
 }
 
 module "query_resource" {
-  source      = "../resource"
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  parent_id   = aws_api_gateway_resource.query_parent.id
-  path_part   = "{proxy+}"
+  source                  = "../resource"
+  rest_api_id             = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id               = aws_api_gateway_resource.query_parent.id
+  path_part               = "{proxy+}"
+  api_gateway_usage_plans = var.api_gateway_usage_plans
+  service_url             = var.service_url
 }
 
 module "query_get" {
@@ -102,11 +104,12 @@ resource "aws_api_gateway_resource" "download_parent" {
 module "download_shapes_resources" {
   source = "../resource"
 
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  parent_id   = aws_api_gateway_resource.download_parent.id
-
-  for_each  = toset(var.download_endpoints)
-  path_part = each.key
+  rest_api_id             = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id               = aws_api_gateway_resource.download_parent.id
+  api_gateway_usage_plans = var.api_gateway_usage_plans
+  service_url             = var.service_url
+  for_each                = toset(var.download_endpoints)
+  path_part               = each.key
 }
 
 module "download_shapes_endpoint" {
@@ -150,9 +153,11 @@ resource "aws_api_gateway_resource" "datamart_land" {
 module "datamart_proxy" {
   source = "../resource"
 
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  parent_id   = aws_api_gateway_resource.datamart_land.id
-  path_part   = "{datamart_proxy+}"
+  rest_api_id             = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id               = aws_api_gateway_resource.datamart_land.id
+  path_part               = "{datamart_proxy+}"
+  api_gateway_usage_plans = var.api_gateway_usage_plans
+  service_url             = var.service_url
 }
 
 
@@ -229,9 +234,11 @@ module "datamart_post" {
 module "unprotected_resource" {
   source = "../resource"
 
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  parent_id   = aws_api_gateway_rest_api.api_gw_api.root_resource_id
-  path_part   = "{proxy+}"
+  rest_api_id             = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id               = aws_api_gateway_rest_api.api_gw_api.root_resource_id
+  path_part               = "{proxy+}"
+  api_gateway_usage_plans = var.api_gateway_usage_plans
+  service_url             = var.service_url
 
 }
 

@@ -228,4 +228,6 @@ module "api_gateway" {
   lambda_role_policy      = data.template_file.lambda_role_policy.rendered
   cloudwatch_policy       = data.local_file.cloudwatch_log_policy.content
   lambda_invoke_policy    = data.local_file.iam_lambda_invoke.content
+  api_gateway_usage_plans = var.api_gateway_usage_plans
+  service_url             = var.service_url
 }
