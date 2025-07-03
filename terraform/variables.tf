@@ -171,3 +171,21 @@ variable "data_lake_writer_instance_types" {
     "r5d.large", "r5d.xlarge", "r5d.2xlarge", "r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge"
   ]
 }
+
+variable "api_gateway_usage_plans" {
+  type        = map(any)
+  description = "Throttling limits for API Gateway"
+  default = {
+    internal_apps = {
+      quota_limit = 1000000 # per day
+      burst_limit = 1000
+      rate_limit  = 200 # per second
+    }
+    external_apps = {
+      quota_limit = 10000
+      burst_limit = 20
+      rate_limit  = 10
+    }
+  }
+}
+

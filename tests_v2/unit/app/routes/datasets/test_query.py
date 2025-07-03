@@ -773,7 +773,6 @@ async def test_query_batch_feature_collection(
         headers=headers,
     )
 
-    print(response.json())
     assert response.status_code == 202
 
     data = response.json()["data"]

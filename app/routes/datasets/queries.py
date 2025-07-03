@@ -9,10 +9,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
-import botocore
 import httpx
 from async_lru import alru_cache
 from asyncpg import DataError, InsufficientPrivilegeError, SyntaxOrAccessError
+from botocore.client import BaseClient
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
@@ -361,7 +361,14 @@ async def query_dataset_list_post(
     "error", then there will be no results available (nothing was able
     to complete, possible because of an infrastructure problem).
 
-    There is currently a five-minute time limit on the entire list
+    Limitations
+
+    - The request payload must be under 256 KB. This limit does not apply
+    to features provided in a file referenced using the `uri`
+    field—use this option to include larger geometry data via an external
+    file.
+
+    - There is currently a five-minute time limit on the entire list
     query, but up to 100 individual feature queries proceed in parallel,
     so lists with several thousands of features can potentially be
     processed within that time limit.
@@ -427,17 +434,20 @@ async def query_dataset_list_post(
         )
 
     try:
-        await _start_batch_execution(job_id, input)
-    except botocore.exceptions.ClientError as error:
-        logger.error(error)
-        return HTTPException(500, "There was an error starting your job.")
+        sfn_client = get_sfn_client()
+        await _start_batch_execution(sfn_client, job_id, input)
+    except sfn_client.exceptions.ValidationException as e:
+        raise HTTPException(400, f"Input failed validation. Error details: {str(e)}")
+    except Exception as e:
+        logger.error(e)
+        return HTTPException(500, f"There was an error starting your job. Error details: {str(e)}")
 
     job_link = f"{API_URL}/job/{job_id}"
     return UserJobResponse(data=UserJob(job_id=job_id, job_link=job_link))
 
 
-async def _start_batch_execution(job_id: UUID, input: Dict[str, Any]) -> None:
-    get_sfn_client().start_execution(
+async def _start_batch_execution(sfn_client: BaseClient, job_id: UUID, input: Dict[str, Any]) -> None:
+    sfn_client.start_execution(
         stateMachineArn=RASTER_ANALYSIS_STATE_MACHINE_ARN,
         name=str(job_id),
         input=json.dumps(input),
