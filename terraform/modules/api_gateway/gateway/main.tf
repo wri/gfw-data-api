@@ -368,7 +368,7 @@ resource "aws_iam_role" "lambda" {
 resource "aws_lambda_function" "authorizer" {
   filename      = "api_gateway/api_key_authorizer_lambda.zip"
   function_name = substr("api_gateway_authorizer", 0, 64)
-  runtime       = "python3.8"
+  runtime       = "python3.10"
   role          = aws_iam_role.lambda.arn
   handler       = "lambda_function.handler"
 
