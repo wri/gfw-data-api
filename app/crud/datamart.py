@@ -25,9 +25,9 @@ async def get_result(result_id: uuid.UUID) -> AnalysisResult:
     return analysis_result
 
 
-async def update_result(result_id: uuid.UUID, result_data) -> AnalysisResult:
+async def update_result(result_id: uuid.UUID, result_data: dict) -> AnalysisResult:
     analysis_result: AnalysisResult = await get_result(result_id)
-    await analysis_result.update(**json.loads(result_data.json(by_alias=False))).apply()
+    await analysis_result.update(**result_data).apply()
 
     return analysis_result
 
