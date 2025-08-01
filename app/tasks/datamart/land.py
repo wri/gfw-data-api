@@ -98,13 +98,14 @@ async def compute_tree_cover_loss_by_driver(
                     specified_tcl_drivers_config["sql_driver_field"]
                 )
 
-        resource = TreeCoverLossByDriverUpdate(
-            result=TreeCoverLossByDriverResult.from_rows(
+        resource = {
+            "result": TreeCoverLossByDriverResult.from_rows(
                 rows=results,
                 driver_value_map=specified_tcl_drivers_config["driver_value_map"],
             ),
-            status=AnalysisStatus.saved,
-        )
+            "status": AnalysisStatus.saved,
+        }
+
         await datamart_crud.update_result(resource_id, resource)
 
     except Exception as e:
@@ -137,8 +138,10 @@ async def compute_tree_cover_loss_by_driver(
                 }
             )
         )
-        resource = TreeCoverLossByDriverUpdate(
-            status=AnalysisStatus.failed, message=str(e)
-        )
+
+        resource = {
+            "status": AnalysisStatus.failed,
+            "message": str(e),
+        }
 
         await datamart_crud.update_result(resource_id, resource)

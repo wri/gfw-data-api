@@ -524,10 +524,10 @@ async def test_compute_tree_cover_loss_by_driver(geostore):
         MOCK_RESOURCE["metadata"]["aoi"]["geostore_id"] = geostore
         mock_write_result.assert_awaited_once_with(
             resource_id,
-            TreeCoverLossByDriverUpdate(
-                result=MOCK_RESOURCE["result"],
-                status=MOCK_RESOURCE["status"],
-            ),
+            {
+                "result": MOCK_RESOURCE["result"],
+                "status": MOCK_RESOURCE["status"],
+            },
         )
 
 
@@ -559,10 +559,10 @@ async def test_compute_tree_cover_loss_by_driver_error(geostore):
         )
         mock_write_error.assert_awaited_once_with(
             resource_id,
-            TreeCoverLossByDriverUpdate(
-                status=MOCK_ERROR_RESOURCE["status"],
-                message=MOCK_ERROR_RESOURCE["message"],
-            ),
+            {
+                "status": MOCK_ERROR_RESOURCE["status"],
+                "message": MOCK_ERROR_RESOURCE["message"],
+            }
         )
 
 
