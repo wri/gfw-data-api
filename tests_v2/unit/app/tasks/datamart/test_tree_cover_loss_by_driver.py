@@ -76,7 +76,7 @@ async def test_compute_tsc_tree_cover_loss_by_driver_happy_path(
     update_call_args = mock_update_result.call_args.args
     assert str(update_call_args[0]) == str(test_resource_id)
     assert update_call_args[1]["status"] == AnalysisStatus.saved
-    assert update_call_args[1]["result"].tree_cover_loss_by_driver == unordered([
+    assert update_call_args[1]["result"]["tree_cover_loss_by_driver"] == unordered([
         {
             'drivers_type': 'Permanent agriculture',
             'loss_area_ha': 150.5, 'gross_carbon_emissions_Mg': 2500.0
@@ -86,7 +86,7 @@ async def test_compute_tsc_tree_cover_loss_by_driver_happy_path(
             'loss_area_ha': 75.2, 'gross_carbon_emissions_Mg': 1800.0
         }
     ])
-    assert update_call_args[1]["result"].yearly_tree_cover_loss_by_driver == unordered([
+    assert update_call_args[1]["result"]["yearly_tree_cover_loss_by_driver"] == unordered([
         {
             'drivers_type': 'Permanent agriculture',
             'loss_year': 2020, 'loss_area_ha': 150.5,
@@ -170,7 +170,7 @@ async def test_compute_wri_google_tree_cover_loss_by_driver_happy_path(
     update_call_args = mock_update_result.call_args.args
     assert str(update_call_args[0]) == str(test_resource_id)
     assert update_call_args[1]["status"] == AnalysisStatus.saved
-    assert update_call_args[1]["result"].tree_cover_loss_by_driver == unordered([
+    assert update_call_args[1]["result"]["tree_cover_loss_by_driver"] == unordered([
         {
             'drivers_type': 'Permanent agriculture',
             'loss_area_ha': 150.5, 'gross_carbon_emissions_Mg': 2500.0
@@ -180,7 +180,7 @@ async def test_compute_wri_google_tree_cover_loss_by_driver_happy_path(
             'loss_area_ha': 75.2, 'gross_carbon_emissions_Mg': 1800.0
         }
     ])
-    assert update_call_args[1]["result"].yearly_tree_cover_loss_by_driver == unordered([
+    assert update_call_args[1]["result"]["yearly_tree_cover_loss_by_driver"] == unordered([
         {
             'drivers_type': 'Permanent agriculture',
             'loss_year': 2020, 'loss_area_ha': 150.5,
