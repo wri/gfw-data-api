@@ -102,7 +102,7 @@ async def compute_tree_cover_loss_by_driver(
             "result": TreeCoverLossByDriverResult.from_rows(
                 rows=results,
                 driver_value_map=specified_tcl_drivers_config["driver_value_map"],
-            ),
+            ).dict(),
             "status": AnalysisStatus.saved,
         }
 
