@@ -213,14 +213,6 @@ async def raster_tile_set_validator(
                 status_code=400,
                 detail=f"Auxiliary asset {asset_id} not a {AssetType.raster_tile_set}.",
             )
-        if (
-            auxiliary_asset.creation_options["grid"]
-            != input_data["creation_options"]["grid"]
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Input grid and grid of auxiliary asset {asset_id} do not match.",
-            )
 
 
 async def raster_tile_set_post_completion_task(asset_id: UUID):
