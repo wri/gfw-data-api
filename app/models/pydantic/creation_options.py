@@ -122,6 +122,14 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
             "when input files are in different projections from each other."
         )
     )
+    copy_solo_tiles: bool = Field(
+        False,
+        description=(
+            "For raster calculations with multiple inputs, copy last source tile "
+            "directly to the destination if all other source tiles are non-existent,"
+            "even though union_bands is false."
+        )
+    )
     pixel_meaning: str = Field(
         ..., description="Description of what the pixel value in the "
         "raster represents. This is used to clarify the meaning of the raster "
@@ -212,7 +220,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     auxiliary_assets: Optional[List[UUID]] = Field(
         None,
         description="Asset IDs of additional rasters you might want to include "
-        "in your calc expression."
+        "in your calc expression. Ignored if source_uri is set."
     )
     photometric: Optional[PhotometricType] = None
     num_processes: Optional[StrictInt] = None
@@ -240,7 +248,8 @@ class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
     source_uri: Optional[List[str]] = Field(
         description="List of input sources. Sources must be the URI of either a "
         "tiles.geojson file on S3 or a folder (prefix) on S3 or GCS. "
-        "Features in tiles.geojson must have path starting with either /vsis3/ or /vsigs/",
+        "Features in tiles.geojson must have path starting with either /vsis3/ or /vsigs/"
+        "auxiliary_assets is ignored if source_uri is set (for creating new versions)",
     )
 
     @validator("source_uri")
