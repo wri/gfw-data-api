@@ -256,6 +256,7 @@ class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
     def validate_source_uri(cls, v, values, **kwargs):
         if values.get("source_type") == SourceType.raster:
             assert v, "Raster source types require source_uri"
+            assert not values.get("auxiliary_assets"), "auxiliary_assets should not be specified with source_uri"
         else:
             assert not v, "Only raster source type require source_uri"
         return v
