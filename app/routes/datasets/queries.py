@@ -440,13 +440,17 @@ async def query_dataset_list_post(
         raise HTTPException(400, f"Input failed validation. Error details: {str(e)}")
     except Exception as e:
         logger.error(e)
-        return HTTPException(500, f"There was an error starting your job. Error details: {str(e)}")
+        return HTTPException(
+            500, f"There was an error starting your job. Error details: {str(e)}"
+        )
 
     job_link = f"{API_URL}/job/{job_id}"
     return UserJobResponse(data=UserJob(job_id=job_id, job_link=job_link))
 
 
-async def _start_batch_execution(sfn_client: BaseClient, job_id: UUID, input: Dict[str, Any]) -> None:
+async def _start_batch_execution(
+    sfn_client: BaseClient, job_id: UUID, input: Dict[str, Any]
+) -> None:
     sfn_client.start_execution(
         stateMachineArn=RASTER_ANALYSIS_STATE_MACHINE_ARN,
         name=str(job_id),
