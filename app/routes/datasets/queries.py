@@ -5,7 +5,7 @@ import json
 import re
 import uuid
 from io import StringIO
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
@@ -20,8 +20,17 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse, RedirectResponse
-from pglast import parse_sql, printers  # noqa
-from pglast.ast import Node, RangeSubselect, RawStmt, SelectStmt
+from pglast import parse_sql
+from pglast.ast import (
+    BoolExpr,
+    FuncCall,
+    RangeSubselect,
+    RangeVar,
+    RawStmt,
+    SelectStmt,
+    SQLValueFunction,
+)
+from pglast.enums import BoolExprType
 from pglast.parser import ParseError
 from pglast.stream import RawStream
 from pydantic.tools import parse_obj_as
@@ -96,7 +105,6 @@ from . import _verify_source_file_access
 
 router = APIRouter()
 
-
 # Special suffixes to do an extra area density calculation on the raster data set.
 AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "_ha_yr-1"]
 
@@ -128,7 +136,6 @@ async def query_dataset(
     /query/json.
     """
     dataset, version = dataset_version
-
     return f"/dataset/{dataset}/{version}/query/json?{request.query_params}"
 
 
@@ -227,7 +234,6 @@ async def query_dataset_csv(
     entire feature geometry, including areas outside the geostore
     boundaries.
     """
-
     dataset, version = dataset_version
     if geostore_id:
         geostore: Optional[GeostoreCommon] = await get_geostore(
@@ -262,7 +268,6 @@ async def query_dataset_post(
     /query/json.
     """
     dataset, version = dataset_version
-
     return f"/dataset/{dataset}/{version}/query/json"
 
 
@@ -373,7 +378,6 @@ async def query_dataset_list_post(
     so lists with several thousands of features can potentially be
     processed within that time limit.
     """
-
     dataset, version = dataset_version
 
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
@@ -401,7 +405,7 @@ async def query_dataset_list_post(
         dataset, default_asset.creation_options["pixel_meaning"]
     )
     grid = default_asset.creation_options["grid"]
-    sql = re.sub("from \w+", f"from {default_layer}", request.sql, flags=re.IGNORECASE)
+    sql = re.sub("from \\w+", f"from {default_layer}", request.sql, flags=re.IGNORECASE)
     data_environment = await _get_data_environment(grid)
 
     input = {
@@ -542,7 +546,7 @@ async def _query_table(
 ) -> List[Dict[str, Any]]:
     # Parse and validate SQL statement
     try:
-        parsed: Tuple[RawStmt] = parse_sql(unquote(sql))
+        parsed: List[RawStmt] = parse_sql(unquote(sql))
     except ParseError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -554,22 +558,27 @@ async def _query_table(
     _no_forbidden_functions(parsed)
     _no_forbidden_value_functions(parsed)
 
-    # always overwrite the table name with the current dataset version name, to make sure no other table is queried
-    parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
-        "schemaname"
-    ] = dataset
-    parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
-        "relname"
-    ] = version
+    # always overwrite the table name with the current dataset/version
+    # to make sure no other table is queried
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+
+    # FROM clause guaranteed to exist and have length 1 from validations
+    only_from = select_stmt.fromClause[0]
+    if isinstance(only_from, RangeVar):
+        only_from.schemaname = dataset
+        only_from.relname = version
+    else:
+        # Shouldn't happen because _only_one_from_table/_no_subqueries
+        raise HTTPException(status_code=400, detail="Unexpected FROM clause structure.")
 
     if geometry:
-        parsed = await _add_geometry_filter(parsed, geometry)
+        await _add_geometry_filter(select_stmt, geometry)
 
-    # convert back to text
-    sql = RawStream()(Node(parsed))
+    # convert back to SQL text
+    sql_out = RawStream()(parsed[0])
 
     try:
-        rows = await db.all(sql)
+        rows = await db.all(sql_out)
         response: List[Dict[str, Any]] = [dict(row) for row in rows]
     except InsufficientPrivilegeError:
         raise HTTPException(
@@ -601,44 +610,63 @@ def _orm_to_csv(
     return csv_file
 
 
-def _has_only_one_statement(parsed: Tuple[RawStmt]) -> None:
+def _has_only_one_statement(parsed: List[RawStmt]) -> None:
     if len(parsed) != 1:
         raise HTTPException(
             status_code=400, detail="Must use exactly one SQL statement."
         )
 
 
-def _is_select_statement(parsed: Tuple[RawStmt]) -> None:
+def _is_select_statement(parsed: List[RawStmt]) -> None:
     if not isinstance(parsed[0].stmt, SelectStmt):
         raise HTTPException(status_code=400, detail="Must use SELECT statements only.")
 
 
-def _has_no_with_clause(parsed: Tuple[RawStmt]) -> None:
-    select_stmt: SelectStmt = parsed[0].stmt
-    with_clause = select_stmt.withClause
-    if with_clause is not None:
+def _has_no_with_clause(parsed: List[RawStmt]) -> None:
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+    if getattr(select_stmt, "withClause", None) is not None:
         raise HTTPException(status_code=400, detail="Must not have WITH clause.")
 
 
-def _only_one_from_table(parsed: Tuple[RawStmt]) -> None:
-    select_stmt: SelectStmt = parsed[0].stmt
-    from_clause = select_stmt.fromClause
-    if not from_clause or len(from_clause) > 1:
+def _only_one_from_table(parsed: List[RawStmt]) -> None:
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+    from_clause = getattr(select_stmt, "fromClause", None)
+    if not from_clause or len(from_clause) != 1:
         raise HTTPException(
             status_code=400, detail="Must list exactly one table in FROM clause."
         )
 
 
-def _no_subqueries(parsed: Tuple[RawStmt]) -> None:
-    select_stmt: SelectStmt = parsed[0].stmt
-    from_clause = select_stmt.fromClause
+def _no_subqueries(parsed: List[RawStmt]) -> None:
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+    from_clause = getattr(select_stmt, "fromClause", [])
     for fc in from_clause:
         if isinstance(fc, RangeSubselect):
             raise HTTPException(status_code=400, detail="Must not use sub queries.")
 
 
-def _no_forbidden_functions(parsed: Tuple[RawStmt]) -> None:
-    functions = _get_item_value("FuncCall", parsed)
+def _walk_ast(node: Any) -> Iterable[Any]:
+    """Recursively walk a pglast AST node structure and yield every node.
+
+    Handles AST node classes, lists, and basic values.
+    """
+    if node is None:
+        return
+    yield node
+
+    # pglast nodes behave like dataclasses: iterate over attributes
+    if hasattr(node, "__dict__"):
+        for v in vars(node).values():
+            for sub in _walk_ast(v):
+                yield sub
+    elif isinstance(node, list):
+        for item in node:
+            for sub in _walk_ast(item):
+                yield sub
+
+
+def _no_forbidden_functions(parsed: List[RawStmt]) -> None:
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
 
     forbidden_function_list = [
         configuration_settings_functions,
@@ -666,78 +694,76 @@ def _no_forbidden_functions(parsed: Tuple[RawStmt]) -> None:
         control_data_functions,
     ]
 
-    for f in functions:
-        function_names = f["funcname"]
-        for fn in function_names:
-            function_name = fn["String"]["str"]
+    for node in _walk_ast(select_stmt):
+        if isinstance(node, FuncCall):
+            # node.funcname is a list of names or schema/name pieces
+            # Each element is typically a `String` node in newer pglast,
+            # but pglast wraps them as mini-nodes with .str
+            # We'll flatten to text parts and then join with '.' just in case.
+            func_parts: List[str] = []
+            for part in getattr(node, "funcname", []):
+                # pglast 6.x represents identifiers as ast.String(str='...')
+                func_parts.append(getattr(part, "str", ""))
 
-            # block functions which start with `pg_`, `PostGIS` or `_`
-            if (
-                function_name[:3].lower() == "pg_"
-                or function_name[:1].lower() == "_"
-                or function_name[:7].lower() == "postgis"
-            ):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Use of admin, system or private functions is not allowed.",
-                )
+            # Check each individual part because original code
+            # assumed simple unqualified function names.
+            for function_name in func_parts:
+                low = function_name.lower()
 
-            # Also block any other banished functions
-            for forbidden_functions in forbidden_function_list:
-                if function_name in forbidden_functions:
+                # block pg_*, private (_*), postgis*
+                if (
+                    low.startswith("pg_")
+                    or low.startswith("_")
+                    or low.startswith("postgis")
+                ):
                     raise HTTPException(
                         status_code=400,
                         detail="Use of admin, system or private functions is not allowed.",
                     )
 
+                # block explicit forbidden lists
+                for forbidden_functions in forbidden_function_list:
+                    if function_name in forbidden_functions:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Use of admin, system or private functions is not allowed.",
+                        )
 
-def _no_forbidden_value_functions(parsed: Tuple[RawStmt]) -> None:
-    value_functions = _get_item_value("SQLValueFunction", parsed)
-    if value_functions:
-        raise HTTPException(
-            status_code=400,
-            detail="Use of sql value functions is not allowed.",
+
+def _no_forbidden_value_functions(parsed: List[RawStmt]) -> None:
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+    for node in _walk_ast(select_stmt):
+        if isinstance(node, SQLValueFunction):
+            raise HTTPException(
+                status_code=400,
+                detail="Use of sql value functions is not allowed.",
+            )
+
+
+async def _add_geometry_filter(select_stmt: SelectStmt, geometry: Geometry) -> None:
+    """Mutate the SelectStmt's whereClause in-place to AND an ST_Intersects
+    check against the provided geometry."""
+    # Generate a tiny helper SELECT with the intersects clause and
+    # steal its whereClause AST. This is close to what was done previously,
+    # but using node attributes instead of dict keys.
+    geom_json = geometry.json()
+    intersect_filter_sql = (
+        "SELECT WHERE "
+        f"ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON('{geom_json}'),4326))"
+    )
+
+    parsed_filter: List[RawStmt] = parse_sql(intersect_filter_sql)
+    filter_select: SelectStmt = cast(SelectStmt, parsed_filter[0].stmt)
+    filter_where = filter_select.whereClause
+
+    if select_stmt.whereClause:
+        # Combine with AND
+        select_stmt.whereClause = BoolExpr(
+            boolop=BoolExprType.AND_EXPR,
+            args=[select_stmt.whereClause, filter_where],
         )
-
-
-def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Return all functions in an AST."""
-
-    # loop through statement recursively and yield all functions
-    def walk_dict(d):
-        for k, v in d.items():
-            if k == key:
-                yield v
-            if isinstance(v, dict):
-                yield from walk_dict(v)
-            elif isinstance(v, list):
-                for _v in v:
-                    yield from walk_dict(_v)
-
-    values: List[Dict[str, Any]] = list()
-    for p in parsed:
-        values += list(walk_dict(p))
-    return values
-
-
-async def _add_geometry_filter(parsed_sql, geometry: Geometry):
-    # make empty select statement with where clause including filter
-    # this way we can later parse it as AST
-    intersect_filter = f"SELECT WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON('{geometry.json()}'),4326))"
-
-    # combine the two where clauses
-    parsed_filter = parse_sql(intersect_filter)
-    filter_where = parsed_filter[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"]
-    sql_where = parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"].get("whereClause", None)
-
-    if sql_where:
-        parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = {
-            "BoolExpr": {"boolop": 0, "args": [sql_where, filter_where]}
-        }
     else:
-        parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = filter_where
-
-    return parsed_sql
+        select_stmt.whereClause = filter_where
 
 
 async def _query_raster(
@@ -754,7 +780,7 @@ async def _query_raster(
             status_code=400,
             detail=f"Geostore area exceeds limit of {GEOSTORE_SIZE_LIMIT_OTF} ha for raster analysis.",
         )
-    if geostore.geojson.type != "Polygon" and geostore.geojson.type != "MultiPolygon":
+    if geostore.geojson.type not in ("Polygon", "MultiPolygon"):
         raise HTTPException(
             status_code=400,
             detail="Geostore must be a Polygon or MultiPolygon for raster analysis",
@@ -763,7 +789,7 @@ async def _query_raster(
     # use default data type to get default raster layer for dataset
     default_layer = _get_default_layer(dataset, asset.creation_options["pixel_meaning"])
     grid = asset.creation_options["grid"]
-    sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
+    sql = re.sub("from \\w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
 
     return await _query_raster_lambda(
         geostore.geojson, sql, grid, format, delimiter, version_overrides
@@ -793,7 +819,7 @@ async def _query_raster_lambda(
     except httpx.TimeoutException:
         raise HTTPException(500, "Query took too long to process.")
 
-    # invalid response codes are reserved by Lambda specific issues (e.g. too many requests)
+    # invalid response codes are reserved by Lambda specific issues (e.g. throttling)
     if response.status_code >= 300:
         raise HTTPException(
             500,
@@ -802,6 +828,8 @@ async def _query_raster_lambda(
 
     # response must be in JSEND format or something unexpected happened
     response_body = response.json()
+
+    # validate JSEND-ish shape
     if "status" not in response_body or (
         "data" not in response_body and "message" not in response_body
     ):
@@ -820,16 +848,16 @@ async def _query_raster_lambda(
     return response_body
 
 
-def _get_area_density_name(nm):
-    """Return empty string if nm doesn't have an area-density suffix, else
-    return nm with the area-density suffix removed."""
+def _get_area_density_name(nm: str) -> str:
+    """Return '' if nm doesn't have an area-density suffix, else return nm with
+    the area-density suffix removed."""
     for suffix in AREA_DENSITY_RASTER_SUFFIXES:
         if nm.endswith(suffix):
             return nm[: -len(suffix)]
     return ""
 
 
-def _get_default_layer(dataset, pixel_meaning):
+def _get_default_layer(dataset: str, pixel_meaning: str) -> str:
     default_type = pixel_meaning
     area_density_name = _get_area_density_name(default_type)
     if default_type == "is":
@@ -873,7 +901,7 @@ async def _get_data_environment(
             Optional[Union[List[NoDataType], NoDataType]],
             creation_options["no_data"],
         )
-        if isinstance(no_data_val, List):
+        if isinstance(no_data_val, list):
             no_data_val = no_data_val[0]
 
         raster_table = getattr(row, "values_table", None)
