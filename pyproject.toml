@@ -24,7 +24,7 @@ dependencies = [
     "google-cloud-storage",
     "gunicorn",
     "httpcore",
-    "httpx",
+    "httpx<0.28",
     "httpx-auth",
     "newrelic",
     "numpy",
