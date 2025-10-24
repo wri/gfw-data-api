@@ -34,8 +34,9 @@ echo "YOUR_GHCR_TOKEN" | docker login ghcr.io -u GITHUB_USERNAME --password-stdi
 ### Developing
 * Activate the virtual environment installed with `scripts/setup`: `. .venv_uv/bin/activate`
 * Add a package as a project dependency, with minimum version: `uv add "pydantic>=2"`
-* Re-lock one particular package upgrading it to the latest version allowed by pins in pyproject.toml: `uv lock --upgrade-package <package_name>`
+* Re-lock one particular package, upgrading it to the latest version allowed by pins in pyproject.toml: `uv lock --upgrade-package <package_name>`
 * Re-lock all packages, upgrading those with newer versions (but obeying version pins in pyproject.toml): `uv lock --upgrade`
+* To create a virtual env at .venv with all project packages: `PATH=$PATH:<path to your libpq bin dir> LIBRARY_PATH=$LIBRARY_PATH:<path to your openssl lib dir> uv sync`
 * Generate a DB Migration: `./scripts/migrate` (note `app/settings/prestart.sh` will run migrations automatically when running `/scripts/develop`)
 * Run tests: `./scripts/test` and `./scripts/test_v2`'
   * `--no_build` - don't rebuild the containers

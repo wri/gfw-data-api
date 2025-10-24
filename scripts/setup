@@ -26,7 +26,7 @@ else
   echo "pg_config (needed to build psycopg2) NOT found in path"
   echo "If libpq is installed, add its binary directory to your path and try "
   echo "running setup script again. For example: "
-  echo "'PATH=\$PATH:/opt/homebrew/opt/libpq/bin ./scripts/setup' for "
+  echo "'PATH=\$PATH:/opt/homebrew/Cellar/libpq/18.0/bin ./scripts/setup' for "
   echo "libpg installed with homebrew"
   exit 1
 fi
@@ -35,7 +35,7 @@ echo "Installing deps into venv"
 echo "If this fails with a message like 'ld: library 'ssl' not found' "
 echo "try adding your OpenSSL dir to your library path like so (modify "
 echo "for your OpenSSL version): "
-echo "LIBRARY_PATH=/opt/homebrew/Cellar/openssl@3/3.4.0/lib ./scripts/setup"
+echo "LIBRARY_PATH=/opt/homebrew/Cellar/openssl@3/3.6.0/lib ./scripts/setup"
 uv sync --locked --no-install-project
 
 . ${VIRTUAL_ENV}/bin/activate
