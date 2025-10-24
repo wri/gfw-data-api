@@ -9,3 +9,12 @@ variable "parent_id" {
 variable "path_part" {
   type = string
 }
+
+variable "api_gateway_usage_plans" {
+  type        = map(any)
+  description = "Throttling limits for API Gateway"
+}
+
+variable "service_url" {
+  type = string
+}

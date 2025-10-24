@@ -1,14 +1,15 @@
-from functools import partial
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import patch
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
-from httpx import AsyncClient, MockTransport, Request, Response
+from httpx import AsyncClient
+from starlette.datastructures import QueryParams
 
-from app.crud import geostore as crud_geostore
-from app.models.pydantic.geostore import Geostore, RWGeostoreResponse
-from app.routes.geostore import geostore
-from app.utils import rw_api
+from app.models.pydantic.geostore import (
+    AdminGeostoreResponse,
+    AdminListResponse,
+    Geostore,
+    GeostoreResponse,
+)
 
 example_admin_list = {
     "data": [
@@ -26,6 +27,7 @@ example_admin_list = {
 
 
 example_admin_geostore_snipped = {
+    "status": "success",
     "data": {
         "type": "geoStore",
         "id": "851679102625f53c3254df99efbfba17",  # pragma: allowlist secret
@@ -75,11 +77,12 @@ example_admin_geostore_snipped = {
                 "iso": "MEX",
             },
         },
-    }
+    },
 }
 
 
 example_geostore_resp = {
+    "status": "success",
     "data": {
         "type": "geoStore",
         "id": "88db597b6bcd096fb80d1542cdc442be",  # pragma: allowlist secret
@@ -115,7 +118,32 @@ example_geostore_resp = {
             "lock": False,
             "info": {"use": {}, "wdpaid": 142809},
         },
-    }
+    },
+}
+
+real_sample_geostore_resp = {
+    "status": "success",
+    "data": {
+        "created_on": "2024-06-21T23:29:15.799130",
+        "updated_on": "2024-06-21T23:29:15.799136",
+        "gfw_geostore_id": "b9faa657-34c9-96d4-fce4-8bb8a1507cb3",
+        "gfw_geojson": {
+            "type": "MultiPolygon",
+            "coordinates": [
+                [
+                    [
+                        [10.67647934, 53.857791641],
+                        [10.699653625, 53.857791641],
+                        [10.699653625, 53.875758665],
+                        [10.67647934, 53.875758665],
+                        [10.67647934, 53.857791641],
+                    ]
+                ]
+            ],
+        },
+        "gfw_area__ha": 304.86964509449007,
+        "gfw_bbox": [10.67647934, 53.857791641, 10.699653625, 53.875758665],
+    },
 }
 
 
@@ -178,141 +206,302 @@ create_gfw_geostore_data = {
 
 
 @pytest.mark.asyncio
-async def test_get_admin_geostore(async_client: AsyncClient, monkeypatch: MonkeyPatch):
-    async def mock_resp_func(request: Request) -> Response:
-        return Response(status_code=200, json=example_admin_geostore_snipped)
+async def test_get_gadm_geostore_by_country_with_gadm_36_calls_rw_branch_with_correct_args(
+    apikey,
+    async_client: AsyncClient,
+):
+    country = "MEX"
+    url = f"/geostore/admin/{country}"
+    params = {"source[version]": "3.6"}
 
-    transport = MockTransport(mock_resp_func)
+    with patch(
+        "app.routes.geostore.geostore.rw_get_boundary_by_country_id",
+        return_value=AdminGeostoreResponse(**example_geostore_resp),
+    ) as mock_rw_get_boundary_by_country_id:
+        resp = await async_client.get(
+            url, params=params, headers={"x-api-key": apikey[0]}
+        )
 
-    mocked_client = partial(AsyncClient, transport=transport)
-    monkeypatch.setattr(rw_api, "AsyncClient", mocked_client)
-    response = await async_client.get("/geostore/admin/MEX/1/1")
-
-    assert response.json() == example_admin_geostore_snipped
-    assert response.status_code == 200
+    assert resp.status_code == 200
+    assert mock_rw_get_boundary_by_country_id.called is True
+    assert mock_rw_get_boundary_by_country_id.call_args.args == (
+        country,
+        QueryParams(params),
+    )
 
 
 @pytest.mark.asyncio
-async def test_get_admin_geostore_with_query_params(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
+async def test_get_gadm_geostore_by_country_with_gadm_41_calls_gfw_branch_with_correct_args(
+    apikey,
+    async_client: AsyncClient,
 ):
-    async def mock_resp_func(request: Request) -> Response:
-        assert "foo" in str(request.url)
-        return Response(status_code=200, json=example_admin_geostore_snipped)
+    country = "MEX"
+    url = f"/geostore/admin/{country}"
+    params = {"source[version]": "4.1"}
 
-    transport = MockTransport(mock_resp_func)
+    with patch(
+        "app.routes.geostore.geostore.geostore.get_gadm_geostore"
+    ) as mock_get_gadm_geostore:
+        mock_get_gadm_geostore.return_value = AdminGeostoreResponse(
+            **example_geostore_resp
+        )
+        resp = await async_client.get(
+            url, params=params, headers={"x-api-key": apikey[0]}
+        )
 
-    mocked_client = partial(AsyncClient, transport=transport)
-    monkeypatch.setattr(rw_api, "AsyncClient", mocked_client)
-    response = await async_client.get("/geostore/admin/MEX/1/1?foo=bar")
-
-    assert response.json() == example_admin_geostore_snipped
-    assert response.status_code == 200
+    assert resp.status_code == 200
+    assert mock_get_gadm_geostore.called is True
+    assert mock_get_gadm_geostore.call_args.args == ("gadm", "4.1", 0, None, country)
 
 
 @pytest.mark.asyncio
-async def test_add_geostore_rw_branch(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
+async def test_get_gadm_geostore_by_region_with_gadm_41_calls_gfw_branch_with_correct_args(
+    apikey,
+    async_client: AsyncClient,
 ):
+    country = "MEX"
+    region = "2"
+    url = f"/geostore/admin/{country}/{region}"
+    params = {"source[version]": "4.1"}
+
+    with patch(
+        "app.routes.geostore.geostore.geostore.get_gadm_geostore"
+    ) as mock_get_gadm_geostore:
+        mock_get_gadm_geostore.return_value = AdminGeostoreResponse(
+            **example_geostore_resp
+        )
+        _ = await async_client.get(url, params=params, headers={"x-api-key": apikey[0]})
+
+    assert mock_get_gadm_geostore.called is True
+    assert mock_get_gadm_geostore.call_args.args == (
+        "gadm",
+        "4.1",
+        1,
+        None,
+        country,
+        region,
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_gadm_geostore_by_subregion_with_gadm_41_calls_gfw_branch_with_correct_args(
+    apikey,
+    async_client: AsyncClient,
+):
+    country = "MEX"
+    region = "2"
+    subregion = "1"
+    url = f"/geostore/admin/{country}/{region}/{subregion}"
+    params = {"source[version]": "4.1"}
+
+    with patch(
+        "app.routes.geostore.geostore.geostore.get_gadm_geostore"
+    ) as mock_get_gadm_geostore:
+        mock_get_gadm_geostore.return_value = AdminGeostoreResponse(
+            **example_geostore_resp
+        )
+        resp = await async_client.get(
+            url, params=params, headers={"x-api-key": apikey[0]}
+        )
+
+    assert resp.status_code == 200
+    assert mock_get_gadm_geostore.called is True
+    assert mock_get_gadm_geostore.call_args.args == (
+        "gadm",
+        "4.1",
+        2,
+        None,
+        country,
+        region,
+        subregion,
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_gadm_geostore_by_subregion_without_specifying_version_proxies_to_rw(
+    apikey,
+    async_client: AsyncClient,
+):
+    country = "MEX"
+    region = "1"
+    subregion = "1"
+    url = f"/geostore/admin/{country}/{region}/{subregion}"
+
+    with patch(
+        "app.routes.geostore.geostore.get_boundary_by_subregion_id",
+        return_value=AdminGeostoreResponse(**example_admin_geostore_snipped),
+    ) as mock_get_boundary_by_subregion_id:
+        resp = await async_client.get(url, headers={"x-api-key": apikey[0]})
+
+    assert resp.status_code == 200
+    assert resp.json() == example_admin_geostore_snipped
+    assert mock_get_boundary_by_subregion_id.called is True
+    assert mock_get_boundary_by_subregion_id.call_args.args == (
+        country,
+        region,
+        subregion,
+        QueryParams(),
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_gadm_geostore_by_subregion_sends_arbitrary_query_params_to_rw(
+    apikey,
+    async_client: AsyncClient,
+):
+    country = "MEX"
+    region = "1"
+    subregion = "1"
+    url = f"/geostore/admin/{country}/{region}/{subregion}"
+    params = {"foo": "bar"}
+
+    with patch(
+        "app.routes.geostore.geostore.get_boundary_by_subregion_id",
+        return_value=AdminGeostoreResponse(**example_admin_geostore_snipped),
+    ) as mock_get_boundary_by_subregion_id:
+        resp = await async_client.get(
+            url, params=params, headers={"x-api-key": apikey[0]}
+        )
+
+    assert resp.status_code == 200
+    assert resp.json() == example_admin_geostore_snipped
+    assert mock_get_boundary_by_subregion_id.called is True
+    assert mock_get_boundary_by_subregion_id.call_args.args == (
+        country,
+        region,
+        subregion,
+        QueryParams(params),
+    )
+
+
+@pytest.mark.asyncio
+async def test_add_geostore_sends_rw_style_payloads_to_rw(async_client: AsyncClient):
     url = "/geostore"
 
-    mock_create_rw_geostore = AsyncMock(
-        return_value=RWGeostoreResponse(**create_rw_geostore_response),
-        spec=geostore.create_rw_geostore,
-    )
-    monkeypatch.setattr(geostore, "create_rw_geostore", mock_create_rw_geostore)
+    with patch(
+        "app.routes.geostore.geostore.create_rw_geostore",
+        return_value=AdminGeostoreResponse(**create_rw_geostore_response),
+    ) as mock_create_rw_geostore:
+        with patch(
+            "app.routes.geostore.geostore.geostore.create_user_area",
+            side_effect=Exception,
+        ) as mock_create_gfw_geostore:
+            resp = await async_client.post(
+                url, json=create_rw_geostore_payload, follow_redirects=True
+            )
 
-    mock_geostore_obj = MagicMock(spec=Geostore)
-    mock_create_gfw_geostore = AsyncMock(
-        return_value=mock_geostore_obj, spec=crud_geostore.create_user_area
-    )
-    monkeypatch.setattr(crud_geostore, "create_user_area", mock_create_gfw_geostore)
-
-    _ = await async_client.post(
-        url, json=create_rw_geostore_payload, follow_redirects=True
-    )
-
+    assert resp.status_code == 201
     assert mock_create_rw_geostore.called is True
     assert mock_create_gfw_geostore.called is False
 
 
 @pytest.mark.asyncio
-async def test_add_geostore_gfw_branch(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
-):
+async def test_add_geostore_sends_gfw_style_payloads_to_gfw(async_client: AsyncClient):
     url = "/geostore"
 
-    mock_create_rw_geostore = AsyncMock(
-        return_value=RWGeostoreResponse(**create_rw_geostore_response),
-        spec=geostore.create_rw_geostore,
-    )
-    monkeypatch.setattr(geostore, "create_rw_geostore", mock_create_rw_geostore)
+    with patch(
+        "app.routes.geostore.geostore.create_rw_geostore",
+        side_effect=Exception,
+    ) as mock_create_rw_geostore:
+        with patch(
+            "app.routes.geostore.geostore.geostore.create_user_area",
+            return_value=create_gfw_geostore_data,
+        ) as mock_create_gfw_geostore:
+            resp = await async_client.post(
+                url, json=create_gfw_geostore_payload, follow_redirects=True
+            )
 
-    mock_create_gfw_geostore = AsyncMock(
-        return_value=create_gfw_geostore_data, spec=crud_geostore.create_user_area
-    )
-    monkeypatch.setattr(crud_geostore, "create_user_area", mock_create_gfw_geostore)
-
-    _ = await async_client.post(
-        url, json=create_gfw_geostore_payload, follow_redirects=True
-    )
-
+    assert resp.status_code == 201
     assert mock_create_rw_geostore.called is False
     assert mock_create_gfw_geostore.called is True
 
 
 @pytest.mark.asyncio
-async def test_get_geostore_rw_branch(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
-):
+async def test_get_geostore_by_rw_style_id_proxies_to_rw(async_client: AsyncClient):
     url = "/geostore/88db597b6bcd096fb80d1542cdc442be"
 
-    mock_proxy_get_geostore = AsyncMock(
-        return_value=RWGeostoreResponse(**example_geostore_resp),
-        spec=geostore.proxy_get_geostore,
-    )
-    monkeypatch.setattr(geostore, "proxy_get_geostore", mock_proxy_get_geostore)
+    with patch(
+        "app.routes.geostore.geostore.geostore.get_gfw_geostore_from_any_dataset",
+        side_effect=Exception,
+    ) as mock_get_gfw_geostore_from_any_dataset:
+        with patch(
+            "app.routes.geostore.geostore.proxy_get_geostore",
+            return_value=GeostoreResponse.parse_obj(real_sample_geostore_resp),
+        ) as mock_proxy_get_geostore:
+            resp = await async_client.get(url)
 
-    mock_geostore_obj = MagicMock(spec=Geostore)
-    mock_get_gfw_geostore_from_any_dataset = AsyncMock(
-        return_value=mock_geostore_obj,
-        spec=crud_geostore.get_gfw_geostore_from_any_dataset,
-    )
-    monkeypatch.setattr(
-        crud_geostore,
-        "get_gfw_geostore_from_any_dataset",
-        mock_get_gfw_geostore_from_any_dataset,
-    )
-
-    _ = await async_client.get(url)
-
+    assert resp.status_code == 200
     assert mock_proxy_get_geostore.called is True
     assert mock_get_gfw_geostore_from_any_dataset.called is False
 
 
 @pytest.mark.asyncio
-async def test_get_geostore_gfw_branch(
-    async_client: AsyncClient, monkeypatch: MonkeyPatch
-):
-    url = "/geostore/db2b4428-bad2-fc94-1ea8-041597dc482c"
+async def test_get_geostore_by_gfw_style_id_queries_data_api(async_client: AsyncClient):
+    url = "/geostore/b9faa657-34c9-96d4-fce4-8bb8a1507cb3"
 
-    mock_proxy_get_geostore = AsyncMock(
-        return_value=RWGeostoreResponse(**example_geostore_resp),
-        spec=geostore.proxy_get_geostore,
-    )
-    monkeypatch.setattr(geostore, "proxy_get_geostore", mock_proxy_get_geostore)
+    with patch(
+        "app.routes.geostore.geostore.geostore.get_gfw_geostore_from_any_dataset",
+        return_value=Geostore.parse_obj(real_sample_geostore_resp["data"]),
+    ) as mock_get_gfw_geostore_from_any_dataset:
+        with patch(
+            "app.routes.geostore.geostore.proxy_get_geostore", side_effect=Exception
+        ) as mock_proxy_get_geostore:
+            resp = await async_client.get(url)
 
-    mock_get_gfw_geostore_from_any_dataset = AsyncMock(
-        return_value=Geostore(**create_gfw_geostore_data),
-        spec=crud_geostore.get_gfw_geostore_from_any_dataset,
-    )
-    monkeypatch.setattr(
-        crud_geostore,
-        "get_gfw_geostore_from_any_dataset",
-        mock_get_gfw_geostore_from_any_dataset,
-    )
-
-    _ = await async_client.get(url)
-
+    assert resp.status_code == 200
     assert mock_proxy_get_geostore.called is False
     assert mock_get_gfw_geostore_from_any_dataset.called is True
+
+
+@pytest.mark.asyncio
+async def test_get_admin_list_proxies_to_rw_when_no_source_info_is_provided(
+    apikey, async_client: AsyncClient
+):
+    url = "/geostore/admin/list"
+
+    with patch(
+        "app.routes.geostore.geostore.rw_get_admin_list"
+    ) as mock_rw_get_admin_list:
+        mock_rw_get_admin_list.return_value = AdminListResponse(**example_admin_list)
+        resp = await async_client.get(url, headers={"x-api-key": apikey[0]})
+
+    assert mock_rw_get_admin_list.called is True
+    assert resp.json().get("status") == "success"
+
+
+@pytest.mark.asyncio
+async def test_get_admin_list_proxies_to_rw_when_gadm_36_requested(
+    apikey, async_client: AsyncClient
+):
+    url = "/geostore/admin/list"
+    params = {"source[version]": "3.6"}
+
+    with patch(
+        "app.routes.geostore.geostore.rw_get_admin_list"
+    ) as mock_rw_get_admin_list:
+        mock_rw_get_admin_list.return_value = AdminListResponse(**example_admin_list)
+        resp = await async_client.get(
+            url, params=params, headers={"x-api-key": apikey[0]}
+        )
+
+    assert mock_rw_get_admin_list.called is True
+    assert resp.json().get("status") == "success"
+
+
+@pytest.mark.asyncio
+async def test_get_admin_list_gets_gadm_41_from_data_api(
+    apikey, async_client: AsyncClient
+):
+    url = "/geostore/admin/list"
+    params = {"source[version]": "4.1"}
+
+    with patch(
+        "app.routes.geostore.geostore.geostore.get_admin_boundary_list"
+    ) as mock_gfw_get_admin_list:
+        mock_gfw_get_admin_list.return_value = AdminListResponse(**example_admin_list)
+        resp = await async_client.get(
+            url, params=params, headers={"x-api-key": apikey[0]}
+        )
+
+    assert resp.json().get("status") == "success"
+    assert mock_gfw_get_admin_list.called is True

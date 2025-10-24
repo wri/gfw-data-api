@@ -1,4 +1,5 @@
 import json
+from itertools import chain
 import math
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -31,7 +32,7 @@ async def table_source_asset(
 
     callback: Callback = callback_constructor(asset_id)
 
-    # Create table schema
+    # Create table schema. Several source_uris and passed to ensure there is enough data to infer a schema.
     command = [
         "create_tabular_schema.sh",
         "-d",
@@ -42,8 +43,7 @@ async def table_source_asset(
         creation_options.delimiter.encode(
             "unicode_escape"
         ).decode(),  # Need to escape special characters such as TAB for batch job payload
-        "-s",
-        source_uris[0],
+        *chain.from_iterable(["-s", uri] for uri in source_uris[:5]), # '5' is arbitrary.
     ]
     if creation_options.table_schema:
         command.extend(
@@ -142,11 +142,8 @@ async def table_source_asset(
             creation_options.delimiter.encode(
                 "unicode_escape"
             ).decode(),  # Need to escape special characters such as TAB for batch job payload
+            *chain.from_iterable(["-s", uri] for uri in uri_chunk),
         ]
-
-        for uri in uri_chunk:
-            command.append("-s")
-            command.append(uri)
 
         if creation_options.latitude and creation_options.longitude:
             command += [
@@ -260,10 +257,8 @@ async def append_table_source_asset(
             creation_options.delimiter.encode(
                 "unicode_escape"
             ).decode(),  # Need to escape special characters such as TAB for batch job payload,
+            *chain.from_iterable(["-s", uri] for uri in uri_chunk),
         ]
-
-        for uri in uri_chunk:
-            command += ["-s", uri]
 
         if creation_options.latitude and creation_options.longitude:
             command += [

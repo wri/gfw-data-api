@@ -9,10 +9,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
-import botocore
 import httpx
 from async_lru import alru_cache
 from asyncpg import DataError, InsufficientPrivilegeError, SyntaxOrAccessError
+from botocore.client import BaseClient
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
@@ -65,7 +65,7 @@ from ...models.enum.pg_sys_functions import (
 from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
-from ...models.orm.queries.raster_assets import latest_raster_tile_sets
+from ...models.orm.queries.raster_assets import data_environment_raster_tile_sets
 from ...models.pydantic.asset_metadata import RasterTable, RasterTableRow
 from ...models.pydantic.creation_options import NoDataType
 from ...models.pydantic.geostore import Geometry, GeostoreCommon
@@ -89,6 +89,7 @@ from ...settings.globals import (
     RASTER_ANALYSIS_STATE_MACHINE_ARN,
 )
 from ...utils.aws import get_sfn_client, invoke_lambda
+from ...utils.decorators import hash_dict
 from ...utils.geostore import get_geostore
 from .. import dataset_version_dependency
 from . import _verify_source_file_access
@@ -360,7 +361,14 @@ async def query_dataset_list_post(
     "error", then there will be no results available (nothing was able
     to complete, possible because of an infrastructure problem).
 
-    There is currently a five-minute time limit on the entire list
+    Limitations
+
+    - The request payload must be under 256 KB. This limit does not apply
+    to features provided in a file referenced using the `uri`
+    field—use this option to include larger geometry data via an external
+    file.
+
+    - There is currently a five-minute time limit on the entire list
     query, but up to 100 individual feature queries proceed in parallel,
     so lists with several thousands of features can potentially be
     processed within that time limit.
@@ -426,17 +434,20 @@ async def query_dataset_list_post(
         )
 
     try:
-        await _start_batch_execution(job_id, input)
-    except botocore.exceptions.ClientError as error:
-        logger.error(error)
-        return HTTPException(500, "There was an error starting your job.")
+        sfn_client = get_sfn_client()
+        await _start_batch_execution(sfn_client, job_id, input)
+    except sfn_client.exceptions.ValidationException as e:
+        raise HTTPException(400, f"Input failed validation. Error details: {str(e)}")
+    except Exception as e:
+        logger.error(e)
+        return HTTPException(500, f"There was an error starting your job. Error details: {str(e)}")
 
     job_link = f"{API_URL}/job/{job_id}"
     return UserJobResponse(data=UserJob(job_id=job_id, job_link=job_link))
 
 
-async def _start_batch_execution(job_id: UUID, input: Dict[str, Any]) -> None:
-    get_sfn_client().start_execution(
+async def _start_batch_execution(sfn_client: BaseClient, job_id: UUID, input: Dict[str, Any]) -> None:
+    sfn_client.start_execution(
         stateMachineArn=RASTER_ANALYSIS_STATE_MACHINE_ARN,
         name=str(job_id),
         input=json.dumps(input),
@@ -448,6 +459,7 @@ async def _query_dataset_json(
     version: str,
     sql: str,
     geostore: Optional[GeostoreCommon],
+    raster_version_overrides: Dict[str, str] = {},
 ) -> List[Dict[str, Any]]:
     # Make sure we can query the dataset
     default_asset: AssetORM = await assets.get_default_asset(dataset, version)
@@ -457,7 +469,13 @@ async def _query_dataset_json(
         return await _query_table(dataset, version, sql, geometry)
     elif query_type == QueryType.raster:
         geostore = cast(GeostoreCommon, geostore)
-        results = await _query_raster(dataset, default_asset, sql, geostore)
+        results = await _query_raster(
+            dataset,
+            default_asset,
+            sql,
+            geostore,
+            version_overrides=raster_version_overrides,
+        )
         return results["data"]
     else:
         raise HTTPException(
@@ -725,6 +743,7 @@ async def _query_raster(
     geostore: GeostoreCommon,
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
+    version_overrides: Dict[str, str] = {},
 ) -> Dict[str, Any]:
     if geostore.area__ha > GEOSTORE_SIZE_LIMIT_OTF:
         raise HTTPException(
@@ -742,7 +761,9 @@ async def _query_raster(
     grid = asset.creation_options["grid"]
     sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
 
-    return await _query_raster_lambda(geostore.geojson, sql, grid, format, delimiter)
+    return await _query_raster_lambda(
+        geostore.geojson, sql, grid, format, delimiter, version_overrides
+    )
 
 
 async def _query_raster_lambda(
@@ -751,8 +772,9 @@ async def _query_raster_lambda(
     grid: Grid = Grid.ten_by_forty_thousand,
     format: QueryFormat = QueryFormat.json,
     delimiter: Delimiters = Delimiters.comma,
+    version_overrides: Dict[str, str] = {},
 ) -> Dict[str, Any]:
-    data_environment = await _get_data_environment(grid)
+    data_environment = await _get_data_environment(grid, version_overrides)
     payload = {
         "geometry": jsonable_encoder(geometry),
         "query": sql,
@@ -820,15 +842,19 @@ def _get_default_layer(dataset, pixel_meaning):
         return f"{dataset}__{default_type}"
 
 
+@hash_dict
 @alru_cache(maxsize=16, ttl=300.0)
-async def _get_data_environment(grid: Grid) -> DataEnvironment:
+async def _get_data_environment(
+    grid: Grid, version_overrides: Dict[str, str] = {}
+) -> DataEnvironment:
     # get all raster tile set assets with the same grid.
-    latest_tile_sets = await db.all(latest_raster_tile_sets, {"grid": grid})
+    sql = _get_data_environment_sql(version_overrides)
+    data_environment_tile_sets = await db.all(db.text(sql), {"grid": grid})
 
     # build list of layers, including any derived layers, for all
     # single-band rasters found
     layers: List[Layer] = []
-    for row in latest_tile_sets:
+    for row in data_environment_tile_sets:
         creation_options = row.creation_options
         # only include single band rasters
         if creation_options.get("band_count", 1) > 1:
@@ -946,3 +972,29 @@ def _get_predefined_layers(row, source_layer_name):
                 "calc": "A * area * (0.5 * 44 / 12)",
             }
         ]
+
+
+def _get_data_environment_sql(version_overrides: Dict[str, str]) -> str:
+    """Construct SQL to get data environment based on version overrides.
+
+    If no version overrides, just add condition to use latest versions.
+    If version overrides provided, return those specific versions, and
+    latest for the rest.
+    """
+    if not version_overrides:
+        sql = data_environment_raster_tile_sets + " AND versions.is_latest = true"
+    else:
+        override_datasets = tuple(version_overrides.keys())
+        override_filters = " OR ".join(
+            [
+                f"(assets.dataset = '{dataset}' AND assets.version = '{version}')"
+                for dataset, version in version_overrides.items()
+            ]
+        )
+
+        sql = (
+            data_environment_raster_tile_sets
+            + f" AND ((assets.dataset NOT IN {override_datasets} AND versions.is_latest = true) OR {override_filters})"
+        )
+
+    return sql

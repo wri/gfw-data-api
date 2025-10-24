@@ -29,6 +29,60 @@ SUPPORTED_FILE_EXTENSIONS: Sequence[str] = (
     ".zip",
 )
 
+OPENAPI_EXTRA_AOI = {
+    "parameters": [
+        {
+            "name": "aoi",
+            "in": "query",
+            "required": True,
+            "style": "deepObject",
+            "explode": True,
+            "examples": {
+                "Geostore Area Of Interest": {
+                    "summary": "Geostore Area Of Interest",
+                    "description": "Custom area",
+                    "value": {
+                        "type": "geostore",
+                        "geostore_id": "637d378f-93a9-4364-bfa8-95b6afd28c3a",
+                    },
+                },
+                "Admin Area Of Interest": {
+                    "summary": "Admin Area Of Interest",
+                    "description": "Administrative Boundary",
+                    "value": {
+                        "type": "admin",
+                        "country": "BRA",
+                        "region": "12",
+                        "subregion": "2",
+                    },
+                },
+                "Global": {
+                    "summary": "Global Extent",
+                    "description": "Full spatial extent of dataset",
+                    "value": {"type": "global"},
+                },
+                "WDPA Area Of Interest": {
+                    "summary": "WDPA Area Of Interest",
+                    "description": "World Database on Protected Areas (WDPA) Boundary",
+                    "value": {
+                        "type": "protected_area",
+                        "wdpa_id": "123",
+                    },
+                },
+            },
+            "description": "The Area of Interest",
+            "schema": {
+                "oneOf": [
+                    {"$ref": "#/components/schemas/GeostoreAreaOfInterest"},
+                    {"$ref": "#/components/schemas/AdminAreaOfInterest"},
+                    {"$ref": "#/components/schemas/Global"},
+                    {"$ref": "#/components/schemas/WdpaAreaOfInterest"},
+                ]
+            },
+        }
+    ]
+}
+
 
 async def verify_version_status(dataset, version):
     orm_version: ORMVersion = await _versions.get_version(dataset, version)

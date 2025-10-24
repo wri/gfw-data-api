@@ -38,48 +38,29 @@ locals {
 
 # Docker image for FastAPI app
 module "app_docker_image" {
-  source     = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
+  source     = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.5"
   image_name = substr(lower("${local.project}${local.name_suffix}"), 0, 64)
   root_dir   = "${path.root}/../"
   tag        = local.container_tag
 }
 
-# Docker image for GDAL Python Batch jobs
-module "batch_gdal_python_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
-  image_name      = substr(lower("${local.project}-gdal_python${local.name_suffix}"), 0, 64)
-  root_dir        = "${path.root}/../"
-  docker_path     = "batch"
-  docker_filename = "gdal-python.dockerfile"
-}
-
 # Docker image for PixETL Batch jobs
 module "batch_pixetl_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.5"
   image_name      = substr(lower("${local.project}-pixetl${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "pixetl.dockerfile"
 }
 
-# Docker image for PostgreSQL Client Batch jobs
-module "batch_postgresql_client_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
-  image_name      = substr(lower("${local.project}-postgresql_client${local.name_suffix}"), 0, 64)
+# Docker image for all Batch jobs except those requiring PixETL
+module "batch_universal_image" {
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.5"
+  image_name      = substr(lower("${local.project}-universal${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
-  docker_filename = "postgresql-client.dockerfile"
+  docker_filename = "universal_batch.dockerfile"
 }
-
-# Docker image for Tile Cache Batch jobs
-module "batch_tile_cache_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
-  image_name      = substr(lower("${local.project}-tile_cache${local.name_suffix}"), 0, 64)
-  root_dir        = "${path.root}/../"
-  docker_path     = "batch"
-  docker_filename = "tile_cache.dockerfile"
-}
-
 
 module "fargate_autoscaling" {
   source                       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.5"
@@ -118,6 +99,7 @@ module "fargate_autoscaling" {
   task_execution_role_policies = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.read_new_relic_secret.arn,
+    aws_iam_policy.read_rw_api_key_secret.arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_policy_arn
@@ -127,7 +109,7 @@ module "fargate_autoscaling" {
 
 # Using instance types with 1 core only
 module "batch_aurora_writer" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.3"
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.5"
   ecs_role_policy_arns = [
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
@@ -154,11 +136,12 @@ module "batch_aurora_writer" {
   use_ephemeral_storage    = false
   ebs_volume_size          = 60
   compute_environment_name = "aurora_sql_writer"
+  launch_type              = "EC2"
 }
 
 
 module "batch_data_lake_writer" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.3"
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.5"
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
@@ -186,7 +169,7 @@ module "batch_data_lake_writer" {
 }
 
 module "batch_cogify" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.3"
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.5"
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
@@ -221,10 +204,10 @@ module "batch_job_queues" {
   environment                        = var.environment
   name_suffix                        = local.name_suffix
   project                            = local.project
-  gdal_repository_url                = "${module.batch_gdal_python_image.repository_url}:latest"
+  gdal_repository_url                = "${module.batch_universal_image.repository_url}:latest"
   pixetl_repository_url              = "${module.batch_pixetl_image.repository_url}:latest"
-  postgres_repository_url            = "${module.batch_postgresql_client_image.repository_url}:latest"
-  tile_cache_repository_url          = "${module.batch_tile_cache_image.repository_url}:latest"
+  postgres_repository_url            = "${module.batch_universal_image.repository_url}:latest"
+  tile_cache_repository_url          = "${module.batch_universal_image.repository_url}:latest"
   iam_policy_arn = [
     "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
     aws_iam_policy.query_batch_jobs.arn,
@@ -246,4 +229,6 @@ module "api_gateway" {
   lambda_role_policy      = data.template_file.lambda_role_policy.rendered
   cloudwatch_policy       = data.local_file.cloudwatch_log_policy.content
   lambda_invoke_policy    = data.local_file.iam_lambda_invoke.content
+  api_gateway_usage_plans = var.api_gateway_usage_plans
+  service_url             = var.service_url
 }

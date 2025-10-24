@@ -21,7 +21,7 @@ def to_4326(crs: CRS, x: float, y: float) -> Tuple[float, float]:
 
 def extract_metadata_from_gdalinfo(gdalinfo_json: Dict[str, Any]) -> Dict[str, Any]:
     """Extract necessary metadata from the gdalinfo JSON output."""
-    corner_coordinates = gdalinfo_json["cornerCoordinates"]
+    wgs84Extent = gdalinfo_json["wgs84Extent"]["coordinates"][0]
     geo_transform = gdalinfo_json["geoTransform"]
 
     bands = [
@@ -52,16 +52,13 @@ def extract_metadata_from_gdalinfo(gdalinfo_json: Dict[str, Any]) -> Dict[str, A
         for band in gdalinfo_json.get("bands", [])
     ]
 
-    crs: CRS = CRS.from_string(gdalinfo_json["coordinateSystem"]["wkt"])
     metadata = {
-        # NOTE: pixetl seems to always write features in tiles.geojson in
-        # degrees (when the tiles themselves are epsg:3857 I think
-        # the units should be meters). Reproduce that behavior for
-        # backwards compatibility. If it ever changes, remove the call to
-        # to_4326 here.
+        # wgs84Extent is in decimal degrees, not meters.
         "extent": [
-            *to_4326(crs, *corner_coordinates["lowerLeft"]),
-            *to_4326(crs, *corner_coordinates["upperRight"]),
+            wgs84Extent[0][0],  # left of upperleft
+            wgs84Extent[2][1],  # bottom of lowerRight
+            wgs84Extent[2][0],  # right of lowerRight
+            wgs84Extent[0][1]   # top of upperLeft
         ],
         "width": gdalinfo_json["size"][0],
         "height": gdalinfo_json["size"][1],
@@ -108,11 +105,11 @@ def generate_geojsons(
                 extent = metadata["extent"]
                 # Create a Polygon from the extent
                 polygon_coords = [
-                    [extent[0], extent[1]],
-                    [extent[0], extent[3]],
-                    [extent[2], extent[3]],
-                    [extent[2], extent[1]],
-                    [extent[0], extent[1]],
+                    [extent[0], extent[3]],  # left/top
+                    [extent[2], extent[3]],  # right/top
+                    [extent[2], extent[1]],  # right/bottom
+                    [extent[0], extent[1]],  # left/bottom
+                    [extent[0], extent[3]],  # left/top
                 ]
                 polygon = Polygon(polygon_coords)
 

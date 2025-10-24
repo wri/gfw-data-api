@@ -146,6 +146,7 @@ AWS_GCS_KEY_SECRET_ARN = config("AWS_GCS_KEY_SECRET_ARN", cast=str, default=None
 AWS_SECRETSMANAGER_URL = config("AWS_SECRETSMANAGER_URL", cast=str, default=None)
 
 RW_API_URL = config("RW_API_URL", cast=str, default=None)
+RW_API_KEY = json.loads(config("RW_API_KEY", cast=str))["api-key"]
 
 HOUR: int = int(60 * 60)
 # Temporarily set high timeout for TCLF. See https://gfw.atlassian.net/browse/GTC-1843
@@ -187,7 +188,7 @@ RASTER_ANALYSIS_STATE_MACHINE_ARN = config(
 )
 
 # TODO: Find a good home for this:
-per_env_admin_boundary_versions: Dict[str, Dict[str, Dict]] = {
+per_env_admin_boundary_versions: Dict[str, Dict[str, Dict[str, str]]] = {
     "test": {
         "GADM": {
             "3.6": "v3.6",
@@ -201,12 +202,12 @@ per_env_admin_boundary_versions: Dict[str, Dict[str, Dict]] = {
     },
     "staging": {
         "GADM": {
-            "4.1": "v4.1.64",
+            "4.1": "v4.1.85",
         }
     },
     "production": {
         "GADM": {
-            "4.1": "v4.1.64",
+            "4.1": "v4.1.85",
         }
     },
 }
