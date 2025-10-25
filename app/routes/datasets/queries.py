@@ -30,6 +30,7 @@ from pglast.ast import (
     SelectStmt,
     SQLValueFunction,
 )
+from pglast.ast import String as PgString
 from pglast.enums import BoolExprType
 from pglast.parser import ParseError
 from pglast.stream import RawStream
@@ -107,6 +108,43 @@ router = APIRouter()
 
 # Special suffixes to do an extra area density calculation on the raster data set.
 AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "_ha_yr-1"]
+
+# compile once at module import
+_FORBIDDEN_PREFIXES_REGEX = re.compile(
+    r"""\b(
+        pg_[a-zA-Z0-9_]*   |   # pg_...
+        _[a-zA-Z0-9_]*     |   # _private...
+        postgis[a-zA-Z0-9_]*   # postgis...
+    )\s*\(                  # then an opening paren, i.e. it's being called
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+forbidden_function_list: List[List[str]] = [
+    configuration_settings_functions,
+    server_signaling_functions,
+    backup_control_functions,
+    recovery_information_functions,
+    recovery_control_functions,
+    snapshot_synchronization_functions,
+    replication_sql_functions,
+    database_object_size_functions,
+    database_object_location_functions,
+    collation_management_functions,
+    index_maintenance_functions,
+    generic_file_access_functions,
+    advisory_lock_functions,
+    table_rewrite_information,
+    session_information_functions,
+    access_privilege_inquiry_functions,
+    schema_visibility_inquiry_functions,
+    system_catalog_information_functions,
+    object_information_and_addressing_functions,
+    comment_information_functions,
+    transaction_ids_and_snapshots,
+    committed_transaction_information,
+    control_data_functions,
+]
 
 
 @router.get(
@@ -544,7 +582,10 @@ async def _query_table(
     sql: str,
     geometry: Optional[Geometry],
 ) -> List[Dict[str, Any]]:
-    # Parse and validate SQL statement
+    # 0. Pre-parse security gate on raw SQL
+    _reject_forbidden_functions_raw_sql(sql)
+
+    # 1. Parse and validate SQL statement
     try:
         parsed: List[RawStmt] = parse_sql(unquote(sql))
     except ParseError as e:
@@ -555,26 +596,26 @@ async def _query_table(
     _has_no_with_clause(parsed)
     _only_one_from_table(parsed)
     _no_subqueries(parsed)
+
+    # We *still* run the AST-level forbidden function checks as a backup:
     _no_forbidden_functions(parsed)
     _no_forbidden_value_functions(parsed)
 
-    # always overwrite the table name with the current dataset/version
-    # to make sure no other table is queried
+    # 2. Overwrite table name with the dataset/version we allow
     select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
 
-    # FROM clause guaranteed to exist and have length 1 from validations
     only_from = select_stmt.fromClause[0]
     if isinstance(only_from, RangeVar):
         only_from.schemaname = dataset
         only_from.relname = version
     else:
-        # Shouldn't happen because _only_one_from_table/_no_subqueries
         raise HTTPException(status_code=400, detail="Unexpected FROM clause structure.")
 
+    # 3. Geometry filter if present
     if geometry:
         await _add_geometry_filter(select_stmt, geometry)
 
-    # convert back to SQL text
+    # 4. Convert back to text
     sql_out = RawStream()(parsed[0])
 
     try:
@@ -582,9 +623,11 @@ async def _query_table(
         response: List[Dict[str, Any]] = [dict(row) for row in rows]
     except InsufficientPrivilegeError:
         raise HTTPException(
-            status_code=403, detail="Not authorized to execute this query."
+            status_code=403,
+            detail="Not authorized to execute this query.",
         )
     except (SyntaxOrAccessError, DataError) as e:
+        # Keep this exactly the same string prefix that your tests are expecting
         raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
 
     return response
@@ -608,6 +651,40 @@ def _orm_to_csv(
         csv_file.seek(0)
 
     return csv_file
+
+
+def _reject_forbidden_functions_raw_sql(sql: str) -> None:
+    """Quick-and-blunt protection pass on the raw SQL text, before AST parsing.
+
+    Blocks calls to:
+      - any function starting with pg_
+      - any function starting with _
+      - any function starting with postgis
+    Also blocks any specific function names in our forbidden lists
+    regardless of prefix, even if they don't match the patterns.
+    """
+    # Prefix-based block (pg_*, _*, postgis*)
+    if _FORBIDDEN_PREFIXES_REGEX.search(sql):
+        raise HTTPException(
+            status_code=400,
+            detail="Use of admin, system or private functions is not allowed.",
+        )
+
+    # Flatten once for convenience
+    forbidden_explicit = {
+        fn_name.lower() for group in forbidden_function_list for fn_name in group
+    }
+
+    # Look for any of those explicit function names followed by '('
+    # We'll match word boundary + name + optional schema qualification suffix pattern too.
+    for fname in forbidden_explicit:
+        # e.g. r"\bpg_reload_conf\s*\("
+        pat = re.compile(r"\b" + re.escape(fname) + r"\s*\(", re.IGNORECASE)
+        if pat.search(sql):
+            raise HTTPException(
+                status_code=400,
+                detail="Use of admin, system or private functions is not allowed.",
+            )
 
 
 def _has_only_one_statement(parsed: List[RawStmt]) -> None:
@@ -665,52 +742,55 @@ def _walk_ast(node: Any) -> Iterable[Any]:
                 yield sub
 
 
+def _identifier_text_any(part: Any) -> str:
+    # unwrap Node(...) if present
+    if hasattr(part, "node"):
+        return _identifier_text_any(part.node)
+
+    if isinstance(part, PgString):
+        sval = getattr(part, "sval", None)
+        if isinstance(sval, str):
+            return sval
+
+    # fallbacks
+    for attr in ("sval", "str", "val", "name"):
+        v = getattr(part, attr, None)
+        if isinstance(v, str) and v:
+            return v
+
+    return ""
+
+
 def _no_forbidden_functions(parsed: List[RawStmt]) -> None:
     select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
 
-    forbidden_function_list = [
-        configuration_settings_functions,
-        server_signaling_functions,
-        backup_control_functions,
-        recovery_information_functions,
-        recovery_control_functions,
-        snapshot_synchronization_functions,
-        replication_sql_functions,
-        database_object_size_functions,
-        database_object_location_functions,
-        collation_management_functions,
-        index_maintenance_functions,
-        generic_file_access_functions,
-        advisory_lock_functions,
-        table_rewrite_information,
-        session_information_functions,
-        access_privilege_inquiry_functions,
-        schema_visibility_inquiry_functions,
-        system_catalog_information_functions,
-        object_information_and_addressing_functions,
-        comment_information_functions,
-        transaction_ids_and_snapshots,
-        committed_transaction_information,
-        control_data_functions,
-    ]
+    # flatten + lowercase for easier testing
+    forbidden_explicit = {
+        fn_name.lower() for group in forbidden_function_list for fn_name in group
+    }
 
     for node in _walk_ast(select_stmt):
         if isinstance(node, FuncCall):
-            # node.funcname is a list of names or schema/name pieces
-            # Each element is typically a `String` node in newer pglast,
-            # but pglast wraps them as mini-nodes with .str
-            # We'll flatten to text parts and then join with '.' just in case.
             func_parts: List[str] = []
-            for part in getattr(node, "funcname", []):
-                # pglast 6.x represents identifiers as ast.String(str='...')
-                func_parts.append(getattr(part, "str", ""))
 
-            # Check each individual part because original code
-            # assumed simple unqualified function names.
+            # try to pull each identifier out of node.funcname
+            for part in getattr(node, "funcname", []):
+                txt = _identifier_text_any(part)
+                if txt:
+                    func_parts.append(txt)
+
+            # last-resort fallback: render the FuncCall and grab leading identifier
+            if not func_parts:
+                rendered = RawStream()(node)
+                # "postgis_full_version()" → "postgis_full_version"
+                candidate = rendered.split("(", 1)[0]
+                # handle qualification like "pg_catalog.pg_ls_dir"
+                func_parts = [candidate.split(".")[-1]]
+
             for function_name in func_parts:
                 low = function_name.lower()
 
-                # block pg_*, private (_*), postgis*
+                # prefix rules
                 if (
                     low.startswith("pg_")
                     or low.startswith("_")
@@ -721,13 +801,12 @@ def _no_forbidden_functions(parsed: List[RawStmt]) -> None:
                         detail="Use of admin, system or private functions is not allowed.",
                     )
 
-                # block explicit forbidden lists
-                for forbidden_functions in forbidden_function_list:
-                    if function_name in forbidden_functions:
-                        raise HTTPException(
-                            status_code=400,
-                            detail="Use of admin, system or private functions is not allowed.",
-                        )
+                # explicit ban list
+                if low in forbidden_explicit:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Use of admin, system or private functions is not allowed.",
+                    )
 
 
 def _no_forbidden_value_functions(parsed: List[RawStmt]) -> None:
