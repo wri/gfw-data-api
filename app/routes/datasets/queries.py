@@ -146,6 +146,28 @@ forbidden_function_list: List[List[str]] = [
     control_data_functions,
 ]
 
+_SQL_VALUE_KEYWORDS: List[str] = [
+    "current_catalog",
+    "current_schema",
+    "current_schemas",
+    "current_user",
+    "session_user",
+    "user",
+    "current_role",
+    "current_date",
+    "current_time",
+    "current_timestamp",
+    "localtime",
+    "localtimestamp",
+]
+
+# precompile one regex that matches any of these as standalone tokens
+# \b ensures word boundary, (?i) case-insensitive
+_sql_value_pattern = re.compile(
+    r"\b(" + "|".join(map(re.escape, _SQL_VALUE_KEYWORDS)) + r")\b",
+    re.IGNORECASE,
+)
+
 
 @router.get(
     "/{dataset}/{version}/query",
@@ -584,6 +606,7 @@ async def _query_table(
 ) -> List[Dict[str, Any]]:
     # 0. Pre-parse security gate on raw SQL
     _reject_forbidden_functions_raw_sql(sql)
+    _reject_sql_value_functions_raw_sql(sql)
 
     # 1. Parse and validate SQL statement
     try:
@@ -651,6 +674,19 @@ def _orm_to_csv(
         csv_file.seek(0)
 
     return csv_file
+
+
+def _reject_sql_value_functions_raw_sql(sql: str) -> None:
+    """Block bareword SQL value functions like CURRENT_CATALOG, CURRENT_USER,
+    etc. These are things Postgres normally exposes without parentheses.
+
+    If any of them appear in the SELECT list, raise immediately.
+    """
+    if _sql_value_pattern.search(sql):
+        raise HTTPException(
+            status_code=400,
+            detail="Use of sql value functions is not allowed.",
+        )
 
 
 def _reject_forbidden_functions_raw_sql(sql: str) -> None:
