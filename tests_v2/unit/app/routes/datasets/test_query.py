@@ -348,7 +348,7 @@ async def test_query_vector_asset_must_not_have_a_with_clause(
 
 
 @pytest.mark.asyncio()
-async def test_query_vector_asset_disallowed_1(
+async def test_query_vector_asset_sql_val_fcns_disallowed(
     generic_vector_source_version, apikey, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
@@ -364,6 +364,66 @@ async def test_query_vector_asset_disallowed_1(
     )
     assert response.status_code == 400
     assert response.json()["message"] == "Use of sql value functions is not allowed."
+
+
+@pytest.mark.asyncio()
+async def test_query_vector_asset_only_one_table_allowed(
+    generic_vector_source_version, apikey, async_client: AsyncClient
+):
+    dataset, version, _ = generic_vector_source_version
+
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+    headers = {"origin": origin, "x-api-key": api_key}
+
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM version, version2;",
+        headers=headers,
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert response.json()["message"] == "Must list exactly one table in FROM clause."
+
+
+@pytest.mark.asyncio()
+async def test_query_vector_asset_no_sub_queries_allowed(
+    generic_vector_source_version, apikey, async_client: AsyncClient
+):
+    dataset, version, _ = generic_vector_source_version
+
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+    headers = {"origin": origin, "x-api-key": api_key}
+
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM (select * from a) as b;",
+        headers=headers,
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert response.json()["message"] == "Must not use sub queries."
+
+
+@pytest.mark.asyncio()
+async def test_query_vector_asset_disallowed_1(
+    generic_vector_source_version, apikey, async_client: AsyncClient
+):
+    dataset, version, _ = generic_vector_source_version
+
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+    headers = {"origin": origin, "x-api-key": api_key}
+
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=SELECT PostGIS_Full_Version() FROM data;",
+        headers=headers,
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert (
+        response.json()["message"]
+        == "Use of admin, system or private functions is not allowed."
+    )
 
 
 @pytest.mark.asyncio()
