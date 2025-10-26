@@ -21,6 +21,7 @@ from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse, RedirectResponse
 from pglast import parse_sql
+from pglast.ast import RawStmt
 from pglast.parser import ParseError
 from pglast.stream import RawStream
 from pydantic.tools import parse_obj_as
@@ -541,7 +542,7 @@ async def _query_table(
 ) -> List[Dict[str, Any]]:
     # Parse and validate SQL statement
     try:
-        parsed = parse_sql(unquote(sql))
+        parsed: Tuple[RawStmt] = parse_sql(unquote(sql))
     except ParseError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -600,26 +601,26 @@ def _orm_to_csv(
     return csv_file
 
 
-def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
+def _has_only_one_statement(parsed: Tuple[RawStmt]) -> None:
     if len(parsed) != 1:
         raise HTTPException(
             status_code=400, detail="Must use exactly one SQL statement."
         )
 
 
-def _is_select_statement(parsed: List[Dict[str, Any]]) -> None:
+def _is_select_statement(parsed: Tuple[RawStmt]) -> None:
     select = parsed[0]["RawStmt"]["stmt"].get("SelectStmt", None)
     if not select:
         raise HTTPException(status_code=400, detail="Must use SELECT statements only.")
 
 
-def _has_no_with_clause(parsed: List[Dict[str, Any]]) -> None:
+def _has_no_with_clause(parsed: Tuple[RawStmt]) -> None:
     with_clause = parsed[0]["RawStmt"]["stmt"]["SelectStmt"].get("withClause", None)
     if with_clause:
         raise HTTPException(status_code=400, detail="Must not have WITH clause.")
 
 
-def _only_one_from_table(parsed: List[Dict[str, Any]]) -> None:
+def _only_one_from_table(parsed: Tuple[RawStmt]) -> None:
     from_clause = parsed[0]["RawStmt"]["stmt"]["SelectStmt"].get("fromClause", None)
     if not from_clause or len(from_clause) > 1:
         raise HTTPException(
@@ -627,7 +628,7 @@ def _only_one_from_table(parsed: List[Dict[str, Any]]) -> None:
         )
 
 
-def _no_subqueries(parsed: List[Dict[str, Any]]) -> None:
+def _no_subqueries(parsed: Tuple[RawStmt]) -> None:
     sub_query = parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0].get(
         "RangeSubselect", None
     )
@@ -635,7 +636,7 @@ def _no_subqueries(parsed: List[Dict[str, Any]]) -> None:
         raise HTTPException(status_code=400, detail="Must not use sub queries.")
 
 
-def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
+def _no_forbidden_functions(parsed: Tuple[RawStmt]) -> None:
     functions = _get_item_value("FuncCall", parsed)
 
     forbidden_function_list = [
@@ -689,7 +690,7 @@ def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
                     )
 
 
-def _no_forbidden_value_functions(parsed: List[Dict[str, Any]]) -> None:
+def _no_forbidden_value_functions(parsed: Tuple[RawStmt]) -> None:
     value_functions = _get_item_value("SQLValueFunction", parsed)
     if value_functions:
         raise HTTPException(
@@ -698,7 +699,7 @@ def _no_forbidden_value_functions(parsed: List[Dict[str, Any]]) -> None:
         )
 
 
-def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _get_item_value(key: str, parsed: Tuple[RawStmt]) -> List[Dict[str, Any]]:
     """Return all functions in an AST."""
 
     # loop through statement recursively and yield all functions
