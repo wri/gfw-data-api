@@ -20,10 +20,9 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse, RedirectResponse
-from pglast import printers  # noqa
-from pglast import Node, parse_sql
+from pglast import parse_sql
 from pglast.parser import ParseError
-from pglast.printer import RawStream
+from pglast.stream import RawStream
 from pydantic.tools import parse_obj_as
 
 from app.settings.globals import API_URL
@@ -440,13 +439,17 @@ async def query_dataset_list_post(
         raise HTTPException(400, f"Input failed validation. Error details: {str(e)}")
     except Exception as e:
         logger.error(e)
-        return HTTPException(500, f"There was an error starting your job. Error details: {str(e)}")
+        return HTTPException(
+            500, f"There was an error starting your job. Error details: {str(e)}"
+        )
 
     job_link = f"{API_URL}/job/{job_id}"
     return UserJobResponse(data=UserJob(job_id=job_id, job_link=job_link))
 
 
-async def _start_batch_execution(sfn_client: BaseClient, job_id: UUID, input: Dict[str, Any]) -> None:
+async def _start_batch_execution(
+    sfn_client: BaseClient, job_id: UUID, input: Dict[str, Any]
+) -> None:
     sfn_client.start_execution(
         stateMachineArn=RASTER_ANALYSIS_STATE_MACHINE_ARN,
         name=str(job_id),
@@ -562,10 +565,10 @@ async def _query_table(
         parsed = await _add_geometry_filter(parsed, geometry)
 
     # convert back to text
-    sql = RawStream()(Node(parsed))
+    sql_out = RawStream()(parsed[0])
 
     try:
-        rows = await db.all(sql)
+        rows = await db.all(sql_out)
         response: List[Dict[str, Any]] = [dict(row) for row in rows]
     except InsufficientPrivilegeError:
         raise HTTPException(
