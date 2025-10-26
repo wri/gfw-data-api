@@ -21,7 +21,7 @@ from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse, RedirectResponse
 from pglast import parse_sql
-from pglast.ast import RawStmt
+from pglast.ast import RangeSubselect, RawStmt, SelectStmt
 from pglast.parser import ParseError
 from pglast.stream import RawStream
 from pydantic.tools import parse_obj_as
@@ -609,31 +609,31 @@ def _has_only_one_statement(parsed: Tuple[RawStmt]) -> None:
 
 
 def _is_select_statement(parsed: Tuple[RawStmt]) -> None:
-    select = parsed[0]["RawStmt"]["stmt"].get("SelectStmt", None)
-    if not select:
+    if not isinstance(parsed[0].stmt, SelectStmt):
         raise HTTPException(status_code=400, detail="Must use SELECT statements only.")
 
 
 def _has_no_with_clause(parsed: Tuple[RawStmt]) -> None:
-    with_clause = parsed[0]["RawStmt"]["stmt"]["SelectStmt"].get("withClause", None)
-    if with_clause:
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+    if getattr(select_stmt, "withClause", None) is not None:
         raise HTTPException(status_code=400, detail="Must not have WITH clause.")
 
 
 def _only_one_from_table(parsed: Tuple[RawStmt]) -> None:
-    from_clause = parsed[0]["RawStmt"]["stmt"]["SelectStmt"].get("fromClause", None)
-    if not from_clause or len(from_clause) > 1:
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+    from_clause = getattr(select_stmt, "fromClause", None)
+    if not from_clause or len(from_clause) != 1:
         raise HTTPException(
             status_code=400, detail="Must list exactly one table in FROM clause."
         )
 
 
 def _no_subqueries(parsed: Tuple[RawStmt]) -> None:
-    sub_query = parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0].get(
-        "RangeSubselect", None
-    )
-    if sub_query:
-        raise HTTPException(status_code=400, detail="Must not use sub queries.")
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+    from_clause = getattr(select_stmt, "fromClause", [])
+    for fc in from_clause:
+        if isinstance(fc, RangeSubselect):
+            raise HTTPException(status_code=400, detail="Must not use sub queries.")
 
 
 def _no_forbidden_functions(parsed: Tuple[RawStmt]) -> None:
