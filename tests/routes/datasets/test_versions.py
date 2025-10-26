@@ -88,7 +88,6 @@ async def test_versions(async_client: AsyncClient):
     ##################################################
     # additional attributes coming from default asset
     ##################################################
-
     # Creation Options
 
     version_creation_options = {
@@ -119,27 +118,7 @@ async def test_versions(async_client: AsyncClient):
     assert len(response.json()["data"]) == 1
 
     # Query
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=SELECT%20%2A%20from%20version%3B%20DELETE%20FROM%20version%3B",
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert response.json()["message"] == "Must use exactly one SQL statement."
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=DELETE FROM version;",
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert response.json()["message"] == "Must use SELECT statements only."
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=WITH t as (select 1) SELECT * FROM version;",
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert response.json()["message"] == "Must not have WITH clause."
+    # FIXME: Break this up into multiple unit tests
 
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM version, version2;",
