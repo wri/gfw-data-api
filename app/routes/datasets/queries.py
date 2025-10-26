@@ -5,7 +5,7 @@ import json
 import re
 import uuid
 from io import StringIO
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 from urllib.parse import unquote
 from uuid import UUID, uuid4
 
@@ -21,7 +21,8 @@ from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse, RedirectResponse
 from pglast import parse_sql
-from pglast.ast import RangeSubselect, RawStmt, SelectStmt
+from pglast.ast import FuncCall, RangeSubselect, RawStmt, SelectStmt, SQLValueFunction
+from pglast.ast import String as PgString
 from pglast.parser import ParseError
 from pglast.stream import RawStream
 from pydantic.tools import parse_obj_as
@@ -99,6 +100,36 @@ router = APIRouter()
 
 # Special suffixes to do an extra area density calculation on the raster data set.
 AREA_DENSITY_RASTER_SUFFIXES = ["_ha-1", "_ha_yr-1"]
+
+forbidden_function_group_list: List[List[str]] = [
+    configuration_settings_functions,
+    server_signaling_functions,
+    backup_control_functions,
+    recovery_information_functions,
+    recovery_control_functions,
+    snapshot_synchronization_functions,
+    replication_sql_functions,
+    database_object_size_functions,
+    database_object_location_functions,
+    collation_management_functions,
+    index_maintenance_functions,
+    generic_file_access_functions,
+    advisory_lock_functions,
+    table_rewrite_information,
+    session_information_functions,
+    access_privilege_inquiry_functions,
+    schema_visibility_inquiry_functions,
+    system_catalog_information_functions,
+    object_information_and_addressing_functions,
+    comment_information_functions,
+    transaction_ids_and_snapshots,
+    committed_transaction_information,
+    control_data_functions,
+]
+
+forbidden_functions: Set[str] = {
+    fn_name.lower() for group in forbidden_function_group_list for fn_name in group
+}
 
 
 @router.get(
@@ -637,61 +668,29 @@ def _no_subqueries(parsed: Tuple[RawStmt]) -> None:
 
 
 def _no_forbidden_functions(parsed: Tuple[RawStmt]) -> None:
-    functions = _get_item_value("FuncCall", parsed)
+    for function_name in _get_function_names(FuncCall, parsed):
+        func_name_lower = function_name.lower()
+        # block functions which start with `pg_`, `PostGIS` or `_`
+        if (
+            func_name_lower.startswith("pg_")
+            or func_name_lower.startswith("_")
+            or func_name_lower.startswith("postgis")
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Use of admin, system or private functions is not allowed.",
+            )
 
-    forbidden_function_list: List[List[str]] = [
-        configuration_settings_functions,
-        server_signaling_functions,
-        backup_control_functions,
-        recovery_information_functions,
-        recovery_control_functions,
-        snapshot_synchronization_functions,
-        replication_sql_functions,
-        database_object_size_functions,
-        database_object_location_functions,
-        collation_management_functions,
-        index_maintenance_functions,
-        generic_file_access_functions,
-        advisory_lock_functions,
-        table_rewrite_information,
-        session_information_functions,
-        access_privilege_inquiry_functions,
-        schema_visibility_inquiry_functions,
-        system_catalog_information_functions,
-        object_information_and_addressing_functions,
-        comment_information_functions,
-        transaction_ids_and_snapshots,
-        committed_transaction_information,
-        control_data_functions,
-    ]
-
-    for f in functions:
-        function_names = f["funcname"]
-        for fn in function_names:
-            function_name = fn["String"]["str"]
-
-            # block functions which start with `pg_`, `PostGIS` or `_`
-            if (
-                function_name[:3].lower() == "pg_"
-                or function_name[:1].lower() == "_"
-                or function_name[:7].lower() == "postgis"
-            ):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Use of admin, system or private functions is not allowed.",
-                )
-
-            # Also block any other banished functions
-            for forbidden_functions in forbidden_function_list:
-                if function_name in forbidden_functions:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Use of admin, system or private functions is not allowed.",
-                    )
+        # Also block any other banished functions
+        if func_name_lower in forbidden_functions:
+            raise HTTPException(
+                status_code=400,
+                detail="Use of admin, system or private functions is not allowed.",
+            )
 
 
 def _no_forbidden_value_functions(parsed: Tuple[RawStmt]) -> None:
-    value_functions = _get_item_value("SQLValueFunction", parsed)
+    value_functions = _get_function_names(SQLValueFunction, parsed)
     if value_functions:
         raise HTTPException(
             status_code=400,
@@ -699,24 +698,73 @@ def _no_forbidden_value_functions(parsed: Tuple[RawStmt]) -> None:
         )
 
 
-def _get_item_value(key: str, parsed: Tuple[RawStmt]) -> List[Dict[str, Any]]:
-    """Return all functions in an AST."""
+def _walk_ast(node: Any) -> Iterable[Any]:
+    """Recursively walk a pglast AST node structure and yield every node.
 
-    # loop through statement recursively and yield all functions
-    def walk_dict(d):
-        for k, v in d.items():
-            if k == key:
-                yield v
-            if isinstance(v, dict):
-                yield from walk_dict(v)
-            elif isinstance(v, list):
-                for _v in v:
-                    yield from walk_dict(_v)
+    Handles AST node classes, iterables, and basic values.
+    """
+    if node is None:
+        return
+    yield node
 
-    values: List[Dict[str, Any]] = list()
-    for p in parsed:
-        values += list(walk_dict(p))
-    return values
+    # pglast nodes behave like dataclasses: iterate over attributes
+    if hasattr(node, "__dict__"):
+        for v in vars(node).values():
+            for sub in _walk_ast(v):
+                yield sub
+    elif isinstance(node, (List, Tuple)):
+        for item in node:
+            for sub in _walk_ast(item):
+                yield sub
+
+
+def _identifier_text_any(part: Any) -> str:
+    # unwrap Node(...) if present
+    if hasattr(part, "node"):
+        return _identifier_text_any(part.node)
+
+    if isinstance(part, PgString):
+        sval = getattr(part, "sval", None)
+        if isinstance(sval, str):
+            return sval
+
+    # fallbacks
+    for attr in ("sval", "str", "val", "name"):
+        v = getattr(part, attr, None)
+        if isinstance(v, str) and v:
+            return v
+
+    return ""
+
+
+def _get_function_names(node_type, parsed: Tuple[RawStmt]) -> List[str]:
+    """Return all function names of a particular type in an AST."""
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+
+    func_names: List[str] = []
+
+    for node in _walk_ast(select_stmt):
+        if isinstance(node, node_type):
+            func_parts: List[str] = []
+
+            # try to pull each identifier out of node.funcname
+            for part in getattr(node, "funcname", []):
+                txt = _identifier_text_any(part)
+                if txt:
+                    func_parts.append(txt)
+
+            # last-resort fallback: render the FuncCall and grab leading identifier
+            if not func_parts:
+                rendered = RawStream()(node)
+                # "postgis_full_version()" → "postgis_full_version"
+                candidate = rendered.split("(", 1)[0]
+                # handle qualification like "pg_catalog.pg_ls_dir"
+                func_parts = [candidate.split(".")[-1]]
+
+            for func_name in func_parts:
+                func_names.append(func_name)
+
+    return func_names
 
 
 async def _add_geometry_filter(parsed_sql, geometry: Geometry):
