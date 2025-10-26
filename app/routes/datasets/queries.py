@@ -639,7 +639,7 @@ def _no_subqueries(parsed: Tuple[RawStmt]) -> None:
 def _no_forbidden_functions(parsed: Tuple[RawStmt]) -> None:
     functions = _get_item_value("FuncCall", parsed)
 
-    forbidden_function_list = [
+    forbidden_function_list: List[List[str]] = [
         configuration_settings_functions,
         server_signaling_functions,
         backup_control_functions,
