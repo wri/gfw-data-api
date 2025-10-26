@@ -21,7 +21,14 @@ from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse, RedirectResponse
 from pglast import parse_sql
-from pglast.ast import FuncCall, RangeSubselect, RawStmt, SelectStmt, SQLValueFunction
+from pglast.ast import (
+    FuncCall,
+    RangeSubselect,
+    RangeVar,
+    RawStmt,
+    SelectStmt,
+    SQLValueFunction,
+)
 from pglast.ast import String as PgString
 from pglast.parser import ParseError
 from pglast.stream import RawStream
@@ -668,7 +675,9 @@ def _no_subqueries(parsed: Tuple[RawStmt]) -> None:
 
 
 def _no_forbidden_functions(parsed: Tuple[RawStmt]) -> None:
-    for function_name in _get_function_names(FuncCall, parsed):
+    function_names = _get_function_names(FuncCall, parsed)
+
+    for function_name in function_names:
         func_name_lower = function_name.lower()
         # block functions which start with `pg_`, `PostGIS` or `_`
         if (
@@ -698,43 +707,39 @@ def _no_forbidden_value_functions(parsed: Tuple[RawStmt]) -> None:
         )
 
 
-def _walk_ast(node: Any) -> Iterable[Any]:
+def _walk_ast(node: Any, visited: Optional[set] = None) -> Iterable[Any]:
     """Recursively walk a pglast AST node structure and yield every node.
 
     Handles AST node classes, iterables, and basic values.
     """
     if node is None:
         return
+
+    # Use visited set to prevent infinite loops
+    if visited is None:
+        visited = set()
+
+    # Use id() to track visited objects
+    node_id = id(node)
+    if node_id in visited:
+        return
+    visited.add(node_id)
+
     yield node
 
-    # pglast nodes behave like dataclasses: iterate over attributes
-    if hasattr(node, "__dict__"):
-        for v in vars(node).values():
-            for sub in _walk_ast(v):
-                yield sub
-    elif isinstance(node, (List, Tuple)):
+    # Handle tuples and lists (like targetList, fromClause)
+    if isinstance(node, (tuple, list)):
         for item in node:
-            for sub in _walk_ast(item):
-                yield sub
-
-
-def _identifier_text_any(part: Any) -> str:
-    # unwrap Node(...) if present
-    if hasattr(part, "node"):
-        return _identifier_text_any(part.node)
-
-    if isinstance(part, PgString):
-        sval = getattr(part, "sval", None)
-        if isinstance(sval, str):
-            return sval
-
-    # fallbacks
-    for attr in ("sval", "str", "val", "name"):
-        v = getattr(part, attr, None)
-        if isinstance(v, str) and v:
-            return v
-
-    return ""
+            yield from _walk_ast(item, visited)
+    # Handle pglast v7 nodes which use __slots__ (a dict in v7)
+    elif hasattr(node, "__slots__") and isinstance(node.__slots__, dict):
+        for attr_name in node.__slots__.keys():
+            attr_value = getattr(node, attr_name, None)
+            yield from _walk_ast(attr_value, visited)
+    # Fallback for nodes with __dict__
+    elif hasattr(node, "__dict__"):
+        for attr_value in node.__dict__.values():
+            yield from _walk_ast(attr_value, visited)
 
 
 def _get_function_names(node_type, parsed: Tuple[RawStmt]) -> List[str]:
@@ -745,24 +750,43 @@ def _get_function_names(node_type, parsed: Tuple[RawStmt]) -> List[str]:
 
     for node in _walk_ast(select_stmt):
         if isinstance(node, node_type):
-            func_parts: List[str] = []
+            # Extract function name from funcname attribute
+            funcname_list = getattr(node, "funcname", [])
 
-            # try to pull each identifier out of node.funcname
-            for part in getattr(node, "funcname", []):
-                txt = _identifier_text_any(part)
+            # Collect all parts of the function name (handles schema.function notation)
+            func_parts: List[str] = []
+            for part in funcname_list:
+                txt = None
+                # Try different ways to extract the string value
+                if isinstance(part, str):
+                    txt = part
+                elif isinstance(part, PgString):
+                    txt = part.sval
+                elif hasattr(part, "node"):
+                    # Wrapped node - try to get String from it
+                    inner = part.node
+                    if isinstance(inner, PgString):
+                        txt = inner.sval
+                    elif isinstance(inner, str):
+                        txt = inner
+                elif hasattr(part, "sval"):
+                    txt = part.sval
+
                 if txt:
                     func_parts.append(txt)
 
-            # last-resort fallback: render the FuncCall and grab leading identifier
-            if not func_parts:
+            # If we successfully extracted parts, use the last one (the actual function name)
+            # In qualified names like "pg_catalog.pg_ls_dir", we want "pg_ls_dir"
+            if func_parts:
+                func_names.append(func_parts[-1])
+            else:
+                # Fallback: render the FuncCall and grab leading identifier
                 rendered = RawStream()(node)
-                # "postgis_full_version()" → "postgis_full_version"
-                candidate = rendered.split("(", 1)[0]
-                # handle qualification like "pg_catalog.pg_ls_dir"
-                func_parts = [candidate.split(".")[-1]]
-
-            for func_name in func_parts:
-                func_names.append(func_name)
+                candidate = rendered.split("(", 1)[0].strip()
+                # Handle qualification like "pg_catalog.pg_ls_dir"
+                func_name = candidate.split(".")[-1]
+                if func_name:
+                    func_names.append(func_name)
 
     return func_names
 
