@@ -46,7 +46,7 @@ async def put_asset(
     input_data: Dict[str, Any],
     constructor: FrozenSet[Union[AssetType, SourceType]] = ASSET_PIPELINES,
 ) -> None:
-    """Call Asset Pipeline.
+    """Call Asset Pipeline to actually create the data of the asset.
 
     Default assets use source_type for identification. All other assets
     use asset_type directly.

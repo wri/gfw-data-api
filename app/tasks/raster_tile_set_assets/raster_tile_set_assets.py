@@ -21,7 +21,7 @@ from app.models.pydantic.statistics import BandStats, Histogram, RasterStats
 from app.settings.globals import DATA_LAKE_BUCKET
 from app.tasks import Callback, callback_constructor
 from app.tasks.batch import execute
-from app.tasks.raster_tile_set_assets.utils import create_pixetl_job, create_unify_projection_job
+from app.tasks.raster_tile_set_assets.utils import create_pixetl_job, create_unify_projection_job, create_copy_solo_tiles_job
 from app.utils.aws import get_s3_client
 from app.utils.path import (
     get_asset_uri,
@@ -43,7 +43,7 @@ async def raster_tile_set_asset(
     # If being created as a source (default) asset, creation_options["source_uri"]
     # will be a list. When being created as an auxiliary asset, it will be None.
     # In the latter case we will generate one for pixETL based on the default asset,
-    # below.
+    # below.  NOTE: auxiliary_assets is ignored if source_uri option is set.
 
     co = deepcopy(input_data["creation_options"])
 
@@ -92,16 +92,24 @@ async def raster_tile_set_asset(
         jobs.append(unify_job)
         creation_options.source_uri = new_src_uris
 
-    jobs.append(
-        await create_pixetl_job(
-            dataset,
-            version,
-            creation_options,
-            "create_raster_tile_set",
-            callback,
-            [unify_job] if unify_job is not None else None,
-        )
+    pixetl_job = await create_pixetl_job(
+        dataset,
+        version,
+        creation_options,
+        "create_raster_tile_set",
+        callback,
+        [unify_job] if unify_job is not None else None,
     )
+    jobs.append(pixetl_job)
+
+    if creation_options.copy_solo_tiles:
+        # Copy the solo tiles from the last source URI after the main raster job
+        # (which should have union_bands = False) has finished.
+        copy_solo_job = await create_copy_solo_tiles_job(
+            dataset, creation_options.source_uri[-1],
+            default_asset.asset_uri, "copy_solo_tiles",
+            callback, [pixetl_job])
+        jobs.append(copy_solo_job)
 
     log: ChangeLog = await execute(jobs)
 
