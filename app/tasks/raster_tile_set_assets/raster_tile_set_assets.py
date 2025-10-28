@@ -75,7 +75,7 @@ async def raster_tile_set_asset(
     if creation_options.unify_projection:
         target_crs = "epsg:4326"
         new_src_uris = list()
-        for i,_ in enumerate(creation_options.source_uri):
+        for i, _ in enumerate(creation_options.source_uri):
             new_src_uris.append(
                 f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/"
                 f"{target_crs.replace(':', '-')}/reprojected/SRC_{i}"
@@ -105,9 +105,10 @@ async def raster_tile_set_asset(
     if creation_options.copy_solo_tiles:
         # Copy the solo tiles from the last source URI after the main raster job
         # (which should have union_bands = False) has finished.
+        da: ORMAsset = await get_default_asset(dataset, version)
         copy_solo_job = await create_copy_solo_tiles_job(
             dataset, creation_options.source_uri[-1],
-            default_asset.asset_uri, "copy_solo_tiles",
+            da.asset_uri, "copy_solo_tiles",
             callback, [pixetl_job])
         jobs.append(copy_solo_job)
 
