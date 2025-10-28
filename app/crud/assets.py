@@ -187,6 +187,9 @@ async def get_default_asset(dataset: str, version: str) -> ORMAsset:
 
 
 async def create_asset(dataset, version, **data) -> ORMAsset:
+    '''Write the asset information into the database.  put_asset runs the actual
+    asset pipeline to create the asset data.'''
+
     v: ORMVersion = await versions.get_version(dataset, version)
 
     # default to version.is_downloadable if not set

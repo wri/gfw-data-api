@@ -260,3 +260,29 @@ async def create_unify_projection_job(
         environment=JOB_ENV,
         callback=callback,
     )
+
+
+async def create_copy_solo_tiles_job(
+    dataset: str,
+    source_uri: str,
+    target_uri: str,
+    job_name: str,
+    callback: Callback,
+    parents: Optional[List[Job]] = None,
+) -> GDAL2TilesJob:
+    command = [
+        "copy_solo_tiles.sh",
+        "--source",
+        source_uri,
+        "--target",
+        target_uri,
+    ]
+
+    return GDAL2TilesJob(
+        dataset=dataset,
+        job_name=job_name,
+        command=command,
+        environment=JOB_ENV,
+        callback=callback,
+        parents=[parent.job_name for parent in parents] if parents else None,
+    )
