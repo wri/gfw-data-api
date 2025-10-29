@@ -18,7 +18,7 @@ ME=$(basename "$0")
 . get_arguments.sh "$@"
 
 # Remove s3:// start of the uris.
-spath="${SOURCE#s3://}"
+spath="${SRC#s3://}"
 tpath="${TARGET#s3://}"
 
 # Separate into path components
@@ -27,11 +27,11 @@ IFS='/' read -r -a tcomponents <<< "$tpath"
 
 # The uris should end in either geotiff/tiles.geojson or geotiff/{tile_id}.tif
 if [[ ${#scomponents[@]} -ne 10 || ${scomponents[8]} -ne "geotiff" ]]; then
-    echo "Error: bad format for target $source"
+    echo "Error: bad format for source $SRC"
     exit 1
 fi
 if [[ ${#tcomponents[@]} -ne 10 || ${tcomponents[8]} -ne "geotiff" ]]; then
-    echo "Error: bad format for target $target"
+    echo "Error: bad format for target $TARGET"
     exit 1
 fi
 
@@ -41,7 +41,7 @@ smeaning="${scomponents[7]}"
 tversion="${tcomponents[1]}/${tcomponents[2]}"
 tmeaning="${tcomponents[7]}"
 
-# Same as SOURCE and TARGET, but with geotiff/{...} removed
+# Same as SRC and TARGET, but with geotiff/{...} removed
 source="s3://${scomponents[0]}/$sversion/${scomponents[3]}/${scomponents[4]}/${scomponents[5]}/${scomponents[6]}/${scomponents[7]}"
 target="s3://${tcomponents[0]}/$tversion/${tcomponents[3]}/${tcomponents[4]}/${tcomponents[5]}/${tcomponents[6]}/${tcomponents[7]}"
 
