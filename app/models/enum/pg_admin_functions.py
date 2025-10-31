@@ -1,8 +1,11 @@
+from typing import List
+
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-ADMIN-SET-TABLE
-configuration_settings_functions = ["current_setting", "set_config"]
+configuration_settings_functions: List[str] = ["current_setting", "set_config"]
+
 
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-ADMIN-SIGNAL-TABLE
-server_signaling_functions = [
+server_signaling_functions: List[str] = [
     "pg_cancel_backend",
     "pg_reload_conf",
     "pg_rotate_logfile",
@@ -11,7 +14,7 @@ server_signaling_functions = [
 
 
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-ADMIN-BACKUP-TABLE
-backup_control_functions = [
+backup_control_functions: List[str] = [
     "pg_create_restore_point",
     "pg_current_wal_flush_lsn",
     "pg_current_wal_insert_lsn",
@@ -26,8 +29,9 @@ backup_control_functions = [
     "pg_wal_lsn_diff",
 ]
 
+
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-RECOVERY-INFO-TABLE
-recovery_information_functions = [
+recovery_information_functions: List[str] = [
     "pg_is_in_recovery",
     "pg_last_wal_receive_lsn",
     "pg_last_wal_replay_lsn",
@@ -36,7 +40,7 @@ recovery_information_functions = [
 
 
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-RECOVERY-CONTROL-TABLE
-recovery_control_functions = [
+recovery_control_functions: List[str] = [
     "pg_is_wal_replay_paused",
     "pg_wal_replay_pause",
     "pg_wal_replay_resume",
@@ -44,11 +48,11 @@ recovery_control_functions = [
 
 
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-SNAPSHOT-SYNCHRONIZATION-TABLE
-snapshot_synchronization_functions = ["pg_export_snapshot"]
+snapshot_synchronization_functions: List[str] = ["pg_export_snapshot"]
 
 
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-REPLICATION-TABLE
-replication_sql_functions = [
+replication_sql_functions: List[str] = [
     "pg_create_physical_replication_slot",
     "pg_drop_replication_slot",
     "pg_create_logical_replication_slot",
@@ -71,8 +75,9 @@ replication_sql_functions = [
     "pg_logical_emit_message",
 ]
 
+
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-ADMIN-DBSIZE
-database_object_size_functions = [
+database_object_size_functions: List[str] = [
     "pg_column_size",
     "pg_database_size",
     "pg_database_size",
@@ -88,8 +93,9 @@ database_object_size_functions = [
     "pg_total_relation_size",
 ]
 
+
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-ADMIN-DBLOCATIONd
-database_object_location_functions = [
+database_object_location_functions: List[str] = [
     "pg_relation_filenode",
     "pg_relation_filepath",
     "pg_filenode_relation",
@@ -97,22 +103,23 @@ database_object_location_functions = [
 
 
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-ADMIN-COLLATION
-collation_management_functions = [
+collation_management_functions: List[str] = [
     "pg_collation_actual_version",
     "pg_import_system_collations",
 ]
 
 
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-ADMIN-INDEX-TABLE
-index_maintenance_functions = [
+index_maintenance_functions: List[str] = [
     "brin_summarize_new_values",
     "brin_summarize_range",
     "brin_desummarize_range",
     "gin_clean_pending_list",
 ]
 
+
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-ADMIN-GENFILE-TABLE
-generic_file_access_functions = [
+generic_file_access_functions: List[str] = [
     "pg_ls_dir",
     "pg_ls_logdir",
     "pg_ls_waldir",
@@ -121,8 +128,9 @@ generic_file_access_functions = [
     "pg_stat_file",
 ]
 
+
 # https://www.postgresql.org/docs/11/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS-TABLE
-advisory_lock_functions = [
+advisory_lock_functions: List[str] = [
     "pg_advisory_lock",
     "pg_advisory_lock_shared",
     "pg_advisory_unlock",
@@ -139,7 +147,7 @@ advisory_lock_functions = [
 
 
 # https://www.postgresql.org/docs/11/functions-event-triggers.html#FUNCTIONS-EVENT-TRIGGER-TABLE-REWRITE
-table_rewrite_information = [
+table_rewrite_information: List[str] = [
     "pg_event_trigger_table_rewrite_oid",
     "pg_event_trigger_table_rewrite_reason",
 ]

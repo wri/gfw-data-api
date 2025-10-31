@@ -93,14 +93,12 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
         await check_dynamic_vector_tile_cache_status(dataset, version)
 
         # Queries
-
         response = await async_client.get(
             f"/dataset/{dataset}/{version}/query?sql=select count(*) from mytable;",
             follow_redirects=True,
         )
+        assert response.json() == {"data": [{"count": 1}], "status": "success"}
         assert response.status_code == 200
-        assert len(response.json()["data"]) == 1
-        assert response.json()["data"][0]["count"] == 1
 
         with open(GEOJSON_PATH, "r") as geojson:
             raw_geom = json.load(geojson)["features"][0]["geometry"]
@@ -239,15 +237,17 @@ async def test_vector_source_asset(batch_client, async_client: AsyncClient):
             },
         ]
         if i == 0:
-            expected_fields.append({
-                "name": "fid",
-                "alias": "fid",
-                "description": None,
-                "data_type": "numeric",
-                "is_feature_info": True,
-                "is_filter": True,
-                "unit": None,
-            })
+            expected_fields.append(
+                {
+                    "name": "fid",
+                    "alias": "fid",
+                    "description": None,
+                    "data_type": "numeric",
+                    "is_feature_info": True,
+                    "is_filter": True,
+                    "unit": None,
+                }
+            )
 
         fields = response.json()["data"]
         assert len(fields) == len(expected_fields)
@@ -335,10 +335,7 @@ async def test_vector_source_asset_csv_append(batch_client, async_client: AsyncC
     # Now test appending
     resp = await async_client.post(
         f"/dataset/{dataset}/{version}/append",
-        json={
-            "source_driver": "CSV",
-            "source_uri": [f"s3://{BUCKET}/{CSV2_NAME}"]
-        },
+        json={"source_driver": "CSV", "source_uri": [f"s3://{BUCKET}/{CSV2_NAME}"]},
     )
     assert resp.status_code == 200
 
@@ -392,7 +389,7 @@ async def test_vector_source_asset_geojson_append(
         f"/dataset/{dataset}/{version}/append",
         json={
             "source_driver": "GeoJSON",
-            "source_uri": [f"s3://{BUCKET}/{GEOJSON_NAME2}"]
+            "source_uri": [f"s3://{BUCKET}/{GEOJSON_NAME2}"],
         },
     )
     assert resp.status_code == 200, resp.text
