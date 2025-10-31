@@ -42,7 +42,7 @@ else
     aws s3 cp "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr" "${IMPLEMENTATION}_merged.tif.ovr"
   else
     # generate overviews externally
-    gdaladdo "${IMPLEMENTATION}_merged.tif" -r "${RESAMPLE}" -ro --config GDAL_NUM_THREADS ALL_CPUS --config GDAL_CACHEMAX 70% --config COMPRESS_OVERVIEW DEFLATE
+    gdaladdo "${IMPLEMENTATION}_merged.tif" -r "${RESAMPLE}" -ro --config GDAL_NUM_THREADS ALL_CPUS --config GDAL_CACHEMAX 70% --config COMPRESS_OVERVIEW DEFLATE --config PREDICTOR_OVERVIEW 2
     aws s3 cp "${IMPLEMENTATION}_merged.tif.ovr" "${PREFIX}/${IMPLEMENTATION}_merged.tif.ovr"
   fi
 
