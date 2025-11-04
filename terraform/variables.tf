@@ -177,7 +177,7 @@ variable "api_gateway_usage_plans" {
   description = "Throttling limits for API Gateway"
   default = {
     internal_apps = {
-      quota_limit = 1000000 # per day
+      quota_limit = 5000000 # per day
       burst_limit = 1000
       rate_limit  = 200 # per second
     }
