@@ -6,6 +6,7 @@ resource "aws_batch_job_definition" "aurora" {
   name                 = substr("${var.project}-aurora${var.name_suffix}", 0, 64)
   type                 = "container"
   container_properties = data.template_file.postgres_container_properties.rendered
+  propagate_tags = true
 }
 
 resource "aws_batch_job_queue" "aurora" {
