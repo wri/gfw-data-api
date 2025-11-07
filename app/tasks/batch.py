@@ -148,6 +148,7 @@ def submit_batch_job(
         },
         "timeout": {"attemptDurationSeconds": job.attempt_duration_seconds},
         "tags": {"Job": "Data-API Batch Job", "Dataset": job.dataset},
+        "propagateTags": True,
     }
 
     logger.info(f"Submitting batch job with payload: {payload}")
