@@ -4,6 +4,7 @@ from pydantic import validator
 
 from ...settings.globals import (
     AURORA_JOB_QUEUE,
+    DATA_LAKE_JOB_QUEUE,
     DEFAULT_JOB_DURATION,
     GDAL_PYTHON_JOB_DEFINITION,
     MAX_CORES,
@@ -103,7 +104,7 @@ class GdalPythonExportJob(Job):
     """Use for export operations from PostgreSQL to S3 data lake which require
     GDAL/ Ogr2Ogr drivers."""
 
-    job_queue = ON_DEMAND_COMPUTE_JOB_QUEUE
+    job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
     vcpus = 1
     memory = 15000
@@ -114,7 +115,7 @@ class GdalPythonExportJob(Job):
 class TileCacheJob(Job):
     """Use for generating Vector Tile Cache using TippeCanoe."""
 
-    job_queue = ON_DEMAND_COMPUTE_JOB_QUEUE
+    job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = TILE_CACHE_JOB_DEFINITION
     vcpus = max(int(MAX_CORES / 2), 1)
     num_processes = max(int(MAX_CORES / 3), 1)
@@ -126,7 +127,7 @@ class TileCacheJob(Job):
 class PixETLJob(Job):
     """Use for raster transformations using PixETL."""
 
-    job_queue = ON_DEMAND_COMPUTE_JOB_QUEUE
+    job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION
     vcpus = MAX_CORES
     memory = MAX_MEM
@@ -151,7 +152,7 @@ class GDALCOGJob(Job):
 class GDALDEMJob(Job):
     """Use for applying color maps to raster tiles with gdaldem."""
 
-    job_queue = ON_DEMAND_COMPUTE_JOB_QUEUE
+    job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION
     vcpus = PIXETL_CORES
     memory = PIXETL_MAX_MEM
@@ -163,7 +164,7 @@ class GDALDEMJob(Job):
 class GDAL2TilesJob(Job):
     """Use for generating a raster tile cache from web-mercator tiles."""
 
-    job_queue = ON_DEMAND_COMPUTE_JOB_QUEUE
+    job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
     vcpus = MAX_CORES
     memory = MAX_MEM
