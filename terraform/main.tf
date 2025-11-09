@@ -13,10 +13,6 @@ locals {
   bucket_suffix   = var.environment == "production" ? "" : "-${var.environment}"
   tf_state_bucket = "gfw-terraform${local.bucket_suffix}"
   tags            = data.terraform_remote_state.core.outputs.tags
-  batch_tags = merge(
-    {
-      Job = "Data-API Batch Job",
-  }, local.tags)
   fargate_tags = merge(
     {
       Job = "Data-API Service",
@@ -107,7 +103,8 @@ module "fargate_autoscaling" {
   container_definition = data.template_file.container_definition.rendered
 }
 
-# Using instance types with 1 core only
+# Create compute environment for DB writer
+# Using instance types with 1 core only, and EC2 instances (not SPOT).
 module "batch_aurora_writer" {
   source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.5"
   ecs_role_policy_arns = [
@@ -132,7 +129,7 @@ module "batch_aurora_writer" {
   ]
   subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
   suffix                   = local.name_suffix
-  tags                     = local.batch_tags
+  tags                     = merge(local.tags, {Job = "Aurora Writer",})
   use_ephemeral_storage    = false
   ebs_volume_size          = 60
   compute_environment_name = "aurora_sql_writer"
@@ -140,6 +137,8 @@ module "batch_aurora_writer" {
 }
 
 
+# Create compute environment for data lake writing, pixetl, and tile cache jobs
+# Currently does EC2 instances, not spot instances.
 module "batch_data_lake_writer" {
   source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.5"
   ecs_role_policy_arns = [
@@ -160,14 +159,15 @@ module "batch_data_lake_writer" {
   ]
   subnets               = data.terraform_remote_state.core.outputs.private_subnet_ids
   suffix                = local.name_suffix
-  tags                  = local.batch_tags
+  tags                  = merge(local.tags, {Job = "Datalake/pixetl/tile-cache",} )
   use_ephemeral_storage = true
-  # SPOT is actually the default, this is just a placeholder until GTC-1791 is done
-  launch_type              = "SPOT"
+  launch_type              = "EC2"
   instance_types           = var.data_lake_writer_instance_types
   compute_environment_name = "data_lake_writer"
 }
 
+# Creating compute environment for cogify jobs
+# Should always use EC2 instances, since jobs run for so long.
 module "batch_cogify" {
   source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.5"
   ecs_role_policy_arns = [
@@ -187,13 +187,14 @@ module "batch_cogify" {
   ]
   subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
   suffix                   = local.name_suffix
-  tags                     = local.batch_tags
+  tags                     = merge(local.tags, {Job = "COGify",}, )
   use_ephemeral_storage    = true
   launch_type              = "EC2"
   instance_types           = var.data_lake_writer_instance_types
   compute_environment_name = "batch_cogify"
 }
 
+# Create aurora, aurora_fast, data_lake, pixetl, tile cache, and ondemand job queues.
 module "batch_job_queues" {
   source                             = "./modules/batch"
   aurora_compute_environment_arn     = module.batch_aurora_writer.arn
