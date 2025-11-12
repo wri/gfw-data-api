@@ -4,7 +4,7 @@ ARG USR_LOCAL_BIN=/usr/local/bin
 ARG UV_VERSION="0.6.3"
 ARG VENV_DIR=/app/.venv
 
-FROM ubuntu:noble AS build
+FROM --platform=linux/amd64 ubuntu:noble AS build
 
 ARG ENV
 ARG PYTHON_VERSION
@@ -52,7 +52,7 @@ RUN if [ "$ENV" = "dev" ] || [ "$ENV" = "test" ]; then \
 
 
 # Start the runtime stage
-FROM ubuntu:noble
+FROM --platform=linux/amd64 ubuntu:noble
 
 ARG USR_LOCAL_BIN
 ARG VENV_DIR

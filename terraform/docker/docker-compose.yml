@@ -1,6 +1,6 @@
-version: "3.7"
 services:
   terraform:
+    platform: linux/amd64
     image: globalforestwatch/terraform:1.2.2
     volumes:
       - ../../:/usr/local/src
