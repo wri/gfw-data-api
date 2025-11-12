@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 globalforestwatch/pixetl:v1.7.7_with_telemetry_2
+FROM --platform=linux/amd64 globalforestwatch/pixetl:telemetry
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/
