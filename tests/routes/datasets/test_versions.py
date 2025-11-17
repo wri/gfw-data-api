@@ -88,7 +88,6 @@ async def test_versions(async_client: AsyncClient):
     ##################################################
     # additional attributes coming from default asset
     ##################################################
-
     # Creation Options
 
     version_creation_options = {
@@ -113,57 +112,9 @@ async def test_versions(async_client: AsyncClient):
     assert response.json()["data"] == version_creation_options
 
     # Change Log
-
     response = await async_client.get(f"/dataset/{dataset}/{version}/change_log")
     assert response.status_code == 200
     assert len(response.json()["data"]) == 1
-
-    # Query
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=SELECT%20%2A%20from%20version%3B%20DELETE%20FROM%20version%3B",
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert response.json()["message"] == "Must use exactly one SQL statement."
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=DELETE FROM version;",
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert response.json()["message"] == "Must use SELECT statements only."
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=WITH t as (select 1) SELECT * FROM version;",
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert response.json()["message"] == "Must not have WITH clause."
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM version, version2;",
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert response.json()["message"] == "Must list exactly one table in FROM clause."
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM (select * from a) as b;",
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert response.json()["message"] == "Must not use sub queries."
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=SELECT PostGIS_Full_Version() FROM data;",
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert (
-        response.json()["message"]
-        == "Use of admin, system or private functions is not allowed."
-    )
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,8 @@
+import re
+
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import AsyncClient
-import re
 
 from app.routes.datasets import versions
 from app.tasks import batch
@@ -24,7 +25,7 @@ async def test_get_version(async_client: AsyncClient, generic_vector_source_vers
     # Check asset_id looks reasonable
     asset_id = first_asset[2]
     assert len(asset_id) > 30
-    pattern = re.compile(r'^[a-zA-Z0-9-]+$')
+    pattern = re.compile(r"^[a-zA-Z0-9-]+$")
     assert bool(pattern.match(asset_id))
 
 
@@ -103,7 +104,7 @@ async def test_create_version_bare_minimum(
 
 
 @pytest.mark.asyncio
-async def test_append_version_bare_minimum(
+async def test_append_shapefile(
     async_client: AsyncClient, generic_vector_source_version, monkeypatch: MonkeyPatch
 ):
     dataset_name, version_name, _ = generic_vector_source_version
@@ -115,7 +116,7 @@ async def test_append_version_bare_minimum(
 
     payload = {
         "source_driver": "ESRI Shapefile",
-        "source_uri": ["s3://some_bucket/test.shp.zip"]
+        "source_uri": ["s3://some_bucket/test.shp.zip"],
     }
 
     resp = await async_client.post(

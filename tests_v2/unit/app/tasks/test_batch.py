@@ -1,6 +1,7 @@
 from typing import Dict, List
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.logger import logger
 
 from app.tasks.batch import submit_batch_job
@@ -10,6 +11,7 @@ from tests_v2.conftest import mock_callback
 TEST_JOB_ENV: List[Dict[str, str]] = [{"name": "PASSWORD", "value": "DON'T LOG ME"}]
 
 
+@pytest.mark.asyncio
 @patch("app.utils.aws.boto3.client")
 @patch.object(logger, "info")  # Patch the logger.info directly
 @patch("app.tasks.batch.UUID")  # Patch the UUID class
