@@ -16,7 +16,7 @@ dependencies = [
     "boto3",
     "botocore",
     "email-validator",
-    "fastapi",
+    "fastapi>=0.119.0",
     "geoalchemy2<0.12",
     "geojson",
     "gino",
