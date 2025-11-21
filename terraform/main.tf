@@ -34,28 +34,34 @@ locals {
 
 # Docker image for FastAPI app
 module "app_docker_image" {
-  source     = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.5"
-  image_name = substr(lower("${local.project}${local.name_suffix}"), 0, 64)
-  root_dir   = "${path.root}/../"
-  tag        = local.container_tag
+  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.9"
+  image_name   = substr(lower("${local.project}${local.name_suffix}"), 0, 64)
+  root_dir     = "${path.root}/../"
+  tag          = local.container_tag
+  # Only force delete ECR repos in dev, just in case
+  force_delete = var.environment == "dev" ? true: false
 }
 
 # Docker image for PixETL Batch jobs
 module "batch_pixetl_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.5"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.9"
   image_name      = substr(lower("${local.project}-pixetl${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "pixetl.dockerfile"
+  # Only force delete ECR repos in dev, just in case
+  force_delete = var.environment == "dev" ? true: false
 }
 
 # Docker image for all Batch jobs except those requiring PixETL
 module "batch_universal_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.5"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.9"
   image_name      = substr(lower("${local.project}-universal${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "universal_batch.dockerfile"
+  # Only force delete ECR repos in dev, just in case
+  force_delete = var.environment == "dev" ? true: false
 }
 
 module "fargate_autoscaling" {
