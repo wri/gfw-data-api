@@ -38,8 +38,7 @@ module "app_docker_image" {
   image_name   = substr(lower("${local.project}${local.name_suffix}"), 0, 64)
   root_dir     = "${path.root}/../"
   tag          = local.container_tag
-  # Only force delete ECR repos in dev, just in case
-  force_delete = var.environment == "dev" ? true: false
+  force_delete = var.force_delete_ecr_repos
 }
 
 # Docker image for PixETL Batch jobs
@@ -49,8 +48,7 @@ module "batch_pixetl_image" {
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "pixetl.dockerfile"
-  # Only force delete ECR repos in dev, just in case
-  force_delete = var.environment == "dev" ? true: false
+  force_delete    = var.force_delete_ecr_repos
 }
 
 # Docker image for all Batch jobs except those requiring PixETL
