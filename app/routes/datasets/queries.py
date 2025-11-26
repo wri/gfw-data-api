@@ -544,7 +544,7 @@ async def _query_table(
 
     _has_only_one_statement(parsed)
     _is_select_statement(parsed)
-    _has_no_with_clause(parsed)
+    # _has_no_with_clause(parsed)
     _only_one_from_table(parsed)
     _no_subqueries(parsed)
     _no_forbidden_functions(parsed)
