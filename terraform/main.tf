@@ -59,7 +59,7 @@ module "batch_universal_image" {
   docker_path     = "batch"
   docker_filename = "universal_batch.dockerfile"
   # Only force delete ECR repos in dev, just in case
-  force_delete = var.environment == "dev" ? true: false
+  force_delete = var.force_delete_ecr_repos
 }
 
 module "fargate_autoscaling" {
