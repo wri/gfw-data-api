@@ -189,3 +189,8 @@ variable "api_gateway_usage_plans" {
   }
 }
 
+variable "force_delete_ecr_repos" {
+  type = bool
+  description = "Whether or not to delete non-empty ECR repos"
+  default = false
+}
