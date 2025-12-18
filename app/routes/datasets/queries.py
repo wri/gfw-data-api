@@ -534,80 +534,6 @@ def _get_query_type(default_asset: AssetORM, geostore: Optional[GeostoreCommon])
         )
 
 
-async def normalize_sql(
-    dataset: str, geometry: Geometry | None, sql: str, version: str
-) -> str:
-    try:
-        parsed = parse_sql(unquote(sql))
-    except ParseError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    _has_only_one_statement(parsed)
-    _is_select_statement(parsed)
-    _has_no_with_clause(parsed)
-    _only_one_from_table(parsed)
-    _no_subqueries(parsed)
-    _no_forbidden_functions(parsed)
-    _no_forbidden_value_functions(parsed)
-
-    # always overwrite the table name with the current dataset version name, to make sure no other table is queried
-    parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
-        "schemaname"
-    ] = dataset
-    parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
-        "relname"
-    ] = version
-
-    if geometry:
-        parsed = await _add_geometry_filter(parsed, geometry)
-
-    # convert back to text
-    sql = RawStream()(Node(parsed))
-    return sql
-
-
-async def _query_table(
-    dataset: str,
-    version: str,
-    sql: str,
-    geometry: Optional[Geometry],
-) -> List[Dict[str, Any]]:
-    # Parse and validate SQL statement
-    sql = await normalize_sql(dataset, geometry, sql, version)
-
-    try:
-        rows = await db.all(sql)
-        response: List[Dict[str, Any]] = [dict(row) for row in rows]
-    except InsufficientPrivilegeError:
-        raise HTTPException(
-            status_code=403, detail="Not authorized to execute this query."
-        )
-    except (SyntaxOrAccessError, DataError) as e:
-        raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
-
-    return response
-
-
-def _orm_to_csv(
-    data: List[Dict[str, Any]], delimiter: Delimiters = Delimiters.comma
-) -> StringIO:
-    """Create a new csv file that represents generated data.
-
-    Response will return a temporary redirect to download URL.
-    """
-    csv_file = StringIO()
-
-    if data:
-        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
-        field_names = data[0].keys()
-        wr.writerow(field_names)
-        for row in data:
-            wr.writerow(row.values())
-        csv_file.seek(0)
-
-    return csv_file
-
-
 def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
     if len(parsed) != 1:
         raise HTTPException(
@@ -704,6 +630,80 @@ def _no_forbidden_value_functions(parsed: List[Dict[str, Any]]) -> None:
             status_code=400,
             detail="Use of sql value functions is not allowed.",
         )
+
+
+async def normalize_sql(
+    dataset: str, geometry: Geometry | None, sql: str, version: str
+) -> str:
+    try:
+        parsed = parse_sql(unquote(sql))
+    except ParseError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    _has_only_one_statement(parsed)
+    _is_select_statement(parsed)
+    _has_no_with_clause(parsed)
+    _only_one_from_table(parsed)
+    _no_subqueries(parsed)
+    _no_forbidden_functions(parsed)
+    _no_forbidden_value_functions(parsed)
+
+    # always overwrite the table name with the current dataset version name, to make sure no other table is queried
+    parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
+        "schemaname"
+    ] = dataset
+    parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
+        "relname"
+    ] = version
+
+    if geometry:
+        parsed = await _add_geometry_filter(parsed, geometry)
+
+    # convert back to text
+    sql = RawStream()(Node(parsed))
+    return sql
+
+
+async def _query_table(
+    dataset: str,
+    version: str,
+    sql: str,
+    geometry: Optional[Geometry],
+) -> List[Dict[str, Any]]:
+    # Parse and validate SQL statement
+    sql = await normalize_sql(dataset, geometry, sql, version)
+
+    try:
+        rows = await db.all(sql)
+        response: List[Dict[str, Any]] = [dict(row) for row in rows]
+    except InsufficientPrivilegeError:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to execute this query."
+        )
+    except (SyntaxOrAccessError, DataError) as e:
+        raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
+
+    return response
+
+
+def _orm_to_csv(
+    data: List[Dict[str, Any]], delimiter: Delimiters = Delimiters.comma
+) -> StringIO:
+    """Create a new csv file that represents generated data.
+
+    Response will return a temporary redirect to download URL.
+    """
+    csv_file = StringIO()
+
+    if data:
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, delimiter=delimiter)
+        field_names = data[0].keys()
+        wr.writerow(field_names)
+        for row in data:
+            wr.writerow(row.values())
+        csv_file.seek(0)
+
+    return csv_file
 
 
 def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
