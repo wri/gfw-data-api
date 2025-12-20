@@ -1,9 +1,106 @@
 import pytest
+from fastapi import HTTPException
 
 from app.routes.datasets.utils.query_helpers import normalize_sql
 
+test_dataset: str = "test_dataset"
+test_version: str = "v2025"
+
+# FIXME: The errors should really be in JSEND format...
+
+
 @pytest.mark.asyncio
-async def test_it_does_something():
-    result = await normalize_sql(
-        "test_dataset", None, "select * from public.my_table;", "v2025" )
-    assert result == "SELECT * FROM test_dataset.v2025"
+async def test_normalize_sql_passes_through_benign_queries():
+    sql: str = "SELECT * FROM test_dataset.v2025"
+
+    result = await normalize_sql(test_dataset, None, sql, test_version)
+    assert result == sql
+
+
+@pytest.mark.asyncio
+async def test_normalize_sql_only_one_statement_allowed():
+    sql: str = "SELECT * FROM test_dataset.v2025; select * from something_else"
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ = await normalize_sql(test_dataset, None, sql, test_version)
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Must use exactly one SQL statement."
+
+
+@pytest.mark.asyncio
+async def test_normalize_sql_only_select_statements_allowed():
+    sql: str = "DELETE FROM bar;"
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ = await normalize_sql(test_dataset, None, sql, test_version)
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Must use SELECT statements only."
+
+
+@pytest.mark.asyncio
+async def test_normalize_sql_must_not_have_a_with_clause():
+    sql: str = "WITH t as (select 1) SELECT * FROM version;"
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ = await normalize_sql(test_dataset, None, sql, test_version)
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Must not have WITH clause."
+
+
+@pytest.mark.asyncio
+async def test_normalize_sql_no_sql_value_functions():
+    sql: str = "select current_catalog from mytable;"
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ = await normalize_sql(test_dataset, None, sql, test_version)
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Use of sql value functions is not allowed."
+
+
+@pytest.mark.asyncio
+async def test_normalize_sql_only_one_table_allowed():
+    sql: str = "SELECT * FROM version, version2;"
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ = await normalize_sql(test_dataset, None, sql, test_version)
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Must list exactly one table in FROM clause."
+
+
+@pytest.mark.asyncio
+async def test_normalize_sql_no_sub_queries_allowed():
+    sql: str = "SELECT * FROM (select * from a) as b;"
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ = await normalize_sql(test_dataset, None, sql, test_version)
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Must not use sub queries."
+
+
+@pytest.mark.asyncio
+async def test_normalize_sql_no_postgis_functions_allowed():
+    sql: str = "SELECT PostGIS_Full_Version() FROM data;"
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ = await normalize_sql(test_dataset, None, sql, test_version)
+    assert exc_info.value.status_code == 400
+    assert (
+        exc_info.value.detail
+        == "Use of admin, system or private functions is not allowed."
+    )
+
+
+@pytest.mark.asyncio
+async def test_normalize_sql_no_system_functions_allowed():
+    sql: str = "SELECT pg_create_restore_point() FROM data;"
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ = await normalize_sql(test_dataset, None, sql, test_version)
+    assert exc_info.value.status_code == 400
+    assert (
+        exc_info.value.detail
+        == "Use of admin, system or private functions is not allowed."
+    )
+
+
+# FIXME: Test more aspects of the admin, system and private function filters
