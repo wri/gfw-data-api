@@ -19,6 +19,22 @@ async def test_scrutinize_sql_passes_through_benign_queries():
 
 
 @pytest.mark.asyncio
+async def test_scrutinize_sql_passes_through_benign_from_with_as():
+    sql: str = "SELECT * FROM test_dataset.v2025 AS foo"
+
+    result = await scrutinize_sql(test_dataset, None, sql, test_version)
+    assert result == sql
+
+
+@pytest.mark.asyncio
+async def test_scrutinize_sql_passes_through_benign_from_with_multiple_as():
+    sql: str = "SELECT count(*) AS foo, 1 AS bar FROM test_dataset.v2025"
+
+    result = await scrutinize_sql(test_dataset, None, sql, test_version)
+    assert result == sql
+
+
+@pytest.mark.asyncio
 async def test_scrutinize_sql_only_one_statement_allowed():
     sql: str = "SELECT * FROM test_dataset.v2025; select * from something_else"
 

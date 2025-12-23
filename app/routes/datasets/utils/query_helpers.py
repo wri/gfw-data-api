@@ -1,14 +1,22 @@
 import re
-from typing import Any, Dict, List, Tuple, cast, Optional, Iterable, Set
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, cast
 from urllib.parse import unquote
 
 from fastapi import HTTPException
 from pglast import printers  # noqa
 from pglast import parse_sql
-from pglast.ast import RangeSubselect, RawStmt, SelectStmt, FuncCall, SQLValueFunction, RangeVar, BoolExpr
+from pglast.ast import (
+    BoolExpr,
+    FuncCall,
+    RangeSubselect,
+    RangeVar,
+    RawStmt,
+    SelectStmt,
+    SQLValueFunction,
+)
+from pglast.ast import String as PgString
 from pglast.parser import ParseError
 from pglast.stream import RawStream
-from pglast.ast import String as PgString
 
 from ....models.enum.pg_admin_functions import (
     advisory_lock_functions,
@@ -39,7 +47,6 @@ from ....models.enum.pg_sys_functions import (
 )
 from ....models.pydantic.geostore import Geometry
 
-
 forbidden_function_group_list: List[List[str]] = [
     configuration_settings_functions,
     server_signaling_functions,
@@ -69,6 +76,7 @@ forbidden_function_group_list: List[List[str]] = [
 forbidden_functions: Set[str] = {
     fn_name.lower() for group in forbidden_function_group_list for fn_name in group
 }
+
 
 def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
     if len(parsed) != 1:
@@ -117,9 +125,9 @@ def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
         func_name_lower = function_name.lower()
         # block functions which start with `pg_`, `PostGIS` or `_`
         if (
-                func_name_lower.startswith("pg_")
-                or func_name_lower.startswith("_")
-                or func_name_lower.startswith("postgis")
+            func_name_lower.startswith("pg_")
+            or func_name_lower.startswith("_")
+            or func_name_lower.startswith("postgis")
         ):
             raise HTTPException(
                 status_code=400,
@@ -132,6 +140,7 @@ def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
                 status_code=400,
                 detail="Use of admin, system or private functions is not allowed.",
             )
+
 
 def _walk_ast(node: Any, visited: Optional[set] = None) -> Iterable[Any]:
     """Recursively walk a pglast AST node structure and yield every node.
@@ -166,6 +175,7 @@ def _walk_ast(node: Any, visited: Optional[set] = None) -> Iterable[Any]:
     elif hasattr(node, "__dict__"):
         for attr_value in node.__dict__.values():
             yield from _walk_ast(attr_value, visited)
+
 
 def _get_function_names(node_type, parsed: Tuple[RawStmt]) -> List[str]:
     """Return all function names of a particular type in an AST."""
@@ -215,6 +225,7 @@ def _get_function_names(node_type, parsed: Tuple[RawStmt]) -> List[str]:
 
     return func_names
 
+
 def _no_forbidden_value_functions(parsed: Tuple[RawStmt]) -> None:
     value_functions = _get_function_names(SQLValueFunction, parsed)
     if value_functions:
@@ -225,7 +236,7 @@ def _no_forbidden_value_functions(parsed: Tuple[RawStmt]) -> None:
 
 
 async def _add_geometry_filter(
-        parsed_sql: Tuple[RawStmt], geometry: Geometry
+    parsed_sql: Tuple[RawStmt], geometry: Geometry
 ) -> Tuple[RawStmt]:
     """Add a geometry intersection filter to the WHERE clause of a parsed SQL
     statement."""
@@ -254,10 +265,12 @@ async def _add_geometry_filter(
 
     return parsed_sql
 
+
 def quote_ident(ident: str) -> str:
-    return ident # TODO: remove this early return when we decide on quoting datasets and versions
+    return ident  # TODO: remove this early return when we decide on quoting datasets and versions
     # safe-ish Postgres identifier quoting
     return '"' + ident.replace('"', '""') + '"'
+
 
 async def scrutinize_sql(
     dataset: str, geometry: Geometry | None, sql: str, version: str
@@ -284,7 +297,8 @@ async def scrutinize_sql(
     alias_sql = ""
     if getattr(only_from, "alias", None):
         # RawStream on the alias node gives you e.g. `foo` or `AS foo`
-        alias_sql = " " + RawStream()(only_from.alias).strip()
+
+        alias_sql = " AS " + RawStream()(only_from.alias).strip()
 
     # apply geometry filter (this edits the AST in-place)
     if geometry:
