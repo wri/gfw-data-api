@@ -1,6 +1,6 @@
 from typing import Optional
 
-from ..pydantic.responses import Response
+from .responses import Response
 from .geostore import FeatureCollection
 
 
