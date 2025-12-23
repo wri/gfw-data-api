@@ -655,7 +655,7 @@ requires-dist = [
     { name = "orjson" },
     { name = "packaging" },
     { name = "pendulum", specifier = "<3" },
-    { name = "pglast", specifier = "<2" },
+    { name = "pglast" },
     { name = "psutil" },
     { name = "psycopg2" },
     { name = "pydantic", specifier = "<2" },
@@ -1282,12 +1282,19 @@ sdist = { url = "https://files.pythonhosted.org/packages/db/15/6e89ae7cde7907118
 
 [[package]]
 name = "pglast"
-version = "1.18"
+version = "7.11"
 source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "setuptools" },
+sdist = { url = "https://files.pythonhosted.org/packages/ce/96/533238944549d99d125c8ad46bf5898625bc6789ab95396422a56edf941c/pglast-7.11.tar.gz", hash = "sha256:77aed78bb78c0e56f169a41833f6fdc7ce63aa3830b8c771fc263105a8834745", size = 3397558, upload-time = "2025-12-15T08:55:41.938Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4e/6c/72befaaf397b5122e9b0dfa328c5a9377fc7f5410b342b88064fbaea23cf/pglast-7.11-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:92784af2abdf3069fae44e745066035486740483e705aba78d03e2a998025898", size = 1426155, upload-time = "2025-12-15T09:17:33.936Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/c7/833f7169423e736e5d958b2fbebc703260639c921c4c3bf1907140a69598/pglast-7.11-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:2a6f7b72dc90520424c8688e7c893488d33846097afd710c8cc7ead861404aad", size = 1346678, upload-time = "2025-12-15T09:17:35.964Z" },
+    { url = "https://files.pythonhosted.org/packages/28/9c/719b285132e1371852072884f8086b5d18413bd319a3d29c1a6e65e0946d/pglast-7.11-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ba1d7bbf0d59d7eae43f2018fa3ea7f5ae8883bd5a4d3f9391a2792786543e97", size = 5768079, upload-time = "2025-12-15T09:17:37.341Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/0f/ba631e6410f1f87b2aedb86cf120b5cb189c37dc4a190c25d7d5938efacc/pglast-7.11-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:aa4589f299d8f6c6611ab99ae181e64aedbc7f5de7da1407eca82d3086aed940", size = 5837411, upload-time = "2025-12-15T09:17:38.788Z" },
+    { url = "https://files.pythonhosted.org/packages/76/d3/0eab1ba7a581893be35e6390e60bab232908b395821f4e78e36a1e617b74/pglast-7.11-cp310-cp310-musllinux_1_2_aarch64.whl", hash = "sha256:72f6fb22334a6dd96e90ef968fd8eb13b9d769d61924633a5aa2a814a4456d07", size = 5611189, upload-time = "2025-12-15T09:17:40.421Z" },
+    { url = "https://files.pythonhosted.org/packages/ad/18/6053c475556668d7b27dc988b7ccdfc86fb5c3f8bb36ef595a67b729b5cb/pglast-7.11-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:a529dd393d1acfde697d25c4685abfadf05f7d6c92ffcabfa566f91a02edbd6b", size = 5682391, upload-time = "2025-12-15T09:17:41.843Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/eb/b4b6befbc1deb6f443f847d48e62737357af295ad7b570a251d76ac22a7a/pglast-7.11-cp310-cp310-win32.whl", hash = "sha256:58344fd8ee667b6731205db343b50c11bfe36e2843af9457cd4fb29b572ed335", size = 1278155, upload-time = "2025-12-15T09:17:43.46Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/07/ccd4e6935d5890fdd3a315d99cd6ba810dad6580a3c77fda21d79ef68dc9/pglast-7.11-cp310-cp310-win_amd64.whl", hash = "sha256:2c8c417bbe38062b5f132d4f96ce4eab463c80e3a3098fc2917630130d2e2459", size = 1355000, upload-time = "2025-12-15T09:17:44.85Z" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b8/a7/714e37056c8e7bd7418fa838d6cf84e3e77c9ff487322b3a1bb32428153c/pglast-1.18.tar.gz", hash = "sha256:27783af5422a7fda876b3d15ec9ee71981212a319aadbb089b1952575d2ef8d7", size = 1550073, upload-time = "2021-06-01T19:55:56.619Z" }
 
 [[package]]
 name = "platformdirs"
