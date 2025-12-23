@@ -1,6 +1,7 @@
 import pytest
 from fastapi import HTTPException
 
+from app.models.pydantic.geostore import Geometry
 from app.routes.datasets.utils.query_helpers import normalize_sql
 
 test_dataset: str = "test_dataset"
@@ -91,7 +92,7 @@ async def test_normalize_sql_no_postgis_functions_allowed():
 
 
 @pytest.mark.asyncio
-async def test_normalize_sql_no_system_functions_allowed():
+async def test_normalize_sql_no_admin_functions_allowed():
     sql: str = "SELECT pg_create_restore_point() FROM data;"
 
     with pytest.raises(HTTPException) as exc_info:
@@ -103,4 +104,50 @@ async def test_normalize_sql_no_system_functions_allowed():
     )
 
 
-# FIXME: Test more aspects of the admin, system and private function filters
+@pytest.mark.asyncio
+async def test_normalize_sql_no_sys_functions_allowed():
+    sql: str = "SELECT txid_current() from mytable;"
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ = await normalize_sql(test_dataset, None, sql, test_version)
+    assert exc_info.value.status_code == 400
+    assert (
+        exc_info.value.detail
+        == "Use of admin, system or private functions is not allowed."
+    )
+
+
+@pytest.mark.asyncio
+async def test_normalize_sql_forbidden_not_allowed():
+    sql: str = "SELECT current_setting() FROM mytable;"
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ = await normalize_sql(test_dataset, None, sql, test_version)
+    assert exc_info.value.status_code == 400
+    assert (
+        exc_info.value.detail
+        == "Use of admin, system or private functions is not allowed."
+    )
+
+
+@pytest.mark.asyncio
+async def test_normalize_sql_with_geom():
+    geometry = Geometry(type="Point", coordinates=[0, 0])
+    sql_in: str = "SELECT * FROM mytable WHERE id = 1"
+    sql_expected: str = (
+        """SELECT * FROM test_dataset.v2025 WHERE (id = 1) AND st_intersects(geom, st_setsrid(st_geomfromgeojson('{"type": "Point", "coordinates": [0, 0]}'), 4326))"""
+    )
+
+    result = await normalize_sql(test_dataset, geometry, sql_in, test_version)
+    assert result == sql_expected
+
+
+@pytest.mark.asyncio
+async def test_normalize_sql_with_geom_no_where():
+    geometry = Geometry(type="Point", coordinates=[0, 0])
+    sql_in: str = "SELECT * FROM mytable;"
+    sql_expected: str = (
+        """SELECT * FROM test_dataset.v2025 WHERE st_intersects(geom, st_setsrid(st_geomfromgeojson('{"type": "Point", "coordinates": [0, 0]}'), 4326))"""
+    )
+    result = await normalize_sql(test_dataset, geometry, sql_in, test_version)
+    assert result == sql_expected
