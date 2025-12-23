@@ -58,7 +58,11 @@ def _has_no_with_clause(parsed: Tuple[RawStmt]) -> None:
 
 
 def _only_one_from_table(parsed: List[Dict[str, Any]]) -> None:
-    from_clause = parsed[0]["RawStmt"]["stmt"]["SelectStmt"].get("fromClause", None)
+    # Note this assumes we've already established the first statement is a SELECT
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+    from_clause = getattr(select_stmt, "fromClause", None)
+
+    # Is it better to check for != 1? Or is this sufficient?
     if not from_clause or len(from_clause) > 1:
         raise HTTPException(
             status_code=400, detail="Must list exactly one table in FROM clause."
