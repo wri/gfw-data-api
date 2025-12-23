@@ -133,26 +133,6 @@ def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
                 detail="Use of admin, system or private functions is not allowed.",
             )
 
-
-def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Return all functions in an AST."""
-
-    # loop through statement recursively and yield all functions
-    def walk_dict(d):
-        for k, v in d.items():
-            if k == key:
-                yield v
-            if isinstance(v, dict):
-                yield from walk_dict(v)
-            elif isinstance(v, list):
-                for _v in v:
-                    yield from walk_dict(_v)
-
-    values: List[Dict[str, Any]] = list()
-    for p in parsed:
-        values += list(walk_dict(p))
-    return values
-
 def _walk_ast(node: Any, visited: Optional[set] = None) -> Iterable[Any]:
     """Recursively walk a pglast AST node structure and yield every node.
 
