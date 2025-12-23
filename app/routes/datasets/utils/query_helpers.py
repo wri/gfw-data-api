@@ -4,7 +4,7 @@ from urllib.parse import unquote
 from fastapi import HTTPException
 from pglast import printers  # noqa
 from pglast import parse_sql
-from pglast.ast import RawStmt, SelectStmt
+from pglast.ast import RangeSubselect, RawStmt, SelectStmt
 from pglast.parser import ParseError
 from pglast.stream import RawStream
 
@@ -69,12 +69,13 @@ def _only_one_from_table(parsed: List[Dict[str, Any]]) -> None:
         )
 
 
-def _no_subqueries(parsed: List[Dict[str, Any]]) -> None:
-    sub_query = parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0].get(
-        "RangeSubselect", None
-    )
-    if sub_query:
-        raise HTTPException(status_code=400, detail="Must not use sub queries.")
+def _no_subqueries(parsed: Tuple[RawStmt]) -> None:
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+
+    from_clause = getattr(select_stmt, "fromClause", [])
+    for fc in from_clause:
+        if isinstance(fc, RangeSubselect):
+            raise HTTPException(status_code=400, detail="Must not use sub queries.")
 
 
 def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
