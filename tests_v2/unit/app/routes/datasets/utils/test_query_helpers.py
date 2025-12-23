@@ -151,3 +151,13 @@ async def test_normalize_sql_with_geom_no_where():
     )
     result = await normalize_sql(test_dataset, geometry, sql_in, test_version)
     assert result == sql_expected
+
+
+@pytest.mark.asyncio
+async def test_normalize_sql_gibberish():
+    sql: str = "foo;"
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ = await normalize_sql(test_dataset, None, sql, test_version)
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == 'syntax error at or near "foo", at location 1'
