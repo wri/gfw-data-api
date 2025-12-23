@@ -57,7 +57,7 @@ def _has_no_with_clause(parsed: Tuple[RawStmt]) -> None:
         raise HTTPException(status_code=400, detail="Must not have WITH clause.")
 
 
-def _only_one_from_table(parsed: List[Dict[str, Any]]) -> None:
+def _only_one_from_table(parsed: Tuple[RawStmt]) -> None:
     # Note this assumes we've already established the first statement is a SELECT
     select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
     from_clause = getattr(select_stmt, "fromClause", None)
