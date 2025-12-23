@@ -3,7 +3,7 @@ from urllib.parse import unquote
 
 from fastapi import HTTPException
 from pglast import printers  # noqa
-from pglast import Node, parse_sql
+from pglast import parse_sql
 from pglast.parser import ParseError
 from pglast.printer import RawStream
 
@@ -203,5 +203,5 @@ async def scrutinize_sql(
         parsed = await _add_geometry_filter(parsed, geometry)
 
     # convert back to text
-    sql = RawStream()(Node(parsed))
+    sql = RawStream()(parsed[0])
     return sql
