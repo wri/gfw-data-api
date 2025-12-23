@@ -61,7 +61,7 @@ from ...utils.decorators import hash_dict
 from ...utils.geostore import get_geostore
 from .. import dataset_version_dependency
 from . import _verify_source_file_access
-from .utils.query_helpers import normalize_sql
+from .utils.query_helpers import scrutinize_sql
 
 router = APIRouter()
 
@@ -510,7 +510,7 @@ async def _query_table(
     geometry: Optional[Geometry],
 ) -> List[Dict[str, Any]]:
     # Parse and validate SQL statement
-    sql = await normalize_sql(dataset, geometry, sql, version)
+    sql = await scrutinize_sql(dataset, geometry, sql, version)
 
     try:
         rows = await db.all(sql)

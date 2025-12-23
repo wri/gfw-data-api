@@ -175,7 +175,7 @@ async def _add_geometry_filter(parsed_sql, geometry: Geometry):
     return parsed_sql
 
 
-async def normalize_sql(
+async def scrutinize_sql(
     dataset: str, geometry: Geometry | None, sql: str, version: str
 ) -> str:
     try:
