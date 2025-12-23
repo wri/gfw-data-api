@@ -1,11 +1,12 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from urllib.parse import unquote
 
 from fastapi import HTTPException
 from pglast import printers  # noqa
 from pglast import parse_sql
+from pglast.ast import SelectStmt, RawStmt
 from pglast.parser import ParseError
-from pglast.printer import RawStream
+from pglast.stream import RawStream
 
 from ....models.enum.pg_admin_functions import (
     advisory_lock_functions,
@@ -44,9 +45,8 @@ def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
         )
 
 
-def _is_select_statement(parsed: List[Dict[str, Any]]) -> None:
-    select = parsed[0]["RawStmt"]["stmt"].get("SelectStmt", None)
-    if not select:
+def _is_select_statement(parsed: Tuple[RawStmt]) -> None:
+    if not isinstance(parsed[0].stmt, SelectStmt):
         raise HTTPException(status_code=400, detail="Must use SELECT statements only.")
 
 
