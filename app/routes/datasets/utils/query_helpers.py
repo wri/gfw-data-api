@@ -1,10 +1,10 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, cast
 from urllib.parse import unquote
 
 from fastapi import HTTPException
 from pglast import printers  # noqa
 from pglast import parse_sql
-from pglast.ast import SelectStmt, RawStmt
+from pglast.ast import RawStmt, SelectStmt
 from pglast.parser import ParseError
 from pglast.stream import RawStream
 
@@ -50,9 +50,10 @@ def _is_select_statement(parsed: Tuple[RawStmt]) -> None:
         raise HTTPException(status_code=400, detail="Must use SELECT statements only.")
 
 
-def _has_no_with_clause(parsed: List[Dict[str, Any]]) -> None:
-    with_clause = parsed[0]["RawStmt"]["stmt"]["SelectStmt"].get("withClause", None)
-    if with_clause:
+def _has_no_with_clause(parsed: Tuple[RawStmt]) -> None:
+    # Note this assumes we've already established the first statement is a SELECT
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+    if getattr(select_stmt, "withClause", None) is not None:
         raise HTTPException(status_code=400, detail="Must not have WITH clause.")
 
 
