@@ -5,7 +5,7 @@ from urllib.parse import unquote
 from fastapi import HTTPException
 from pglast import printers  # noqa
 from pglast import parse_sql
-from pglast.ast import RangeSubselect, RawStmt, SelectStmt, FuncCall, SQLValueFunction, RangeVar
+from pglast.ast import RangeSubselect, RawStmt, SelectStmt, FuncCall, SQLValueFunction, RangeVar, BoolExpr
 from pglast.parser import ParseError
 from pglast.stream import RawStream
 from pglast.ast import String as PgString
@@ -244,22 +244,33 @@ def _no_forbidden_value_functions(parsed: Tuple[RawStmt]) -> None:
         )
 
 
-async def _add_geometry_filter(parsed_sql, geometry: Geometry):
-    # make empty select statement with where clause including filter
-    # this way we can later parse it as AST
+async def _add_geometry_filter(
+        parsed_sql: Tuple[RawStmt], geometry: Geometry
+) -> Tuple[RawStmt]:
+    """Add a geometry intersection filter to the WHERE clause of a parsed SQL
+    statement."""
+    # Create the geometry filter as a separate parsed statement
     intersect_filter = f"SELECT WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON('{geometry.json()}'),4326))"
-
-    # combine the two where clauses
     parsed_filter = parse_sql(intersect_filter)
-    filter_where = parsed_filter[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"]
-    sql_where = parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"].get("whereClause", None)
 
-    if sql_where:
-        parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = {
-            "BoolExpr": {"boolop": 0, "args": [sql_where, filter_where]}
-        }
+    # Extract the WHERE clause from the filter statement
+    filter_stmt: SelectStmt = cast(SelectStmt, parsed_filter[0].stmt)
+    filter_where = filter_stmt.whereClause
+
+    # Get the original SELECT statement
+    select_stmt: SelectStmt = cast(SelectStmt, parsed_sql[0].stmt)
+
+    # Combine WHERE clauses
+    if select_stmt.whereClause:
+        # If there's already a WHERE clause, combine with AND
+        # boolop: 0 = AND_EXPR, 1 = OR_EXPR, 2 = NOT_EXPR
+        combined_where = BoolExpr(
+            boolop=0, args=(select_stmt.whereClause, filter_where)  # AND
+        )
+        select_stmt.whereClause = combined_where
     else:
-        parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = filter_where
+        # No existing WHERE clause, just add the filter
+        select_stmt.whereClause = filter_where
 
     return parsed_sql
 

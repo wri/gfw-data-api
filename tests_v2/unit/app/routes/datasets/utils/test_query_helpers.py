@@ -135,7 +135,7 @@ async def test_scrutinize_sql_with_geom():
     geometry = Geometry(type="Point", coordinates=[0, 0])
     sql_in: str = "SELECT * FROM mytable WHERE id = 1"
     sql_expected: str = (
-        """SELECT * FROM test_dataset.v2025 WHERE (id = 1) AND st_intersects(geom, st_setsrid(st_geomfromgeojson('{"type": "Point", "coordinates": [0, 0]}'), 4326))"""
+        """SELECT * FROM test_dataset.v2025 WHERE id = 1 AND st_intersects(geom, st_setsrid(st_geomfromgeojson('{"type": "Point", "coordinates": [0, 0]}'), 4326))"""
     )
 
     result = await scrutinize_sql(test_dataset, geometry, sql_in, test_version)
