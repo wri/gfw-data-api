@@ -1,10 +1,11 @@
+import re
 from typing import Any, Dict, List, Tuple, cast, Optional, Iterable, Set
 from urllib.parse import unquote
 
 from fastapi import HTTPException
 from pglast import printers  # noqa
 from pglast import parse_sql
-from pglast.ast import RangeSubselect, RawStmt, SelectStmt, FuncCall, SQLValueFunction
+from pglast.ast import RangeSubselect, RawStmt, SelectStmt, FuncCall, SQLValueFunction, RangeVar
 from pglast.parser import ParseError
 from pglast.stream import RawStream
 from pglast.ast import String as PgString
@@ -262,6 +263,10 @@ async def _add_geometry_filter(parsed_sql, geometry: Geometry):
 
     return parsed_sql
 
+def quote_ident(ident: str) -> str:
+    return ident # TODO: remove this early return when we decide on quoting datasets and versions
+    # safe-ish Postgres identifier quoting
+    return '"' + ident.replace('"', '""') + '"'
 
 async def scrutinize_sql(
     dataset: str, geometry: Geometry | None, sql: str, version: str
@@ -279,17 +284,39 @@ async def scrutinize_sql(
     _no_forbidden_functions(parsed)
     _no_forbidden_value_functions(parsed)
 
-    # always overwrite the table name with the current dataset version name, to make sure no other table is queried
-    parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
-        "schemaname"
-    ] = dataset
-    parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
-        "relname"
-    ] = version
+    # Capture alias (if any) from AST before we serialize
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+    only_from = select_stmt.fromClause[0]
+    if not isinstance(only_from, RangeVar):
+        raise HTTPException(status_code=400, detail="Unexpected FROM clause structure.")
 
+    alias_sql = ""
+    if getattr(only_from, "alias", None):
+        # RawStream on the alias node gives you e.g. `foo` or `AS foo`
+        alias_sql = " " + RawStream()(only_from.alias).strip()
+
+    # apply geometry filter (this edits the AST in-place)
     if geometry:
         parsed = await _add_geometry_filter(parsed, geometry)
 
-    # convert back to text
-    sql = RawStream()(parsed[0])
-    return sql
+    # turn AST back into SQL
+    sql_out = RawStream()(parsed[0])
+
+    # build our quoted schema.table
+    quoted_from = f"{quote_ident(dataset)}.{quote_ident(version)}{alias_sql}"
+
+    # replace the FROM target safely
+    pattern = (
+        r"from\s+"
+        r'[\w\."]+'
+        r"(?:\s+(?:AS\s+)?\w+)?"
+        r"(?=\s*(?:WHERE|JOIN|ON|GROUP\b|ORDER\b|LIMIT\b|OFFSET\b|FETCH\b|FOR\b|;|\)|$))"
+    )
+    sql_out = re.sub(
+        pattern,
+        f"FROM {quoted_from}",
+        sql_out,
+        flags=re.IGNORECASE,
+    )
+
+    return sql_out
