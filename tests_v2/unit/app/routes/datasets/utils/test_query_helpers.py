@@ -160,4 +160,4 @@ async def test_scrutinize_sql_gibberish():
     with pytest.raises(HTTPException) as exc_info:
         _ = await scrutinize_sql(test_dataset, None, sql, test_version)
     assert exc_info.value.status_code == 400
-    assert exc_info.value.detail == 'syntax error at or near "foo", at location 1'
+    assert exc_info.value.detail == 'syntax error at or near "foo", at index 0'
