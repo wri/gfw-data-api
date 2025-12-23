@@ -4,7 +4,7 @@ from urllib.parse import unquote
 from fastapi import HTTPException
 from pglast import printers  # noqa
 from pglast import parse_sql
-from pglast.ast import RangeSubselect, RawStmt, SelectStmt, FuncCall
+from pglast.ast import RangeSubselect, RawStmt, SelectStmt, FuncCall, SQLValueFunction
 from pglast.parser import ParseError
 from pglast.stream import RawStream
 from pglast.ast import String as PgString
@@ -234,8 +234,8 @@ def _get_function_names(node_type, parsed: Tuple[RawStmt]) -> List[str]:
 
     return func_names
 
-def _no_forbidden_value_functions(parsed: List[Dict[str, Any]]) -> None:
-    value_functions = _get_item_value("SQLValueFunction", parsed)
+def _no_forbidden_value_functions(parsed: Tuple[RawStmt]) -> None:
+    value_functions = _get_function_names(SQLValueFunction, parsed)
     if value_functions:
         raise HTTPException(
             status_code=400,
