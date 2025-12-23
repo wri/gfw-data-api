@@ -1,12 +1,13 @@
-from typing import Any, Dict, List, Tuple, cast
+from typing import Any, Dict, List, Tuple, cast, Optional, Iterable, Set
 from urllib.parse import unquote
 
 from fastapi import HTTPException
 from pglast import printers  # noqa
 from pglast import parse_sql
-from pglast.ast import RangeSubselect, RawStmt, SelectStmt
+from pglast.ast import RangeSubselect, RawStmt, SelectStmt, FuncCall
 from pglast.parser import ParseError
 from pglast.stream import RawStream
+from pglast.ast import String as PgString
 
 from ....models.enum.pg_admin_functions import (
     advisory_lock_functions,
@@ -37,6 +38,36 @@ from ....models.enum.pg_sys_functions import (
 )
 from ....models.pydantic.geostore import Geometry
 
+
+forbidden_function_group_list: List[List[str]] = [
+    configuration_settings_functions,
+    server_signaling_functions,
+    backup_control_functions,
+    recovery_information_functions,
+    recovery_control_functions,
+    snapshot_synchronization_functions,
+    replication_sql_functions,
+    database_object_size_functions,
+    database_object_location_functions,
+    collation_management_functions,
+    index_maintenance_functions,
+    generic_file_access_functions,
+    advisory_lock_functions,
+    table_rewrite_information,
+    session_information_functions,
+    access_privilege_inquiry_functions,
+    schema_visibility_inquiry_functions,
+    system_catalog_information_functions,
+    object_information_and_addressing_functions,
+    comment_information_functions,
+    transaction_ids_and_snapshots,
+    committed_transaction_information,
+    control_data_functions,
+]
+
+forbidden_functions: Set[str] = {
+    fn_name.lower() for group in forbidden_function_group_list for fn_name in group
+}
 
 def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
     if len(parsed) != 1:
@@ -79,57 +110,27 @@ def _no_subqueries(parsed: Tuple[RawStmt]) -> None:
 
 
 def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
-    functions = _get_item_value("FuncCall", parsed)
+    function_names = _get_function_names(FuncCall, parsed)
 
-    forbidden_function_list = [
-        configuration_settings_functions,
-        server_signaling_functions,
-        backup_control_functions,
-        recovery_information_functions,
-        recovery_control_functions,
-        snapshot_synchronization_functions,
-        replication_sql_functions,
-        database_object_size_functions,
-        database_object_location_functions,
-        collation_management_functions,
-        index_maintenance_functions,
-        generic_file_access_functions,
-        advisory_lock_functions,
-        table_rewrite_information,
-        session_information_functions,
-        access_privilege_inquiry_functions,
-        schema_visibility_inquiry_functions,
-        system_catalog_information_functions,
-        object_information_and_addressing_functions,
-        comment_information_functions,
-        transaction_ids_and_snapshots,
-        committed_transaction_information,
-        control_data_functions,
-    ]
+    for function_name in function_names:
+        func_name_lower = function_name.lower()
+        # block functions which start with `pg_`, `PostGIS` or `_`
+        if (
+                func_name_lower.startswith("pg_")
+                or func_name_lower.startswith("_")
+                or func_name_lower.startswith("postgis")
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Use of admin, system or private functions is not allowed.",
+            )
 
-    for f in functions:
-        function_names = f["funcname"]
-        for fn in function_names:
-            function_name = fn["String"]["str"]
-
-            # block functions which start with `pg_`, `PostGIS` or `_`
-            if (
-                function_name[:3].lower() == "pg_"
-                or function_name[:1].lower() == "_"
-                or function_name[:7].lower() == "postgis"
-            ):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Use of admin, system or private functions is not allowed.",
-                )
-
-            # Also block any other banished functions
-            for forbidden_functions in forbidden_function_list:
-                if function_name in forbidden_functions:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Use of admin, system or private functions is not allowed.",
-                    )
+        # Also block any other banished functions
+        if func_name_lower in forbidden_functions:
+            raise HTTPException(
+                status_code=400,
+                detail="Use of admin, system or private functions is not allowed.",
+            )
 
 
 def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -151,6 +152,87 @@ def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, An
         values += list(walk_dict(p))
     return values
 
+def _walk_ast(node: Any, visited: Optional[set] = None) -> Iterable[Any]:
+    """Recursively walk a pglast AST node structure and yield every node.
+
+    Handles AST node classes, iterables, and basic values.
+    """
+    if node is None:
+        return
+
+    # Use visited set to prevent infinite loops
+    if visited is None:
+        visited = set()
+
+    # Use id() to track visited objects
+    node_id = id(node)
+    if node_id in visited:
+        return
+    visited.add(node_id)
+
+    yield node
+
+    # Handle tuples and lists (like targetList, fromClause)
+    if isinstance(node, (tuple, list)):
+        for item in node:
+            yield from _walk_ast(item, visited)
+    # Handle pglast v7 nodes which use __slots__ (a dict in v7)
+    elif hasattr(node, "__slots__") and isinstance(node.__slots__, dict):
+        for attr_name in node.__slots__.keys():
+            attr_value = getattr(node, attr_name, None)
+            yield from _walk_ast(attr_value, visited)
+    # Fallback for nodes with __dict__
+    elif hasattr(node, "__dict__"):
+        for attr_value in node.__dict__.values():
+            yield from _walk_ast(attr_value, visited)
+
+def _get_function_names(node_type, parsed: Tuple[RawStmt]) -> List[str]:
+    """Return all function names of a particular type in an AST."""
+    select_stmt: SelectStmt = cast(SelectStmt, parsed[0].stmt)
+
+    func_names: List[str] = []
+
+    for node in _walk_ast(select_stmt):
+        if isinstance(node, node_type):
+            # Extract function name from funcname attribute
+            funcname_list = getattr(node, "funcname", [])
+
+            # Collect all parts of the function name (handles schema.function notation)
+            func_parts: List[str] = []
+            for part in funcname_list:
+                txt = None
+                # Try different ways to extract the string value
+                if isinstance(part, str):
+                    txt = part
+                elif isinstance(part, PgString):
+                    txt = part.sval
+                elif hasattr(part, "node"):
+                    # Wrapped node - try to get String from it
+                    inner = part.node
+                    if isinstance(inner, PgString):
+                        txt = inner.sval
+                    elif isinstance(inner, str):
+                        txt = inner
+                elif hasattr(part, "sval"):
+                    txt = part.sval
+
+                if txt:
+                    func_parts.append(txt)
+
+            # If we successfully extracted parts, use the last one (the actual function name)
+            # In qualified names like "pg_catalog.pg_ls_dir", we want "pg_ls_dir"
+            if func_parts:
+                func_names.append(func_parts[-1])
+            else:
+                # Fallback: render the FuncCall and grab leading identifier
+                rendered = RawStream()(node)
+                candidate = rendered.split("(", 1)[0].strip()
+                # Handle qualification like "pg_catalog.pg_ls_dir"
+                func_name = candidate.split(".")[-1]
+                if func_name:
+                    func_names.append(func_name)
+
+    return func_names
 
 def _no_forbidden_value_functions(parsed: List[Dict[str, Any]]) -> None:
     value_functions = _get_item_value("SQLValueFunction", parsed)
