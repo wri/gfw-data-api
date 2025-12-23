@@ -14,7 +14,7 @@ test_version: str = "v2025"
 async def test_scrutinize_sql_passes_through_benign_queries():
     sql: str = "SELECT * FROM test_dataset.v2025"
 
-    result = await scrutinize_sql(test_dataset, None, sql, test_version)
+    result = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert result == sql
 
 
@@ -22,7 +22,7 @@ async def test_scrutinize_sql_passes_through_benign_queries():
 async def test_scrutinize_sql_passes_through_benign_from_with_as():
     sql: str = "SELECT * FROM test_dataset.v2025 AS foo"
 
-    result = await scrutinize_sql(test_dataset, None, sql, test_version)
+    result = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert result == sql
 
 
@@ -30,7 +30,7 @@ async def test_scrutinize_sql_passes_through_benign_from_with_as():
 async def test_scrutinize_sql_passes_through_benign_from_with_multiple_as():
     sql: str = "SELECT count(*) AS foo, 1 AS bar FROM test_dataset.v2025"
 
-    result = await scrutinize_sql(test_dataset, None, sql, test_version)
+    result = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert result == sql
 
 
@@ -39,7 +39,7 @@ async def test_scrutinize_sql_only_one_statement_allowed():
     sql: str = "SELECT * FROM test_dataset.v2025; select * from something_else"
 
     with pytest.raises(HTTPException) as exc_info:
-        _ = await scrutinize_sql(test_dataset, None, sql, test_version)
+        _ = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "Must use exactly one SQL statement."
 
@@ -49,7 +49,7 @@ async def test_scrutinize_sql_only_select_statements_allowed():
     sql: str = "DELETE FROM bar;"
 
     with pytest.raises(HTTPException) as exc_info:
-        _ = await scrutinize_sql(test_dataset, None, sql, test_version)
+        _ = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "Must use SELECT statements only."
 
@@ -59,7 +59,7 @@ async def test_scrutinize_sql_must_not_have_a_with_clause():
     sql: str = "WITH t as (select 1) SELECT * FROM version;"
 
     with pytest.raises(HTTPException) as exc_info:
-        _ = await scrutinize_sql(test_dataset, None, sql, test_version)
+        _ = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "Must not have WITH clause."
 
@@ -69,7 +69,7 @@ async def test_scrutinize_sql_no_sql_value_functions():
     sql: str = "select current_catalog from mytable;"
 
     with pytest.raises(HTTPException) as exc_info:
-        _ = await scrutinize_sql(test_dataset, None, sql, test_version)
+        _ = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "Use of sql value functions is not allowed."
 
@@ -79,7 +79,7 @@ async def test_scrutinize_sql_only_one_table_allowed():
     sql: str = "SELECT * FROM version, version2;"
 
     with pytest.raises(HTTPException) as exc_info:
-        _ = await scrutinize_sql(test_dataset, None, sql, test_version)
+        _ = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "Must list exactly one table in FROM clause."
 
@@ -89,7 +89,7 @@ async def test_scrutinize_sql_no_sub_queries_allowed():
     sql: str = "SELECT * FROM (select * from a) as b;"
 
     with pytest.raises(HTTPException) as exc_info:
-        _ = await scrutinize_sql(test_dataset, None, sql, test_version)
+        _ = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "Must not use sub queries."
 
@@ -99,7 +99,7 @@ async def test_scrutinize_sql_no_postgis_functions_allowed():
     sql: str = "SELECT PostGIS_Full_Version() FROM data;"
 
     with pytest.raises(HTTPException) as exc_info:
-        _ = await scrutinize_sql(test_dataset, None, sql, test_version)
+        _ = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert exc_info.value.status_code == 400
     assert (
         exc_info.value.detail
@@ -112,7 +112,7 @@ async def test_scrutinize_sql_no_admin_functions_allowed():
     sql: str = "SELECT pg_create_restore_point() FROM data;"
 
     with pytest.raises(HTTPException) as exc_info:
-        _ = await scrutinize_sql(test_dataset, None, sql, test_version)
+        _ = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert exc_info.value.status_code == 400
     assert (
         exc_info.value.detail
@@ -125,7 +125,7 @@ async def test_scrutinize_sql_no_sys_functions_allowed():
     sql: str = "SELECT txid_current() from mytable;"
 
     with pytest.raises(HTTPException) as exc_info:
-        _ = await scrutinize_sql(test_dataset, None, sql, test_version)
+        _ = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert exc_info.value.status_code == 400
     assert (
         exc_info.value.detail
@@ -138,7 +138,7 @@ async def test_scrutinize_sql_forbidden_not_allowed():
     sql: str = "SELECT current_setting() FROM mytable;"
 
     with pytest.raises(HTTPException) as exc_info:
-        _ = await scrutinize_sql(test_dataset, None, sql, test_version)
+        _ = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert exc_info.value.status_code == 400
     assert (
         exc_info.value.detail
@@ -154,7 +154,7 @@ async def test_scrutinize_sql_with_geom():
         """SELECT * FROM test_dataset.v2025 WHERE id = 1 AND st_intersects(geom, st_setsrid(st_geomfromgeojson('{"type": "Point", "coordinates": [0, 0]}'), 4326))"""
     )
 
-    result = await scrutinize_sql(test_dataset, geometry, sql_in, test_version)
+    result = await scrutinize_sql(test_dataset, test_version, geometry, sql_in)
     assert result == sql_expected
 
 
@@ -165,7 +165,7 @@ async def test_scrutinize_sql_with_geom_no_where():
     sql_expected: str = (
         """SELECT * FROM test_dataset.v2025 WHERE st_intersects(geom, st_setsrid(st_geomfromgeojson('{"type": "Point", "coordinates": [0, 0]}'), 4326))"""
     )
-    result = await scrutinize_sql(test_dataset, geometry, sql_in, test_version)
+    result = await scrutinize_sql(test_dataset, test_version, geometry, sql_in)
     assert result == sql_expected
 
 
@@ -174,6 +174,6 @@ async def test_scrutinize_sql_gibberish():
     sql: str = "foo;"
 
     with pytest.raises(HTTPException) as exc_info:
-        _ = await scrutinize_sql(test_dataset, None, sql, test_version)
+        _ = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == 'syntax error at or near "foo", at index 0'

@@ -273,7 +273,7 @@ def quote_ident(ident: str) -> str:
 
 
 async def scrutinize_sql(
-    dataset: str, geometry: Geometry | None, sql: str, version: str
+    dataset: str, version: str, geometry: Geometry | None, sql: str
 ) -> str:
     try:
         parsed = parse_sql(unquote(sql))
