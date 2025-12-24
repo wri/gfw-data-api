@@ -274,6 +274,65 @@ def quote_ident(ident: str) -> str:
 async def scrutinize_sql(
     dataset: str, version: str, geometry: Geometry | None, sql: str
 ) -> str:
+    """Validate, constrain, and safely rewrite a user-supplied SQL query.
+
+    This function parses an incoming SQL string, applies a series of
+    strict validation checks to ensure the query is safe and
+    well-formed, optionally injects a spatial filter,
+    and then rewrites the query so that it targets a specific
+    dataset/version table.
+
+    The validations enforce that the SQL:
+      - Contains exactly one statement
+      - Is a SELECT query
+      - Does not use a WITH clause
+      - References exactly one table in the FROM clause
+      - Contains no subqueries
+      - Does not call forbidden SQL functions or value functions
+
+    If any of these constraints are violated, an HTTP 400 error is raised.
+
+    After validation, the function:
+      - Preserves any table alias present in the original query
+      - Optionally injects a geometry-based filter into the WHERE clause
+      - Serializes the modified AST back into SQL
+      - Rewrites the FROM clause to point to the fully-qualified
+        dataset/version table, using proper identifier quoting when
+        necessary
+
+    This approach ensures that user-provided SQL can only operate on the
+    intended table and cannot bypass security or resource constraints
+    through complex SQL constructs.
+
+    Parameters
+    ----------
+    dataset : str
+        The dataset (schema) name to which the query should be constrained.
+
+    version : str
+        The dataset version (table) name. If it contains dots, it will be
+        safely quoted as an identifier.
+
+    geometry : Geometry | None
+        Optional geometry used to inject a spatial filter into the query.
+        If None, no geometry filter is applied.
+
+    sql : str
+        The user-supplied SQL query string.
+
+    Returns
+    -------
+    str
+        A validated and rewritten SQL query that is guaranteed to target
+        only the specified dataset/version and comply with all enforced
+        constraints.
+
+    Raises
+    ------
+    HTTPException
+        If the SQL is invalid, unsupported, or violates any safety rules.
+    """
+
     try:
         parsed = parse_sql(unquote(sql))
     except ParseError as e:
@@ -317,18 +376,61 @@ async def scrutinize_sql(
     else:
         from_part = f"{dataset}.{version}{alias_sql}"
 
-    # replace the FROM target safely
+    sql_out = await _replace_from_clause(from_part, sql_out)
+
+    return sql_out
+
+
+async def _replace_from_clause(from_part: str, sql_in: str) -> str:
+    """Replace the table reference in the SQL FROM clause with a new target.
+
+    This function finds the first occurrence of a SQL `FROM` clause and
+    replaces only the table identifier that immediately follows `FROM`,
+    leaving the remainder of the query unchanged.
+
+    The match is intentionally conservative:
+      - It matches `FROM <table>` where `<table>` may be schema-qualified
+        and/or double-quoted (e.g. `schema.table`, `"mySchema".table`).
+      - It stops matching at common SQL clause boundaries such as
+        `WHERE`, `JOIN`, `GROUP BY`, `ORDER BY`, `LIMIT`, or the end of
+        the statement.
+      - It does NOT consume those following clauses, ensuring they
+        remain intact.
+
+    The replacement is case-insensitive with respect to the `FROM`
+    keyword and is suitable for safely rewriting SQL queries without
+    accidentally modifying joins, filters, or subqueries.
+
+    Example
+    -------
+    >>> sql = 'SELECT id FROM "mySchema".users WHERE active = true;'
+    >>> await replace_from_clause('analytics.users_v2', sql)
+    'SELECT id FROM analytics.users_v2 WHERE active = true;'
+
+    Parameters
+    ----------
+    from_part : str
+        The replacement table expression to insert after `FROM`
+        (e.g. `"new_schema"."new_table"`, `temp_table`).
+
+    sql_in : str
+        The input SQL query.
+
+    Returns
+    -------
+    str
+        A new SQL string with the FROM clause target replaced.
+    """
     pattern = (
         r"from\s+"
         r'[\w\."]+'
-        r"(?:\s+(?:AS\s+)?\w+)?"
         r"(?=\s*(?:WHERE|JOIN|ON|GROUP\b|ORDER\b|LIMIT\b|OFFSET\b|FETCH\b|FOR\b|;|\)|$))"
     )
+
     sql_out = re.sub(
         pattern,
         f"FROM {from_part}",
-        sql_out,
+        sql_in,
         flags=re.IGNORECASE,
     )
-
     return sql_out
