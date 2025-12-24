@@ -35,6 +35,14 @@ async def test_scrutinize_sql_passes_through_benign_from_with_multiple_as():
 
 
 @pytest.mark.asyncio
+async def test_scrutinize_sql_quotes_version_and_dataset_with_dots():
+    sql: str = 'SELECT * FROM test."v1.1.1"'
+
+    result = await scrutinize_sql("test", "v.1.1.1", None, sql)
+    assert result == 'SELECT * FROM "test"."v.1.1.1"'
+
+
+@pytest.mark.asyncio
 async def test_scrutinize_sql_only_one_statement_allowed():
     sql: str = "SELECT * FROM test_dataset.v2025; select * from something_else"
 

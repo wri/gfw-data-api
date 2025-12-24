@@ -312,7 +312,7 @@ async def scrutinize_sql(
     sql_out = RawStream()(parsed[0])
 
     # build our quoted schema.table
-    if "." in dataset or "." in version:
+    if "." in version:
         from_part = f"{quote_ident(dataset)}.{quote_ident(version)}{alias_sql}"
     else:
         from_part = f"{dataset}.{version}{alias_sql}"
