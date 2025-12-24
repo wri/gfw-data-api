@@ -47,7 +47,7 @@ from ....models.enum.pg_sys_functions import (
 )
 from ....models.pydantic.geostore import Geometry
 
-forbidden_function_group_list: List[List[str]] = [
+FORBIDDEN_FUNCTION_GROUPS: List[List[str]] = [
     configuration_settings_functions,
     server_signaling_functions,
     backup_control_functions,
@@ -73,8 +73,8 @@ forbidden_function_group_list: List[List[str]] = [
     control_data_functions,
 ]
 
-forbidden_functions: Set[str] = {
-    fn_name.lower() for group in forbidden_function_group_list for fn_name in group
+FORBIDDEN_FUNCTION_NAMES: Set[str] = {
+    fn_name.lower() for group in FORBIDDEN_FUNCTION_GROUPS for fn_name in group
 }
 
 
@@ -135,7 +135,7 @@ def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
             )
 
         # Also block any other banished functions
-        if func_name_lower in forbidden_functions:
+        if func_name_lower in FORBIDDEN_FUNCTION_NAMES:
             raise HTTPException(
                 status_code=400,
                 detail="Use of admin, system or private functions is not allowed.",
