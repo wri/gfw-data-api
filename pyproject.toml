@@ -32,7 +32,7 @@ dependencies = [
     "orjson",
     "packaging",
     "pendulum<3",
-    "pglast<2",
+    "pglast",
     "psutil",
     "psycopg2",
     "pydantic<2",
