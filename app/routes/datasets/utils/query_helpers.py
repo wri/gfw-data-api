@@ -236,8 +236,8 @@ def _no_forbidden_value_functions(parsed: Tuple[RawStmt]) -> None:
 
 
 async def _add_geometry_filter(
-    parsed_sql: Tuple[RawStmt], geometry: Geometry
-) -> Tuple[RawStmt]:
+    parsed_sql: Tuple[RawStmt, ...], geometry: Geometry
+) -> Tuple[RawStmt, ...]:
     """Add a geometry intersection filter to the WHERE clause of a parsed SQL
     statement."""
     # Create the geometry filter as a separate parsed statement
