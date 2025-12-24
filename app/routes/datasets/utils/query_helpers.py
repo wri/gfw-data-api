@@ -293,11 +293,16 @@ async def scrutinize_sql(
     if not isinstance(only_from, RangeVar):
         raise HTTPException(status_code=400, detail="Unexpected FROM clause structure.")
 
-    alias_sql = ""
+    alias_sql: str = ""
     if getattr(only_from, "alias", None):
         # RawStream on the alias node gives you e.g. `foo` or `AS foo`
+        alias_raw = RawStream()(only_from.alias).strip()
 
-        alias_sql = " AS " + RawStream()(only_from.alias).strip()
+        # Avoid duplicating AS if RawStream already included it
+        if alias_raw.upper().startswith("AS "):
+            alias_sql = " " + alias_raw
+        else:
+            alias_sql = " AS " + alias_raw
 
     # apply geometry filter (this edits the AST in-place)
     if geometry:
