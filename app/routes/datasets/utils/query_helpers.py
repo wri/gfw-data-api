@@ -267,7 +267,6 @@ async def _add_geometry_filter(
 
 
 def quote_ident(ident: str) -> str:
-    return ident  # TODO: remove this early return when we decide on quoting datasets and versions
     # safe-ish Postgres identifier quoting
     return '"' + ident.replace('"', '""') + '"'
 
@@ -308,7 +307,10 @@ async def scrutinize_sql(
     sql_out = RawStream()(parsed[0])
 
     # build our quoted schema.table
-    quoted_from = f"{quote_ident(dataset)}.{quote_ident(version)}{alias_sql}"
+    if "." in dataset or "." in version:
+        from_part = f"{quote_ident(dataset)}.{quote_ident(version)}{alias_sql}"
+    else:
+        from_part = f"{dataset}.{version}{alias_sql}"
 
     # replace the FROM target safely
     pattern = (
@@ -319,7 +321,7 @@ async def scrutinize_sql(
     )
     sql_out = re.sub(
         pattern,
-        f"FROM {quoted_from}",
+        f"FROM {from_part}",
         sql_out,
         flags=re.IGNORECASE,
     )
