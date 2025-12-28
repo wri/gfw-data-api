@@ -134,13 +134,12 @@ async def test_versions(async_client: AsyncClient):
     assert response.status_code == 400
     assert response.json()["message"] == "Must use SELECT statements only."
 
-    # Disable, allowing WITH clauses for now.
-    # response = await async_client.get(
-    #     f"/dataset/{dataset}/{version}/query?sql=WITH t as (select 1) SELECT * FROM version;",
-    #     follow_redirects=True,
-    # )
-    # assert response.status_code == 400
-    # assert response.json()["message"] == "Must not have WITH clause."
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=WITH t as (select 1) SELECT * FROM version;",
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert response.json()["message"] == "Must not have WITH clause."
 
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=SELECT * FROM version, version2;",
