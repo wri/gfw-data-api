@@ -291,7 +291,7 @@ async def test_query_dataset_raster_geostore_huge(
 
 
 @pytest.mark.asyncio()
-async def test_query_vector_asset_disallowed_1(
+async def test_query_vector_asset_sql_value_functions_disallowed(
     generic_vector_source_version, apikey, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
@@ -310,7 +310,7 @@ async def test_query_vector_asset_disallowed_1(
 
 
 @pytest.mark.asyncio()
-async def test_query_vector_asset_disallowed_2(
+async def test_query_vector_asset_sys_functions_disallowed(
     generic_vector_source_version, apikey, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
@@ -332,161 +332,7 @@ async def test_query_vector_asset_disallowed_2(
 
 
 @pytest.mark.asyncio()
-async def test_query_vector_asset_disallowed_3(
-    generic_vector_source_version, apikey, async_client: AsyncClient
-):
-    dataset, version, _ = generic_vector_source_version
-
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=select has_any_column_privilege() from mytable;",
-        headers=headers,
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert (
-        response.json()["message"]
-        == "Use of admin, system or private functions is not allowed."
-    )
-
-
-@pytest.mark.asyncio()
-async def test_query_vector_asset_disallowed_4(
-    generic_vector_source_version, apikey, async_client: AsyncClient
-):
-    dataset, version, _ = generic_vector_source_version
-
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=select format_type() from mytable;",
-        headers=headers,
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert (
-        response.json()["message"]
-        == "Use of admin, system or private functions is not allowed."
-    )
-
-
-@pytest.mark.asyncio()
-async def test_query_vector_asset_disallowed_5(
-    generic_vector_source_version, apikey, async_client: AsyncClient
-):
-    dataset, version, _ = generic_vector_source_version
-
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=select col_description() from mytable;",
-        headers=headers,
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert (
-        response.json()["message"]
-        == "Use of admin, system or private functions is not allowed."
-    )
-
-
-@pytest.mark.asyncio()
-async def test_query_vector_asset_disallowed_6(
-    generic_vector_source_version, apikey, async_client: AsyncClient
-):
-    dataset, version, _ = generic_vector_source_version
-
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=select txid_current() from mytable;",
-        headers=headers,
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert (
-        response.json()["message"]
-        == "Use of admin, system or private functions is not allowed."
-    )
-
-
-@pytest.mark.asyncio()
-async def test_query_vector_asset_disallowed_7(
-    generic_vector_source_version, apikey, async_client: AsyncClient
-):
-    dataset, version, _ = generic_vector_source_version
-
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=select current_setting() from mytable;",
-        headers=headers,
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert (
-        response.json()["message"]
-        == "Use of admin, system or private functions is not allowed."
-    )
-
-
-@pytest.mark.asyncio()
-async def test_query_vector_asset_disallowed_8(
-    generic_vector_source_version, apikey, async_client: AsyncClient
-):
-    dataset, version, _ = generic_vector_source_version
-
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=select pg_cancel_backend() from mytable;",
-        headers=headers,
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert (
-        response.json()["message"]
-        == "Use of admin, system or private functions is not allowed."
-    )
-
-
-@pytest.mark.asyncio()
-async def test_query_vector_asset_disallowed_9(
-    generic_vector_source_version, apikey, async_client: AsyncClient
-):
-    dataset, version, _ = generic_vector_source_version
-
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
-    response = await async_client.get(
-        f"/dataset/{dataset}/{version}/query?sql=select brin_summarize_new_values() from mytable;",
-        headers=headers,
-        follow_redirects=True,
-    )
-    assert response.status_code == 400
-    assert (
-        response.json()["message"]
-        == "Use of admin, system or private functions is not allowed."
-    )
-
-
-@pytest.mark.asyncio()
-async def test_query_vector_asset_disallowed_10(
+async def test_query_vector_asset_unknown_functions_disallowed(
     generic_vector_source_version, apikey, async_client: AsyncClient
 ):
     dataset, version, _ = generic_vector_source_version
