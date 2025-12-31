@@ -510,7 +510,7 @@ async def _query_table(
     geometry: Optional[Geometry],
 ) -> List[Dict[str, Any]]:
     # Parse and validate SQL statement
-    sql = await scrutinize_sql(dataset, geometry, sql, version)
+    sql = await scrutinize_sql(dataset, version, geometry, sql)
 
     try:
         rows = await db.all(sql)
