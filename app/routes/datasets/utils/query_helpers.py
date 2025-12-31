@@ -1,3 +1,4 @@
+
 import re
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, cast
 from urllib.parse import unquote
@@ -17,6 +18,7 @@ from pglast.ast import (
 from pglast.ast import String as PgString
 from pglast.parser import ParseError
 from pglast.stream import RawStream
+
 
 from ....models.enum.pg_admin_functions import (
     advisory_lock_functions,
