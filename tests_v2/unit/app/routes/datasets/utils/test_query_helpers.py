@@ -185,3 +185,13 @@ async def test_scrutinize_sql_gibberish():
         _ = await scrutinize_sql(test_dataset, test_version, None, sql)
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == 'syntax error at or near "foo", at index 0'
+
+
+@pytest.mark.asyncio
+async def test_scrutinize_sql_replaces_from_clause_when_column_and_table_are_aliased():
+    sql = "SELECT country AS name FROM table_1_whatever AS fao"
+
+    expected_sql_out = "SELECT country AS name FROM test_dataset.v2025 AS fao"
+
+    result = await scrutinize_sql(test_dataset, test_version, None, sql)
+    assert result == expected_sql_out
