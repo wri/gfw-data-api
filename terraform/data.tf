@@ -12,23 +12,13 @@ data "aws_ssm_parameter" "raster_analysis_lambda_contract" {
   name = "/infra/${var.environment}/gfw-raster-analysis-lambda/contract"
 }
 
-locals {
-  raster_analysis_lambda = jsondecode(data.aws_ssm_parameter.raster_analysis_lambda_contract.value)
+data "aws_ssm_parameter" "tile_cache_contract" {
+  name = "/infra/${var.environment}/gfw-tile-cache/contract"
 }
 
-# import tile_cache state
-# This might cause a chicken/ egg problem on new deployments.
-# B/C tile cache state also imports data-api state
-# In our case, we only need the S3 bucket name here which already exists in all environments.
-# If we were to migrate this project to a different account, you would need to create bucket manually first
-# and import into tile cache state for this to work
-data "terraform_remote_state" "tile_cache" {
-  backend = "s3"
-  config = {
-    bucket = local.tf_state_bucket
-    region = "us-east-1"
-    key    = "wri__gfw_fire-vector-tiles.tfstate"
-  }
+locals {
+  raster_analysis_lambda = jsondecode(data.aws_ssm_parameter.raster_analysis_lambda_contract.value)
+  tile_cache             = jsondecode(data.aws_ssm_parameter.tile_cache_contract.value)
 }
 
 data "template_file" "container_definition" {
