@@ -1,11 +1,5 @@
-# import core state
-data "terraform_remote_state" "core" {
-  backend = "s3"
-  config = {
-    bucket = local.tf_state_bucket
-    region = "us-east-1"
-    key    = "core.tfstate"
-  }
+data "aws_ssm_parameter" "core_contract" {
+  name = "/infra/${var.environment}/gfw-aws-core-infra/contract"
 }
 
 data "aws_ssm_parameter" "raster_analysis_lambda_contract" {
@@ -17,6 +11,7 @@ data "aws_ssm_parameter" "tile_cache_contract" {
 }
 
 locals {
+  core                   = jsondecode(data.aws_ssm_parameter.core_contract.value)
   raster_analysis_lambda = jsondecode(data.aws_ssm_parameter.raster_analysis_lambda_contract.value)
   tile_cache             = jsondecode(data.aws_ssm_parameter.tile_cache_contract.value)
 }
