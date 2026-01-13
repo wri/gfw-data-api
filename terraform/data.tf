@@ -40,11 +40,11 @@ data "template_file" "container_definition" {
     name_suffix       = replace(local.name_suffix, "-", "_")
 
     data_lake_bucket         = data.terraform_remote_state.core.outputs.data-lake_bucket
-    tile_cache_bucket        = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_name
-    tile_cache_cloudfront_id = data.terraform_remote_state.tile_cache.outputs.cloudfront_distribution_id
-    tile_cache_url           = data.terraform_remote_state.tile_cache.outputs.tile_cache_url
-    tile_cache_cluster       = data.terraform_remote_state.tile_cache.outputs.tile_cache_cluster
-    tile_cache_service       = data.terraform_remote_state.tile_cache.outputs.tile_cache_service
+    tile_cache_bucket        = local.tile_cache.tile_cache_bucket
+    tile_cache_cloudfront_id = local.tile_cache.tile_cache_cloudfront_id
+    tile_cache_url           = local.tile_cache.tile_cache_url
+    tile_cache_cluster       = local.tile_cache.tile_cache_cluster
+    tile_cache_service       = local.tile_cache.tile_cache_service
 
     aurora_job_definition       = module.batch_job_queues.aurora_job_definition_arn
     aurora_job_queue            = module.batch_job_queues.aurora_job_queue_arn
@@ -179,7 +179,7 @@ data "template_file" "tile_cache_bucket_policy" {
   template = file("${path.root}/templates/tile_cache_bucket_policy.json.tmpl")
 
   vars = {
-    bucket_arn = data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_arn
+    bucket_arn = local.tile_cache.tile_cache_bucket_arn
   }
 }
 

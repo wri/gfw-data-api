@@ -91,9 +91,9 @@ module "fargate_autoscaling" {
     aws_iam_policy.lambda_invoke.arn,
     aws_iam_policy.iam_api_gateway_policy.arn,
     aws_iam_policy.read_gcs_secret.arn,
-    data.terraform_remote_state.tile_cache.outputs.ecs_update_service_policy_arn,
+    local.tile_cache.ecs_update_service_policy_arn,
     aws_iam_policy.tile_cache_bucket_policy.arn,
-    data.terraform_remote_state.tile_cache.outputs.cloudfront_invalidation_policy_arn,
+    local.tile_cache.cloudfront_invalidation_policy_arn,
     aws_iam_policy.step_function_policy.arn,
   ]
   task_execution_role_policies = [
@@ -149,7 +149,7 @@ module "batch_data_lake_writer" {
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
-    data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_write_policy_arn,
+    local.tile_cache.tile_cache_bucket_write_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_policy_arn
@@ -217,7 +217,7 @@ module "batch_job_queues" {
     "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
     aws_iam_policy.query_batch_jobs.arn,
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
-    data.terraform_remote_state.tile_cache.outputs.tile_cache_bucket_write_policy_arn,
+    local.tile_cache.tile_cache_bucket_write_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_policy_arn
