@@ -8,15 +8,12 @@ data "terraform_remote_state" "core" {
   }
 }
 
-# import gfw-raster-analysis-lambda state
-data "terraform_remote_state" "raster_analysis_lambda" {
-  backend   = "s3"
-  workspace = var.lambda_analysis_workspace
-  config = {
-    bucket = local.tf_state_bucket
-    region = "us-east-1"
-    key    = "wri__gfw-raster-analysis-lambda.tfstate"
-  }
+data "aws_ssm_parameter" "raster_analysis_lambda_contract" {
+  name = "/infra/${var.environment}/gfw-raster-analysis-lambda/contract"
+}
+
+locals {
+  raster_analysis_lambda = jsondecode(data.aws_ssm_parameter.raster_analysis_lambda_contract.value)
 }
 
 # import tile_cache state
@@ -70,7 +67,7 @@ data "template_file" "container_definition" {
     pixetl_job_queue            = module.batch_job_queues.pixetl_job_queue_arn
     on_demand_compute_job_queue = module.batch_job_queues.on_demand_compute_job_queue_arn
     raster_analysis_lambda_name = "raster-analysis-tiled_raster_analysis-default"
-    raster_analysis_sfn_arn     = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_state_machine_arn
+    raster_analysis_sfn_arn     = local.raster_analysis_lambda.raster_analysis_state_machine_arn
     service_url                 = local.service_url
     rw_api_url                  = var.rw_api_url
     rw_api_key_arn              = var.rw_api_key_arn
@@ -127,7 +124,7 @@ data "local_file" "iam_s3_read_only" {
 //data "template_file" "iam_lambda_invoke" {
 //  template = "${path.root}/templates/lambda_invoke_policy.json.tmpl"
 //  vars = {
-//    lambda_arn = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_lambda_arn
+//    lambda_arn = local.raster_analysis_lambda.raster_analysis_state_machine_arn
 //  }
 //}
 
@@ -199,7 +196,7 @@ data "template_file" "tile_cache_bucket_policy" {
 data "template_file" "step_function_policy" {
   template = file("${path.root}/templates/step_function_policy.json.tmpl")
   vars = {
-    raster_analysis_state_machine_arn = data.terraform_remote_state.raster_analysis_lambda.outputs.raster_analysis_state_machine_arn
+    raster_analysis_state_machine_arn = local.raster_analysis_lambda.raster_analysis_state_machine_arn
   }
 }
 
