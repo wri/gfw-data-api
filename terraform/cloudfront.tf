@@ -112,7 +112,7 @@ resource "aws_cloudfront_distribution" "data_api" {
   }
 
   viewer_certificate {
-    acm_certificate_arn            = data.terraform_remote_state.core.outputs.acm_certificate
+    acm_certificate_arn            = local.core.acm_certificate_arn
     cloudfront_default_certificate = false
     minimum_protocol_version       = "TLSv1.1_2016"
     ssl_support_method             = "sni-only"

@@ -10,16 +10,14 @@ terraform {
 
 # some local
 locals {
-  bucket_suffix   = var.environment == "production" ? "" : "-${var.environment}"
-  tf_state_bucket = "gfw-terraform${local.bucket_suffix}"
-  tags            = data.terraform_remote_state.core.outputs.tags
+  tags            = local.core.tags
   fargate_tags = merge(
     {
       Job = "Data-API Service",
   }, local.tags)
   name_suffix           = terraform.workspace == "default" ? "" : "-${terraform.workspace}"
   project               = "gfw-data-api"
-  aurora_instance_class = data.terraform_remote_state.core.outputs.aurora_cluster_instance_class
+  aurora_instance_class = local.core.aurora_cluster_instance_class
   aurora_max_vcpus      = local.aurora_instance_class == "db.t3.medium" ? 2 : local.aurora_instance_class == "db.r6g.large" ? 2 : local.aurora_instance_class == "db.r6g.xlarge" ? 4 : local.aurora_instance_class == "db.r6g.2xlarge" ? 8 : local.aurora_instance_class == "db.r6g.4xlarge" ? 16 : local.aurora_instance_class == "db.r6g.8xlarge" ? 32 : local.aurora_instance_class == "db.r6g.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.large" ? 2 : local.aurora_instance_class == "db.r5.xlarge" ? 4 : local.aurora_instance_class == "db.r5.2xlarge" ? 8 : local.aurora_instance_class == "db.r5.4xlarge" ? 16 : local.aurora_instance_class == "db.r5.8xlarge" ? 32 : local.aurora_instance_class == "db.r5.12xlarge" ? 48 : local.aurora_instance_class == "db.r5.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.24xlarge" ? 96 : ""
   service_url           = var.environment == "dev" ? "http://${local.lb_dns_name}:${data.external.generate_port[0].result["port"]}" : var.service_url
   # The container_registry module only pushes a new Docker image if the docker hash
@@ -67,9 +65,9 @@ module "fargate_autoscaling" {
   project                      = local.project
   name_suffix                  = local.name_suffix
   tags                         = local.fargate_tags
-  vpc_id                       = data.terraform_remote_state.core.outputs.vpc_id
-  private_subnet_ids           = data.terraform_remote_state.core.outputs.private_subnet_ids
-  public_subnet_ids            = data.terraform_remote_state.core.outputs.public_subnet_ids
+  vpc_id                       = local.core.vpc_id
+  private_subnet_ids           = local.core.private_subnet_ids
+  public_subnet_ids            = local.core.public_subnet_ids
   container_name               = var.container_name
   container_port               = var.container_port
   desired_count                = var.desired_count
@@ -82,10 +80,10 @@ module "fargate_autoscaling" {
   auto_scaling_max_capacity    = var.auto_scaling_max_capacity
   auto_scaling_max_cpu_util    = var.auto_scaling_max_cpu_util
   auto_scaling_min_capacity    = var.auto_scaling_min_capacity
-  //  acm_certificate_arn       = var.environment == "dev" ? null : data.terraform_remote_state.core.outputs.acm_certificate
-  security_group_ids = [data.terraform_remote_state.core.outputs.postgresql_security_group_id]
+  // acm_certificate_arn       = var.environment == "dev" ? null : local.core.acm_certificate_arn
+  security_group_ids = [local.core.postgresql_security_group_id]
   task_role_policies = [
-    data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
+    local.core.iam_policy_s3_write_data_lake_arn,
     aws_iam_policy.run_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
     aws_iam_policy.lambda_invoke.arn,
@@ -100,9 +98,9 @@ module "fargate_autoscaling" {
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.read_new_relic_secret.arn,
     aws_iam_policy.read_rw_api_key_secret.arn,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
-    data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_policy_arn
+    local.core.postgresql_reader_policy_arn,
+    local.core.postgresql_writer_policy_arn,
+    local.core.gfw_data_api_token_read_policy_arn
   ]
   container_definition = data.template_file.container_definition.rendered
 }
@@ -112,9 +110,9 @@ module "fargate_autoscaling" {
 module "batch_aurora_writer" {
   source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.5"
   ecs_role_policy_arns = [
-    data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
+    local.core.iam_policy_s3_write_data_lake_arn,
+    local.core.postgresql_reader_policy_arn,
+    local.core.postgresql_writer_policy_arn,
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn
   ]
@@ -128,10 +126,10 @@ module "batch_aurora_writer" {
   max_vcpus = local.aurora_max_vcpus
   project   = local.project
   security_group_ids = [
-    data.terraform_remote_state.core.outputs.default_security_group_id,
-    data.terraform_remote_state.core.outputs.postgresql_security_group_id
+    local.core.default_security_group_id,
+    local.core.postgresql_security_group_id
   ]
-  subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
+  subnets                  = local.core.private_subnet_ids
   suffix                   = local.name_suffix
   tags                     = merge(local.tags, {Job = "Aurora Writer",})
   use_ephemeral_storage    = false
@@ -148,20 +146,20 @@ module "batch_data_lake_writer" {
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
-    data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
+    local.core.iam_policy_s3_write_data_lake_arn,
     local.tile_cache.tile_cache_bucket_write_policy_arn,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
-    data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_policy_arn
+    local.core.postgresql_reader_policy_arn,
+    local.core.postgresql_writer_policy_arn,
+    local.core.gfw_gee_export_read_policy_arn
   ]
   key_pair  = var.key_pair
   max_vcpus = var.data_lake_max_vcpus
   project   = local.project
   security_group_ids = [
-    data.terraform_remote_state.core.outputs.default_security_group_id,
-    data.terraform_remote_state.core.outputs.postgresql_security_group_id
+    local.core.default_security_group_id,
+    local.core.postgresql_security_group_id
   ]
-  subnets               = data.terraform_remote_state.core.outputs.private_subnet_ids
+  subnets               = local.core.private_subnet_ids
   suffix                = local.name_suffix
   tags                  = merge(local.tags, {Job = "Datalake/pixetl/tile-cache",} )
   use_ephemeral_storage = true
@@ -177,19 +175,19 @@ module "batch_cogify" {
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
-    data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
-    data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_policy_arn
+    local.core.iam_policy_s3_write_data_lake_arn,
+    local.core.postgresql_reader_policy_arn,
+    local.core.postgresql_writer_policy_arn,
+    local.core.gfw_gee_export_read_policy_arn
   ]
   key_pair  = var.key_pair
   max_vcpus = var.data_lake_max_vcpus
   project   = local.project
   security_group_ids = [
-    data.terraform_remote_state.core.outputs.default_security_group_id,
-    data.terraform_remote_state.core.outputs.postgresql_security_group_id
+    local.core.default_security_group_id,
+    local.core.postgresql_security_group_id
   ]
-  subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
+  subnets                  = local.core.private_subnet_ids
   suffix                   = local.name_suffix
   tags                     = merge(local.tags, {Job = "COGify",}, )
   use_ephemeral_storage    = true
@@ -216,14 +214,14 @@ module "batch_job_queues" {
   iam_policy_arn = [
     "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
     aws_iam_policy.query_batch_jobs.arn,
-    data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
+    local.core.iam_policy_s3_write_data_lake_arn,
     local.tile_cache.tile_cache_bucket_write_policy_arn,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
-    data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
-    data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_policy_arn
+    local.core.postgresql_reader_policy_arn,
+    local.core.postgresql_writer_policy_arn,
+    local.core.gfw_gee_export_read_policy_arn
   ]
   aurora_max_vcpus = local.aurora_max_vcpus
-  gcs_secret       = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
+  gcs_secret       = local.core.gfw_gee_export_secret_arn
 }
 
 module "api_gateway" {

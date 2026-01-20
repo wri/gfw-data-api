@@ -26,15 +26,15 @@ data "template_file" "container_definition" {
 
     log_group = aws_cloudwatch_log_group.default.name
 
-    reader_secret_arn = data.terraform_remote_state.core.outputs.secrets_postgresql-reader_arn
-    writer_secret_arn = data.terraform_remote_state.core.outputs.secrets_postgresql-writer_arn
+    reader_secret_arn = local.core.postgresql_reader_policy_arn
+    writer_secret_arn = local.core.postgresql_writer_policy_arn
     log_level         = var.log_level
     project           = local.project
     environment       = var.environment
     aws_region        = var.region
     name_suffix       = replace(local.name_suffix, "-", "_")
 
-    data_lake_bucket         = data.terraform_remote_state.core.outputs.data-lake_bucket
+    data_lake_bucket         = local.core.data_lake_bucket_name
     tile_cache_bucket        = local.tile_cache.tile_cache_bucket
     tile_cache_cloudfront_id = local.tile_cache.tile_cache_cloudfront_id
     tile_cache_url           = local.tile_cache.tile_cache_url
@@ -56,8 +56,8 @@ data "template_file" "container_definition" {
     service_url                 = local.service_url
     rw_api_url                  = var.rw_api_url
     rw_api_key_arn              = var.rw_api_key_arn
-    api_token_secret_arn        = data.terraform_remote_state.core.outputs.secrets_read-gfw-api-token_arn
-    aws_gcs_key_secret_arn      = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
+    api_token_secret_arn        = local.core.gfw_data_api_token_arn
+    aws_gcs_key_secret_arn      = local.core.gfw_gee_export_read_policy_arn
 
     api_gateway_id                  = var.api_gateway_id == "" ? module.api_gateway[0].api_gateway_id : var.api_gateway_id
     api_gateway_external_usage_plan = var.api_gw_external_app_id == "" ? module.api_gateway[0].external_usage_plan_id : var.api_gw_external_app_id
@@ -144,7 +144,7 @@ data "template_file" "api_gateway_role_policy" {
 data "aws_iam_policy_document" "read_gcs_secret_doc" {
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn]
+    resources = [local.core.gfw_gee_export_read_policy_arn]
     effect    = "Allow"
   }
 }
