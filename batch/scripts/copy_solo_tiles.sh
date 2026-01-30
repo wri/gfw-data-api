@@ -6,13 +6,15 @@ set -e
 # -s | --source
 # -T | --target
 
-# merge_dist --source source_uri --target target_uri
+# copy_solo_tiles.sh --source source_uri --target target_uri
 # where target/source are URIs like
 # "s3://gfw-data-lake/umd_glad_dist_alerts/v20251018/raster/epsg-4326/10/100000/resample10m/geotiff/{tile_id}.tif"
 
-# Copy all tiles in the target raster that don't exist in the source raster, and
+# Copy all tiles in the source S3 folder that don't exist in the target folder, and
 # update tiles.geojson and extent.geojson. Requires that the target raster has every
-# tile that is in the source raster, and fails if this is not true.
+# tile that is in the source raster, and fails if this is not true. Also creates
+# overlap.geojson (tiles originally in target) and nonoverlap.geojson (tiles in
+# source that were not in target)
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"
@@ -35,7 +37,7 @@ if [[ ${#tcomponents[@]} -ne 10 || ${tcomponents[8]} -ne "geotiff" ]]; then
     exit 1
 fi
 
-# dataset/version and pixel_mean for both source and target
+# Get dataset/version and pixel_meaning for both source and target
 sversion="${scomponents[1]}/${scomponents[2]}"
 smeaning="${scomponents[7]}"
 tversion="${tcomponents[1]}/${tcomponents[2]}"
@@ -79,6 +81,32 @@ echo Copying extent.geojson
 aws s3 cp $source/geotiff/extent.geojson $target/geotiff/extent.geojson
 aws s3 cp $source/gdal-geotiff/extent.geojson $target/gdal-geotiff/extent.geojson
 
+# overlap.geojson are the original tiles in the target.
+aws s3 cp $target/geotiff/tiles.geojson $target/geotiff/overlap.geojson
+aws s3 cp $target/gdal-geotiff/tiles.geojson $target/gdal-geotiff/overlap.geojson
+
+geotiff_geojson=$(aws s3 cp $source/geotiff/tiles.geojson - | sed "s#/$sversion/#/$tversion/#g; s#/$smeaning/#/$tmeaning/#g")
+gdalgeotiff_geojson=$(aws s3 cp $source/gdal-geotiff/tiles.geojson - | sed "s#/$sversion/#/$tversion/#g; s#/$smeaning/#/$tmeaning/#g")
+
+# Save the full updated tiles.geojson to target
 echo Copying tiles.geojson
-aws s3 cp $source/geotiff/tiles.geojson  - | sed "s#/$sversion/#/$tversion/#g; s#/$smeaning/#/$tmeaning/#g"  | aws s3 cp - $target/geotiff/tiles.geojson
-aws s3 cp $source/gdal-geotiff/tiles.geojson  - | sed "s#/$sversion/#/$tversion/#g; s#/$smeaning/#/$tmeaning/#g"  | aws s3 cp - $target/gdal-geotiff/tiles.geojson
+echo "$geotiff_geojson" | aws s3 cp - $target/geotiff/tiles.geojson
+echo "$gdalgeotiff_geojson" | aws s3 cp - $target/gdal-geotiff/tiles.geojson
+
+# Filter for only the new tiles and save as nonoverlap.geojson
+echo Creating nonoverlap.geojson
+
+# Convert the space-separated uniqSource string into a JSON array for jq
+json_list=$(echo "$uniqSource" | jq -R . | jq -s .)
+
+echo "$geotiff_geojson" | jq --argjson list "$json_list" '
+  .features |= map(
+    select(.properties.name | split("/") | last as $fname | $list | index($fname))
+  )
+' | aws s3 cp - $target/geotiff/nonoverlap.geojson
+
+echo "$gdalgeotiff_geojson" | jq --argjson list "$json_list" '
+  .features |= map(
+    select(.properties.name | split("/") | last as $fname | $list | index($fname))
+  )
+' | aws s3 cp - $target/gdal-geotiff/nonoverlap.geojson
