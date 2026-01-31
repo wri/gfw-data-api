@@ -445,9 +445,13 @@ class COGCreationOptions(StrictBaseModel):
         "allow creation of multiple COGs per version.",
     )
     source_asset_id: str = Field(
-        ...,
+        "",
         description="Raster tile set asset ID to use as source. "
         "Must be an asset of the same version",
+    )
+    source_uri: str = Field(
+        "",
+        description="URI to tiles.geojson file to use as source."
     )
     resampling: ResamplingMethod = Field(
         ResamplingMethod.average,

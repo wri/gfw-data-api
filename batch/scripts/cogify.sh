@@ -16,10 +16,23 @@ ME=$(basename "$0")
 set -x
 # download all GeoTiff files
 
+# If ${SRC} is a *.geojson file, then copy the files specified in the geojson file.
+if ! aws s3 ls  "${PREFIX}/${IMPLEMENTATION}_merged.tif"; then
+    if [[ "$SRC" == *.geojson ]]; then
+	files=$(aws s3 cp ${SRC} - | jq -r '.features[].properties.name | split("/") | last' | tr '\n' ' ')
+	# Get the path to the folder by removing the last component (e.g. '/tiles.geojson').
+	path=${SRC%/*}
+	for f in files; do
+	    aws s3 cp $path/$f .
+	done
+    else
+	# Else copy all TIF files in the specified folder.
+	aws s3 cp --recursive --exclude "*" --include "*.tif" "${SRC}" .
+    fi
+  
+
 if [[ ${BLOCK_SIZE} -ge 2048 ]]; then
   # For blocksize 2048 and greater, generate overviews internally.
-  aws s3 cp --recursive --exclude "*" --include "*.tif" "${SRC}" .
-
   # create VRT of input files so we can use gdal_translate
   gdalbuildvrt "${IMPLEMENTATION}_merged.vrt" *.tif
 
@@ -28,8 +41,6 @@ else
   if [[ $(aws s3 ls "${PREFIX}/${IMPLEMENTATION}_merged.tif") ]]; then
     aws s3 cp "${PREFIX}/${IMPLEMENTATION}_merged.tif" "${IMPLEMENTATION}_merged.tif"
   else
-    aws s3 cp --recursive --exclude "*" --include "*.tif" "${SRC}" .
-
     # create VRT of input files so we can use gdal_translate
     gdalbuildvrt "${IMPLEMENTATION}_merged.vrt" *.tif
 
