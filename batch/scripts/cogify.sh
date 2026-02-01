@@ -29,7 +29,7 @@ if ! aws s3 ls  "${PREFIX}/${IMPLEMENTATION}_merged.tif"; then
 	# Else copy all TIF files in the specified folder.
 	aws s3 cp --recursive --exclude "*" --include "*.tif" "${SRC}" .
     fi
-  
+fi
 
 if [[ ${BLOCK_SIZE} -ge 2048 ]]; then
   # For blocksize 2048 and greater, generate overviews internally.
