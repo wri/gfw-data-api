@@ -451,7 +451,7 @@ class COGCreationOptions(StrictBaseModel):
     )
     source_uri: str = Field(
         "",
-        description="URI to tiles.geojson file to use as source."
+        description="URI to tiles.geojson file to use as source.",
     )
     resampling: ResamplingMethod = Field(
         ResamplingMethod.average,
