@@ -22,7 +22,7 @@ if ! aws s3 ls  "${PREFIX}/${IMPLEMENTATION}_merged.tif"; then
 	files=$(aws s3 cp ${SRC} - | jq -r '.features[].properties.name | split("/") | last' | tr '\n' ' ')
 	# Get the path to the folder by removing the last component (e.g. '/tiles.geojson').
 	path=${SRC%/*}
-	for f in files; do
+	for f in $files; do
 	    aws s3 cp $path/$f .
 	done
     else
