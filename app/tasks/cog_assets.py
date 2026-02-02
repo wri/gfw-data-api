@@ -51,18 +51,20 @@ async def create_cogify_job(
 
     For the moment only suitable for EPSG:4326 raster tile sets.
     """
-    source_asset: ORMAsset = await get_asset(UUID(creation_options.source_asset_id))
-    if source_asset is not None:
+    source_asset_id = creation_options.source_asset_id
+    if source_asset_id.startswith("s3://"):
+        # Allow source_asset_id to be an s3 path to a tiles.geojson file
+        srid = "epsg-4326"
+        # Keep full path to *.geojson file if specified.
+        source_uri = source_asset_id
+    else:
+        source_asset: ORMAsset = await get_asset(UUID(source_asset_id))
         srid = infer_srid_from_grid(source_asset.creation_options["grid"])
         asset_uri = get_asset_uri(
             dataset, version, AssetType.raster_tile_set, source_asset.creation_options, srid
         )
         # get folder of tiles
         source_uri = "/".join(asset_uri.split("/")[:-1]) + "/"
-    else:
-        srid = "epsg-4326"
-        # Keep full path to *.geojson file if specified.
-        source_uri = creation_options.source_uri
 
     # We want to wind up with "{dataset}/{version}/raster/{projection}/cog/{implementation}.tif"
     target_asset_uri = get_asset_uri(
