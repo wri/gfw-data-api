@@ -23,7 +23,9 @@ if ! aws s3 ls  "${PREFIX}/${IMPLEMENTATION}_merged.tif"; then
 	# Get the path to the folder by removing the last component (e.g. '/tiles.geojson').
 	path=${SRC%/*}
 	for f in $files; do
-	    aws s3 cp $path/$f .
+	    if aws s3 ls  $path/$f; then
+		aws s3 cp --no-progress $path/$f .
+	    fi
 	done
     else
 	# Else copy all TIF files in the specified folder.
