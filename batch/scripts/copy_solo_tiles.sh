@@ -110,3 +110,13 @@ echo "$gdalgeotiff_geojson" | jq --argjson list "$json_list" '
     select(.properties.name | split("/") | last as $fname | $list | index($fname))
   )
 ' | aws s3 cp - $target/gdal-geotiff/nonoverlap.geojson
+
+
+# Special case code for creating overlap/nonoverlap COGs for the intensity raster as well.
+# Pre-copy overlap.geojson, nonoverlap.geojson to $target[:-1]/intensity/geotiff
+# and gdal-geotiff.
+intensity="s3://${tcomponents[0]}/$tversion/${tcomponents[3]}/${tcomponents[4]}/${tcomponents[5]}/${tcomponents[6]}/intensity"
+aws s3 cp $target/geotiff/overlap.geojson $intensity/geotiff/
+aws s3 cp $target/geotiff/nonoverlap.geojson $intensity/geotiff/
+aws s3 cp $target/gdal-geotiff/overlap.geojson $intensity/gdal-geotiff/
+aws s3 cp $target/gdal-geotiff/nonoverlap.geojson $intensity/gdal-geotiff/
