@@ -5,9 +5,10 @@ on: [delete]
 jobs:
   build:
     if: github.event.ref_type == 'branch' && (github.event.ref != 'refs/heads/master') && (github.event.ref != 'refs/heads/develop')
-    runs-on: ubuntu-latest
+    runs-on: "ubuntu-24.04"
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v5
+
     - name: Destroy state and delete workspace
       env:
         ENV: dev
