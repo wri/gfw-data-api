@@ -77,22 +77,25 @@ RUN apt-get update -qy && \
     rm -rf /var/lib/apt/lists && \
     rm -rf /var/cache/apt
 
-COPY --chmod=777 wait_for_postgres.sh /usr/local/bin/wait_for_postgres.sh
+COPY wait_for_postgres.sh /usr/local/bin/wait_for_postgres.sh
+RUN chmod 777 /usr/local/bin/wait_for_postgres.sh
 
 # Set the entry point and signal handling
 ENTRYPOINT [ "/app/start.sh" ]
 STOPSIGNAL SIGINT
 
 # Copy the pre-built `/app` directory from the build stage
-COPY --from=build --chmod=777 /app /app
-COPY --from=build --chmod=777 /root /root
+COPY --from=build /app /app
+COPY --from=build /root /root
+RUN chmod -R 777 /root
 
 COPY newrelic.ini /app/newrelic.ini
 COPY alembic.ini /app/alembic.ini
 
-COPY --chmod=777 app/settings/gunicorn_conf.py /app/gunicorn_conf.py
-COPY --chmod=777 app/settings/prestart.sh /app/prestart.sh
-COPY --chmod=777 app/settings/start.sh /app/start.sh
+COPY app/settings/gunicorn_conf.py /app/gunicorn_conf.py
+COPY app/settings/prestart.sh /app/prestart.sh
+COPY app/settings/start.sh /app/start.sh
+RUN chmod -R 777 /app
 
 COPY ./app /app/app
 
