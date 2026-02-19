@@ -8,6 +8,13 @@ from fastapi.logger import logger
 from gino import create_engine
 from gino_starlette import Gino, GinoEngine
 
+# Explicitly register the gino asyncpg dialect with SQLAlchemy
+# This ensures it's available before any database connections are attempted
+from sqlalchemy.dialects import registry
+import gino.dialects.asyncpg
+registry.register("asyncpg", "gino.dialects.asyncpg", "AsyncpgDialect")
+registry.register("postgresql.asyncpg", "gino.dialects.asyncpg", "AsyncpgDialect")
+
 from .settings.globals import (
     DATABASE_CONFIG,
     SQL_REQUEST_TIMEOUT,
