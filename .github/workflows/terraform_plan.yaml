@@ -4,10 +4,11 @@ on: [pull_request]
 
 jobs:
   plan:
-    runs-on: ubuntu-latest
+    runs-on: "ubuntu-24.04"
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v5
+
     - name: Plan production
       if: success() && github.base_ref == 'master'
       env:
