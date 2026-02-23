@@ -30,7 +30,7 @@ RUN python -m venv ${VENV_DIR} --system-site-packages \
         numpy~=1.26.4 \
         pandas~=2.1.4 \
         psycopg2~=2.9.10 \
-        rasterio~=1.3.11 \
+        rasterio==1.4.3 \
         setuptools~=75.6 \
         shapely~=2.0.4 \
         SQLAlchemy~=1.3.24 \
