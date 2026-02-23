@@ -1,4 +1,4 @@
-FROM globalforestwatch/pixetl:v1.7.7
+FROM --platform=linux/amd64 globalforestwatch/pixetl:modernize_1
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/
