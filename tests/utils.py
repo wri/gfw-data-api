@@ -69,7 +69,8 @@ async def create_dataset(
     dataset_name, async_client, payload: Dict[str, Any] = generic_dataset_payload
 ) -> Dict[str, Any]:
     resp = await async_client.put(f"/dataset/{dataset_name}", json=payload)
-    assert resp.json()["status"] == "success"
+    if resp.json()["status"] != "success":
+        raise RuntimeError(resp.json())
     return resp.json()["data"]
 
 
@@ -344,48 +345,32 @@ def upload_fake_data(dtype, dtype_name, no_data, prefix, data):
 
 
 async def get_row_count(db: Gino, dataset: str, version: str) -> int:
-    count = await db.scalar(
-        db.text(
-            f"""
+    count = await db.scalar(db.text(f"""
                 SELECT count(*)
-                    FROM "{dataset}"."{version}";"""
-        )
-    )
+                    FROM "{dataset}"."{version}";"""))
     return int(count)
 
 
 async def get_partition_count(db: Gino, dataset: str, version: str) -> int:
-    partition_count = await db.scalar(
-        db.text(
-            f"""
+    partition_count = await db.scalar(db.text(f"""
                 SELECT count(i.inhrelid::regclass)
                     FROM pg_inherits i
-                    WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass;"""
-        )
-    )
+                    WHERE  i.inhparent = '"{dataset}"."{version}"'::regclass;"""))
     return int(partition_count)
 
 
 async def get_index_count(db: Gino, dataset: str, version: str) -> int:
-    index_count = await db.scalar(
-        db.text(
-            f"""
+    index_count = await db.scalar(db.text(f"""
                 SELECT count(indexname)
                     FROM pg_indexes
-                    WHERE schemaname = '{dataset}' AND tablename like '{version}%';"""
-        )
-    )
+                    WHERE schemaname = '{dataset}' AND tablename like '{version}%';"""))
     return int(index_count)
 
 
 async def get_cluster_count(db: Gino) -> int:
-    cluster_count = await db.scalar(
-        db.text(
-            """
+    cluster_count = await db.scalar(db.text("""
                 SELECT count(relname)
                     FROM   pg_class c
                     JOIN   pg_index i ON i.indrelid = c.oid
-                    WHERE  relkind = 'r' AND relhasindex AND i.indisclustered"""
-        )
-    )
+                    WHERE  relkind = 'r' AND relhasindex AND i.indisclustered"""))
     return int(cluster_count)
