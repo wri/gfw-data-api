@@ -684,7 +684,7 @@ dev = [
     { name = "asgi-lifespan" },
     { name = "docker" },
     { name = "geopandas" },
-    { name = "gfw-pixetl", git = "https://github.com/wri/gfw_pixetl.git?branch=gtc-3001_predl2" },
+    { name = "gfw-pixetl", git = "https://github.com/wri/gfw_pixetl.git?branch=develop" },
     { name = "moto", extras = ["awslambda", "batch", "ec2", "s3", "secretsmanager"], specifier = "<5" },
     { name = "pandas", specifier = "<2.2" },
     { name = "pre-commit" },
@@ -700,7 +700,7 @@ dev = [
 [[package]]
 name = "gfw-pixetl"
 version = "1.7.8"
-source = { git = "https://github.com/wri/gfw_pixetl.git?branch=gtc-3001_predl2#6f6dda80bdede3a2d9286505a111f58956c609ad" }
+source = { git = "https://github.com/wri/gfw_pixetl.git?branch=develop#37ac8bacb9285f7ddc2f19fb0cf2a63a8a12fa47" }
 dependencies = [
     { name = "aenum" },
     { name = "boto3" },

@@ -72,4 +72,4 @@ dev = [
 packages = ["app", "batch"]
 
 [tool.uv.sources]
-gfw-pixetl = { git = "https://github.com/wri/gfw_pixetl.git", branch = "gtc-3001_predl2" }
+gfw-pixetl = { git = "https://github.com/wri/gfw_pixetl.git", branch = "develop" }
