@@ -14,7 +14,7 @@ environment = [
         "no_data": 0,
         "raster_table": None,
         "decode_expression": "(A + 16435).astype('datetime64[D]').astype(str)",
-        "encode_expression": "((A.astype('datetime64[D]') - 16435).astype(uint16)",
+        "encode_expression": "(A.astype('datetime64[D]') - 16435).astype(uint16)",
         "source_layer": "my_first_dataset__date_conf",
         "calc": "A % 10000",
     },
