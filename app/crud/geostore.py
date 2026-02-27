@@ -4,9 +4,9 @@ from uuid import UUID
 
 from asyncpg.exceptions import UniqueViolationError
 from fastapi.logger import logger
-from sqlalchemy import Column, Table, func
+from sqlalchemy import Column, MetaData, Table, func
 from sqlalchemy.sql import Select, label
-from sqlalchemy.sql.elements import Label, TextClause
+from sqlalchemy.sql.elements import Label, TextClause, quoted_name
 
 from app.application import db
 from app.errors import (
@@ -61,8 +61,8 @@ async def get_gfw_geostore_from_any_dataset(geostore_id: UUID) -> Geostore:
 async def get_geostore_by_version(
     dataset: str, version: str, geostore_id: UUID
 ) -> Geostore:
-    src_table: Table = db.table(version)
-    src_table.schema = dataset
+    src_table = Table(version, MetaData(), schema=dataset, quote=True)
+    src_table.schema = quoted_name(dataset, quote=True)
 
     where_clause: TextClause = db.text("gfw_geostore_id=:geostore_id")
     bind_vals = {"geostore_id": f"{geostore_id}"}
