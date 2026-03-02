@@ -1,5 +1,5 @@
 import re
-from typing import Tuple
+from typing import List, Tuple
 from unittest.mock import Mock, patch
 from urllib.parse import parse_qsl, urlparse
 from uuid import UUID
@@ -22,6 +22,7 @@ from app.routes.datasets import queries
 from app.routes.datasets.queries import (
     _get_data_environment,
     _get_data_environment_sql,
+    _get_date_conf_derived_layers,
     _query_dataset_json,
     _query_raster,
     _query_raster_lambda,
@@ -856,3 +857,23 @@ FEATURE_COLLECTION = {
         },
     ],
 }
+
+
+def test__get_date_conf_derived_layers_encode_decode_roundtrip():
+    """The old encode_expression failed because datetime64(A) without unit
+    specifier breaks with modern NumPy when A is a string."""
+    import numpy as np
+    from numpy import uint16
+
+    original_date = A = "2023-01-15"
+
+    layers: List[DerivedLayer] = _get_date_conf_derived_layers("foo", 0)
+
+    for layer in layers:
+        if layer.encode_expression:
+            encoded = eval(
+                layer.encode_expression, {"np": np, "uint16": uint16, "A": A}
+            )
+
+            decoded = eval(layer.decode_expression, {"np": np, "A": encoded})
+            assert decoded == original_date
