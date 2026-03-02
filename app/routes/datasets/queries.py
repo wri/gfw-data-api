@@ -724,10 +724,10 @@ def _get_date_conf_derived_layers(
     """Get derived layers that decode our date_conf layers for alert
     systems."""
     # TODO should these somehow be in the metadata or creation options instead of hardcoded?
-    # 16435 is number of days from 1970-01-01 to 2015-01-01, and can be used to convert
+    # 16435 is number of days from 1970-01-01 and 2015-01-01, and can be used to convet
     # our encoding of days since 2015 to a number that can be used generally for datetimes
     decode_expression = "(A + 16435).astype('datetime64[D]').astype(str)"
-    encode_expression = "(A.astype('datetime64[D]') - 16435).astype(uint16)"
+    encode_expression = "(datetime64(A) - 16435).astype(uint16)"
     conf_encoding = RasterTable(
         default_meaning="not_detected",
         rows=[
