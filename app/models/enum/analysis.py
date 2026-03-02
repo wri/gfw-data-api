@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class RasterLayer(str, Enum):
+class RasterLayer(StrEnum):
     area__ha = "area__ha"
     alert__count = "alert__count"
     whrc_aboveground_co2_emissions__Mg = "whrc_aboveground_co2_emissions__Mg"

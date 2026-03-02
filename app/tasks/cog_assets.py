@@ -61,7 +61,11 @@ async def create_cogify_job(
         source_asset: ORMAsset = await get_asset(UUID(source_asset_id))
         srid = infer_srid_from_grid(source_asset.creation_options["grid"])
         asset_uri = get_asset_uri(
-            dataset, version, AssetType.raster_tile_set, source_asset.creation_options, srid
+            dataset,
+            version,
+            AssetType.raster_tile_set,
+            source_asset.creation_options,
+            srid,
         )
         # get folder of tiles
         source_uri = "/".join(asset_uri.split("/")[:-1]) + "/"
@@ -91,7 +95,7 @@ async def create_cogify_job(
         "-r",
         resample_method,
         "--block_size",
-        creation_options.block_size.value,
+        str(creation_options.block_size.value),
         "-d",
         dataset,
         "-I",
