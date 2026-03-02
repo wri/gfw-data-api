@@ -862,18 +862,20 @@ FEATURE_COLLECTION = {
 def test__get_date_conf_derived_layers_encode_decode_roundtrip():
     """The old encode_expression failed because datetime64(A) without unit
     specifier breaks with modern NumPy when A is a string."""
-    import numpy as np
-    from numpy import uint16
+    from numpy import datetime64, uint16
 
-    original_date = A = "2023-01-15"
+    original_date = "2023-01-15"
 
     layers: List[DerivedLayer] = _get_date_conf_derived_layers("foo", 0)
 
     for layer in layers:
         if layer.encode_expression:
             encoded = eval(
-                layer.encode_expression, {"np": np, "uint16": uint16, "A": A}
+                layer.encode_expression,
+                {"datetime64": datetime64, "uint16": uint16, "A": original_date},
             )
 
-            decoded = eval(layer.decode_expression, {"np": np, "A": encoded})
+            decoded = eval(
+                layer.decode_expression, {"datetime64": datetime64, "A": encoded}
+            )
             assert decoded == original_date
