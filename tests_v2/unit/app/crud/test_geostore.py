@@ -1,9 +1,69 @@
+import uuid
 from unittest.mock import patch
 
 import pytest
 
-from app.crud.geostore import get_gadm_geostore, get_gadm_geostore_id
+from app.crud.geostore import (
+    get_gadm_geostore,
+    get_gadm_geostore_id,
+    get_geostore_by_version,
+)
 from app.errors import RecordNotFoundError
+
+GEOSTORE_ID = uuid.UUID("12345678-1234-5678-1234-567812345678")
+
+
+@pytest.mark.asyncio
+async def test_get_geostore_by_version_quotes_dotted_version_string():
+    """Regression test: version strings containing dots (e.g. 'v1.11') must be
+    double-quoted in the generated SQL.
+    """
+    dataset = "umd_tree_cover_loss"
+    version = "v1.11"
+
+    with patch("app.crud.geostore.db.first") as mock_db_first:
+        mock_db_first.return_value = None
+        try:
+            await get_geostore_by_version(dataset, version, GEOSTORE_ID)
+        except RecordNotFoundError:
+            pass
+
+    assert mock_db_first.called, "db.first should have been called"
+
+    actual_sql = str(
+        mock_db_first.call_args.args[0].compile(compile_kwargs={"literal_binds": True})
+    )
+
+    # The schema and table must both be double-quoted so that PostgreSQL
+    # treats the dot in "v1.11" as part of the identifier, not a separator.
+    assert (
+        '"umd_tree_cover_loss"."v1.11"' in actual_sql
+    ), f"Expected schema and table to be double-quoted in SQL, but got:\n{actual_sql}"
+
+
+@pytest.mark.asyncio
+async def test_get_geostore_by_version_quotes_undotted_version_string():
+    """Ensure that version strings without dots also render correctly and are
+    quoted, as a sanity check that the fix doesn't break the common case."""
+    dataset = "umd_tree_cover_loss"
+    version = "v1"
+
+    with patch("app.crud.geostore.db.first") as mock_db_first:
+        mock_db_first.return_value = None
+        try:
+            await get_geostore_by_version(dataset, version, GEOSTORE_ID)
+        except RecordNotFoundError:
+            pass
+
+    assert mock_db_first.called
+
+    actual_sql = str(
+        mock_db_first.call_args.args[0].compile(compile_kwargs={"literal_binds": True})
+    )
+
+    assert (
+        '"umd_tree_cover_loss"."v1"' in actual_sql
+    ), f"Expected schema and table to be double-quoted in SQL, but got:\n{actual_sql}"
 
 
 @pytest.mark.asyncio
