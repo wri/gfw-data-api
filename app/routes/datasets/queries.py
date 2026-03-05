@@ -745,7 +745,7 @@ def _get_date_conf_derived_layers(
         DerivedLayer(
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__date"),
-            calc="A % 10000",
+            calc="A.astype(uint16) % 10000",
             no_data=no_data_val,
             decode_expression=decode_expression,
             encode_expression=encode_expression,
@@ -753,7 +753,7 @@ def _get_date_conf_derived_layers(
         DerivedLayer(
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__confidence"),
-            calc="floor(A / 10000).astype(uint8)",
+            calc="floor(A.astype(uint16) / 10000).astype(uint8)",
             no_data=no_data_val,
             raster_table=conf_encoding,
         ),

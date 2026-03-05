@@ -16,7 +16,7 @@ environment = [
         "decode_expression": "(A.astype('timedelta64[D]') + datetime64('2015-01-01', 'D')).astype(str)",
         "encode_expression": "(datetime64(A, 'D') - datetime64('2015-01-01', 'D')).astype(uint16)",
         "source_layer": "my_first_dataset__date_conf",
-        "calc": "A % 10000",
+        "calc": "A.astype(uint16) % 10000",
     },
     {
         "name": "my_first_dataset__confidence",
@@ -32,7 +32,7 @@ environment = [
         "decode_expression": "",
         "encode_expression": "",
         "source_layer": "my_first_dataset__date_conf",
-        "calc": "floor(A / 10000).astype(uint8)",
+        "calc": "floor(A.astype(uint16) / 10000).astype(uint8)",
     },
 ]
 
