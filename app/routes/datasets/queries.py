@@ -585,8 +585,8 @@ async def _query_raster_lambda(
 ) -> Dict[str, Any]:
     data_environment = await _get_data_environment(grid, version_overrides)
     payload = {
-        "geometry": jsonable_encoder(geometry),
         "query": sql,
+        "geometry": jsonable_encoder(geometry),
         "environment": data_environment.dict()["layers"],
         "format": format,
     }
