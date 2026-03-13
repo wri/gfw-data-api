@@ -2,7 +2,7 @@ from typing import Dict
 from uuid import UUID
 
 from async_lru import alru_cache
-from fastapi import HTTPException, Response
+from fastapi import HTTPException
 from fastapi.logger import logger
 from httpx import AsyncClient, ReadTimeout
 from httpx import Response as HTTPXResponse
@@ -64,7 +64,7 @@ async def get_geostore(geostore_id: UUID) -> GeostoreCommon:
     return geostore
 
 
-async def who_am_i(token) -> Response:
+async def who_am_i(token) -> HTTPXResponse:
     """Call GFW API to get token's identity."""
 
     headers = {"Authorization": f"Bearer {token}"}

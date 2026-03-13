@@ -25,7 +25,7 @@ from app.settings.globals import API_URL
 
 from ...application import db
 from ...authentication.api_keys import get_api_key
-from ...authentication.token import is_gfwpro_admin_for_query
+from ...authentication.token import is_admin_for_query
 from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
@@ -118,7 +118,7 @@ async def query_dataset_json(
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
-    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
+    is_authorized: bool = Depends(is_admin_for_query),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -182,7 +182,7 @@ async def query_dataset_csv(
     delimiter: Delimiters = Query(
         Delimiters.comma, description="Delimiter to use for CSV file."
     ),
-    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
+    is_authorized: bool = Depends(is_admin_for_query),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -245,7 +245,7 @@ async def query_dataset_json_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
-    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
+    is_authorized: bool = Depends(is_admin_for_query),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -275,7 +275,7 @@ async def query_dataset_csv_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: CsvQueryRequestIn,
-    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
+    is_authorized: bool = Depends(is_admin_for_query),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
