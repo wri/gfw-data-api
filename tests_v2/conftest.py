@@ -329,7 +329,8 @@ async def restricted_version(
     """Create licensed version."""
 
     dataset_name, _ = restricted_dataset
-    version_name: str = "v1.13"
+    # Permanently restricted dataset/version umd_tree_cover_loss/v1.1 for testing purposes.
+    version_name: str = "v1.1"
 
     await create_vector_source_version(
         async_client, dataset_name, version_name, monkeypatch

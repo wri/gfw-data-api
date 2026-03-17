@@ -43,7 +43,7 @@ async def is_admin(token: str = Depends(oauth2_scheme)) -> bool:
     return await is_app_admin(token, ["gfw"], "Unauthorized")
 
 
-async def is_admin_for_query(
+async def is_authorized_for_query(
     dv: Tuple[str, str] = Depends(dataset_version_dependency),
     token: str | None = Depends(oauth2_scheme_no_auto),
 ) -> bool:
