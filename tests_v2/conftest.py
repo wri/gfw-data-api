@@ -301,6 +301,71 @@ async def generic_raster_version(
 
 
 @pytest_asyncio.fixture
+async def restricted_dataset(
+    async_client: AsyncClient,
+) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
+    """Create licensed dataset."""
+
+    # Create dataset
+    dataset_name: str = "umd_tree_cover_loss"
+
+    await async_client.put(
+        f"/dataset/{dataset_name}", json={"metadata": DATASET_METADATA}
+    )
+
+    # Yield dataset name and associated metadata
+    yield dataset_name, DATASET_METADATA
+
+    # Clean up
+    await async_client.delete(f"/dataset/{dataset_name}")
+
+
+@pytest_asyncio.fixture
+async def restricted_version(
+    async_client: AsyncClient,
+    restricted_dataset: Tuple[str, str],
+    monkeypatch: MonkeyPatch,
+) -> AsyncGenerator[Tuple[str, str, Dict[str, Any]], None]:
+    """Create licensed version."""
+
+    dataset_name, _ = restricted_dataset
+    # Permanently restricted dataset/version umd_tree_cover_loss/v1.1 for testing purposes.
+    version_name: str = "v1.1"
+
+    await create_vector_source_version(
+        async_client, dataset_name, version_name, monkeypatch
+    )
+
+    # yield version
+    yield dataset_name, version_name, VERSION_METADATA
+
+    # clean up
+    await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
+
+
+@pytest_asyncio.fixture
+async def unrestricted_version(
+    async_client: AsyncClient,
+    restricted_dataset: Tuple[str, str],
+    monkeypatch: MonkeyPatch,
+) -> AsyncGenerator[Tuple[str, str, Dict[str, Any]], None]:
+    """Create licensed version."""
+
+    dataset_name, _ = restricted_dataset
+    version_name: str = "v1.12"
+
+    await create_vector_source_version(
+        async_client, dataset_name, version_name, monkeypatch
+    )
+
+    # yield version
+    yield dataset_name, version_name, VERSION_METADATA
+
+    # clean up
+    await async_client.delete(f"/dataset/{dataset_name}/{version_name}")
+
+
+@pytest_asyncio.fixture
 async def licensed_dataset(
     async_client: AsyncClient,
 ) -> AsyncGenerator[Tuple[str, Dict[str, Any]], None]:
