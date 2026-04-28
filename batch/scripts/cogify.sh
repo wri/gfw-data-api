@@ -2,18 +2,26 @@
 
 set -e
 
-# requires arguments
+# required arguments
 # --block_size
-# -r | --resample
-# -G | --export_to_gee
 # -I | --implementation
-# -t | --target
 # --prefix
+# -r | --resample
+# -s | --source
+# -t | --target
+#
+# optional arguments
+# -G | --export_to_gee
+# -n | --no_data
 
 ME=$(basename "$0")
 . get_arguments.sh "$@"
 
 set -x
+if [ -n "$NO_DATA" ]; then
+    NO_DATA = "-a_nodata $NO_DATA"
+fi
+
 # download all GeoTiff files
 
 # If ${SRC} is a *.geojson file, then copy the files specified in the geojson file.
@@ -38,7 +46,7 @@ if [[ ${BLOCK_SIZE} -ge 2048 ]]; then
   # create VRT of input files so we can use gdal_translate
   gdalbuildvrt "${IMPLEMENTATION}_merged.vrt" *.tif
 
-  gdal_translate -of COG -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BLOCKSIZE="${BLOCK_SIZE}" -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS -co OVERVIEWS=AUTO -r "${RESAMPLE}" --config COMPRESS_OVERVIEW DEFLATE -co SPARSE_OK=TRUE --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS "${IMPLEMENTATION}_merged.vrt" "${IMPLEMENTATION}.tif"
+  gdal_translate -of COG -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BLOCKSIZE="${BLOCK_SIZE}" -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS -co OVERVIEWS=AUTO -r "${RESAMPLE}" --config COMPRESS_OVERVIEW DEFLATE -co SPARSE_OK=TRUE --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS ${NO_DATA} "${IMPLEMENTATION}_merged.vrt" "${IMPLEMENTATION}.tif"
 else
   if [[ $(aws s3 ls "${PREFIX}/${IMPLEMENTATION}_merged.tif") ]]; then
     aws s3 cp "${PREFIX}/${IMPLEMENTATION}_merged.tif" "${IMPLEMENTATION}_merged.tif"
@@ -47,7 +55,7 @@ else
     gdalbuildvrt "${IMPLEMENTATION}_merged.vrt" *.tif
 
     # merge all rasters into one huge raster using COG block size
-    gdal_translate -of GTiff -co TILED=YES -co BLOCKXSIZE="${BLOCK_SIZE}" -co BLOCKYSIZE="${BLOCK_SIZE}" -co COMPRESS=DEFLATE -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS "${IMPLEMENTATION}_merged.vrt" "${IMPLEMENTATION}_merged.tif"
+    gdal_translate -of GTiff -co TILED=YES -co BLOCKXSIZE="${BLOCK_SIZE}" -co BLOCKYSIZE="${BLOCK_SIZE}" -co COMPRESS=DEFLATE -co BIGTIFF=IF_SAFER -co NUM_THREADS=ALL_CPUS --config GDAL_CACHEMAX 70% --config GDAL_NUM_THREADS ALL_CPUS ${NO_DATA} "${IMPLEMENTATION}_merged.vrt" "${IMPLEMENTATION}_merged.tif"
     aws s3 cp "${IMPLEMENTATION}_merged.tif" "${PREFIX}/${IMPLEMENTATION}_merged.tif"
   fi
 
