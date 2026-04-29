@@ -183,10 +183,8 @@ GOOGLE_APPLICATION_CREDENTIALS = config(
 # commercial datasets which shouldn't be downloaded in any way.)
 PROTECTED_QUERY_DATASETS = ["wdpa_licensed_protected_areas"]
 
-# When we relax this protection on TCL2025, we should also switch both versions to be
-# downloadable.
-PROTECTED_QUERY_DATASET_VERSIONS = ["umd_tree_cover_loss/v1.1", "umd_tree_cover_loss/v1.13",
-                                    "umd_tree_cover_loss_from_fires/v1.13"]
+# Current only restricted version, for testing only.
+PROTECTED_QUERY_DATASET_VERSIONS = ["umd_tree_cover_loss/v1.1"]
 
 RASTER_ANALYSIS_STATE_MACHINE_ARN = config(
     "RASTER_ANALYSIS_STATE_MACHINE_ARN", cast=str, default=None
