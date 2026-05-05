@@ -19,7 +19,7 @@ ME=$(basename "$0")
 
 set -x
 if [ -n "$NO_DATA" ]; then
-    NO_DATA = "-a_nodata $NO_DATA"
+    NO_DATA="-a_nodata ${NO_DATA}"
 fi
 
 # download all GeoTiff files
