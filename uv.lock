@@ -546,23 +546,6 @@ wheels = [
 ]
 
 [[package]]
-name = "geopandas"
-version = "1.1.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "pandas" },
-    { name = "pyogrio" },
-    { name = "pyproj" },
-    { name = "shapely" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/8d/24/5eb5685d7bf89d64218919379f882d19a60f8219d66d833c83b1cf264c95/geopandas-1.1.2.tar.gz", hash = "sha256:33f7b33565c46a45b8459a2ab699ec943fdbb5716e58e251b3c413cf7783106c", size = 336037, upload-time = "2025-12-22T21:06:13.749Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/54/e4/fac19dc34cb686c96011388b813ff7b858a70681e5ce6ce7698e5021b0f4/geopandas-1.1.2-py3-none-any.whl", hash = "sha256:2bb0b1052cb47378addb4ba54c47f8d4642dcbda9b61375638274f49d9f0bb0d", size = 341734, upload-time = "2025-12-22T21:06:12.498Z" },
-]
-
-[[package]]
 name = "gfw-data-api"
 version = "0.1.0"
 source = { virtual = "." }
@@ -614,10 +597,7 @@ dependencies = [
 dev = [
     { name = "asgi-lifespan" },
     { name = "docker" },
-    { name = "geopandas" },
-    { name = "gfw-pixetl" },
     { name = "moto", extra = ["awslambda", "batch", "ec2", "s3"] },
-    { name = "pandas" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -625,7 +605,6 @@ dev = [
     { name = "pytest-timeout" },
     { name = "pytest-unordered" },
     { name = "rasterio" },
-    { name = "retrying" },
 ]
 
 [package.metadata]
@@ -677,10 +656,7 @@ requires-dist = [
 dev = [
     { name = "asgi-lifespan" },
     { name = "docker" },
-    { name = "geopandas" },
-    { name = "gfw-pixetl", git = "https://github.com/wri/gfw_pixetl.git?branch=develop" },
     { name = "moto", extras = ["awslambda", "batch", "ec2", "s3", "secretsmanager"], specifier = "<5" },
-    { name = "pandas", specifier = "<2.2" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -688,13 +664,7 @@ dev = [
     { name = "pytest-timeout" },
     { name = "pytest-unordered", specifier = ">=0.6.1" },
     { name = "rasterio", specifier = "==1.4.3" },
-    { name = "retrying" },
 ]
-
-[[package]]
-name = "gfw-pixetl"
-version = "0.3.1"
-source = { git = "https://github.com/wri/gfw_pixetl.git?branch=develop#54dd12f453ec734d0afba94a31d81b3d584b64d1" }
 
 [[package]]
 name = "gino"
@@ -1243,26 +1213,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pandas"
-version = "2.1.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "python-dateutil" },
-    { name = "pytz" },
-    { name = "tzdata" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6f/41/eb562668eaf93790762f600536b28c97b45803cba9253cd8e436cda96aef/pandas-2.1.4.tar.gz", hash = "sha256:fcb68203c833cc735321512e13861358079a96c174a61f5116a1de89c58c0ef7", size = 4274800, upload-time = "2023-12-08T15:38:29.713Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/cc/ad068419c245c504315ace4e19cc17b1205e162ad51957485b048ffadb80/pandas-2.1.4-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:bdec823dc6ec53f7a6339a0e34c68b144a7a1fd28d80c260534c39c62c5bf8c9", size = 11724786, upload-time = "2023-12-08T15:37:00.781Z" },
-    { url = "https://files.pythonhosted.org/packages/fd/16/40c7c588f8199520e173014c614178f6083868f5af1033c52079270cd266/pandas-2.1.4-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:294d96cfaf28d688f30c918a765ea2ae2e0e71d3536754f4b6de0ea4a496d034", size = 10912401, upload-time = "2023-12-08T15:37:06.13Z" },
-    { url = "https://files.pythonhosted.org/packages/15/83/4a164e69d08c271be303acb471a38172ae55d77db58d29f99cf186b80434/pandas-2.1.4-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6b728fb8deba8905b319f96447a27033969f3ea1fea09d07d296c9030ab2ed1d", size = 14812171, upload-time = "2023-12-08T15:37:10.786Z" },
-    { url = "https://files.pythonhosted.org/packages/b1/67/aca1f6e215d957d24d0a290321f368503305480268f9617bf625243e9dea/pandas-2.1.4-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:00028e6737c594feac3c2df15636d73ace46b8314d236100b57ed7e4b9ebe8d9", size = 12265858, upload-time = "2023-12-08T15:37:14.928Z" },
-    { url = "https://files.pythonhosted.org/packages/fa/8c/de2896a7167c4f9001790703ce8134f65db21c163033ae62be3615fc8a1f/pandas-2.1.4-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:426dc0f1b187523c4db06f96fb5c8d1a845e259c99bda74f7de97bd8a3bb3139", size = 13068680, upload-time = "2023-12-08T15:37:18.142Z" },
-    { url = "https://files.pythonhosted.org/packages/b3/70/56da2b82f848baf34bfd8c35e606ce45049b371ffaaaa7f0427093d29950/pandas-2.1.4-cp310-cp310-win_amd64.whl", hash = "sha256:f237e6ca6421265643608813ce9793610ad09b40154a3344a088159590469e46", size = 10668573, upload-time = "2023-12-08T15:37:22.204Z" },
-]
-
-[[package]]
 name = "pathable"
 version = "0.4.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1475,25 +1425,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pyogrio"
-version = "0.10.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "certifi" },
-    { name = "numpy" },
-    { name = "packaging" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/8f/5a784595524a79c269f2b1c880f4fdb152867df700c97005dda51997da02/pyogrio-0.10.0.tar.gz", hash = "sha256:ec051cb568324de878828fae96379b71858933413e185148acb6c162851ab23c", size = 281950, upload-time = "2024-09-28T19:11:20.898Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/ea/cba24d241858a72b58d8fcd0ad2276f9631fd4528b3062157637e43581eb/pyogrio-0.10.0-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:046eeeae12a03a3ebc3dc5ff5a87664e4f5fc0a4fb1ea5d5c45d547fa941072b", size = 15083657, upload-time = "2024-09-28T19:10:10.886Z" },
-    { url = "https://files.pythonhosted.org/packages/90/f8/a58795a2aee415c612aac8b425681d932b8983330884207fd1915d234d36/pyogrio-0.10.0-cp310-cp310-macosx_12_0_x86_64.whl", hash = "sha256:44380f4d9245c776f432526e29ce4d29238aea26adad991803c4f453474f51d3", size = 16457115, upload-time = "2024-09-28T19:10:13.62Z" },
-    { url = "https://files.pythonhosted.org/packages/45/86/74c37e3d4d000bdcd91b25929fe4abc5ad6d93d5f5fbc59a4c7d4f0ed982/pyogrio-0.10.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:14fd3b72b4e2dc59e264607b265c742b0c5ec2ea9e748b115f742381b28dd373", size = 23721911, upload-time = "2024-09-28T19:10:16.384Z" },
-    { url = "https://files.pythonhosted.org/packages/a6/07/35e4127a878ecdcbaaf46f0f2d068b385a454b5b0cab44ea901adc5888a0/pyogrio-0.10.0-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:1fea7892f4633cab04d13563e47ec2e87dc2b5cd71b9546018d123184528c151", size = 22941003, upload-time = "2024-09-28T20:42:01.627Z" },
-    { url = "https://files.pythonhosted.org/packages/56/8b/67187ae03dce5cd6f5c5a2f41c405e77059f4cf498e0817b69cec094f022/pyogrio-0.10.0-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:3539596a76eb8a9d166d6f9d3f36731a8c5bd5c43901209d89dc66b9dc00f079", size = 23861913, upload-time = "2024-09-28T19:10:19.269Z" },
-    { url = "https://files.pythonhosted.org/packages/75/ca/b31083da2e6c4b598b6609a98c655977189fe8982c36d98ea4789a938045/pyogrio-0.10.0-cp310-cp310-win_amd64.whl", hash = "sha256:eac90b2501656892c63bc500c12e71f3dbf7d66ddc5a7fb05cd480d25d1b7022", size = 16171065, upload-time = "2024-09-28T19:10:21.982Z" },
-]
-
-[[package]]
 name = "pyparsing"
 version = "3.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1614,15 +1545,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/01/979e98d542a70714b0cb2b6728ed0b7c46792b695e3eaec3e20711271ca3/python_multipart-0.0.22.tar.gz", hash = "sha256:7340bef99a7e0032613f56dc36027b959fd3b30a787ed62d310e951f7c3a3a58", size = 37612, upload-time = "2026-01-25T10:15:56.219Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1b/d0/397f9626e711ff749a95d96b7af99b9c566a9bb5129b8e4c10fc4d100304/python_multipart-0.0.22-py3-none-any.whl", hash = "sha256:2b2cd894c83d21bf49d702499531c7bafd057d730c201782048f7945d82de155", size = 24579, upload-time = "2026-01-25T10:15:54.811Z" },
-]
-
-[[package]]
-name = "pytz"
-version = "2024.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/3a/31/3c70bf7603cc2dca0f19bdc53b4537a797747a58875b552c8c413d963a3f/pytz-2024.2.tar.gz", hash = "sha256:2aa355083c50a0f93fa581709deac0c9ad65cca8a9e9beac660adcbd493c798a", size = 319692, upload-time = "2024-09-11T02:24:47.91Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/11/c3/005fcca25ce078d2cc29fd559379817424e94885510568bc1bc53d7d5846/pytz-2024.2-py2.py3-none-any.whl", hash = "sha256:31c7c1817eb7fae7ca4b8c7ee50c72f93aa2dd863de768e1ef4245d426aa0725", size = 508002, upload-time = "2024-09-11T02:24:45.8Z" },
 ]
 
 [[package]]
@@ -1955,15 +1877,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/df/db/f35a00659bc03fec321ba8bce9420de607a1d37f8342eee1863174c69557/typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8", size = 85321, upload-time = "2024-06-07T18:52:15.995Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d", size = 37438, upload-time = "2024-06-07T18:52:13.582Z" },
-]
-
-[[package]]
-name = "tzdata"
-version = "2024.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e1/34/943888654477a574a86a98e9896bae89c7aa15078ec29f490fef2f1e5384/tzdata-2024.2.tar.gz", hash = "sha256:7d85cc416e9382e69095b7bdf4afd9e3880418a2413feec7069d533d6b4e31cc", size = 193282, upload-time = "2024-09-23T18:56:46.89Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/ab/7e5f53c3b9d14972843a647d8d7a853969a58aecc7559cb3267302c94774/tzdata-2024.2-py2.py3-none-any.whl", hash = "sha256:a48093786cdcde33cad18c2555e8532f34422074448fbc874186f0abd79565cd", size = 346586, upload-time = "2024-09-23T18:56:45.478Z" },
 ]
 
 [[package]]
