@@ -1,6 +1,6 @@
 FROM ghcr.io/osgeo/gdal:ubuntu-full-3.9.3
 LABEL desc="Docker image with ALL THE THINGS for use in Batch by the GFW data API"
-LABEL version="v1.0"
+LABEL version="v1.1"
 
 ENV TIPPECANOE_VERSION=2.75.1
 
@@ -11,16 +11,20 @@ ENV VENV_DIR="/.venv"
 RUN rm -f /etc/apt/sources.list.d/apache-arrow.sources
 
 RUN apt-get update -y \
-    && apt-get install --no-install-recommends -y python3 python-dev-is-python3 python3-venv \
+    && apt-get install --no-install-recommends -y python3 python-dev-is-python3 \
         postgresql-client jq curl libsqlite3-dev zlib1g-dev zip libpq-dev build-essential gcc g++ \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.5 /uv /usr/local/bin/uv
+
+ENV UV_LINK_MODE=copy
+
 # --system-site-packages is needed to copy the GDAL Python libs into the venv
-RUN python -m venv ${VENV_DIR} --system-site-packages \
-    && . ${VENV_DIR}/bin/activate \
-    && python -m ensurepip --upgrade \
-    && python -m pip install \
+RUN uv venv ${VENV_DIR} --system-site-packages \
+    && uv pip install \
+        --python ${VENV_DIR}/bin/python \
         agate~=1.12.0 \
         asyncpg~=0.30.0 \
         awscli~=1.36.18 \
