@@ -27,8 +27,8 @@ from aws_utils import (
 )
 from errors import SubprocessKilledError
 from gdal_utils import from_vsi_path, to_vsi_path
-from gfw_pixetl.grids import grid_factory
 from logging_utils import listener_configurer, log_client_configurer, log_listener
+from pixetl_grids import grid_factory
 from pyproj import CRS, Transformer
 from shapely.geometry import MultiPolygon, Polygon, shape
 from shapely.ops import unary_union
