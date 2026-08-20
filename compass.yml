@@ -1,0 +1,21 @@
+name: gfw-data-api
+id: ari:cloud:compass:9e6ae18b-aaf1-4b81-b8dc-143cae66ae09:component/2466cdc0-d697-40cb-9612-93c0370df8ee/d23f6da4-0715-4961-a032-6674a9745d37
+description: GFW Data API
+configVersion: 1
+typeId: SERVICE
+ownerId: ari:cloud:identity::team/e1395033-4c36-4ef0-9865-d4a1a95986e4
+fields:
+  tier: 4
+links:
+  - name: null
+    type: REPOSITORY
+    url: https://github.com/wri/gfw-data-api
+relationships:
+  DEPENDS_ON: []
+labels:
+  - api-server
+  - etl-pipeline
+  - language:python
+  - metadata-api
+  - source:github
+customFields: null
