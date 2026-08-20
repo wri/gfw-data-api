@@ -1,5 +1,5 @@
 import re
-from typing import Tuple
+from typing import List, Tuple
 from unittest.mock import Mock, patch
 from urllib.parse import parse_qsl, urlparse
 from uuid import UUID
@@ -22,6 +22,7 @@ from app.routes.datasets import queries
 from app.routes.datasets.queries import (
     _get_data_environment,
     _get_data_environment_sql,
+    _get_date_conf_derived_layers,
     _query_dataset_json,
     _query_raster,
     _query_raster_lambda,
@@ -33,6 +34,12 @@ from tests_v2.utils import (
     invoke_lambda_mocked,
     start_batch_execution_mocked,
 )
+
+def get_headers_with_origin(apikey):
+    api_key, payload = apikey
+    origin = "https://" + payload["domains"][0]
+    headers = {"origin": origin, "x-api-key": api_key}
+    return headers
 
 
 @pytest.mark.skip("Temporarily skip until we require API keys")
@@ -55,16 +62,12 @@ async def test_query_dataset_with_api_key(
     generic_vector_source_version, apikey, async_client: AsyncClient
 ):
     dataset_name, version_name, _ = generic_vector_source_version
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-
-    headers = {"origin": origin, "x-api-key": api_key}
     params = {"sql": "select count(*) as count from data"}
 
     response = await async_client.get(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
         follow_redirects=True,
     )
 
@@ -122,10 +125,6 @@ async def test_query_dataset_raster_bad_get(
     async_client: AsyncClient,
 ):
     dataset_name, version_name, _ = generic_raster_version
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-
-    headers = {"origin": origin, "x-api-key": api_key}
 
     monkeypatch.setattr(queries, "invoke_lambda", invoke_lambda_mocked)
     params = {"sql": "select count(*) from data", "geostore_id": geostore_bad}
@@ -133,7 +132,7 @@ async def test_query_dataset_raster_bad_get(
     response = await async_client.get(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
         follow_redirects=True,
     )
 
@@ -149,10 +148,6 @@ async def test_query_dataset_raster_get(
     async_client: AsyncClient,
 ):
     dataset_name, version_name, _ = generic_raster_version
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-
-    headers = {"origin": origin, "x-api-key": api_key}
 
     monkeypatch.setattr(queries, "invoke_lambda", invoke_lambda_mocked)
     params = {"sql": "select count(*) from data", "geostore_id": geostore}
@@ -160,7 +155,7 @@ async def test_query_dataset_raster_get(
     response = await async_client.get(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
         follow_redirects=True,
     )
 
@@ -177,10 +172,6 @@ async def test_query_dataset_raster_post(
     async_client: AsyncClient,
 ):
     dataset_name, version_name, _ = generic_raster_version
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-
-    headers = {"origin": origin, "x-api-key": api_key}
 
     monkeypatch.setattr(queries, "invoke_lambda", invoke_lambda_mocked)
     payload = {
@@ -191,7 +182,7 @@ async def test_query_dataset_raster_post(
     response = await async_client.post(
         f"/dataset/{dataset_name}/{version_name}/query",
         json=payload,
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
         follow_redirects=True,
     )
 
@@ -208,10 +199,6 @@ async def test_redirect_post_query(
     async_client: AsyncClient,
 ):
     dataset_name, version_name, _ = generic_raster_version
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-
-    headers = {"origin": origin, "x-api-key": api_key}
 
     monkeypatch.setattr(queries, "invoke_lambda", invoke_lambda_mocked)
     payload = {
@@ -221,7 +208,7 @@ async def test_redirect_post_query(
 
     response = await async_client.post(
         f"/dataset/{dataset_name}/{version_name}/query",
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
         json=payload,
         follow_redirects=False,
     )
@@ -242,17 +229,13 @@ async def test_redirect_get_query(
     async_client: AsyncClient,
 ):
     dataset_name, version_name, _ = generic_raster_version
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-
-    headers = {"origin": origin, "x-api-key": api_key}
 
     monkeypatch.setattr(queries, "invoke_lambda", invoke_lambda_mocked)
     params = {"sql": "select count(*) from data", "geostore_id": geostore}
 
     response = await async_client.get(
         f"/dataset/{dataset_name}/{version_name}/query",
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
         params=params,
         follow_redirects=False,
     )
@@ -275,15 +258,11 @@ async def test_query_dataset_raster_geostore_huge(
     async_client: AsyncClient,
 ):
     dataset_name, version_name, _ = generic_raster_version
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-
-    headers = {"origin": origin, "x-api-key": api_key}
     params = {"sql": "select count(*) from data", "geostore_id": geostore_huge}
     response = await async_client.get(
         f"/dataset/{dataset_name}/{version_name}/query",
         params=params,
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
         follow_redirects=True,
     )
 
@@ -296,13 +275,9 @@ async def test_query_vector_asset_sql_value_functions_disallowed(
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select current_catalog from mytable;",
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -315,13 +290,9 @@ async def test_query_vector_asset_sys_functions_disallowed(
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select version() from mytable;",
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -337,13 +308,9 @@ async def test_query_vector_asset_unknown_functions_disallowed(
 ):
     dataset, version, _ = generic_vector_source_version
 
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select doesnotexist() from mytable;",
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
         follow_redirects=True,
     )
     assert response.status_code == 400
@@ -355,22 +322,47 @@ async def test_query_vector_asset_unknown_functions_disallowed(
 
 
 @pytest.mark.asyncio()
-async def test_query_licensed_disallowed_11(
+async def test_query_licensed_disallowed(
     licensed_version, apikey, async_client: AsyncClient
 ):
     dataset, version, _ = licensed_version
-
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-    headers = {"origin": origin, "x-api-key": api_key}
-
     response = await async_client.get(
         f"/dataset/{dataset}/{version}/query?sql=select(*) from mytable;",
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
         follow_redirects=True,
     )
     assert response.status_code == 401
-    assert response.json()["message"] == ("Unauthorized query on a restricted dataset")
+    assert response.json()["message"] == ("Unauthorized query on a restricted dataset or version")
+
+
+@pytest.mark.asyncio()
+async def test_query_restricted_version_disallowed(
+        restricted_version, unrestricted_version, apikey,
+        geostore, monkeypatch: MonkeyPatch, async_client: AsyncClient,
+):
+    # Test for an error if accessing a restricted version of a dataset.
+    dataset, version, _ = restricted_version
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query?sql=select(*) from mytable;",
+        headers=get_headers_with_origin(apikey),
+        follow_redirects=True,
+    )
+    assert response.status_code == 401
+    assert response.json()["message"] == ("Unauthorized query on a restricted dataset or version")
+
+    # Test for no error if accessing an unrestricted version of the same dataset that
+    # has a restricted version.
+    monkeypatch.setattr(queries, "invoke_lambda", invoke_lambda_mocked)
+
+    dataset, version, _ = unrestricted_version
+    params = {"sql": "select count(*) from data", "geostore_id": geostore}
+    response = await async_client.get(
+        f"/dataset/{dataset}/{version}/query",
+        params=params,
+        headers=get_headers_with_origin(apikey),
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
 
 
 @pytest.mark.asyncio
@@ -601,10 +593,6 @@ async def test_query_batch_feature_collection(
     async_client: AsyncClient,
 ):
     dataset_name, version_name, _ = generic_raster_version
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-
-    headers = {"origin": origin, "x-api-key": api_key}
 
     monkeypatch.setattr(queries, "_start_batch_execution", start_batch_execution_mocked)
     payload = {
@@ -616,7 +604,7 @@ async def test_query_batch_feature_collection(
     response = await async_client.post(
         f"/dataset/{dataset_name}/{version_name}/query/batch",
         json=payload,
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
     )
 
     assert response.status_code == 202
@@ -645,10 +633,6 @@ async def test_query_batch_uri(
     async_client: AsyncClient,
 ):
     dataset_name, version_name, _ = generic_raster_version
-    api_key, payload = apikey
-    origin = "https://" + payload["domains"][0]
-
-    headers = {"origin": origin, "x-api-key": api_key}
 
     monkeypatch.setattr(queries, "_start_batch_execution", start_batch_execution_mocked)
     monkeypatch.setattr(queries, "_verify_source_file_access", lambda source_uris: True)
@@ -662,7 +646,7 @@ async def test_query_batch_uri(
     response = await async_client.post(
         f"/dataset/{dataset_name}/{version_name}/query/batch",
         json=payload,
-        headers=headers,
+        headers=get_headers_with_origin(apikey),
     )
 
     print(response.json())
@@ -856,3 +840,25 @@ FEATURE_COLLECTION = {
         },
     ],
 }
+
+
+def test__get_date_conf_derived_layers_encode_decode_roundtrip():
+    """The old encode_expression failed because datetime64(A) without unit
+    specifier breaks with modern NumPy when A is a string."""
+    from numpy import datetime64, uint16
+
+    original_date = "2023-01-15"
+
+    layers: List[DerivedLayer] = _get_date_conf_derived_layers("foo", 0)
+
+    for layer in layers:
+        if layer.encode_expression:
+            encoded = eval(
+                layer.encode_expression,
+                {"datetime64": datetime64, "uint16": uint16, "A": original_date},
+            )
+
+            decoded = eval(
+                layer.decode_expression, {"datetime64": datetime64, "A": encoded}
+            )
+            assert decoded == original_date

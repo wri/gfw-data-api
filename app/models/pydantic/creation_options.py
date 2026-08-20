@@ -465,6 +465,13 @@ class COGCreationOptions(StrictBaseModel):
         " under the project `forma-250` with the asset ID `{dataset}/{implementation}. "
         "Versioning is currently not supported due to GEE storage constraints.",
     )
+    no_data: Optional[Union[List[NoDataType], NoDataType]] = Field(
+        None,
+        description=(
+            "Used to specify a specific nodata value in the gdal_translate call "
+            "that creates the COG"
+        )
+    )
 
 
 class DynamicVectorTileCacheCreationOptions(TileCacheBaseModel):

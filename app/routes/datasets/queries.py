@@ -25,7 +25,7 @@ from app.settings.globals import API_URL
 
 from ...application import db
 from ...authentication.api_keys import get_api_key
-from ...authentication.token import is_gfwpro_admin_for_query
+from ...authentication.token import is_authorized_for_query
 from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
@@ -118,7 +118,7 @@ async def query_dataset_json(
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
-    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
+    is_authorized: bool = Depends(is_authorized_for_query),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -182,7 +182,7 @@ async def query_dataset_csv(
     delimiter: Delimiters = Query(
         Delimiters.comma, description="Delimiter to use for CSV file."
     ),
-    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
+    is_authorized: bool = Depends(is_authorized_for_query),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -245,7 +245,7 @@ async def query_dataset_json_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
-    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
+    is_authorized: bool = Depends(is_authorized_for_query),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -275,7 +275,7 @@ async def query_dataset_csv_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: CsvQueryRequestIn,
-    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
+    is_authorized: bool = Depends(is_authorized_for_query),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -585,8 +585,8 @@ async def _query_raster_lambda(
 ) -> Dict[str, Any]:
     data_environment = await _get_data_environment(grid, version_overrides)
     payload = {
-        "geometry": jsonable_encoder(geometry),
         "query": sql,
+        "geometry": jsonable_encoder(geometry),
         "environment": data_environment.dict()["layers"],
         "format": format,
     }
@@ -724,10 +724,14 @@ def _get_date_conf_derived_layers(
     """Get derived layers that decode our date_conf layers for alert
     systems."""
     # TODO should these somehow be in the metadata or creation options instead of hardcoded?
-    # 16435 is number of days from 1970-01-01 and 2015-01-01, and can be used to convet
+    # 16435 is number of days from 1970-01-01 to 2015-01-01, and can be used to convert
     # our encoding of days since 2015 to a number that can be used generally for datetimes
-    decode_expression = "(A + 16435).astype('datetime64[D]').astype(str)"
-    encode_expression = "(datetime64(A) - 16435).astype(uint16)"
+    decode_expression = (
+        "(A.astype('timedelta64[D]') + datetime64('2015-01-01', 'D')).astype(str)"
+    )
+    encode_expression = (
+        "(datetime64(A, 'D') - datetime64('2015-01-01', 'D')).astype(uint16)"
+    )
     conf_encoding = RasterTable(
         default_meaning="not_detected",
         rows=[

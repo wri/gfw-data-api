@@ -1,5 +1,6 @@
 from typing import Any, Callable, Coroutine, Dict
 from uuid import UUID
+import json
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
@@ -104,6 +105,8 @@ async def create_cogify_job(
         f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/{srid}/cog",
     ]
 
+    if creation_options.no_data is not None:
+        command += ["-n", json.dumps(creation_options.no_data)]
     if creation_options.export_to_gee:
         command += ["--export_to_gee"]
 
