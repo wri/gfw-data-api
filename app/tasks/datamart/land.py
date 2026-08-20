@@ -1,6 +1,6 @@
 import json
 import traceback
-from enum import Enum
+from enum import StrEnum
 from typing import Dict
 from uuid import UUID
 
@@ -18,7 +18,7 @@ from app.routes.datasets.queries import _query_dataset_json
 from app.utils.geostore import get_geostore
 
 
-class TCL_DRIVERS_DATASET(str, Enum):
+class TCL_DRIVERS_DATASET(StrEnum):
     TSC = "tsc_tree_cover_loss_drivers"
     WRI_GOOGLE = "wri_google_tree_cover_loss_drivers"
 

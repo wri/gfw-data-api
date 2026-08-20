@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 
 # These enums are based on the valid options for the various inputs
 # to pixETL, and should match whatever is specified in that repo.
@@ -6,7 +6,7 @@ from enum import Enum
 # despite the code duplication.
 
 
-class DataType(str, Enum):
+class DataType(StrEnum):
     boolean = "boolean"
     uint8 = "uint8"
     int8 = "int8"
@@ -22,7 +22,7 @@ class DataType(str, Enum):
     double = "double"
 
 
-class Grid(str, Enum):
+class Grid(StrEnum):
     one_by_four_thousand = "1/4000"
     three_by_thirty_three_thousand_six_hundred = "3/33600"
     three_by_fifty_thousand = "3/50000"
@@ -57,23 +57,23 @@ class Grid(str, Enum):
     zoom_22 = "zoom_22"
 
 
-class NonNumericFloat(str, Enum):
+class NonNumericFloat(StrEnum):
     # inf = "Inf"
     # neg_inf = "-Inf"
     nan = "nan"
 
 
-class Order(str, Enum):
+class Order(StrEnum):
     asc = "asc"
     desc = "desc"
 
 
-class RasterizeMethod(str, Enum):
+class RasterizeMethod(StrEnum):
     count_ = "count"
     value = "value"
 
 
-class ResamplingMethod(str, Enum):
+class ResamplingMethod(StrEnum):
     average = "average"
     bilinear = "bilinear"
     cubic = "cubic"
@@ -88,7 +88,7 @@ class ResamplingMethod(str, Enum):
     q3 = "q3"
 
 
-class PhotometricType(str, Enum):
+class PhotometricType(StrEnum):
     minisblack = "MINISBLACK"
     miniswhite = "MINISWHITE"
     rgb = "RGB"

@@ -1,11 +1,11 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class QueryFormat(str, Enum):
+class QueryFormat(StrEnum):
     json = "json"
     csv = "csv"
 
 
-class QueryType(str, Enum):
+class QueryType(StrEnum):
     table = "table"
     raster = "raster"
