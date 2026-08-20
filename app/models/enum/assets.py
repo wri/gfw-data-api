@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict
 
-from app.models.enum.sources import SourceType
+from .sources import SourceType
 
 
 class AssetStatus(str, Enum):
