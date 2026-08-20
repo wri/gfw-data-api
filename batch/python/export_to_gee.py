@@ -130,8 +130,11 @@ def export_to_gee(
     credentials = ee.ServiceAccountCredentials(service_account, GCS_CREDENTIALS_FILE)
     ee.Initialize(credentials)
 
+    # Only upload to GCS_BUCKET (at gcs_path). Don't try to ingest or register in
+    # GEE anymore, since there are many possible options.
     gcs_path = upload_cog_to_gcs(dataset, implementation)
-    ingest_in_gee(dataset, implementation, gcs_path)
+    print(f"Uploaded to {gcs_path}")
+    # ingest_in_gee(dataset, implementation, gcs_path)
 
 
 if __name__ == "__main__":
