@@ -460,10 +460,15 @@ class COGCreationOptions(StrictBaseModel):
     compute_stats: bool = False
     export_to_gee: bool = Field(
         False,
-        description="Option to export COG to a Google Cloud Storage and create"
-        " a COG-backed asset on Google Earth Engine (GEE). The asset will be created"
-        " under the project `forma-250` with the asset ID `{dataset}/{implementation}. "
-        "Versioning is currently not supported due to GEE storage constraints.",
+        description="Option to export COG to a Google Cloud Storage at "
+        "gs://data-api-gee-assets/{dataset}/{implementation}.",
+    )
+    no_data: Optional[Union[List[NoDataType], NoDataType]] = Field(
+        None,
+        description=(
+            "Used to specify a specific nodata value in the gdal_translate call "
+            "that creates the COG"
+        )
     )
     no_data: Optional[Union[List[NoDataType], NoDataType]] = Field(
         None,

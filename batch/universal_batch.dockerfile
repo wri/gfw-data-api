@@ -6,6 +6,10 @@ ENV TIPPECANOE_VERSION=2.75.1
 
 ENV VENV_DIR="/.venv"
 
+# The base image ships an Apache Arrow apt source whose signing key is no
+# longer fetchable by apt-key; drop it since we don't need Arrow packages here.
+RUN rm -f /etc/apt/sources.list.d/apache-arrow.sources
+
 RUN apt-get update -y \
     && apt-get install --no-install-recommends -y python3 python-dev-is-python3 python3-venv \
         postgresql-client jq curl libsqlite3-dev zlib1g-dev zip libpq-dev build-essential gcc g++ \

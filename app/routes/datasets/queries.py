@@ -724,7 +724,7 @@ def _get_date_conf_derived_layers(
     """Get derived layers that decode our date_conf layers for alert
     systems."""
     # TODO should these somehow be in the metadata or creation options instead of hardcoded?
-    # 16435 is number of days from 1970-01-01 to 2015-01-01, and can be used to convert
+    # 16435 is number of days from 1970-01-01 and 2015-01-01, and can be used to convet
     # our encoding of days since 2015 to a number that can be used generally for datetimes
     decode_expression = (
         "(A.astype('timedelta64[D]') + datetime64('2015-01-01', 'D')).astype(str)"

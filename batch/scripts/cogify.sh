@@ -41,7 +41,7 @@ if ! aws s3 ls  "${PREFIX}/${IMPLEMENTATION}_merged.tif"; then
     fi
 fi
 
-if [[ ${BLOCK_SIZE} -ge 2048 ]]; then
+if [[ ${BLOCK_SIZE} -ge 1024 ]]; then
   # For blocksize 2048 and greater, generate overviews internally.
   # create VRT of input files so we can use gdal_translate
   gdalbuildvrt "${IMPLEMENTATION}_merged.vrt" *.tif
