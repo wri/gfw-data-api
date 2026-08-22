@@ -52,12 +52,7 @@ dependencies = [
 dev = [
     "asgi-lifespan",
     "docker",
-    "geopandas", # Needed by pixetl in batch script test
-    # Pixetl is already installed in the pixetl image that's run in Batch,
-    # this is to enable tests to run in the test container:
-    "gfw-pixetl",
     "moto[awslambda, batch, ec2, s3, secretsmanager]<5",
-    "pandas<2.2", # Needed by pixetl in batch script test
     "pre-commit",
     "pytest",
     "pytest-asyncio",
@@ -65,11 +60,7 @@ dev = [
     "pytest-timeout",
     "pytest-unordered>=0.6.1",
     "rasterio==1.4.3",
-    "retrying", # Needed by pixetl in batch script test
 ]
 
 [tool.setuptools]
 packages = ["app", "batch"]
-
-[tool.uv.sources]
-gfw-pixetl = { git = "https://github.com/wri/gfw_pixetl.git", branch = "develop" }
