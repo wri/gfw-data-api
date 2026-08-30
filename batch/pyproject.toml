@@ -15,7 +15,7 @@ dependencies = [
     "fiona~=1.9.6",
     "gsutil~=5.31",
     "numpy~=2.2.6",
-    "pandas~=2.3.3",
+    "pandas==2.3.2",
     "psycopg2~=2.9.12",
     "rasterio~=1.5.1",
     "setuptools~=75.6",
