@@ -1,4 +1,4 @@
-FROM ghcr.io/osgeo/gdal:ubuntu-full-3.9.3
+FROM ghcr.io/osgeo/gdal:ubuntu-full-3.12.4
 LABEL desc="Docker image with ALL THE THINGS for use in Batch by the GFW data API"
 LABEL version="v1.1"
 
