@@ -2,7 +2,7 @@ from typing import Tuple
 
 import pytest
 from fastapi.exceptions import HTTPException
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from app.authentication.token import get_manager
 from app.models.pydantic.datasets import DatasetResponse
@@ -27,7 +27,7 @@ async def test_get_owner_fail(db, init_db, monkeypatch) -> None:
     app.dependency_overrides[get_manager] = get_manager_mocked
 
     async with AsyncClient(
-        app=app,
+        transport=ASGITransport(app=app),
         base_url="http://test",
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
@@ -61,7 +61,7 @@ async def test_get_owner_manager_success(db, init_db, monkeypatch) -> None:
     app.dependency_overrides[get_manager] = get_manager_mocked
 
     async with AsyncClient(
-        app=app,
+        transport=ASGITransport(app=app),
         base_url="http://test",
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
@@ -88,7 +88,7 @@ async def test_get_owner_different_manager_fail(db, init_db, monkeypatch) -> Non
     app.dependency_overrides[get_manager] = get_manager_mocked
 
     async with AsyncClient(
-        app=app,
+        transport=ASGITransport(app=app),
         base_url="http://test",
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
@@ -123,7 +123,7 @@ async def test_get_owner_admin_success(db, init_db, monkeypatch) -> None:
     app.dependency_overrides[get_manager] = get_manager_mocked
 
     async with AsyncClient(
-        app=app,
+        transport=ASGITransport(app=app),
         base_url="http://test",
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
@@ -185,7 +185,7 @@ async def test_delete_dataset_requires_creds_fail(db, init_db) -> None:
     app.dependency_overrides[get_manager] = get_manager_mocked
 
     async with AsyncClient(
-        app=app,
+        transport=ASGITransport(app=app),
         base_url="http://test",
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
@@ -199,7 +199,7 @@ async def test_delete_dataset_requires_creds_fail(db, init_db) -> None:
     app.dependency_overrides[get_owner] = raises_401
 
     async with AsyncClient(
-        app=app,
+        transport=ASGITransport(app=app),
         base_url="http://test",
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
@@ -221,7 +221,7 @@ async def test_delete_dataset_requires_creds_succeed(db, init_db, monkeypatch) -
     app.dependency_overrides[get_manager] = get_manager_mocked
 
     async with AsyncClient(
-        app=app,
+        transport=ASGITransport(app=app),
         base_url="http://test",
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
@@ -235,7 +235,7 @@ async def test_delete_dataset_requires_creds_succeed(db, init_db, monkeypatch) -
     app.dependency_overrides[get_owner] = get_manager_mocked
 
     async with AsyncClient(
-        app=app,
+        transport=ASGITransport(app=app),
         base_url="http://test",
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},

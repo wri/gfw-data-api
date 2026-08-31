@@ -1,16 +1,16 @@
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
-from app.crud import assets as assets_crud
 from app.authentication import token
 from app.authentication.token import get_manager, get_user
+from app.crud import assets as assets_crud
+from app.main import app as appmain
 from tests_v2.utils import (
     get_admin_mocked,
     get_manager_mocked,
     get_user_mocked,
     raises_401,
 )
-from app.main import app as appmain
 
 
 @pytest.mark.asyncio
@@ -55,7 +55,7 @@ async def test_update_asset_metadata(
     appmain.dependency_overrides[get_user] = get_manager_mocked
 
     async with AsyncClient(
-        app=appmain,
+        transport=ASGITransport(app=appmain),
         base_url="http://test",
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
@@ -63,7 +63,7 @@ async def test_update_asset_metadata(
         resp = await async_client.patch(
             f"asset/{tile_cache_asset.asset_id}/metadata", json={"max_zoom": max_zoom}
         )
-    
+
         assert resp.json()["status"] == "success"
         assert resp.json()["data"]["max_zoom"] == max_zoom
 
@@ -72,7 +72,7 @@ async def test_update_asset_metadata(
     appmain.dependency_overrides[get_user] = get_user_mocked
 
     async with AsyncClient(
-        app=appmain,
+        transport=ASGITransport(app=appmain),
         base_url="http://test",
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
@@ -80,7 +80,7 @@ async def test_update_asset_metadata(
         resp = await async_client.patch(
             f"asset/{tile_cache_asset.asset_id}/metadata", json={"max_zoom": max_zoom}
         )
-    
+
         assert resp.json()["status"] == "failed"
         assert resp.status_code == 401
 
@@ -130,9 +130,7 @@ async def test_get_field_metadata(
 
 
 @pytest.mark.asyncio
-async def test_update_field_metadata(
-    generic_vector_source_version
-):
+async def test_update_field_metadata(generic_vector_source_version):
     field_description = "geometry field"
     dataset, version, _ = generic_vector_source_version
     assets = await assets_crud.get_assets_by_filter(
@@ -147,7 +145,7 @@ async def test_update_field_metadata(
     appmain.dependency_overrides[get_user] = get_manager_mocked
 
     async with AsyncClient(
-        app=appmain,
+        transport=ASGITransport(app=appmain),
         base_url="http://test",
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
@@ -164,7 +162,7 @@ async def test_update_field_metadata(
     appmain.dependency_overrides[get_user] = get_user_mocked
 
     async with AsyncClient(
-        app=appmain,
+        transport=ASGITransport(app=appmain),
         base_url="http://test",
         trust_env=False,
         headers={"Origin": "https://www.globalforestwatch.org"},
