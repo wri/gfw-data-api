@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 globalforestwatch/pixetl:v1.7.8
+FROM globalforestwatch/pixetl:v1.9.0b5
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/
