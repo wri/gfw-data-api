@@ -1,16 +1,16 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Dict
 
 from app.models.enum.sources import SourceType
 
 
-class AssetStatus(str, Enum):
+class AssetStatus(StrEnum):
     saved = "saved"
     pending = "pending"
     failed = "failed"
 
 
-class AssetType(str, Enum):
+class AssetType(StrEnum):
     dynamic_vector_tile_cache = "Dynamic vector tile cache"
     static_vector_tile_cache = "Static vector tile cache"
     raster_tile_cache = "Raster tile cache"
