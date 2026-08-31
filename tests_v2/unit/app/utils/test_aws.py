@@ -1,12 +1,10 @@
-import pytest
 from moto import mock_s3
 
 from app.utils.aws import get_s3_client
 
 
 @mock_s3
-@pytest.mark.asyncio
-async def test_get_aws_files():
+def test_get_aws_files():
     good_bucket = "good_bucket"
     good_prefix = "good_prefix"
 
