@@ -185,8 +185,7 @@ async def delete_api_key(
             status_code=404, detail="The requested API key does not exist."
         )
 
-    # TODO: we might want to allow admins to delete api keys of other users?
-    if not row.user_id == user.id:
+    if user.role != "ADMIN" and not row.user_id == user.id:
         raise HTTPException(
             status_code=403,
             detail="The requested API key does not belong to the current user.",

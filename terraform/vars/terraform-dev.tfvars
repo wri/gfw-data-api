@@ -17,3 +17,4 @@ api_gateway_id                 = "vzgmihei77"
 api_gw_external_app_id         = "f10vmg"
 api_gw_internal_app_id         = "ka6k5w"
 api_gateway_url                = "https://wddlsuo04c.execute-api.us-east-1.amazonaws.com/deploy"
+force_delete_ecr_repos         = true

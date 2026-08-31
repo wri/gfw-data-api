@@ -13,10 +13,6 @@ locals {
   bucket_suffix   = var.environment == "production" ? "" : "-${var.environment}"
   tf_state_bucket = "gfw-terraform${local.bucket_suffix}"
   tags            = data.terraform_remote_state.core.outputs.tags
-  batch_tags = merge(
-    {
-      Job = "Data-API Batch Job",
-  }, local.tags)
   fargate_tags = merge(
     {
       Job = "Data-API Service",
@@ -38,32 +34,36 @@ locals {
 
 # Docker image for FastAPI app
 module "app_docker_image" {
-  source     = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
-  image_name = substr(lower("${local.project}${local.name_suffix}"), 0, 64)
-  root_dir   = "${path.root}/../"
-  tag        = local.container_tag
+  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.13"
+  image_name   = substr(lower("${local.project}${local.name_suffix}"), 0, 64)
+  root_dir     = "${path.root}/../"
+  tag          = local.container_tag
+  force_delete = var.force_delete_ecr_repos
 }
 
 # Docker image for PixETL Batch jobs
 module "batch_pixetl_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.13"
   image_name      = substr(lower("${local.project}-pixetl${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "pixetl.dockerfile"
+  force_delete    = var.force_delete_ecr_repos
 }
 
 # Docker image for all Batch jobs except those requiring PixETL
 module "batch_universal_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.3"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.13"
   image_name      = substr(lower("${local.project}-universal${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "universal_batch.dockerfile"
+  # Only force delete ECR repos in dev, just in case
+  force_delete = var.force_delete_ecr_repos
 }
 
 module "fargate_autoscaling" {
-  source                       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.5"
+  source                       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.13"
   project                      = local.project
   name_suffix                  = local.name_suffix
   tags                         = local.fargate_tags
@@ -107,9 +107,10 @@ module "fargate_autoscaling" {
   container_definition = data.template_file.container_definition.rendered
 }
 
-# Using instance types with 1 core only
+# Create compute environment for DB writer
+# Using instance types with 1 core only, and EC2 instances (not SPOT).
 module "batch_aurora_writer" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.3"
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.13"
   ecs_role_policy_arns = [
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
@@ -132,15 +133,18 @@ module "batch_aurora_writer" {
   ]
   subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
   suffix                   = local.name_suffix
-  tags                     = local.batch_tags
+  tags                     = merge(local.tags, {Job = "Aurora Writer",})
   use_ephemeral_storage    = false
   ebs_volume_size          = 60
   compute_environment_name = "aurora_sql_writer"
+  launch_type              = "EC2"
 }
 
 
+# Create compute environment for data lake writing, pixetl, and tile cache jobs
+# Currently does EC2 instances, not spot instances.
 module "batch_data_lake_writer" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.3"
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.13"
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
@@ -159,16 +163,17 @@ module "batch_data_lake_writer" {
   ]
   subnets               = data.terraform_remote_state.core.outputs.private_subnet_ids
   suffix                = local.name_suffix
-  tags                  = local.batch_tags
+  tags                  = merge(local.tags, {Job = "Datalake/pixetl/tile-cache",} )
   use_ephemeral_storage = true
-  # SPOT is actually the default, this is just a placeholder until GTC-1791 is done
-  launch_type              = "SPOT"
+  launch_type              = "EC2"
   instance_types           = var.data_lake_writer_instance_types
   compute_environment_name = "data_lake_writer"
 }
 
+# Creating compute environment for cogify jobs
+# Should always use EC2 instances, since jobs run for so long.
 module "batch_cogify" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.3"
+  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.13"
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
@@ -186,13 +191,14 @@ module "batch_cogify" {
   ]
   subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
   suffix                   = local.name_suffix
-  tags                     = local.batch_tags
+  tags                     = merge(local.tags, {Job = "COGify",}, )
   use_ephemeral_storage    = true
   launch_type              = "EC2"
   instance_types           = var.data_lake_writer_instance_types
   compute_environment_name = "batch_cogify"
 }
 
+# Create aurora, aurora_fast, data_lake, pixetl, tile cache, and ondemand job queues.
 module "batch_job_queues" {
   source                             = "./modules/batch"
   aurora_compute_environment_arn     = module.batch_aurora_writer.arn
@@ -228,4 +234,6 @@ module "api_gateway" {
   lambda_role_policy      = data.template_file.lambda_role_policy.rendered
   cloudwatch_policy       = data.local_file.cloudwatch_log_policy.content
   lambda_invoke_policy    = data.local_file.iam_lambda_invoke.content
+  api_gateway_usage_plans = var.api_gateway_usage_plans
+  service_url             = var.service_url
 }

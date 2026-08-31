@@ -5,7 +5,9 @@ import pytest
 from fastapi import HTTPException
 from httpx import AsyncClient
 
+from app.errors import RecordNotFoundError
 from app.models.enum.geostore import GeostoreOrigin
+from app.models.orm.datamart import AnalysisResult
 from app.models.pydantic.datamart import (
     AnalysisStatus,
     GeostoreAreaOfInterest,
@@ -493,7 +495,8 @@ async def test_get_tree_cover_loss_by_drivers_as_csv(
 async def test_compute_tree_cover_loss_by_driver(geostore):
     with (
         patch(
-            "app.tasks.datamart.land._query_dataset_json", return_value=MOCK_RESULT
+            "app.tasks.datamart.land._query_dataset_json",
+            return_value=MOCK_RESULT_OLD_DRIVERS,
         ) as mock_query_dataset_json,
         patch("app.crud.datamart.update_result") as mock_write_result,
     ):
@@ -521,10 +524,10 @@ async def test_compute_tree_cover_loss_by_driver(geostore):
         MOCK_RESOURCE["metadata"]["aoi"]["geostore_id"] = geostore
         mock_write_result.assert_awaited_once_with(
             resource_id,
-            TreeCoverLossByDriverUpdate(
-                result=MOCK_RESOURCE["result"],
-                status=MOCK_RESOURCE["status"],
-            ),
+            {
+                "result": MOCK_RESOURCE["result"],
+                "status": MOCK_RESOURCE["status"],
+            },
         )
 
 
@@ -556,11 +559,99 @@ async def test_compute_tree_cover_loss_by_driver_error(geostore):
         )
         mock_write_error.assert_awaited_once_with(
             resource_id,
-            TreeCoverLossByDriverUpdate(
-                status=MOCK_ERROR_RESOURCE["status"],
-                message=MOCK_ERROR_RESOURCE["message"],
-            ),
+            {
+                "status": MOCK_ERROR_RESOURCE["status"],
+                "message": MOCK_ERROR_RESOURCE["message"],
+            }
         )
+
+
+class TestDeleteTclResource:
+    @pytest.mark.asyncio
+    async def test_delete_tree_cover_loss_by_drivers_deletes_the_failed_resource(
+        self,
+        geostore,
+        apikey,
+        async_client: AsyncClient,
+    ):
+        api_key, payload = apikey
+        origin = payload["domains"][0]
+
+        headers = {"origin": origin, "x-api-key": api_key}
+        with (
+            patch(
+                "app.routes.datamart.land.datamart_crud.get_result",
+                return_value=AnalysisResult(status=AnalysisStatus.failed),
+            ),
+            patch(
+                "app.routes.datamart.land.datamart_crud.delete_result",
+                return_value=AnalysisResult(status=AnalysisStatus.failed),
+            ),
+        ):
+            aoi = {"type": "geostore", "geostore_id": geostore}
+            resource_id = _get_resource_id(
+                "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
+            )
+            response = await async_client.delete(
+                f"/v0/land/tree_cover_loss_by_driver/{resource_id}", headers=headers
+            )
+
+            assert response.status_code == 204
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status", [AnalysisStatus.pending, AnalysisStatus.saved])
+    async def test_delete_tree_cover_loss_by_drivers_fails_for_status(
+        self,
+        status,
+        geostore,
+        apikey,
+        async_client: AsyncClient,
+    ):
+        api_key, payload = apikey
+        origin = payload["domains"][0]
+
+        headers = {"origin": origin, "x-api-key": api_key}
+        with patch(
+            "app.routes.datamart.land._get_resource",
+            return_value=TreeCoverLossByDriver(status=status),
+        ):
+            aoi = {"type": "geostore", "geostore_id": geostore}
+            resource_id = _get_resource_id(
+                "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
+            )
+            response = await async_client.delete(
+                f"/v0/land/tree_cover_loss_by_driver/{resource_id}", headers=headers
+            )
+
+            assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_delete_tree_cover_loss_by_drivers_fails_when_resource_doesnt_exist(
+        self,
+        geostore,
+        apikey,
+        async_client: AsyncClient,
+    ):
+
+        api_key, payload = apikey
+        origin = payload["domains"][0]
+
+        headers = {"origin": origin, "x-api-key": api_key}
+
+        # Mock the underlying CRUD operation to raise RecordNotFoundError
+        with patch(
+            "app.routes.datamart.land.datamart_crud.get_result",
+            side_effect=RecordNotFoundError("Resource not found"),
+        ):
+            aoi = {"type": "geostore", "geostore_id": geostore}
+            resource_id = _get_resource_id(
+                "tree_cover_loss_by_driver", aoi, 30, DEFAULT_LAND_DATASET_VERSIONS
+            )
+            response = await async_client.delete(
+                f"/v0/land/tree_cover_loss_by_driver/{resource_id}", headers=headers
+            )
+
+            assert response.status_code == 404
 
 
 class TestAdminAreaOfInterest:
@@ -805,7 +896,7 @@ class TestWdpaAreaOfInterest:
             )
 
 
-MOCK_RESULT = [
+MOCK_RESULT_OLD_DRIVERS = [
     {
         "umd_tree_cover_loss__year": 2001,
         "tsc_tree_cover_loss_drivers__driver": "Permanent agriculture",
@@ -879,6 +970,7 @@ MOCK_RESULT = [
         "gfw_forest_carbon_gross_emissions__Mg_CO2e": 88.8,
     },
 ]
+
 
 MOCK_RESOURCE = {
     "status": "saved",

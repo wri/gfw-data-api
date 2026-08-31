@@ -33,10 +33,12 @@ resource "aws_api_gateway_resource" "query_parent" {
 }
 
 module "query_resource" {
-  source      = "../resource"
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  parent_id   = aws_api_gateway_resource.query_parent.id
-  path_part   = "{proxy+}"
+  source                  = "../resource"
+  rest_api_id             = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id               = aws_api_gateway_resource.query_parent.id
+  path_part               = "{proxy+}"
+  api_gateway_usage_plans = var.api_gateway_usage_plans
+  service_url             = var.service_url
 }
 
 module "query_get" {
@@ -102,11 +104,12 @@ resource "aws_api_gateway_resource" "download_parent" {
 module "download_shapes_resources" {
   source = "../resource"
 
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  parent_id   = aws_api_gateway_resource.download_parent.id
-
-  for_each  = toset(var.download_endpoints)
-  path_part = each.key
+  rest_api_id             = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id               = aws_api_gateway_resource.download_parent.id
+  api_gateway_usage_plans = var.api_gateway_usage_plans
+  service_url             = var.service_url
+  for_each                = toset(var.download_endpoints)
+  path_part               = each.key
 }
 
 module "download_shapes_endpoint" {
@@ -150,9 +153,11 @@ resource "aws_api_gateway_resource" "datamart_land" {
 module "datamart_proxy" {
   source = "../resource"
 
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  parent_id   = aws_api_gateway_resource.datamart_land.id
-  path_part   = "{datamart_proxy+}"
+  rest_api_id             = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id               = aws_api_gateway_resource.datamart_land.id
+  path_part               = "{datamart_proxy+}"
+  api_gateway_usage_plans = var.api_gateway_usage_plans
+  service_url             = var.service_url
 }
 
 
@@ -174,6 +179,29 @@ module "datamart_get" {
   method_parameters = {
     "method.request.path.datamart_proxy" = true
 
+  }
+
+  integration_uri = "http://${var.lb_dns_name}/v0/land/{datamart_proxy}"
+}
+
+
+module "datamart_delete" {
+  source = "../endpoint"
+
+  rest_api_id   = aws_api_gateway_rest_api.api_gw_api.id
+  authorizer_id = aws_api_gateway_authorizer.api_key.id
+  api_resource  = module.datamart_proxy.aws_api_gateway_resource
+
+  require_api_key = true
+  http_method     = "DELETE"
+  authorization   = "CUSTOM"
+
+  integration_parameters = {
+    "integration.request.path.datamart_proxy" = "method.request.path.datamart_proxy"
+  }
+
+  method_parameters = {
+    "method.request.path.datamart_proxy" = true
   }
 
   integration_uri = "http://${var.lb_dns_name}/v0/land/{datamart_proxy}"
@@ -206,9 +234,11 @@ module "datamart_post" {
 module "unprotected_resource" {
   source = "../resource"
 
-  rest_api_id = aws_api_gateway_rest_api.api_gw_api.id
-  parent_id   = aws_api_gateway_rest_api.api_gw_api.root_resource_id
-  path_part   = "{proxy+}"
+  rest_api_id             = aws_api_gateway_rest_api.api_gw_api.id
+  parent_id               = aws_api_gateway_rest_api.api_gw_api.root_resource_id
+  path_part               = "{proxy+}"
+  api_gateway_usage_plans = var.api_gateway_usage_plans
+  service_url             = var.service_url
 
 }
 
@@ -285,7 +315,8 @@ resource "aws_api_gateway_deployment" "api_gw_dep" {
     module.download_shapes_endpoint["geotiff"].integration_point,
     module.unprotected_endpoints.integration_point,
     module.datamart_get.integration_point,
-    module.datamart_post.integration_point
+    module.datamart_post.integration_point,
+    module.datamart_delete.integration_point
   ]
 
   lifecycle {
@@ -337,7 +368,7 @@ resource "aws_iam_role" "lambda" {
 resource "aws_lambda_function" "authorizer" {
   filename      = "api_gateway/api_key_authorizer_lambda.zip"
   function_name = substr("api_gateway_authorizer", 0, 64)
-  runtime       = "python3.8"
+  runtime       = "python3.10"
   role          = aws_iam_role.lambda.arn
   handler       = "lambda_function.handler"
 

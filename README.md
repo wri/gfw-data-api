@@ -1,5 +1,5 @@
 # GFW Data API
-High-performance Async REST API, in Python. FastAPI + GINO + Uvicorn (powered by PostgreSQL).
+High-performance Async REST API in Python. FastAPI + GINO + Uvicorn (powered by PostgreSQL).
 
 ## Get Started
 ### Run Locally with Docker

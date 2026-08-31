@@ -6,13 +6,12 @@ import re
 import uuid
 from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
-from urllib.parse import unquote
 from uuid import UUID, uuid4
 
-import botocore
 import httpx
 from async_lru import alru_cache
 from asyncpg import DataError, InsufficientPrivilegeError, SyntaxOrAccessError
+from botocore.client import BaseClient
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import Request as FastApiRequest
 from fastapi import Response as FastApiResponse
@@ -20,48 +19,17 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.logger import logger
 from fastapi.openapi.models import APIKey
 from fastapi.responses import ORJSONResponse, RedirectResponse
-from pglast import printers  # noqa
-from pglast import Node, parse_sql
-from pglast.parser import ParseError
-from pglast.printer import RawStream
 from pydantic.tools import parse_obj_as
 
 from app.settings.globals import API_URL
 
 from ...application import db
 from ...authentication.api_keys import get_api_key
-from ...authentication.token import is_gfwpro_admin_for_query
+from ...authentication.token import is_authorized_for_query
 from ...crud import assets
 from ...models.enum.assets import AssetType
 from ...models.enum.creation_options import Delimiters
 from ...models.enum.geostore import GeostoreOrigin
-from ...models.enum.pg_admin_functions import (
-    advisory_lock_functions,
-    backup_control_functions,
-    collation_management_functions,
-    configuration_settings_functions,
-    database_object_location_functions,
-    database_object_size_functions,
-    generic_file_access_functions,
-    index_maintenance_functions,
-    recovery_control_functions,
-    recovery_information_functions,
-    replication_sql_functions,
-    server_signaling_functions,
-    snapshot_synchronization_functions,
-    table_rewrite_information,
-)
-from ...models.enum.pg_sys_functions import (
-    access_privilege_inquiry_functions,
-    comment_information_functions,
-    committed_transaction_information,
-    control_data_functions,
-    object_information_and_addressing_functions,
-    schema_visibility_inquiry_functions,
-    session_information_functions,
-    system_catalog_information_functions,
-    transaction_ids_and_snapshots,
-)
 from ...models.enum.pixetl import Grid
 from ...models.enum.queries import QueryFormat, QueryType
 from ...models.orm.assets import Asset as AssetORM
@@ -93,6 +61,7 @@ from ...utils.decorators import hash_dict
 from ...utils.geostore import get_geostore
 from .. import dataset_version_dependency
 from . import _verify_source_file_access
+from .utils.query_helpers import scrutinize_sql
 
 router = APIRouter()
 
@@ -149,7 +118,7 @@ async def query_dataset_json(
     geostore_origin: GeostoreOrigin = Query(
         GeostoreOrigin.gfw, description="Service to search first for geostore."
     ),
-    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
+    is_authorized: bool = Depends(is_authorized_for_query),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -213,7 +182,7 @@ async def query_dataset_csv(
     delimiter: Delimiters = Query(
         Delimiters.comma, description="Delimiter to use for CSV file."
     ),
-    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
+    is_authorized: bool = Depends(is_authorized_for_query),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -276,7 +245,7 @@ async def query_dataset_json_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: QueryRequestIn,
-    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
+    is_authorized: bool = Depends(is_authorized_for_query),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -306,7 +275,7 @@ async def query_dataset_csv_post(
     *,
     dataset_version: Tuple[str, str] = Depends(dataset_version_dependency),
     request: CsvQueryRequestIn,
-    is_authorized: bool = Depends(is_gfwpro_admin_for_query),
+    is_authorized: bool = Depends(is_authorized_for_query),
     api_key: APIKey = Depends(get_api_key),
 ):
     """Execute a READ-ONLY SQL query on the given dataset version (if
@@ -361,7 +330,14 @@ async def query_dataset_list_post(
     "error", then there will be no results available (nothing was able
     to complete, possible because of an infrastructure problem).
 
-    There is currently a five-minute time limit on the entire list
+    Limitations
+
+    - The request payload must be under 256 KB. This limit does not apply
+    to features provided in a file referenced using the `uri`
+    field—use this option to include larger geometry data via an external
+    file.
+
+    - There is currently a five-minute time limit on the entire list
     query, but up to 100 individual feature queries proceed in parallel,
     so lists with several thousands of features can potentially be
     processed within that time limit.
@@ -427,17 +403,24 @@ async def query_dataset_list_post(
         )
 
     try:
-        await _start_batch_execution(job_id, input)
-    except botocore.exceptions.ClientError as error:
-        logger.error(error)
-        return HTTPException(500, "There was an error starting your job.")
+        sfn_client = get_sfn_client()
+        await _start_batch_execution(sfn_client, job_id, input)
+    except sfn_client.exceptions.ValidationException as e:
+        raise HTTPException(400, f"Input failed validation. Error details: {str(e)}")
+    except Exception as e:
+        logger.error(e)
+        return HTTPException(
+            500, f"There was an error starting your job. Error details: {str(e)}"
+        )
 
     job_link = f"{API_URL}/job/{job_id}"
     return UserJobResponse(data=UserJob(job_id=job_id, job_link=job_link))
 
 
-async def _start_batch_execution(job_id: UUID, input: Dict[str, Any]) -> None:
-    get_sfn_client().start_execution(
+async def _start_batch_execution(
+    sfn_client: BaseClient, job_id: UUID, input: Dict[str, Any]
+) -> None:
+    sfn_client.start_execution(
         stateMachineArn=RASTER_ANALYSIS_STATE_MACHINE_ARN,
         name=str(job_id),
         input=json.dumps(input),
@@ -527,32 +510,7 @@ async def _query_table(
     geometry: Optional[Geometry],
 ) -> List[Dict[str, Any]]:
     # Parse and validate SQL statement
-    try:
-        parsed = parse_sql(unquote(sql))
-    except ParseError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    _has_only_one_statement(parsed)
-    _is_select_statement(parsed)
-    _has_no_with_clause(parsed)
-    _only_one_from_table(parsed)
-    _no_subqueries(parsed)
-    _no_forbidden_functions(parsed)
-    _no_forbidden_value_functions(parsed)
-
-    # always overwrite the table name with the current dataset version name, to make sure no other table is queried
-    parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
-        "schemaname"
-    ] = dataset
-    parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0]["RangeVar"][
-        "relname"
-    ] = version
-
-    if geometry:
-        parsed = await _add_geometry_filter(parsed, geometry)
-
-    # convert back to text
-    sql = RawStream()(Node(parsed))
+    sql = await scrutinize_sql(dataset, version, geometry, sql)
 
     try:
         rows = await db.all(sql)
@@ -585,144 +543,6 @@ def _orm_to_csv(
         csv_file.seek(0)
 
     return csv_file
-
-
-def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
-    if len(parsed) != 1:
-        raise HTTPException(
-            status_code=400, detail="Must use exactly one SQL statement."
-        )
-
-
-def _is_select_statement(parsed: List[Dict[str, Any]]) -> None:
-    select = parsed[0]["RawStmt"]["stmt"].get("SelectStmt", None)
-    if not select:
-        raise HTTPException(status_code=400, detail="Must use SELECT statements only.")
-
-
-def _has_no_with_clause(parsed: List[Dict[str, Any]]) -> None:
-    with_clause = parsed[0]["RawStmt"]["stmt"]["SelectStmt"].get("withClause", None)
-    if with_clause:
-        raise HTTPException(status_code=400, detail="Must not have WITH clause.")
-
-
-def _only_one_from_table(parsed: List[Dict[str, Any]]) -> None:
-    from_clause = parsed[0]["RawStmt"]["stmt"]["SelectStmt"].get("fromClause", None)
-    if not from_clause or len(from_clause) > 1:
-        raise HTTPException(
-            status_code=400, detail="Must list exactly one table in FROM clause."
-        )
-
-
-def _no_subqueries(parsed: List[Dict[str, Any]]) -> None:
-    sub_query = parsed[0]["RawStmt"]["stmt"]["SelectStmt"]["fromClause"][0].get(
-        "RangeSubselect", None
-    )
-    if sub_query:
-        raise HTTPException(status_code=400, detail="Must not use sub queries.")
-
-
-def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
-    functions = _get_item_value("FuncCall", parsed)
-
-    forbidden_function_list = [
-        configuration_settings_functions,
-        server_signaling_functions,
-        backup_control_functions,
-        recovery_information_functions,
-        recovery_control_functions,
-        snapshot_synchronization_functions,
-        replication_sql_functions,
-        database_object_size_functions,
-        database_object_location_functions,
-        collation_management_functions,
-        index_maintenance_functions,
-        generic_file_access_functions,
-        advisory_lock_functions,
-        table_rewrite_information,
-        session_information_functions,
-        access_privilege_inquiry_functions,
-        schema_visibility_inquiry_functions,
-        system_catalog_information_functions,
-        object_information_and_addressing_functions,
-        comment_information_functions,
-        transaction_ids_and_snapshots,
-        committed_transaction_information,
-        control_data_functions,
-    ]
-
-    for f in functions:
-        function_names = f["funcname"]
-        for fn in function_names:
-            function_name = fn["String"]["str"]
-
-            # block functions which start with `pg_`, `PostGIS` or `_`
-            if (
-                function_name[:3].lower() == "pg_"
-                or function_name[:1].lower() == "_"
-                or function_name[:7].lower() == "postgis"
-            ):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Use of admin, system or private functions is not allowed.",
-                )
-
-            # Also block any other banished functions
-            for forbidden_functions in forbidden_function_list:
-                if function_name in forbidden_functions:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Use of admin, system or private functions is not allowed.",
-                    )
-
-
-def _no_forbidden_value_functions(parsed: List[Dict[str, Any]]) -> None:
-    value_functions = _get_item_value("SQLValueFunction", parsed)
-    if value_functions:
-        raise HTTPException(
-            status_code=400,
-            detail="Use of sql value functions is not allowed.",
-        )
-
-
-def _get_item_value(key: str, parsed: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Return all functions in an AST."""
-
-    # loop through statement recursively and yield all functions
-    def walk_dict(d):
-        for k, v in d.items():
-            if k == key:
-                yield v
-            if isinstance(v, dict):
-                yield from walk_dict(v)
-            elif isinstance(v, list):
-                for _v in v:
-                    yield from walk_dict(_v)
-
-    values: List[Dict[str, Any]] = list()
-    for p in parsed:
-        values += list(walk_dict(p))
-    return values
-
-
-async def _add_geometry_filter(parsed_sql, geometry: Geometry):
-    # make empty select statement with where clause including filter
-    # this way we can later parse it as AST
-    intersect_filter = f"SELECT WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON('{geometry.json()}'),4326))"
-
-    # combine the two where clauses
-    parsed_filter = parse_sql(intersect_filter)
-    filter_where = parsed_filter[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"]
-    sql_where = parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"].get("whereClause", None)
-
-    if sql_where:
-        parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = {
-            "BoolExpr": {"boolop": 0, "args": [sql_where, filter_where]}
-        }
-    else:
-        parsed_sql[0]["RawStmt"]["stmt"]["SelectStmt"]["whereClause"] = filter_where
-
-    return parsed_sql
 
 
 async def _query_raster(
@@ -765,8 +585,8 @@ async def _query_raster_lambda(
 ) -> Dict[str, Any]:
     data_environment = await _get_data_environment(grid, version_overrides)
     payload = {
-        "geometry": jsonable_encoder(geometry),
         "query": sql,
+        "geometry": jsonable_encoder(geometry),
         "environment": data_environment.dict()["layers"],
         "format": format,
     }
@@ -906,8 +726,12 @@ def _get_date_conf_derived_layers(
     # TODO should these somehow be in the metadata or creation options instead of hardcoded?
     # 16435 is number of days from 1970-01-01 and 2015-01-01, and can be used to convet
     # our encoding of days since 2015 to a number that can be used generally for datetimes
-    decode_expression = "(A + 16435).astype('datetime64[D]').astype(str)"
-    encode_expression = "(datetime64(A) - 16435).astype(uint16)"
+    decode_expression = (
+        "(A.astype('timedelta64[D]') + datetime64('2015-01-01', 'D')).astype(str)"
+    )
+    encode_expression = (
+        "(datetime64(A, 'D') - datetime64('2015-01-01', 'D')).astype(uint16)"
+    )
     conf_encoding = RasterTable(
         default_meaning="not_detected",
         rows=[

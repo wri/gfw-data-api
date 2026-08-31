@@ -68,6 +68,7 @@ from ...tasks.delete_assets import delete_all_assets
 from . import _verify_source_file_access
 from .dataset import get_owner
 from .queries import _get_data_environment
+from ...settings.globals import PROTECTED_QUERY_DATASET_VERSIONS
 
 router = APIRouter()
 
@@ -171,6 +172,12 @@ async def update_version(
     # if version was tagged as `latest`
     # make sure associated `latest` routes in tile cache cloud front distribution are invalidated
     if input_data.get("is_latest"):
+        if f"{dataset}/{version}" in PROTECTED_QUERY_DATASET_VERSIONS:
+            raise HTTPException(
+                status_code=409,
+                detail="Setting latest version failed."
+                "You cannot set a restricted version to be the latest version of a dataset."
+            )
         tile_cache_assets: List[ORMAsset] = await assets.get_assets_by_filter(
             dataset=dataset,
             version=version,

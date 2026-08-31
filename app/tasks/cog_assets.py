@@ -1,5 +1,6 @@
 from typing import Any, Callable, Coroutine, Dict
 from uuid import UUID
+import json
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
@@ -49,17 +50,22 @@ async def create_cogify_job(
 ) -> Job:
     """Create a Batch job to coalesce a raster tile set into a COG.
 
-    For the moment only suitable for EPSG:3857 raster tile sets.
+    For the moment only suitable for EPSG:4326 raster tile sets.
     """
-    source_asset: ORMAsset = await get_asset(UUID(creation_options.source_asset_id))
-
-    srid = infer_srid_from_grid(source_asset.creation_options["grid"])
-    asset_uri = get_asset_uri(
-        dataset, version, AssetType.raster_tile_set, source_asset.creation_options, srid
-    )
-
-    # get folder of tiles
-    source_uri = "/".join(asset_uri.split("/")[:-1]) + "/"
+    source_asset_id = creation_options.source_asset_id
+    if source_asset_id.startswith("s3://"):
+        # Allow source_asset_id to be an s3 path to a tiles.geojson file
+        srid = "epsg-4326"
+        # Keep full path to *.geojson file if specified.
+        source_uri = source_asset_id
+    else:
+        source_asset: ORMAsset = await get_asset(UUID(source_asset_id))
+        srid = infer_srid_from_grid(source_asset.creation_options["grid"])
+        asset_uri = get_asset_uri(
+            dataset, version, AssetType.raster_tile_set, source_asset.creation_options, srid
+        )
+        # get folder of tiles
+        source_uri = "/".join(asset_uri.split("/")[:-1]) + "/"
 
     # We want to wind up with "{dataset}/{version}/raster/{projection}/cog/{implementation}.tif"
     target_asset_uri = get_asset_uri(
@@ -95,6 +101,8 @@ async def create_cogify_job(
         f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/{srid}/cog",
     ]
 
+    if creation_options.no_data is not None:
+        command += ["-n", json.dumps(creation_options.no_data)]
     if creation_options.export_to_gee:
         command += ["--export_to_gee"]
 

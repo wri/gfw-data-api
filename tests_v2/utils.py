@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 import httpx
 from _pytest.monkeypatch import MonkeyPatch
 from fastapi.exceptions import HTTPException
+from botocore.client import BaseClient
 
 from app.application import ContextEngine
 from app.models.pydantic.authentication import User
@@ -86,7 +87,7 @@ async def invoke_lambda_mocked(
     return httpx.Response(200, json={"status": "success", "data": []})
 
 
-async def start_batch_execution_mocked(job_id: uuid.UUID, input: Dict[str, Any]):
+async def start_batch_execution_mocked(client: BaseClient, job_id: uuid.UUID, input: Dict[str, Any]):
     pass
 
 
