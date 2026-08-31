@@ -55,7 +55,7 @@ dev = [
     "moto[awslambda, batch, ec2, s3, secretsmanager]<5",
     "pre-commit",
     "pytest<9",
-    "pytest-asyncio",
+    "pytest-asyncio<1",
     "pytest-cov",
     "pytest-timeout",
     "pytest-unordered>=0.6.1",
