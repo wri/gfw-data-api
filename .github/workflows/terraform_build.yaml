@@ -29,6 +29,19 @@ jobs:
         fail_ci_if_error: false
         verbose: false
 
+    # terraform apply builds the Batch Docker images (universal_batch.dockerfile,
+    # pixetl.dockerfile) as multi-arch (amd64 + arm64) manifests via
+    # terraform/scripts/buildx_push.sh, invoked from inside the
+    # globalforestwatch/terraform container against this runner's Docker
+    # daemon (bind-mounted socket). Registering QEMU here makes the host
+    # kernel able to run arm64 binaries so that build can happen via
+    # emulation on this x86_64 runner. This step is a no-op for everything
+    # else in the deploy (the FastAPI/ECS image build is unaffected).
+    - name: Set up QEMU (for multi-arch Batch image builds)
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
+
     - name: Deploy production
       if: success() && (github.ref_name == 'master')
       env:

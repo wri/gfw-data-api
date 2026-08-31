@@ -42,22 +42,33 @@ module "app_docker_image" {
 }
 
 # Docker image for PixETL Batch jobs
+#
+# Built as a multi-arch (amd64 + arm64) manifest via a custom push_script,
+# since the vendored container_registry module's default push.sh only does
+# a plain single-arch `docker build`. Batch job definitions reference this
+# image by a single tag; the container runtime on whichever instance
+# (x86_64 or Graviton) picks up a job automatically pulls the matching
+# architecture from the manifest. See terraform/scripts/buildx_push.sh.
 module "batch_pixetl_image" {
   source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.13"
   image_name      = substr(lower("${local.project}-pixetl${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "pixetl.dockerfile"
+  push_script     = "${path.root}/scripts/buildx_push.sh"
   force_delete    = var.force_delete_ecr_repos
 }
 
 # Docker image for all Batch jobs except those requiring PixETL
+#
+# Also built as a multi-arch manifest -- see note on batch_pixetl_image above.
 module "batch_universal_image" {
   source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.13"
   image_name      = substr(lower("${local.project}-universal${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "universal_batch.dockerfile"
+  push_script     = "${path.root}/scripts/buildx_push.sh"
   # Only force delete ECR repos in dev, just in case
   force_delete = var.force_delete_ecr_repos
 }
@@ -109,8 +120,17 @@ module "fargate_autoscaling" {
 
 # Create compute environment for DB writer
 # Using instance types with 1 core only, and EC2 instances (not SPOT).
+#
+# Converted in place to ARM64 (Graviton) using the local
+# compute_environment_arm module (see its README) -- the vendored
+# compute_environment module hardcodes its AMI lookup to x86_64, so it can
+# never provision Graviton capacity. This replaces the compute environment
+# rather than adding a parallel one: AWS Batch enforces an account-level
+# limit on the number of compute environments, so once every job queue
+# routes to ARM there's no reason to keep the x86_64 environments running
+# alongside it.
 module "batch_aurora_writer" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.13"
+  source = "./modules/compute_environment_arm"
   ecs_role_policy_arns = [
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
@@ -118,12 +138,8 @@ module "batch_aurora_writer" {
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn
   ]
-  instance_types = [
-    "c6a.large", "c6i.large", "c5a.large", "c5.large", "c4.large",
-    "m6a.large", "m6i.large", "m5a.large", "m5.large", "m4.large"
-  ]
-  # "a1.medium" works but needs special ARM docker file
-  # currently not supported but want to have "m6g.medium", "t2.nano", "t2.micro", "t2.small"
+  instance_types = var.aurora_writer_instance_types
+  # currently not supported but want to have "t4g.nano", "t4g.micro", "t4g.small"
   key_pair  = var.key_pair
   max_vcpus = local.aurora_max_vcpus
   project   = local.project
@@ -133,18 +149,19 @@ module "batch_aurora_writer" {
   ]
   subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
   suffix                   = local.name_suffix
-  tags                     = merge(local.tags, {Job = "Aurora Writer",})
+  tags                     = merge(local.tags, { Job = "Aurora Writer", })
   use_ephemeral_storage    = false
   ebs_volume_size          = 60
   compute_environment_name = "aurora_sql_writer"
   launch_type              = "EC2"
 }
 
-
 # Create compute environment for data lake writing, pixetl, and tile cache jobs
 # Currently does EC2 instances, not spot instances.
+#
+# Converted in place to ARM64 (Graviton) -- see note on batch_aurora_writer above.
 module "batch_data_lake_writer" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.13"
+  source = "./modules/compute_environment_arm"
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
@@ -161,19 +178,21 @@ module "batch_data_lake_writer" {
     data.terraform_remote_state.core.outputs.default_security_group_id,
     data.terraform_remote_state.core.outputs.postgresql_security_group_id
   ]
-  subnets               = data.terraform_remote_state.core.outputs.private_subnet_ids
-  suffix                = local.name_suffix
-  tags                  = merge(local.tags, {Job = "Datalake/pixetl/tile-cache",} )
-  use_ephemeral_storage = true
+  subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
+  suffix                   = local.name_suffix
+  tags                     = merge(local.tags, { Job = "Datalake/pixetl/tile-cache", })
+  use_ephemeral_storage    = true
   launch_type              = "EC2"
   instance_types           = var.data_lake_writer_instance_types
   compute_environment_name = "data_lake_writer"
 }
 
 # Creating compute environment for cogify jobs
-# Should always use EC2 instances, since jobs run for so long.
+# Should always use EC2 instances since jobs run for so long.
+#
+# Converted in place to ARM64 (Graviton) -- see note on batch_aurora_writer above.
 module "batch_cogify" {
-  source = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.13"
+  source = "./modules/compute_environment_arm"
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
@@ -191,7 +210,7 @@ module "batch_cogify" {
   ]
   subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
   suffix                   = local.name_suffix
-  tags                     = merge(local.tags, {Job = "COGify",}, )
+  tags                     = merge(local.tags, { Job = "COGify", }, )
   use_ephemeral_storage    = true
   launch_type              = "EC2"
   instance_types           = var.data_lake_writer_instance_types

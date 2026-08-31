@@ -164,11 +164,19 @@ variable "api_gateway_url" {
 
 variable "data_lake_writer_instance_types" {
   type        = list(string)
-  description = "memory optimized EC2 instances with local NVMe SSDs for data lake writer batche queues"
+  description = "Graviton (arm64) memory/compute optimized EC2 instances with local NVMe SSDs for data lake writer and cogify batch queues (r7gd/r6gd -- the arm64 counterpart of the r6id/r5ad/r5d families this project used on x86_64)."
   default = [
-    "r6id.large", "r6id.xlarge", "r6id.2xlarge", "r6id.4xlarge", "r6id.8xlarge", "r6id.12xlarge", "r6id.16xlarge", "r6id.24xlarge",
-    "r5ad.large", "r5ad.xlarge", "r5ad.2xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge",
-    "r5d.large", "r5d.xlarge", "r5d.2xlarge", "r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge"
+    "r7gd.large", "r7gd.xlarge", "r7gd.2xlarge", "r7gd.4xlarge", "r7gd.8xlarge", "r7gd.12xlarge", "r7gd.16xlarge",
+    "r6gd.large", "r6gd.xlarge", "r6gd.2xlarge", "r6gd.4xlarge", "r6gd.8xlarge", "r6gd.12xlarge", "r6gd.16xlarge"
+  ]
+}
+
+variable "aurora_writer_instance_types" {
+  type        = list(string)
+  description = "Graviton (arm64) instance types for the aurora writer compute environment (c7g/c6g/m7g/m6g -- the arm64 counterpart of the c6a/c6i/c5a/c5/c4/m6a/m6i/m5a/m5/m4 families this project used on x86_64). Burstable (t*g) families are intentionally excluded to avoid CPU-credit throttling on the DB writer path."
+  default = [
+    "c7g.large", "c6g.large",
+    "m7g.large", "m6g.large"
   ]
 }
 
@@ -190,7 +198,7 @@ variable "api_gateway_usage_plans" {
 }
 
 variable "force_delete_ecr_repos" {
-  type = bool
+  type        = bool
   description = "Whether or not to delete non-empty ECR repos"
-  default = false
+  default     = false
 }

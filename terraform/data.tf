@@ -56,6 +56,11 @@ data "template_file" "container_definition" {
     tile_cache_cluster       = data.terraform_remote_state.tile_cache.outputs.tile_cache_cluster
     tile_cache_service       = data.terraform_remote_state.tile_cache.outputs.tile_cache_service
 
+    # All Batch compute environments (aurora, data_lake/pixetl/tile_cache,
+    # cogify) were converted in place to ARM64 (Graviton) -- see
+    # terraform/modules/compute_environment_arm. There's only one set of
+    # queues, and they're backed by ARM compute environments now, so no
+    # separate *_arm queue names are needed here.
     aurora_job_definition       = module.batch_job_queues.aurora_job_definition_arn
     aurora_job_queue            = module.batch_job_queues.aurora_job_queue_arn
     aurora_job_queue_fast       = module.batch_job_queues.aurora_job_queue_fast_arn
