@@ -16,7 +16,7 @@ import rasterio
 from alembic.config import main as migrate
 from asgi_lifespan import LifespanManager
 from docker.models.containers import ContainerCollection
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from app.authentication.api_keys import api_key_is_valid, get_api_key
 from app.authentication.token import get_admin, get_manager, is_service_account
@@ -31,9 +31,9 @@ from app.settings.globals import (
     DATA_LAKE_BUCKET,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
+    ON_DEMAND_COMPUTE_JOB_QUEUE,
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
-    ON_DEMAND_COMPUTE_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
     TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
@@ -182,9 +182,7 @@ def batch_client():
     )
 
     aws_mock.add_job_definition(GDAL_PYTHON_JOB_DEFINITION, "batch_jobs_test")
-    aws_mock.add_job_definition(
-        POSTGRESQL_CLIENT_JOB_DEFINITION, "batch_jobs_test"
-    )
+    aws_mock.add_job_definition(POSTGRESQL_CLIENT_JOB_DEFINITION, "batch_jobs_test")
     aws_mock.add_job_definition(TILE_CACHE_JOB_DEFINITION, "batch_jobs_test")
     aws_mock.add_job_definition(PIXETL_JOB_DEFINITION, "pixetl_test", mount_tmp=True)
 
@@ -343,7 +341,7 @@ def db_session():
 
 @pytest_asyncio.fixture
 async def db_ready(db_session):
-    """make sure that the db is only initialized and torn down once per
+    """Make sure that the db is only initialized and torn down once per
     module."""
     migrate(["--raiseerr", "upgrade", "head"])
     yield
@@ -361,7 +359,9 @@ async def db_clean(db_ready):
 
     async with LifespanManager(app) as manager:
         async with AsyncClient(
-            app=manager.app, base_url="http://test", trust_env=False
+            transport=ASGITransport(app=manager.app),
+            base_url="http://test",
+            trust_env=False,
         ) as http_client:
             # Clean up created assets/versions/datasets so teardown doesn't break
             datasets_resp = await http_client.get("/datasets")
@@ -454,7 +454,9 @@ async def client_with_mocks(
 
     async with LifespanManager(app) as manager:
         async with AsyncClient(
-            app=manager.app, base_url="http://test", trust_env=False
+            transport=ASGITransport(app=manager.app),
+            base_url="http://test",
+            trust_env=False,
         ) as http_client:
             yield http_client
 
