@@ -172,6 +172,7 @@ variable "data_lake_writer_instance_types_arm" {
   type        = list(string)
   description = "Graviton (arm64) memory/compute optimized EC2 instances with local NVMe SSDs for the data lake writer and cogify batch queues, used when var.architecture = \"arm64\" (r7gd/r6gd -- the arm64 counterpart of data_lake_writer_instance_types_x86's r6id/r5ad/r5d families)."
   default = [
+    "r8gd.24xlarge", "r8gd.48xlarge",
     "r7gd.large", "r7gd.xlarge", "r7gd.2xlarge", "r7gd.4xlarge", "r7gd.8xlarge", "r7gd.12xlarge", "r7gd.16xlarge",
     "r6gd.large", "r6gd.xlarge", "r6gd.2xlarge", "r6gd.4xlarge", "r6gd.8xlarge", "r6gd.12xlarge", "r6gd.16xlarge"
   ]
