@@ -1,12 +1,13 @@
-# Multi-arch (amd64 + arm64) PostgreSQL 14 + PostGIS test-database image.
+# Multi-arch (amd64 + arm64) PostgreSQL 14 + PostGIS image, used by
+# docker-compose.{dev,prod,test}.yml.
 #
-# The image this replaced, postgis/postgis:14-3.4-alpine, has no arm64 build
-# at any tag -- checked directly against the Docker Hub registry API (every
-# 14.x/15.x/16.x tag, both Alpine and Debian variants, linux/amd64 only). On
-# a GitHub Actions arm64 runner it only ran under QEMU emulation, and
-# Postgres is close to a worst case for that: emulating a real database
-# doing lots of syscalls/fsync/shared-memory work is much slower than
-# emulating typical CPU-bound application code.
+# The image this replaced everywhere, postgis/postgis:14-3.4-alpine, has no
+# arm64 build at any tag -- checked directly against the Docker Hub
+# registry API (every 14.x/15.x/16.x tag, both Alpine and Debian variants,
+# linux/amd64 only). Under emulation (e.g. on Apple Silicon or a GitHub
+# Actions arm64 runner) Postgres is close to a worst case: emulating a real
+# database doing lots of syscalls/fsync/shared-memory work is much slower
+# than emulating typical CPU-bound application code.
 #
 # The official `postgres` image, unlike postgis/postgis, IS a genuine
 # multi-arch Docker Official Image. This installs PostGIS on top of it via
