@@ -120,7 +120,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
         description=(
             "First re-project to a common projection (EPSG:4326). Necessary "
             "when input files are in different projections from each other."
-        )
+        ),
     )
     copy_solo_tiles: bool = Field(
         False,
@@ -128,23 +128,26 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
             "For raster calculations with multiple inputs, copy last source tile "
             "directly to the destination if all other source tiles are non-existent,"
             "even though union_bands is false."
-        )
+        ),
     )
     pixel_meaning: str = Field(
-        ..., description="Description of what the pixel value in the "
+        ...,
+        description="Description of what the pixel value in the "
         "raster represents. This is used to clarify the meaning of the raster "
         "and distinguish multiple raster tile sets based on the same dataset "
         "version. The pixel_meaning string should be fairly short, use all "
-        "lower-case letters, and use underscores instead of spaces."
+        "lower-case letters, and use underscores instead of spaces.",
     )
     data_type: DataType = Field(
-        ..., description=("The type of the data stored at every pixel of "
-                          "the destination raster")
+        ...,
+        description=(
+            "The type of the data stored at every pixel of " "the destination raster"
+        ),
     )
     nbits: Optional[int] = Field(
         None,
         description="Advanced option that lets GDAL compress the data even "
-        "more based on the number of bits you need."
+        "more based on the number of bits you need.",
     )
     calc: Optional[str] = Field(
         None,
@@ -163,7 +166,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
         "first source first, continuing with those of the second, and so on. "
         "So with two input sources of two bands each, they would be assigned "
         "to variables A and B (for the first source) and C and D (for the "
-        "second source). The NumPy module is in scope, accessible as np"
+        "second source). The NumPy module is in scope, accessible as np",
     )
     band_count: int = Field(
         1,
@@ -172,7 +175,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
             "output rasters with multiple bands are not common. To create multiple "
             "bands in the output, the calc string will normally use "
             "np.ma.array([...])."
-        )
+        ),
     )
     union_bands: bool = Field(
         False,
@@ -182,7 +185,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
             "the extents of the source layers. This is useful when some of the input "
             "bands have limited geographic extents. If false (the default), then the "
             "destination extent is the intersection of the extents of the source layers."
-        )
+        ),
     )
     no_data: Optional[Union[List[NoDataType], NoDataType]] = Field(
         None,
@@ -192,13 +195,13 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
             "ints, 0 for unsigned ints, and nan for floating point values. But any valid "
             "value of the data type can be used. If nodata is a List, its length must "
             "be equal to band_count."
-        )
+        ),
     )
     rasterize_method: Optional[RasterizeMethod] = Field(
         RasterizeMethod.value,
         description="For raster sources or default assets, 'value' (the "
         "default) means use the value from the last or only band processed, "
-        "and 'count' means count the number of bands with data values."
+        "and 'count' means count the number of bands with data values.",
     )
     resampling: ResamplingMethod = PIXETL_DEFAULT_RESAMPLING
     order: Optional[Order] = Field(
@@ -208,7 +211,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
         "ascending calculated value so that the largest calculated value is "
         "used in the raster when there are overlapping features. For 'desc', "
         "the ordering is descending, so that the smallest calculated value "
-        "is used when there are overlaps."
+        "is used when there are overlaps.",
     )
     overwrite: bool = False
     subset: Optional[str]
@@ -220,7 +223,7 @@ class RasterTileSetAssetCreationOptions(StrictBaseModel):
     auxiliary_assets: Optional[List[UUID]] = Field(
         None,
         description="Asset IDs of additional rasters you might want to include "
-        "in your calc expression. Ignored if source_uri is set."
+        "in your calc expression. Ignored if source_uri is set.",
     )
     photometric: Optional[PhotometricType] = None
     num_processes: Optional[StrictInt] = None
@@ -256,7 +259,9 @@ class PixETLCreationOptions(RasterTileSetAssetCreationOptions):
     def validate_source_uri(cls, v, values, **kwargs):
         if values.get("source_type") == SourceType.raster:
             assert v, "Raster source types require source_uri"
-            assert not values.get("auxiliary_assets"), "auxiliary_assets should not be specified with source_uri"
+            assert not values.get(
+                "auxiliary_assets"
+            ), "auxiliary_assets should not be specified with source_uri"
         else:
             assert not v, "Only raster source type require source_uri"
         return v
@@ -301,7 +306,7 @@ class VectorSourceCreationOptions(StrictBaseModel):
         "for standard exact-value lookups, while btree is efficient for range "
         "lookups. gist is used for geometry fields and can do "
         "intersection-type lookups. See "
-        "https://www.postgresql.org/docs/current/indexes-types.html"
+        "https://www.postgresql.org/docs/current/indexes-types.html",
     )
     cluster: Optional[Index] = Field(None, description="Index to use for clustering.")
     table_schema: Optional[List[FieldType]] = Field(
@@ -325,8 +330,15 @@ class VectorSourceCreationOptions(StrictBaseModel):
     def validate_source_uri(cls, v, values, **kwargs):
         if values.get("source_driver") == VectorDrivers.csv:
             assert len(v) >= 1, "CSV sources require at least one input file"
-        elif values.get("source_driver") in [VectorDrivers.esrijson, VectorDrivers.shp, VectorDrivers.geojson_seq, VectorDrivers.geojson]:
-            assert (len(v) == 1), "GeoJSON and ESRI Shapefile vector sources require one and only one input file"
+        elif values.get("source_driver") in [
+            VectorDrivers.esrijson,
+            VectorDrivers.shp,
+            VectorDrivers.geojson_seq,
+            VectorDrivers.geojson,
+        ]:
+            assert (
+                len(v) == 1
+            ), "GeoJSON and ESRI Shapefile vector sources require one and only one input file"
         return v
 
 
@@ -468,7 +480,7 @@ class COGCreationOptions(StrictBaseModel):
         description=(
             "Used to specify a specific nodata value in the gdal_translate call "
             "that creates the COG"
-        )
+        ),
     )
 
 
@@ -506,7 +518,7 @@ class StaticVectorTileCacheCreationOptions(TileCacheBaseModel):
     feature_filter: Optional[Dict[str, Any]] = Field(
         None,
         description="Optional tippecanoe feature filter(s). Uses the syntax of "
-        "[Mapbox legacy filters](https://docs.mapbox.com/style-spec/reference/other/#other-filters)"
+        "[Mapbox legacy filters](https://docs.mapbox.com/style-spec/reference/other/#other-filters)",
     )
 
 
