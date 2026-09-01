@@ -18,8 +18,6 @@ locals {
   name_suffix           = terraform.workspace == "default" ? "" : "-${terraform.workspace}"
   project               = "gfw-data-api"
   aurora_instance_class = data.terraform_remote_state.core.outputs.aurora_cluster_instance_class
-  # Which architecture-specific buildx wrapper script to build Docker images
-  # with -- see terraform/scripts/buildx_push_{arm64,amd64}.sh.
   push_script_for_architecture = "${path.root}/scripts/buildx_push_${var.architecture == "x86_64" ? "amd64" : "arm64"}.sh"
   aurora_max_vcpus             = local.aurora_instance_class == "db.t3.medium" ? 2 : local.aurora_instance_class == "db.r6g.large" ? 2 : local.aurora_instance_class == "db.r6g.xlarge" ? 4 : local.aurora_instance_class == "db.r6g.2xlarge" ? 8 : local.aurora_instance_class == "db.r6g.4xlarge" ? 16 : local.aurora_instance_class == "db.r6g.8xlarge" ? 32 : local.aurora_instance_class == "db.r6g.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.large" ? 2 : local.aurora_instance_class == "db.r5.xlarge" ? 4 : local.aurora_instance_class == "db.r5.2xlarge" ? 8 : local.aurora_instance_class == "db.r5.4xlarge" ? 16 : local.aurora_instance_class == "db.r5.8xlarge" ? 32 : local.aurora_instance_class == "db.r5.12xlarge" ? 48 : local.aurora_instance_class == "db.r5.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.24xlarge" ? 96 : ""
   service_url                  = var.environment == "dev" ? "http://${local.lb_dns_name}:${data.external.generate_port[0].result["port"]}" : var.service_url
@@ -35,9 +33,7 @@ locals {
 
 # Docker image for FastAPI app
 #
-# Follows var.architecture the same way the Batch images do (see
-# local.push_script_for_architecture) -- ECS/Fargate (module "fargate_autoscaling"
-# below) now also switches its task's cpu_architecture to match
+# Follows var.architecture the same way the Batch images do
 module "app_docker_image" {
   source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.14"
   image_name   = substr(lower("${local.project}${local.name_suffix}"), 0, 64)

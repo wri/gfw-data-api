@@ -56,9 +56,6 @@ data "template_file" "container_definition" {
     tile_cache_cluster       = data.terraform_remote_state.tile_cache.outputs.tile_cache_cluster
     tile_cache_service       = data.terraform_remote_state.tile_cache.outputs.tile_cache_service
 
-    # Batch queues are architecture-agnostic (see var.architecture in
-    # terraform/main.tf) -- one set of queues, backed by whichever
-    # architecture's compute environments are currently active.
     aurora_job_definition       = module.batch_job_queues.aurora_job_definition_arn
     aurora_job_queue            = module.batch_job_queues.aurora_job_queue_arn
     aurora_job_queue_fast       = module.batch_job_queues.aurora_job_queue_fast_arn

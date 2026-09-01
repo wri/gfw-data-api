@@ -164,7 +164,7 @@ variable "api_gateway_url" {
 
 variable "architecture" {
   type        = string
-  description = "CPU architecture the whole stack (Batch and ECS/Fargate) targets: \"arm64\" (Graviton) or \"x86_64\". Passed straight through to gfw-terraform-modules' compute_environment (architecture) and fargate_autoscaling (cpu_architecture) modules -- see their READMEs. Any value other than \"x86_64\" is treated as \"arm64\"."
+  description = "CPU architecture the whole stack (Batch and ECS/Fargate) targets: \"arm64\" or \"x86_64\". Any value other than \"x86_64\" is treated as \"arm64\"."
   default     = "arm64"
 }
 
@@ -189,7 +189,7 @@ variable "data_lake_writer_instance_types_x86" {
 
 variable "aurora_writer_instance_types_arm" {
   type        = list(string)
-  description = "Graviton (arm64) instance types for the aurora writer compute environment, used when var.architecture = \"arm64\" (c7g/c6g/m7g/m6g -- the arm64 counterpart of aurora_writer_instance_types_x86's c6a/c6i/c5a/c5/c4/m6a/m6i/m5a/m5/m4 families). Burstable (t*g) families are intentionally excluded to avoid CPU-credit throttling on the DB writer path."
+  description = "Graviton (arm64) instance types for the aurora writer compute environment, used when var.architecture = \"arm64\" (c7g/c6g/m7g/m6g -- the arm64 counterpart of aurora_writer_instance_types_x86's c6a/c6i/c5a/c5/c4/m6a/m6i/m5a/m5/m4 families)."
   default = [
     "c7g.large", "c6g.large",
     "m7g.large", "m6g.large"
@@ -198,7 +198,7 @@ variable "aurora_writer_instance_types_arm" {
 
 variable "aurora_writer_instance_types_x86" {
   type        = list(string)
-  description = "x86_64 instance types for the aurora writer compute environment, used when var.architecture = \"x86_64\". Burstable (t2) instances are intentionally excluded to avoid CPU-credit throttling on the DB writer path."
+  description = "x86_64 instance types for the aurora writer compute environment, used when var.architecture = \"x86_64\"."
   default = [
     "c6a.large", "c6i.large", "c5a.large", "c5.large", "c4.large",
     "m6a.large", "m6i.large", "m5a.large", "m5.large", "m4.large"

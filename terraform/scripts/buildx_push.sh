@@ -4,9 +4,7 @@
 #
 # Drop-in replacement for gfw-terraform-modules' container_registry module
 # scripts/push.sh (same argument signature), wired up via that module's
-# `push_script` variable override. Used for every image this project builds
-# -- the two Batch images and the FastAPI/ECS app image -- all following
-# var.architecture (see terraform/main.tf).
+# `push_script` variable override.
 #
 # Not usually invoked directly -- terraform/main.tf points push_script at
 # one of the two thin wrappers below (buildx_push_arm64.sh /
@@ -23,12 +21,6 @@
 # Env vars:
 #   BUILD_PLATFORMS - platform to build for. Defaults to "linux/arm64" if
 #                      invoked directly rather than through a wrapper.
-#
-# CI normally runs on a GitHub Actions runner whose native architecture
-# already matches BUILD_PLATFORMS (see the workflow's runs-on), so this is
-# usually a native build with no emulation. Building for a foreign platform
-# still works via buildx, but needs QEMU registered on the host
-# (docker/setup-qemu-action) first.
 
 set -euo pipefail
 
