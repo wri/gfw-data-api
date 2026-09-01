@@ -1,4 +1,3 @@
-# Require TF version to be same as or greater than 0.12.24
 terraform {
   backend "s3" {
     region  = "us-east-1"
@@ -6,7 +5,6 @@ terraform {
     encrypt = true
   }
 }
-
 
 # some local
 locals {
@@ -20,8 +18,11 @@ locals {
   name_suffix           = terraform.workspace == "default" ? "" : "-${terraform.workspace}"
   project               = "gfw-data-api"
   aurora_instance_class = data.terraform_remote_state.core.outputs.aurora_cluster_instance_class
-  aurora_max_vcpus      = local.aurora_instance_class == "db.t3.medium" ? 2 : local.aurora_instance_class == "db.r6g.large" ? 2 : local.aurora_instance_class == "db.r6g.xlarge" ? 4 : local.aurora_instance_class == "db.r6g.2xlarge" ? 8 : local.aurora_instance_class == "db.r6g.4xlarge" ? 16 : local.aurora_instance_class == "db.r6g.8xlarge" ? 32 : local.aurora_instance_class == "db.r6g.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.large" ? 2 : local.aurora_instance_class == "db.r5.xlarge" ? 4 : local.aurora_instance_class == "db.r5.2xlarge" ? 8 : local.aurora_instance_class == "db.r5.4xlarge" ? 16 : local.aurora_instance_class == "db.r5.8xlarge" ? 32 : local.aurora_instance_class == "db.r5.12xlarge" ? 48 : local.aurora_instance_class == "db.r5.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.24xlarge" ? 96 : ""
-  service_url           = var.environment == "dev" ? "http://${local.lb_dns_name}:${data.external.generate_port[0].result["port"]}" : var.service_url
+  # Which architecture-specific buildx wrapper script to build Docker images
+  # with -- see terraform/scripts/buildx_push_{arm64,amd64}.sh.
+  push_script_for_architecture = "${path.root}/scripts/buildx_push_${var.architecture == "x86_64" ? "amd64" : "arm64"}.sh"
+  aurora_max_vcpus             = local.aurora_instance_class == "db.t3.medium" ? 2 : local.aurora_instance_class == "db.r6g.large" ? 2 : local.aurora_instance_class == "db.r6g.xlarge" ? 4 : local.aurora_instance_class == "db.r6g.2xlarge" ? 8 : local.aurora_instance_class == "db.r6g.4xlarge" ? 16 : local.aurora_instance_class == "db.r6g.8xlarge" ? 32 : local.aurora_instance_class == "db.r6g.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.large" ? 2 : local.aurora_instance_class == "db.r5.xlarge" ? 4 : local.aurora_instance_class == "db.r5.2xlarge" ? 8 : local.aurora_instance_class == "db.r5.4xlarge" ? 16 : local.aurora_instance_class == "db.r5.8xlarge" ? 32 : local.aurora_instance_class == "db.r5.12xlarge" ? 48 : local.aurora_instance_class == "db.r5.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.24xlarge" ? 96 : ""
+  service_url                  = var.environment == "dev" ? "http://${local.lb_dns_name}:${data.external.generate_port[0].result["port"]}" : var.service_url
   # The container_registry module only pushes a new Docker image if the docker hash
   # computed by its hash.sh script has changed. So, we make the container tag exactly
   # be that hash. Therefore, we will know that either the previous docker with the
@@ -33,48 +34,53 @@ locals {
 }
 
 # Docker image for FastAPI app
+#
+# Follows var.architecture the same way the Batch images do (see
+# local.push_script_for_architecture) -- ECS/Fargate (module "fargate_autoscaling"
+# below) now also switches its task's cpu_architecture to match
 module "app_docker_image" {
-  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.13"
+  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.14"
   image_name   = substr(lower("${local.project}${local.name_suffix}"), 0, 64)
   root_dir     = "${path.root}/../"
   tag          = local.container_tag
+  push_script  = local.push_script_for_architecture
   force_delete = var.force_delete_ecr_repos
 }
 
 # Docker image for PixETL Batch jobs
 #
-# Built as a multi-arch (amd64 + arm64) manifest via a custom push_script,
-# since the vendored container_registry module's default push.sh only does
-# a plain single-arch `docker build`. Batch job definitions reference this
-# image by a single tag; the container runtime on whichever instance
-# (x86_64 or Graviton) picks up a job automatically pulls the matching
-# architecture from the manifest. See terraform/scripts/buildx_push.sh.
+# Built for whichever architecture var.architecture selects, via a
+# custom push_script -- container_registry module's default
+# push.sh only does a plain `docker build` for the local (build) machine's
+# own architecture, which doesn't help when we specifically want e.g.
+# arm64 built on an x86_64 CI runner. See terraform/scripts/buildx_push.sh.
 module "batch_pixetl_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.13"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.14"
   image_name      = substr(lower("${local.project}-pixetl${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "pixetl.dockerfile"
-  push_script     = "${path.root}/scripts/buildx_push.sh"
+  push_script     = local.push_script_for_architecture
   force_delete    = var.force_delete_ecr_repos
 }
 
 # Docker image for all Batch jobs except those requiring PixETL
 #
-# Also built as a multi-arch manifest -- see note on batch_pixetl_image above.
+# Also architecture-selected -- see note on batch_pixetl_image above.
 module "batch_universal_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.13"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.14"
   image_name      = substr(lower("${local.project}-universal${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
   docker_filename = "universal_batch.dockerfile"
-  push_script     = "${path.root}/scripts/buildx_push.sh"
+  push_script     = local.push_script_for_architecture
   # Only force delete ECR repos in dev, just in case
   force_delete = var.force_delete_ecr_repos
 }
 
 module "fargate_autoscaling" {
-  source                       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.13"
+  source                       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.14"
+  cpu_architecture             = var.architecture == "x86_64" ? "X86_64" : "ARM64"
   project                      = local.project
   name_suffix                  = local.name_suffix
   tags                         = local.fargate_tags
@@ -118,19 +124,18 @@ module "fargate_autoscaling" {
   container_definition = data.template_file.container_definition.rendered
 }
 
+# Batch compute environments. gfw-terraform-modules' compute_environment
+# module (v0.4.2.14+) takes an `architecture` input directly
+locals {
+  batch_instance_types  = var.architecture == "x86_64" ? var.data_lake_writer_instance_types_x86 : var.data_lake_writer_instance_types_arm
+  aurora_instance_types = var.architecture == "x86_64" ? var.aurora_writer_instance_types_x86 : var.aurora_writer_instance_types_arm
+}
+
 # Create compute environment for DB writer
 # Using instance types with 1 core only, and EC2 instances (not SPOT).
-#
-# Converted in place to ARM64 (Graviton) using the local
-# compute_environment_arm module (see its README) -- the vendored
-# compute_environment module hardcodes its AMI lookup to x86_64, so it can
-# never provision Graviton capacity. This replaces the compute environment
-# rather than adding a parallel one: AWS Batch enforces an account-level
-# limit on the number of compute environments, so once every job queue
-# routes to ARM there's no reason to keep the x86_64 environments running
-# alongside it.
 module "batch_aurora_writer" {
-  source = "./modules/compute_environment_arm"
+  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.14"
+  architecture = var.architecture
   ecs_role_policy_arns = [
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
     data.terraform_remote_state.core.outputs.secrets_postgresql-reader_policy_arn,
@@ -138,11 +143,10 @@ module "batch_aurora_writer" {
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn
   ]
-  instance_types = var.aurora_writer_instance_types
-  # currently not supported but want to have "t4g.nano", "t4g.micro", "t4g.small"
-  key_pair  = var.key_pair
-  max_vcpus = local.aurora_max_vcpus
-  project   = local.project
+  instance_types = local.aurora_instance_types
+  key_pair       = var.key_pair
+  max_vcpus      = local.aurora_max_vcpus
+  project        = local.project
   security_group_ids = [
     data.terraform_remote_state.core.outputs.default_security_group_id,
     data.terraform_remote_state.core.outputs.postgresql_security_group_id
@@ -158,10 +162,9 @@ module "batch_aurora_writer" {
 
 # Create compute environment for data lake writing, pixetl, and tile cache jobs
 # Currently does EC2 instances, not spot instances.
-#
-# Converted in place to ARM64 (Graviton) -- see note on batch_aurora_writer above.
 module "batch_data_lake_writer" {
-  source = "./modules/compute_environment_arm"
+  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.14"
+  architecture = var.architecture
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
@@ -183,16 +186,15 @@ module "batch_data_lake_writer" {
   tags                     = merge(local.tags, { Job = "Datalake/pixetl/tile-cache", })
   use_ephemeral_storage    = true
   launch_type              = "EC2"
-  instance_types           = var.data_lake_writer_instance_types
+  instance_types           = local.batch_instance_types
   compute_environment_name = "data_lake_writer"
 }
 
 # Creating compute environment for cogify jobs
-# Should always use EC2 instances since jobs run for so long.
-#
-# Converted in place to ARM64 (Graviton) -- see note on batch_aurora_writer above.
+# Should always use EC2 instances, since jobs run for so long.
 module "batch_cogify" {
-  source = "./modules/compute_environment_arm"
+  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.14"
+  architecture = var.architecture
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
     aws_iam_policy.s3_read_only.arn,
@@ -213,11 +215,10 @@ module "batch_cogify" {
   tags                     = merge(local.tags, { Job = "COGify", }, )
   use_ephemeral_storage    = true
   launch_type              = "EC2"
-  instance_types           = var.data_lake_writer_instance_types
+  instance_types           = local.batch_instance_types
   compute_environment_name = "batch_cogify"
 }
 
-# Create aurora, aurora_fast, data_lake, pixetl, tile cache, and ondemand job queues.
 module "batch_job_queues" {
   source                             = "./modules/batch"
   aurora_compute_environment_arn     = module.batch_aurora_writer.arn

@@ -4,36 +4,31 @@
 #
 # Drop-in replacement for gfw-terraform-modules' container_registry module
 # scripts/push.sh (same argument signature), wired up via that module's
-# `push_script` variable override. Used only for the Batch images
-# (universal_batch.dockerfile, pixetl.dockerfile) for now -- the FastAPI
-# app image (ECS/Fargate) still uses the vendored single-arch push.sh until
-# that migration happens separately.
+# `push_script` variable override. Used for every image this project builds
+# -- the two Batch images and the FastAPI/ECS app image -- all following
+# var.architecture (see terraform/main.tf).
 #
-# All Batch compute environments now run on ARM64 (Graviton) -- see
-# terraform/modules/compute_environment_arm -- so this defaults to building
-# arm64 only rather than a multi-arch amd64+arm64 manifest; there's no more
-# x86_64 Batch capacity left to pull an amd64 layer. Both of this project's
-# batch base images (ghcr.io/osgeo/gdal:ubuntu-full-* and
-# globalforestwatch/pixetl:*) already publish arm64 variants, and
-# batch/uv.lock already resolves aarch64 wheels for its pinned deps, so no
-# Dockerfile changes were needed -- only how the image gets built.
+# Not usually invoked directly -- terraform/main.tf points push_script at
+# one of the two thin wrappers below (buildx_push_arm64.sh /
+# buildx_push_amd64.sh), which set BUILD_PLATFORMS before delegating here.
+# That's a separate wrapper file rather than a CI env var because this
+# script runs inside the pinned globalforestwatch/terraform container
+# (invoked via a local-exec provisioner), which only forwards the specific
+# env vars terraform/docker/docker-compose.yml lists.
 #
 # Usage (identical positional args to the vendored push.sh):
 #
 #   ./buildx_push.sh ROOT_DIR REPOSITORY_URL TAG DOCKER_PATH DOCKER_FILE
 #
 # Env vars:
-#   BUILD_PLATFORMS - comma separated list of platforms to build for.
-#                      Defaults to "linux/arm64". Pass e.g.
-#                      "linux/amd64,linux/arm64" to build a multi-arch
-#                      manifest again (useful if x86_64 Batch capacity is
-#                      ever reintroduced).
+#   BUILD_PLATFORMS - platform to build for. Defaults to "linux/arm64" if
+#                      invoked directly rather than through a wrapper.
 #
-# Requires buildx to be available and, when *emulating* a foreign
-# architecture (e.g. building arm64 on an x86_64 GitHub Actions runner),
-# QEMU to be registered -- see docker/setup-qemu-action in
-# .github/workflows/terraform_build.yaml. Building on a native arm64 runner
-# (e.g. GitHub's ubuntu-24.04-arm) avoids emulation entirely.
+# CI normally runs on a GitHub Actions runner whose native architecture
+# already matches BUILD_PLATFORMS (see the workflow's runs-on), so this is
+# usually a native build with no emulation. Building for a foreign platform
+# still works via buildx, but needs QEMU registered on the host
+# (docker/setup-qemu-action) first.
 
 set -euo pipefail
 

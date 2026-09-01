@@ -4,7 +4,18 @@ on: [push]
 
 jobs:
   test:
-    runs-on: "ubuntu-24.04"
+    # Runner architecture follows the single toggle that now governs the
+    # whole stack -- Batch compute environments/images AND the ECS/Fargate
+    # task/image (var.architecture in terraform/variables.tf). Set the
+    # "ARCHITECTURE" repository/organization Actions variable to "x86_64" or
+    # "arm64" (Settings > Secrets and variables > Actions > Variables) to
+    # flip everything together. Defaults to arm64 if unset, matching the
+    # Terraform variable's own default. This also means the test suite
+    # builds and runs batch/universal_batch.dockerfile and
+    # batch/pixetl.dockerfile (see ./scripts/test) on the same architecture
+    # that will actually be deployed, natively -- nothing here needs to
+    # cross-build, so no QEMU is involved anywhere in this workflow.
+    runs-on: ${{ vars.ARCHITECTURE == 'x86_64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     strategy:
       fail-fast: false
       matrix:
@@ -27,6 +38,9 @@ jobs:
 
   coverage:
     needs: test
+    # Just downloads/uploads coverage reports -- doesn't touch Docker or
+    # anything architecture-sensitive, so this stays on the standard runner
+    # regardless of ARCHITECTURE.
     runs-on: "ubuntu-24.04"
     steps:
       - uses: actions/checkout@v5
@@ -55,22 +69,22 @@ jobs:
 
   deploy:
     needs: [test, coverage]
-    runs-on: "ubuntu-24.04"
+    # Same ARCHITECTURE-driven runner selection as the test job above.
+    # terraform apply now builds *every* Docker image it manages (the Batch
+    # images and the FastAPI/ECS app image) via
+    # terraform/scripts/buildx_push_{arm64,amd64}.sh, selected by the
+    # matching Terraform variable (passed as -var below) -- invoked from
+    # inside the globalforestwatch/terraform container against this
+    # runner's Docker daemon (bind-mounted socket). Running the job on the
+    # runner whose native architecture matches means every one of those
+    # builds is native, not emulated -- no QEMU setup needed anywhere in
+    # this job anymore, now that the FastAPI/ECS image and task no longer
+    # stay pinned to a fixed architecture independent of this choice (see
+    # module "fargate_autoscaling" and module "app_docker_image" in
+    # terraform/main.tf).
+    runs-on: ${{ vars.ARCHITECTURE == 'x86_64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     steps:
       - uses: actions/checkout@v5
-
-      # terraform apply builds the Batch Docker images (universal_batch.dockerfile,
-      # pixetl.dockerfile) as multi-arch (amd64 + arm64) manifests via
-      # terraform/scripts/buildx_push.sh, invoked from inside the
-      # globalforestwatch/terraform container against this runner's Docker
-      # daemon (bind-mounted socket). Registering QEMU here makes the host
-      # kernel able to run arm64 binaries so that build can happen via
-      # emulation on this x86_64 runner. This step is a no-op for everything
-      # else in the deploy (the FastAPI/ECS image build is unaffected).
-      - name: Set up QEMU (for multi-arch Batch image builds)
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
 
       - name: Deploy production
         if: success() && (github.ref_name == 'master')
@@ -80,8 +94,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_production }}
           AWS_REGION: ${{ secrets.aws_region_production }}
         run: |
-          ./scripts/infra plan -w ${{ github.ref }}
-          ./scripts/infra apply
+          ./scripts/infra plan -w ${{ github.ref }} -var="architecture=${{ vars.ARCHITECTURE || 'arm64' }}"
+          ./scripts/infra apply -var="architecture=${{ vars.ARCHITECTURE || 'arm64' }}"
 
       - name: Deploy staging
         if: success() && (github.ref_name == 'develop')
@@ -91,8 +105,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_staging }}
           AWS_REGION: ${{ secrets.aws_region_staging }}
         run: |
-          ./scripts/infra plan -w ${{ github.ref }}
-          ./scripts/infra apply
+          ./scripts/infra plan -w ${{ github.ref }} -var="architecture=${{ vars.ARCHITECTURE || 'arm64' }}"
+          ./scripts/infra apply -var="architecture=${{ vars.ARCHITECTURE || 'arm64' }}"
 
       - name: Deploy dev
         if: success() && (github.ref_name != 'develop') && (github.ref_name != 'master')
@@ -102,5 +116,5 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_dev }}
           AWS_REGION: ${{ secrets.aws_region_dev }}
         run: |
-          ./scripts/infra plan -w ${{ github.ref }}
-          ./scripts/infra apply
+          ./scripts/infra plan -w ${{ github.ref }} -var="architecture=${{ vars.ARCHITECTURE || 'arm64' }}"
+          ./scripts/infra apply -var="architecture=${{ vars.ARCHITECTURE || 'arm64' }}"

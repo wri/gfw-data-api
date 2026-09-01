@@ -162,21 +162,46 @@ variable "api_gateway_url" {
   default     = ""
 }
 
-variable "data_lake_writer_instance_types" {
+variable "architecture" {
+  type        = string
+  description = "CPU architecture the whole stack (Batch and ECS/Fargate) targets: \"arm64\" (Graviton) or \"x86_64\". Passed straight through to gfw-terraform-modules' compute_environment (architecture) and fargate_autoscaling (cpu_architecture) modules -- see their READMEs. Any value other than \"x86_64\" is treated as \"arm64\"."
+  default     = "arm64"
+}
+
+variable "data_lake_writer_instance_types_arm" {
   type        = list(string)
-  description = "Graviton (arm64) memory/compute optimized EC2 instances with local NVMe SSDs for data lake writer and cogify batch queues (r7gd/r6gd -- the arm64 counterpart of the r6id/r5ad/r5d families this project used on x86_64)."
+  description = "Graviton (arm64) memory/compute optimized EC2 instances with local NVMe SSDs for the data lake writer and cogify batch queues, used when var.architecture = \"arm64\" (r7gd/r6gd -- the arm64 counterpart of data_lake_writer_instance_types_x86's r6id/r5ad/r5d families)."
   default = [
     "r7gd.large", "r7gd.xlarge", "r7gd.2xlarge", "r7gd.4xlarge", "r7gd.8xlarge", "r7gd.12xlarge", "r7gd.16xlarge",
     "r6gd.large", "r6gd.xlarge", "r6gd.2xlarge", "r6gd.4xlarge", "r6gd.8xlarge", "r6gd.12xlarge", "r6gd.16xlarge"
   ]
 }
 
-variable "aurora_writer_instance_types" {
+variable "data_lake_writer_instance_types_x86" {
   type        = list(string)
-  description = "Graviton (arm64) instance types for the aurora writer compute environment (c7g/c6g/m7g/m6g -- the arm64 counterpart of the c6a/c6i/c5a/c5/c4/m6a/m6i/m5a/m5/m4 families this project used on x86_64). Burstable (t*g) families are intentionally excluded to avoid CPU-credit throttling on the DB writer path."
+  description = "x86_64 memory optimized EC2 instances with local NVMe SSDs for the data lake writer and cogify batch queues, used when var.architecture = \"x86_64\"."
+  default = [
+    "r6id.large", "r6id.xlarge", "r6id.2xlarge", "r6id.4xlarge", "r6id.8xlarge", "r6id.12xlarge", "r6id.16xlarge", "r6id.24xlarge",
+    "r5ad.large", "r5ad.xlarge", "r5ad.2xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge",
+    "r5d.large", "r5d.xlarge", "r5d.2xlarge", "r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge"
+  ]
+}
+
+variable "aurora_writer_instance_types_arm" {
+  type        = list(string)
+  description = "Graviton (arm64) instance types for the aurora writer compute environment, used when var.architecture = \"arm64\" (c7g/c6g/m7g/m6g -- the arm64 counterpart of aurora_writer_instance_types_x86's c6a/c6i/c5a/c5/c4/m6a/m6i/m5a/m5/m4 families). Burstable (t*g) families are intentionally excluded to avoid CPU-credit throttling on the DB writer path."
   default = [
     "c7g.large", "c6g.large",
     "m7g.large", "m6g.large"
+  ]
+}
+
+variable "aurora_writer_instance_types_x86" {
+  type        = list(string)
+  description = "x86_64 instance types for the aurora writer compute environment, used when var.architecture = \"x86_64\". Burstable (t2) instances are intentionally excluded to avoid CPU-credit throttling on the DB writer path."
+  default = [
+    "c6a.large", "c6i.large", "c5a.large", "c5.large", "c4.large",
+    "m6a.large", "m6i.large", "m5a.large", "m5.large", "m4.large"
   ]
 }
 
