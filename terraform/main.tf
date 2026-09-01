@@ -35,7 +35,7 @@ locals {
 #
 # Follows var.architecture the same way the Batch images do
 module "app_docker_image" {
-  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.15"
+  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.16"
   image_name   = substr(lower("${local.project}${local.name_suffix}"), 0, 64)
   root_dir     = "${path.root}/../"
   tag          = local.container_tag
@@ -51,7 +51,7 @@ module "app_docker_image" {
 # own architecture, which doesn't help when we specifically want e.g.
 # arm64 built on an x86_64 CI runner. See terraform/scripts/buildx_push.sh.
 module "batch_pixetl_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.15"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.16"
   image_name      = substr(lower("${local.project}-pixetl${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
@@ -64,7 +64,7 @@ module "batch_pixetl_image" {
 #
 # Also architecture-selected -- see note on batch_pixetl_image above.
 module "batch_universal_image" {
-  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.15"
+  source          = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/container_registry?ref=v0.4.2.16"
   image_name      = substr(lower("${local.project}-universal${local.name_suffix}"), 0, 64)
   root_dir        = "${path.root}/../"
   docker_path     = "batch"
@@ -75,7 +75,7 @@ module "batch_universal_image" {
 }
 
 module "fargate_autoscaling" {
-  source                       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.15"
+  source                       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/fargate_autoscaling?ref=v0.4.2.16"
   cpu_architecture             = var.architecture == "x86_64" ? "X86_64" : "ARM64"
   project                      = local.project
   name_suffix                  = local.name_suffix
@@ -130,7 +130,7 @@ locals {
 # Create compute environment for DB writer
 # Using instance types with 1 core only, and EC2 instances (not SPOT).
 module "batch_aurora_writer" {
-  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.15"
+  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.16"
   architecture = var.architecture
   ecs_role_policy_arns = [
     data.terraform_remote_state.core.outputs.iam_policy_s3_write_data-lake_arn,
@@ -159,7 +159,7 @@ module "batch_aurora_writer" {
 # Create compute environment for data lake writing, pixetl, and tile cache jobs
 # Currently does EC2 instances, not spot instances.
 module "batch_data_lake_writer" {
-  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.15"
+  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.16"
   architecture = var.architecture
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
@@ -189,7 +189,7 @@ module "batch_data_lake_writer" {
 # Creating compute environment for cogify jobs
 # Should always use EC2 instances, since jobs run for so long.
 module "batch_cogify" {
-  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.15"
+  source       = "git::https://github.com/wri/gfw-terraform-modules.git//terraform/modules/compute_environment?ref=v0.4.2.16"
   architecture = var.architecture
   ecs_role_policy_arns = [
     aws_iam_policy.query_batch_jobs.arn,
