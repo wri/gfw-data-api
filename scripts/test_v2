@@ -52,8 +52,13 @@ if [ $# -eq 0 ]; then
 fi
 
 if [ "${BUILD}" = true ]; then
-  docker build -t batch_jobs_test . -f batch/universal_batch.dockerfile
-  docker build -t pixetl_test . -f batch/pixetl.dockerfile
+  # Unlike scripts/test, this deliberately does NOT build batch_jobs_test
+  # (universal_batch.dockerfile) or pixetl_test (pixetl.dockerfile).
+  # tests_v2/ never references either image -- only tests/conftest.py
+  # registers them as mock AWS Batch job definitions, for v1's tests that
+  # actually run local Docker containers to simulate Batch job execution.
+  # Building those two large, uncached GDAL-based images here was pure
+  # wasted time.
   docker compose -f docker-compose.test.yml --project-name gfw-data-api_test build --no-cache app_test
 fi
 
