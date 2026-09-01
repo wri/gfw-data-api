@@ -13,9 +13,12 @@ jobs:
     # Terraform variable's own default. This also means the test suite
     # builds and runs batch/universal_batch.dockerfile and
     # batch/pixetl.dockerfile (see ./scripts/test) on the same architecture
-    # that will actually be deployed, natively. One QEMU step below is
-    # still needed, though -- see its comment -- for a third-party test
-    # fixture image that has no arm64 build.
+    # that will actually be deployed, natively -- nothing in this job needs
+    # to cross-build, so no QEMU setup is needed here. (docker-compose.test.yml's
+    # test_database_14 service used to require it -- it pulled
+    # postgis/postgis, a third-party image with no arm64 build at any tag --
+    # but now builds docker/postgis-14/Dockerfile instead, which is
+    # genuinely multi-arch.)
     #
     # Note: GitHub-hosted arm64 runners (ubuntu-24.04-arm) are free for
     # public repositories but require a Team/Enterprise plan for private
@@ -32,20 +35,6 @@ jobs:
             cobertura: tests_v2/cobertura.xml
     steps:
       - uses: actions/checkout@v5
-
-      # docker-compose.test.yml's test_database_14 service pulls
-      # postgis/postgis:14-3.4-alpine, a third-party image with no arm64
-      # build at any tag (checked directly against the Docker Hub registry:
-      # linux/amd64 only, all across 14.x/15.x/16.x and alpine/Debian
-      # variants). On the arm64 runner it needs to run under QEMU emulation.
-      # This is unrelated to and doesn't affect the deploy job below: our
-      # own images (Batch + FastAPI/ECS) still build natively per
-      # var.architecture, with no emulation involved there.
-      - name: Set up QEMU (for the amd64-only postgis test fixture)
-        if: ${{ vars.ARCHITECTURE != 'x86_64' }}
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: amd64
 
       - name: Test with pytest (${{ matrix.suite }})
         run: ./scripts/${{ matrix.suite }} --do-cov --show-warnings

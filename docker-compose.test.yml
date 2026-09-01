@@ -72,7 +72,9 @@ services:
 
   test_database_14:
     container_name: gfw-data-api-test-database-14
-    image: postgis/postgis:14-3.4-alpine
+    build:
+      context: ./docker/postgis-14
+    image: gfw-data-api-test-postgis:14-3.4
     ports:
       - "54321:5432"
     environment:

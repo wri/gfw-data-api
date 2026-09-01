@@ -59,6 +59,7 @@ if [ "${BUILD}" = true ]; then
   # actually run local Docker containers to simulate Batch job execution.
   # Building those two large, uncached GDAL-based images here was pure
   # wasted time.
+  docker compose -f docker-compose.test.yml --project-name gfw-data-api_test build test_database_14
   docker compose -f docker-compose.test.yml --project-name gfw-data-api_test build --no-cache app_test
 fi
 
