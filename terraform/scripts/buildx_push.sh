@@ -49,18 +49,31 @@ if ! docker buildx version > /dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v flock > /dev/null 2>&1; then
+  echo "ERROR: 'flock' is not available in this environment (needed to" >&2
+  echo "safely serialize buildx builder creation across the concurrent" >&2
+  echo "Terraform null_resources that invoke this script). It's part of" >&2
+  echo "util-linux, normally preinstalled on Ubuntu-based images -- add the" >&2
+  echo "util-linux package to the orchestration image if it's missing." >&2
+  exit 1
+fi
+
 aws ecr get-login-password --region "$REGION" | docker login --username AWS \
           --password-stdin "${ECR_URL}"
 
 # Reuse a persistent docker-container builder (required for --push with
 # multiple platforms; the default "docker" driver can't export multi-arch
 # manifests) across invocations instead of creating a new one every time.
-if ! docker buildx inspect "$BUILDER_NAME" > /dev/null 2>&1; then
-  docker buildx create --name "$BUILDER_NAME" --driver docker-container --use
-else
-  docker buildx use "$BUILDER_NAME"
-fi
-docker buildx inspect --bootstrap
+BUILDER_LOCK="/tmp/gfw-multiarch-builder.lock"
+(
+  flock -x 200
+  if ! docker buildx inspect "$BUILDER_NAME" > /dev/null 2>&1; then
+    docker buildx create --name "$BUILDER_NAME" --driver docker-container --use
+  else
+    docker buildx use "$BUILDER_NAME"
+  fi
+  docker buildx inspect --bootstrap
+) 200>"$BUILDER_LOCK"
 
 docker buildx build \
   --platform "$PLATFORMS" \
