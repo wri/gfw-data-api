@@ -4,26 +4,11 @@ on: [push]
 
 jobs:
   test:
-    # Runner architecture follows the single toggle that now governs the
-    # whole stack -- Batch compute environments/images AND the ECS/Fargate
-    # task/image (var.architecture in terraform/variables.tf). Set the
-    # "ARCHITECTURE" repository/organization Actions variable to "x86_64" or
-    # "arm64" (Settings > Secrets and variables > Actions > Variables) to
-    # flip everything together. Defaults to arm64 if unset, matching the
-    # Terraform variable's own default. This also means the test suite
+    # Runner architecture follows the "ARCHITECTURE" Actions variable (
+    # set to "x86_64" or "arm64". This also means the test suite
     # builds and runs batch/universal_batch.dockerfile and
     # batch/pixetl.dockerfile (see ./scripts/test) on the same architecture
-    # that will actually be deployed, natively -- nothing in this job needs
-    # to cross-build, so no QEMU setup is needed here. (docker-compose.test.yml's
-    # test_database_14 service used to require it -- it pulled
-    # postgis/postgis, a third-party image with no arm64 build at any tag --
-    # but now builds docker/postgis-14/Dockerfile instead, which is
-    # genuinely multi-arch.)
-    #
-    # Note: GitHub-hosted arm64 runners (ubuntu-24.04-arm) are free for
-    # public repositories but require a Team/Enterprise plan for private
-    # ones, and are billed differently from standard x64 runners -- worth
-    # confirming this repo's plan/billing covers them before relying on this.
+    # that will actually be deployed, natively.
     runs-on: ${{ vars.ARCHITECTURE == 'x86_64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     strategy:
       fail-fast: false
@@ -47,9 +32,6 @@ jobs:
 
   coverage:
     needs: test
-    # Just downloads/uploads coverage reports -- doesn't touch Docker or
-    # anything architecture-sensitive, so this stays on the standard runner
-    # regardless of ARCHITECTURE.
     runs-on: "ubuntu-24.04"
     steps:
       - uses: actions/checkout@v5
@@ -78,34 +60,24 @@ jobs:
 
   deploy:
     needs: [test, coverage]
-    # Same ARCHITECTURE-driven runner selection as the test job above.
-    # terraform apply builds *every* Docker image var.architecture controls
-    # (the Batch images and the FastAPI/ECS app image) via
-    # terraform/scripts/buildx_push_{arm64,amd64}.sh, selected by the
-    # matching Terraform variable (passed as -var below) -- invoked from
-    # inside the terraform orchestration container against this runner's
-    # Docker daemon (bind-mounted socket). Running the job on the runner
-    # whose native architecture matches means every one of those builds is
-    # native, not emulated.
+    # globalforestwatch/terraform:v0.13.3) is amd64-only.
+    # Running that container under QEMU emulation (i.e. on an
+    # arm64 runner) is NOT reliable the same way emulating a Dockerfile's
+    # RUN steps is: `terraform apply` fails with errors like "Unrecognized
+    # remote plugin message".
     #
-    # That's a separate axis from the QEMU step just below, though: the
-    # orchestration container itself (terraform/docker/docker-compose.yml,
-    # built from terraform/docker/Dockerfile) is pinned to
-    # `platform: linux/amd64` because its own base image
-    # (globalforestwatch/terraform:v0.13.3) is amd64-only -- that's true no
-    # matter which architecture var.architecture deploys to. On the arm64
-    # runner, *building* that wrapper image needs QEMU too, or its RUN
-    # steps fail with "exec format error" before terraform (and therefore
-    # any of the per-architecture image builds above) ever runs.
-    runs-on: ${{ vars.ARCHITECTURE == 'x86_64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    # So: this job always runs natively on x64. What DOES still follow
+    # var.architecture is the  *target* of the image builds terraform
+    # apply triggers.
+    runs-on: "ubuntu-24.04"
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up QEMU (for the amd64-only terraform orchestration container)
+      - name: Set up QEMU (for cross-building arm64 images from this x64 runner)
         if: ${{ vars.ARCHITECTURE != 'x86_64' }}
         uses: docker/setup-qemu-action@v3
         with:
-          platforms: amd64
+          platforms: arm64
 
       - name: Deploy production
         if: success() && (github.ref_name == 'master')
