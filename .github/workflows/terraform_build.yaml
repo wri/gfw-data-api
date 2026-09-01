@@ -90,17 +90,33 @@ jobs:
   deploy:
     needs: [test, coverage]
     # Same ARCHITECTURE-driven runner selection as the test job above.
-    # terraform apply builds *every* Docker image it manages (the Batch
-    # images and the FastAPI/ECS app image) via
+    # terraform apply builds *every* Docker image var.architecture controls
+    # (the Batch images and the FastAPI/ECS app image) via
     # terraform/scripts/buildx_push_{arm64,amd64}.sh, selected by the
     # matching Terraform variable (passed as -var below) -- invoked from
-    # inside the globalforestwatch/terraform container against this
-    # runner's Docker daemon (bind-mounted socket). Running the job on the
-    # runner whose native architecture matches means every one of those
-    # builds is native, not emulated -- no QEMU setup needed in this job.
+    # inside the terraform orchestration container against this runner's
+    # Docker daemon (bind-mounted socket). Running the job on the runner
+    # whose native architecture matches means every one of those builds is
+    # native, not emulated.
+    #
+    # That's a separate axis from the QEMU step just below, though: the
+    # orchestration container itself (terraform/docker/docker-compose.yml,
+    # built from terraform/docker/Dockerfile) is pinned to
+    # `platform: linux/amd64` because its own base image
+    # (globalforestwatch/terraform:v0.13.3) is amd64-only -- that's true no
+    # matter which architecture var.architecture deploys to. On the arm64
+    # runner, *building* that wrapper image needs QEMU too, or its RUN
+    # steps fail with "exec format error" before terraform (and therefore
+    # any of the per-architecture image builds above) ever runs.
     runs-on: ${{ vars.ARCHITECTURE == 'x86_64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     steps:
       - uses: actions/checkout@v5
+
+      - name: Set up QEMU (for the amd64-only terraform orchestration container)
+        if: ${{ vars.ARCHITECTURE != 'x86_64' }}
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: amd64
 
       - name: Deploy production
         if: success() && (github.ref_name == 'master')
