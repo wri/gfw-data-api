@@ -65,7 +65,7 @@ if [ "${BUILD}" = true ]; then
     echo "Pulled cached PostGIS test image from GHCR: ${cached_digest}"
     docker tag ghcr.io/wri/gfw-data-api-postgis-test:latest gfw-data-api-postgis:latest
   else
-    echo "No cached PostGIS test image available from GHCR (offline, not public yet, or a genuine miss) -- building from scratch."
+    echo "No cached PostGIS test image available from GHCR - building from scratch."
   fi
 
   docker buildx bake --progress=plain test
