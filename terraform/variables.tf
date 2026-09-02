@@ -165,12 +165,12 @@ variable "api_gateway_url" {
 variable "architecture" {
   type        = string
   description = "CPU architecture the whole stack (Batch and ECS/Fargate) targets: \"arm64\" or \"x86_64\". Any value other than \"x86_64\" is treated as \"arm64\"."
-  default     = "arm64"
+  default     = "x86_64"
 }
 
 variable "data_lake_writer_instance_types_arm" {
   type        = list(string)
-  description = "Graviton (arm64) memory/compute optimized EC2 instances with local NVMe SSDs for the data lake writer and cogify batch queues, used when var.architecture = \"arm64\" (r7gd/r6gd -- the arm64 counterpart of data_lake_writer_instance_types_x86's r6id/r5ad/r5d families)."
+  description = "arm64 memory/compute optimized EC2 instances with local NVMe SSDs for the data lake writer and cogify batch queues, used when var.architecture = \"arm64\"."
   default = [
     "r8gd.24xlarge", "r8gd.48xlarge",
     "r7gd.large", "r7gd.xlarge", "r7gd.2xlarge", "r7gd.4xlarge", "r7gd.8xlarge", "r7gd.12xlarge", "r7gd.16xlarge",
@@ -190,7 +190,7 @@ variable "data_lake_writer_instance_types_x86" {
 
 variable "aurora_writer_instance_types_arm" {
   type        = list(string)
-  description = "Graviton (arm64) instance types for the aurora writer compute environment, used when var.architecture = \"arm64\" (c7g/c6g/m7g/m6g -- the arm64 counterpart of aurora_writer_instance_types_x86's c6a/c6i/c5a/c5/c4/m6a/m6i/m5a/m5/m4 families)."
+  description = "arm64 instance types for the aurora writer compute environment, used when var.architecture = \"arm64\"."
   default = [
     "c7g.large", "c6g.large",
     "m7g.large", "m6g.large"
