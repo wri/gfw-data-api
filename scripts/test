@@ -62,6 +62,18 @@ fi
 if [ "${BUILD}" = true ]; then
   docker build -t batch_jobs_test . -f batch/universal_batch.dockerfile
   docker build -t pixetl_test . -f batch/pixetl.dockerfile
+  # Best-effort: pull the pre-built, public, multi-arch PostGIS test image
+  # from GHCR (see .github/workflows/test_fixture_images.yaml) and retag it
+  # locally, so the `docker compose build` below hits Docker's local layer
+  # cache instead of rebuilding docker/postgis/Dockerfile from scratch
+  # (a full `dnf install` on a cold cache). Purely an optimization -- if
+  # this fails for any reason (offline, package not public yet, whatever),
+  # the build below just proceeds as a normal full build, same as if this
+  # step didn't exist. Needs no credentials either way: the image is public,
+  # and a failed anonymous pull degrades gracefully rather than erroring.
+  if docker pull ghcr.io/wri/gfw-data-api-postgis-test:latest > /dev/null 2>&1; then
+    docker tag ghcr.io/wri/gfw-data-api-postgis-test:latest gfw-data-api-postgis:latest
+  fi
   docker compose -f docker-compose.test.yml --project-name gfw-data-api_test build test_database_14
   docker compose -f docker-compose.test.yml --project-name gfw-data-api_test build --no-cache app_test
 fi

@@ -62,8 +62,8 @@ services:
   database_14:
     container_name: gfw-data-api-database_14
     build:
-      context: ./docker/postgis-14
-    image: gfw-data-api-postgis:14-3.4
+      context: ./docker/postgis
+    image: gfw-data-api-postgis:latest
     restart: on-failure
     ports:
       - "54320:5432"

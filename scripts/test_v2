@@ -57,6 +57,15 @@ if [ "${BUILD}" = true ]; then
   # tests_v2/ never references either image -- only tests/conftest.py
   # registers them as mock AWS Batch job definitions, for v1's tests that
   # actually run local Docker containers to simulate Batch job execution.
+  #
+  # Best-effort: pull the pre-built, public, multi-arch PostGIS test image
+  # from GHCR (see .github/workflows/test_fixture_images.yaml) and retag it
+  # locally, so the `docker compose build` below hits Docker's local layer
+  # cache instead of rebuilding docker/postgis/Dockerfile from scratch.
+  # See scripts/test's identical step for the full explanation.
+  if docker pull ghcr.io/wri/gfw-data-api-postgis-test:latest > /dev/null 2>&1; then
+    docker tag ghcr.io/wri/gfw-data-api-postgis-test:latest gfw-data-api-postgis:latest
+  fi
   docker compose -f docker-compose.test.yml --project-name gfw-data-api_test build test_database_14
   docker compose -f docker-compose.test.yml --project-name gfw-data-api_test build --no-cache app_test
 fi
