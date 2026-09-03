@@ -21,6 +21,20 @@
 # Env vars:
 #   BUILD_PLATFORMS - platform to build for. Defaults to "linux/arm64" if
 #                      invoked directly rather than through a wrapper.
+#
+# Also pushes/pulls a registry-backed BuildKit cache (a separate tag,
+# "<repo>:buildcache-<arch>", in the same ECR repo the image itself goes
+# to) via --cache-from/--cache-to. This is what actually speeds up a
+# genuine rebuild (e.g. real batch/ changes -- see terraform/scripts/
+# hash_batch.sh for what triggers a rebuild at all): layers unaffected by
+# the change, like universal_batch.dockerfile's from-source tippecanoe
+# compile, get reused instead of rebuilt every time. mode=max caches
+# intermediate layers too, not just the final image, since that compile
+# step specifically is the whole reason this exists. A missing cache ref
+# (e.g. the very first build) is handled gracefully by buildx itself, no
+# special-casing needed here. Expect an extra "buildcache-<arch>" tag to
+# show up in each ECR repo alongside the real image tags -- that's this,
+# working as intended, not something to clean up.
 
 set -euo pipefail
 
@@ -75,10 +89,22 @@ BUILDER_LOCK="/tmp/gfw-multiarch-builder.lock"
   docker buildx inspect --bootstrap
 ) 200>"$BUILDER_LOCK"
 
+# Derive an architecture-specific cache tag from the platform being built.
+# arm64 and amd64 builds have fundamentally different layer sets, so each
+# gets its own cache tag -- mixing them under one tag wouldn't make sense
+# and could waste cache space on layers that can never be reused across
+# architectures. This assumes PLATFORMS is a single "linux/ARCH" value,
+# which is how this project always invokes it (via the wrapper scripts);
+# a genuine multi-platform value here isn't a case this project uses.
+CACHE_ARCH="${PLATFORMS#linux/}"
+CACHE_REF="${REPOSITORY_URL}:buildcache-${CACHE_ARCH}"
+
 docker buildx build \
   --platform "$PLATFORMS" \
   -t "$REPOSITORY_URL":"$TAG" \
   -f "$DOCKER_FILE" \
+  --cache-from "type=registry,ref=${CACHE_REF}" \
+  --cache-to "type=registry,ref=${CACHE_REF},mode=max" \
   --push \
   .
 
