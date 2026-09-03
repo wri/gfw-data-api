@@ -16,8 +16,9 @@ import rasterio
 from alembic.config import main as migrate
 from asgi_lifespan import LifespanManager
 from docker.models.containers import ContainerCollection
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
+from app.application import ContextEngine, db
 from app.authentication.api_keys import api_key_is_valid, get_api_key
 from app.authentication.token import get_admin, get_manager, is_service_account
 from app.models.pydantic.authentication import User
@@ -31,9 +32,9 @@ from app.settings.globals import (
     DATA_LAKE_BUCKET,
     DATA_LAKE_JOB_QUEUE,
     GDAL_PYTHON_JOB_DEFINITION,
+    ON_DEMAND_COMPUTE_JOB_QUEUE,
     PIXETL_JOB_DEFINITION,
     PIXETL_JOB_QUEUE,
-    ON_DEMAND_COMPUTE_JOB_QUEUE,
     POSTGRESQL_CLIENT_JOB_DEFINITION,
     TILE_CACHE_BUCKET,
     TILE_CACHE_JOB_DEFINITION,
@@ -182,9 +183,7 @@ def batch_client():
     )
 
     aws_mock.add_job_definition(GDAL_PYTHON_JOB_DEFINITION, "batch_jobs_test")
-    aws_mock.add_job_definition(
-        POSTGRESQL_CLIENT_JOB_DEFINITION, "batch_jobs_test"
-    )
+    aws_mock.add_job_definition(POSTGRESQL_CLIENT_JOB_DEFINITION, "batch_jobs_test")
     aws_mock.add_job_definition(TILE_CACHE_JOB_DEFINITION, "batch_jobs_test")
     aws_mock.add_job_definition(PIXETL_JOB_DEFINITION, "pixetl_test", mount_tmp=True)
 
@@ -225,8 +224,10 @@ def httpd():
 
 @pytest.fixture(autouse=True, scope="function")
 def flush_request_list(httpd):
-    """Delete request cache before every test."""
-    _ = httpx.delete(f"http://localhost:{httpd.server_port}")
+    """Delete request cache before and after every test."""
+    httpx.delete(f"http://localhost:{httpd.server_port}")
+    yield
+    httpx.delete(f"http://localhost:{httpd.server_port}")
 
 
 @pytest.fixture(autouse=True)
@@ -341,9 +342,9 @@ def db_session():
         yield stack.enter_context(session())
 
 
-@pytest_asyncio.fixture
-async def db_ready(db_session):
-    """make sure that the db is only initialized and torn down once per
+@pytest_asyncio.fixture(scope="module")
+async def db_ready():
+    """Make sure that the db is only initialized and torn down once per
     module."""
     migrate(["--raiseerr", "upgrade", "head"])
     yield
@@ -359,39 +360,71 @@ async def db_clean(db_ready):
 
     app.dependency_overrides[get_owner] = lambda: ADMIN_1
 
+    async def _delete_asset(http_client: AsyncClient, asset_id: str) -> None:
+        print(f"DELETING ASSET {asset_id}")
+        try:
+            resp = await http_client.delete(f"/asset/{asset_id}")
+            assert resp.status_code == 204
+        except Exception as ex:
+            print(f"Exception deleting asset {asset_id}: {ex}")
+
+    async def _delete_version(
+        http_client: AsyncClient, dataset: str, version: str
+    ) -> None:
+        assets_resp = await http_client.get(f"/dataset/{dataset}/{version}/assets")
+        for asset in assets_resp.json()["data"]:
+            await _delete_asset(http_client, asset["asset_id"])
+        try:
+            # FIXME: Mock-out cache invalidation function
+            _ = await http_client.delete(f"/dataset/{dataset}/{version}")
+        except Exception as ex:
+            print(f"Exception deleting version {version}: {ex}")
+
+    async def _delete_dataset(http_client: AsyncClient, dataset: dict) -> None:
+        ds_id = dataset["dataset"]
+        for version in dataset.get("versions") or []:
+            await _delete_version(http_client, ds_id, version)
+        try:
+            _ = await http_client.delete(f"/dataset/{ds_id}")
+        except Exception as ex:
+            print(f"Exception deleting dataset {ds_id}: {ex}")
+
     async with LifespanManager(app) as manager:
         async with AsyncClient(
-            app=manager.app, base_url="http://test", trust_env=False
+            transport=ASGITransport(app=manager.app),
+            base_url="http://test",
+            trust_env=False,
         ) as http_client:
             # Clean up created assets/versions/datasets so teardown doesn't break
             datasets_resp = await http_client.get("/datasets")
             for ds in datasets_resp.json()["data"]:
-                ds_id = ds["dataset"]
-                if ds.get("versions") is not None:
-                    for version in ds["versions"]:
-                        assets_resp = await http_client.get(
-                            f"/dataset/{ds_id}/{version}/assets"
-                        )
-                        for asset in assets_resp.json()["data"]:
-                            print(f"DELETING ASSET {asset['asset_id']}")
-                            try:
-                                resp = await http_client.delete(
-                                    f"/asset/{asset['asset_id']}"
-                                )
-                                assert resp.status_code == 204
-                            except Exception as ex:
-                                print(
-                                    f"Exception deleting asset {asset['asset_id']}: {ex}"
-                                )
-                        try:
-                            # FIXME: Mock-out cache invalidation function
-                            _ = await http_client.delete(f"/dataset/{ds_id}/{version}")
-                        except Exception as ex:
-                            print(f"Exception deleting version {version}: {ex}")
-                try:
-                    _ = await http_client.delete(f"/dataset/{ds_id}")
-                except Exception as ex:
-                    print(f"Exception deleting dataset {ds_id}: {ex}")
+                await _delete_dataset(http_client, ds)
+
+        # Geostores (and userareas, which INHERITs from geostore at the
+        # Postgres level -- see app/models/orm/migrations/versions/
+        # 167eebbf29e4_.py's "ALTER TABLE userareas INHERIT geostore", not
+        # just an ORM relationship) are shared, content-addressed records,
+        # not owned by any one dataset/version/asset. There's no API
+        # endpoint to delete one -- by design, they're meant to be
+        # permanent and reusable -- so the cascade above never touches
+        # them. Before db_ready became module-scoped, this didn't matter:
+        # the full downgrade/upgrade cycle between every test wiped these
+        # tables too, incidentally. Now that only happens once per module,
+        # a leftover geostore from an earlier test in the same module (
+        # deduplicated by content hash, so the same GeoJSON uploaded in two
+        # tests produces the identical row) can make a later test's
+        # "there should be exactly N geostores" assertion fail against a
+        # count that includes rows it didn't create.
+        #
+        # DELETE FROM geostore (no ONLY) cascades to userareas too, per
+        # standard Postgres inheritance semantics -- querying/deleting an
+        # inheritance parent without ONLY implicitly includes every child
+        # table's rows as well. Must run inside this LifespanManager block:
+        # ContextEngine reads from WRITE_ENGINE/READ_ENGINE globals that
+        # only exist between app.application.lifespan()'s startup and
+        # shutdown (see there), which is exactly this block's lifetime.
+        async with ContextEngine("WRITE"):
+            await db.status("DELETE FROM geostore")
 
     app.dependency_overrides = {}
 
@@ -454,7 +487,9 @@ async def client_with_mocks(
 
     async with LifespanManager(app) as manager:
         async with AsyncClient(
-            app=manager.app, base_url="http://test", trust_env=False
+            transport=ASGITransport(app=manager.app),
+            base_url="http://test",
+            trust_env=False,
         ) as http_client:
             yield http_client
 
