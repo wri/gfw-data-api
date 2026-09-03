@@ -8,8 +8,8 @@ import pytest
 import pytest_asyncio
 from _pytest.monkeypatch import MonkeyPatch
 from alembic.config import main
-from httpx import AsyncClient
 from asgi_lifespan import LifespanManager
+from httpx import ASGITransport, AsyncClient
 
 from app.authentication.token import get_manager, get_user, is_admin, is_service_account
 from app.crud import api_keys
@@ -75,7 +75,7 @@ async def async_client(init_db) -> AsyncGenerator[AsyncClient, None]:
 
     async with LifespanManager(app) as manager:
         async with AsyncClient(
-            app=manager.app,
+            transport=ASGITransport(app=manager.app),
             base_url="http://test",
             trust_env=False,
             headers={"Origin": "https://www.globalforestwatch.org"},
@@ -87,15 +87,13 @@ async def async_client(init_db) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest_asyncio.fixture
-async def async_client_unauthenticated(
-    init_db
-) -> AsyncGenerator[AsyncClient, None]:
+async def async_client_unauthenticated(init_db) -> AsyncGenerator[AsyncClient, None]:
     """Async Test Client."""
     from app.main import app
 
     async with LifespanManager(app) as manager:
         async with AsyncClient(
-            app=manager.app,
+            transport=ASGITransport(app=manager.app),
             base_url="http://test",
             trust_env=False,
             headers={"Origin": "https://www.globalforestwatch.org"},
@@ -120,7 +118,7 @@ async def async_client_no_admin(init_db) -> AsyncGenerator[AsyncClient, None]:
 
     async with LifespanManager(app) as manager:
         async with AsyncClient(
-            app=manager.app,
+            transport=ASGITransport(app=manager.app),
             base_url="http://test",
             trust_env=False,
             headers={"Origin": "https://www.globalforestwatch.org"},
