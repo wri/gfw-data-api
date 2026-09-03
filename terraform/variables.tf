@@ -164,8 +164,7 @@ variable "api_gateway_url" {
 
 variable "architecture" {
   type        = string
-  description = "CPU architecture the whole stack (Batch and ECS/Fargate) targets: \"arm64\" or \"x86_64\". Any value other than \"x86_64\" is treated as \"arm64\"."
-  default     = "x86_64"
+  description = "CPU architecture the whole stack (Batch and ECS/Fargate) targets: \"arm64\" or \"x86_64\". Any value other than \"x86_64\" is treated as \"arm64\". Deliberately has no default -- CI-driven applies always supply this explicitly via -var (see .github/workflows/terraform_build.yaml), sourced from the \"ARCHITECTURE\" GitHub Actions repository variable (Settings > Secrets and variables > Actions > Variables), not from anything in this repo's code. That's the one real place to change which architecture gets deployed. A default here would just be a second, easy-to-edit-and-have-nothing-happen place that looks authoritative but isn't, since CI's -var always overrides it regardless of what it's set to. Running terraform manually (outside CI) now requires passing -var=\"architecture=...\" explicitly too, e.g. via ./scripts/infra plan -var=\"architecture=x86_64\"."
 }
 
 variable "data_lake_writer_instance_types_arm" {
