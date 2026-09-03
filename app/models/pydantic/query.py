@@ -1,9 +1,10 @@
 from typing import Optional, List
 
-from app.models.enum.creation_options import Delimiters
-from app.models.pydantic.base import StrictBaseModel
-from app.models.pydantic.geostore import FeatureCollection, Geometry
 from pydantic import Field
+
+from ..enum.creation_options import Delimiters
+from .base import StrictBaseModel
+from .geostore import FeatureCollection, Geometry
 
 
 class QueryRequestIn(StrictBaseModel):

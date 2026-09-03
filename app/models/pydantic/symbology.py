@@ -2,8 +2,8 @@ from typing import Dict, Optional, Tuple, Union
 
 from pydantic import Field, StrictInt, validator
 
-from app.models.enum.creation_options import ColorMapType
-from app.models.pydantic.base import StrictBaseModel
+from ..enum.creation_options import ColorMapType
+from .base import StrictBaseModel
 
 
 class RGB(StrictBaseModel):

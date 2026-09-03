@@ -5,8 +5,8 @@ from uuid import UUID
 from fastapi import Query
 from pydantic import BaseModel, EmailStr
 
-from app.models.pydantic.base import BaseRecord, StrictBaseModel
-from app.models.pydantic.responses import Response
+from .base import BaseRecord, StrictBaseModel
+from .responses import Response
 
 
 class SignUpRequestIn(StrictBaseModel):
