@@ -18,7 +18,7 @@ dependencies = [
     "pandas==2.3.2",
     "psycopg2~=2.9.12",
     "rasterio~=1.5.1",
-    "setuptools~=75.6",
+    "setuptools~=83.0.0",
     "shapely~=2.1.2",
     "SQLAlchemy>=2.0,<2.1",
     "tileputty~=0.2.10"
