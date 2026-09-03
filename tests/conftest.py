@@ -339,8 +339,8 @@ def db_session():
         yield stack.enter_context(session())
 
 
-@pytest_asyncio.fixture
-async def db_ready(db_session):
+@pytest_asyncio.fixture(scope="module")
+async def db_ready():
     """Make sure that the db is only initialized and torn down once per
     module."""
     migrate(["--raiseerr", "upgrade", "head"])
