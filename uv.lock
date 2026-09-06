@@ -592,7 +592,7 @@ requires-dist = [
     { name = "openapi-spec-validator" },
     { name = "orjson" },
     { name = "packaging" },
-    { name = "pendulum", specifier = "<3" },
+    { name = "pendulum", specifier = "~=3.0.0" },
     { name = "pglast" },
     { name = "psutil" },
     { name = "psycopg2" },
@@ -1165,13 +1165,26 @@ wheels = [
 
 [[package]]
 name = "pendulum"
-version = "2.1.2"
+version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "python-dateutil" },
-    { name = "pytzdata" },
+    { name = "time-machine", marker = "implementation_name != 'pypy'" },
+    { name = "tzdata" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/db/15/6e89ae7cde7907118769ed3d2481566d05b5fd362724025198bb95faf599/pendulum-2.1.2.tar.gz", hash = "sha256:b06a0ca1bfe41c990bbf0c029f0b6501a7f2ec4e38bfec730712015e8860f207", size = 81167, upload-time = "2020-07-24T18:17:03.724Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b8/fe/27c7438c6ac8b8f8bef3c6e571855602ee784b85d072efddfff0ceb1cd77/pendulum-3.0.0.tar.gz", hash = "sha256:5d034998dea404ec31fae27af6b22cff1708f830a1ed7353be4d1019bb9f584e", size = 84524, upload-time = "2023-12-16T21:27:19.742Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/37/17c8f0e7481a32f21b9002dd68912a8813f2c1d77b984e00af56eb9ae31b/pendulum-3.0.0-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:409e64e41418c49f973d43a28afe5df1df4f1dd87c41c7c90f1a63f61ae0f1f7", size = 362284, upload-time = "2023-12-16T21:24:42.056Z" },
+    { url = "https://files.pythonhosted.org/packages/12/e6/08f462f6ea87e2159f19b43ff88231d26e02bda31c10bcb29290a617ace4/pendulum-3.0.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:a38ad2121c5ec7c4c190c7334e789c3b4624798859156b138fcc4d92295835dc", size = 352964, upload-time = "2023-12-16T21:24:44.306Z" },
+    { url = "https://files.pythonhosted.org/packages/47/29/b6877f6b53b91356c2c56d19ddab17b165ca994ad1e57b32c089e79f3fb5/pendulum-3.0.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:fde4d0b2024b9785f66b7f30ed59281bd60d63d9213cda0eb0910ead777f6d37", size = 335848, upload-time = "2023-12-16T21:24:46.345Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/77/62ca666f30b2558342deadda26290a575459a7b59248ea1e978b84175227/pendulum-3.0.0-cp312-cp312-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:4b2c5675769fb6d4c11238132962939b960fcb365436b6d623c5864287faa319", size = 362215, upload-time = "2023-12-16T21:24:49.303Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/29/ce37593f5ea51862c60dadf4e863d604f954478b3abbcc60a14dc05e242c/pendulum-3.0.0-cp312-cp312-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:8af95e03e066826f0f4c65811cbee1b3123d4a45a1c3a2b4fc23c4b0dff893b5", size = 448673, upload-time = "2023-12-16T21:24:52.931Z" },
+    { url = "https://files.pythonhosted.org/packages/72/6a/68a8c7b8f1977d89aabfd0e2becb0921e5515dfb365097e98a522334a151/pendulum-3.0.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2165a8f33cb15e06c67070b8afc87a62b85c5a273e3aaa6bc9d15c93a4920d6f", size = 384891, upload-time = "2023-12-16T21:24:56.754Z" },
+    { url = "https://files.pythonhosted.org/packages/30/e6/edd699300f47a3c53c0d8ed26e905b9a31057c3646211e58cc540716a440/pendulum-3.0.0-cp312-cp312-musllinux_1_1_aarch64.whl", hash = "sha256:ad5e65b874b5e56bd942546ea7ba9dd1d6a25121db1c517700f1c9de91b28518", size = 559558, upload-time = "2023-12-16T21:24:59.132Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/97/95a44aa5e1763d3a966551ed0e12f56508d8dfcc60e1f0395909b6a08626/pendulum-3.0.0-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:17fe4b2c844bbf5f0ece69cfd959fa02957c61317b2161763950d88fed8e13b9", size = 558240, upload-time = "2023-12-16T21:25:01.844Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/91/fcd992eb36b77ab43f2cf44307b72c01a6fbb27f55c1bb2d4af30e9a6cb7/pendulum-3.0.0-cp312-none-win_amd64.whl", hash = "sha256:78f8f4e7efe5066aca24a7a57511b9c2119f5c2b5eb81c46ff9222ce11e0a7a5", size = 293456, upload-time = "2023-12-16T21:25:04.039Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/60/ba8aa296ca6d76603d58146b4a222cd99e7da33831158b8c00240a896a56/pendulum-3.0.0-cp312-none-win_arm64.whl", hash = "sha256:28f49d8d1e32aae9c284a90b6bb3873eee15ec6e1d9042edd611b22a94ac462f", size = 288054, upload-time = "2023-12-16T21:25:05.935Z" },
+]
 
 [[package]]
 name = "pglast"
@@ -1513,15 +1526,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pytzdata"
-version = "2020.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/67/62/4c25435a7c2f9c7aef6800862d6c227fc4cd81e9f0beebc5549a49c8ed53/pytzdata-2020.1.tar.gz", hash = "sha256:3efa13b335a00a8de1d345ae41ec78dd11c9f8807f522d39850f2dd828681540", size = 281719, upload-time = "2020-07-13T10:42:12.083Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/4f/4474bda990ee740a020cbc3eb271925ef7daa7c8444240d34ff62c8442a3/pytzdata-2020.1-py2.py3-none-any.whl", hash = "sha256:e1e14750bcf95016381e4d472bad004eef710f2d6417240904070b3d6654485f", size = 489958, upload-time = "2020-07-13T10:42:10.122Z" },
-]
-
-[[package]]
 name = "pywin32"
 version = "312"
 source = { registry = "https://pypi.org/simple" }
@@ -1791,6 +1795,22 @@ wheels = [
 ]
 
 [[package]]
+name = "time-machine"
+version = "3.5.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e3/1a/d9c82e780ac6c41102d50b30c3fb3c25a3b8dd46f807147462d1f4429171/time_machine-3.5.0.tar.gz", hash = "sha256:bc193985b43f15394cfded976efaf9068c3078a2135f42f81c874ba684720eae", size = 25692, upload-time = "2026-08-25T00:18:32.594Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/fe/7719438b331df5a4b44740da046ad4919f2d19cf6ec8872425823368b404/time_machine-3.5.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:60baf021c396bc07b3403f96bbc06a2ed977dd42e1d942fc29edd6575ff6c601", size = 25708, upload-time = "2026-08-25T00:17:41.725Z" },
+    { url = "https://files.pythonhosted.org/packages/68/e6/8acacd366d94a19f02011ce2af4821315c59af8b868220543096c1a70375/time_machine-3.5.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:cdfd042a4b71fd2687eb16070db3d24e652c147d132a66e1756ac932f2f2bfdb", size = 25888, upload-time = "2026-08-25T00:17:42.783Z" },
+    { url = "https://files.pythonhosted.org/packages/62/20/1cbce3bc36438730c945d6a3990f9de0ab07af1ad1cf9b6a399d0887e8ed/time_machine-3.5.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:2b0ec43f3f8eb0edb92637684cdc4309fa9ea09f8f78e5daec20c7d5c4bc0b2e", size = 57769, upload-time = "2026-08-25T00:17:43.712Z" },
+    { url = "https://files.pythonhosted.org/packages/17/7a/a3dd6e0b8543cb559705af629fb73bbef753a8db31f7abe891d9c95ed7db/time_machine-3.5.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:1962b3f01d979e3fe7d8ce1883bb841ef7f39be227776755e2f1f38d6d50b1dc", size = 58524, upload-time = "2026-08-25T00:17:44.724Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/5d/0e6dc3fc6c055d35e140a862e1e214833edd1ae565ea63e1249e7ed841b0/time_machine-3.5.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:7523bc19dfd77243ff20361685dd8b1fe319389f7bce758cadc72fd51e4f9471", size = 57199, upload-time = "2026-08-25T00:17:45.802Z" },
+    { url = "https://files.pythonhosted.org/packages/09/ac/79a13f1b16a40597e52214160ee79fbef2db00f39c8fb16dd3f9842d2ebf/time_machine-3.5.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:8dd66efe1fe4740d1e789a3dc4121b593e0eaa1c3b9b75d6047033f9cc2263bc", size = 56917, upload-time = "2026-08-25T00:17:46.863Z" },
+    { url = "https://files.pythonhosted.org/packages/55/fb/47c16256f63f654ba90fe3a757b251820cf335a47c4bc6031dc029a4fc1c/time_machine-3.5.0-cp312-cp312-win_amd64.whl", hash = "sha256:2e65738b7574877b45890f48d9abcf9c7e4f8100eee3dc58681015cb6e29f4f2", size = 27745, upload-time = "2026-08-25T00:17:47.881Z" },
+    { url = "https://files.pythonhosted.org/packages/51/52/51125f0a27469ae55d2ad3529ab0213df92c13b21d2901da572967ad8c67/time_machine-3.5.0-cp312-cp312-win_arm64.whl", hash = "sha256:8e2ebbcb081269848617b65f2ea97e25532e44c9bc62190b5545196c34652d22", size = 26992, upload-time = "2026-08-25T00:17:48.877Z" },
+]
+
+[[package]]
 name = "typer"
 version = "0.27.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1812,6 +1832,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5", size = 113555, upload-time = "2026-07-02T08:40:05.92Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8", size = 45571, upload-time = "2026-07-02T08:40:04.659Z" },
+]
+
+[[package]]
+name = "tzdata"
+version = "2026.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/ff/5a28bdfd8c3ebec42564ac7d0e54ca3db65044a9314a97f9564fa7a1e926/tzdata-2026.3.tar.gz", hash = "sha256:4a1518b8993086a7982523e071643f3c0e5f213e75b21318e78bcabfff9d1415", size = 198674, upload-time = "2026-07-10T08:50:37.887Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e5/6d/b53b99a9f2766d095985947a5782f1702cabb129a34f7a802d7197af832f/tzdata-2026.3-py2.py3-none-any.whl", hash = "sha256:dc096730c87af6cab1b171c9d532be840741ff5d459015e7f6947bd7d7e54931", size = 348168, upload-time = "2026-07-10T08:50:36.46Z" },
 ]
 
 [[package]]
