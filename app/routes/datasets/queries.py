@@ -584,19 +584,32 @@ async def _query_raster_lambda(
     version_overrides: Dict[str, str] = {},
 ) -> Dict[str, Any]:
     data_environment = await _get_data_environment(grid, version_overrides)
-    payload = {
-        "query": sql,
-        "geometry": jsonable_encoder(geometry),
-        "environment": data_environment.dict()["layers"],
-        "format": format,
-    }
-
-    logger.info(f"Submitting raster analysis lambda request with payload: {payload}")
 
     try:
+        payload = {
+            "query": sql,
+            "geometry": jsonable_encoder(geometry),
+            # "environment": jsonable_encoder(data_environment.dict()["layers"]),
+            "environment": data_environment.dict()["layers"],
+            "format": format,
+        }
+        logger.info(
+            f"Submitting raster analysis lambda request with payload: {payload}"
+        )
         response = await invoke_lambda(RASTER_ANALYSIS_LAMBDA_NAME, payload)
     except httpx.TimeoutException:
         raise HTTPException(500, "Query took too long to process.")
+    except (TypeError, ValueError) as e:
+        # Most likely a non-JSON-serializable value (e.g. a numpy scalar
+        # instead of a native int/float) slipped into the payload above,
+        # and either jsonable_encoder() or httpx's request encoder choked
+        # on it. Log the real exception so the underlying type is visible
+        # in the server logs rather than only surfacing as an opaque 500
+        # to the caller.
+        logger.exception(f"Failed to build/send raster analysis lambda request: {e}")
+        raise HTTPException(
+            500, "Could not construct request to raster analysis geoprocessor."
+        )
 
     # invalid response codes are reserved by Lambda specific issues (e.g. too many requests)
     if response.status_code >= 300:
