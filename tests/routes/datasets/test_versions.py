@@ -1,19 +1,22 @@
 from unittest.mock import patch
 from urllib.parse import urlparse
 
+import httpx
 import pytest
 from botocore.exceptions import ClientError
 from httpx import AsyncClient
 
+from app.crud import tasks
 from app.settings.globals import S3_ENTRYPOINT_URL
 from app.utils.aws import get_s3_client
-from tests import BUCKET, DATA_LAKE_BUCKET, GPKG_NAME, SHP_NAME
+from tests import BUCKET, DATA_LAKE_BUCKET, GPKG_NAME, PORT, SHP_NAME
 from tests.conftest import FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import (
     create_dataset,
     create_default_asset,
     dataset_metadata,
+    poll_jobs,
     version_metadata,
 )
 
@@ -467,7 +470,7 @@ async def test_version_post_append(async_client: AsyncClient):
         },
     }
 
-    await create_default_asset(
+    asset = await create_default_asset(
         dataset,
         version,
         dataset_payload=dataset_payload,
@@ -475,6 +478,13 @@ async def test_version_post_append(async_client: AsyncClient):
         async_client=async_client,
         execute_batch_jobs=True,
     )
+
+    existing_tasks = await tasks.get_tasks(asset["asset_id"])
+    existing_task_ids = {str(task.task_id) for task in existing_tasks}
+
+    # create_default_asset waits for its Batch jobs and verifies their callbacks.
+    # Clear those callbacks so the append job can be checked independently.
+    httpx.delete(f"http://localhost:{PORT}")
 
     response = await async_client.get(f"/dataset/{dataset}/{version}")
     assert response.status_code == 200
@@ -489,6 +499,18 @@ async def test_version_post_append(async_client: AsyncClient):
         },
     )
     assert response.status_code == 200
+
+    # The append endpoint schedules a real Batch job. Wait for it before this
+    # test exits so its callback cannot leak into the following test.
+    current_tasks = await tasks.get_tasks(asset["asset_id"])
+    append_task_ids = [
+        str(task.task_id)
+        for task in current_tasks
+        if str(task.task_id) not in existing_task_ids
+    ]
+    assert append_task_ids
+    status = await poll_jobs(append_task_ids, async_client=async_client)
+    assert status == "saved"
 
     # Test appending with invalid source uri
     bad_uri = "s3://doesnotexist"
