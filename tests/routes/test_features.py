@@ -1,8 +1,7 @@
 import json
+from datetime import date, timedelta
 
-import pendulum
 import pytest
-from pendulum.parsing.exceptions import ParserError
 
 from app.application import ContextEngine, db
 from tests import BUCKET, TSV_NAME
@@ -28,13 +27,29 @@ async def test_features(async_client, batch_client):
         for week in range(1, 54):
             try:
                 name = f"y{year}_w{week:02}"
-                start = pendulum.parse(f"{year}-W{week:02}").to_date_string()
-                end = pendulum.parse(f"{year}-W{week:02}").add(days=7).to_date_string()
+                # Use date.fromisocalendar, not pendulum.parse, deliberately -- pendulum
+                # 3.0.0 (required for Python 3.12) has a real, still-open upstream bug
+                # where its ISO
+                # week-date parser raises ParserError for arbitrary, otherwise-valid
+                # week numbers (e.g. "2018-W18"), not just the legitimate "this year
+                # has only 52 ISO weeks" case this try/except was written for -- see
+                # github.com/python-pendulum/pendulum/issues/839 and /916. The except
+                # below silently swallowed both cases identically, so a handful of
+                # partitions went missing with no visible error until a row destined
+                # for one of them failed to insert. date.fromisocalendar raises a
+                # plain ValueError only for the genuine case (week 53 in a 52-week
+                # year), so this loop no longer depends on pendulum's parser at all.
+                start_date = date.fromisocalendar(year, week, 1)
+                end_date = start_date + timedelta(days=7)
                 partition_schema.append(
-                    {"partition_suffix": name, "start_value": start, "end_value": end}
+                    {
+                        "partition_suffix": name,
+                        "start_value": start_date.isoformat(),
+                        "end_value": end_date.isoformat(),
+                    }
                 )
 
-            except ParserError:
+            except ValueError:
                 # Year has only 52 weeks
                 pass
 
