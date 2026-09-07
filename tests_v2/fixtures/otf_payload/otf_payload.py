@@ -32,7 +32,7 @@ environment = [
         "decode_expression": "",
         "encode_expression": "",
         "source_layer": "my_first_dataset__date_conf",
-        "calc": "floor(A / 10000).astype(uint8)",
+        "calc": "floor(A.astype(uint16) / 10000).astype(uint8)",
     },
 ]
 
