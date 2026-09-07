@@ -66,7 +66,7 @@ data "template_file" "container_definition" {
     pixetl_job_definition       = module.batch_job_queues.pixetl_job_definition_arn
     pixetl_job_queue            = module.batch_job_queues.pixetl_job_queue_arn
     on_demand_compute_job_queue = module.batch_job_queues.on_demand_compute_job_queue_arn
-    raster_analysis_lambda_name = "raster-analysis-tiled_raster_analysis-default"
+    raster_analysis_lambda_name = "raster-analysis-tiled_raster_analysis-${var.lambda_analysis_workspace}"
     raster_analysis_sfn_arn     = local.raster_analysis_lambda.raster_analysis_state_machine_arn
     service_url                 = local.service_url
     rw_api_url                  = var.rw_api_url
