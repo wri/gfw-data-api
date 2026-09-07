@@ -2,7 +2,7 @@
 
 set -e
 
-PYTHON_VERSION="3.10"
+PYTHON_VERSION="3.11"
 VIRTUAL_ENV="${VIRTUAL_ENV:-.venv_uv}"
 
 # Install Python and create the venv all in one go
