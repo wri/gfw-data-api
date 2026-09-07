@@ -589,8 +589,7 @@ async def _query_raster_lambda(
         payload = {
             "query": sql,
             "geometry": jsonable_encoder(geometry),
-            # "environment": jsonable_encoder(data_environment.dict()["layers"]),
-            "environment": data_environment.dict()["layers"],
+            "environment": jsonable_encoder(data_environment.dict()["layers"]),
             "format": format,
         }
         logger.info(
@@ -758,7 +757,7 @@ def _get_date_conf_derived_layers(
         DerivedLayer(
             source_layer=source_layer_name,
             name=source_layer_name.replace("__date_conf", "__date"),
-            calc="A % 10000",
+            calc="(A % 10000).astype(uint16)",
             no_data=no_data_val,
             decode_expression=decode_expression,
             encode_expression=encode_expression,
