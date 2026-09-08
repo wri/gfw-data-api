@@ -27,7 +27,7 @@ dependencies = [
     "httpx",
     "httpx-auth",
     "newrelic",
-    "numpy==2.3.3",
+    "numpy==2.2.6",
     "openapi_spec_validator",
     "orjson",
     "packaging",
