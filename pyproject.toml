@@ -3,7 +3,7 @@ name = "gfw-data-api"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = "~= 3.10.0"
+requires-python = "~= 3.12.13"
 dependencies = [
     "aenum",
     "aiofiles",
@@ -16,7 +16,7 @@ dependencies = [
     "boto3",
     "botocore",
     "email-validator",
-    "fastapi>=0.119.0",
+    "fastapi~=0.125.0",  # Last minor version compatible with Pydantic v1
     "geoalchemy2<0.12",
     "geojson",
     "gino",
@@ -27,22 +27,20 @@ dependencies = [
     "httpx",
     "httpx-auth",
     "newrelic",
-    "numpy<2",
+    "numpy==2.3.3",
     "openapi_spec_validator",
     "orjson",
     "packaging",
-    "pendulum<3",
+    "pendulum",
     "pglast",
     "psutil",
     "psycopg2",
     "pydantic<2",
     "pyproj",
     "python-multipart",
-    "retrying",
     "shapely",
     "sqlalchemy<1.4",
     "sqlalchemy-utils",
-    "starlette",
     "typer",
     "unidecode",
     "uvicorn[standard]",
@@ -58,8 +56,8 @@ dev = [
     "pytest-asyncio",
     "pytest-cov",
     "pytest-timeout",
-    "pytest-unordered>=0.6.1",
-    "rasterio==1.4.3",
+    "pytest-unordered~=0.8.0",
+    "rasterio==1.5.1",
 ]
 
 [tool.setuptools]
