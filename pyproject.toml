@@ -31,7 +31,6 @@ dependencies = [
     "openapi_spec_validator",
     "orjson",
     "packaging",
-    "pendulum",
     "pglast",
     "psutil",
     "psycopg2",

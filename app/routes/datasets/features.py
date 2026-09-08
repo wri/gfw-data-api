@@ -1,10 +1,10 @@
 """Explore data entries for a given dataset version (vector and tabular data
 only) in a classic RESTful way."""
 
+from datetime import date, timedelta
 from functools import partial
 from typing import Any, Dict, List, Tuple
 
-import pendulum
 import pyproj
 from asyncpg import UndefinedTableError
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -16,9 +16,9 @@ from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import TextClause
 
 from ...application import db
-from ...crud import assets, metadata as metadata_crud
+from ...crud import assets
+from ...crud import metadata as metadata_crud
 from ...models.orm.assets import Asset as ORMAsset
-from ...models.pydantic.asset_metadata import FieldMetadataOut
 from ...models.pydantic.features import FeaturesResponse
 from ...routes import DATE_REGEX, dataset_version_dependency, version_dependency
 
@@ -26,13 +26,11 @@ router = APIRouter()
 
 
 def default_start():
-    now = pendulum.now()
-    return now.subtract(weeks=1).to_date_string()
+    return (date.today() - timedelta(weeks=1)).isoformat()
 
 
 def default_end():
-    now = pendulum.now()
-    return now.to_date_string()
+    return date.today().isoformat()
 
 
 @router.get(
