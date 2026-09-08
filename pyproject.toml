@@ -40,6 +40,7 @@ dependencies = [
     "shapely",
     "sqlalchemy<1.4",
     "sqlalchemy-utils",
+    "starlette",
     "typer",
     "unidecode",
     "uvicorn[standard]",
