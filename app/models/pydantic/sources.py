@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from app.models.pydantic.base import StrictBaseModel
+from .base import StrictBaseModel
 
 
 class Source(StrictBaseModel):
