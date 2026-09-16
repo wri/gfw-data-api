@@ -1,5 +1,5 @@
 import csv
-from enum import Enum
+from enum import StrEnum
 from io import StringIO
 from itertools import groupby
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -102,7 +102,7 @@ class Global(AreaOfInterest):
     )
 
 
-class AnalysisStatus(str, Enum):
+class AnalysisStatus(StrEnum):
     saved = "saved"
     pending = "pending"
     failed = "failed"
