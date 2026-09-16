@@ -3,7 +3,7 @@ name = "gfw-data-api"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = "~= 3.10.0"
+requires-python = "~= 3.12.14"
 dependencies = [
     "aenum",
     "aiofiles",
@@ -16,34 +16,29 @@ dependencies = [
     "boto3",
     "botocore",
     "email-validator",
-    "fastapi>=0.119.0",
+    "fastapi~=0.125.0",  # Last version compatible with Pydantic v1
     "geoalchemy2<0.12",
     "geojson",
     "gino",
     "gino_starlette",
     "google-cloud-storage",
     "gunicorn",
-    "httpcore",
     "httpx",
     "httpx-auth",
     "newrelic",
-    "numpy<2",
+    "numpy==2.2.6",
     "openapi_spec_validator",
     "orjson",
-    "packaging",
-    "pendulum<3",
+    "pendulum==3.0.0",
     "pglast",
-    "psutil",
     "psycopg2",
     "pydantic<2",
     "pyproj",
     "python-multipart",
-    "retrying",
     "shapely",
     "sqlalchemy<1.4",
     "sqlalchemy-utils",
     "starlette",
-    "typer",
     "unidecode",
     "uvicorn[standard]",
 ]
@@ -54,12 +49,14 @@ dev = [
     "docker",
     "moto[awslambda, batch, ec2, s3, secretsmanager]<5",
     "pre-commit",
+    "psutil",
     "pytest",
-    "pytest-asyncio",
+    "pytest-asyncio<1",
     "pytest-cov",
     "pytest-timeout",
-    "pytest-unordered>=0.6.1",
-    "rasterio==1.4.3",
+    "pytest-unordered~=0.8.0",
+    "rasterio==1.5.1",
+    "typer"
 ]
 
 [tool.setuptools]
