@@ -1,6 +1,6 @@
 import json
 import traceback
-from enum import Enum
+from enum import StrEnum
 from typing import Dict
 from uuid import UUID
 
@@ -8,17 +8,13 @@ from fastapi.logger import logger
 
 import app.crud.datamart as datamart_crud
 from app.models.enum.geostore import GeostoreOrigin
-from app.models.pydantic.datamart import (
-    AnalysisStatus,
-    TreeCoverLossByDriverResult,
-    TreeCoverLossByDriverUpdate,
-)
+from app.models.pydantic.datamart import AnalysisStatus, TreeCoverLossByDriverResult
 from app.models.pydantic.geostore import GeostoreCommon
 from app.routes.datasets.queries import _query_dataset_json
 from app.utils.geostore import get_geostore
 
 
-class TCL_DRIVERS_DATASET(str, Enum):
+class TCL_DRIVERS_DATASET(StrEnum):
     TSC = "tsc_tree_cover_loss_drivers"
     WRI_GOOGLE = "wri_google_tree_cover_loss_drivers"
 
