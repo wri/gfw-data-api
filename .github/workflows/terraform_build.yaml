@@ -9,7 +9,7 @@ jobs:
     # builds and runs batch/universal_batch.dockerfile and
     # batch/pixetl.dockerfile (see ./scripts/test) on the same architecture
     # that will actually be deployed, natively.
-    runs-on: ${{ vars.ARCHITECTURE == 'x86_64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    runs-on: ${{ vars.ARCHITECTURE == 'x86_64' && 'ubuntu-26.04' || 'ubuntu-26.04-arm' }}
     strategy:
       fail-fast: false
       matrix:
@@ -32,7 +32,7 @@ jobs:
 
   coverage:
     needs: test
-    runs-on: "ubuntu-24.04"
+    runs-on: "ubuntu-26.04"
     steps:
       - uses: actions/checkout@v5
 
@@ -69,7 +69,7 @@ jobs:
     # So: this job always runs natively on x64. What DOES still follow
     # var.architecture is the  *target* of the image builds terraform
     # apply triggers.
-    runs-on: "ubuntu-24.04"
+    runs-on: "ubuntu-26.04"
     steps:
       - uses: actions/checkout@v5
 

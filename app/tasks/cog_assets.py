@@ -1,6 +1,6 @@
+import json
 from typing import Any, Callable, Coroutine, Dict
 from uuid import UUID
-import json
 
 from app.crud.assets import get_asset
 from app.models.enum.assets import AssetType
@@ -25,7 +25,6 @@ async def cog_asset(
     input_data: Dict[str, Any],
 ) -> ChangeLog:
     """Create a COG asset from a raster tile set asset."""
-
     # Create the Batch job to generate the COG
     creation_options: COGCreationOptions = COGCreationOptions(
         **input_data["creation_options"]
