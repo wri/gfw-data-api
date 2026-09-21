@@ -71,6 +71,7 @@ variable "git_sha" {
 
 variable "lambda_analysis_workspace" {
   type = string
+  default = "default"
 }
 
 variable "data_lake_max_vcpus" {
@@ -162,13 +163,46 @@ variable "api_gateway_url" {
   default     = ""
 }
 
-variable "data_lake_writer_instance_types" {
+variable "architecture" {
+  type        = string
+  description = "CPU architecture the whole stack (Batch and ECS/Fargate) targets: \"arm64\" or \"x86_64\". Any value other than \"x86_64\" is treated as \"arm64\". Deliberately has no default -- CI-driven applies always supply this explicitly via -var (see .github/workflows/terraform_build.yaml), sourced from the \"ARCHITECTURE\" GitHub Actions repository variable (Settings > Secrets and variables > Actions > Variables), not from anything in this repo's code. That's the one real place to change which architecture gets deployed. A default here would just be a second, easy-to-edit-and-have-nothing-happen place that looks authoritative but isn't, since CI's -var always overrides it regardless of what it's set to. Running terraform manually (outside CI) now requires passing -var=\"architecture=...\" explicitly too, e.g. via ./scripts/infra plan -var=\"architecture=x86_64\"."
+}
+
+variable "data_lake_writer_instance_types_arm" {
   type        = list(string)
-  description = "memory optimized EC2 instances with local NVMe SSDs for data lake writer batche queues"
+  description = "arm64 memory/compute optimized EC2 instances with local NVMe SSDs for the data lake writer and cogify batch queues, used when var.architecture = \"arm64\"."
+  default = [
+    "r8gd.24xlarge", "r8gd.48xlarge",
+    "r7gd.large", "r7gd.xlarge", "r7gd.2xlarge", "r7gd.4xlarge", "r7gd.8xlarge", "r7gd.12xlarge", "r7gd.16xlarge",
+    "r6gd.large", "r6gd.xlarge", "r6gd.2xlarge", "r6gd.4xlarge", "r6gd.8xlarge", "r6gd.12xlarge", "r6gd.16xlarge"
+  ]
+}
+
+variable "data_lake_writer_instance_types_x86" {
+  type        = list(string)
+  description = "x86_64 memory optimized EC2 instances with local NVMe SSDs for the data lake writer and cogify batch queues, used when var.architecture = \"x86_64\"."
   default = [
     "r6id.large", "r6id.xlarge", "r6id.2xlarge", "r6id.4xlarge", "r6id.8xlarge", "r6id.12xlarge", "r6id.16xlarge", "r6id.24xlarge",
     "r5ad.large", "r5ad.xlarge", "r5ad.2xlarge", "r5ad.4xlarge", "r5ad.8xlarge", "r5ad.12xlarge", "r5ad.16xlarge", "r5ad.24xlarge",
     "r5d.large", "r5d.xlarge", "r5d.2xlarge", "r5d.4xlarge", "r5d.8xlarge", "r5d.12xlarge", "r5d.16xlarge", "r5d.24xlarge"
+  ]
+}
+
+variable "aurora_writer_instance_types_arm" {
+  type        = list(string)
+  description = "arm64 instance types for the aurora writer compute environment, used when var.architecture = \"arm64\"."
+  default = [
+    "c7g.large", "c6g.large",
+    "m7g.large", "m6g.large"
+  ]
+}
+
+variable "aurora_writer_instance_types_x86" {
+  type        = list(string)
+  description = "x86_64 instance types for the aurora writer compute environment, used when var.architecture = \"x86_64\"."
+  default = [
+    "c6a.large", "c6i.large", "c5a.large", "c5.large", "c4.large",
+    "m6a.large", "m6i.large", "m5a.large", "m5.large", "m4.large"
   ]
 }
 
@@ -190,7 +224,7 @@ variable "api_gateway_usage_plans" {
 }
 
 variable "force_delete_ecr_repos" {
-  type = bool
+  type        = bool
   description = "Whether or not to delete non-empty ECR repos"
-  default = false
+  default     = false
 }
