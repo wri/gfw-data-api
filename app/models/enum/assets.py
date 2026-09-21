@@ -35,7 +35,6 @@ class AssetType(StrEnum):
 
 def default_asset_type(source_type: str, creation_option: Dict[str, Any]) -> str:
     """Get default asset type based on source type and creation options."""
-
     lat = creation_option.get("latitude", None)
     lng = creation_option.get("longitude", None)
 

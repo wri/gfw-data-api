@@ -19,7 +19,6 @@ from ...application import db
 from ...crud import assets
 from ...crud import metadata as metadata_crud
 from ...models.orm.assets import Asset as ORMAsset
-from ...models.pydantic.asset_metadata import FieldMetadataOut
 from ...models.pydantic.features import FeaturesResponse
 from ...routes import DATE_REGEX, dataset_version_dependency, version_dependency
 
@@ -89,7 +88,6 @@ async def get_features(
 
     Search radius various decreases for higher zoom levels.
     """
-
     dataset, version = dv
     try:
         feature_rows = await get_features_by_location(dataset, version, lat, lng, z)
@@ -176,7 +174,6 @@ async def _get_fields(dataset: str, version: str) -> List[Dict[str, Any]]:
 def _get_buffer_distance(zoom: int) -> float:
     """Returns a search buffer based on the precision of the current zoom
     level."""
-
     # Precision of vector tiles for different zoom levels
     # https://github.com/mapbox/tippecanoe#zoom-levels
     precision: Dict[int, float] = {

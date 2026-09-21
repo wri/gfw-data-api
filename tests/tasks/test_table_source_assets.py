@@ -253,18 +253,6 @@ async def test_table_source_asset_partition(batch_client, async_client: AsyncCli
         for week in range(1, 54):
             try:
                 name = f"y{year}_w{week:02}"
-                # date.fromisocalendar, not pendulum.parse, deliberately -- pendulum
-                # 3.0.0 (required for Python 3.12; 2.x depends on distutils, removed
-                # in 3.12) has a real, still-open upstream bug where its ISO
-                # week-date parser raises ParserError for arbitrary, otherwise-valid
-                # week numbers (e.g. "2018-W18"), not just the legitimate "this year
-                # has only 52 ISO weeks" case this try/except was written for -- see
-                # github.com/python-pendulum/pendulum/issues/839 and /916. The except
-                # below silently swallowed both cases identically, so a handful of
-                # partitions went missing with no visible error until a row destined
-                # for one of them failed to insert. date.fromisocalendar raises a
-                # plain ValueError only for the genuine case (week 53 in a 52-week
-                # year), so this loop no longer depends on pendulum's parser at all.
                 start_date = date.fromisocalendar(year, week, 1)
                 end_date = start_date + timedelta(days=7)
                 partition_schema.append(
@@ -470,18 +458,6 @@ async def test_table_source_asset_everything(batch_client, async_client: AsyncCl
         for week in range(1, 54):
             try:
                 name = f"y{year}_w{week:02}"
-                # date.fromisocalendar, not pendulum.parse, deliberately -- pendulum
-                # 3.0.0 (required for Python 3.12; 2.x depends on distutils, removed
-                # in 3.12) has a real, still-open upstream bug where its ISO
-                # week-date parser raises ParserError for arbitrary, otherwise-valid
-                # week numbers (e.g. "2018-W18"), not just the legitimate "this year
-                # has only 52 ISO weeks" case this try/except was written for -- see
-                # github.com/python-pendulum/pendulum/issues/839 and /916. The except
-                # below silently swallowed both cases identically, so a handful of
-                # partitions went missing with no visible error until a row destined
-                # for one of them failed to insert. date.fromisocalendar raises a
-                # plain ValueError only for the genuine case (week 53 in a 52-week
-                # year), so this loop no longer depends on pendulum's parser at all.
                 start_date = date.fromisocalendar(year, week, 1)
                 end_date = start_date + timedelta(days=7)
                 partition_schema.append(

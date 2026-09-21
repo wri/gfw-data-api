@@ -8,11 +8,7 @@ from fastapi.logger import logger
 
 import app.crud.datamart as datamart_crud
 from app.models.enum.geostore import GeostoreOrigin
-from app.models.pydantic.datamart import (
-    AnalysisStatus,
-    TreeCoverLossByDriverResult,
-    TreeCoverLossByDriverUpdate,
-)
+from app.models.pydantic.datamart import AnalysisStatus, TreeCoverLossByDriverResult
 from app.models.pydantic.geostore import GeostoreCommon
 from app.routes.datasets.queries import _query_dataset_json
 from app.utils.geostore import get_geostore
