@@ -7,6 +7,13 @@ WORK_DIR="/tmp/$AWS_BATCH_JOB_ID"
 mkdir -p "$WORK_DIR"
 pushd "${WORK_DIR}"
 
+echo "--------------"
+echo "SCRATCH DISK USAGE"
+echo "--------------"
+df -h / /tmp
+df -i / /tmp
+echo
+
 if [[ -n "${DEBUG}" ]]; then
 
   echo "--------------"
