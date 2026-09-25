@@ -190,19 +190,19 @@ variable "data_lake_writer_instance_types_x86" {
 
 variable "aurora_writer_instance_types_arm" {
   type        = list(string)
-  description = "arm64 instance types for the aurora writer compute environment, used when var.architecture = \"arm64\"."
+  description = "arm64 instance types with local NVMe SSDs for the aurora writer compute environment, used when var.architecture = \"arm64\"."
   default = [
-    "c7g.large", "c6g.large",
-    "m7g.large", "m6g.large"
+    "c7gd.large", "c6gd.large",
+    "m7gd.large", "m6gd.large"
   ]
 }
 
 variable "aurora_writer_instance_types_x86" {
   type        = list(string)
-  description = "x86_64 instance types for the aurora writer compute environment, used when var.architecture = \"x86_64\"."
+  description = "x86_64 instance types with local NVMe SSDs for the aurora writer compute environment, used when var.architecture = \"x86_64\"."
   default = [
-    "c6a.large", "c6i.large", "c5a.large", "c5.large", "c4.large",
-    "m6a.large", "m6i.large", "m5a.large", "m5.large", "m4.large"
+    "c6id.large", "c5d.large",
+    "m6id.large", "m5d.large"
   ]
 }
 

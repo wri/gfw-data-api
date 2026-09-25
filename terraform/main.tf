@@ -157,8 +157,7 @@ module "batch_aurora_writer" {
   subnets                  = data.terraform_remote_state.core.outputs.private_subnet_ids
   suffix                   = local.name_suffix
   tags                     = merge(local.tags, { Job = "Aurora Writer", })
-  use_ephemeral_storage    = false
-  ebs_volume_size          = 60
+  use_ephemeral_storage    = true
   compute_environment_name = "aurora_sql_writer"
   launch_type              = "EC2"
 }
