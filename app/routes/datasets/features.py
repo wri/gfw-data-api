@@ -18,7 +18,6 @@ from sqlalchemy.sql.elements import TextClause
 from ...application import db
 from ...crud import assets, metadata as metadata_crud
 from ...models.orm.assets import Asset as ORMAsset
-from ...models.pydantic.asset_metadata import FieldMetadataOut
 from ...models.pydantic.features import FeaturesResponse
 from ...routes import DATE_REGEX, dataset_version_dependency, version_dependency
 

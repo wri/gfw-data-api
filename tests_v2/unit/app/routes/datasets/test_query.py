@@ -522,8 +522,8 @@ async def test__get_data_environment_helper_called(
 def test_get_data_environment_sql_no_overrides():
     sql = _get_data_environment_sql({})
     print(sql)
-    assert re.sub("\s+", " ", sql.strip()) == re.sub(
-        "\s+",
+    assert re.sub(r"\s+", " ", sql.strip()) == re.sub(
+        r"\s+",
         " ",
         """
         SELECT
@@ -555,8 +555,8 @@ def test_get_data_environment_sql_overrides():
         {"umd_tree_cover_loss": "v1.8", "umd_glad_landsat_alerts": "v20220224"}
     )
 
-    assert re.sub("\s+", " ", sql.strip()) == re.sub(
-        "\s+",
+    assert re.sub(r"\s+", " ", sql.strip()) == re.sub(
+        r"\s+",
         " ",
         """
         SELECT

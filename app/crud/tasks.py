@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from asyncpg import ForeignKeyViolationError, UniqueViolationError
@@ -26,7 +26,7 @@ async def get_filtered_tasks_fn(asset_id):
         ORMTask.created_on
     )
 
-    async def paginated_assets(size: int = None, offset: int = 0) -> List[ORMTask]:
+    async def paginated_assets(size: Optional[int] = None, offset: int = 0) -> List[ORMTask]:
         return await query.limit(size).offset(offset).gino.load(ORMTask).all()
 
     return paginated_assets

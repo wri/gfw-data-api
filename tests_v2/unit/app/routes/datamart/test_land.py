@@ -1,3 +1,4 @@
+from typing import Dict, Any
 import uuid
 from unittest.mock import patch
 
@@ -12,7 +13,6 @@ from app.models.pydantic.datamart import (
     AnalysisStatus,
     GeostoreAreaOfInterest,
     TreeCoverLossByDriver,
-    TreeCoverLossByDriverUpdate,
 )
 from app.routes.datamart.land import _get_metadata, _get_resource_id
 from app.tasks.datamart.land import (
@@ -972,7 +972,7 @@ MOCK_RESULT_OLD_DRIVERS = [
 ]
 
 
-MOCK_RESOURCE = {
+MOCK_RESOURCE: Dict[str, Any] = {
     "status": "saved",
     "message": None,
     "result": {

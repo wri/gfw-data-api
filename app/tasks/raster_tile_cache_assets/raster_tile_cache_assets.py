@@ -215,7 +215,7 @@ async def raster_tile_cache_validator(
         raise HTTPException(status_code=404, detail=str(e))
     except DataError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
     if (source_asset.dataset != dataset) or (source_asset.version != version):
         message: str = (
             "Dataset and version of source asset must match dataset and "

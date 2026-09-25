@@ -96,7 +96,7 @@ async def test_raster_analysis_payload_shape(
         monkeypatch,
         pixel_meaning=pixel_meaning,
         no_data=no_data_value,
-    ) as version_name:
+    ):
 
         mock_invoke_lambda = AsyncMock(
             return_value=Response(200, json={"status": "success", "data": []})

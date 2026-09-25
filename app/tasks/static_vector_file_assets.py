@@ -21,7 +21,7 @@ async def static_vector_file_asset(
 ) -> ChangeLog:
     """Export Vector data to different file formats."""
 
-    options = {
+    options: Dict[str, Any] = {
         AssetType.shapefile: {
             "driver": VectorDrivers.shp,
             "extension": "shp",

@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Dict, List
+from typing import Annotated, Any, Dict, List, Tuple, cast, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from unidecode import unidecode
@@ -36,7 +36,7 @@ async def id_lookup(params: Annotated[AdminIDLookupQueryParams, Query()]):
         params.admin_source, params.admin_version
     )
 
-    names: List[str | None] = normalize_names(
+    names: Tuple[str, Optional[str], Optional[str]] = normalize_names(
         params.normalize_search, params.country, params.region, params.subregion
     )
 
@@ -57,10 +57,10 @@ async def id_lookup(params: Annotated[AdminIDLookupQueryParams, Query()]):
 
 def normalize_names(
     normalize_search: bool,
-    country: str | None,
+    country: str,
     region: str | None,
     subregion: str | None,
-) -> List[str | None]:
+) -> Tuple[str, Optional[str], Optional[str]]:
     """Turn any empty strings into Nones, enforces the admin level hierarchy,
     and optionally unaccents and decapitalizes names."""
     names: List[str | None] = []
@@ -78,7 +78,7 @@ def normalize_names(
             names.append(name)
         else:
             names.append(None)
-    return names
+    return cast(Tuple[str, Optional[str], Optional[str]], names)
 
 
 def determine_admin_level(

@@ -6,8 +6,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from fastapi import HTTPException, Request
-from jsonschema import ValidationError
-from pydantic import Field, root_validator, validator
+from pydantic import Field, ValidationError, root_validator, validator
 
 from app.models.pydantic.responses import Response
 
@@ -245,6 +244,7 @@ class TreeCoverLossByDriverResponse(Response):
         )
 
         if self.data.status == "saved":
+            assert self.data.result is not None
             for row in self.data.result.yearly_tree_cover_loss_by_driver:
                 wr.writerow(
                     [

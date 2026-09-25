@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union, get_args
 from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
@@ -90,6 +90,10 @@ class RasterTileSetMetadataOut(RasterTileSetMetadata, BaseORMRecord):
     id: UUID
     bands: List[RasterBandMetadata]
 
+    # Avoid conflicts on the Config class of each parent
+    class Config(StrictBaseModel.Config, BaseORMRecord.Config):
+        pass
+
 
 class RasterTileCacheMetadata(AssetBase):
     min_zoom: Optional[int]  # FIXME: Should this really be optional?
@@ -166,14 +170,17 @@ def asset_metadata_out(Metadata):
 
 
 AssetMetadataOutList = [
-    asset_metadata_out(Metadata) for Metadata in AssetMetadata.__args__
+    asset_metadata_out(Metadata) for Metadata in get_args(AssetMetadata)
 ]
 
 
-# Instantiating Union doesn't support list or spread arguments so instantiating one
-# with couple of the inputs and then setting its __args__ attr with all the parameters
-AssetMetadataOut = Union[AssetMetadataOutList[0], AssetMetadataOutList[1]]
-AssetMetadataOut.__setattr__("__args__", tuple(AssetMetadataOutList))
+# The Out models are created dynamically, so mypy can't see them. Treat the
+# Union as Any for type checking purposes.
+if TYPE_CHECKING:
+    AssetMetadataOut = Any
+else:
+    # Union of all the types in AssetMetadataOutList.
+    AssetMetadataOut = Union[tuple(AssetMetadataOutList)]
 
 
 class AssetMetadataResponse(Response):

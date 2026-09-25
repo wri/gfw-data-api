@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Callable, Coroutine, Dict, FrozenSet, Union
+from typing import Any, Callable, Coroutine, Dict, FrozenSet, Union, Tuple
 from uuid import UUID
 
 from ..application import ContextEngine
@@ -19,7 +19,7 @@ from .static_vector_tile_cache_assets import static_vector_tile_cache_asset
 
 Pipeline = Callable[[str, str, UUID, Dict[str, Any]], Coroutine[Any, Any, ChangeLog]]
 
-ASSET_PIPELINES: FrozenSet[AssetType] = frozenset(
+ASSET_PIPELINES: FrozenSet[Tuple[AssetType, Pipeline]] = frozenset(
     {
         AssetType.shapefile: static_vector_file_asset,
         AssetType.geopackage: static_vector_file_asset,
@@ -44,7 +44,7 @@ async def put_asset(
     dataset: str,
     version: str,
     input_data: Dict[str, Any],
-    constructor: FrozenSet[Union[AssetType, SourceType]] = ASSET_PIPELINES,
+    constructor: FrozenSet[Tuple[Union[AssetType | SourceType], Pipeline]] = ASSET_PIPELINES,
 ) -> None:
     """Call Asset Pipeline to actually create the data of the asset.
 
@@ -82,6 +82,7 @@ async def put_asset(
             )
         raise
 
+    status: str
     if log.status == ChangeLogStatus.success:
         status = AssetStatus.saved
     else:

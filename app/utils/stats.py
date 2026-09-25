@@ -1,6 +1,7 @@
 from typing import List, Optional, Union
 
 import numpy as np
+import numpy.typing as npt
 from pydantic import StrictFloat, StrictInt
 
 from app.models.pydantic.statistics import Histogram
@@ -10,7 +11,7 @@ def _reconstruct_edges(
     min_val: Union[StrictInt, float],
     max_val: Union[StrictInt, float],
     num_bins: StrictInt,
-) -> List[Union[StrictInt, float]]:
+) -> npt.NDArray[np.floating]:
     """Returns the reconstructed edges of a histogram."""
     return np.linspace(min_val, max_val, num=num_bins)
 
@@ -26,7 +27,7 @@ def _extract_vals(histo: Histogram) -> List[Union[StrictInt, StrictFloat]]:
     return [z for s in reconstructed_values for z in s]
 
 
-def _extract_bin_resolution(reconstructed_edges: List[Union[StrictInt, StrictFloat]]):
+def _extract_bin_resolution(reconstructed_edges: npt.NDArray[np.floating]) -> float:
     """Return the 'size' of a bin, assumes bins are uniformly spaced."""
     return reconstructed_edges[1] - reconstructed_edges[0]
 
