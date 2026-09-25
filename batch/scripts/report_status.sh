@@ -11,6 +11,15 @@ AUTH_HEADER="Authorization: Bearer $SERVICE_ACCOUNT_TOKEN"
 URL=${STATUS_URL}/${AWS_BATCH_JOB_ID}
 
 OUTPUT_FILE="/tmp/${AWS_BATCH_JOB_ID}_output.txt"
+WORK_DIR="/tmp/$AWS_BATCH_JOB_ID"
+
+cleanup() {
+  # Batch can reuse EC2 hosts between jobs. Always remove per-job scratch data,
+  # including when the command exits 137 and Batch will retry it.
+  rm -rf -- "$WORK_DIR"
+  rm -f -- "$OUTPUT_FILE"
+}
+trap cleanup EXIT
 
 # Source the virtualenv with all our Python packages
 . "${VENV_DIR}"/bin/activate
@@ -46,11 +55,7 @@ ESC_OUTPUT="$(cat $OUTPUT_FILE \
   | json_escape
 )"
 
-# If a process was killed involuntarily, we probably ran out of memory.
-# Exit with code 137 to trigger the retry logic. Better luck next time!
-if [ "$EXIT_CODE" -eq 137 ]; then
-    exit 137
-elif [ "$EXIT_CODE" -eq 0 ]; then
+if [ "$EXIT_CODE" -eq 0 ]; then
     STATUS="success"
     MESSAGE="Successfully ran command [ $ESC_COMMAND ]"
     DETAIL=""
@@ -81,15 +86,11 @@ echo "$(generate_payload)"
 CTYPE_HEADER="Content-Type:application/json"
 curl -s -X PATCH -H "${AUTH_HEADER}" -H "${CTYPE_HEADER}" -d "$(generate_payload)" "${URL}"
 
-# Try to clean up free space for potential other batch jobs on the same node
-set +e
-pushd /tmp
-WORK_DIR="/tmp/$AWS_BATCH_JOB_ID"
-rm -R "$WORK_DIR"
-rm "$OUTPUT_FILE"
-set -e
-
-if [ "$EXIT_CODE" -eq 0 ]; then
+# Preserve exit 137 so AWS Batch retry logic can distinguish an involuntary
+# kill. The EXIT trap above still removes this attempt's scratch files.
+if [ "$EXIT_CODE" -eq 137 ]; then
+    exit 137
+elif [ "$EXIT_CODE" -eq 0 ]; then
     exit 0
 else
     exit 1
