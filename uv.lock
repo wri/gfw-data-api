@@ -614,10 +614,7 @@ dependencies = [
 dev = [
     { name = "asgi-lifespan" },
     { name = "docker" },
-    { name = "geopandas" },
-    { name = "gfw-pixetl" },
     { name = "moto", extra = ["awslambda", "batch", "ec2", "s3"] },
-    { name = "pandas" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -625,7 +622,6 @@ dev = [
     { name = "pytest-timeout" },
     { name = "pytest-unordered" },
     { name = "rasterio" },
-    { name = "retrying" },
 ]
 
 [package.metadata]
@@ -677,10 +673,7 @@ requires-dist = [
 dev = [
     { name = "asgi-lifespan" },
     { name = "docker" },
-    { name = "geopandas" },
-    { name = "gfw-pixetl", git = "https://github.com/wri/gfw_pixetl.git?branch=develop" },
     { name = "moto", extras = ["awslambda", "batch", "ec2", "s3", "secretsmanager"], specifier = "<5" },
-    { name = "pandas", specifier = "<2.2" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -688,13 +681,7 @@ dev = [
     { name = "pytest-timeout" },
     { name = "pytest-unordered", specifier = ">=0.6.1" },
     { name = "rasterio", specifier = "==1.4.3" },
-    { name = "retrying" },
 ]
-
-[[package]]
-name = "gfw-pixetl"
-version = "0.3.1"
-source = { git = "https://github.com/wri/gfw_pixetl.git?branch=develop#54dd12f453ec734d0afba94a31d81b3d584b64d1" }
 
 [[package]]
 name = "gino"
