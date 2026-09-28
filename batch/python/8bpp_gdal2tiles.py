@@ -236,7 +236,7 @@ if filename:
         data = open(tmsfilename, "rb").read()
         try:
             j = json.loads(data.decode("utf-8"))
-        except:
+        except Exception:
             j = None
         if j is None:
             print("Cannot parse " + tmsfilename)
@@ -245,7 +245,7 @@ if filename:
             tms = TileMatrixSet.parse(j)
         except UnsupportedTileMatrixSet:
             continue
-        except:
+        except Exception:
             print("Cannot parse " + tmsfilename)
             continue
         tmsMap[tms.identifier] = tms

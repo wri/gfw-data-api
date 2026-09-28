@@ -1,3 +1,4 @@
+from typing import Dict, Any
 import csv
 import json
 from unittest.mock import patch
@@ -37,7 +38,7 @@ async def test_vector_tile_asset(
     source = SHP_NAME
 
     version = "v1.1.1"
-    input_data = {
+    input_data: Dict[str, Any] = {
         "creation_options": {
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{source}"],
@@ -216,7 +217,7 @@ async def test_vector_tile_asset_1x1_grid(
     dataset = "test"
 
     version = "v1.1.1"
-    input_data = {
+    input_data: Dict[str, Any] = {
         "creation_options": {
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],
@@ -312,7 +313,7 @@ async def test_vector_tile_asset_1x1_grid_include_tile_id(
     dataset = "test"
 
     version = "v1.1.1"
-    input_data = {
+    input_data: Dict[str, Any] = {
         "creation_options": {
             "source_type": "vector",
             "source_uri": [f"s3://{BUCKET}/{SHP_NAME}"],

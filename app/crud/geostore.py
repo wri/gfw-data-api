@@ -197,7 +197,7 @@ async def get_gadm_geostore_id(
     country_id: str,
     region_id: str | None = None,
     subregion_id: str | None = None,
-) -> str:
+) -> UUID:
     src_table = await get_versioned_dataset(admin_provider, admin_version)
     columns_etc: List[Column | Label] = [
         db.column("gfw_geostore_id"),

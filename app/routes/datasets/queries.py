@@ -354,6 +354,7 @@ async def query_dataset_list_post(
 
     if request.feature_collection:
         for feature in request.feature_collection.features:
+            assert feature.geometry is not None
             if (
                 feature.geometry.type != "Polygon"
                 and feature.geometry.type != "MultiPolygon"
@@ -370,7 +371,7 @@ async def query_dataset_list_post(
         dataset, default_asset.creation_options["pixel_meaning"]
     )
     grid = default_asset.creation_options["grid"]
-    sql = re.sub("from \w+", f"from {default_layer}", request.sql, flags=re.IGNORECASE)
+    sql = re.sub(r"from \w+", f"from {default_layer}", request.sql, flags=re.IGNORECASE)
     data_environment = await _get_data_environment(grid)
 
     input = {
@@ -568,7 +569,7 @@ async def _query_raster(
     # use default data type to get default raster layer for dataset
     default_layer = _get_default_layer(dataset, asset.creation_options["pixel_meaning"])
     grid = asset.creation_options["grid"]
-    sql = re.sub("from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
+    sql = re.sub(r"from \w+", f"from {default_layer}", sql, flags=re.IGNORECASE)
 
     return await _query_raster_lambda(
         geostore.geojson, sql, grid, format, delimiter, version_overrides

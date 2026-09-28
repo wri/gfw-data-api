@@ -57,4 +57,4 @@ def sanitize_batch_job_name(proposed_name: str) -> str:
 
 def chunk_list(data: List[Any], chunk_size: int = CHUNK_SIZE) -> List[List[Any]]:
     """Split list into chunks of fixed size."""
-    return [data[x : x + chunk_size] for x in range(0, len(data), chunk_size)]
+    return [data[x: x + chunk_size] for x in range(0, len(data), chunk_size)]
