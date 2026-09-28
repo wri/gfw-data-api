@@ -145,7 +145,7 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def batch_client():
+def batch_client(tmp_folder):
     services = ["ec2", "ecs", "logs", "iam", "batch"]
     aws_mock = AWSMock(*services)
 
@@ -267,10 +267,9 @@ def copy_fixtures():
         out.close()
 
 
-@pytest_asyncio.fixture(autouse=True)
-async def tmp_folder():
-    """Create TMP dir."""
-
+@pytest.fixture(scope="session", autouse=True)
+def tmp_folder():
+    """Create the shared ephemeral volume used by Moto Batch jobs."""
     curr_dir = os.path.dirname(__file__)
     tmp_dir = os.path.join(curr_dir, "fixtures", "tmp")
     os.makedirs(tmp_dir, exist_ok=True)
@@ -282,8 +281,8 @@ async def tmp_folder():
         pass
     yield
 
-    # clean up
-    shutil.rmtree(tmp_dir)
+    # Clean up only after the session-scoped Batch fixture has stopped.
+    shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 # @pytest.fixture(scope="session", autouse=True)
@@ -500,5 +499,6 @@ async def client_with_mocks(
 async def async_client(db_clean):
     """Async test client suitable for most use cases (mocks get_admin,
     get_manager, is_service_account, and API key code)"""
+
     async with client_with_mocks(True, True, False) as test_client:
         yield test_client
