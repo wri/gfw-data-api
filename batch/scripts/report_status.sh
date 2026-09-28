@@ -84,7 +84,12 @@ EOF
 echo "$(generate_payload)"
 
 CTYPE_HEADER="Content-Type:application/json"
-curl -s -X PATCH -H "${AUTH_HEADER}" -H "${CTYPE_HEADER}" -d "$(generate_payload)" "${URL}"
+curl --fail-with-body --show-error --silent \
+  -X PATCH \
+  -H "${AUTH_HEADER}" \
+  -H "${CTYPE_HEADER}" \
+  -d "$(generate_payload)" \
+  "${URL}"
 
 # Preserve exit 137 so AWS Batch retry logic can distinguish an involuntary
 # kill. The EXIT trap above still removes this attempt's scratch files.
