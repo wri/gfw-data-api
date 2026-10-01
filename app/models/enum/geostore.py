@@ -1,6 +1,6 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class GeostoreOrigin(str, Enum):
+class GeostoreOrigin(StrEnum):
     gfw = "gfw"
     rw = "rw"

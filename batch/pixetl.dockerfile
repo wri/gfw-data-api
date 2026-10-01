@@ -1,4 +1,10 @@
-FROM globalforestwatch/pixetl:v1.7.7
+FROM globalforestwatch/pixetl:v1.9.0b5
+
+# report_status.sh uses curl to report AWS Batch job status back to the API.
+# Install it explicitly rather than relying on the upstream PixETL image.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy scripts
 COPY ./batch/scripts/ /opt/scripts/

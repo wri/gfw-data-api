@@ -1,12 +1,12 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class ChangeLogStatusTaskIn(str, Enum):
+class ChangeLogStatusTaskIn(StrEnum):
     success = "success"
     failed = "failed"
 
 
-class ChangeLogStatus(str, Enum):
+class ChangeLogStatus(StrEnum):
     success = "success"
     failed = "failed"
     pending = "pending"

@@ -1,10 +1,10 @@
 """Explore data entries for a given dataset version (vector and tabular data
 only) in a classic RESTful way."""
 
+from datetime import date, timedelta
 from functools import partial
 from typing import Any, Dict, List, Tuple
 
-import pendulum
 import pyproj
 from asyncpg import UndefinedTableError
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -16,9 +16,9 @@ from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import TextClause
 
 from ...application import db
-from ...crud import assets, metadata as metadata_crud
+from ...crud import assets
+from ...crud import metadata as metadata_crud
 from ...models.orm.assets import Asset as ORMAsset
-from ...models.pydantic.asset_metadata import FieldMetadataOut
 from ...models.pydantic.features import FeaturesResponse
 from ...routes import DATE_REGEX, dataset_version_dependency, version_dependency
 
@@ -26,13 +26,11 @@ router = APIRouter()
 
 
 def default_start():
-    now = pendulum.now()
-    return now.subtract(weeks=1).to_date_string()
+    return (date.today() - timedelta(weeks=1)).isoformat()
 
 
 def default_end():
-    now = pendulum.now()
-    return now.to_date_string()
+    return date.today().isoformat()
 
 
 @router.get(
@@ -90,7 +88,6 @@ async def get_features(
 
     Search radius various decreases for higher zoom levels.
     """
-
     dataset, version = dv
     try:
         feature_rows = await get_features_by_location(dataset, version, lat, lng, z)
@@ -177,7 +174,6 @@ async def _get_fields(dataset: str, version: str) -> List[Dict[str, Any]]:
 def _get_buffer_distance(zoom: int) -> float:
     """Returns a search buffer based on the precision of the current zoom
     level."""
-
     # Precision of vector tiles for different zoom levels
     # https://github.com/mapbox/tippecanoe#zoom-levels
     precision: Dict[int, float] = {

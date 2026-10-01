@@ -79,10 +79,10 @@ class PostgresqlClientJob(Job):
 
     job_queue = AURORA_JOB_QUEUE
     job_definition = POSTGRESQL_CLIENT_JOB_DEFINITION
-    vcpus = 1
-    memory = 1500
-    attempts = 1
-    attempt_duration_seconds = DEFAULT_JOB_DURATION
+    vcpus: int = 1
+    memory: int = 1500
+    attempts: int = 1
+    attempt_duration_seconds: int = DEFAULT_JOB_DURATION
 
 
 class GdalPythonImportJob(Job):
@@ -94,10 +94,10 @@ class GdalPythonImportJob(Job):
 
     job_queue = AURORA_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
-    vcpus = 1
-    memory = 2500
-    attempts = 10
-    attempt_duration_seconds = DEFAULT_JOB_DURATION
+    vcpus: int = 1
+    memory: int = 2500
+    attempts: int = 10
+    attempt_duration_seconds: int = DEFAULT_JOB_DURATION
 
 
 class GdalPythonExportJob(Job):
@@ -106,10 +106,10 @@ class GdalPythonExportJob(Job):
 
     job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
-    vcpus = 1
-    memory = 15000
-    attempts = 1
-    attempt_duration_seconds = DEFAULT_JOB_DURATION
+    vcpus: int = 1
+    memory: int = 15000
+    attempts: int = 1
+    attempt_duration_seconds: int = DEFAULT_JOB_DURATION
 
 
 class TileCacheJob(Job):
@@ -117,23 +117,23 @@ class TileCacheJob(Job):
 
     job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = TILE_CACHE_JOB_DEFINITION
-    vcpus = max(int(MAX_CORES / 2), 1)
-    num_processes = max(int(MAX_CORES / 3), 1)
-    memory = max(int(MAX_MEM / 2), 1)
-    attempts = 4
+    vcpus: int = max(int(MAX_CORES / 2), 1)
+    num_processes: int = max(int(MAX_CORES / 3), 1)
+    memory: int = max(int(MAX_MEM / 2), 1)
+    attempts: int = 4
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
 
 
 class PixETLJob(Job):
-    """Use for raster transformations using PixETL."""
+    """Use for rasterizations and raster transformations using PixETL."""
 
     job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION
-    vcpus = MAX_CORES
-    memory = MAX_MEM
-    num_processes = max(int(MAX_CORES * 2 / 3), 1)
-    attempts = 10
-    attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
+    vcpus: int = MAX_CORES
+    memory: int = MAX_MEM
+    num_processes: int = max(int(MAX_CORES / 2), 1)
+    attempts: int = 10
+    attempt_duration_seconds: int = int(DEFAULT_JOB_DURATION * 1.5)
 
 
 class GDALCOGJob(Job):
@@ -142,11 +142,11 @@ class GDALCOGJob(Job):
 
     job_queue = ON_DEMAND_COMPUTE_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
-    vcpus = 16
-    memory = 128000
-    num_processes = 16
-    attempts = 5
-    attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
+    vcpus: int = 16
+    memory: int = 128000
+    num_processes: int = 16
+    attempts: int = 5
+    attempt_duration_seconds: int = int(DEFAULT_JOB_DURATION * 1.5)
 
 
 class GDALDEMJob(Job):
@@ -154,11 +154,11 @@ class GDALDEMJob(Job):
 
     job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = PIXETL_JOB_DEFINITION
-    vcpus = PIXETL_CORES
-    memory = PIXETL_MAX_MEM
-    num_processes = max(int(PIXETL_CORES / 2), 1)
-    attempts = 10
-    attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
+    vcpus: int = PIXETL_CORES
+    memory: int = PIXETL_MAX_MEM
+    num_processes: int = max(int(PIXETL_CORES / 2), 1)
+    attempts: int = 10
+    attempt_duration_seconds: int = int(DEFAULT_JOB_DURATION * 1.5)
 
 
 class GDAL2TilesJob(Job):
@@ -166,8 +166,8 @@ class GDAL2TilesJob(Job):
 
     job_queue = DATA_LAKE_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
-    vcpus = MAX_CORES
-    memory = MAX_MEM
-    num_processes = max(int(MAX_CORES / 2), 1)
-    attempts = 10
-    attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
+    vcpus: int = MAX_CORES
+    memory: int = MAX_MEM
+    num_processes: int = max(int(MAX_CORES / 2), 1)
+    attempts: int = 10
+    attempt_duration_seconds: int = int(DEFAULT_JOB_DURATION * 1.5)

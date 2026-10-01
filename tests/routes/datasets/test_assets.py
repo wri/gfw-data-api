@@ -15,7 +15,7 @@ from app.models.pydantic.jobs import GDAL2TilesJob, GDALDEMJob, PixETLJob
 from app.settings.globals import TILE_CACHE_BUCKET
 from app.tasks.utils import sanitize_batch_job_name
 from app.utils.aws import get_s3_client
-from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME
+from tests import BUCKET, DATA_LAKE_BUCKET, SHP_NAME, session
 from tests.conftest import FAKE_FLOAT_DATA_PARAMS, FAKE_INT_DATA_PARAMS
 from tests.tasks import MockCloudfrontClient
 from tests.utils import (
@@ -79,6 +79,84 @@ async def create_test_default_asset(
     # Flush requests list so we're starting fresh
     httpx.delete(f"http://localhost:{httpd.server_port}")
     return default_asset_id
+
+
+async def create_seeded_raster_tile_set(
+    dataset, version, primary_grid, pixel_meaning, async_client
+):
+    """Create a saved raster tile set without running the prerequisite PixETL
+    job."""
+    raster_version_payload = {
+        "creation_options": {
+            "source_type": "raster",
+            "source_uri": [
+                f"s3://{DATA_LAKE_BUCKET}/{FAKE_INT_DATA_PARAMS['prefix']}/tiles.geojson"
+            ],
+            "source_driver": "GeoTIFF",
+            "data_type": FAKE_INT_DATA_PARAMS["dtype_name"],
+            "no_data": FAKE_INT_DATA_PARAMS["no_data"],
+            "pixel_meaning": pixel_meaning,
+            "grid": primary_grid,
+            "resampling": "nearest",
+            "overwrite": True,
+        },
+    }
+
+    asset = await create_default_asset(
+        dataset,
+        version,
+        version_payload=raster_version_payload,
+        async_client=async_client,
+        execute_batch_jobs=False,
+    )
+
+    # The tile-cache workflow starts from an existing, successfully-created
+    # raster tile set. Seed that prerequisite state using the test writer
+    # connection rather than exercising the application's status-transition
+    # callbacks (which are intentionally outside this test's scope).
+    with session() as db:
+        db.execute(
+            "UPDATE assets SET status = 'saved' WHERE asset_id = :asset_id",
+            {"asset_id": asset["asset_id"]},
+        )
+        db.execute(
+            "UPDATE versions SET status = 'saved' "
+            "WHERE dataset = :dataset AND version = :version",
+            {"dataset": dataset, "version": version},
+        )
+        db.commit()
+
+    source_prefix = FAKE_INT_DATA_PARAMS["prefix"]
+    target_prefix = (
+        f"{dataset}/{version}/raster/epsg-4326/{primary_grid}/"
+        f"{pixel_meaning}/geotiff"
+    )
+    tile_name = "0000000000-0000000000.tif"
+
+    s3_client.copy_object(
+        Bucket=DATA_LAKE_BUCKET,
+        CopySource={
+            "Bucket": DATA_LAKE_BUCKET,
+            "Key": f"{source_prefix}/{tile_name}",
+        },
+        Key=f"{target_prefix}/{tile_name}",
+    )
+
+    source_tiles = s3_client.get_object(
+        Bucket=DATA_LAKE_BUCKET, Key=f"{source_prefix}/tiles.geojson"
+    )["Body"].read()
+    tiles_geojson = json.loads(source_tiles)
+    tiles_geojson["features"][0]["properties"][
+        "name"
+    ] = f"/vsis3/{DATA_LAKE_BUCKET}/{target_prefix}/{tile_name}"
+    s3_client.put_object(
+        Bucket=DATA_LAKE_BUCKET,
+        Key=f"{target_prefix}/tiles.geojson",
+        Body=json.dumps(tiles_geojson).encode(),
+        ContentType="application/geo+json",
+    )
+
+    return asset["asset_id"]
 
 
 @pytest.mark.asyncio
@@ -526,12 +604,39 @@ symbology_checks = [
 # The 5th case in symbology_checks[] is not currently working (see GTC-2735).
 @pytest.mark.parametrize("checks", symbology_checks[:4])
 @pytest.mark.asyncio
-async def test_raster_tile_cache_asset(checks, async_client, batch_client, httpd):
-    """"""
+async def test_raster_tile_cache_asset(checks, async_client, batch_client):
+    """Test tile-cache behavior from an already-created raster tile set."""
     _, logs = batch_client
 
-    # Add a dataset, version, and default (raster tile set) asset
     dataset = "test_raster_tile_cache_asset"
+    version = "v1.0.0"
+    primary_grid = "90/27008"
+    pixel_meaning = "date_conf"
+
+    default_asset_id = await create_seeded_raster_tile_set(
+        dataset, version, primary_grid, pixel_meaning, async_client
+    )
+
+    await _test_raster_tile_cache(
+        dataset,
+        version,
+        default_asset_id,
+        async_client,
+        logs,
+        min_zoom=0,
+        max_zoom=0,
+        max_static_zoom=0,
+        **checks,
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.asyncio
+async def test_raster_tile_cache_asset_end_to_end(async_client, batch_client, httpd):
+    """Smoke-test the complete PixETL-to-raster-tile-cache workflow."""
+    _, logs = batch_client
+
+    dataset = "test_raster_tile_cache_asset_e2e"
     version = "v1.0.0"
     primary_grid = "90/27008"
     pixel_meaning = "date_conf"
@@ -546,7 +651,7 @@ async def test_raster_tile_cache_asset(checks, async_client, batch_client, httpd
         default_asset_id,
         async_client,
         logs,
-        **checks,
+        **symbology_checks[0],
     )
 
 
@@ -558,8 +663,13 @@ async def _test_raster_tile_cache(
     logs,
     wm_tile_set_assets,
     symbology,
+    min_zoom=0,
+    max_zoom=2,
+    max_static_zoom=1,
 ):
-    pixetl_output_files_prefix = f"{dataset}/{version}/raster/epsg-3857/zoom_1"
+    pixetl_output_files_prefix = (
+        f"{dataset}/{version}/raster/epsg-3857/zoom_{max_static_zoom}"
+    )
     pixetl_test_files = [
         "geotiff/extent.geojson",
         "geotiff/tiles.geojson",
@@ -577,9 +687,9 @@ async def _test_raster_tile_cache(
         "is_managed": True,
         "creation_options": {
             "source_asset_id": default_asset_id,
-            "min_zoom": 0,
-            "max_zoom": 2,
-            "max_static_zoom": 1,
+            "min_zoom": min_zoom,
+            "max_zoom": max_zoom,
+            "max_static_zoom": max_static_zoom,
             "symbology": symbology,
             "implementation": symbology["type"],
         },
@@ -646,9 +756,11 @@ async def _test_raster_tile_cache(
     #     max(max_vals) > 0
     # ), f"There should be at least one band value larger than 0. Values: {max_vals}"
 
-    check_s3_file_present(
-        TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/1/1/0.png"]
-    )
+    if max_static_zoom >= 1:
+        check_s3_file_present(
+            TILE_CACHE_BUCKET,
+            [f"{dataset}/{version}/{symbology['type']}/1/1/0.png"],
+        )
     check_s3_file_present(
         TILE_CACHE_BUCKET, [f"{dataset}/{version}/{symbology['type']}/0/0/0.png"]
     )
@@ -959,13 +1071,15 @@ async def test_asset_float(async_client, batch_client, httpd):
             "uint16",
             0,
             None,
-            [
-                sanitize_batch_job_name(
-                    f"{dataset}_{version}_{pixel_meaning}_gradient_{i+1}"
-                )
-            ]
-            if i < max_zoom_levels
-            else None,
+            (
+                [
+                    sanitize_batch_job_name(
+                        f"{dataset}_{version}_{pixel_meaning}_gradient_{i + 1}"
+                    )
+                ]
+                if i < max_zoom_levels
+                else None
+            ),
         )
         for i in range(0, max_zoom_levels + 1)
     }
@@ -1005,7 +1119,6 @@ async def test_asset_float(async_client, batch_client, httpd):
 @pytest.mark.asyncio
 async def test_raster_asset_payloads_vector_source(async_client):
     """Test creating various raster assets based on vector input."""
-
     # Add a dataset, version, and default asset
     dataset = "vector_test"
     version = "v20200626"
