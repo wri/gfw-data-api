@@ -17,10 +17,9 @@ locals {
   }, local.tags)
   name_suffix                  = terraform.workspace == "default" ? "" : "-${terraform.workspace}"
   project                      = "gfw-data-api"
-  aurora_instance_class        = data.terraform_remote_state.core.outputs.aurora_cluster_instance_class
   push_script_for_architecture = "${path.root}/scripts/buildx_push_${var.architecture == "x86_64" ? "amd64" : "arm64"}.sh"
   hash_script_for_architecture = "${path.root}/scripts/hash_${var.architecture == "x86_64" ? "amd64" : "arm64"}.sh"
-  aurora_max_vcpus             = local.aurora_instance_class == "db.t3.medium" ? 2 : local.aurora_instance_class == "db.r6g.large" ? 2 : local.aurora_instance_class == "db.r6g.xlarge" ? 4 : local.aurora_instance_class == "db.r6g.2xlarge" ? 8 : local.aurora_instance_class == "db.r6g.4xlarge" ? 16 : local.aurora_instance_class == "db.r6g.8xlarge" ? 32 : local.aurora_instance_class == "db.r6g.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.large" ? 2 : local.aurora_instance_class == "db.r5.xlarge" ? 4 : local.aurora_instance_class == "db.r5.2xlarge" ? 8 : local.aurora_instance_class == "db.r5.4xlarge" ? 16 : local.aurora_instance_class == "db.r5.8xlarge" ? 32 : local.aurora_instance_class == "db.r5.12xlarge" ? 48 : local.aurora_instance_class == "db.r5.16xlarge" ? 64 : local.aurora_instance_class == "db.r5.24xlarge" ? 96 : ""
+  aurora_writer_max_vcpus      = 2
   service_url                  = var.environment == "dev" ? "http://${local.lb_dns_name}:${data.external.generate_port[0].result["port"]}" : var.service_url
   # The container_registry module only pushes a new Docker image if the docker hash
   # computed by its hash.sh script has changed. So, we make the container tag exactly
@@ -148,7 +147,7 @@ module "batch_aurora_writer" {
   ]
   instance_types = local.aurora_instance_types
   key_pair       = var.key_pair
-  max_vcpus      = local.aurora_max_vcpus
+  max_vcpus      = local.aurora_writer_max_vcpus
   project        = local.project
   security_group_ids = [
     data.terraform_remote_state.core.outputs.default_security_group_id,
@@ -244,7 +243,7 @@ module "batch_job_queues" {
     data.terraform_remote_state.core.outputs.secrets_postgresql-writer_policy_arn,
     data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_policy_arn
   ]
-  aurora_max_vcpus = local.aurora_max_vcpus
+  aurora_max_vcpus = local.aurora_writer_max_vcpus
   gcs_secret       = data.terraform_remote_state.core.outputs.secrets_read-gfw-gee-export_arn
 }
 
