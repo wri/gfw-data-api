@@ -356,7 +356,13 @@ def src_table(dataset: str, version: str) -> Table:
 
 
 def get_sql(
-    dataset: str, version: str, fields: List[str], include_tile_id: bool, grid_id: str, tcl: bool, glad: bool
+    dataset: str,
+    version: str,
+    fields: List[str],
+    include_tile_id: bool,
+    grid_id: str,
+    tcl: bool,
+    glad: bool,
 ) -> Select:
     """Generate SQL statement."""
 
@@ -370,7 +376,7 @@ def get_sql(
         columns.append(literal_column(f"'{grid_id}'").label("tile_id"))
 
     sql: Select = (
-        select(columns + [tcl_column, glad_column, geom_column])
+        select(*(columns + [tcl_column, glad_column, geom_column]))
         .select_from(src_table(dataset, version).alias("t"))
         .select_from(table("gfw_grid_1x1").alias("g"))
         .where(intersect_filter)
@@ -382,7 +388,11 @@ def get_sql(
 
 
 async def run(
-    loop: AbstractEventLoop, dataset: str, version: str, fields: List[str], include_tile_id: bool
+    loop: AbstractEventLoop,
+    dataset: str,
+    version: str,
+    fields: List[str],
+    include_tile_id: bool,
 ) -> None:
     async def copy_tiles(i: int, tile: Tuple[str, bool, bool]) -> None:
         if i == 0:
@@ -417,7 +427,7 @@ async def run(
                             include_tile_id,
                             grid_id,
                             tcl,
-                            glad
+                            glad,
                         )
                     ),
                     output=output,
@@ -459,8 +469,10 @@ if __name__ == "__main__":
         "--column_names", "-C", type=str, nargs="+", help="Column names to include"
     )
     parser.add_argument(
-        "--include_tile_id", action='store_true', help="Include tile_id in the output"
+        "--include_tile_id", action="store_true", help="Include tile_id in the output"
     )
     args = parser.parse_args()
     loop: AbstractEventLoop = asyncio.get_event_loop()
-    loop.run_until_complete(run(loop, args.dataset, args.version, args.column_names, args.include_tile_id))
+    loop.run_until_complete(
+        run(loop, args.dataset, args.version, args.column_names, args.include_tile_id)
+    )
