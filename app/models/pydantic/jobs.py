@@ -143,7 +143,7 @@ class GDALCOGJob(Job):
     job_queue = ON_DEMAND_COMPUTE_JOB_QUEUE
     job_definition = GDAL_PYTHON_JOB_DEFINITION
     vcpus = 16
-    memory = 128000
+    memory = 160000
     num_processes = 16
     attempts = 5
     attempt_duration_seconds = int(DEFAULT_JOB_DURATION * 1.5)
