@@ -25,7 +25,7 @@ depends_on = None
 def parse_resolution(resolution_str):
     if resolution_str is None:
         return None
-    resolution_str = re.sub("\s+", "", resolution_str)
+    resolution_str = re.sub(r"\s+", "", resolution_str)
     units = ["degrees", "km", "meter", "hectare", "m"]
     if all(unit not in resolution_str for unit in units):
         return None

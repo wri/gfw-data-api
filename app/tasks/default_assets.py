@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, FrozenSet, Optional
+from typing import Any, Dict, FrozenSet, Optional, Tuple, Callable, Coroutine
 from typing.io import IO
 from uuid import UUID
 
@@ -8,7 +8,6 @@ from ..crud import assets, versions
 from ..models.enum.assets import default_asset_type
 from ..models.enum.change_log import ChangeLogStatus
 from ..models.enum.sources import SourceType
-from ..models.pydantic.asset_metadata import asset_metadata_factory
 from ..models.pydantic.assets import AssetTaskCreate
 from ..models.pydantic.change_log import ChangeLog
 from ..models.pydantic.creation_options import creation_option_factory
@@ -19,17 +18,16 @@ from .raster_tile_set_assets import raster_tile_set_asset
 from .table_source_assets import append_table_source_asset, table_source_asset
 from .vector_source_assets import append_vector_source_asset, vector_source_asset
 
-# WRT type, these look more to me like
-# FrozenSet[Tuple[SourceType, Coroutine[Any, Any, ChangeLog]]
-# but I cannot get PyCharm to agree.
-DEFAULT_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
+Pipeline = Callable[[str, str, UUID, Dict[str, Any]], Coroutine[Any, Any, ChangeLog]]
+
+DEFAULT_ASSET_PIPELINES: FrozenSet[Tuple[SourceType, Pipeline]] = frozenset(
     {
         SourceType.vector: vector_source_asset,
         SourceType.table: table_source_asset,
         SourceType.raster: raster_tile_set_asset,
     }.items()
 )
-DEFAULT_APPEND_ASSET_PIPELINES: FrozenSet[SourceType] = frozenset(
+DEFAULT_APPEND_ASSET_PIPELINES: FrozenSet[Tuple[SourceType, Pipeline]] = frozenset(
     {
         SourceType.table: append_table_source_asset,
         SourceType.vector: append_vector_source_asset,

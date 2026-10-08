@@ -11,7 +11,7 @@ from gino_starlette import Gino, GinoEngine
 # Explicitly register the gino asyncpg dialect with SQLAlchemy
 # This ensures it's available before any database connections are attempted
 from sqlalchemy.dialects import registry
-import gino.dialects.asyncpg
+import gino.dialects.asyncpg  # noqa: F401
 registry.register("asyncpg", "gino.dialects.asyncpg", "AsyncpgDialect")
 registry.register("postgresql.asyncpg", "gino.dialects.asyncpg", "AsyncpgDialect")
 

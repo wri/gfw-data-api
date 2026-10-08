@@ -1,7 +1,7 @@
 import json
 import traceback
 from enum import Enum
-from typing import Dict
+from typing import Dict, Any, Optional
 from uuid import UUID
 
 from fastapi.logger import logger
@@ -11,7 +11,6 @@ from app.models.enum.geostore import GeostoreOrigin
 from app.models.pydantic.datamart import (
     AnalysisStatus,
     TreeCoverLossByDriverResult,
-    TreeCoverLossByDriverUpdate,
 )
 from app.models.pydantic.geostore import GeostoreCommon
 from app.routes.datasets.queries import _query_dataset_json
@@ -68,7 +67,7 @@ async def compute_tree_cover_loss_by_driver(
 ):
 
     try:
-        specified_tcl_drivers_config = None
+        specified_tcl_drivers_config: Optional[Dict[str, Any]] = None
         for tcl_drivers_dataset in (
             TCL_DRIVERS_DATASET.TSC,
             TCL_DRIVERS_DATASET.WRI_GOOGLE,
@@ -78,6 +77,7 @@ async def compute_tree_cover_loss_by_driver(
                     tcl_drivers_dataset
                 ]
 
+        assert specified_tcl_drivers_config is not None
         logger.info(
             f"Computing tree cover loss by driver for resource {resource_id} with geostore {geostore_id} and canopy cover {canopy_cover}"
         )

@@ -70,6 +70,10 @@ class DatasetMetadata(CommonMetadata):
 class DatasetMetadataOut(DatasetMetadata, BaseRecord):
     id: UUID
 
+    # Avoid conflicts on the Config class of each parent
+    class Config(DatasetMetadata.Config, BaseRecord.Config):
+        pass
+
 
 class DatasetMetadataIn(DatasetMetadata):
     pass

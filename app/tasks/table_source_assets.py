@@ -43,7 +43,7 @@ async def table_source_asset(
         creation_options.delimiter.encode(
             "unicode_escape"
         ).decode(),  # Need to escape special characters such as TAB for batch job payload
-        *chain.from_iterable(["-s", uri] for uri in source_uris[:5]), # '5' is arbitrary.
+        *chain.from_iterable(["-s", uri] for uri in source_uris[:5]),  # '5' is arbitrary.
     ]
     if creation_options.table_schema:
         command.extend(

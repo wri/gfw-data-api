@@ -1,7 +1,8 @@
 from .base import db
 
 
-class AssetMetadata(db.Model):
+# Use same '# type: ignore' that orm/base.py uses.
+class AssetMetadata(db.Model):  # type: ignore
     __tablename__ = "asset_metadata"
 
     id = db.Column(db.UUID, primary_key=True)
@@ -20,7 +21,7 @@ class AssetMetadata(db.Model):
     tags = db.Column(db.ARRAY(db.String))
 
 
-class FieldMetadata(db.Model):
+class FieldMetadata(db.Model):  # type: ignore
     __tablename__ = "field_metadata"
 
     asset_metadata_id = db.Column(
@@ -42,7 +43,7 @@ class FieldMetadata(db.Model):
     is_filter = db.Column(db.Boolean, default=True)
 
 
-class RasterBandMetadata(db.Model):
+class RasterBandMetadata(db.Model):  # type: ignore
     __tablename__ = "raster_band_metadata"
 
     asset_metadata_id = db.Column(
