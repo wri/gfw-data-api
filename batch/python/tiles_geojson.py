@@ -1,7 +1,7 @@
 import json
 import math
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 from geojson import Feature, FeatureCollection
 from pyproj import CRS, Transformer
@@ -78,7 +78,7 @@ def process_file(file_path: str) -> Dict[str, Any]:
     """Run gdalinfo and extract metadata for a single file."""
     print(f"Running gdalinfo on {file_path}")
     try:
-        stdout,stderr = run_gdal_subcommand(
+        stdout, stderr = run_gdal_subcommand(
             ["gdalinfo", "-json", file_path],
         )
     except GDALError as e:
@@ -90,7 +90,7 @@ def process_file(file_path: str) -> Dict[str, Any]:
 
 def generate_geojsons(
     geotiffs: List[str],
-    max_workers: int = None
+    max_workers: Optional[int] = None
 ) -> Tuple[FeatureCollection, FeatureCollection]:
     """Generate tiles.geojson and extent.geojson files."""
     features = []

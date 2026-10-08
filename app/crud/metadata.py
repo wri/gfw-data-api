@@ -188,7 +188,7 @@ async def update_asset_metadata(asset_id: UUID, **data) -> ORMAssetMetadata:
     if data:
         await asset_metadata.update(**data).apply()
 
-    bands_metadata = []
+    bands_metadata: List[ORMRasterBandMetadata] = []
     if bands:
         for band in bands:
             try:

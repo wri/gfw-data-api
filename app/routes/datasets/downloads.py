@@ -397,6 +397,7 @@ async def _check_downloadability(dataset, version):
 
 
 async def get_aoi_geostore_common(aoi: AreaOfInterest):
+    geostore: Optional[GeostoreCommon] = None
     if aoi.type == "admin":
         admin_geostore = await build_gadm_geostore(
             aoi.provider,
@@ -416,7 +417,7 @@ async def get_aoi_geostore_common(aoi: AreaOfInterest):
         )
     else:
         geostore_id = await aoi.get_geostore_id()
-        geostore: Optional[GeostoreCommon] = await get_geostore(
+        geostore = await get_geostore(
             geostore_id, GeostoreOrigin.rw
         )
 

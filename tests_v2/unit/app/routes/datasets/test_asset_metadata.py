@@ -1,15 +1,12 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.authentication import token
-from app.authentication.token import get_manager, get_user
+from app.authentication.token import get_user
 from app.crud import assets as assets_crud
 from app.main import app as appmain
 from tests_v2.utils import (
-    get_admin_mocked,
     get_manager_mocked,
     get_user_mocked,
-    raises_401,
 )
 
 

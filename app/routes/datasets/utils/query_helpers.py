@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, cast
+from typing import Any, Iterable, List, Optional, Set, Tuple, cast
 from urllib.parse import unquote
 
 from fastapi import HTTPException
@@ -78,7 +78,7 @@ FORBIDDEN_FUNCTION_NAMES: Set[str] = {
 }
 
 
-def _has_only_one_statement(parsed: List[Dict[str, Any]]) -> None:
+def _has_only_one_statement(parsed: Tuple[RawStmt]) -> None:
     if len(parsed) != 1:
         raise HTTPException(
             status_code=400, detail="Must use exactly one SQL statement."
@@ -118,7 +118,7 @@ def _no_subqueries(parsed: Tuple[RawStmt]) -> None:
             raise HTTPException(status_code=400, detail="Must not use sub queries.")
 
 
-def _no_forbidden_functions(parsed: List[Dict[str, Any]]) -> None:
+def _no_forbidden_functions(parsed: Tuple[RawStmt]) -> None:
     function_names = _get_function_names(FuncCall, parsed)
 
     for function_name in function_names:
@@ -334,7 +334,7 @@ async def scrutinize_sql(
     """
 
     try:
-        parsed = parse_sql(unquote(sql))
+        parsed: Tuple[RawStmt] = parse_sql(unquote(sql))
     except ParseError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
