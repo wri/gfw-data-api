@@ -1,5 +1,5 @@
-from app.application import db
-from app.models.orm.base import Base
+from ...application import db
+from .base import Base
 
 
 class ApiKey(Base):
