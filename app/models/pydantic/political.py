@@ -3,9 +3,9 @@ from typing import List, Optional
 from fastapi.params import Query
 from pydantic import Field, root_validator
 
-from app.models.pydantic.base import StrictBaseModel
-from app.models.pydantic.responses import Response
-from app.settings.globals import ENV, per_env_admin_boundary_versions
+from .base import StrictBaseModel
+from .responses import Response
+from ...settings.globals import ENV, per_env_admin_boundary_versions
 
 
 class AdminIDLookupQueryParams(StrictBaseModel):

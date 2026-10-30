@@ -61,24 +61,6 @@ class PartitionType(str, Enum):
     range = "range"
 
 
-class PGType(str, Enum):
-    bigint = "bigint"
-    boolean = "boolean"
-    character_varying = "character varying"
-    date = "date"
-    double_precision = "double precision"
-    geometry = "geometry"
-    integer = "integer"
-    jsonb = "jsonb"
-    numeric = "numeric"
-    smallint = "smallint"
-    text = "text"
-    time = "time"
-    timestamp = "timestamp"
-    uuid = "uuid"
-    xml = "xml"
-
-
 class ColorMapType(str, Enum):
     discrete = "discrete"
     discrete_intensity = "discrete_intensity"
