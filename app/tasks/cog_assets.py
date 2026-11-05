@@ -86,6 +86,7 @@ async def create_cogify_job(
         else creation_options.resampling.value
     )
 
+    assert creation_options.block_size is not None
     command = [
         "cogify.sh",
         "-s",
@@ -113,7 +114,7 @@ async def create_cogify_job(
         f"COGify_{dataset}_{version}_{creation_options.implementation}"
     )
 
-    kwargs = dict()
+    kwargs: Dict[str, Any] = dict()
 
     return GDALCOGJob(
         dataset=dataset,

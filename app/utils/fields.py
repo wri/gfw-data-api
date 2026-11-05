@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ..crud.assets import get_default_asset
 from ..crud.metadata import get_asset_fields_dicts
@@ -23,13 +23,15 @@ async def get_field_attributes(
         if field["is_feature_info"]
     }
 
-    if (
-        "field_attributes" in creation_options.__fields__
-        and creation_options.field_attributes
-    ):
+    # Only the static vector creation options (which specify field_attributes as a
+    # list of field names) are passed to this function.
+    field_names: Optional[List[str]] = getattr(
+        creation_options, "field_attributes", None
+    )
+    if field_names:
         asset_field_attributes = [
             name_to_feature_fields[field_name]
-            for field_name in creation_options.field_attributes
+            for field_name in field_names
             if field_name in name_to_feature_fields
         ]
     else:

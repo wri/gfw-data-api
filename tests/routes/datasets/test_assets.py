@@ -961,7 +961,7 @@ async def test_asset_float(async_client, batch_client, httpd):
             None,
             [
                 sanitize_batch_job_name(
-                    f"{dataset}_{version}_{pixel_meaning}_gradient_{i+1}"
+                    f"{dataset}_{version}_{pixel_meaning}_gradient_{i + 1}"
                 )
             ]
             if i < max_zoom_levels

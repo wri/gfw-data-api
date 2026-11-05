@@ -255,6 +255,7 @@ def _validate_dataset_response(data, dataset_name: str) -> None:
     model = DatasetResponse(**data)
 
     assert model.data.dataset == dataset_name
+    assert model.data.metadata is not None
     assert model.data.metadata.data_language == DATASET_METADATA["data_language"]
     assert model.data.metadata.source == DATASET_METADATA["source"]
     assert model.data.metadata.title == DATASET_METADATA["title"]

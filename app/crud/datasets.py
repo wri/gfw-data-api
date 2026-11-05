@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from asyncpg import UniqueViolationError
 from sqlalchemy import func
@@ -24,7 +24,7 @@ async def count_datasets() -> int:
     return total_datasets
 
 
-async def get_datasets(size: int = None, offset: int = 0) -> List[ORMDataset]:
+async def get_datasets(size: Optional[int] = None, offset: int = 0) -> List[ORMDataset]:
     """Get list of all datasets."""
 
     rows = await db.all(all_datasets.bindparams(limit=size, offset=offset))

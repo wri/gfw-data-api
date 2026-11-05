@@ -1,6 +1,6 @@
 import decimal
 import io
-from typing import Any
+from typing import Any, Optional
 import asyncpg
 
 import orjson
@@ -15,7 +15,7 @@ class ORJSONLiteResponse(Response):
         self,
         content: Any = None,
         status_code: int = 200,
-        headers: dict = None,
+        headers: Optional[dict] = None,
         background: BackgroundTask = None,
     ) -> None:
         serialized_content = orjson.dumps(content, default=jsonencoder_lite)
@@ -31,7 +31,7 @@ class ORJSONStreamingResponse(StreamingResponse):
         self,
         content: Any,
         status_code: int = 200,
-        headers: dict = None,
+        headers: Optional[dict] = None,
         background: BackgroundTask = None,
         filename: str = "export.json",
         download: bool = True,
@@ -54,8 +54,8 @@ class CSVStreamingResponse(StreamingResponse):
         self,
         content: Any,
         status_code: int = 200,
-        headers: dict = None,
-        background: BackgroundTask = None,
+        headers: Optional[dict] = None,
+        background: Optional[BackgroundTask] = None,
         filename: str = "export.csv",
         download: bool = True,
     ) -> None:

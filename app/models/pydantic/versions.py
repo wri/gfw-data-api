@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 from ..enum.creation_options import VectorDrivers
 from ..enum.versions import VersionStatus
@@ -72,6 +72,7 @@ class VersionAppendIn(StrictBaseModel):
         description="List of layer names to append to version. "
         "Only required for .gdb and .gpkg.",
     )
+
 
 class VersionResponse(Response):
     data: Version

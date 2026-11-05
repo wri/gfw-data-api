@@ -136,7 +136,7 @@ async def get_filtered_assets_fn(
         asset_types, asset_uri, dataset, is_default, is_latest, version
     )
 
-    async def paginated_assets(size: int = None, offset: int = 0) -> List[ORMAsset]:
+    async def paginated_assets(size: Optional[int] = None, offset: int = 0) -> List[ORMAsset]:
         assets = await query.limit(size).offset(offset).gino.load(ORMAsset).all()
         if include_metadata:
             for asset in assets:

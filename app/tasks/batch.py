@@ -120,7 +120,7 @@ def submit_batch_job(
     if depends_on is None:
         depends_on = list()
 
-    payload = {
+    payload: Dict[str, Any] = {
         "jobName": job.job_name,
         "jobQueue": job.job_queue,
         "dependsOn": depends_on,

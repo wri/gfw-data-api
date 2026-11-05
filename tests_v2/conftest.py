@@ -56,7 +56,7 @@ async def init_db(db):
     from app.main import app
 
     # It is easiest to do this using the standard test client
-    async with LifespanManager(app) as manager:
+    async with LifespanManager(app):
         yield
 
 

@@ -1,3 +1,4 @@
+from typing import Dict, Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -10,7 +11,7 @@ from app.utils import fields
 
 @pytest.mark.asyncio
 async def test_get_field_attributes_no_specified_fields(monkeypatch: MonkeyPatch):
-    creation_options = {}
+    creation_options: Dict[str, Any] = {}
 
     mock_get_default_asset = AsyncMock(get_default_asset)
     monkeypatch.setattr(fields, "get_default_asset", mock_get_default_asset)

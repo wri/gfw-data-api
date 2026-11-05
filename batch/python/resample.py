@@ -86,6 +86,7 @@ def world_bounds(crs: CRS) -> Bounds:
 
     proj = Transformer.from_crs(from_crs, crs, always_xy=True)
 
+    assert crs.area_of_use is not None
     _left, _bottom, _right, _top = crs.area_of_use.bounds
 
     # Get World Extent in Source Projection
@@ -612,7 +613,7 @@ def resample(
         band_count = input_file.count
 
     for i in range(band_count):
-        vrt_file_path = os.path.join(source_dir, f"source_band_{i+1}.vrt")
+        vrt_file_path = os.path.join(source_dir, f"source_band_{i + 1}.vrt")
         create_vrt(tile_paths, src_file_band=i + 1, vrt_path=vrt_file_path)
         input_vrts.append(vrt_file_path)
 

@@ -75,6 +75,7 @@ async def raster_tile_set_asset(
     if creation_options.unify_projection:
         target_crs = "epsg:4326"
         new_src_uris = list()
+        assert creation_options.source_uri is not None
         for i, _ in enumerate(creation_options.source_uri):
             new_src_uris.append(
                 f"s3://{DATA_LAKE_BUCKET}/{dataset}/{version}/raster/"
@@ -106,6 +107,7 @@ async def raster_tile_set_asset(
         # Copy the solo tiles from the last source URI after the main raster job
         # (which should have union_bands = False) has finished.
         da: ORMAsset = await get_default_asset(dataset, version)
+        assert creation_options.source_uri is not None
         copy_solo_job = await create_copy_solo_tiles_job(
             dataset, creation_options.source_uri[-1],
             da.asset_uri, "copy_solo_tiles",
@@ -144,6 +146,7 @@ def _collect_bandstats(fc: FeatureCollection) -> List[BandStats]:
     histograms_by_band: DefaultDict[int, List[Histogram]] = defaultdict(lambda: [])
 
     for f_i, feature in enumerate(fc.features):
+        assert feature.properties is not None
         for i, band in enumerate(feature.properties.get("bands", list())):
             if band.get("stats") is not None:
                 for val in ("min", "max", "mean"):
@@ -165,6 +168,7 @@ def _collect_bandstats(fc: FeatureCollection) -> List[BandStats]:
             min=min(stats_by_band[i]["min"]),
             max=max(stats_by_band[i]["max"]),
             mean=sum(stats_by_band[i]["mean"]) / len(stats_by_band[i]["mean"]),
+            histogram=None
         )
         bs.histogram = merge_n_histograms(histograms_by_band[i])
         bandstats.append(bs)
