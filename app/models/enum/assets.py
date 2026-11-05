@@ -1,16 +1,16 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Dict
 
 from app.models.enum.sources import SourceType
 
 
-class AssetStatus(str, Enum):
+class AssetStatus(StrEnum):
     saved = "saved"
     pending = "pending"
     failed = "failed"
 
 
-class AssetType(str, Enum):
+class AssetType(StrEnum):
     dynamic_vector_tile_cache = "Dynamic vector tile cache"
     static_vector_tile_cache = "Static vector tile cache"
     raster_tile_cache = "Raster tile cache"
@@ -35,7 +35,6 @@ class AssetType(str, Enum):
 
 def default_asset_type(source_type: str, creation_option: Dict[str, Any]) -> str:
     """Get default asset type based on source type and creation options."""
-
     lat = creation_option.get("latitude", None)
     lng = creation_option.get("longitude", None)
 

@@ -1,20 +1,20 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class SourceType(str, Enum):
+class SourceType(StrEnum):
     raster = "raster"
     table = "table"
     vector = "vector"
 
 
-class RasterSourceType(str, Enum):
+class RasterSourceType(StrEnum):
     raster = "raster"
 
 
-class TableSourceType(str, Enum):
+class TableSourceType(StrEnum):
     __doc__ = "Source type of input file."
     table = "table"
 
 
-class VectorSourceType(str, Enum):
+class VectorSourceType(StrEnum):
     vector = "vector"

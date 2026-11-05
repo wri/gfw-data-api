@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class VersionStatus(str, Enum):
+class VersionStatus(StrEnum):
     saved = "saved"
     pending = "pending"
     failed = "failed"
